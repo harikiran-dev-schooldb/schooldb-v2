@@ -2,7 +2,6 @@ import {
   LayoutDashboard,
   GraduationCap,
   Users,
-  UserSquare2,
   CalendarCheck,
   IndianRupee,
   BookOpen,
@@ -12,42 +11,37 @@ import {
 export const navigation = [
   {
     title: "Dashboard",
-    url: "/dashboard",
+    href: "dashboard",
     icon: LayoutDashboard,
   },
   {
     title: "Students",
-    url: "/students",
+    href: "students",
     icon: GraduationCap,
   },
   {
     title: "Teachers",
-    url: "/teachers",
+    href: "teachers",
     icon: Users,
   },
   {
-    title: "Parents",
-    url: "/parents",
-    icon: UserSquare2,
-  },
-  {
     title: "Attendance",
-    url: "/attendance",
+    href: "attendance",
     icon: CalendarCheck,
   },
   {
     title: "Fees",
-    url: "/fees",
+    href: "fees",
     icon: IndianRupee,
   },
   {
     title: "Exams",
-    url: "/exams",
+    href: "exams",
     icon: BookOpen,
   },
   {
     title: "Settings",
-    url: "/settings",
+    href: "settings",
     icon: Settings,
   },
 ];

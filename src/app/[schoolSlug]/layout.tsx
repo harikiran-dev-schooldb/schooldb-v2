@@ -1,7 +1,53 @@
-export default function SchoolLayout({
+import { auth } from "@clerk/nextjs/server";
+import { notFound, redirect } from "next/navigation";
+
+import { syncUser } from "@/lib/sync-user";
+import { getMembership, getSchoolBySlug } from "@/lib/tenant";
+import { SchoolProvider } from "@/contexts/school-context";
+
+export default async function SchoolLayout({
   children,
+  params,
 }: {
   children: React.ReactNode;
+  params: Promise<{ schoolSlug: string }>;
 }) {
-  return <>{children}</>;
+  const { userId } = await auth();
+
+  if (!userId) {
+    redirect("/login");
+  }
+
+  const { schoolSlug } = await params;
+
+  const user = await syncUser();
+
+  if (!user) {
+    redirect("/login");
+  }
+
+  const school = await getSchoolBySlug(schoolSlug);
+
+  if (!school) {
+    notFound();
+  }
+
+  const membership = await getMembership(user.id, school.id);
+
+  if (!membership) {
+    redirect("/");
+  }
+
+  return (
+    <SchoolProvider
+      value={{
+        school,
+        membership,
+        user,
+        role: membership.role,
+      }}
+    >
+      {children}
+    </SchoolProvider>
+  );
 }
