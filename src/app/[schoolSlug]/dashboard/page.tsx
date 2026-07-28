@@ -1,27 +1,40 @@
-import { auth } from "@clerk/nextjs/server";
-import { redirect } from "next/navigation";
-import { syncUser } from "@/lib/sync-user";
+import { PageHeader } from "@/components/common/PageHeader";
+import { StatCard } from "@/components/common/StatCard";
+import { Button } from "@/components/ui/button";
+import { CalendarCheck, GraduationCap, IndianRupee, Users } from "lucide-react";
 
-export default async function Dashboard({
-  params,
-}: {
-  params: Promise<{ schoolSlug: string }>;
-}) {
-  const { userId } = await auth();
-
-  if (!userId) {
-    redirect("/login");
-  }
-
-  const { schoolSlug } = await params;
-
-  const user = await syncUser();
-
+export default function DashboardPage() {
   return (
-    <main className="p-10">
-      <h1 className="text-3xl font-bold">{schoolSlug}</h1>
+    <>
+      <PageHeader
+        title="Dashboard"
+        description="Welcome to SchoolDB"
+        action={<Button>Add Student</Button>}
+      />
 
-      <p>{user?.email}</p>
-    </main>
+      <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
+        <StatCard
+          title="Students"
+          value={2450}
+          icon={GraduationCap}
+          description="Active students"
+          trend={{
+            value: "+15 this month",
+            positive: true,
+          }}
+        />
+
+        <StatCard
+          title="Teachers"
+          value={120}
+          icon={Users}
+          description="Teaching staff"
+        />
+
+        <StatCard title="Attendance" value="96%" icon={CalendarCheck} />
+
+        <StatCard title="Fees" value="$128,000" icon={IndianRupee} />
+      </div>
+    </>
   );
 }

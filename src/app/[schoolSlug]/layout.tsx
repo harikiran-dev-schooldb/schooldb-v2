@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { syncUser } from "@/lib/sync-user";
 import { getMembership, getSchoolBySlug } from "@/lib/tenant";
 import { SchoolProvider } from "@/contexts/school-context";
+import { AppShell } from "@/components/layout/AppShell";
 
 export default async function SchoolLayout({
   children,
@@ -47,7 +48,7 @@ export default async function SchoolLayout({
         role: membership.role,
       }}
     >
-      {children}
+      <AppShell>{children}</AppShell>
     </SchoolProvider>
   );
 }
