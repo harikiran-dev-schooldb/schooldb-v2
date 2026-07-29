@@ -18,6 +18,28 @@ enum Role {
   STUDENT
 }
 
+model AcademicYear {
+  id        String   @id @default(cuid())
+
+  name      String
+
+  startDate DateTime
+
+  endDate   DateTime
+
+  active    Boolean @default(false)
+
+  schoolId  String
+
+  school    School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  @@unique([schoolId, name])
+}
+
 model School {
   id          String       @id @default(cuid())
   name        String
@@ -25,6 +47,7 @@ model School {
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 
+  academicYears AcademicYear[]
   memberships Membership[]
   students Student[]
 }
@@ -62,43 +85,181 @@ model Membership {
   @@unique([userId, schoolId])
 }
 
+model Student {
+  id String @id @default(cuid())
+
+  // ==========================
+  // Admission
+  // ==========================
+
+  admissionNo      String
+  rollNo           String?
+  username         String?
+  clerkId          String?
+
+  // ==========================
+  // Basic Information
+  // ==========================
+
+
+  fullName         String?
+
+  gender           Gender
+  dob              DateTime
+  joinedDate       DateTime?
+
+  bloodGroup       String?
+  nationality      String?
+  motherTongue     String?
+
+  religion         Religion?
+  category         Category?
+  caste            String?
+  subCaste         String?
+
+  // ==========================
+  // Government IDs
+  // ==========================
+
+  penNo            String?
+  emisNo           String?
+  apaarId          String?
+  studentAadhar    String?
+
+  // ==========================
+  // Contact
+  // ==========================
+
+  phone            String?
+  alternatePhone   String?
+  email            String?
+
+  address          String?
+  city             String?
+  district         String?
+  state            String?
+  country          String?
+  pincode          String?
+
+  // ==========================
+  // Parent Information
+  // ==========================
+
+  fatherName               String?
+  fatherPhone              String?
+  fatherEmail              String?
+  fatherOccupation         String?
+  fatherQualification      String?
+  fatherIncome             Decimal?
+
+  motherName               String?
+  motherPhone              String?
+  motherEmail              String?
+  motherOccupation         String?
+  motherQualification      String?
+  motherIncome             Decimal?
+
+  guardianName             String?
+  guardianRelation         String?
+  guardianPhone            String?
+
+  // ==========================
+  // Identity
+  // ==========================
+
+  fatherAadhar             String?
+  motherAadhar             String?
+
+  // ==========================
+  // Medical
+  // ==========================
+
+  allergies                String?
+  medicalConditions        String?
+  doctorName               String?
+  doctorPhone              String?
+
+  // ==========================
+  // School
+  // ==========================
+
+  transportRequired        Boolean @default(false)
+  hostelRequired           Boolean @default(false)
+
+  // These will become relations later
+  classId                  String?
+  sectionId                String?
+  academicYearId           String?
+
+  // ==========================
+  // Photo
+  // ==========================
+
+  imageUrl                 String?
+
+  // ==========================
+  // Status
+  // ==========================
+
+  status                   StudentStatus @default(ACTIVE)
+
+  active                   Boolean @default(true)
+
+  remarks                  String?
+
+  // ==========================
+  // Tenant
+  // ==========================
+
+  schoolId                 String
+  school                   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  // ==========================
+  // Audit
+  // ==========================
+
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+
+  @@unique([schoolId, admissionNo])
+  @@index([schoolId])
+  @@index([status])
+}
+
+enum StudentStatus {
+  ACTIVE
+  INACTIVE
+  TRANSFERRED
+  DROPPED
+  ALUMNI
+}
+
 enum Gender {
   MALE
   FEMALE
+  OTHER
 }
 
-model Student {
+enum Religion {
+  HINDU
+  MUSLIM
+  CHRISTIAN
+  SIKH
+  BUDDHIST
+  JAIN
+  OTHER
+}
 
-  id            String   @id @default(cuid())
-
-  admissionNo   String
-
-  firstName     String
-
-  lastName      String?
-
-  gender        Gender
-
-  dob           DateTime
-
-  mobile        String?
-
-  email         String?
-
-  image         String?
-
-  active        Boolean @default(true)
-
-  schoolId      String
-
-  school        School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-
-  createdAt     DateTime @default(now())
-
-  updatedAt     DateTime @updatedAt
-
-  @@unique([schoolId, admissionNo])
-
-  @@index([schoolId])
-
+enum Category {
+  GENERAL
+  OBC
+  BC_A
+  BC_B
+  BC_C
+  BC_D
+  BC_E
+  SC
+  ST
+  EWS
+  RTE
 }

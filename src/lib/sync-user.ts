@@ -10,6 +10,13 @@ export async function syncUser() {
     where: {
       clerkUserId: clerkUser.id,
     },
+    include: {
+      memberships: {
+        include: {
+          school: true,
+        },
+      },
+    },
   });
 
   if (user) return user;
@@ -36,6 +43,13 @@ export async function syncUser() {
         create: {
           schoolId: school.id,
           role: "SUPER_ADMIN",
+        },
+      },
+    },
+    include: {
+      memberships: {
+        include: {
+          school: true,
         },
       },
     },

@@ -1,7 +1,13 @@
 import { PageHeader } from "@/components/common/PageHeader";
+import { DataGrid } from "@/components/datagrid/DataGrid";
 import { Button } from "@/components/ui/button";
 
-export default function StudentPage() {
+import { studentColumns } from "@/features/students/columns";
+import { studentService } from "@/features/students/services/student.service";
+
+export default async function StudentPage() {
+  const students = await studentService.getAll();
+
   return (
     <>
       <PageHeader
@@ -9,7 +15,8 @@ export default function StudentPage() {
         description="Manage all students"
         action={<Button>Add Student</Button>}
       />
-      Student DataGrid Here
+
+      <DataGrid columns={studentColumns} data={students} />
     </>
   );
 }
