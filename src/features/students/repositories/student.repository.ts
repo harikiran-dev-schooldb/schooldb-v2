@@ -1,7 +1,9 @@
+import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 
+
 export const studentRepository = {
-  findMany(where: any) {
+  findMany(where: Prisma.StudentWhereInput) {
     return prisma.student.findMany({
       where,
       orderBy: {
@@ -10,34 +12,26 @@ export const studentRepository = {
     });
   },
 
-  findById(id: string) {
-    return prisma.student.findUnique({
-      where: { id },
+  findByAdmissionNo(schoolId: string, admissionNo: string) {
+    return prisma.student.findFirst({
+      where: {
+        schoolId,
+        admissionNo,
+      },
     });
   },
 
-  create(data: any) {
+  create(data: Prisma.StudentCreateInput) {
     return prisma.student.create({
       data,
     });
   },
 
-  update(id: string, data: any) {
-    return prisma.student.update({
-      where: { id },
-      data,
-    });
-  },
-
-  delete(id: string) {
-    return prisma.student.delete({
-      where: { id },
-    });
-  },
-
-  count(where: any) {
-    return prisma.student.count({
-      where,
+  findById(id: string) {
+    return prisma.student.findUnique({
+      where: {
+        id,
+      },
     });
   },
 };

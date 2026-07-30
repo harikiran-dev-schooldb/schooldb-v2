@@ -4,9 +4,11 @@ import { Button } from "@/components/ui/button";
 
 import { studentColumns } from "@/features/students/columns";
 import { studentService } from "@/features/students/services/student.service";
+import { requireTenant } from "@/lib/auth";
 
 export default async function StudentPage() {
-  const students = await studentService.getAll();
+  const tenant = await requireTenant();
+  const students = await studentService.getAll(tenant.schoolId);
 
   return (
     <>

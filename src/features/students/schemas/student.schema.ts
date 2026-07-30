@@ -1,21 +1,27 @@
 import { z } from "zod";
 
-export const studentSchema = z.object({
+export const createStudentSchema = z.object({
+  admissionNo: z.string().min(1, "Admission No is required"),
 
-    admissionNo: z.string().min(1),
+  fullName: z.string().min(3, "Student name is required"),
 
-    firstName: z.string().min(2),
+  gender: z.enum(["MALE", "FEMALE", "OTHER"]),
 
-    lastName: z.string().optional(),
+  dob: z.coerce.date(),
 
-    gender: z.enum(["MALE","FEMALE"]),
+  phone: z.string().optional(),
 
-    dob: z.date(),
+  email: z.string().email().optional().or(z.literal("")),
 
-    mobile: z.string().optional(),
-
-    email: z.email().optional()
-
+  status: z
+    .enum([
+      "ACTIVE",
+      "INACTIVE",
+      "TRANSFERRED",
+      "DROPPED",
+      "ALUMNI",
+    ])
+    .default("ACTIVE"),
 });
 
-export type StudentSchema = z.infer<typeof studentSchema>;
+export type CreateStudentInput = z.infer<typeof createStudentSchema>;
