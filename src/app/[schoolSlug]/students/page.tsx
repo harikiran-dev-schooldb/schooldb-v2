@@ -1,8 +1,8 @@
 import { PageHeader } from "@/components/common/PageHeader";
 import { DataGrid } from "@/components/datagrid/DataGrid";
-import { Button } from "@/components/ui/button";
 
 import { studentColumns } from "@/features/students/columns";
+import { StudentDialog } from "@/features/students/components/StudentDialog";
 import { studentService } from "@/features/students/services/student.service";
 import { requireTenant } from "@/lib/auth";
 
@@ -15,7 +15,7 @@ export default async function StudentPage() {
       <PageHeader
         title="Students"
         description="Manage all students"
-        action={<Button>Add Student</Button>}
+        action={<StudentDialog />}
       />
 
       <DataGrid columns={studentColumns} data={students} />

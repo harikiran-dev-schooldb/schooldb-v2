@@ -1,27 +1,20 @@
 import { z } from "zod";
 
 export const createStudentSchema = z.object({
-  admissionNo: z.string().min(1, "Admission No is required"),
-
-  fullName: z.string().min(3, "Student name is required"),
-
+  admissionNo: z.string().min(1),
+  fullName: z.string().min(3),
   gender: z.enum(["MALE", "FEMALE", "OTHER"]),
-
-  dob: z.coerce.date(),
-
+  dob: z.string(),
   phone: z.string().optional(),
-
   email: z.string().email().optional().or(z.literal("")),
-
-  status: z
-    .enum([
-      "ACTIVE",
-      "INACTIVE",
-      "TRANSFERRED",
-      "DROPPED",
-      "ALUMNI",
-    ])
-    .default("ACTIVE"),
+  status: z.enum([
+    "ACTIVE",
+    "INACTIVE",
+    "TRANSFERRED",
+    "DROPPED",
+    "ALUMNI",
+  ]),
 });
 
-export type CreateStudentInput = z.infer<typeof createStudentSchema>;
+export type StudentFormInput = z.input<typeof createStudentSchema>;
+export type StudentFormOutput = z.output<typeof createStudentSchema>;

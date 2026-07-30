@@ -1,5 +1,6 @@
 import { studentRepository } from "../repositories/student.repository";
-import { CreateStudentInput } from "../schemas/student.schema";
+import { StudentFormInput } from "../schemas/student.schema";
+
 
 export const studentService = {
   async getAll(schoolId: string) {
@@ -11,7 +12,7 @@ export const studentService = {
 
   async create(
     schoolId: string,
-    input: CreateStudentInput
+    input: StudentFormInput
   ) {
     const exists = await studentRepository.findByAdmissionNo(
       schoolId,
@@ -26,7 +27,7 @@ export const studentService = {
       admissionNo: input.admissionNo,
       fullName: input.fullName,
       gender: input.gender,
-      dob: input.dob,
+      dob: new Date(input.dob),
       phone: input.phone,
       email: input.email,
       status: input.status,
