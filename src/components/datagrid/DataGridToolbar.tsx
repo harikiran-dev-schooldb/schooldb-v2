@@ -12,9 +12,9 @@ export function DataGridToolbar<TData>({ table }: Props<TData>) {
     <div className="flex items-center justify-between py-4">
       <Input
         placeholder="Search..."
-        value={(table.getColumn("firstName")?.getFilterValue() as string) ?? ""}
+        value={(table.getColumn("fullName")?.getFilterValue() as string) ?? ""}
         onChange={(e) =>
-          table.getColumn("firstName")?.setFilterValue(e.target.value)
+          table.getColumn("fullName")?.setFilterValue(e.target.value)
         }
         className="max-w-sm"
       />

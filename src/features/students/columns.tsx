@@ -1,5 +1,5 @@
 import { ColumnDef } from "@tanstack/react-table";
-import { StudentListItem } from "./types/student";
+import { StudentListItem } from "./types";
 
 export const studentColumns: ColumnDef<StudentListItem>[] = [
   {
