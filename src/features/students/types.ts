@@ -7,7 +7,8 @@ export type StudentListItem = {
   status:
     | "ACTIVE"
     | "INACTIVE"
-    | "TRANSFERRED"
+    | "TC_ISSUED"
+    | "NOT_COMING"
     | "DROPPED"
     | "ALUMNI";
 };

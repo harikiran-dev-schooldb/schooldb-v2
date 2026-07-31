@@ -1,31 +1,36 @@
 "use client";
 
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
+
 import { StudentForm } from "./StudentForm";
 
-export function StudentDialog() {
-  const [open, setOpen] = useState(false);
+type Props = {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  mode: "create" | "edit";
+  studentId?: string;
+};
 
+export function StudentDialog({ open, onOpenChange, mode, studentId }: Props) {
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger>
-        <Button>Add Student</Button>
-      </DialogTrigger>
-
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl">
         <DialogHeader>
-          <DialogTitle>Add Student</DialogTitle>
+          <DialogTitle>
+            {mode === "create" ? "Add Student" : "Edit Student"}
+          </DialogTitle>
         </DialogHeader>
 
-        <StudentForm onSuccess={() => setOpen(false)} />
+        <StudentForm
+          mode={mode}
+          studentId={studentId}
+          onSuccess={() => onOpenChange(false)}
+        />
       </DialogContent>
     </Dialog>
   );

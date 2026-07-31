@@ -201,9 +201,11 @@ model Student {
   // Status
   // ==========================
 
-  status                   StudentStatus @default(ACTIVE)
+  status                  StudentStatus @default(ACTIVE)
 
-  active                   Boolean @default(true)
+  statusChangedAt         DateTime?
+
+  statusRemarks           String?
 
   remarks                  String?
 
@@ -228,10 +230,11 @@ model Student {
 
 enum StudentStatus {
   ACTIVE
-  INACTIVE
-  TRANSFERRED
-  DROPPED
+  TC_ISSUED
   ALUMNI
+  DROPPED
+  NOT_COMING
+  INACTIVE
 }
 
 enum Gender {

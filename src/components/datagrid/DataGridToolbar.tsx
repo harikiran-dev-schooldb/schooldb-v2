@@ -1,23 +1,17 @@
 "use client";
 
-import { Input } from "@/components/ui/input";
-import { Table } from "@tanstack/react-table";
+import { DataGridSearch } from "./DataGridSearch";
 
-interface Props<TData> {
-  table: Table<TData>;
-}
+type Props = {
+  onSearch?: (value: string) => void;
+};
 
-export function DataGridToolbar<TData>({ table }: Props<TData>) {
+export function DataGridToolbar({ onSearch }: Props) {
   return (
-    <div className="flex items-center justify-between py-4">
-      <Input
-        placeholder="Search..."
-        value={(table.getColumn("fullName")?.getFilterValue() as string) ?? ""}
-        onChange={(e) =>
-          table.getColumn("fullName")?.setFilterValue(e.target.value)
-        }
-        className="max-w-sm"
-      />
+    <div className="flex items-center justify-between border-b p-4">
+      <DataGridSearch placeholder="Search..." onSearch={onSearch} />
+
+      <div className="flex gap-2"></div>
     </div>
   );
 }

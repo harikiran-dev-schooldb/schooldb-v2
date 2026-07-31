@@ -10,9 +10,10 @@ export const createStudentSchema = z.object({
   status: z.enum([
     "ACTIVE",
     "INACTIVE",
-    "TRANSFERRED",
+    "TC_ISSUED",
     "DROPPED",
     "ALUMNI",
+    "NOT_COMING"
   ]),
 });
 
