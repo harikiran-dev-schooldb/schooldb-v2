@@ -42,7 +42,7 @@ export async function GET(
 
     const { id } = await params;
 
-    const student = await studentService.getById(
+    const student = await studentService.get(
       id,
       tenant.schoolId
     );

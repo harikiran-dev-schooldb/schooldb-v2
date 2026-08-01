@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { StudentListItem } from "../types";
+import { useDebounce } from "@/hooks/useDebounce";
 
 type StudentResponse = {
   data: StudentListItem[];
@@ -17,19 +18,25 @@ export function useStudentTable() {
   const [loading, setLoading] = useState(true);
 
   const [page, setPage] = useState(1);
-  const [pageSize] = useState(10);
+  const [pageSize] = useState(25);
 
   const [search, setSearch] = useState("");
 
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
+  const debouncedSearch = useDebounce(search, 400);
+
+  const handleSearch = (value: string) => {
+  setSearch(value);
+  setPage(1);
+};
 
   const reload = useCallback(async () => {
     setLoading(true);
-
+    
     try {
       const res = await fetch(
-        `/api/v1/students?page=${page}&pageSize=${pageSize}&search=${encodeURIComponent(search)}`
+        `/api/v1/students?page=${page}&pageSize=${pageSize}&search=${encodeURIComponent(debouncedSearch)}`
       );
 
       const result = await res.json();
@@ -42,7 +49,7 @@ export function useStudentTable() {
     } finally {
       setLoading(false);
     }
-  }, [page, pageSize, search]);
+  }, [page, pageSize, debouncedSearch]);
 
   useEffect(() => {
     reload();
@@ -58,7 +65,7 @@ export function useStudentTable() {
     pageSize,
 
     search,
-    setSearch,
+    setSearch: handleSearch,
 
     total,
     totalPages,

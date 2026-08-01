@@ -1,27 +1,32 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Table } from "@tanstack/react-table";
 
-interface Props<TData> {
-  table: Table<TData>;
-}
+type Props = {
+  page: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+};
 
-export function DataGridPagination<TData>({ table }: Props<TData>) {
+export function DataGridPagination({ page, totalPages, onPageChange }: Props) {
   return (
-    <div className="flex items-center justify-end gap-2 py-4">
+    <div className="flex items-center justify-between border-t p-4">
       <Button
         variant="outline"
-        onClick={() => table.previousPage()}
-        disabled={!table.getCanPreviousPage()}
+        disabled={page <= 1}
+        onClick={() => onPageChange(page - 1)}
       >
         Previous
       </Button>
 
+      <span className="text-sm text-muted-foreground">
+        Page {page} of {totalPages}
+      </span>
+
       <Button
         variant="outline"
-        onClick={() => table.nextPage()}
-        disabled={!table.getCanNextPage()}
+        disabled={page >= totalPages}
+        onClick={() => onPageChange(page + 1)}
       >
         Next
       </Button>

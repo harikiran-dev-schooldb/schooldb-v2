@@ -14,8 +14,8 @@ export const studentColumns: ColumnDef<StudentListItem>[] = [
     header: "Student Name",
   },
   {
-    accessorKey: "gender",
-    header: "Gender",
+    accessorKey: "fatherName",
+    header: "Parent Name",
   },
   {
     accessorKey: "phone",

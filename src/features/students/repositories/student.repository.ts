@@ -21,8 +21,6 @@ export const studentRepository = {
   });
 },
 
-  
-
   findByAdmissionNo(schoolId: string, admissionNo: string) {
     return prisma.student.findFirst({
       where: {

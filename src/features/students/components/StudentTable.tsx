@@ -1,56 +1,25 @@
 "use client";
 
-import { useEffect, useState } from "react";
-
 import { DataGrid } from "@/components/datagrid/DataGrid";
-import { StudentListItem } from "../types";
+import { useStudentTable } from "../hooks/useStudentTable";
 import { studentColumns } from "../columns";
 
-type StudentResponse = {
-  data: StudentListItem[];
-  total: number;
-  page: number;
-  pageSize: number;
-  totalPages: number;
-};
-
 export function StudentTable() {
-  const [students, setStudents] = useState<StudentListItem[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  const [page, setPage] = useState(1);
-
-  const [search, setSearch] = useState("");
-
-  async function loadStudents() {
-    setLoading(true);
-
-    try {
-      const res = await fetch(
-        `/api/v1/students?page=${page}&pageSize=10&search=${encodeURIComponent(search)}`,
-      );
-
-      const result = await res.json();
-
-      const response: StudentResponse = result.data;
-
-      setStudents(response.data);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    loadStudents();
-  }, [page, search]);
+  const { students, loading, page, setPage, totalPages, search, setSearch } =
+    useStudentTable();
 
   return (
-    <DataGrid
-      columns={studentColumns}
-      data={students}
-      loading={loading}
-      searchPlaceholder="Search students..."
-      onSearch={setSearch}
-    />
+    <>
+      <DataGrid
+        columns={studentColumns}
+        data={students}
+        loading={loading}
+        page={page}
+        totalPages={totalPages}
+        onPageChange={setPage}
+        searchPlaceholder="Search students..."
+        onSearch={setSearch}
+      />
+    </>
   );
 }

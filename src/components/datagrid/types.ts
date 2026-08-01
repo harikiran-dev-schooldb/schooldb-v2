@@ -1,28 +1,15 @@
-import {
-  ColumnDef,
-  PaginationState,
-  SortingState,
-} from "@tanstack/react-table";
+import { ColumnDef } from "@tanstack/react-table";
 
 export interface DataGridProps<TData> {
-  data: TData[];
   columns: ColumnDef<TData>[];
+  data: TData[];
 
   loading?: boolean;
 
-  pageCount?: number;
-
-  pagination?: PaginationState;
-
-  onPaginationChange?: (pagination: PaginationState) => void;
-
-  sorting?: SortingState;
-
-  onSortingChange?: (sorting: SortingState) => void;
+  page?: number;
+  totalPages?: number;
+  onPageChange?: (page: number) => void;
 
   searchPlaceholder?: string;
-
   onSearch?: (value: string) => void;
-
-  toolbar?: React.ReactNode;
 }
