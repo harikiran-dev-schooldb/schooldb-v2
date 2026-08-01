@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
-import { Geist } from "next/font/google";
+import { Geist, Geist_Mono } from "next/font/google";
 import { cn } from "@/lib/utils";
 import { Toaster } from "@/components/ui/sonner";
 
 const geist = Geist({subsets:['latin'],variable:'--font-sans'});
+const geistMono = Geist_Mono({subsets:["latin"],variable:"--font-geist-mono"});
 
 export const metadata: Metadata = {
   title: "SchoolDB",
@@ -19,8 +20,8 @@ export default function RootLayout({
 }>) {
   return (
     <ClerkProvider>
-      <html lang="en" className={cn("font-sans", geist.variable)}>
-        <body>
+      <html lang="en" className={cn("font-sans", geist.variable, geistMono.variable)}>
+        <body className="min-h-screen">
           {children}
           <Toaster richColors position="top-right" />
         </body>

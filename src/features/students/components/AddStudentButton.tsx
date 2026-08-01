@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { Plus } from "lucide-react";
 
 import { StudentDialog } from "./StudentDialog";
 
@@ -11,7 +12,7 @@ export function AddStudentButton() {
 
   return (
     <>
-      <Button onClick={() => setOpen(true)}>Add Student</Button>
+      <Button size="lg" className="shadow-md shadow-primary/20" onClick={() => setOpen(true)}><Plus /> Add student</Button>
 
       <StudentDialog open={open} onOpenChange={setOpen} mode="create" />
     </>
