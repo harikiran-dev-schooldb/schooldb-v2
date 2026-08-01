@@ -3,14 +3,25 @@ import { prisma } from "@/lib/prisma";
 
 
 export const studentRepository = {
-  findMany(where: Prisma.StudentWhereInput) {
-    return prisma.student.findMany({
-      where,
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
-  },
+  list(
+  where: Prisma.StudentWhereInput,
+  options?: {
+    skip?: number;
+    take?: number;
+    orderBy?: Prisma.StudentOrderByWithRelationInput;
+  }
+) {
+  return prisma.student.findMany({
+    where,
+    skip: options?.skip,
+    take: options?.take,
+    orderBy: options?.orderBy ?? {
+      createdAt: "desc",
+    },
+  });
+},
+
+  
 
   findByAdmissionNo(schoolId: string, admissionNo: string) {
     return prisma.student.findFirst({
@@ -60,6 +71,18 @@ changeStatus(
       statusRemarks: remarks,
       statusChangedAt: new Date(),
     },
+  });
+},
+
+findFirst(where: Prisma.StudentWhereInput) {
+  return prisma.student.findFirst({
+    where,
+  });
+},
+
+count(where: Prisma.StudentWhereInput) {
+  return prisma.student.count({
+    where,
   });
 }
 };

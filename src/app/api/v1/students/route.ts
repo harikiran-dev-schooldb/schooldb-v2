@@ -29,13 +29,26 @@ export async function POST(req: Request) {
 }
 
 
-export async function GET() {
+export async function GET(req: Request) {
   return apiHandler(async () => {
     const tenant = await requireTenant();
 
-    const students = await studentService.getAll(
-      tenant.schoolId
-    );
+    const { searchParams } = new URL(req.url);
+
+    const page = Number(searchParams.get("page") ?? 1);
+
+const pageSize = Number(searchParams.get("pageSize") ?? 10);
+
+const search = searchParams.get("search") ?? undefined;
+
+const students = await studentService.list(
+  tenant.schoolId,
+  {
+    page,
+    pageSize,
+    search,
+  }
+);
 
     return ApiResponse.success(students);
   });

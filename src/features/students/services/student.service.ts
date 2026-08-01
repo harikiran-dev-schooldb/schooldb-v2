@@ -1,16 +1,61 @@
-import { prisma } from "@/lib/prisma";
 import { studentRepository } from "../repositories/student.repository";
 import { StudentFormInput } from "../schemas/student.schema";
-import { StudentStatus } from "@/generated/prisma/browser";
+import { StudentStatus } from "@/generated/prisma/enums";
+import { ListQuery } from "@/types/query";
+
 
 
 export const studentService = {
-  async getAll(schoolId: string) {
-    return studentRepository.findMany({
-      schoolId,
-      status: StudentStatus.ACTIVE,
-    });
-  },
+  async list(schoolId: string, query: ListQuery) {
+  const page = query.page ?? 1;
+  const pageSize = query.pageSize ?? 10;
+
+  const skip = (page - 1) * pageSize;
+
+  const where = {
+    schoolId,
+    status: StudentStatus.ACTIVE,
+
+    ...(query.search && {
+      OR: [
+        {
+          admissionNo: {
+            contains: query.search,
+            mode: "insensitive" as const,
+          },
+        },
+        {
+          fullName: {
+            contains: query.search,
+            mode: "insensitive" as const,
+          },
+        },
+        {
+          phone: {
+            contains: query.search,
+            mode: "insensitive" as const,
+          },
+        },
+      ],
+    }),
+  };
+
+  const [students, total] = await Promise.all([
+    studentRepository.list(where, {
+      skip,
+      take: pageSize,
+    }),
+    studentRepository.count(where),
+  ]);
+
+  return {
+    data: students,
+    total,
+    page,
+    pageSize,
+    totalPages: Math.ceil(total / pageSize),
+  };
+},
 
   async create(
     schoolId: string,
@@ -41,7 +86,7 @@ export const studentService = {
     });
  },
 
- async getById(id: string, schoolId: string) {
+ async get(id: string, schoolId: string) {
   const student = await studentRepository.findById(id, schoolId);
 
   if (!student) {
@@ -56,26 +101,22 @@ export const studentService = {
   schoolId: string,
   input: StudentFormInput
 ) {
-  const student = await prisma.student.findFirst({
-    where: {
-      id,
-      schoolId,
-    },
-  });
+  const student = await studentRepository.findById(
+  id,
+  schoolId
+);
 
   if (!student) {
     throw new Error("Student not found.");
   }
 
-  const duplicate = await prisma.student.findFirst({
-    where: {
-      schoolId,
-      admissionNo: input.admissionNo,
-      NOT: {
-        id,
-      },
-    },
-  });
+  const duplicate = await studentRepository.findFirst({
+  schoolId,
+  admissionNo: input.admissionNo,
+  NOT: {
+    id,
+  },
+});
 
   if (duplicate) {
     throw new Error("Admission number already exists.");
@@ -113,5 +154,6 @@ async changeStatus(
     status,
     remarks
   );
-}
+},
+
 };

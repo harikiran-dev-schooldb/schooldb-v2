@@ -107,7 +107,7 @@ export function StudentForm({ onSuccess, mode, studentId }: Props) {
       onSuccess();
 
       form.reset();
-      router.refresh();
+      onSuccess();
     } finally {
       setLoading(false);
     }
