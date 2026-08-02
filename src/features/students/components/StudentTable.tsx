@@ -5,7 +5,7 @@ import { useStudentTable } from "../hooks/useStudentTable";
 import { studentColumns } from "../columns";
 
 export function StudentTable() {
-  const { students, loading, page, setPage, totalPages, search, setSearch } =
+  const { students, loading, page, setPage, totalPages, setSearch } =
     useStudentTable();
 
   return (

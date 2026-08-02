@@ -1,4 +1,4 @@
-import { Gender, Student, StudentStatus } from "@/generated/prisma/browser";
+import { Gender, StudentStatus } from "@/generated/prisma/browser";
 
 export type StudentListItem = {
   id: string;

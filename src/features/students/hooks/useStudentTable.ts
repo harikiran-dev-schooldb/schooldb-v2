@@ -24,43 +24,60 @@ export function useStudentTable() {
 
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
+  const [reloadVersion, setReloadVersion] = useState(0);
   const debouncedSearch = useDebounce(search, 400);
 
   const handleSearch = (value: string) => {
-  setSearch(value);
-  setPage(1);
-};
-
-  const reload = useCallback(async () => {
     setLoading(true);
-    
-    try {
-      const res = await fetch(
-        `/api/v1/students?page=${page}&pageSize=${pageSize}&search=${encodeURIComponent(debouncedSearch)}`
-      );
+    setSearch(value);
+    setPage(1);
+  };
 
-      const result = await res.json();
+  const reload = useCallback(() => {
+    setLoading(true);
+    setReloadVersion((version) => version + 1);
+  }, []);
 
-      const response: StudentResponse = result.data;
-
-      setStudents(response.data);
-      setTotal(response.total);
-      setTotalPages(response.totalPages);
-    } finally {
-      setLoading(false);
-    }
-  }, [page, pageSize, debouncedSearch]);
+  const handlePageChange = (nextPage: number) => {
+    setLoading(true);
+    setPage(nextPage);
+  };
 
   useEffect(() => {
-    reload();
-  }, [reload]);
+    let active = true;
+
+    async function loadStudents() {
+      try {
+        const res = await fetch(
+          `/api/v1/students?page=${page}&pageSize=${pageSize}&search=${encodeURIComponent(debouncedSearch)}`,
+        );
+        const result = await res.json();
+        const response: StudentResponse = result.data;
+
+        if (active) {
+          setStudents(response.data);
+          setTotal(response.total);
+          setTotalPages(response.totalPages);
+        }
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
+      }
+    }
+
+    void loadStudents();
+    return () => {
+      active = false;
+    };
+  }, [page, pageSize, debouncedSearch, reloadVersion]);
 
   return {
     students,
     loading,
 
     page,
-    setPage,
+    setPage: handlePageChange,
 
     pageSize,
 

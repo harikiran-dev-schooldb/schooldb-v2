@@ -15,7 +15,6 @@ import { Button } from "@/components/ui/button";
 
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { useRouter } from "next/navigation";
 
 type Props = {
   mode: "create" | "edit";
@@ -25,7 +24,6 @@ type Props = {
 
 export function StudentForm({ onSuccess, mode, studentId }: Props) {
   const [loading, setLoading] = useState(false);
-  const router = useRouter();
 
   const form = useForm<StudentFormInput>({
     resolver: zodResolver(createStudentSchema),
@@ -107,7 +105,6 @@ export function StudentForm({ onSuccess, mode, studentId }: Props) {
       onSuccess();
 
       form.reset();
-      onSuccess();
     } finally {
       setLoading(false);
     }

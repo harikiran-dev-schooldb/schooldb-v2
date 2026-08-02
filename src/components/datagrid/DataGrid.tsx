@@ -35,6 +35,8 @@ export function DataGrid<TData>({
   onSearch,
 }: DataGridProps<TData>) {
   const [sorting, setSorting] = useState<SortingState>([]);
+  // TanStack Table manages its own mutable table instance; React Compiler safely skips memoization here.
+  // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
     data,
     columns,
