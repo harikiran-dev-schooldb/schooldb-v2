@@ -1,3 +1,5 @@
+import { StudentStatus } from "@/generated/prisma/browser";
+
 export interface ListQuery {
   page: number;
   pageSize: number;
@@ -9,6 +11,7 @@ export interface ListQuery {
   sortOrder?: "asc" | "desc";
 
   filters?: Record<string, unknown>;
+  status?: StudentStatus;
 }
 
 export interface PaginatedResult<T> {

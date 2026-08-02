@@ -5,6 +5,7 @@ import { validateBody } from "@/lib/validation";
 
 import { createStudentSchema } from "@/features/students/schemas/student.schema";
 import { studentService } from "@/features/students/services/student.service";
+import { StudentStatus } from "@/generated/prisma/browser";
 
 export async function POST(req: Request) {
   return apiHandler(async () => {
@@ -32,8 +33,9 @@ export async function POST(req: Request) {
 export async function GET(req: Request) {
   return apiHandler(async () => {
     const tenant = await requireTenant();
-
+    
     const { searchParams } = new URL(req.url);
+    const status = searchParams.get("status") ?? undefined;
 
     const page = Number(searchParams.get("page") ?? 1);
 
@@ -47,6 +49,7 @@ const students = await studentService.list(
     page,
     pageSize,
     search,
+    status: status as StudentStatus | undefined,
   }
 );
 

@@ -20,7 +20,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { DataGridToolbar } from "./DataGridToolbar";
 import { DataGridEmpty } from "./DataGridEmpty";
 import { DataGridPagination } from "./DataGridPagination";
 
@@ -31,12 +30,9 @@ export function DataGrid<TData>({
   page = 1,
   totalPages = 1,
   onPageChange,
-  searchPlaceholder,
-  onSearch,
+  toolbar,
 }: DataGridProps<TData>) {
   const [sorting, setSorting] = useState<SortingState>([]);
-  // TanStack Table manages its own mutable table instance; React Compiler safely skips memoization here.
-  // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
     data,
     columns,
@@ -54,7 +50,7 @@ export function DataGrid<TData>({
 
   return (
     <div className="overflow-hidden rounded-2xl border border-border/80 bg-card/90 shadow-[0_1px_2px_rgb(15_23_42/0.04)]">
-      <DataGridToolbar placeholder={searchPlaceholder} onSearch={onSearch} />
+      {toolbar}
       <Table>
         <TableHeader>
           {table.getHeaderGroups().map((headerGroup) => (

@@ -1,3 +1,4 @@
+import { StudentStatus } from "@/generated/prisma/browser";
 import { ColumnDef } from "@tanstack/react-table";
 
 export interface DataGridProps<TData> {
@@ -10,6 +11,5 @@ export interface DataGridProps<TData> {
   totalPages?: number;
   onPageChange?: (page: number) => void;
 
-  searchPlaceholder?: string;
-  onSearch?: (value: string) => void;
+  toolbar?: React.ReactNode;
 }

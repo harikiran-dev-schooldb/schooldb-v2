@@ -16,6 +16,10 @@ export const studentService = {
     schoolId,
     status: StudentStatus.ACTIVE,
 
+    ...(query.status && {
+    status: query.status,
+  }),
+
     ...(query.search && {
       OR: [
         {

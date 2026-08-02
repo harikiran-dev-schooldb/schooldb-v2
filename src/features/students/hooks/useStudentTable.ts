@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { StudentListItem } from "../types";
 import { useDebounce } from "@/hooks/useDebounce";
+import { StudentStatus } from "@/generated/prisma/enums";
 
 type StudentResponse = {
   data: StudentListItem[];
@@ -26,6 +27,9 @@ export function useStudentTable() {
   const [totalPages, setTotalPages] = useState(0);
   const [reloadVersion, setReloadVersion] = useState(0);
   const debouncedSearch = useDebounce(search, 400);
+  const [status, setStatus] = useState<StudentStatus>(
+  StudentStatus.ACTIVE
+);
 
   const handleSearch = (value: string) => {
     setLoading(true);
@@ -43,13 +47,19 @@ export function useStudentTable() {
     setPage(nextPage);
   };
 
+  const handleStatus = (value: StudentStatus) => {
+  setLoading(true);
+  setStatus(value);
+  setPage(1);
+};
+
   useEffect(() => {
     let active = true;
 
     async function loadStudents() {
       try {
         const res = await fetch(
-          `/api/v1/students?page=${page}&pageSize=${pageSize}&search=${encodeURIComponent(debouncedSearch)}`,
+          `/api/v1/students?page=${page}&pageSize=${pageSize}&search=${encodeURIComponent(debouncedSearch)}&status=${status}`,
         );
         const result = await res.json();
         const response: StudentResponse = result.data;
@@ -70,7 +80,7 @@ export function useStudentTable() {
     return () => {
       active = false;
     };
-  }, [page, pageSize, debouncedSearch, reloadVersion]);
+  }, [page, pageSize, debouncedSearch, status, reloadVersion]);
 
   return {
     students,
@@ -88,5 +98,8 @@ export function useStudentTable() {
     totalPages,
 
     reload,
+
+    status,
+    setStatus: handleStatus,
   };
 }
