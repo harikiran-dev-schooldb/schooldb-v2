@@ -152,12 +152,20 @@ async changeStatus(
     throw new Error("Student not found");
   }
 
+  if (student.status === status) {
+    throw new Error("Student already has this status.");
+  }
+
   return studentRepository.changeStatus(
     id,
     schoolId,
     status,
     remarks
   );
+},
+
+async profile(id: string, schoolId: string) {
+  return studentRepository.findById(id, schoolId);
 },
 
 };

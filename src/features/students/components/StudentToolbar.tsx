@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/select";
 
 import { StudentStatus } from "@/generated/prisma/client";
+import { STUDENT_STATUS_OPTIONS } from "../constants/student-status";
 
 type Props = {
   search: string;
@@ -44,11 +45,11 @@ export function StudentToolbar({
           </SelectTrigger>
 
           <SelectContent>
-            <SelectItem value="ACTIVE">Active</SelectItem>
-            <SelectItem value="INACTIVE">Inactive</SelectItem>
-            <SelectItem value="TC_ISSUED">TC</SelectItem>
-            <SelectItem value="DROPPED">Dropped</SelectItem>
-            <SelectItem value="ALUMNI">Alumni</SelectItem>
+            {STUDENT_STATUS_OPTIONS.map((item) => (
+              <SelectItem key={item.value} value={item.value}>
+                {item.label}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>

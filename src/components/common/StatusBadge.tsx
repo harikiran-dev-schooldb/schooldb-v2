@@ -1,30 +1,25 @@
-import { Badge } from "@/components/ui/badge";
+import { StudentStatus } from "@/generated/prisma/client";
 
-type Props = {
-  status: string;
+const colors: Record<StudentStatus, string> = {
+  ACTIVE: "bg-green-100 text-green-700",
+
+  NOT_COMING: "bg-yellow-100 text-yellow-700",
+
+  INACTIVE: "bg-gray-100 text-gray-700",
+
+  TC_ISSUED: "bg-orange-100 text-orange-700",
+
+  DROPPED: "bg-red-100 text-red-700",
+
+  ALUMNI: "bg-blue-100 text-blue-700",
 };
 
-export function StatusBadge({ status }: Props) {
-  switch (status) {
-    case "ACTIVE":
-      return <Badge>Active</Badge>;
-
-    case "TC_ISSUED":
-      return <Badge variant="secondary">TC Issued</Badge>;
-
-    case "ALUMNI":
-      return <Badge variant="outline">Alumni</Badge>;
-
-    case "DROPPED":
-      return <Badge variant="destructive">Dropped</Badge>;
-
-    case "NOT_COMING":
-      return <Badge variant="secondary">Not Coming</Badge>;
-
-    case "INACTIVE":
-      return <Badge variant="secondary">Inactive</Badge>;
-
-    default:
-      return <Badge>{status}</Badge>;
-  }
+export function StatusBadge({ status }: { status: StudentStatus }) {
+  return (
+    <span
+      className={`rounded-full px-2 py-1 text-xs font-medium ${colors[status]}`}
+    >
+      {status.replace("_", " ")}
+    </span>
+  );
 }

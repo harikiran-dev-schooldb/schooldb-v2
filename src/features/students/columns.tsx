@@ -3,6 +3,7 @@ import { ColumnDef } from "@tanstack/react-table";
 import { StudentListItem } from "./types";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { StudentActions } from "./components/StudentActions";
+import Link from "next/link";
 
 export const studentColumns: ColumnDef<StudentListItem>[] = [
   {
@@ -12,6 +13,14 @@ export const studentColumns: ColumnDef<StudentListItem>[] = [
   {
     accessorKey: "fullName",
     header: "Student Name",
+    cell: ({ row }) => (
+      <Link
+        href={`students/${row.original.id}`}
+        className="font-medium text-primary hover:underline"
+      >
+        {row.original.fullName}
+      </Link>
+    ),
   },
   {
     accessorKey: "fatherName",
@@ -28,7 +37,7 @@ export const studentColumns: ColumnDef<StudentListItem>[] = [
   },
   {
     id: "actions",
-    header: "",
+    header: "Actions",
     cell: ({ row }) => <StudentActions studentId={row.original.id} />,
   },
 ];

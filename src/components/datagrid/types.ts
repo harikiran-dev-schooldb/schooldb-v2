@@ -1,4 +1,3 @@
-import { StudentStatus } from "@/generated/prisma/browser";
 import { ColumnDef } from "@tanstack/react-table";
 
 export interface DataGridProps<TData> {
