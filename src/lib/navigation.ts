@@ -20,6 +20,11 @@ export const navigation = [
     icon: GraduationCap,
   },
   {
+    title: "Classes",
+    href: "classes",
+    icon: GraduationCap,
+  },
+  {
     title: "Teachers",
     href: "teachers",
     icon: Users,

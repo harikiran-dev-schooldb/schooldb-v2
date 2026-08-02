@@ -50,6 +50,7 @@ model School {
   academicYears AcademicYear[]
   memberships Membership[]
   students Student[]
+  classes Class[]
 }
 
 model User {
@@ -187,8 +188,6 @@ model Student {
   hostelRequired           Boolean @default(false)
 
   // These will become relations later
-  classId                  String?
-  sectionId                String?
   academicYearId           String?
 
   // ==========================
@@ -216,6 +215,12 @@ model Student {
   schoolId                 String
   school                   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
+  classId   String?
+class     Class?   @relation(fields: [classId], references: [id])
+
+sectionId String?
+section   Section? @relation(fields: [sectionId], references: [id])
+
   // ==========================
   // Audit
   // ==========================
@@ -226,6 +231,50 @@ model Student {
   @@unique([schoolId, admissionNo])
   @@index([schoolId])
   @@index([status])
+}
+
+model Class {
+  id          String   @id @default(cuid())
+
+  name        String
+  code        String?
+  description String?
+
+  displayOrder Int @default(0)
+
+  active Boolean @default(true)
+
+  schoolId String
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  sections Section[]
+  students Student[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([schoolId, name])
+  @@index([schoolId])
+}
+
+model Section {
+  id String @id @default(cuid())
+
+  name String
+
+  displayOrder Int @default(0)
+
+  active Boolean @default(true)
+
+  classId String
+  class   Class @relation(fields: [classId], references: [id], onDelete: Cascade)
+
+  students Student[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([classId, name])
 }
 
 enum StudentStatus {
