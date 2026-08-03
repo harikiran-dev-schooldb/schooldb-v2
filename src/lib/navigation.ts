@@ -6,6 +6,7 @@ import {
   IndianRupee,
   BookOpen,
   Settings,
+  PanelsTopLeft,
 } from "lucide-react";
 
 export const navigation = [
@@ -24,6 +25,11 @@ export const navigation = [
     href: "classes",
     icon: GraduationCap,
   },
+  {
+  title: "Sections",
+  href: "/sections",
+  icon: PanelsTopLeft,
+},
   {
     title: "Teachers",
     href: "teachers",

@@ -5,44 +5,42 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
-import {
-  classSchema,
-  ClassFormOutput,
-  ClassFormInput,
-} from "../schemas/section.schema";
+import { sectionSchema, SectionFormInput } from "../schemas/section.schema";
 
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 
+import { ClassSelect } from "@/components/common/select/ClassSelect";
+
 type Props = {
   mode: "create" | "edit";
-  classId?: string;
+  sectionId?: string;
   onSuccess: () => void;
 };
 
-export function ClassForm({ mode, classId, onSuccess }: Props) {
+export function SectionForm({ mode, sectionId, onSuccess }: Props) {
   const router = useRouter();
 
   const [loading, setLoading] = useState(false);
 
-  const form = useForm<ClassFormInput>({
-    resolver: zodResolver(classSchema),
+  const form = useForm<SectionFormInput>({
+    resolver: zodResolver(sectionSchema),
 
     defaultValues: {
+      classId: "",
       name: "",
-      code: "",
-      description: "",
       displayOrder: 0,
     },
   });
 
   useEffect(() => {
-    if (mode !== "edit" || !classId) return;
+    if (mode !== "edit" || !sectionId) return;
 
-    async function loadClass() {
-      const res = await fetch(`/api/v1/classes/${classId}`);
+    async function loadSection() {
+      const res = await fetch(`/api/v1/sections/${sectionId}`);
 
       const result = await res.json();
 
@@ -51,35 +49,38 @@ export function ClassForm({ mode, classId, onSuccess }: Props) {
         return;
       }
 
-      const item = result.data;
+      const section = result.data;
 
       form.reset({
-        name: item.name,
-        code: item.code ?? "",
-        description: item.description ?? "",
-        displayOrder: item.displayOrder,
+        classId: section.classId,
+        name: section.name,
+        displayOrder: section.displayOrder,
       });
     }
 
-    loadClass();
-  }, [mode, classId, form]);
+    loadSection();
+  }, [mode, sectionId, form]);
 
-  async function onSubmit(values: ClassFormInput) {
+  async function onSubmit(values: SectionFormInput) {
     try {
       setLoading(true);
 
-      const payload = classSchema.parse(values);
+      const payload = sectionSchema.parse(values);
 
       const url =
-        mode === "create" ? "/api/v1/classes" : `/api/v1/classes/${classId}`;
+        mode === "create"
+          ? "/api/v1/sections"
+          : `/api/v1/sections/${sectionId}`;
 
       const method = mode === "create" ? "POST" : "PUT";
 
       const res = await fetch(url, {
         method,
+
         headers: {
           "Content-Type": "application/json",
         },
+
         body: JSON.stringify(payload),
       });
 
@@ -92,8 +93,8 @@ export function ClassForm({ mode, classId, onSuccess }: Props) {
 
       toast.success(
         mode === "create"
-          ? "Class created successfully."
-          : "Class updated successfully.",
+          ? "Section created successfully."
+          : "Section updated successfully.",
       );
 
       form.reset();
@@ -108,11 +109,12 @@ export function ClassForm({ mode, classId, onSuccess }: Props) {
 
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
-      <Input placeholder="Class Name" {...form.register("name")} />
+      <ClassSelect
+        value={form.watch("classId")}
+        onChange={(value) => form.setValue("classId", value)}
+      />
 
-      <Input placeholder="Code" {...form.register("code")} />
-
-      <Input placeholder="Description" {...form.register("description")} />
+      <Input placeholder="Section Name" {...form.register("name")} />
 
       <Input
         type="number"
@@ -126,8 +128,8 @@ export function ClassForm({ mode, classId, onSuccess }: Props) {
         {loading
           ? "Saving..."
           : mode === "create"
-            ? "Create Class"
-            : "Update Class"}
+            ? "Create Section"
+            : "Update Section"}
       </Button>
     </form>
   );

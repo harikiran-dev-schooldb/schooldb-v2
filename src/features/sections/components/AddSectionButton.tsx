@@ -4,16 +4,16 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 
-import { ClassDialog } from "./SectionDialog";
+import { SectionDialog } from "./SectionDialog";
 
-export function AddClassButton() {
+export function AddSectionButton() {
   const [open, setOpen] = useState(false);
 
   return (
     <>
-      <Button onClick={() => setOpen(true)}>Add Class</Button>
+      <Button onClick={() => setOpen(true)}>Add Section</Button>
 
-      <ClassDialog open={open} onOpenChange={setOpen} mode="create" />
+      <SectionDialog open={open} onOpenChange={setOpen} mode="create" />
     </>
   );
 }

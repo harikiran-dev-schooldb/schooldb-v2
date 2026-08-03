@@ -113,5 +113,9 @@ export const classService = {
       displayOrder: input.displayOrder,
     }
   );
-}
+},
+
+async options(schoolId: string) {
+  return classRepository.options(schoolId);
+},
 };

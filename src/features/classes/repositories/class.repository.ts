@@ -57,6 +57,24 @@ export const classRepository = {
     });
   },
 
+  options(schoolId: string) {
+  return prisma.class.findMany({
+    where: {
+      schoolId,
+      active: true,
+    },
+
+    select: {
+      id: true,
+      name: true,
+    },
+
+    orderBy: {
+      displayOrder: "asc",
+    },
+  });
+},
+
   count(where: Prisma.ClassWhereInput) {
     return prisma.class.count({
       where,

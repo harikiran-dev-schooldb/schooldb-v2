@@ -2,13 +2,13 @@
 
 import { DataGrid } from "@/components/datagrid/DataGrid";
 
-import { classColumns } from "../columns";
-import { useClassTable } from "../hooks/useSectionTable";
-import { ClassToolbar } from "./SectionToolbar";
+import { sectionColumns } from "../columns";
+import { useSectionTable } from "../hooks/useSectionTable";
+import { SectionToolbar } from "./SectionToolbar";
 
-export function ClassTable() {
+export function SectionTable() {
   const {
-    classes,
+    sections,
     loading,
 
     page,
@@ -18,17 +18,17 @@ export function ClassTable() {
 
     search,
     setSearch,
-  } = useClassTable();
+  } = useSectionTable();
 
   return (
     <DataGrid
-      columns={classColumns}
-      data={classes}
+      columns={sectionColumns}
+      data={sections}
       loading={loading}
       page={page}
       totalPages={totalPages}
       onPageChange={setPage}
-      toolbar={<ClassToolbar search={search} onSearch={setSearch} />}
+      toolbar={<SectionToolbar search={search} onSearch={setSearch} />}
     />
   );
 }

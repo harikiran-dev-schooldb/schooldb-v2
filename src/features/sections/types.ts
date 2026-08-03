@@ -11,3 +11,8 @@ export type SectionListItem = {
 
   active: boolean;
 };
+
+export type ClassOption = {
+  id: string;
+  name: string;
+};

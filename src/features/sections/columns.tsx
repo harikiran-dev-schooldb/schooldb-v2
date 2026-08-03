@@ -1,17 +1,18 @@
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
-import { ClassListItem } from "./types";
-import { ClassActions } from "./components/SectionActions";
 
-export const classColumns: ColumnDef<ClassListItem>[] = [
+import { SectionListItem } from "./types";
+import { SectionActions } from "./components/SectionActions";
+
+export const sectionColumns: ColumnDef<SectionListItem>[] = [
   {
-    accessorKey: "name",
+    accessorKey: "className",
     header: "Class",
   },
   {
-    accessorKey: "code",
-    header: "Code",
+    accessorKey: "name",
+    header: "Section",
   },
   {
     accessorKey: "displayOrder",
@@ -20,6 +21,6 @@ export const classColumns: ColumnDef<ClassListItem>[] = [
   {
     id: "actions",
     header: "Actions",
-    cell: ({ row }) => <ClassActions classId={row.original.id} />,
+    cell: ({ row }) => <SectionActions sectionId={row.original.id} />,
   },
 ];

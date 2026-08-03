@@ -4,6 +4,7 @@ import { sectionRepository } from "../repositories/section.repository";
 import { SectionFormOutput } from "../schemas/section.schema";
 
 import { ListQuery } from "@/types/query";
+import { classRepository } from "@/features/classes/repositories/class.repository";
 
 export const sectionService = {
   async list(
@@ -142,4 +143,20 @@ export const sectionService = {
       },
     });
   },
+
+  async options(
+  schoolId: string,
+  classId: string
+) {
+  const cls = await classRepository.findById(
+    classId,
+    schoolId
+  );
+
+  if (!cls) {
+    throw new Error("Class not found.");
+  }
+
+  return sectionRepository.options(classId);
+}
 };

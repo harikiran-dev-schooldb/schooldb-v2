@@ -2,43 +2,35 @@
 
 import { useState } from "react";
 
-import Link from "next/link";
-
-import { Eye, Pencil } from "lucide-react";
+import { Pencil } from "lucide-react";
 
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 
 import { ActionMenu } from "@/components/common/actions/ActionMenu";
-import { ClassDialog } from "./SectionDialog";
+
+import { SectionDialog } from "./SectionDialog";
 
 type Props = {
-  classId: string;
+  sectionId: string;
 };
 
-export function ClassActions({ classId }: Props) {
-  const [editOpen, setEditOpen] = useState(false);
+export function SectionActions({ sectionId }: Props) {
+  const [open, setOpen] = useState(false);
 
   return (
     <>
       <ActionMenu>
-        <DropdownMenuItem asChild>
-          <Link href={`classes/${classId}`}>
-            <Eye className="mr-2 h-4 w-4" />
-            View
-          </Link>
-        </DropdownMenuItem>
-
-        <DropdownMenuItem onClick={() => setEditOpen(true)}>
+        <DropdownMenuItem onClick={() => setOpen(true)}>
           <Pencil className="mr-2 h-4 w-4" />
           Edit
         </DropdownMenuItem>
       </ActionMenu>
 
-      <ClassDialog
-        open={editOpen}
-        onOpenChange={setEditOpen}
+      <SectionDialog
+        open={open}
+        onOpenChange={setOpen}
         mode="edit"
-        classId={classId}
+        sectionId={sectionId}
       />
     </>
   );

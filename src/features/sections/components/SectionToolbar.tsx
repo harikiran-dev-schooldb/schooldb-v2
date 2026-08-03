@@ -7,12 +7,12 @@ type Props = {
   onSearch: (value: string) => void;
 };
 
-export function ClassToolbar({ search, onSearch }: Props) {
+export function SectionToolbar({ search, onSearch }: Props) {
   return (
     <div className="flex items-center justify-between border-b p-4">
       <DataGridSearch
         value={search}
-        placeholder="Search classes..."
+        placeholder="Search sections..."
         onSearch={onSearch}
       />
     </div>

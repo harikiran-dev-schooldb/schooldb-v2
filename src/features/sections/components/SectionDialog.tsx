@@ -6,7 +6,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { ClassForm } from "./SectionForm";
+
+import { SectionForm } from "./SectionForm";
 
 type Props = {
   open: boolean;
@@ -14,22 +15,22 @@ type Props = {
 
   mode: "create" | "edit";
 
-  classId?: string;
+  sectionId?: string;
 };
 
-export function ClassDialog({ open, onOpenChange, mode, classId }: Props) {
+export function SectionDialog({ open, onOpenChange, mode, sectionId }: Props) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>
-            {mode === "create" ? "Add Class" : "Edit Class"}
+            {mode === "create" ? "Add Section" : "Edit Section"}
           </DialogTitle>
         </DialogHeader>
 
-        <ClassForm
+        <SectionForm
           mode={mode}
-          classId={classId}
+          sectionId={sectionId}
           onSuccess={() => onOpenChange(false)}
         />
       </DialogContent>

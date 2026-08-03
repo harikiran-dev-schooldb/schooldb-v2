@@ -3,18 +3,19 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { useDebounce } from "@/hooks/useDebounce";
-import { ClassListItem } from "../types";
 
-type ClassResponse = {
-  data: ClassListItem[];
+import { SectionListItem } from "../types";
+
+type SectionResponse = {
+  data: SectionListItem[];
   total: number;
   page: number;
   pageSize: number;
   totalPages: number;
 };
 
-export function useClassTable() {
-  const [classes, setClasses] = useState<ClassListItem[]>([]);
+export function useSectionTable() {
+  const [sections, setSections] = useState<SectionListItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [page, setPage] = useState(1);
@@ -39,28 +40,28 @@ export function useClassTable() {
     setPage(1);
   };
 
-  const handlePage = (page: number) => {
+  const handlePageChange = (page: number) => {
     setPage(page);
   };
 
   useEffect(() => {
     let active = true;
 
-    async function load() {
+    async function loadSections() {
       try {
         const res = await fetch(
-          `/api/v1/classes?page=${page}&pageSize=${pageSize}&search=${encodeURIComponent(
+          `/api/v1/sections?page=${page}&pageSize=${pageSize}&search=${encodeURIComponent(
             debouncedSearch
           )}`
         );
 
         const result = await res.json();
 
-        const response: ClassResponse = result.data;
+        const response: SectionResponse = result.data;
 
         if (!active) return;
 
-        setClasses(response.data);
+        setSections(response.data);
         setTotal(response.total);
         setTotalPages(response.totalPages);
       } finally {
@@ -70,7 +71,7 @@ export function useClassTable() {
       }
     }
 
-    load();
+    loadSections();
 
     return () => {
       active = false;
@@ -78,20 +79,20 @@ export function useClassTable() {
   }, [page, pageSize, debouncedSearch, reloadVersion]);
 
   return {
-    classes,
+    sections,
 
     loading,
 
     page,
-    setPage: handlePage,
+    setPage: handlePageChange,
 
     pageSize,
 
-    total,
-    totalPages,
-
     search,
     setSearch: handleSearch,
+
+    total,
+    totalPages,
 
     reload,
   };
