@@ -13,11 +13,6 @@ export const studentRepository = {
     return prisma.student.findMany({
       where,
 
-      include: {
-        class: true,
-        section: true,
-      },
-
       skip: options?.skip,
       take: options?.take,
 
@@ -54,11 +49,6 @@ export const studentRepository = {
       where: {
         id,
         schoolId,
-      },
-
-      include: {
-        class: true,
-        section: true,
       },
     });
   },
@@ -104,4 +94,23 @@ export const studentRepository = {
       },
     });
   },
+
+  options(schoolId: string) {
+  return prisma.student.findMany({
+    where: {
+      schoolId,
+      status: "ACTIVE",
+    },
+
+    select: {
+      id: true,
+      admissionNo: true,
+      fullName: true,
+    },
+
+    orderBy: {
+      fullName: "asc",
+    },
+  });
+},
 };

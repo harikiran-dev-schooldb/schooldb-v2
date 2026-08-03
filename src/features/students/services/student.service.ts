@@ -49,8 +49,6 @@ export const studentService = {
     return {
       data: students.map((student) => ({
         ...student,
-        className: student.class?.name,
-        sectionName: student.section?.name,
       })),
       total,
       page,
@@ -93,7 +91,6 @@ export const studentService = {
       phone: input.phone,
       email: input.email,
       status: StudentStatus.ACTIVE,
-      rollNo: input.rollNo,
 
       school: {
         connect: {
@@ -179,7 +176,6 @@ export const studentService = {
       phone: input.phone,
       email: input.email,
       status: StudentStatus.ACTIVE,
-      rollNo: input.rollNo,
 
       ...(input.classId && {
         class: {
@@ -242,4 +238,8 @@ export const studentService = {
 
     return student;
   },
+
+  async options(schoolId: string) {
+  return studentRepository.options(schoolId);
+},
 };

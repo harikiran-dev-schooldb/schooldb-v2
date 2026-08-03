@@ -33,6 +33,8 @@ model AcademicYear {
 
   school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
+  enrollments StudentEnrollment[]
+
   createdAt DateTime @default(now())
 
   updatedAt DateTime @updatedAt
@@ -51,6 +53,7 @@ model School {
   memberships   Membership[]
   students      Student[]
   classes       Class[]
+  studentEnrollments StudentEnrollment[]
 }
 
 model User {
@@ -94,7 +97,6 @@ model Student {
   // ==========================
 
   admissionNo String
-  rollNo      Int?
   username    String?
   clerkId     String?
 
@@ -214,11 +216,7 @@ model Student {
   schoolId String
   school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
-  classId String?
-  class   Class?  @relation(fields: [classId], references: [id])
-
-  sectionId String?
-  section   Section? @relation(fields: [sectionId], references: [id])
+  enrollments StudentEnrollment[]
 
   // ==========================
   // Audit
@@ -247,7 +245,7 @@ model Class {
   school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
   sections Section[]
-  students Student[]
+  enrollments StudentEnrollment[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -268,12 +266,52 @@ model Section {
   classId String
   class   Class  @relation(fields: [classId], references: [id], onDelete: Cascade)
 
-  students Student[]
+  enrollments StudentEnrollment[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@unique([classId, name])
+}
+
+model StudentEnrollment {
+  id String @id @default(cuid())
+
+  schoolId String
+  school School @relation(fields: [schoolId], references: [id])
+
+  studentId String
+  student Student @relation(fields: [studentId], references: [id])
+
+  academicYearId String
+  academicYear AcademicYear @relation(fields: [academicYearId], references: [id])
+
+  classId String
+  class Class @relation(fields: [classId], references: [id])
+
+  sectionId String
+  section Section @relation(fields: [sectionId], references: [id])
+
+  rollNo Int?
+
+  admissionDate DateTime?
+
+  active Boolean @default(true)
+
+  promotedFromId String?
+  promotedFrom StudentEnrollment? @relation("PromotionHistory", fields: [promotedFromId], references: [id])
+  promotedTo StudentEnrollment[] @relation("PromotionHistory")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([studentId, academicYearId])
+
+  @@index([schoolId])
+  @@index([studentId])
+  @@index([academicYearId])
+  @@index([classId])
+  @@index([sectionId])
 }
 
 enum StudentStatus {
