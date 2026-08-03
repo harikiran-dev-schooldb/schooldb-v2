@@ -1,32 +1,71 @@
 import { Prisma, StudentStatus } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 
-
 export const studentRepository = {
   list(
-  where: Prisma.StudentWhereInput,
-  options?: {
-    skip?: number;
-    take?: number;
-    orderBy?: Prisma.StudentOrderByWithRelationInput;
-  }
-) {
-  return prisma.student.findMany({
-    where,
-    skip: options?.skip,
-    take: options?.take,
-    orderBy: options?.orderBy ?? {
-      createdAt: "desc",
-    },
-  });
-},
+    where: Prisma.StudentWhereInput,
+    options?: {
+      skip?: number;
+      take?: number;
+      orderBy?: Prisma.StudentOrderByWithRelationInput;
+    }
+  ) {
+    return prisma.student.findMany({
+      where,
 
-  findByAdmissionNo(schoolId: string, admissionNo: string) {
+      include: {
+        class: true,
+        section: true,
+      },
+
+      skip: options?.skip,
+      take: options?.take,
+
+      orderBy:
+        options?.orderBy ?? {
+          createdAt: "desc",
+        },
+    });
+  },
+
+  count(where: Prisma.StudentWhereInput) {
+    return prisma.student.count({
+      where,
+    });
+  },
+
+  findByAdmissionNo(
+    schoolId: string,
+    admissionNo: string
+  ) {
     return prisma.student.findFirst({
       where: {
         schoolId,
         admissionNo,
       },
+    });
+  },
+
+  findById(
+    id: string,
+    schoolId: string
+  ) {
+    return prisma.student.findFirst({
+      where: {
+        id,
+        schoolId,
+      },
+
+      include: {
+        class: true,
+        section: true,
+      },
+    });
+  },
+
+  findFirst(where: Prisma.StudentWhereInput) {
+    return prisma.student.findFirst({
+      where,
     });
   },
 
@@ -36,51 +75,33 @@ export const studentRepository = {
     });
   },
 
-  findById(id: string, schoolId: string) {
-  return prisma.student.findFirst({
-    where: {
-      id,
-      schoolId,
-    },
-  });
-},
+  update(
+    id: string,
+    data: Prisma.StudentUpdateInput
+  ) {
+    return prisma.student.update({
+      where: {
+        id,
+      },
+      data,
+    });
+  },
 
-  update(id: string, schoolId: string, data: Prisma.StudentUpdateInput) {
-  return prisma.student.update({
-    where: { id, schoolId },
-    data,
-  });
-},
+  changeStatus(
+    id: string,
+    status: StudentStatus,
+    remarks?: string
+  ) {
+    return prisma.student.update({
+      where: {
+        id,
+      },
 
-changeStatus(
-  id: string,
-  schoolId: string,
-  status: StudentStatus,
-  remarks?: string
-) {
-  return prisma.student.update({
-    where: {
-      id,
-      schoolId,
-    },
-
-    data: {
-      status,
-      statusRemarks: remarks,
-      statusChangedAt: new Date(),
-    },
-  });
-},
-
-findFirst(where: Prisma.StudentWhereInput) {
-  return prisma.student.findFirst({
-    where,
-  });
-},
-
-count(where: Prisma.StudentWhereInput) {
-  return prisma.student.count({
-    where,
-  });
-}
+      data: {
+        status,
+        statusRemarks: remarks,
+        statusChangedAt: new Date(),
+      },
+    });
+  },
 };

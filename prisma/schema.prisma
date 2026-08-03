@@ -19,19 +19,19 @@ enum Role {
 }
 
 model AcademicYear {
-  id        String   @id @default(cuid())
+  id String @id @default(cuid())
 
-  name      String
+  name String
 
   startDate DateTime
 
-  endDate   DateTime
+  endDate DateTime
 
-  active    Boolean @default(false)
+  active Boolean @default(false)
 
-  schoolId  String
+  schoolId String
 
-  school    School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
 
@@ -41,47 +41,47 @@ model AcademicYear {
 }
 
 model School {
-  id          String       @id @default(cuid())
-  name        String
-  slug        String       @unique
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   academicYears AcademicYear[]
-  memberships Membership[]
-  students Student[]
-  classes Class[]
+  memberships   Membership[]
+  students      Student[]
+  classes       Class[]
 }
 
 model User {
-  id            String       @id @default(cuid())
-  clerkUserId   String       @unique
-  email         String       @unique
-  firstName     String?
-  lastName      String?
-  imageUrl      String?
+  id          String  @id @default(cuid())
+  clerkUserId String  @unique
+  email       String  @unique
+  firstName   String?
+  lastName    String?
+  imageUrl    String?
 
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  memberships   Membership[]
+  memberships Membership[]
 }
 
 model Membership {
-  id        String   @id @default(cuid())
+  id String @id @default(cuid())
 
-  userId    String
-  schoolId  String
+  userId   String
+  schoolId String
 
-  role      Role
+  role Role
 
-  isActive  Boolean  @default(true)
+  isActive Boolean @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now()) @updatedAt
 
-  user       User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  school     School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
   @@unique([userId, schoolId])
 }
@@ -93,140 +93,139 @@ model Student {
   // Admission
   // ==========================
 
-  admissionNo      String
-  rollNo           String?
-  username         String?
-  clerkId          String?
+  admissionNo String
+  rollNo      Int?
+  username    String?
+  clerkId     String?
 
   // ==========================
   // Basic Information
   // ==========================
 
+  fullName String?
 
-  fullName         String?
+  gender     Gender
+  dob        DateTime
+  joinedDate DateTime?
 
-  gender           Gender
-  dob              DateTime
-  joinedDate       DateTime?
+  bloodGroup   String?
+  nationality  String?
+  motherTongue String?
 
-  bloodGroup       String?
-  nationality      String?
-  motherTongue     String?
-
-  religion         Religion?
-  category         Category?
-  caste            String?
-  subCaste         String?
+  religion Religion?
+  category Category?
+  caste    String?
+  subCaste String?
 
   // ==========================
   // Government IDs
   // ==========================
 
-  penNo            String?
-  emisNo           String?
-  apaarId          String?
-  studentAadhar    String?
+  penNo         String?
+  emisNo        String?
+  apaarId       String?
+  studentAadhar String?
 
   // ==========================
   // Contact
   // ==========================
 
-  phone            String?
-  alternatePhone   String?
-  email            String?
+  phone          String?
+  alternatePhone String?
+  email          String?
 
-  address          String?
-  city             String?
-  district         String?
-  state            String?
-  country          String?
-  pincode          String?
+  address  String?
+  city     String?
+  district String?
+  state    String?
+  country  String?
+  pincode  String?
 
   // ==========================
   // Parent Information
   // ==========================
 
-  fatherName               String?
-  fatherPhone              String?
-  fatherEmail              String?
-  fatherOccupation         String?
-  fatherQualification      String?
-  fatherIncome             Decimal?
+  fatherName          String?
+  fatherPhone         String?
+  fatherEmail         String?
+  fatherOccupation    String?
+  fatherQualification String?
+  fatherIncome        Decimal?
 
-  motherName               String?
-  motherPhone              String?
-  motherEmail              String?
-  motherOccupation         String?
-  motherQualification      String?
-  motherIncome             Decimal?
+  motherName          String?
+  motherPhone         String?
+  motherEmail         String?
+  motherOccupation    String?
+  motherQualification String?
+  motherIncome        Decimal?
 
-  guardianName             String?
-  guardianRelation         String?
-  guardianPhone            String?
+  guardianName     String?
+  guardianRelation String?
+  guardianPhone    String?
 
   // ==========================
   // Identity
   // ==========================
 
-  fatherAadhar             String?
-  motherAadhar             String?
+  fatherAadhar String?
+  motherAadhar String?
 
   // ==========================
   // Medical
   // ==========================
 
-  allergies                String?
-  medicalConditions        String?
-  doctorName               String?
-  doctorPhone              String?
+  allergies         String?
+  medicalConditions String?
+  doctorName        String?
+  doctorPhone       String?
 
   // ==========================
   // School
   // ==========================
 
-  transportRequired        Boolean @default(false)
-  hostelRequired           Boolean @default(false)
+  transportRequired Boolean @default(false)
+  hostelRequired    Boolean @default(false)
 
   // These will become relations later
-  academicYearId           String?
+  academicYearId String?
 
   // ==========================
   // Photo
   // ==========================
 
-  imageUrl                 String?
+  imageUrl String?
 
   // ==========================
   // Status
   // ==========================
 
-  status                  StudentStatus @default(ACTIVE)
+  status StudentStatus @default(ACTIVE)
 
-  statusChangedAt         DateTime?
+  statusChangedAt DateTime?
 
-  statusRemarks           String?
+  statusRemarks String?
 
-  remarks                  String?
+  remarks String?
 
   // ==========================
   // Tenant
   // ==========================
 
-  schoolId                 String
-  school                   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  schoolId String
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
-  classId   String?
-class     Class?   @relation(fields: [classId], references: [id])
+  classId String?
+  class   Class?  @relation(fields: [classId], references: [id])
 
-sectionId String?
-section   Section? @relation(fields: [sectionId], references: [id])
+  sectionId String?
+  section   Section? @relation(fields: [sectionId], references: [id])
 
   // ==========================
   // Audit
   // ==========================
 
-  createdAt                DateTime @default(now())
-  updatedAt                DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([schoolId, admissionNo])
   @@index([schoolId])
@@ -234,7 +233,7 @@ section   Section? @relation(fields: [sectionId], references: [id])
 }
 
 model Class {
-  id          String   @id @default(cuid())
+  id String @id @default(cuid())
 
   name        String
   code        String?
@@ -267,7 +266,7 @@ model Section {
   active Boolean @default(true)
 
   classId String
-  class   Class @relation(fields: [classId], references: [id], onDelete: Cascade)
+  class   Class  @relation(fields: [classId], references: [id], onDelete: Cascade)
 
   students Student[]
 

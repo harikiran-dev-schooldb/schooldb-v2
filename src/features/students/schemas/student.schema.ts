@@ -13,8 +13,13 @@ export const createStudentSchema = z.object({
     "TC_ISSUED",
     "DROPPED",
     "ALUMNI",
-    "NOT_COMING"
+    "NOT_COMING",
   ]),
+  classId: z.string().optional(),
+  sectionId: z.string().optional(),
+
+  // Important
+  rollNo: z.coerce.number().int().nullable().optional(),
 });
 
 export type StudentFormInput = z.input<typeof createStudentSchema>;
