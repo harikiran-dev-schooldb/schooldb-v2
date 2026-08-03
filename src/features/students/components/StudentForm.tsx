@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -10,21 +10,16 @@ import {
   StudentFormInput,
 } from "../schemas/student.schema";
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-
 import { toast } from "sonner";
 
-import { ClassSelect } from "@/components/common/select/ClassSelect";
-import { SectionSelect } from "@/components/common/select/SectionSelect";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+
 import { GenderSelect } from "@/components/common/select/GenderSelect";
+import { RemoteCombobox } from "@/components/common/combobox/RemoteCombobox";
+
+import { FormField } from "@/components/common/forms/FormField";
+import { NumberInput } from "@/components/common/forms/NumberInput";
+import { SubmitButton } from "@/components/common/forms/SubmitButton";
 
 type Props = {
   mode: "create" | "edit";
@@ -32,31 +27,38 @@ type Props = {
   onSuccess: () => void;
 };
 
+const defaultValues: StudentFormInput = {
+  admissionNo: "",
+  fullName: "",
+  gender: "MALE",
+  dob: "",
+  phone: "",
+  email: "",
+  status: "ACTIVE",
+
+  classId: "",
+  sectionId: "",
+  rollNo: undefined,
+};
+
 export function StudentForm({ mode, studentId, onSuccess }: Props) {
   const [loading, setLoading] = useState(false);
 
   const form = useForm<StudentFormInput>({
     resolver: zodResolver(createStudentSchema),
-
-    defaultValues: {
-      admissionNo: "",
-      fullName: "",
-      gender: "MALE",
-      dob: "",
-      phone: "",
-      email: "",
-      status: "ACTIVE",
-
-      classId: "",
-      sectionId: "",
-      rollNo: undefined,
-    },
+    defaultValues,
   });
 
   const classId = form.watch("classId");
 
+  const previousClassId = useRef(classId);
+
   useEffect(() => {
-    form.setValue("sectionId", "");
+    if (previousClassId.current && previousClassId.current !== classId) {
+      form.setValue("sectionId", "");
+    }
+
+    previousClassId.current = classId;
   }, [classId, form]);
 
   useEffect(() => {
@@ -128,7 +130,7 @@ export function StudentForm({ mode, studentId, onSuccess }: Props) {
           : "Student updated successfully.",
       );
 
-      form.reset();
+      form.reset(defaultValues);
 
       onSuccess();
     } finally {
@@ -139,53 +141,105 @@ export function StudentForm({ mode, studentId, onSuccess }: Props) {
   return (
     <form
       onSubmit={form.handleSubmit(onSubmit)}
-      className="grid grid-cols-2 gap-4"
+      className="grid gap-4 md:grid-cols-2"
     >
-      <ClassSelect
-        value={classId}
-        onChange={(value) => form.setValue("classId", value)}
-      />
+      <FormField label="Class" required>
+        <RemoteCombobox
+          url="/api/v1/classes/options"
+          value={classId}
+          placeholder="Select Class"
+          onChange={(value) =>
+            form.setValue("classId", value, {
+              shouldDirty: true,
+              shouldValidate: true,
+            })
+          }
+        />
+      </FormField>
 
-      <SectionSelect
-        classId={classId}
-        value={form.watch("sectionId")}
-        onChange={(value) => form.setValue("sectionId", value)}
-      />
+      <FormField label="Section" required>
+        <RemoteCombobox
+          url={`/api/v1/sections/options?classId=${classId}`}
+          value={form.watch("sectionId")}
+          placeholder="Select Section"
+          disabled={!classId}
+          onChange={(value) =>
+            form.setValue("sectionId", value, {
+              shouldDirty: true,
+              shouldValidate: true,
+            })
+          }
+        />
+      </FormField>
 
-      <Input
-        placeholder="Roll No"
-        type="number"
-        {...form.register("rollNo", {
-          valueAsNumber: true,
-        })}
-      />
+      <FormField label="Roll No" error={form.formState.errors.rollNo?.message}>
+        <NumberInput
+          placeholder="Roll No"
+          {...form.register("rollNo", {
+            valueAsNumber: true,
+          })}
+        />
+      </FormField>
 
-      <Input placeholder="Admission No" {...form.register("admissionNo")} />
+      <FormField
+        label="Admission No"
+        required
+        error={form.formState.errors.admissionNo?.message}
+      >
+        <Input placeholder="Admission No" {...form.register("admissionNo")} />
+      </FormField>
 
-      <Input placeholder="Student Name" {...form.register("fullName")} />
+      <FormField
+        label="Student Name"
+        required
+        error={form.formState.errors.fullName?.message}
+      >
+        <Input placeholder="Student Name" {...form.register("fullName")} />
+      </FormField>
 
-      <GenderSelect
-        value={form.watch("gender")}
-        onChange={(value) => form.setValue("gender", value)}
-      />
+      <FormField
+        label="Gender"
+        required
+        error={form.formState.errors.gender?.message}
+      >
+        <GenderSelect
+          value={form.watch("gender")}
+          onChange={(value) =>
+            form.setValue("gender", value, {
+              shouldDirty: true,
+              shouldValidate: true,
+            })
+          }
+        />
+      </FormField>
 
-      <Input type="date" {...form.register("dob")} />
+      <FormField
+        label="Date of Birth"
+        required
+        error={form.formState.errors.dob?.message}
+      >
+        <Input type="date" {...form.register("dob")} />
+      </FormField>
 
-      <Input placeholder="Phone" {...form.register("phone")} />
+      <FormField label="Phone" error={form.formState.errors.phone?.message}>
+        <Input placeholder="Phone" {...form.register("phone")} />
+      </FormField>
 
-      <Input
-        placeholder="Email"
-        {...form.register("email")}
-        className="col-span-2"
-      />
+      <div className="md:col-span-2">
+        <FormField label="Email" error={form.formState.errors.email?.message}>
+          <Input placeholder="Email" {...form.register("email")} />
+        </FormField>
+      </div>
 
-      <Button type="submit" disabled={loading} className="col-span-2">
-        {loading
-          ? "Saving..."
-          : mode === "create"
-            ? "Create Student"
-            : "Update Student"}
-      </Button>
+      <div className="md:col-span-2">
+        <SubmitButton
+          loading={loading}
+          mode={mode}
+          createText="Create Student"
+          updateText="Update Student"
+          className="w-full"
+        />
+      </div>
     </form>
   );
 }

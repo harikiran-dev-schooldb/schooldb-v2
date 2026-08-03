@@ -6,7 +6,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-
 import { StudentEnrollmentForm } from "./StudentEnrollmentForm";
 
 type Props = {
