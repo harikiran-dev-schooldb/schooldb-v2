@@ -55,6 +55,7 @@ model School {
   classes            Class[]
   studentEnrollments StudentEnrollment[]
   subjects           Subject[]
+  teachers           Teacher[]
 }
 
 model User {
@@ -340,6 +341,60 @@ model Subject {
   updatedAt DateTime @updatedAt
 
   @@unique([schoolId, name])
+  @@index([schoolId])
+}
+
+model Teacher {
+  id String @id @default(cuid())
+
+  schoolId String
+  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  employeeId String
+
+  clerkId String?
+  username String?
+
+  fullName String
+
+  gender Gender
+
+  dob DateTime?
+
+  joiningDate DateTime?
+
+  phone String?
+  alternatePhone String?
+
+  email String?
+
+  qualification String?
+
+  designation String?
+
+  experience Int?
+
+  bloodGroup String?
+
+  imageUrl String?
+
+  address String?
+
+  city String?
+
+  district String?
+
+  state String?
+
+  pincode String?
+
+  active Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([schoolId, employeeId])
+
   @@index([schoolId])
 }
 
