@@ -113,4 +113,29 @@ export const studentRepository = {
     },
   });
 },
+
+profile(id: string, schoolId: string) {
+  return prisma.student.findFirst({
+    where: {
+      id,
+      schoolId,
+    },
+
+    include: {
+      enrollments: {
+        include: {
+          academicYear: true,
+          class: true,
+          section: true,
+        },
+
+        orderBy: {
+          academicYear: {
+            startDate: "desc",
+          },
+        },
+      },
+    },
+  });
+},
 };

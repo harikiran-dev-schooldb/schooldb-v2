@@ -224,20 +224,20 @@ export const studentService = {
   },
 
   async profile(
-    id: string,
-    schoolId: string
-  ) {
-    const student = await studentRepository.findById(
-      id,
-      schoolId
-    );
+  id: string,
+  schoolId: string
+) {
+  const student = await studentRepository.profile(
+    id,
+    schoolId
+  );
 
-    if (!student) {
-      throw new Error("Student not found.");
-    }
+  if (!student) {
+    throw new Error("Student not found.");
+  }
 
-    return student;
-  },
+  return student;
+},
 
   async options(schoolId: string) {
   return studentRepository.options(schoolId);
