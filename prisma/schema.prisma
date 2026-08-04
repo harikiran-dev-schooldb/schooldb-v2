@@ -35,6 +35,7 @@ model AcademicYear {
 
   enrollments StudentEnrollment[]
   allocations TeacherAllocation[]
+  timetable   Timetable[]
 
   createdAt DateTime @default(now())
 
@@ -58,6 +59,8 @@ model School {
   subjects           Subject[]
   teachers           Teacher[]
   teacherAllocations TeacherAllocation[]
+  periods            Period[]
+  timetable          Timetable[]
 }
 
 model User {
@@ -355,11 +358,11 @@ model Teacher {
   id String @id @default(cuid())
 
   schoolId String
-  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
   employeeId String
 
-  clerkId String?
+  clerkId  String?
   username String?
 
   fullName String
@@ -370,7 +373,7 @@ model Teacher {
 
   joiningDate DateTime?
 
-  phone String?
+  phone          String?
   alternatePhone String?
 
   email String?
@@ -403,7 +406,6 @@ model Teacher {
   allocations TeacherAllocation[]
 
   @@unique([schoolId, employeeId])
-
   @@index([schoolId])
 }
 
@@ -411,22 +413,24 @@ model TeacherAllocation {
   id String @id @default(cuid())
 
   schoolId String
-  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
   academicYearId String
-  academicYear AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+  academicYear   AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
 
   teacherId String
-  teacher Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  teacher   Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
 
   subjectId String
-  subject Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
 
   classId String
-  class Class @relation(fields: [classId], references: [id], onDelete: Cascade)
+  class   Class  @relation(fields: [classId], references: [id], onDelete: Cascade)
 
   sectionId String
-  section Section @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  section   Section @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+
+  timetable Timetable[]
 
   active Boolean @default(true)
 
@@ -435,8 +439,66 @@ model TeacherAllocation {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@unique([schoolId,academicYearId,teacherId,subjectId,classId,sectionId])
+  @@unique([schoolId, academicYearId, teacherId, subjectId, classId, sectionId])
   @@index([schoolId])
+}
+
+model Period {
+  id String @id @default(cuid())
+
+  schoolId String
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  name String
+
+  startTime String
+
+  endTime String
+
+  displayOrder Int @default(0)
+
+  active Boolean @default(true)
+
+  timetableEntries Timetable[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([schoolId, name])
+  @@index([schoolId])
+}
+
+model Timetable {
+  id String @id @default(cuid())
+
+  schoolId String
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  academicYearId String
+  academicYear   AcademicYear @relation(fields: [academicYearId], references: [id])
+
+  teacherAllocationId String
+  teacherAllocation   TeacherAllocation @relation(fields: [teacherAllocationId], references: [id])
+
+  periodId String
+  period   Period @relation(fields: [periodId], references: [id])
+
+  day WeekDay
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([academicYearId, day, periodId, teacherAllocationId])
+  @@index([schoolId])
+}
+
+enum WeekDay {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
 }
 
 enum SubjectType {
