@@ -10,28 +10,28 @@ import { StudentEnrollmentActions } from "./components/StudentEnrollmentActions"
 export const studentEnrollmentColumns: ColumnDef<StudentEnrollmentListItem>[] =
   [
     {
+      accessorKey: "rollNo",
+      header: "Roll No",
+    },
+    {
       accessorKey: "admissionNo",
       header: "Admission No",
     },
     {
-      accessorKey: "studentName",
+      id: "student",
       header: "Student",
-    },
-    {
-      accessorKey: "academicYearName",
-      header: "Academic Year",
-    },
-    {
-      accessorKey: "className",
-      header: "Class",
-    },
-    {
-      accessorKey: "sectionName",
-      header: "Section",
-    },
-    {
-      accessorKey: "rollNo",
-      header: "Roll No",
+      cell: ({ row }) => {
+        const { studentName, className, sectionName } = row.original;
+
+        return (
+          <div>
+            <div className="font-medium">{studentName}</div>
+            <div className="text-xs text-muted-foreground">
+              {className} - {sectionName}
+            </div>
+          </div>
+        );
+      },
     },
     {
       accessorKey: "active",
