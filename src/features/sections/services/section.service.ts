@@ -144,19 +144,26 @@ export const sectionService = {
     });
   },
 
-  async options(
-  schoolId: string,
-  classId: string
-) {
-  const cls = await classRepository.findById(
-    classId,
-    schoolId
-  );
+    async options(
+    schoolId: string,
+    classId: string
+  ) {
+    if (!classId) {
+      throw new Error("classId is required.");
+    }
 
-  if (!cls) {
-    throw new Error("Class not found.");
-  }
+    const cls = await classRepository.findById(
+      classId,
+      schoolId
+    );
 
-  return sectionRepository.options(classId);
-}
+    if (!cls) {
+      throw new Error("Class not found.");
+    }
+
+    return sectionRepository.options(
+      schoolId,
+      classId
+    );
+  },
 };

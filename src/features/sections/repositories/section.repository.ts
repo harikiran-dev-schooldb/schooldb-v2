@@ -83,21 +83,32 @@ export const sectionRepository = {
     });
   },
 
-  options(classId: string) {
-  return prisma.section.findMany({
-    where: {
-      classId,
-      active: true,
-    },
+    options(
+    schoolId: string,
+    classId: string
+  ) {
+    return prisma.section.findMany({
+      where: {
+        classId,
+        active: true,
+        class: {
+          schoolId,
+        },
+      },
 
-    select: {
-      id: true,
-      name: true,
-    },
+      select: {
+        id: true,
+        name: true,
+      },
 
-    orderBy: {
-      displayOrder: "asc",
-    },
-  });
-},
+      orderBy: [
+        {
+          displayOrder: "asc",
+        },
+        {
+          name: "asc",
+        },
+      ],
+    });
+  },
 };
