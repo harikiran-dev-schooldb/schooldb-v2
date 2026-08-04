@@ -5,7 +5,8 @@ import { validateBody } from "@/lib/validation";
 
 import { createStudentSchema } from "@/features/students/schemas/student.schema";
 import { studentService } from "@/features/students/services/student.service";
-import { StudentStatus } from "@/generated/prisma/browser";
+import { StudentStatus } from "@/features/students/constants/student-status";
+
 
 export async function POST(req: Request) {
   return apiHandler(async () => {

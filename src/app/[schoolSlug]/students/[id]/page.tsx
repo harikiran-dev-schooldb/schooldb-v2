@@ -2,7 +2,6 @@ import { StudentProfile } from "@/features/students/components/profile/StudentPr
 
 type Props = {
   params: Promise<{
-    schoolSlug: string;
     id: string;
   }>;
 };

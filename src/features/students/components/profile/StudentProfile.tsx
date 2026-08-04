@@ -2,40 +2,83 @@
 
 import { useEffect, useState } from "react";
 
-import { Student } from "@/generated/prisma/client";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { StudentProfileHeader } from "./StudentProfileHeader";
+import { StudentOverviewTab } from "./StudentOverviewTab";
+import { StudentEnrollmentTab } from "./StudentEnrollmentTab";
+import { StudentAttendanceTab } from "./StudentAttendanceTab";
+import { StudentFeeTab } from "./StudentFeeTab";
+import { StudentDocumentsTab } from "./StudentDocumentsTab";
+import { StudentActivityTab } from "./StudentActivityTab";
 
 type Props = {
   studentId: string;
 };
 
 export function StudentProfile({ studentId }: Props) {
-  const [student, setStudent] = useState<Student | null>(null);
+  const [student, setStudent] = useState<any>();
 
   useEffect(() => {
     async function load() {
-      const res = await fetch(`/api/v1/students/${studentId}`);
+      const res = await fetch(`/api/v1/students/${studentId}/profile`);
 
       const result = await res.json();
 
-      setStudent(result.data);
+      if (result.success) {
+        setStudent(result.data);
+      }
     }
 
     load();
   }, [studentId]);
 
   if (!student) {
-    return <>Loading...</>;
+    return <div>Loading...</div>;
   }
 
   return (
-    <div>
-      <h1>{student.fullName}</h1>
+    <div className="space-y-6">
+      <StudentProfileHeader student={student} />
 
-      <p>{student.admissionNo}</p>
+      <Tabs defaultValue="overview">
+        <TabsList>
+          <TabsTrigger value="overview">Overview</TabsTrigger>
 
-      <p>{student.phone}</p>
+          <TabsTrigger value="enrollment">Enrollment</TabsTrigger>
 
-      <p>{student.email}</p>
+          <TabsTrigger value="attendance">Attendance</TabsTrigger>
+
+          <TabsTrigger value="fees">Fees</TabsTrigger>
+
+          <TabsTrigger value="documents">Documents</TabsTrigger>
+
+          <TabsTrigger value="activity">Activity</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="overview">
+          <StudentOverviewTab student={student} />
+        </TabsContent>
+
+        <TabsContent value="enrollment">
+          <StudentEnrollmentTab student={student} />
+        </TabsContent>
+
+        <TabsContent value="attendance">
+          <StudentAttendanceTab />
+        </TabsContent>
+
+        <TabsContent value="fees">
+          <StudentFeeTab />
+        </TabsContent>
+
+        <TabsContent value="documents">
+          <StudentDocumentsTab />
+        </TabsContent>
+
+        <TabsContent value="activity">
+          <StudentActivityTab />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
