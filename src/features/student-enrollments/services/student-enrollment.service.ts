@@ -1,10 +1,33 @@
 import { ListQuery } from "@/types/query";
 
 import { studentEnrollmentRepository } from "../repositories/student-enrollment.repository";
+import { studentRepository } from "@/features/students/repositories/student.repository";
+import { academicYearRepository } from "@/features/academic-years/repositories/academic-year.repository";
+import { classRepository } from "@/features/classes/repositories/class.repository";
+import { sectionRepository } from "@/features/sections/repositories/section.repository";
 
 import {
   StudentEnrollmentFormOutput,
 } from "../schemas/student-enrollment.schema";
+
+async function validateEnrollmentRelations(
+  schoolId: string,
+  input: StudentEnrollmentFormOutput,
+) {
+  const [student, academicYear, cls, section] = await Promise.all([
+    studentRepository.findById(input.studentId, schoolId),
+    academicYearRepository.findById(input.academicYearId, schoolId),
+    classRepository.findById(input.classId, schoolId),
+    sectionRepository.findById(input.sectionId, schoolId),
+  ]);
+
+  if (!student) throw new Error("Student not found.");
+  if (!academicYear) throw new Error("Academic year not found.");
+  if (!cls) throw new Error("Class not found.");
+  if (!section || section.classId !== input.classId) {
+    throw new Error("Selected section does not belong to the selected class.");
+  }
+}
 
 export const studentEnrollmentService = {
   async list(
@@ -112,6 +135,8 @@ export const studentEnrollmentService = {
       );
     }
 
+    await validateEnrollmentRelations(schoolId, input);
+
     return studentEnrollmentRepository.create({
       school: {
         connect: {
@@ -206,6 +231,8 @@ export const studentEnrollmentService = {
       );
     }
 
+    await validateEnrollmentRelations(schoolId, input);
+
     return studentEnrollmentRepository.update(
       id,
       {
@@ -243,4 +270,10 @@ export const studentEnrollmentService = {
       }
     );
   },
+
+  async options(schoolId: string) {
+  return studentEnrollmentRepository.options(
+    schoolId
+  );
+},
 };

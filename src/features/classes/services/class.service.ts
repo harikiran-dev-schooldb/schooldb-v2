@@ -116,6 +116,11 @@ export const classService = {
 },
 
 async options(schoolId: string) {
-  return classRepository.options(schoolId);
+  const classes = await classRepository.options(schoolId);
+
+  return classes.map((item) => ({
+    id: item.id,
+    label: item.name,
+  }));
 },
 };

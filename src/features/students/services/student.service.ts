@@ -1,8 +1,7 @@
 import { studentRepository } from "../repositories/student.repository";
-import { StudentFormInput, StudentFormOutput } from "../schemas/student.schema";
+import { StudentFormOutput } from "../schemas/student.schema";
 import { StudentStatus } from "@/generated/prisma/enums";
 import { ListQuery } from "@/types/query";
-import { sectionRepository } from "@/features/sections/repositories/section.repository";
 
 export const studentService = {
   async list(schoolId: string, query: ListQuery) {
@@ -47,9 +46,15 @@ export const studentService = {
     ]);
 
     return {
-      data: students.map((student) => ({
-        ...student,
-      })),
+      data: students.map(({ enrollments, ...student }) => {
+        const enrollment = enrollments[0];
+
+        return {
+          ...student,
+          className: enrollment?.class.name ?? null,
+          sectionName: enrollment?.section.name ?? null,
+        };
+      }),
       total,
       page,
       pageSize,
@@ -70,19 +75,6 @@ export const studentService = {
       throw new Error("Admission number already exists.");
     }
 
-    if (input.sectionId) {
-      const section = await sectionRepository.findById(
-        input.sectionId,
-        schoolId
-      );
-
-      if (!section || section.classId !== input.classId) {
-        throw new Error(
-          "Selected section does not belong to the selected class."
-        );
-      }
-    }
-
     return studentRepository.create({
       admissionNo: input.admissionNo,
       fullName: input.fullName,
@@ -98,21 +90,6 @@ export const studentService = {
         },
       },
 
-      ...(input.classId && {
-        class: {
-          connect: {
-            id: input.classId,
-          },
-        },
-      }),
-
-      ...(input.sectionId && {
-        section: {
-          connect: {
-            id: input.sectionId,
-          },
-        },
-      }),
     });
   },
 
@@ -155,19 +132,6 @@ export const studentService = {
       throw new Error("Admission number already exists.");
     }
 
-    if (input.sectionId) {
-      const section = await sectionRepository.findById(
-        input.sectionId,
-        schoolId
-      );
-
-      if (!section || section.classId !== input.classId) {
-        throw new Error(
-          "Selected section does not belong to the selected class."
-        );
-      }
-    }
-
     return studentRepository.update(id, {
       admissionNo: input.admissionNo,
       fullName: input.fullName,
@@ -177,21 +141,6 @@ export const studentService = {
       email: input.email,
       status: StudentStatus.ACTIVE,
 
-      ...(input.classId && {
-        class: {
-          connect: {
-            id: input.classId,
-          },
-        },
-      }),
-
-      ...(input.sectionId && {
-        section: {
-          connect: {
-            id: input.sectionId,
-          },
-        },
-      }),
     });
   },
 
@@ -240,6 +189,13 @@ export const studentService = {
 },
 
   async options(schoolId: string) {
-  return studentRepository.options(schoolId);
+  const students = await studentRepository.options(schoolId);
+
+  return students.map((student) => ({
+    id: student.id,
+    label: student.fullName
+      ? `${student.admissionNo} — ${student.fullName}`
+      : student.admissionNo,
+  }));
 },
 };

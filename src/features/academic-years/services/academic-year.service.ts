@@ -42,7 +42,12 @@ export const academicYearService = {
   },
 
   async options(schoolId: string) {
-    return academicYearRepository.options(schoolId);
+    const years = await academicYearRepository.options(schoolId);
+
+    return years.map((item) => ({
+      id: item.id,
+      label: item.name,
+    }));
   },
 
   async create(

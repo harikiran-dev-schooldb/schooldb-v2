@@ -18,7 +18,12 @@ export const studentColumns: ColumnDef<StudentListItem>[] = [
         href={`students/${row.original.id}`}
         className="font-medium text-primary hover:underline"
       >
-        {row.original.fullName}
+        {row.original.fullName ?? "Unnamed student"}
+        {row.original.className && (
+          <span className="text-muted-foreground">
+            {` (${row.original.className}${row.original.sectionName ? ` - ${row.original.sectionName}` : ""})`}
+          </span>
+        )}
       </Link>
     ),
   },

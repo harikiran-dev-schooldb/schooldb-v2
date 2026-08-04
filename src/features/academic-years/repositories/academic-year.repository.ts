@@ -92,11 +92,11 @@ export const academicYearRepository = {
     return prisma.academicYear.updateMany({
       where: {
         schoolId,
-        isActive: true,
+        active: true,
       },
 
       data: {
-        isActive: false,
+        active: false,
       },
     });
   },

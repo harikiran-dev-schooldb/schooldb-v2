@@ -161,9 +161,14 @@ export const sectionService = {
       throw new Error("Class not found.");
     }
 
-    return sectionRepository.options(
+    const sections = await sectionRepository.options(
       schoolId,
       classId
     );
+
+    return sections.map((item) => ({
+      id: item.id,
+      label: item.name,
+    }));
   },
 };

@@ -7,6 +7,7 @@ import {
   BookOpen,
   Settings,
   PanelsTopLeft,
+  ClipboardPenLine,
 } from "lucide-react";
 
 export const navigation = [
@@ -26,10 +27,15 @@ export const navigation = [
     icon: GraduationCap,
   },
   {
-  title: "Sections",
-  href: "/sections",
-  icon: PanelsTopLeft,
-},
+    title: "Sections",
+    href: "sections",
+    icon: PanelsTopLeft,
+  },
+  {
+    title: "Enrollments",
+    href: "enrollments",
+    icon: ClipboardPenLine,
+  },
   {
     title: "Teachers",
     href: "teachers",

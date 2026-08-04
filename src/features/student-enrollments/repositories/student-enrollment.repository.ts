@@ -92,4 +92,41 @@ export const studentEnrollmentRepository = {
       where,
     });
   },
+
+  options(schoolId: string) {
+  return prisma.studentEnrollment.findMany({
+    where: {
+      schoolId,
+      active: true,
+    },
+
+    include: {
+      student: true,
+      class: true,
+      section: true,
+      academicYear: true,
+    },
+
+    orderBy: [
+      {
+        academicYear: {
+          startDate: "desc",
+        },
+      },
+      {
+        class: {
+          displayOrder: "asc",
+        },
+      },
+      {
+        section: {
+          displayOrder: "asc",
+        },
+      },
+      {
+        rollNo: "asc",
+      },
+    ],
+  });
+}
 };

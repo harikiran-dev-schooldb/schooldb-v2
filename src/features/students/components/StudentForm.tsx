@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -15,10 +15,7 @@ import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 
 import { GenderSelect } from "@/components/common/select/GenderSelect";
-import { RemoteCombobox } from "@/components/common/combobox/RemoteCombobox";
-
 import { FormField } from "@/components/common/forms/FormField";
-import { NumberInput } from "@/components/common/forms/NumberInput";
 import { SubmitButton } from "@/components/common/forms/SubmitButton";
 
 type Props = {
@@ -36,9 +33,6 @@ const defaultValues: StudentFormInput = {
   email: "",
   status: "ACTIVE",
 
-  classId: "",
-  sectionId: "",
-  rollNo: undefined,
 };
 
 export function StudentForm({ mode, studentId, onSuccess }: Props) {
@@ -48,18 +42,6 @@ export function StudentForm({ mode, studentId, onSuccess }: Props) {
     resolver: zodResolver(createStudentSchema),
     defaultValues,
   });
-
-  const classId = form.watch("classId");
-
-  const previousClassId = useRef(classId);
-
-  useEffect(() => {
-    if (previousClassId.current && previousClassId.current !== classId) {
-      form.setValue("sectionId", "");
-    }
-
-    previousClassId.current = classId;
-  }, [classId, form]);
 
   useEffect(() => {
     if (mode !== "edit" || !studentId) return;
@@ -85,9 +67,6 @@ export function StudentForm({ mode, studentId, onSuccess }: Props) {
         email: student.email ?? "",
         status: student.status,
 
-        classId: student.classId ?? "",
-        sectionId: student.sectionId ?? "",
-        rollNo: student.rollNo ?? undefined,
       });
     }
 
@@ -143,44 +122,6 @@ export function StudentForm({ mode, studentId, onSuccess }: Props) {
       onSubmit={form.handleSubmit(onSubmit)}
       className="grid gap-4 md:grid-cols-2"
     >
-      <FormField label="Class" required>
-        <RemoteCombobox
-          url="/api/v1/classes/options"
-          value={classId}
-          placeholder="Select Class"
-          onChange={(value) =>
-            form.setValue("classId", value, {
-              shouldDirty: true,
-              shouldValidate: true,
-            })
-          }
-        />
-      </FormField>
-
-      <FormField label="Section" required>
-        <RemoteCombobox
-          url={`/api/v1/sections/options?classId=${classId}`}
-          value={form.watch("sectionId")}
-          placeholder="Select Section"
-          disabled={!classId}
-          onChange={(value) =>
-            form.setValue("sectionId", value, {
-              shouldDirty: true,
-              shouldValidate: true,
-            })
-          }
-        />
-      </FormField>
-
-      <FormField label="Roll No" error={form.formState.errors.rollNo?.message}>
-        <NumberInput
-          placeholder="Roll No"
-          {...form.register("rollNo", {
-            valueAsNumber: true,
-          })}
-        />
-      </FormField>
-
       <FormField
         label="Admission No"
         required

@@ -13,6 +13,29 @@ export const studentRepository = {
     return prisma.student.findMany({
       where,
 
+      include: {
+        enrollments: {
+          select: {
+            class: {
+              select: {
+                name: true,
+              },
+            },
+            section: {
+              select: {
+                name: true,
+              },
+            },
+          },
+          orderBy: {
+            academicYear: {
+              startDate: "desc",
+            },
+          },
+          take: 1,
+        },
+      },
+
       skip: options?.skip,
       take: options?.take,
 
