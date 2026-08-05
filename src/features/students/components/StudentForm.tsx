@@ -15,8 +15,7 @@ import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 
 import { GenderSelect } from "@/components/common/select/GenderSelect";
-import { FormField } from "@/components/common/forms/FormField";
-import { SubmitButton } from "@/components/common/forms/SubmitButton";
+import { FormField, SubmitButton } from "@/components/common/forms";
 
 type Props = {
   mode: "create" | "edit";
@@ -32,7 +31,6 @@ const defaultValues: StudentFormInput = {
   phone: "",
   email: "",
   status: "ACTIVE",
-
 };
 
 export function StudentForm({ mode, studentId, onSuccess }: Props) {
@@ -66,7 +64,6 @@ export function StudentForm({ mode, studentId, onSuccess }: Props) {
         phone: student.phone ?? "",
         email: student.email ?? "",
         status: student.status,
-
       });
     }
 

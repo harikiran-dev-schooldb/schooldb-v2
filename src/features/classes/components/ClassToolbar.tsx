@@ -1,7 +1,6 @@
 "use client";
 
-import { CrudToolbar } from "@/components/common/crud/CrudToolbar";
-import { AddClassButton } from "./AddClassButton";
+import { CrudToolbar } from "@/components/common/crud";
 
 type Props = {
   search: string;

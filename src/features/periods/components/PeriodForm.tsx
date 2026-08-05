@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 
 import { GenderSelect } from "@/components/common/select/GenderSelect";
 
-import { FormField } from "@/components/common/forms/FormField";
+import { FormField } from "@/components/common/forms";
 
 type Props = {
   mode: "create" | "edit";

@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 
-import { FormField } from "@/components/common/forms/FormField";
+import { FormField } from "@/components/common/forms";
 import { RemoteCombobox } from "@/components/common/combobox/RemoteCombobox";
 
 type Props = {

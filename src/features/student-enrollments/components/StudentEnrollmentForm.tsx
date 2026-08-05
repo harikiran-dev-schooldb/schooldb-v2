@@ -15,9 +15,11 @@ import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 
 import { RemoteCombobox } from "@/components/common/combobox/RemoteCombobox";
-import { FormField } from "@/components/common/forms/FormField";
-import { NumberInput } from "@/components/common/forms/NumberInput";
-import { SubmitButton } from "@/components/common/forms/SubmitButton";
+import {
+  FormField,
+  NumberInput,
+  SubmitButton,
+} from "@/components/common/forms";
 
 type Props = {
   mode: "create" | "edit";

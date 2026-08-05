@@ -1,6 +1,6 @@
 "use client";
 
-import { CrudToolbar } from "@/components/common/crud/CrudToolbar";
+import { CrudToolbar } from "@/components/common/crud";
 
 import {
   Select,

@@ -7,8 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 
 import { subjectSchema, SubjectFormInput } from "../schemas/subject.schema";
 
-import { FormField } from "@/components/common/forms/FormField";
-import { SubmitButton } from "@/components/common/forms/SubmitButton";
+import { FormField, SubmitButton } from "@/components/common/forms";
 
 import { Input } from "@/components/ui/input";
 
