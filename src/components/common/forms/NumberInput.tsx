@@ -4,12 +4,10 @@ import * as React from "react";
 
 import { Input } from "@/components/ui/input";
 
-type Props = React.ComponentProps<typeof Input>;
+type Props = React.InputHTMLAttributes<HTMLInputElement>;
 
 export const NumberInput = React.forwardRef<HTMLInputElement, Props>(
-  (props, ref) => {
-    return <Input ref={ref} type="number" inputMode="numeric" {...props} />;
+  function NumberInput(props, ref) {
+    return <Input ref={ref} type="number" {...props} />;
   },
 );
-
-NumberInput.displayName = "NumberInput";

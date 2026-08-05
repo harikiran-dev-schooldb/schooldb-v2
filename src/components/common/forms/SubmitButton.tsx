@@ -1,7 +1,5 @@
 "use client";
 
-import { Loader2 } from "lucide-react";
-
 import { Button } from "@/components/ui/button";
 
 type Props = {
@@ -9,9 +7,9 @@ type Props = {
 
   mode: "create" | "edit";
 
-  createText: string;
+  createLabel: string;
 
-  updateText: string;
+  updateLabel: string;
 
   className?: string;
 };
@@ -19,15 +17,13 @@ type Props = {
 export function SubmitButton({
   loading,
   mode,
-  createText,
-  updateText,
+  createLabel,
+  updateLabel,
   className,
 }: Props) {
   return (
     <Button type="submit" disabled={loading} className={className}>
-      {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-
-      {loading ? "Saving..." : mode === "create" ? createText : updateText}
+      {loading ? "Saving..." : mode === "create" ? createLabel : updateLabel}
     </Button>
   );
 }

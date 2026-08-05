@@ -17,6 +17,11 @@ export const navigation = [
     icon: LayoutDashboard,
   },
   {
+    title: "Academic Year",
+    href: "academic-year",
+    icon: GraduationCap,
+  },
+  {
     title: "Students",
     href: "students",
     icon: GraduationCap,
@@ -35,6 +40,11 @@ export const navigation = [
     title: "Enrollments",
     href: "enrollments",
     icon: ClipboardPenLine,
+  },
+  {
+    title: "Subjects",
+    href: "subjects",
+    icon: BookOpen,
   },
   {
     title: "Teachers",

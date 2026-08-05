@@ -1,26 +1,21 @@
 "use client";
 
-import { Input } from "@/components/ui/input";
-
+import { CrudToolbar } from "@/components/common/crud/CrudToolbar";
 import { AddSubjectButton } from "./AddSubjectButton";
 
 type Props = {
   search: string;
-
-  onSearchChange: (value: string) => void;
+  onSearch: (value: string) => void;
 };
 
-export function SubjectToolbar({ search, onSearchChange }: Props) {
+export function SubjectToolbar({ search, onSearch }: Props) {
   return (
-    <div className="flex items-center justify-between gap-4">
-      <Input
-        placeholder="Search subjects..."
-        value={search}
-        onChange={(e) => onSearchChange(e.target.value)}
-        className="max-w-sm"
-      />
-
+    <CrudToolbar
+      search={search}
+      onSearch={onSearch}
+      placeholder="Search subjects..."
+    >
       <AddSubjectButton />
-    </div>
+    </CrudToolbar>
   );
 }

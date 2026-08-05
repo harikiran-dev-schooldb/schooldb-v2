@@ -1,6 +1,7 @@
 "use client";
 
-import { DataGridSearch } from "@/components/datagrid/DataGridSearch";
+import { CrudToolbar } from "@/components/common/crud/CrudToolbar";
+import { AddClassButton } from "./AddClassButton";
 
 type Props = {
   search: string;
@@ -9,12 +10,10 @@ type Props = {
 
 export function ClassToolbar({ search, onSearch }: Props) {
   return (
-    <div className="flex items-center justify-between border-b p-4">
-      <DataGridSearch
-        value={search}
-        placeholder="Search classes..."
-        onSearch={onSearch}
-      />
-    </div>
+    <CrudToolbar
+      search={search}
+      onSearch={onSearch}
+      placeholder="Search classes..."
+    ></CrudToolbar>
   );
 }

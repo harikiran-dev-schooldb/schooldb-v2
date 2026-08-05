@@ -1,6 +1,6 @@
 "use client";
 
-import { DataGridSearch } from "@/components/datagrid/DataGridSearch";
+import { CrudToolbar } from "@/components/common/crud/CrudToolbar";
 
 import {
   Select,
@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/select";
 
 import { StudentStatus } from "@/generated/prisma/client";
+
 import { STUDENT_STATUS_OPTIONS } from "../constants/student-status";
 
 type Props = {
@@ -28,31 +29,27 @@ export function StudentToolbar({
   onStatusChange,
 }: Props) {
   return (
-    <div className="flex items-center justify-between border-b p-4">
-      <DataGridSearch
-        placeholder="Search students..."
-        value={search}
-        onSearch={onSearch}
-      />
+    <CrudToolbar
+      search={search}
+      onSearch={onSearch}
+      placeholder="Search students..."
+    >
+      <Select
+        value={status}
+        onValueChange={(value) => onStatusChange(value as StudentStatus)}
+      >
+        <SelectTrigger className="w-44">
+          <SelectValue />
+        </SelectTrigger>
 
-      <div className="flex items-center gap-3">
-        <Select
-          value={status}
-          onValueChange={(value) => onStatusChange(value as StudentStatus)}
-        >
-          <SelectTrigger className="w-44">
-            <SelectValue />
-          </SelectTrigger>
-
-          <SelectContent>
-            {STUDENT_STATUS_OPTIONS.map((item) => (
-              <SelectItem key={item.value} value={item.value}>
-                {item.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-    </div>
+        <SelectContent>
+          {STUDENT_STATUS_OPTIONS.map((item) => (
+            <SelectItem key={item.value} value={item.value}>
+              {item.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </CrudToolbar>
   );
 }

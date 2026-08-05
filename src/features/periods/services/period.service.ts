@@ -1,3 +1,4 @@
+import { contains } from "@/utils/search";
 import { teacherRepository } from "../repositories/period.repository";
 import {
   TeacherFormOutput,
@@ -21,25 +22,25 @@ export const teacherService = {
           {
             employeeId: {
               contains: query.search,
-              mode: "insensitive" as const,
+              mode: contains(query.search),
             },
           },
           {
             fullName: {
               contains: query.search,
-              mode: "insensitive" as const,
+              mode: contains(query.search),
             },
           },
           {
             phone: {
               contains: query.search,
-              mode: "insensitive" as const,
+              mode: contains(query.search),
             },
           },
           {
             email: {
               contains: query.search,
-              mode: "insensitive" as const,
+              mode: contains(query.search),
             },
           },
         ],
