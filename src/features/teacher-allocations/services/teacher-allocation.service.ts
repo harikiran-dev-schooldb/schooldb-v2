@@ -5,6 +5,32 @@ import {
 } from "../schemas/teacher-allocation.schema";
 
 import { teacherAllocationRepository } from "../repositories/teacher-allocation.repository";
+import { academicYearRepository } from "@/features/academic-years/repositories/academic-year.repository";
+import { classRepository } from "@/features/classes/repositories/class.repository";
+import { sectionRepository } from "@/features/sections/repositories/section.repository";
+import { subjectRepository } from "@/features/subjects/repositories/subject.repository";
+import { teacherRepository } from "@/features/teachers/repositories/teacher.repository";
+
+async function validateAllocationRelations(
+  schoolId: string,
+  input: TeacherAllocationFormOutput,
+) {
+  const [academicYear, teacher, subject, cls, section] = await Promise.all([
+    academicYearRepository.findById(input.academicYearId, schoolId),
+    teacherRepository.findById(input.teacherId, schoolId),
+    subjectRepository.findById(input.subjectId, schoolId),
+    classRepository.findById(input.classId, schoolId),
+    sectionRepository.findById(input.sectionId, schoolId),
+  ]);
+
+  if (!academicYear) throw new Error("Academic year not found.");
+  if (!teacher) throw new Error("Teacher not found.");
+  if (!subject) throw new Error("Subject not found.");
+  if (!cls) throw new Error("Class not found.");
+  if (!section || section.classId !== input.classId) {
+    throw new Error("Selected section does not belong to the selected class.");
+  }
+}
 
 export const teacherAllocationService = {
   async list(
@@ -130,6 +156,8 @@ export const teacherAllocationService = {
       );
     }
 
+    await validateAllocationRelations(schoolId, input);
+
     return teacherAllocationRepository.create({
       remarks:
         input.remarks === ""
@@ -230,6 +258,8 @@ export const teacherAllocationService = {
         "Teacher allocation already exists."
       );
     }
+
+    await validateAllocationRelations(schoolId, input);
 
     return teacherAllocationRepository.update(
       id,

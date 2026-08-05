@@ -101,6 +101,25 @@ export const academicYearRepository = {
     });
   },
 
+  activate(id: string, schoolId: string) {
+    return prisma.$transaction(async (tx) => {
+      await tx.academicYear.updateMany({
+        where: {
+          schoolId,
+          active: true,
+        },
+        data: {
+          active: false,
+        },
+      });
+
+      return tx.academicYear.update({
+        where: { id },
+        data: { active: true },
+      });
+    });
+  },
+
   delete(id: string) {
     return prisma.academicYear.delete({
       where: {

@@ -232,8 +232,8 @@ export function StudentEnrollmentForm({
         <SubmitButton
           loading={loading}
           mode={mode}
-          createText="Enroll Student"
-          updateText="Update Enrollment"
+          createLabel="Enroll Student"
+          updateLabel="Update Enrollment"
           className="w-full"
         />
       </div>

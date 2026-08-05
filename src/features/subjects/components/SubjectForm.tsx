@@ -167,8 +167,8 @@ export function SubjectForm({ mode, subjectId, onSuccess }: Props) {
       <SubmitButton
         loading={loading}
         mode={mode}
-        createText="Create Subject"
-        updateText="Update Subject"
+        createLabel="Create Subject"
+        updateLabel="Update Subject"
         className="w-full"
       />
     </form>

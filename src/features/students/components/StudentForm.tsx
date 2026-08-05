@@ -176,8 +176,8 @@ export function StudentForm({ mode, studentId, onSuccess }: Props) {
         <SubmitButton
           loading={loading}
           mode={mode}
-          createText="Create Student"
-          updateText="Update Student"
+          createLabel="Create Student"
+          updateLabel="Update Student"
           className="w-full"
         />
       </div>

@@ -151,12 +151,6 @@ export const academicYearService = {
       );
     }
 
-    await academicYearRepository.deactivateAll(
-      schoolId
-    );
-
-    return academicYearRepository.update(id, {
-      active: true,
-    });
+    return academicYearRepository.activate(id, schoolId);
   },
 };

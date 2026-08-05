@@ -1,6 +1,6 @@
 import { PageHeader } from "@/components/common/PageHeader";
 
-import { AddSectionButton } from "@/features/sections/components/AddSectionButton";
+import { AddSubjectButton } from "@/features/subjects/components/AddSubjectButton";
 import { SubjectTable } from "@/features/subjects/components/SubjectTable";
 
 export default function SubjectsPage() {
@@ -9,7 +9,7 @@ export default function SubjectsPage() {
       <PageHeader
         title="Subjects"
         description="Manage school subjects and their associated teachers."
-        action={<AddSectionButton />}
+        action={<AddSubjectButton />}
       />
 
       <SubjectTable />

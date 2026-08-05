@@ -70,6 +70,12 @@ export const sectionService = {
     schoolId: string,
     input: SectionFormOutput
   ) {
+    const cls = await classRepository.findById(input.classId, schoolId);
+
+    if (!cls) {
+      throw new Error("Class not found.");
+    }
+
     const exists = await sectionRepository.findByName(
       schoolId,
       input.classId,
@@ -103,6 +109,12 @@ export const sectionService = {
 
     if (!section) {
       throw new Error("Section not found.");
+    }
+
+    const cls = await classRepository.findById(input.classId, schoolId);
+
+    if (!cls) {
+      throw new Error("Class not found.");
     }
 
     return section;

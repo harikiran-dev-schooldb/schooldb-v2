@@ -20,7 +20,7 @@ export function TeacherTable() {
 
   return (
     <div className="space-y-4">
-      <TeacherToolbar search={search} onSearchChange={setSearch} />
+      <TeacherToolbar search={search} onSearch={setSearch} />
 
       <DataGrid columns={teacherColumns} data={teachers} loading={loading} />
     </div>

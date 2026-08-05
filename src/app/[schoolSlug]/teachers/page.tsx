@@ -1,6 +1,6 @@
 import { PageHeader } from "@/components/common/PageHeader";
 
-import { AddSectionButton } from "@/features/sections/components/AddSectionButton";
+import { AddTeacherButton } from "@/features/teachers/components/AddTeacherButton";
 import { TeacherTable } from "@/features/teachers/components/TeacherTable";
 
 export default function TeachersPage() {
@@ -9,7 +9,7 @@ export default function TeachersPage() {
       <PageHeader
         title="Teachers"
         description="Manage school teachers and their associated information ."
-        action={<AddSectionButton />}
+        action={<AddTeacherButton />}
       />
 
       <TeacherTable />

@@ -19,7 +19,7 @@ export function SubjectTable() {
 
   return (
     <div className="space-y-4">
-      <SubjectToolbar search={search} onSearchChange={setSearch} />
+      <SubjectToolbar search={search} onSearch={setSearch} />
 
       <DataGrid columns={subjectColumns} data={subjects} loading={loading} />
     </div>
