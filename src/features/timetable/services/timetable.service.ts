@@ -1,4 +1,4 @@
-import { Prisma } from "@/generated/prisma/client";
+import { Prisma, WeekDay } from "@/generated/prisma/client";
 
 import { timetableRepository } from "../repositories/timetable.repository";
 import { TimetableFormOutput } from "../schemas/timetable.schema";
@@ -312,4 +312,42 @@ export const timetableService = {
       label: `${row.day} - ${row.period.name}`,
     }));
   },
+
+  async classView(
+  schoolId: string,
+  academicYearId: string,
+  classId: string,
+  sectionId: string
+) {
+  return timetableRepository.getClassTimetable(
+    schoolId,
+    academicYearId,
+    classId,
+    sectionId
+  );
+},
+
+async teacherView(
+  schoolId: string,
+  academicYearId: string,
+  teacherId: string
+) {
+  return timetableRepository.getTeacherTimetable(
+    schoolId,
+    academicYearId,
+    teacherId
+  );
+},
+
+async dailyView(
+  schoolId: string,
+  academicYearId: string,
+  day: WeekDay
+) {
+  return timetableRepository.getDailyTimetable(
+    schoolId,
+    academicYearId,
+    day
+  );
+}
 };

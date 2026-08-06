@@ -1,26 +1,35 @@
 import { WeekDay } from "@/generated/prisma/client";
 
-export type TimetableListItem = {
+export type TimetableGridItem = {
   id: string;
 
   day: WeekDay;
 
-  active: boolean;
+  period: {
+    id: string;
+    name: string;
+    displayOrder: number;
+    startTime: string;
+    endTime: string;
+  };
 
-  academicYear: string;
+  teacher: {
+    id: string;
+    fullName: string;
+  };
 
-  class: string;
+  subject: {
+    id: string;
+    name: string;
+  };
 
-  section: string;
+  class: {
+    id: string;
+    name: string;
+  };
 
-  subject: string;
-
-  teacher: string;
-
-  period: string;
-};
-
-export type TimetableOption = {
-  id: string;
-  label: string;
+  section: {
+    id: string;
+    name: string;
+  };
 };
