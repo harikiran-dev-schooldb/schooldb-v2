@@ -47,6 +47,11 @@ export const navigation = [
     icon: CalendarCheck,
   },
   {
+    title: "Timetable",
+    href: "timetable",
+    icon: CalendarCheck,
+  },
+  {
     title: "Subjects",
     href: "subjects",
     icon: BookOpen,
