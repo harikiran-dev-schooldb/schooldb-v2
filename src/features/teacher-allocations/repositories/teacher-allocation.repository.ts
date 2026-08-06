@@ -145,4 +145,26 @@ export const teacherAllocationRepository = {
       ],
     });
   },
+
+  getForScheduling(
+  id: string,
+  schoolId: string
+) {
+  return prisma.teacherAllocation.findFirst({
+    where: {
+      id,
+      schoolId,
+    },
+
+    select: {
+      id: true,
+      teacherId: true,
+      subjectId: true,
+      classId: true,
+      sectionId: true,
+      academicYearId: true,
+      active: true,
+    },
+  });
+},
 };

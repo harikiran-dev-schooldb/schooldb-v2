@@ -6,3 +6,11 @@ export class ApiError extends Error {
     super(message);
   }
 }
+
+// lib/errors.ts
+
+export class ValidationError extends Error {
+  constructor(message: string) {
+    super(message);
+  }
+}
