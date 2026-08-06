@@ -305,18 +305,16 @@ export const teacherAllocationService = {
     );
   },
 
-  async options(
-    schoolId: string
-  ) {
-    const rows =
-      await teacherAllocationRepository.options(
-        schoolId
-      );
+  async options(schoolId: string) {
+  const rows =
+    await teacherAllocationRepository.options(
+      schoolId
+    );
 
-    return rows.map((row) => ({
-      id: row.id,
+  return rows.map((row) => ({
+    id: row.id,
 
-      label: `${row.teacher.fullName} • ${row.subject.name} • ${row.class.name}-${row.section.name}`,
-    }));
-  },
+    label: `${row.class.name} • ${row.section.name} • ${row.subject.name} • ${row.teacher.fullName}`,
+  }));
+}
 };

@@ -8,3 +8,4 @@ export * from "./TeacherSelect";
 export * from "./StudentSelect";
 export * from "./SubjectSelect";
 export * from "./SectionSelect";
+export * from "./TeacherAllocationSelect";
