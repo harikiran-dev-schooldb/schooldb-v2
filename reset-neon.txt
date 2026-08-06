@@ -1,0 +1,12 @@
+psql "postgresql://neondb_owner:npg_DrzTaH9OIbt2@ep-steep-butterfly-ayrh26to-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require" <<'SQL'
+DROP SCHEMA public CASCADE;
+CREATE SCHEMA public;
+GRANT ALL ON SCHEMA public TO neondb_owner;
+GRANT ALL ON SCHEMA public TO public;
+SQL
+
+pg_dump \
+  --no-owner \
+  --no-privileges \
+  "postgresql://harikiran@localhost:5432/schooldb" | \
+psql "postgresql://neondb_owner:npg_DrzTaH9OIbt2@ep-steep-butterfly-ayrh26to-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
