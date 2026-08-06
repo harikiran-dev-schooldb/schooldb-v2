@@ -2,46 +2,42 @@
 
 import { ColumnDef } from "@tanstack/react-table";
 
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/common/badges";
 
-import { TeacherListItem } from "./types";
-import { TeacherActions } from "./components/PeriodActions";
+import { PeriodActions } from "./components/PeriodActions";
+import { PeriodListItem } from "./types";
 
-export const teacherColumns: ColumnDef<TeacherListItem>[] = [
+export const periodColumns: ColumnDef<PeriodListItem>[] = [
   {
-    accessorKey: "employeeId",
-    header: "Employee ID",
+    accessorKey: "displayOrder",
+    header: "#",
   },
 
   {
-    accessorKey: "fullName",
-    header: "Teacher",
+    accessorKey: "name",
+    header: "Period",
   },
 
   {
-    accessorKey: "phone",
-    header: "Phone",
+    accessorKey: "startTime",
+    header: "Start",
   },
 
   {
-    accessorKey: "designation",
-    header: "Designation",
+    accessorKey: "endTime",
+    header: "End",
   },
 
   {
     accessorKey: "active",
     header: "Status",
 
-    cell: ({ row }) => (
-      <Badge variant={row.original.active ? "default" : "secondary"}>
-        {row.original.active ? "Active" : "Inactive"}
-      </Badge>
-    ),
+    cell: ({ row }) => <StatusBadge active={row.original.active} />,
   },
 
   {
     id: "actions",
 
-    cell: ({ row }) => <TeacherActions teacherId={row.original.id} />,
+    cell: ({ row }) => <PeriodActions periodId={row.original.id} />,
   },
 ];

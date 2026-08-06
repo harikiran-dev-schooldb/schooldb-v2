@@ -1,26 +1,22 @@
 "use client";
 
-import { Input } from "@/components/ui/input";
+import { CrudToolbar } from "@/components/common/crud";
 
-import { AddTeacherButton } from "./AddPeriodButton";
+import { AddPeriodButton } from "./AddPeriodButton";
 
 type Props = {
   search: string;
-
-  onSearchChange: (value: string) => void;
+  onSearch: (value: string) => void;
 };
 
-export function TeacherToolbar({ search, onSearchChange }: Props) {
+export function PeriodToolbar({ search, onSearch }: Props) {
   return (
-    <div className="flex items-center justify-between gap-4">
-      <Input
-        placeholder="Search teachers..."
-        value={search}
-        onChange={(e) => onSearchChange(e.target.value)}
-        className="max-w-sm"
-      />
-
-      <AddTeacherButton />
-    </div>
+    <CrudToolbar
+      search={search}
+      onSearch={onSearch}
+      placeholder="Search periods..."
+    >
+      <AddPeriodButton />
+    </CrudToolbar>
   );
 }

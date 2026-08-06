@@ -1,60 +1,55 @@
 import { z } from "zod";
 
-export const teacherSchema = z.object({
-  employeeId: z
-    .string()
-    .trim()
-    .min(1, "Employee ID is required."),
+function toMinutes(time: string) {
+  const [hours, minutes] = time.split(":").map(Number);
+  return hours * 60 + minutes;
+}
 
-  fullName: z
-    .string()
-    .trim()
-    .min(3, "Teacher name is required."),
+export const periodSchema = z
+  .object({
+    name: z
+      .string()
+      .trim()
+      .min(1, "Period name is required.")
+      .max(50),
 
-  gender: z.enum([
-    "MALE",
-    "FEMALE",
-    "OTHER",
-  ]),
+    startTime: z
+      .string()
+      .regex(
+        /^([01]\d|2[0-3]):([0-5]\d)$/,
+        "Invalid time."
+      ),
 
-  dob: z.string().optional().or(z.literal("")),
+    endTime: z
+      .string()
+      .regex(
+        /^([01]\d|2[0-3]):([0-5]\d)$/,
+        "Invalid time."
+      ),
 
-  joiningDate: z
-    .string()
-    .optional()
-    .or(z.literal("")),
+    displayOrder: z.coerce
+      .number()
+      .int()
+      .min(1, "Display order must be at least 1."),
 
-  phone: z
-    .string()
-    .trim()
-    .optional()
-    .or(z.literal("")),
+    active: z.boolean().default(true),
+  })
+  .superRefine((data, ctx) => {
+    if (
+      toMinutes(data.endTime) <=
+      toMinutes(data.startTime)
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["endTime"],
+        message:
+          "End time must be after start time.",
+      });
+    }
+  });
 
-  email: z
-    .string()
-    .email()
-    .optional()
-    .or(z.literal("")),
+export type PeriodFormInput =
+  z.input<typeof periodSchema>;
 
-  qualification: z
-    .string()
-    .trim()
-    .optional()
-    .or(z.literal("")),
-
-  designation: z
-    .string()
-    .trim()
-    .optional()
-    .or(z.literal("")),
-
-  active: z.boolean().default(true),
-});
-
-export type TeacherFormInput = z.input<
-  typeof teacherSchema
->;
-
-export type TeacherFormOutput = z.output<
-  typeof teacherSchema
->;
+export type PeriodFormOutput =
+  z.output<typeof periodSchema>;

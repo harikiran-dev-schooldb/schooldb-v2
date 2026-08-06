@@ -42,6 +42,11 @@ export const navigation = [
     icon: ClipboardPenLine,
   },
   {
+    title: "Periods",
+    href: "periods",
+    icon: CalendarCheck,
+  },
+  {
     title: "Subjects",
     href: "subjects",
     icon: BookOpen,

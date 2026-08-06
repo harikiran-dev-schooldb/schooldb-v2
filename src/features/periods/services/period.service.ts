@@ -1,241 +1,197 @@
-import { contains } from "@/utils/search";
-import { teacherRepository } from "../repositories/period.repository";
-import {
-  TeacherFormOutput,
-} from "../schemas/period.schema";
+import { Prisma } from "@/generated/prisma/client";
 
-import { ListQuery } from "@/types/query";
+import { periodRepository } from "../repositories/period.repository";
+import { PeriodFormOutput } from "../schemas/period.schema";
 
-export const teacherService = {
+export const periodService = {
   async list(
     schoolId: string,
-    query: ListQuery
+    query: {
+      page: number;
+      pageSize: number;
+      search?: string;
+    }
   ) {
-    const page = query.page ?? 1;
-    const pageSize = query.pageSize ?? 25;
+    const skip =
+      (query.page - 1) * query.pageSize;
 
-    const where = {
+    const where: Prisma.PeriodWhereInput = {
       schoolId,
 
       ...(query.search && {
         OR: [
           {
-            employeeId: {
+            name: {
               contains: query.search,
-              mode: contains(query.search),
-            },
-          },
-          {
-            fullName: {
-              contains: query.search,
-              mode: contains(query.search),
-            },
-          },
-          {
-            phone: {
-              contains: query.search,
-              mode: contains(query.search),
-            },
-          },
-          {
-            email: {
-              contains: query.search,
-              mode: contains(query.search),
+              mode: "insensitive",
             },
           },
         ],
       }),
     };
 
-    const [data, total] = await Promise.all([
-      teacherRepository.list(where, {
-        skip: (page - 1) * pageSize,
-        take: pageSize,
-      }),
+    const [data, total] =
+      await Promise.all([
+        periodRepository.list(where, {
+          skip,
+          take: query.pageSize,
+        }),
 
-      teacherRepository.count(where),
-    ]);
+        periodRepository.count(where),
+      ]);
 
     return {
       data,
 
       total,
 
-      page,
+      page: query.page,
 
-      pageSize,
+      pageSize: query.pageSize,
 
-      totalPages: Math.ceil(total / pageSize),
+      totalPages: Math.ceil(
+        total / query.pageSize
+      ),
     };
-  },
-
-  async create(
-    schoolId: string,
-    input: TeacherFormOutput
-  ) {
-    const exists =
-      await teacherRepository.findByEmployeeId(
-        schoolId,
-        input.employeeId
-      );
-
-    if (exists) {
-      throw new Error(
-        "Employee ID already exists."
-      );
-    }
-
-    return teacherRepository.create({
-      employeeId: input.employeeId,
-
-      fullName: input.fullName,
-
-      gender: input.gender,
-
-      dob: input.dob
-        ? new Date(input.dob)
-        : null,
-
-      joiningDate: input.joiningDate
-        ? new Date(input.joiningDate)
-        : null,
-
-      phone:
-        input.phone === ""
-          ? null
-          : input.phone,
-
-      email:
-        input.email === ""
-          ? null
-          : input.email,
-
-      qualification:
-        input.qualification === ""
-          ? null
-          : input.qualification,
-
-      designation:
-        input.designation === ""
-          ? null
-          : input.designation,
-
-      active: input.active,
-
-      school: {
-        connect: {
-          id: schoolId,
-        },
-      },
-    });
   },
 
   async get(
     id: string,
     schoolId: string
   ) {
-    const teacher =
-      await teacherRepository.findById(
+    const period =
+      await periodRepository.get(
         id,
         schoolId
       );
 
-    if (!teacher) {
+    if (!period) {
       throw new Error(
-        "Teacher not found."
+        "Period not found."
       );
     }
 
-    return teacher;
+    return period;
+  },
+
+  async create(
+    schoolId: string,
+    input: PeriodFormOutput
+  ) {
+    // Duplicate name
+const duplicate =
+  await periodRepository.findByName(
+    schoolId,
+    input.name
+  );
+
+if (duplicate) {
+  throw new Error("Period already exists.");
+}
+
+// Duplicate display order
+const duplicateOrder =
+  await periodRepository.findByDisplayOrder(
+    schoolId,
+    input.displayOrder
+  );
+
+if (duplicateOrder) {
+  throw new Error(
+    "Display order already exists."
+  );
+}
+
+// Overlapping time
+const overlapping =
+  await periodRepository.findOverlapping(
+    schoolId,
+    input.startTime,
+    input.endTime
+  );
+
+if (overlapping.length > 0) {
+  throw new Error(
+    "This period overlaps with another period."
+  );
+}
+
+    return periodRepository.create({
+      school: {
+        connect: {
+          id: schoolId,
+        },
+      },
+
+      ...input,
+    });
   },
 
   async update(
     id: string,
     schoolId: string,
-    input: TeacherFormOutput
+    input: PeriodFormOutput
   ) {
-    const teacher =
-      await teacherRepository.findById(
-        id,
-        schoolId
-      );
+    // Duplicate name
+const duplicate =
+  await periodRepository.findByName(
+    schoolId,
+    input.name,
+    id
+  );
 
-    if (!teacher) {
-      throw new Error(
-        "Teacher not found."
-      );
-    }
+if (duplicate) {
+  throw new Error("Period already exists.");
+}
 
-    const duplicate =
-      await teacherRepository.findByEmployeeId(
-        schoolId,
-        input.employeeId
-      );
+// Duplicate display order
+const duplicateOrder =
+  await periodRepository.findByDisplayOrder(
+    schoolId,
+    input.displayOrder,
+    id
+  );
 
-    if (
-      duplicate &&
-      duplicate.id !== id
-    ) {
-      throw new Error(
-        "Employee ID already exists."
-      );
-    }
+if (duplicateOrder) {
+  throw new Error(
+    "Display order already exists."
+  );
+}
 
-    return teacherRepository.update(
-      id,
-      schoolId,
-      {
-        employeeId: input.employeeId,
+// Overlapping period
+const overlapping =
+  await periodRepository.findOverlapping(
+    schoolId,
+    input.startTime,
+    input.endTime,
+    id
+  );
 
-        fullName: input.fullName,
+if (overlapping.length > 0) {
+  throw new Error(
+    "This period overlaps with another period."
+  );
+}
 
-        gender: input.gender,
-
-        dob: input.dob
-          ? new Date(input.dob)
-          : null,
-
-        joiningDate: input.joiningDate
-          ? new Date(input.joiningDate)
-          : null,
-
-        phone:
-          input.phone === ""
-            ? null
-            : input.phone,
-
-        email:
-          input.email === ""
-            ? null
-            : input.email,
-
-        qualification:
-          input.qualification === ""
-            ? null
-            : input.qualification,
-
-        designation:
-          input.designation === ""
-            ? null
-            : input.designation,
-
-        active: input.active,
-      }
-    );
+return periodRepository.update(
+  id,
+  schoolId,
+  input
+);
   },
 
-  async options(
-    schoolId: string
-  ) {
-    const teachers =
-      await teacherRepository.options(
+  async options(schoolId: string) {
+    const periods =
+      await periodRepository.options(
         schoolId
       );
 
-    return teachers.map((teacher) => ({
-      id: teacher.id,
+    return periods.map((item) => ({
+      id: item.id,
 
-      label: `${teacher.employeeId} - ${teacher.fullName}`,
+      label: item.name,
     }));
   },
+
+  
 };

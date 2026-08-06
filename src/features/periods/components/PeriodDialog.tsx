@@ -7,7 +7,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
-import { TeacherForm } from "./PeriodForm";
+import { PeriodForm } from "./PeriodForm";
 
 type Props = {
   open: boolean;
@@ -15,22 +15,22 @@ type Props = {
 
   mode: "create" | "edit";
 
-  teacherId?: string;
+  periodId?: string;
 };
 
-export function TeacherDialog({ open, onOpenChange, mode, teacherId }: Props) {
+export function PeriodDialog({ open, onOpenChange, mode, periodId }: Props) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl">
+      <DialogContent className="sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>
-            {mode === "create" ? "Create Teacher" : "Edit Teacher"}
+            {mode === "create" ? "Create Period" : "Edit Period"}
           </DialogTitle>
         </DialogHeader>
 
-        <TeacherForm
+        <PeriodForm
           mode={mode}
-          teacherId={teacherId}
+          periodId={periodId}
           onSuccess={() => onOpenChange(false)}
         />
       </DialogContent>

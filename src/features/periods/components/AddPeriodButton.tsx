@@ -2,23 +2,18 @@
 
 import { useState } from "react";
 
-import { Plus } from "lucide-react";
+import { CreateButton } from "@/components/common/crud";
 
-import { Button } from "@/components/ui/button";
+import { PeriodDialog } from "./PeriodDialog";
 
-import { TeacherDialog } from "./PeriodDialog";
-
-export function AddTeacherButton() {
+export function AddPeriodButton() {
   const [open, setOpen] = useState(false);
 
   return (
     <>
-      <Button onClick={() => setOpen(true)}>
-        <Plus className="mr-2 h-4 w-4" />
-        Add Teacher
-      </Button>
+      <CreateButton label="Add Period" onClick={() => setOpen(true)} />
 
-      <TeacherDialog open={open} onOpenChange={setOpen} mode="create" />
+      <PeriodDialog open={open} onOpenChange={setOpen} mode="create" />
     </>
   );
 }

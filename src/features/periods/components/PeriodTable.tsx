@@ -2,27 +2,20 @@
 
 import { DataGrid } from "@/components/datagrid/DataGrid";
 
-import { teacherColumns } from "../columns";
+import { periodColumns } from "../columns";
 
-import { useTeacherTable } from "../hooks/usePeriodTable";
+import { usePeriodTable } from "../hooks/usePeriodTable";
 
-import { TeacherToolbar } from "./PeriodToolbar";
+import { PeriodToolbar } from "./PeriodToolbar";
 
-export function TeacherTable() {
-  const {
-    teachers,
-
-    loading,
-
-    search,
-    setSearch,
-  } = useTeacherTable();
+export function PeriodTable() {
+  const { data, loading, search, setSearch } = usePeriodTable();
 
   return (
     <div className="space-y-4">
-      <TeacherToolbar search={search} onSearchChange={setSearch} />
+      <PeriodToolbar search={search} onSearch={setSearch} />
 
-      <DataGrid columns={teacherColumns} data={teachers} loading={loading} />
+      <DataGrid columns={periodColumns} data={data} loading={loading} />
     </div>
   );
 }

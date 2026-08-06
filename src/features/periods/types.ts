@@ -1,28 +1,18 @@
-import { Gender } from "@/generated/prisma/client";
-
-export type TeacherListItem = {
+export type PeriodListItem = {
   id: string;
 
-  employeeId: string;
+  name: string;
 
-  fullName: string;
+  startTime: string;
 
-  gender: Gender;
+  endTime: string;
 
-  phone: string | null;
-
-  email: string | null;
-
-  designation: string | null;
-
-  qualification: string | null;
-
-  joiningDate: Date | null;
+  displayOrder: number;
 
   active: boolean;
 };
 
-export type TeacherOption = {
+export type PeriodOption = {
   id: string;
 
   label: string;

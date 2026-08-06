@@ -2,48 +2,35 @@
 
 import { useState } from "react";
 
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { Pencil } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 
-import { MoreHorizontal, Pencil } from "lucide-react";
+import { CrudActions } from "@/components/common/crud";
 
-import { TeacherDialog } from "./PeriodDialog";
+import { PeriodDialog } from "./PeriodDialog";
 
 type Props = {
-  teacherId: string;
+  periodId: string;
 };
 
-export function TeacherActions({ teacherId }: Props) {
+export function PeriodActions({ periodId }: Props) {
   const [open, setOpen] = useState(false);
 
   return (
     <>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon">
-            <MoreHorizontal className="h-4 w-4" />
-          </Button>
-        </DropdownMenuTrigger>
+      <CrudActions>
+        <DropdownMenuItem onClick={() => setOpen(true)}>
+          <Pencil className="mr-2 h-4 w-4" />
+          Edit
+        </DropdownMenuItem>
+      </CrudActions>
 
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={() => setOpen(true)}>
-            <Pencil className="mr-2 h-4 w-4" />
-            Edit
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-
-      <TeacherDialog
+      <PeriodDialog
         open={open}
         onOpenChange={setOpen}
         mode="edit"
-        teacherId={teacherId}
+        periodId={periodId}
       />
     </>
   );

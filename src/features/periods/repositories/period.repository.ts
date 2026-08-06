@@ -1,38 +1,39 @@
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 
-export const teacherRepository = {
+export const periodRepository = {
   list(
-    where: Prisma.TeacherWhereInput,
+    where: Prisma.PeriodWhereInput,
     options?: {
       skip?: number;
       take?: number;
     }
   ) {
-    return prisma.teacher.findMany({
+    return prisma.period.findMany({
       where,
+
       skip: options?.skip,
       take: options?.take,
 
       orderBy: [
         {
-          fullName: "asc",
+          displayOrder: "asc",
+        },
+        {
+          startTime: "asc",
         },
       ],
     });
   },
 
-  count(where: Prisma.TeacherWhereInput) {
-    return prisma.teacher.count({
+  count(where: Prisma.PeriodWhereInput) {
+    return prisma.period.count({
       where,
     });
   },
 
-  findById(
-    id: string,
-    schoolId: string
-  ) {
-    return prisma.teacher.findFirst({
+  get(id: string, schoolId: string) {
+    return prisma.period.findFirst({
       where: {
         id,
         schoolId,
@@ -40,20 +41,78 @@ export const teacherRepository = {
     });
   },
 
-  findByEmployeeId(
+  findByName(
     schoolId: string,
-    employeeId: string
+    name: string,
+    excludeId?: string
   ) {
-    return prisma.teacher.findFirst({
+    return prisma.period.findFirst({
       where: {
         schoolId,
-        employeeId,
+        name,
+
+        ...(excludeId && {
+          NOT: {
+            id: excludeId,
+          },
+        }),
       },
     });
   },
 
-  create(data: Prisma.TeacherCreateInput) {
-    return prisma.teacher.create({
+  findByDisplayOrder(
+    schoolId: string,
+    displayOrder: number,
+    excludeId?: string
+  ) {
+    return prisma.period.findFirst({
+      where: {
+        schoolId,
+        displayOrder,
+
+        ...(excludeId && {
+          NOT: {
+            id: excludeId,
+          },
+        }),
+      },
+    });
+  },
+
+  findOverlapping(
+    schoolId: string,
+    startTime: string,
+    endTime: string,
+    excludeId?: string
+  ) {
+    return prisma.period.findMany({
+      where: {
+        schoolId,
+
+        ...(excludeId && {
+          NOT: {
+            id: excludeId,
+          },
+        }),
+
+        AND: [
+          {
+            startTime: {
+              lt: endTime,
+            },
+          },
+          {
+            endTime: {
+              gt: startTime,
+            },
+          },
+        ],
+      },
+    });
+  },
+
+  create(data: Prisma.PeriodCreateInput) {
+    return prisma.period.create({
       data,
     });
   },
@@ -61,9 +120,9 @@ export const teacherRepository = {
   update(
     id: string,
     schoolId: string,
-    data: Prisma.TeacherUpdateInput
+    data: Prisma.PeriodUpdateInput
   ) {
-    return prisma.teacher.update({
+    return prisma.period.update({
       where: {
         id,
         schoolId,
@@ -73,7 +132,7 @@ export const teacherRepository = {
   },
 
   options(schoolId: string) {
-    return prisma.teacher.findMany({
+    return prisma.period.findMany({
       where: {
         schoolId,
         active: true,
@@ -81,13 +140,17 @@ export const teacherRepository = {
 
       select: {
         id: true,
-        employeeId: true,
-        fullName: true,
+        name: true,
       },
 
-      orderBy: {
-        fullName: "asc",
-      },
+      orderBy: [
+        {
+          displayOrder: "asc",
+        },
+        {
+          startTime: "asc",
+        },
+      ],
     });
   },
 };

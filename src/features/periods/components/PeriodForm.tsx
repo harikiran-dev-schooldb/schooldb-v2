@@ -5,49 +5,46 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
-import { teacherSchema, TeacherFormInput } from "../schemas/period.schema";
+import { periodSchema, PeriodFormInput } from "../schemas/period.schema";
 
 import { toast } from "sonner";
 
+import {
+  FormField,
+  NumberInput,
+  SubmitButton,
+  TimeInput,
+} from "@/components/common/forms";
+
 import { Input } from "@/components/ui/input";
-
-import { Button } from "@/components/ui/button";
-
-import { GenderSelect } from "@/components/common/select/GenderSelect";
-
-import { FormField } from "@/components/common/forms";
+import { Switch } from "@/components/ui/switch";
 
 type Props = {
   mode: "create" | "edit";
-  teacherId?: string;
+  periodId?: string;
   onSuccess: () => void;
 };
 
-export function TeacherForm({ mode, teacherId, onSuccess }: Props) {
+export function PeriodForm({ mode, periodId, onSuccess }: Props) {
   const [loading, setLoading] = useState(false);
 
-  const form = useForm<TeacherFormInput>({
-    resolver: zodResolver(teacherSchema),
+  const form = useForm<PeriodFormInput>({
+    resolver: zodResolver(periodSchema),
 
     defaultValues: {
-      employeeId: "",
-      fullName: "",
-      gender: "MALE",
-      dob: "",
-      joiningDate: "",
-      phone: "",
-      email: "",
-      qualification: "",
-      designation: "",
+      name: "",
+      startTime: "",
+      endTime: "",
+      displayOrder: 0,
       active: true,
     },
   });
 
   useEffect(() => {
-    if (mode !== "edit" || !teacherId) return;
+    if (mode !== "edit" || !periodId) return;
 
-    async function loadTeacher() {
-      const res = await fetch(`/api/v1/teachers/${teacherId}`);
+    async function load() {
+      const res = await fetch(`/api/v1/periods/${periodId}`);
 
       const result = await res.json();
 
@@ -56,37 +53,18 @@ export function TeacherForm({ mode, teacherId, onSuccess }: Props) {
         return;
       }
 
-      const teacher = result.data;
-
-      form.reset({
-        employeeId: teacher.employeeId,
-        fullName: teacher.fullName,
-        gender: teacher.gender,
-        dob: teacher.dob ? teacher.dob.substring(0, 10) : "",
-        joiningDate: teacher.joiningDate
-          ? teacher.joiningDate.substring(0, 10)
-          : "",
-        phone: teacher.phone ?? "",
-        email: teacher.email ?? "",
-        qualification: teacher.qualification ?? "",
-        designation: teacher.designation ?? "",
-        active: teacher.active,
-      });
+      form.reset(result.data);
     }
 
-    loadTeacher();
-  }, [mode, teacherId, form]);
+    load();
+  }, [mode, periodId, form]);
 
-  async function onSubmit(values: TeacherFormInput) {
+  async function onSubmit(values: PeriodFormInput) {
     try {
       setLoading(true);
 
-      const payload = teacherSchema.parse(values);
-
       const url =
-        mode === "create"
-          ? "/api/v1/teachers"
-          : `/api/v1/teachers/${teacherId}`;
+        mode === "create" ? "/api/v1/periods" : `/api/v1/periods/${periodId}`;
 
       const method = mode === "create" ? "POST" : "PUT";
 
@@ -97,7 +75,7 @@ export function TeacherForm({ mode, teacherId, onSuccess }: Props) {
           "Content-Type": "application/json",
         },
 
-        body: JSON.stringify(payload),
+        body: JSON.stringify(values),
       });
 
       const result = await res.json();
@@ -107,11 +85,7 @@ export function TeacherForm({ mode, teacherId, onSuccess }: Props) {
         return;
       }
 
-      toast.success(
-        mode === "create"
-          ? "Teacher created successfully."
-          : "Teacher updated successfully.",
-      );
+      toast.success(result.message);
 
       form.reset();
 
@@ -122,65 +96,66 @@ export function TeacherForm({ mode, teacherId, onSuccess }: Props) {
   }
 
   return (
-    <form
-      onSubmit={form.handleSubmit(onSubmit)}
-      className="grid grid-cols-2 gap-4"
-    >
+    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
       <FormField
-        label="Employee ID"
+        label="Period Name"
         required
-        error={form.formState.errors.employeeId?.message}
+        error={form.formState.errors.name?.message}
       >
-        <Input {...form.register("employeeId")} />
+        <Input {...form.register("name")} />
       </FormField>
 
+      <div className="grid grid-cols-2 gap-4">
+        <FormField
+          label="Start Time"
+          required
+          error={form.formState.errors.startTime?.message}
+        >
+          <TimeInput {...form.register("startTime")} />
+        </FormField>
+
+        <FormField
+          label="End Time"
+          required
+          error={form.formState.errors.endTime?.message}
+        >
+          <TimeInput {...form.register("endTime")} />
+        </FormField>
+      </div>
+
       <FormField
-        label="Teacher Name"
-        required
-        error={form.formState.errors.fullName?.message}
+        label="Display Order"
+        error={form.formState.errors.displayOrder?.message}
       >
-        <Input {...form.register("fullName")} />
+        <NumberInput
+          {...form.register("displayOrder", {
+            valueAsNumber: true,
+          })}
+        />
       </FormField>
 
-      <GenderSelect
-        value={form.watch("gender")}
-        onChange={(value) => form.setValue("gender", value)}
+      <div className="flex items-center justify-between rounded-lg border p-4">
+        <div>
+          <h4 className="font-medium">Active</h4>
+
+          <p className="text-sm text-muted-foreground">
+            Period is available for timetable.
+          </p>
+        </div>
+
+        <Switch
+          checked={form.watch("active")}
+          onCheckedChange={(checked) => form.setValue("active", checked)}
+        />
+      </div>
+
+      <SubmitButton
+        loading={loading}
+        mode={mode}
+        createLabel="Create Period"
+        updateLabel="Update Period"
+        className="w-full"
       />
-
-      <FormField
-        label="Date of Birth"
-        error={form.formState.errors.dob?.message}
-      >
-        <Input type="date" {...form.register("dob")} />
-      </FormField>
-
-      <FormField label="Joining Date">
-        <Input type="date" {...form.register("joiningDate")} />
-      </FormField>
-
-      <FormField label="Phone" error={form.formState.errors.phone?.message}>
-        <Input {...form.register("phone")} />
-      </FormField>
-
-      <FormField label="Email" error={form.formState.errors.email?.message}>
-        <Input type="email" {...form.register("email")} />
-      </FormField>
-
-      <FormField label="Qualification">
-        <Input {...form.register("qualification")} />
-      </FormField>
-
-      <FormField label="Designation">
-        <Input {...form.register("designation")} />
-      </FormField>
-
-      <Button type="submit" disabled={loading} className="col-span-2">
-        {loading
-          ? "Saving..."
-          : mode === "create"
-            ? "Create Teacher"
-            : "Update Teacher"}
-      </Button>
     </form>
   );
 }

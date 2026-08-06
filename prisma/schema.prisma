@@ -35,7 +35,7 @@ model AcademicYear {
 
   enrollments StudentEnrollment[]
   allocations TeacherAllocation[]
-  timetable   Timetable[]
+  timetables  Timetable[]
 
   createdAt DateTime @default(now())
 
@@ -60,7 +60,7 @@ model School {
   teachers           Teacher[]
   teacherAllocations TeacherAllocation[]
   periods            Period[]
-  timetable          Timetable[]
+  timetables         Timetable[]
 }
 
 model User {
@@ -430,7 +430,7 @@ model TeacherAllocation {
   sectionId String
   section   Section @relation(fields: [sectionId], references: [id], onDelete: Cascade)
 
-  timetable Timetable[]
+  timetables Timetable[]
 
   active Boolean @default(true)
 
@@ -459,7 +459,7 @@ model Period {
 
   active Boolean @default(true)
 
-  timetableEntries Timetable[]
+  timetables Timetable[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -485,11 +485,16 @@ model Timetable {
 
   day WeekDay
 
+  active Boolean @default(true)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@unique([academicYearId, day, periodId, teacherAllocationId])
   @@index([schoolId])
+  @@index([academicYearId])
+  @@index([teacherAllocationId])
+  @@index([periodId])
 }
 
 enum WeekDay {
