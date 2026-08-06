@@ -250,4 +250,90 @@ export const timetableRepository = {
       },
     });
   },
+
+  getClassTimetable(
+  schoolId: string,
+  academicYearId: string,
+  classId: string,
+  sectionId: string
+) {
+  return prisma.timetable.findMany({
+    where: {
+      schoolId,
+      academicYearId,
+
+      teacherAllocation: {
+        classId,
+        sectionId,
+      },
+    },
+
+    include: timetableInclude,
+
+    orderBy: [
+      {
+        period: {
+          displayOrder: "asc",
+        },
+      },
+      {
+        day: "asc",
+      },
+    ],
+  });
+},
+
+getTeacherTimetable(
+  schoolId: string,
+  academicYearId: string,
+  teacherId: string
+) {
+  return prisma.timetable.findMany({
+    where: {
+      schoolId,
+      academicYearId,
+
+      teacherAllocation: {
+        teacherId,
+      },
+    },
+
+    include: timetableInclude,
+
+    orderBy: [
+      {
+        period: {
+          displayOrder: "asc",
+        },
+      },
+      {
+        day: "asc",
+      },
+    ],
+  });
+},
+
+getDailyTimetable(
+  schoolId: string,
+  academicYearId: string,
+  day: WeekDay
+) {
+  return prisma.timetable.findMany({
+    where: {
+      schoolId,
+      academicYearId,
+      day,
+    },
+
+    include: timetableInclude,
+
+    orderBy: [
+      {
+        period: {
+          displayOrder: "asc",
+        },
+      },
+    ],
+  });
+},
 };
