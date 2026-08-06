@@ -99,26 +99,29 @@ export const sectionService = {
   },
 
   async get(
-    id: string,
-    schoolId: string
-  ) {
-    const section = await sectionRepository.findById(
-      id,
-      schoolId
-    );
+  id: string,
+  schoolId: string
+) {
+  const section = await sectionRepository.findById(
+    id,
+    schoolId
+  );
 
-    if (!section) {
-      throw new Error("Section not found.");
-    }
+  if (!section) {
+    throw new Error("Section not found.");
+  }
 
-    const cls = await classRepository.findById(input.classId, schoolId);
+  const cls = await classRepository.findById(
+    section.classId,
+    schoolId
+  );
 
-    if (!cls) {
-      throw new Error("Class not found.");
-    }
+  if (!cls) {
+    throw new Error("Class not found.");
+  }
 
-    return section;
-  },
+  return section;
+},
 
   async update(
     id: string,
