@@ -32,9 +32,10 @@ model AcademicYear {
 
   school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
-  enrollments StudentEnrollment[]
-  allocations TeacherAllocation[]
-  timetables  Timetable[]
+  enrollments        StudentEnrollment[]
+  allocations        TeacherAllocation[]
+  timetables         Timetable[]
+  attendanceSessions AttendanceSession[]
 
   createdAt DateTime @default(now())
 
@@ -60,6 +61,8 @@ model School {
   teacherAllocations TeacherAllocation[]
   periods            Period[]
   timetables         Timetable[]
+  attendanceSessions AttendanceSession[]
+  attendance         Attendance[]
 }
 
 model User {
@@ -220,6 +223,7 @@ model Student {
   school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
   enrollments StudentEnrollment[]
+  attendance  Attendance[]
 
   // ==========================
   // Audit
@@ -252,7 +256,8 @@ model Class {
   sections    Section[]
   enrollments StudentEnrollment[]
 
-  allocations TeacherAllocation[]
+  allocations        TeacherAllocation[]
+  attendanceSessions AttendanceSession[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -273,8 +278,9 @@ model Section {
   classId String
   class   Class  @relation(fields: [classId], references: [id], onDelete: Cascade)
 
-  enrollments StudentEnrollment[]
-  allocations TeacherAllocation[]
+  enrollments        StudentEnrollment[]
+  allocations        TeacherAllocation[]
+  attendanceSessions AttendanceSession[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -344,7 +350,8 @@ model Subject {
 
   active Boolean @default(true)
 
-  allocations TeacherAllocation[]
+  allocations        TeacherAllocation[]
+  attendanceSessions AttendanceSession[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -402,7 +409,8 @@ model Teacher {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  allocations TeacherAllocation[]
+  allocations        TeacherAllocation[]
+  attendanceSessions AttendanceSession[]
 
   @@unique([schoolId, employeeId])
   @@index([schoolId])
@@ -458,7 +466,8 @@ model Period {
 
   active Boolean @default(true)
 
-  timetables Timetable[]
+  timetables         Timetable[]
+  attendanceSessions AttendanceSession[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -494,6 +503,75 @@ model Timetable {
   @@index([academicYearId])
   @@index([teacherAllocationId])
   @@index([periodId])
+}
+
+model AttendanceSession {
+  id String @id @default(cuid())
+
+  schoolId String
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  academicYearId String
+  academicYear   AcademicYear @relation(fields: [academicYearId], references: [id])
+
+  teacherId String
+  teacher   Teacher @relation(fields: [teacherId], references: [id])
+
+  subjectId String
+  subject   Subject @relation(fields: [subjectId], references: [id])
+
+  classId String
+  class   Class  @relation(fields: [classId], references: [id])
+
+  sectionId String
+  section   Section @relation(fields: [sectionId], references: [id])
+
+  periodId String
+  period   Period @relation(fields: [periodId], references: [id])
+
+  attendanceDate DateTime @db.Date
+
+  remarks String?
+
+  locked Boolean @default(false)
+
+  records Attendance[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([schoolId, academicYearId, classId, sectionId, periodId, attendanceDate])
+  @@index([schoolId, attendanceDate])
+}
+
+model Attendance {
+  id String @id @default(cuid())
+
+  schoolId String
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  sessionId String
+  session   AttendanceSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  studentId String
+  student   Student @relation(fields: [studentId], references: [id])
+
+  status AttendanceStatus
+
+  remarks String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([sessionId, studentId])
+  @@index([studentId])
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+  LEAVE
 }
 
 enum WeekDay {
