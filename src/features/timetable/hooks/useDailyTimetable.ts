@@ -4,15 +4,15 @@ import { useEffect, useState } from "react";
 
 import { TimetableGridItem } from "../types";
 
-export function useTeacherTimetable(
+export function useDailyTimetable(
   academicYearId?: string,
-  teacherId?: string
+  day?: string
 ) {
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<TimetableGridItem[]>([]);
 
   useEffect(() => {
-    if (!academicYearId || !teacherId) {
+    if (!academicYearId || !day) {
       setData([]);
       return;
     }
@@ -21,13 +21,13 @@ export function useTeacherTimetable(
       setLoading(true);
 
       try {
-             const params = new URLSearchParams({
+        const params = new URLSearchParams({
   academicYearId: academicYearId!,
-    teacherId: teacherId!,
+    day: day!,
 });
 
         const res = await fetch(
-          `/api/v1/timetables/views/teacher?${params}`
+          `/api/v1/timetables/views/daily?${params}`
         );
 
         const result = await res.json();
@@ -41,7 +41,7 @@ export function useTeacherTimetable(
     }
 
     load();
-  }, [academicYearId, teacherId]);
+  }, [academicYearId, day]);
 
   return {
     loading,
