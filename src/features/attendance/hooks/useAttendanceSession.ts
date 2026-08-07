@@ -24,6 +24,8 @@ export function useAttendanceSession(
     try {
       setLoading(true);
 
+      if (!sessionId) return;
+
       const response = await fetch(
         `/api/v1/attendance/session/${sessionId}`
       );
@@ -47,8 +49,10 @@ export function useAttendanceSession(
   }, [sessionId]);
 
   useEffect(() => {
-    load();
-  }, [load]);
+  if (!sessionId) return;
+
+  load();
+}, [sessionId]);
 
   return {
     loading,

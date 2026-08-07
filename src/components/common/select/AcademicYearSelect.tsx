@@ -1,19 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
-
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-
-type AcademicYearOption = {
-  id: string;
-  name: string;
-};
+import { RemoteCombobox } from "@/components/common/combobox/RemoteCombobox";
 
 type Props = {
   value?: string;
@@ -22,37 +9,13 @@ type Props = {
 };
 
 export function AcademicYearSelect({ value, onChange, disabled }: Props) {
-  const [years, setYears] = useState<AcademicYearOption[]>([]);
-
-  useEffect(() => {
-    async function load() {
-      const res = await fetch("/api/v1/academic-years/options");
-
-      const result = await res.json();
-      console.log("RESULT:", result);
-
-      if (result.success) {
-        setYears(result.data);
-        console.log("YEARS:", result.data);
-      }
-    }
-
-    load();
-  }, []);
-
   return (
-    <Select value={value} onValueChange={onChange} disabled={disabled}>
-      <SelectTrigger>
-        <SelectValue placeholder="Academic Year" />
-      </SelectTrigger>
-
-      <SelectContent>
-        {years.map((year) => (
-          <SelectItem key={year.id} value={year.id}>
-            {year.name}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+    <RemoteCombobox
+      url="/api/v1/academic-years/options"
+      value={value}
+      onChange={onChange}
+      disabled={disabled}
+      placeholder="Academic Year"
+    />
   );
 }
