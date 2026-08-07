@@ -336,4 +336,30 @@ getDailyTimetable(
     ],
   });
 },
+
+getAttendanceInfo(
+  id: string,
+  schoolId: string
+) {
+  return prisma.timetable.findFirst({
+    where: {
+      id,
+      schoolId,
+    },
+
+    include: {
+      period: true,
+
+      teacherAllocation: {
+        include: {
+          academicYear: true,
+          teacher: true,
+          subject: true,
+          class: true,
+          section: true,
+        },
+      },
+    },
+  });
+},
 };

@@ -27,6 +27,11 @@ export const navigation = [
     icon: GraduationCap,
   },
   {
+    title: "Attendance",
+    href: "attendance",
+    icon: CalendarCheck,
+  },
+  {
     title: "Classes",
     href: "classes",
     icon: GraduationCap,
@@ -62,9 +67,9 @@ export const navigation = [
     icon: Users,
   },
   {
-    title: "Attendance",
-    href: "attendance",
-    icon: CalendarCheck,
+    title: "Teacher Allocations",
+    href: "teacher-allocations",
+    icon: Users,
   },
   {
     title: "Fees",

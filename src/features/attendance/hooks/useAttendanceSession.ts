@@ -1,95 +1,58 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
-import { TeacherListItem } from "../types";
+import { toast } from "sonner";
 
-type Response = {
-  data: TeacherListItem[];
-
-  total: number;
-
-  page: number;
-
-  pageSize: number;
-
-  totalPages: number;
+type AttendanceSessionResponse = {
+  session: any;
+  students: any[];
 };
 
-export function useTeacherTable() {
-  const [teachers, setTeachers] =
-    useState<TeacherListItem[]>([]);
-
+export function useAttendanceSession(
+  sessionId: string
+) {
   const [loading, setLoading] =
     useState(true);
 
-  const [search, setSearch] =
-    useState("");
+  const [data, setData] =
+    useState<AttendanceSessionResponse | null>(
+      null
+    );
 
-  const [page, setPage] =
-    useState(1);
-
-  const [pageSize] =
-    useState(25);
-
-  const [total, setTotal] =
-    useState(0);
-
-  async function load() {
+  const load = useCallback(async () => {
     try {
       setLoading(true);
 
-      const params =
-        new URLSearchParams({
-          page: page.toString(),
-          pageSize: pageSize.toString(),
-        });
-
-      if (search) {
-        params.set(
-          "search",
-          search
-        );
-      }
-
-      const res = await fetch(
-        `/api/v1/teachers?${params}`
+      const response = await fetch(
+        `/api/v1/attendance/session/${sessionId}`
       );
 
-      const result = await res.json();
+      const result =
+        await response.json();
 
-      if (!result.success) return;
+      if (!result.success) {
+        toast.error(result.message);
+        return;
+      }
 
-      const data: Response =
-        result.data;
-
-      setTeachers(data.data);
-
-      setTotal(data.total);
+      setData(result.data);
+    } catch {
+      toast.error(
+        "Failed to load attendance."
+      );
     } finally {
       setLoading(false);
     }
-  }
+  }, [sessionId]);
 
   useEffect(() => {
     load();
-  }, [page, search]);
+  }, [load]);
 
   return {
-    teachers,
-
     loading,
-
-    search,
-    setSearch,
-
-    page,
-    setPage,
-
-    total,
-
-    pageSize,
-
+    data,
     reload: load,
   };
 }

@@ -1,60 +1,36 @@
 import { z } from "zod";
 
-export const teacherSchema = z.object({
-  employeeId: z
-    .string()
-    .trim()
-    .min(1, "Employee ID is required."),
+export const ATTENDANCE_STATUS = [
+  "PRESENT",
+  "ABSENT",
+  "LATE",
+  "LEAVE",
+] as const;
 
-  fullName: z
-    .string()
-    .trim()
-    .min(3, "Teacher name is required."),
+export const attendanceRecordSchema =
+  z.object({
+    studentId: z.string().min(1),
 
-  gender: z.enum([
-    "MALE",
-    "FEMALE",
-    "OTHER",
-  ]),
+    status: z.enum(
+      ATTENDANCE_STATUS
+    ),
 
-  dob: z.string().optional().or(z.literal("")),
+    remarks: z.string().optional(),
+  });
 
-  joiningDate: z
-    .string()
-    .optional()
-    .or(z.literal("")),
+export const attendanceSchema =
+  z.object({
+    sessionId: z.string().min(1),
 
-  phone: z
-    .string()
-    .trim()
-    .optional()
-    .or(z.literal("")),
+    attendance: z
+      .array(
+        attendanceRecordSchema
+      )
+      .min(1),
+  });
 
-  email: z
-    .string()
-    .email()
-    .optional()
-    .or(z.literal("")),
+export type AttendanceFormInput =
+  z.input<typeof attendanceSchema>;
 
-  qualification: z
-    .string()
-    .trim()
-    .optional()
-    .or(z.literal("")),
-
-  designation: z
-    .string()
-    .trim()
-    .optional()
-    .or(z.literal("")),
-
-  active: z.boolean().default(true),
-});
-
-export type TeacherFormInput = z.input<
-  typeof teacherSchema
->;
-
-export type TeacherFormOutput = z.output<
-  typeof teacherSchema
->;
+export type AttendanceFormOutput =
+  z.output<typeof attendanceSchema>;

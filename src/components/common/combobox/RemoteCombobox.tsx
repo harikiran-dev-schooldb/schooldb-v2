@@ -70,10 +70,14 @@ export function RemoteCombobox({
 
         const result = await res.json();
 
+        console.log("URL:", url);
+        console.log("RESULT:", result);
+
         if (!active) return;
 
         if (result.success) {
           setOptions(result.data);
+          console.log("OPTIONS:", result.data);
         }
       } finally {
         if (active) {
