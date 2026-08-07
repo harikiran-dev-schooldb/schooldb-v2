@@ -128,5 +128,30 @@ export const studentEnrollmentRepository = {
       },
     ],
   });
+},
+
+getAttendanceStudents(
+  schoolId: string,
+  academicYearId: string,
+  classId: string,
+  sectionId: string
+) {
+  return prisma.studentEnrollment.findMany({
+    where: {
+      schoolId,
+      academicYearId,
+      classId,
+      sectionId,
+      active: true,
+    },
+
+    include: {
+      student: true,
+    },
+
+    orderBy: {
+      rollNo: "asc",
+    },
+  });
 }
 };

@@ -1,29 +1,59 @@
-import { Gender } from "@/generated/prisma/client";
 
-export type TeacherListItem = {
+
+export type AttendanceSessionItem =
+  {
+    id: string;
+
+    attendanceDate: string;
+
+    teacher: {
+      fullName: string;
+    };
+
+    subject: {
+      name: string;
+    };
+
+    class: {
+      name: string;
+    };
+
+    section: {
+      name: string;
+    };
+
+    period: {
+      name: string;
+    };
+  };
+
+  export type AttendanceListItem = {
   id: string;
 
-  employeeId: string;
+  status: string;
 
-  fullName: string;
+  student: {
+    admissionNo: string;
+    fullName: string;
+  };
 
-  gender: Gender;
+  session: {
+    attendanceDate: string;
 
-  phone: string | null;
+    class: {
+      name: string;
+    };
 
-  email: string | null;
+    section: {
+      name: string;
+    };
 
-  designation: string | null;
+    subject: {
+      name: string;
+    };
 
-  qualification: string | null;
-
-  joiningDate: Date | null;
-
-  active: boolean;
-};
-
-export type TeacherOption = {
-  id: string;
-
-  label: string;
+    period: {
+      name: string;
+    };
+  };
 };

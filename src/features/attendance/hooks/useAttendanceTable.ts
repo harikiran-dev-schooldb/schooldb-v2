@@ -1,8 +1,9 @@
 "use client";
 
+import { TeacherListItem } from "@/features/teachers/types";
 import { useEffect, useState } from "react";
 
-import { TeacherListItem } from "../types";
+
 
 type Response = {
   data: TeacherListItem[];

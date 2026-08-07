@@ -1,240 +1,274 @@
-import { teacherRepository } from "../repositories/attendance.repository.js";
+import { Prisma } from "@/generated/prisma/client";
+
+import { timetableRepository } from "@/features/timetable/repositories/timetable.repository";
+
 import {
-  TeacherFormOutput,
-} from "../schemas/attendance.schema.js";
+  AttendanceFormOutput
+} from "../schemas/attendance.schema";
 
-import { ListQuery } from "@/types/query";
+import {
+  AttendanceSessionFormOutput,
+} from "../schemas/attendance-session.schema";
 
-export const teacherService = {
+import { prisma } from "@/lib/prisma";
+
+import { attendanceRepository } from "../repositories/attendance.repository";
+import { studentEnrollmentRepository } from "@/features/student-enrollments/repositories/student-enrollment.repository";
+
+export const attendanceService = {
   async list(
     schoolId: string,
-    query: ListQuery
+    query: {
+      page: number;
+      pageSize: number;
+      search?: string;
+    }
   ) {
-    const page = query.page ?? 1;
-    const pageSize = query.pageSize ?? 25;
+    const skip =
+      (query.page - 1) * query.pageSize;
 
-    const where = {
+    const where: Prisma.AttendanceWhereInput = {
       schoolId,
 
       ...(query.search && {
-        OR: [
-          {
-            employeeId: {
-              contains: query.search,
-              mode: "insensitive" as const,
+        student: {
+          OR: [
+            {
+              fullName: {
+                contains: query.search,
+                mode: "insensitive",
+              },
             },
-          },
-          {
-            fullName: {
-              contains: query.search,
-              mode: "insensitive" as const,
+            {
+              admissionNo: {
+                contains: query.search,
+                mode: "insensitive",
+              },
             },
-          },
-          {
-            phone: {
-              contains: query.search,
-              mode: "insensitive" as const,
-            },
-          },
-          {
-            email: {
-              contains: query.search,
-              mode: "insensitive" as const,
-            },
-          },
-        ],
+          ],
+        },
       }),
     };
 
-    const [data, total] = await Promise.all([
-      teacherRepository.list(where, {
-        skip: (page - 1) * pageSize,
-        take: pageSize,
-      }),
+    const [data, total] =
+      await Promise.all([
+        attendanceRepository.list(where, {
+          skip,
+          take: query.pageSize,
+        }),
 
-      teacherRepository.count(where),
-    ]);
+        attendanceRepository.count(where),
+      ]);
 
     return {
       data,
 
       total,
 
-      page,
+      page: query.page,
 
-      pageSize,
+      pageSize: query.pageSize,
 
-      totalPages: Math.ceil(total / pageSize),
+      totalPages: Math.ceil(
+        total / query.pageSize
+      ),
     };
-  },
-
-  async create(
-    schoolId: string,
-    input: TeacherFormOutput
-  ) {
-    const exists =
-      await teacherRepository.findByEmployeeId(
-        schoolId,
-        input.employeeId
-      );
-
-    if (exists) {
-      throw new Error(
-        "Employee ID already exists."
-      );
-    }
-
-    return teacherRepository.create({
-      employeeId: input.employeeId,
-
-      fullName: input.fullName,
-
-      gender: input.gender,
-
-      dob: input.dob
-        ? new Date(input.dob)
-        : null,
-
-      joiningDate: input.joiningDate
-        ? new Date(input.joiningDate)
-        : null,
-
-      phone:
-        input.phone === ""
-          ? null
-          : input.phone,
-
-      email:
-        input.email === ""
-          ? null
-          : input.email,
-
-      qualification:
-        input.qualification === ""
-          ? null
-          : input.qualification,
-
-      designation:
-        input.designation === ""
-          ? null
-          : input.designation,
-
-      active: input.active,
-
-      school: {
-        connect: {
-          id: schoolId,
-        },
-      },
-    });
   },
 
   async get(
     id: string,
     schoolId: string
   ) {
-    const teacher =
-      await teacherRepository.findById(
+    const attendance =
+      await attendanceRepository.get(
         id,
         schoolId
       );
 
-    if (!teacher) {
+    if (!attendance) {
       throw new Error(
-        "Teacher not found."
+        "Attendance not found."
       );
     }
 
-    return teacher;
+    return attendance;
   },
 
-  async update(
-    id: string,
-    schoolId: string,
-    input: TeacherFormOutput
-  ) {
-    const teacher =
-      await teacherRepository.findById(
-        id,
-        schoolId
-      );
+  async createSession(
+  schoolId: string,
+  input: AttendanceSessionFormOutput
+) {
+  const timetable =
+    await timetableRepository.getAttendanceInfo(
+      input.timetableId,
+      schoolId
+    );
 
-    if (!teacher) {
-      throw new Error(
-        "Teacher not found."
-      );
-    }
+  if (!timetable) {
+    throw new Error(
+      "Timetable not found."
+    );
+  }
 
-    const duplicate =
-      await teacherRepository.findByEmployeeId(
-        schoolId,
-        input.employeeId
-      );
+  const allocation =
+    timetable.teacherAllocation;
 
-    if (
-      duplicate &&
-      duplicate.id !== id
-    ) {
-      throw new Error(
-        "Employee ID already exists."
-      );
-    }
-
-    return teacherRepository.update(
-      id,
+  const session =
+    await attendanceRepository.findSession(
       schoolId,
-      {
-        employeeId: input.employeeId,
+      allocation.academicYearId,
+      allocation.classId,
+      allocation.sectionId,
+      timetable.periodId,
+      new Date(input.attendanceDate)
+    );
 
-        fullName: input.fullName,
+  if (session) {
+  return session;
+}
 
-        gender: input.gender,
+  return attendanceRepository.createSession({
+    school: {
+      connect: {
+        id: schoolId,
+      },
+    },
 
-        dob: input.dob
-          ? new Date(input.dob)
-          : null,
+    academicYear: {
+      connect: {
+        id: allocation.academicYearId,
+      },
+    },
 
-        joiningDate: input.joiningDate
-          ? new Date(input.joiningDate)
-          : null,
+    teacher: {
+      connect: {
+        id: allocation.teacherId,
+      },
+    },
 
-        phone:
-          input.phone === ""
-            ? null
-            : input.phone,
+    subject: {
+      connect: {
+        id: allocation.subjectId,
+      },
+    },
 
-        email:
-          input.email === ""
-            ? null
-            : input.email,
+    class: {
+      connect: {
+        id: allocation.classId,
+      },
+    },
 
-        qualification:
-          input.qualification === ""
-            ? null
-            : input.qualification,
+    section: {
+      connect: {
+        id: allocation.sectionId,
+      },
+    },
 
-        designation:
-          input.designation === ""
-            ? null
-            : input.designation,
+    period: {
+      connect: {
+        id: timetable.periodId,
+      },
+    },
 
-        active: input.active,
-      }
+    attendanceDate: new Date(
+      input.attendanceDate
+    ),
+
+    remarks: input.remarks,
+  });
+},
+
+  async markAttendance(
+  schoolId: string,
+  input: AttendanceFormOutput
+) {
+  return attendanceRepository.bulkMarkAttendance(
+    schoolId,
+    input
+  );
+},
+
+  async studentAttendance(
+    schoolId: string,
+    studentId: string
+  ) {
+    return attendanceRepository.studentAttendance(
+      schoolId,
+      studentId
     );
   },
 
-  async options(
+  async classAttendance(
+    schoolId: string,
+    classId: string,
+    sectionId: string
+  ) {
+    return attendanceRepository.classAttendance(
+      schoolId,
+      classId,
+      sectionId
+    );
+  },
+
+  async todayAttendance(
     schoolId: string
   ) {
-    const teachers =
-      await teacherRepository.options(
-        schoolId
-      );
-
-    return teachers.map((teacher) => ({
-      id: teacher.id,
-
-      label: `${teacher.employeeId} - ${teacher.fullName}`,
-    }));
+    return attendanceRepository.todayAttendance(
+      schoolId,
+      new Date()
+    );
   },
+
+
+async getSession(
+  schoolId: string,
+  sessionId: string
+) {
+  const session =
+    await attendanceRepository.getSessionStudents(
+      schoolId,
+      sessionId
+    );
+
+  if (!session) {
+    throw new Error(
+      "Attendance session not found."
+    );
+  }
+
+  const enrollments =
+  await attendanceRepository.getAttendanceStudents(
+    schoolId,
+    session.academicYearId,
+    session.classId,
+    session.sectionId
+  );
+
+  const students = enrollments.map((enrollment) => {
+  const attendance = session.records.find(
+    (record) =>
+      record.studentId === enrollment.studentId
+  );
+
+  return {
+    studentId: enrollment.studentId,
+
+    rollNo: enrollment.rollNo ?? 0,
+
+    admissionNo: enrollment.student.admissionNo,
+
+    fullName: enrollment.student.fullName,
+
+    status: attendance?.status ?? "PRESENT",
+
+    remarks: attendance?.remarks ?? "",
+  };
+});
+
+  return {
+    session,
+
+    students,
+  };
+}
 };
