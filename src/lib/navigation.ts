@@ -72,6 +72,11 @@ export const navigation = [
     icon: Users,
   },
   {
+    title: "Homework",
+    href: "homework",
+    icon: ClipboardPenLine,
+  },
+  {
     title: "Fees",
     href: "fees",
     icon: IndianRupee,
