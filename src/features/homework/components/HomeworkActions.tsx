@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import { CrudActions, CrudActionItem } from "@/components/common/crud";
@@ -14,6 +15,11 @@ type Props = {
 
 export function HomeworkActions({ homeworkId, onSuccess = () => {} }: Props) {
   const [open, setOpen] = useState(false);
+
+  const router = useRouter();
+  const params = useParams();
+
+  const schoolSlug = params.schoolSlug as string;
 
   async function handleDelete() {
     const confirmed = window.confirm(
@@ -45,6 +51,11 @@ export function HomeworkActions({ homeworkId, onSuccess = () => {} }: Props) {
   return (
     <>
       <CrudActions>
+        <CrudActionItem
+          type="view"
+          onClick={() => router.push(`/${schoolSlug}/homework/${homeworkId}`)}
+        />
+
         <CrudActionItem type="edit" onClick={() => setOpen(true)} />
 
         <CrudActionItem type="delete" onClick={handleDelete} />

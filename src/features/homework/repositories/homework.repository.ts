@@ -28,7 +28,7 @@ export const homeworkRepository = {
 
       orderBy: [
         {
-          dueDate: "desc",
+          assignedDate: "desc",
         },
         {
           createdAt: "desc",
