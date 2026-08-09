@@ -628,4 +628,209 @@ lowAttendanceReport(
     ],
   });
 },
+
+lowAttendanceRecords(
+  schoolId: string,
+  academicYearId: string,
+  studentIds: string[],
+  fromDate?: Date,
+  toDate?: Date
+) {
+  if (studentIds.length === 0) {
+    return Promise.resolve([]);
+  }
+
+  return prisma.attendance.findMany({
+    where: {
+      schoolId,
+
+      studentId: {
+        in: studentIds,
+      },
+
+      session: {
+        academicYearId,
+
+        ...(fromDate || toDate
+          ? {
+              attendanceDate: {
+                ...(fromDate && {
+                  gte: fromDate,
+                }),
+
+                ...(toDate && {
+                  lte: toDate,
+                }),
+              },
+            }
+          : {}),
+      },
+    },
+
+    select: {
+      studentId: true,
+
+      status: true,
+
+      session: {
+        select: {
+          id: true,
+          attendanceDate: true,
+          sessionType: true,
+          periodId: true,
+        },
+      },
+    },
+
+    orderBy: {
+      session: {
+        attendanceDate: "desc",
+      },
+    },
+  });
+},
+
+updateAttendance(
+  sessionId: string,
+  studentId: string,
+  schoolId: string,
+  data: Prisma.AttendanceUpdateInput
+) {
+  return prisma.attendance.upsert({
+    where: {
+      sessionId_studentId: {
+        sessionId,
+        studentId,
+      },
+    },
+
+    update: data,
+
+    create: {
+      school: {
+        connect: {
+          id: schoolId,
+        },
+      },
+
+      session: {
+        connect: {
+          id: sessionId,
+        },
+      },
+
+      student: {
+        connect: {
+          id: studentId,
+        },
+      },
+
+      status: data.status as Prisma.AttendanceCreateInput["status"],
+
+      remarks:
+        typeof data.remarks === "string"
+          ? data.remarks
+          : null,
+    },
+  });
+},
+
+findSessionForCorrection(
+  sessionId: string,
+  schoolId: string
+) {
+  return prisma.attendanceSession.findFirst({
+    where: {
+      id: sessionId,
+      schoolId,
+    },
+
+    select: {
+      id: true,
+      schoolId: true,
+      locked: true,
+    },
+  });
+},
+
+bulkUpdateAttendance(
+  sessionId: string,
+  schoolId: string,
+  changes: {
+    studentId: string;
+    status: AttendanceStatus;
+    remarks?: string;
+  }[],
+) {
+  return prisma.$transaction(
+    async (tx) => {
+      const results = [];
+
+      for (const change of changes) {
+        const record =
+          await tx.attendance.upsert({
+            where: {
+              sessionId_studentId: {
+                sessionId,
+                studentId:
+                  change.studentId,
+              },
+            },
+
+            update: {
+              status: change.status,
+              remarks:
+                change.remarks ?? null,
+            },
+
+            create: {
+              school: {
+                connect: {
+                  id: schoolId,
+                },
+              },
+
+              session: {
+                connect: {
+                  id: sessionId,
+                },
+              },
+
+              student: {
+                connect: {
+                  id: change.studentId,
+                },
+              },
+
+              status: change.status,
+
+              remarks:
+                change.remarks ?? null,
+            },
+          });
+
+        results.push(record);
+      }
+
+      return results;
+    },
+  );
+},
+
+lockSession(
+  sessionId: string,
+  schoolId: string,
+) {
+  return prisma.attendanceSession.updateMany({
+    where: {
+      id: sessionId,
+      schoolId,
+      locked: false,
+    },
+
+    data: {
+      locked: true,
+    },
+  });
+},
 };

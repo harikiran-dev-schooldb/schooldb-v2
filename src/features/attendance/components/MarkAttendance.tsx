@@ -40,13 +40,17 @@ type StudentAttendance = {
 const ITEMS_PER_PAGE = 50;
 
 export function MarkAttendance({ sessionId }: Props) {
-  const { loading, data } = useAttendanceSession(sessionId);
+  const { loading, data, reload } = useAttendanceSession(sessionId);
 
   const [students, setStudents] = useState<StudentAttendance[]>([]);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [saving, setSaving] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [originalStudents, setOriginalStudents] = useState<StudentAttendance[]>(
+    [],
+  );
 
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -56,6 +60,7 @@ export function MarkAttendance({ sessionId }: Props) {
   useEffect(() => {
     if (data?.students) {
       setStudents(data.students);
+      setOriginalStudents(data.students);
     }
   }, [data]);
 
@@ -193,25 +198,44 @@ export function MarkAttendance({ sessionId }: Props) {
     try {
       setSaving(true);
 
-      const response = await fetch("/api/v1/attendance", {
-        method: "POST",
+      const changes = students
+        .filter((student) => {
+          const original = originalStudents.find(
+            (item) => item.studentId === student.studentId,
+          );
 
-        headers: {
-          "Content-Type": "application/json",
+          return (
+            original &&
+            (original.status !== student.status ||
+              original.remarks !== student.remarks)
+          );
+        })
+        .map((student) => ({
+          studentId: student.studentId,
+          status: student.status,
+          remarks: student.remarks,
+        }));
+
+      if (changes.length === 0) {
+        toast.info("No attendance changes to save.");
+        setEditing(false);
+        return;
+      }
+
+      const response = await fetch(
+        `/api/v1/attendance/session/${sessionId}/correction`,
+        {
+          method: "POST",
+
+          headers: {
+            "Content-Type": "application/json",
+          },
+
+          body: JSON.stringify({
+            changes,
+          }),
         },
-
-        body: JSON.stringify({
-          sessionId,
-
-          attendance: students.map((student) => ({
-            studentId: student.studentId,
-
-            status: student.status,
-
-            remarks: student.remarks,
-          })),
-        }),
-      });
+      );
 
       const result = await response.json();
 
@@ -220,9 +244,16 @@ export function MarkAttendance({ sessionId }: Props) {
         return;
       }
 
-      toast.success("Attendance saved successfully.");
+      toast.success(
+        `${changes.length} attendance ${
+          changes.length === 1 ? "record" : "records"
+        } updated successfully.`,
+      );
+
+      setOriginalStudents(students);
+      setEditing(false);
     } catch {
-      toast.error("Failed to save attendance.");
+      toast.error("Failed to update attendance.");
     } finally {
       setSaving(false);
     }
@@ -252,6 +283,38 @@ export function MarkAttendance({ sessionId }: Props) {
   const allPresent =
     students.length > 0 &&
     students.every((student) => student.status === "PRESENT");
+
+  async function lockAttendance() {
+    if (!data?.session?.id) return;
+
+    try {
+      setSaving(true);
+
+      const response = await fetch(
+        `/api/v1/attendance/session/${data.session.id}/lock`,
+        {
+          method: "POST",
+        },
+      );
+
+      const result = await response.json();
+
+      if (!result.success) {
+        toast.error(result.message);
+        return;
+      }
+
+      toast.success("Attendance session locked successfully.");
+
+      setEditing(false);
+
+      await reload();
+    } catch {
+      toast.error("Failed to lock attendance session.");
+    } finally {
+      setSaving(false);
+    }
+  }
 
   return (
     <div className="min-h-screen space-y-6 pb-24">
@@ -319,7 +382,13 @@ export function MarkAttendance({ sessionId }: Props) {
               variant="outline"
               size="sm"
               onClick={markAllPresent}
-              disabled={saving || students.length === 0 || allPresent}
+              disabled={
+                saving ||
+                !editing ||
+                students.length === 0 ||
+                allPresent ||
+                data.session.locked
+              }
               className="gap-2"
             >
               <UserCheck className="h-4 w-4" />
@@ -331,7 +400,12 @@ export function MarkAttendance({ sessionId }: Props) {
               variant="outline"
               size="sm"
               onClick={markAllAbsent}
-              disabled={saving || students.length === 0}
+              disabled={
+                saving ||
+                !editing ||
+                students.length === 0 ||
+                data.session.locked
+              }
               className="gap-2"
             >
               <UserX className="h-4 w-4" />
@@ -405,7 +479,7 @@ export function MarkAttendance({ sessionId }: Props) {
                 type="button"
                 key={student.studentId}
                 onClick={() => toggleStudent(student)}
-                disabled={saving}
+                disabled={saving || !editing || data.session.locked}
                 className={[
                   "group relative flex min-h-[120px] items-center rounded-xl border-2 p-4 text-left shadow-sm transition-all duration-200",
                   "hover:-translate-y-0.5 hover:shadow-md",
@@ -538,7 +612,7 @@ export function MarkAttendance({ sessionId }: Props) {
         </div>
       )}
 
-      {/* Sticky save bar */}
+      {/* Sticky action bar */}
       <div className="sticky bottom-4 z-20">
         <div className="flex items-center justify-between gap-4 rounded-2xl border bg-background/95 p-4 shadow-xl backdrop-blur">
           <div className="hidden sm:block">
@@ -549,25 +623,68 @@ export function MarkAttendance({ sessionId }: Props) {
             </p>
           </div>
 
-          <Button
-            type="button"
-            size="lg"
-            onClick={saveAttendance}
-            disabled={saving || students.length === 0}
-            className="ml-auto gap-2"
-          >
-            {saving ? (
-              <>
-                <Loader2 className="h-5 w-5 animate-spin" />
-                Saving...
-              </>
-            ) : (
-              <>
-                <Save className="h-5 w-5" />
-                Save Attendance
-              </>
-            )}
-          </Button>
+          {data.session.locked ? (
+            <div className="flex items-center gap-3">
+              <div className="rounded-lg border bg-muted/50 px-4 py-2 text-sm font-medium">
+                🔒 Attendance Locked
+              </div>
+            </div>
+          ) : !editing ? (
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="lg"
+                onClick={() => setEditing(true)}
+              >
+                Edit Attendance
+              </Button>
+
+              <Button
+                type="button"
+                size="lg"
+                onClick={lockAttendance}
+                disabled={saving || students.length === 0}
+              >
+                🔒 Lock Attendance
+              </Button>
+            </div>
+          ) : (
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                size="lg"
+                onClick={() => {
+                  setStudents(originalStudents);
+                  setEditing(false);
+                }}
+                disabled={saving}
+              >
+                Cancel
+              </Button>
+
+              <Button
+                type="button"
+                size="lg"
+                onClick={saveAttendance}
+                disabled={saving || students.length === 0}
+                className="gap-2"
+              >
+                {saving ? (
+                  <>
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-5 w-5" />
+                    Save Changes
+                  </>
+                )}
+              </Button>
+            </>
+          )}
         </div>
       </div>
     </div>

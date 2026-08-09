@@ -1,4 +1,4 @@
-import { Prisma } from "@/generated/prisma/client";
+import { AttendanceStatus, Prisma } from "@/generated/prisma/client";
 
 import { timetableRepository } from "@/features/timetable/repositories/timetable.repository";
 
@@ -551,14 +551,46 @@ async classAttendanceReport(
         : undefined
     );
 
+  /*
+   * Group all attendance records by student.
+   *
+   * Before:
+   *   records.filter() was executed for
+   *   every student.
+   *
+   * Now:
+   *   We build the map once and directly
+   *   retrieve each student's records.
+   */
+  const recordsByStudent =
+    new Map<
+      string,
+      typeof result.records
+    >();
+
+  for (const record of result.records) {
+    const existing =
+      recordsByStudent.get(
+        record.studentId
+      ) ?? [];
+
+    existing.push(record);
+
+    recordsByStudent.set(
+      record.studentId,
+      existing
+    );
+  }
+
+  /*
+   * Calculate each student's attendance.
+   */
   const students =
     result.enrollments.map((enrollment) => {
       const records =
-        result.records.filter(
-          (record) =>
-            record.studentId ===
-            enrollment.studentId
-        );
+        recordsByStudent.get(
+          enrollment.studentId
+        ) ?? [];
 
       const summary =
         calculateAttendance(
@@ -579,15 +611,20 @@ async classAttendanceReport(
         fullName:
           enrollment.student.fullName,
 
-        total: summary.total,
+        total:
+          summary.total,
 
-        present: summary.present,
+        present:
+          summary.present,
 
-        absent: summary.absent,
+        absent:
+          summary.absent,
 
-        late: summary.late,
+        late:
+          summary.late,
 
-        leave: summary.leave,
+        leave:
+          summary.leave,
 
         attendancePercentage:
           summary.attendancePercentage,
@@ -595,13 +632,8 @@ async classAttendanceReport(
     });
 
   /*
-   * Class-level totals
-   *
-   * We add the individual student
-   * opportunities because each student
-   * has their own attendance denominator.
+   * Class-level totals.
    */
-
   const totalSessions =
     students.reduce(
       (sum, student) =>
@@ -699,24 +731,64 @@ async lowAttendanceReport(
       sectionId
     );
 
-  const results = await Promise.all(
-    enrollments.map(async (enrollment) => {
-      const records =
-        await attendanceRepository.studentAttendanceReport(
-          schoolId,
-          enrollment.studentId,
-          academicYearId,
-          fromDate
-            ? new Date(`${fromDate}T00:00:00`)
-            : undefined,
-          toDate
-            ? new Date(`${toDate}T23:59:59.999`)
-            : undefined
-        );
+  const studentIds =
+    enrollments.map(
+      (enrollment) =>
+        enrollment.studentId
+    );
+
+  /*
+   * IMPORTANT:
+   *
+   * One database query for all students.
+   */
+  const records =
+    await attendanceRepository.lowAttendanceRecords(
+      schoolId,
+      academicYearId,
+      studentIds,
+      fromDate
+        ? new Date(`${fromDate}T00:00:00`)
+        : undefined,
+      toDate
+        ? new Date(`${toDate}T23:59:59.999`)
+        : undefined
+    );
+
+  /*
+   * Group attendance records by student.
+   */
+  const recordsByStudent =
+    new Map<string, typeof records>();
+
+  for (const record of records) {
+    const existing =
+      recordsByStudent.get(
+        record.studentId
+      ) ?? [];
+
+    existing.push(record);
+
+    recordsByStudent.set(
+      record.studentId,
+      existing
+    );
+  }
+
+  /*
+   * Calculate attendance for every
+   * student without additional DB queries.
+   */
+  const results =
+    enrollments.map((enrollment) => {
+      const studentRecords =
+        recordsByStudent.get(
+          enrollment.studentId
+        ) ?? [];
 
       const summary =
         calculateAttendance(
-          records,
+          studentRecords,
           academicYear.attendanceMode
         );
 
@@ -751,8 +823,7 @@ async lowAttendanceReport(
         attendancePercentage:
           summary.attendancePercentage,
       };
-    })
-  );
+    });
 
   const lowAttendance =
     results.filter(
@@ -770,7 +841,118 @@ async lowAttendanceReport(
     lowAttendanceCount:
       lowAttendance.length,
 
-    students: lowAttendance,
+    students:
+      lowAttendance,
+  };
+},
+
+async updateAttendance(
+  schoolId: string,
+  sessionId: string,
+  studentId: string,
+  status: AttendanceStatus,
+  remarks?: string,
+) {
+  const session =
+    await attendanceRepository.findSessionForCorrection(
+      sessionId,
+      schoolId,
+    );
+
+  if (!session) {
+    throw new Error(
+      "Attendance session not found.",
+    );
+  }
+
+  if (session.locked) {
+    throw new Error(
+      "Attendance session is locked and cannot be modified.",
+    );
+  }
+
+  return attendanceRepository.updateAttendance(
+    sessionId,
+    studentId,
+    schoolId,
+    {
+      status,
+      remarks,
+    },
+  );
+},
+
+async bulkUpdateAttendance(
+  schoolId: string,
+  sessionId: string,
+  changes: {
+    studentId: string;
+    status: AttendanceStatus;
+    remarks?: string;
+  }[],
+) {
+  const session =
+    await attendanceRepository.findSessionForCorrection(
+      sessionId,
+      schoolId,
+    );
+
+  if (!session) {
+    throw new Error(
+      "Attendance session not found.",
+    );
+  }
+
+  if (session.locked) {
+    throw new Error(
+      "Attendance session is locked and cannot be modified.",
+    );
+  }
+
+  return attendanceRepository.bulkUpdateAttendance(
+    sessionId,
+    schoolId,
+    changes,
+  );
+},
+
+async lockAttendanceSession(
+  schoolId: string,
+  sessionId: string,
+) {
+  const session =
+    await attendanceRepository.findSessionForCorrection(
+      sessionId,
+      schoolId,
+    );
+
+  if (!session) {
+    throw new Error(
+      "Attendance session not found.",
+    );
+  }
+
+  if (session.locked) {
+    throw new Error(
+      "Attendance session is already locked.",
+    );
+  }
+
+  const result =
+    await attendanceRepository.lockSession(
+      sessionId,
+      schoolId,
+    );
+
+  if (result.count === 0) {
+    throw new Error(
+      "Attendance session could not be locked.",
+    );
+  }
+
+  return {
+    id: sessionId,
+    locked: true,
   };
 },
 };
