@@ -12,43 +12,55 @@ import {
 
 type StudentOption = {
   id: string;
-  admissionNo: string;
-  fullName: string;
+  label: string;
 };
 
 type Props = {
   value?: string;
-  disabled?: boolean;
   onChange: (value: string) => void;
+  disabled?: boolean;
 };
 
-export function StudentSelect({ value, disabled, onChange }: Props) {
+export function StudentSelect({ value, onChange, disabled }: Props) {
   const [students, setStudents] = useState<StudentOption[]>([]);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    async function loadStudents() {
-      const res = await fetch("/api/v1/students/options");
+    async function load() {
+      try {
+        setLoading(true);
 
-      const result = await res.json();
+        const res = await fetch("/api/v1/students/options");
 
-      if (result.success) {
-        setStudents(result.data);
+        const result = await res.json();
+
+        if (result.success) {
+          setStudents(result.data);
+        }
+      } finally {
+        setLoading(false);
       }
     }
 
-    loadStudents();
+    load();
   }, []);
 
   return (
-    <Select value={value} onValueChange={onChange} disabled={disabled}>
+    <Select
+      value={value || undefined}
+      onValueChange={onChange}
+      disabled={disabled || loading}
+    >
       <SelectTrigger>
-        <SelectValue placeholder="Select Student" />
+        <SelectValue
+          placeholder={loading ? "Loading students..." : "Select Student"}
+        />
       </SelectTrigger>
 
       <SelectContent>
         {students.map((student) => (
           <SelectItem key={student.id} value={student.id}>
-            {student.admissionNo} - {student.fullName}
+            {student.label}
           </SelectItem>
         ))}
       </SelectContent>

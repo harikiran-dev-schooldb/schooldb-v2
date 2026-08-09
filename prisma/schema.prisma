@@ -23,14 +23,14 @@ model AcademicYear {
   name String
 
   startDate DateTime
-
-  endDate DateTime
+  endDate   DateTime
 
   active Boolean @default(false)
 
-  schoolId String
+  attendanceMode AttendanceMode @default(ONCE_DAILY)
 
-  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  schoolId String
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
   enrollments        StudentEnrollment[]
   allocations        TeacherAllocation[]
@@ -39,7 +39,6 @@ model AcademicYear {
   homeworks          Homework[]
 
   createdAt DateTime @default(now())
-
   updatedAt DateTime @updatedAt
 
   @@unique([schoolId, name])
@@ -520,11 +519,11 @@ model AttendanceSession {
   academicYearId String
   academicYear   AcademicYear @relation(fields: [academicYearId], references: [id])
 
-  teacherId String
-  teacher   Teacher @relation(fields: [teacherId], references: [id])
+  teacherId String?
+  teacher   Teacher? @relation(fields: [teacherId], references: [id])
 
-  subjectId String
-  subject   Subject @relation(fields: [subjectId], references: [id])
+  subjectId String?
+  subject   Subject? @relation(fields: [subjectId], references: [id])
 
   classId String
   class   Class  @relation(fields: [classId], references: [id])
@@ -532,8 +531,10 @@ model AttendanceSession {
   sectionId String
   section   Section @relation(fields: [sectionId], references: [id])
 
-  periodId String
-  period   Period @relation(fields: [periodId], references: [id])
+  sessionType AttendanceSessionType?
+
+  periodId String?
+  period   Period? @relation(fields: [periodId], references: [id])
 
   attendanceDate DateTime @db.Date
 
@@ -546,8 +547,8 @@ model AttendanceSession {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@unique([schoolId, academicYearId, classId, sectionId, periodId, attendanceDate])
   @@index([schoolId, attendanceDate])
+  @@index([schoolId, academicYearId, classId, sectionId, attendanceDate])
 }
 
 model Attendance {
@@ -622,6 +623,19 @@ enum AttendanceStatus {
   ABSENT
   LATE
   LEAVE
+}
+
+enum AttendanceMode {
+  ONCE_DAILY
+  MORNING_AFTERNOON
+  EVERY_PERIOD
+}
+
+enum AttendanceSessionType {
+  DAILY
+  MORNING
+  AFTERNOON
+  PERIOD
 }
 
 enum WeekDay {

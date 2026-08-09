@@ -6,8 +6,6 @@ import {
   IndianRupee,
   BookOpen,
   Settings,
-  PanelsTopLeft,
-  ClipboardPenLine,
 } from "lucide-react";
 
 export const navigation = [
@@ -65,8 +63,29 @@ export const navigation = [
 
   {
     title: "Attendance",
-    href: "attendance",
     icon: CalendarCheck,
+    children: [
+      {
+        title: "Attendance",
+        href: "attendance",
+      },
+      {
+        title: "History",
+        href: "attendance/history",
+      },
+      {
+        title: "Class Report",
+        href: "attendance/reports/class",
+      },
+      {
+        title: "Student Report",
+        href: "attendance/reports/student",
+      },
+      {
+        title: "Low Attendance Report",
+        href: "attendance/reports/low",
+      },
+    ],
   },
 
   {
