@@ -9,7 +9,6 @@ export default function TeachersPage() {
       <PageHeader
         title="Teachers"
         description="Manage school teachers and their associated information ."
-        action={<AddTeacherButton />}
       />
 
       <TeacherTable />

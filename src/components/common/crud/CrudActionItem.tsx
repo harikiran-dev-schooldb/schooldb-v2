@@ -1,15 +1,24 @@
 "use client";
 
-import { Pencil, Trash2 } from "lucide-react";
+import { Eye, Pencil, Trash2 } from "lucide-react";
 
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 
 type Props = {
-  type: "edit" | "delete";
+  type: "view" | "edit" | "delete";
   onClick: () => void;
 };
 
 export function CrudActionItem({ type, onClick }: Props) {
+  if (type === "view") {
+    return (
+      <DropdownMenuItem onClick={onClick}>
+        <Eye className="mr-2 h-4 w-4" />
+        View
+      </DropdownMenuItem>
+    );
+  }
+
   if (type === "edit") {
     return (
       <DropdownMenuItem onClick={onClick}>

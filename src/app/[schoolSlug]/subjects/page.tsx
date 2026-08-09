@@ -9,7 +9,6 @@ export default function SubjectsPage() {
       <PageHeader
         title="Subjects"
         description="Manage school subjects and their associated teachers."
-        action={<AddSubjectButton />}
       />
 
       <SubjectTable />

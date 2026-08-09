@@ -16,76 +16,107 @@ export const navigation = [
     href: "dashboard",
     icon: LayoutDashboard,
   },
+
   {
-    title: "Academic Year",
-    href: "academic-year",
+    title: "Academic",
     icon: GraduationCap,
+    children: [
+      {
+        title: "Academic Year",
+        href: "academic-year",
+      },
+      {
+        title: "Classes",
+        href: "classes",
+      },
+      {
+        title: "Sections",
+        href: "sections",
+      },
+      {
+        title: "Subjects",
+        href: "subjects",
+      },
+      {
+        title: "Enrollments",
+        href: "enrollments",
+      },
+    ],
   },
+
   {
-    title: "Students",
-    href: "students",
-    icon: GraduationCap,
+    title: "Users",
+    icon: Users,
+    children: [
+      {
+        title: "Students",
+        href: "students",
+      },
+      {
+        title: "Teachers",
+        href: "teachers",
+      },
+      {
+        title: "Teacher Allocations",
+        href: "teacher-allocations",
+      },
+    ],
   },
+
   {
     title: "Attendance",
     href: "attendance",
     icon: CalendarCheck,
   },
-  {
-    title: "Classes",
-    href: "classes",
-    icon: GraduationCap,
-  },
-  {
-    title: "Sections",
-    href: "sections",
-    icon: PanelsTopLeft,
-  },
-  {
-    title: "Enrollments",
-    href: "enrollments",
-    icon: ClipboardPenLine,
-  },
-  {
-    title: "Periods",
-    href: "periods",
-    icon: CalendarCheck,
-  },
+
   {
     title: "Timetable",
-    href: "timetable",
     icon: CalendarCheck,
+    children: [
+      {
+        title: "Periods",
+        href: "periods",
+      },
+      {
+        title: "Timetable",
+        href: "timetable",
+      },
+      {
+        title: "Daily Timetable",
+        href: "timetable/daily",
+      },
+      {
+        title: "Class Timetable",
+        href: "timetable/class",
+      },
+      {
+        title: "Teacher Timetable",
+        href: "timetable/teacher",
+      },
+    ],
   },
+
   {
-    title: "Subjects",
-    href: "subjects",
+    title: "Academic Work",
     icon: BookOpen,
+    children: [
+      {
+        title: "Homework",
+        href: "homework",
+      },
+      {
+        title: "Exams",
+        href: "exams",
+      },
+    ],
   },
-  {
-    title: "Teachers",
-    href: "teachers",
-    icon: Users,
-  },
-  {
-    title: "Teacher Allocations",
-    href: "teacher-allocations",
-    icon: Users,
-  },
-  {
-    title: "Homework",
-    href: "homework",
-    icon: ClipboardPenLine,
-  },
+
   {
     title: "Fees",
     href: "fees",
     icon: IndianRupee,
   },
-  {
-    title: "Exams",
-    href: "exams",
-    icon: BookOpen,
-  },
+
   {
     title: "Settings",
     href: "settings",

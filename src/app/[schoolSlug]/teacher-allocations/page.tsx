@@ -8,7 +8,6 @@ export default function TeacherAllocationsPage() {
       <PageHeader
         title="Teacher Allocations"
         description="Manage teacher allocations and their associated information ."
-        action={<AddTeacherAllocationButton />}
       />
 
       <TeacherAllocationTable />
