@@ -12,7 +12,7 @@ import {
 
 type ClassOption = {
   id: string;
-  name: string;
+  label: string;
 };
 
 type Props = {
@@ -46,7 +46,7 @@ export function ClassSelect({ value, onChange }: Props) {
       <SelectContent>
         {classes.map((item) => (
           <SelectItem key={item.id} value={item.id}>
-            {item.name}
+            {item.label}
           </SelectItem>
         ))}
       </SelectContent>

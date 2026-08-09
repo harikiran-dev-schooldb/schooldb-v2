@@ -12,7 +12,7 @@ import {
 
 type SectionOption = {
   id: string;
-  name: string;
+  label: string;
 };
 
 type Props = {
@@ -32,12 +32,16 @@ export function SectionSelect({ classId, value, disabled, onChange }: Props) {
     }
 
     async function loadSections() {
-      const res = await fetch(`/api/v1/classes/${classId}/sections`);
+      try {
+        const res = await fetch(`/api/v1/sections/options?classId=${classId}`);
 
-      const result = await res.json();
+        const result = await res.json();
 
-      if (result.success) {
-        setSections(result.data);
+        if (result.success) {
+          setSections(result.data);
+        }
+      } catch {
+        setSections([]);
       }
     }
 
@@ -46,8 +50,8 @@ export function SectionSelect({ classId, value, disabled, onChange }: Props) {
 
   return (
     <Select
-      value={value}
-      onValueChange={onChange}
+      value={value || undefined}
+      onValueChange={(value) => onChange(value === "ALL" ? "" : value)}
       disabled={disabled || !classId}
     >
       <SelectTrigger>
@@ -55,9 +59,11 @@ export function SectionSelect({ classId, value, disabled, onChange }: Props) {
       </SelectTrigger>
 
       <SelectContent>
+        <SelectItem value="ALL">All Sections</SelectItem>
+
         {sections.map((section) => (
           <SelectItem key={section.id} value={section.id}>
-            {section.name}
+            {section.label}
           </SelectItem>
         ))}
       </SelectContent>

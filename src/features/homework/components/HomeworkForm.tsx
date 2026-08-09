@@ -1,0 +1,212 @@
+"use client";
+
+import { useEffect, useState } from "react";
+
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+
+import { toast } from "sonner";
+
+import { ClassSelect, SectionSelect } from "@/components/common/select";
+
+import { FormField, SubmitButton } from "@/components/common/forms";
+
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+
+import { homeworkSchema, HomeworkFormInput } from "../schemas/homework.schema";
+
+type Props = {
+  mode: "create" | "edit";
+
+  homeworkId?: string;
+
+  onSuccess: () => void;
+};
+
+export function HomeworkForm({ mode, homeworkId, onSuccess }: Props) {
+  const [loading, setLoading] = useState(false);
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+
+  const dueDate = tomorrow.toISOString().split("T")[0];
+
+  const form = useForm<HomeworkFormInput>({
+    resolver: zodResolver(homeworkSchema),
+
+    defaultValues: {
+      classId: "",
+      sectionId: "",
+      title: "Today's Homework",
+      description: "",
+      assignedDate: new Date().toISOString().split("T")[0],
+      dueDate: dueDate,
+      active: true,
+    },
+  });
+
+  useEffect(() => {
+    if (mode !== "edit" || !homeworkId) {
+      return;
+    }
+
+    async function load() {
+      try {
+        const response = await fetch(`/api/v1/homework/${homeworkId}`);
+
+        const result = await response.json();
+
+        if (!result.success) {
+          toast.error(result.message);
+          return;
+        }
+
+        const item = result.data;
+
+        form.reset({
+          classId: item.classId,
+
+          sectionId: item.sectionId ?? "",
+
+          title: item.title,
+
+          description: item.description ?? "",
+
+          assignedDate: new Date(item.assignedDate).toISOString().split("T")[0],
+
+          dueDate: item.dueDate
+            ? new Date(item.dueDate).toISOString().split("T")[0]
+            : "",
+
+          active: item.active,
+        });
+      } catch {
+        toast.error("Failed to load homework.");
+      }
+    }
+
+    load();
+  }, [mode, homeworkId, form]);
+
+  async function onSubmit(values: HomeworkFormInput) {
+    setLoading(true);
+
+    try {
+      const url =
+        mode === "create"
+          ? "/api/v1/homework"
+          : `/api/v1/homework/${homeworkId}`;
+
+      const method = mode === "create" ? "POST" : "PUT";
+
+      const response = await fetch(url, {
+        method,
+
+        headers: {
+          "Content-Type": "application/json",
+        },
+
+        body: JSON.stringify(values),
+      });
+
+      const result = await response.json();
+
+      if (!result.success) {
+        toast.error(result.message);
+        return;
+      }
+
+      toast.success(result.message);
+
+      onSuccess();
+    } catch {
+      toast.error("Failed to save homework.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+      <FormField label="Class" required>
+        <ClassSelect
+          value={form.watch("classId")}
+          onChange={(value) => {
+            form.setValue("classId", value, {
+              shouldDirty: true,
+              shouldValidate: true,
+            });
+
+            form.setValue("sectionId", "", {
+              shouldDirty: true,
+              shouldValidate: true,
+            });
+          }}
+        />
+      </FormField>
+
+      <FormField label="Section">
+        <SectionSelect
+          classId={form.watch("classId")}
+          value={form.watch("sectionId")}
+          onChange={(value) =>
+            form.setValue("sectionId", value, {
+              shouldDirty: true,
+              shouldValidate: true,
+            })
+          }
+        />
+      </FormField>
+
+      <FormField label="Title" required>
+        <Input placeholder="Enter homework title" {...form.register("title")} />
+      </FormField>
+
+      <FormField label="Description">
+        <Textarea
+          placeholder="Enter homework..."
+          rows={5}
+          {...form.register("description")}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.stopPropagation();
+            }
+          }}
+        />
+      </FormField>
+
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <FormField label="Due Date">
+          <Input type="date" {...form.register("dueDate")} />
+        </FormField>
+      </div>
+
+      <div className="flex items-center justify-between rounded-lg border p-4">
+        <div>
+          <h4 className="font-medium">Active</h4>
+
+          <p className="text-sm text-muted-foreground">Enable this homework.</p>
+        </div>
+
+        <Switch
+          checked={form.watch("active")}
+          onCheckedChange={(checked) =>
+            form.setValue("active", checked, {
+              shouldDirty: true,
+              shouldValidate: true,
+            })
+          }
+        />
+      </div>
+
+      <SubmitButton
+        loading={loading}
+        mode={mode}
+        createLabel="Create Homework"
+        updateLabel="Update Homework"
+        className="w-full"
+      />
+    </form>
+  );
+}
