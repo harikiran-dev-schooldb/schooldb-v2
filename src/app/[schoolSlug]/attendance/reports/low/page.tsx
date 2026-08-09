@@ -1,4 +1,4 @@
-import { AttendancePage } from "@/features/attendance/components/AttendancePage";
+import { LowAttendanceReport } from "@/features/attendance/components/LowAttendanceReport";
 import { requireTenant } from "@/lib/auth";
 
 type Props = {
@@ -7,14 +7,14 @@ type Props = {
   }>;
 };
 
-export default async function AttendanceRoutePage({ params }: Props) {
+export default async function LowAttendancePage({ params }: Props) {
   const { schoolSlug } = await params;
 
   await requireTenant();
 
   return (
     <div className="container mx-auto py-6">
-      <AttendancePage schoolSlug={schoolSlug} />
+      <LowAttendanceReport schoolSlug={schoolSlug} />
     </div>
   );
 }

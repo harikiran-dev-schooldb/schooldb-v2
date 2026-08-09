@@ -17,6 +17,14 @@ import { Button } from "@/components/ui/button";
 
 import { toast } from "sonner";
 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
 type Props = {
   mode: "create" | "edit";
   academicYearId?: string;
@@ -33,6 +41,7 @@ export function AcademicYearForm({ mode, academicYearId, onSuccess }: Props) {
       name: "",
       startDate: "",
       endDate: "",
+      attendanceMode: "ONCE_DAILY",
     },
   });
 
@@ -52,6 +61,7 @@ export function AcademicYearForm({ mode, academicYearId, onSuccess }: Props) {
         name: year.name,
         startDate: year.startDate.substring(0, 10),
         endDate: year.endDate.substring(0, 10),
+        attendanceMode: year.attendanceMode ?? "ONCE_DAILY",
       });
     }
 
@@ -90,8 +100,6 @@ export function AcademicYearForm({ mode, academicYearId, onSuccess }: Props) {
         mode === "create" ? "Academic year created." : "Academic year updated.",
       );
 
-      form.reset();
-
       onSuccess();
     } finally {
       setLoading(false);
@@ -105,6 +113,38 @@ export function AcademicYearForm({ mode, academicYearId, onSuccess }: Props) {
       <Input type="date" {...form.register("startDate")} />
 
       <Input type="date" {...form.register("endDate")} />
+
+      <div className="space-y-2">
+        <label className="text-sm font-medium">Attendance Mode</label>
+
+        <Select
+          value={form.watch("attendanceMode")}
+          onValueChange={(value) =>
+            form.setValue(
+              "attendanceMode",
+              value as AcademicYearFormInput["attendanceMode"],
+              {
+                shouldDirty: true,
+                shouldValidate: true,
+              },
+            )
+          }
+        >
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="Select attendance mode" />
+          </SelectTrigger>
+
+          <SelectContent>
+            <SelectItem value="ONCE_DAILY">Once Daily</SelectItem>
+
+            <SelectItem value="MORNING_AFTERNOON">
+              Morning + Afternoon
+            </SelectItem>
+
+            <SelectItem value="EVERY_PERIOD">Every Period</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
 
       <Button className="w-full" disabled={loading}>
         {loading

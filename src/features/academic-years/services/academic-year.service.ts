@@ -42,13 +42,14 @@ export const academicYearService = {
   },
 
   async options(schoolId: string) {
-    const years = await academicYearRepository.options(schoolId);
+  const years = await academicYearRepository.options(schoolId);
 
-    return years.map((item) => ({
-      id: item.id,
-      label: item.name,
-    }));
-  },
+  return years.map((item) => ({
+    id: item.id,
+    label: item.name,
+    attendanceMode: item.attendanceMode,
+  }));
+},
 
   async create(
     schoolId: string,
@@ -70,6 +71,7 @@ export const academicYearService = {
       name: input.name,
       startDate: new Date(input.startDate),
       endDate: new Date(input.endDate),
+      attendanceMode:input.attendanceMode,
       active: false,
 
       school: {
@@ -132,6 +134,7 @@ export const academicYearService = {
       name: input.name,
       startDate: new Date(input.startDate),
       endDate: new Date(input.endDate),
+      attendanceMode: input.attendanceMode
     });
   },
 

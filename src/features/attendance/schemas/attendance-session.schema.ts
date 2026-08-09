@@ -1,12 +1,42 @@
 import { z } from "zod";
 
-export const attendanceSessionSchema =
-  z.object({
-    timetableId: z.string().min(1),
+export const ATTENDANCE_SESSION_TYPE = [
+  "DAILY",
+  "MORNING",
+  "AFTERNOON",
+  "PERIOD",
+] as const;
 
-    attendanceDate: z.string(),
+export const attendanceSessionSchema = z
+  .object({
+    sessionType: z.enum(
+      ATTENDANCE_SESSION_TYPE
+    ),
+
+    timetableId: z.string().optional(),
+
+    academicYearId: z.string().min(1),
+
+    classId: z.string().min(1),
+
+    sectionId: z.string().min(1),
+
+    attendanceDate: z.string().min(1),
 
     remarks: z.string().optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (
+      data.sessionType === "PERIOD" &&
+      !data.timetableId
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["timetableId"],
+        message:
+          "Timetable is required for period attendance.",
+      });
+    }
   });
 
 export type AttendanceSessionFormInput =

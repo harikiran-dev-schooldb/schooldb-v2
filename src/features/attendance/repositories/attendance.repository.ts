@@ -297,5 +297,335 @@ getSessionStudents(
       academicYear: true,
     },
   });
-}
+},
+
+findSessionByType(
+  schoolId: string,
+  academicYearId: string,
+  classId: string,
+  sectionId: string,
+  sessionType: "DAILY" | "MORNING" | "AFTERNOON",
+  attendanceDate: Date
+) {
+  return prisma.attendanceSession.findFirst({
+    where: {
+      schoolId,
+      academicYearId,
+      classId,
+      sectionId,
+      sessionType,
+      attendanceDate,
+    },
+  });
+},
+
+listSessions(
+  schoolId: string,
+  options?: {
+    skip?: number;
+    take?: number;
+    academicYearId?: string;
+    classId?: string;
+    sectionId?: string;
+    date?: Date;
+  }
+) {
+  return prisma.attendanceSession.findMany({
+    where: {
+      schoolId,
+
+      ...(options?.academicYearId && {
+        academicYearId: options.academicYearId,
+      }),
+
+      ...(options?.classId && {
+        classId: options.classId,
+      }),
+
+      ...(options?.sectionId && {
+        sectionId: options.sectionId,
+      }),
+
+      ...(options?.date && {
+        attendanceDate: options.date,
+      }),
+    },
+
+    skip: options?.skip,
+    take: options?.take,
+
+    include: {
+      academicYear: true,
+      class: true,
+      section: true,
+      teacher: true,
+      subject: true,
+      period: true,
+
+      records: {
+        select: {
+          status: true,
+        },
+      },
+    },
+
+    orderBy: [
+      {
+        attendanceDate: "desc",
+      },
+      {
+        createdAt: "desc",
+      },
+    ],
+  });
+},
+
+countSessions(
+  schoolId: string,
+  options?: {
+    academicYearId?: string;
+    classId?: string;
+    sectionId?: string;
+    date?: Date;
+  }
+) {
+  return prisma.attendanceSession.count({
+    where: {
+      schoolId,
+
+      ...(options?.academicYearId && {
+        academicYearId: options.academicYearId,
+      }),
+
+      ...(options?.classId && {
+        classId: options.classId,
+      }),
+
+      ...(options?.sectionId && {
+        sectionId: options.sectionId,
+      }),
+
+      ...(options?.date && {
+        attendanceDate: options.date,
+      }),
+    },
+  });
+},
+
+studentAttendanceReport(
+  schoolId: string,
+  studentId: string,
+  academicYearId: string,
+  fromDate?: Date,
+  toDate?: Date
+) {
+  return prisma.attendance.findMany({
+    where: {
+      schoolId,
+      studentId,
+
+      session: {
+        academicYearId,
+
+        ...(fromDate || toDate
+          ? {
+              attendanceDate: {
+                ...(fromDate && {
+                  gte: fromDate,
+                }),
+
+                ...(toDate && {
+                  lte: toDate,
+                }),
+              },
+            }
+          : {}),
+      },
+    },
+
+    include: {
+      session: {
+        include: {
+          academicYear: true,
+          class: true,
+          section: true,
+          teacher: true,
+          subject: true,
+          period: true,
+        },
+      },
+    },
+
+    orderBy: {
+      session: {
+        attendanceDate: "desc",
+      },
+    },
+  });
+},
+
+async classAttendanceReport(
+  schoolId: string,
+  academicYearId: string,
+  classId: string,
+  sectionId: string,
+  fromDate?: Date,
+  toDate?: Date
+) {
+  const enrollments =
+    await prisma.studentEnrollment.findMany({
+      where: {
+        schoolId,
+        academicYearId,
+        classId,
+        sectionId,
+        active: true,
+      },
+
+      select: {
+        studentId: true,
+        rollNo: true,
+
+        student: {
+          select: {
+            id: true,
+            admissionNo: true,
+            fullName: true,
+          },
+        },
+      },
+
+      orderBy: [
+        {
+          rollNo: "asc",
+        },
+        {
+          student: {
+            fullName: "asc",
+          },
+        },
+      ],
+    });
+
+  const studentIds =
+    enrollments.map(
+      (item) => item.studentId
+    );
+
+  if (studentIds.length === 0) {
+    return {
+      enrollments,
+      records: [],
+    };
+  }
+
+  const records =
+    await prisma.attendance.findMany({
+      where: {
+        schoolId,
+        studentId: {
+          in: studentIds,
+        },
+
+        session: {
+          academicYearId,
+          classId,
+          sectionId,
+
+          ...(fromDate || toDate
+            ? {
+                attendanceDate: {
+                  ...(fromDate && {
+                    gte: fromDate,
+                  }),
+
+                  ...(toDate && {
+                    lte: toDate,
+                  }),
+                },
+              }
+            : {}),
+        },
+      },
+
+      select: {
+        studentId: true,
+        status: true,
+
+        session: {
+  select: {
+    id: true,
+    attendanceDate: true,
+    sessionType: true,
+    academicYear: {
+      select: {
+        id: true,
+        attendanceMode: true,
+      },
+    },
+  },
+},
+      },
+
+      orderBy: {
+        session: {
+          attendanceDate: "desc",
+        },
+      },
+    });
+
+  return {
+    enrollments,
+    records,
+  };
+},
+
+lowAttendanceReport(
+  schoolId: string,
+  academicYearId: string,
+  classId?: string,
+  sectionId?: string,
+  fromDate?: Date,
+  toDate?: Date
+) {
+  return prisma.studentEnrollment.findMany({
+    where: {
+      schoolId,
+      academicYearId,
+      active: true,
+
+      ...(classId && {
+        classId,
+      }),
+
+      ...(sectionId && {
+        sectionId,
+      }),
+    },
+
+    select: {
+      studentId: true,
+      rollNo: true,
+
+      student: {
+        select: {
+          id: true,
+          admissionNo: true,
+          fullName: true,
+        },
+      },
+    },
+
+    orderBy: [
+      {
+        rollNo: "asc",
+      },
+      {
+        student: {
+          fullName: "asc",
+        },
+      },
+    ],
+  });
+},
 };
