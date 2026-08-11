@@ -97,6 +97,8 @@ model School {
   academicPeriods    AcademicPeriod[]
   feeCategories      FeeCategory[]
   feePlans           FeePlan[]
+  studentFees        StudentFee[]
+  feePayments        FeePayment[]
 }
 
 model User {
@@ -360,6 +362,9 @@ model StudentEnrollment {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  studentFees StudentFee[]
+  feePayments FeePayment[]
 
   @@unique([studentId, academicYearId])
   @@unique([academicYearId, classId, sectionId, rollNo])
@@ -667,7 +672,9 @@ model FeeCategory {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  items FeePlanItem[]
+  items           FeePlanItem[]
+  studentFees     StudentFee[]
+  studentFeeItems StudentFeeItem[]
 
   @@unique([schoolId, name])
   @@index([schoolId, active])
@@ -692,8 +699,9 @@ model FeePlan {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  items   FeePlanItem[]
-  classes FeePlanClass[]
+  items       FeePlanItem[]
+  classes     FeePlanClass[]
+  studentFees StudentFee[]
 
   @@unique([schoolId, academicYearId, name])
   @@index([schoolId, academicYearId])
@@ -734,6 +742,8 @@ model FeePlanItem {
 
   installments       FeeInstallment[]
   customInstallments FeePlanCustomInstallment[]
+  studentFees        StudentFee[]
+  studentFeeItems    StudentFeeItem[]
 
   @@index([feePlanId])
   @@index([feeCategoryId])
@@ -786,9 +796,184 @@ model FeeInstallment {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  studentFees            StudentFee[]
+  studentFeeInstallments StudentFeeInstallment[]
+
   @@index([feePlanItemId])
   @@index([academicPeriodId])
   @@index([dueDate])
+}
+
+model StudentFee {
+  id String @id @default(cuid())
+
+  schoolId String
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  studentEnrollmentId String
+  studentEnrollment   StudentEnrollment @relation(fields: [studentEnrollmentId], references: [id], onDelete: Cascade)
+
+  feePlanId String
+  feePlan   FeePlan @relation(fields: [feePlanId], references: [id])
+
+  assignedAt DateTime @default(now())
+
+  active Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  items            StudentFeeItem[]
+  feeCategory      FeeCategory?     @relation(fields: [feeCategoryId], references: [id])
+  feeCategoryId    String?
+  feePlanItem      FeePlanItem?     @relation(fields: [feePlanItemId], references: [id])
+  feePlanItemId    String?
+  feeInstallment   FeeInstallment?  @relation(fields: [feeInstallmentId], references: [id])
+  feeInstallmentId String?
+
+  @@unique([studentEnrollmentId, feePlanId])
+  @@index([schoolId, studentEnrollmentId])
+  @@index([feePlanId])
+}
+
+model StudentFeeItem {
+  id String @id @default(cuid())
+
+  studentFeeId String
+  studentFee   StudentFee @relation(fields: [studentFeeId], references: [id], onDelete: Cascade)
+
+  feePlanItemId String
+  feePlanItem   FeePlanItem @relation(fields: [feePlanItemId], references: [id])
+
+  feeCategoryId String
+  feeCategory   FeeCategory @relation(fields: [feeCategoryId], references: [id])
+
+  amount Decimal @db.Decimal(12, 2)
+
+  concession Decimal @default(0) @db.Decimal(12, 2)
+
+  finalAmount Decimal @db.Decimal(12, 2)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  installments StudentFeeInstallment[]
+
+  @@index([studentFeeId])
+  @@index([feePlanItemId])
+  @@index([feeCategoryId])
+}
+
+model StudentFeeInstallment {
+  id String @id @default(cuid())
+
+  studentFeeItemId String
+  studentFeeItem   StudentFeeItem @relation(fields: [studentFeeItemId], references: [id], onDelete: Cascade)
+
+  feeInstallmentId String?
+  feeInstallment   FeeInstallment? @relation(fields: [feeInstallmentId], references: [id])
+
+  name String
+
+  amount Decimal @db.Decimal(12, 2)
+
+  concession Decimal @default(0) @db.Decimal(12, 2)
+
+  payableAmount Decimal @db.Decimal(12, 2)
+
+  paidAmount Decimal @default(0) @db.Decimal(12, 2)
+
+  dueDate DateTime @db.Date
+
+  status StudentFeeInstallmentStatus @default(PENDING)
+
+  paymentAllocations FeePaymentAllocation[]
+
+  sequence Int
+
+  periodStart DateTime? @db.Date
+  periodEnd   DateTime? @db.Date
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([studentFeeItemId])
+  @@index([feeInstallmentId])
+  @@index([dueDate])
+  @@index([status])
+}
+
+model FeePayment {
+  id String @id @default(cuid())
+
+  schoolId String
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  studentEnrollmentId String
+  studentEnrollment   StudentEnrollment @relation(fields: [studentEnrollmentId], references: [id])
+
+  receiptNo String
+
+  paymentDate DateTime @db.Date
+
+  amount Decimal @db.Decimal(12, 2)
+
+  paymentMode FeePaymentMode
+
+  referenceNo String?
+
+  remarks String?
+
+  status FeePaymentStatus @default(SUCCESS)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  allocations FeePaymentAllocation[]
+
+  @@unique([schoolId, receiptNo])
+  @@index([schoolId, studentEnrollmentId])
+  @@index([paymentDate])
+  @@index([status])
+}
+
+model FeePaymentAllocation {
+  id String @id @default(cuid())
+
+  paymentId String
+  payment   FeePayment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+  studentFeeInstallmentId String
+  studentFeeInstallment   StudentFeeInstallment @relation(fields: [studentFeeInstallmentId], references: [id])
+
+  amount Decimal @db.Decimal(12, 2)
+
+  createdAt DateTime @default(now())
+
+  @@unique([paymentId, studentFeeInstallmentId])
+  @@index([studentFeeInstallmentId])
+}
+
+enum StudentFeeInstallmentStatus {
+  PENDING
+  PARTIAL
+  PAID
+  WAIVED
+}
+
+enum FeePaymentMode {
+  CASH
+  UPI
+  CARD
+  BANK_TRANSFER
+  CHEQUE
+  ONLINE
+}
+
+enum FeePaymentStatus {
+  SUCCESS
+  CANCELLED
+  REFUNDED
 }
 
 enum FeeFrequency {
