@@ -81,6 +81,7 @@ export const feePlanColumns: ColumnDef<FeePlan>[] = [
       <FeePlanActions
         feePlanId={row.original.id}
         active={row.original.active}
+        feePlanName={row.original.name}
       />
     ),
   },
