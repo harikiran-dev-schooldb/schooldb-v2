@@ -116,6 +116,17 @@ export const navigation = [
   },
 
   {
+    title: "Fees",
+    icon: IndianRupee,
+    children: [
+      {
+        title: "Fee Plans",
+        href: "fees/plans",
+      },
+    ],
+  },
+  
+  {
     title: "Academic Work",
     icon: BookOpen,
     children: [
@@ -130,11 +141,6 @@ export const navigation = [
     ],
   },
 
-  {
-    title: "Fees",
-    href: "fees",
-    icon: IndianRupee,
-  },
 
   {
     title: "Settings",

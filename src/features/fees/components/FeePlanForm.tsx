@@ -61,6 +61,9 @@ export function FeePlanForm({ mode, feePlanId, onSuccess }: Props) {
 
   const [feeCategories, setFeeCategories] = useState<FeeCategory[]>([]);
 
+  const [hasGeneratedInstallments, setHasGeneratedInstallments] =
+    useState(false);
+
   const [customInstallments, setCustomInstallments] = useState<
     Record<number, CustomInstallment[]>
   >({});
@@ -150,6 +153,14 @@ export function FeePlanForm({ mode, feePlanId, onSuccess }: Props) {
 
         const plan = result.data;
 
+        const hasInstallments =
+          plan.items?.some(
+            (item: { _count?: { installments: number } }) =>
+              (item._count?.installments ?? 0) > 0,
+          ) ?? false;
+
+        setHasGeneratedInstallments(hasInstallments);
+
         form.reset({
           academicYearId: plan.academicYearId,
           name: plan.name,
@@ -222,6 +233,15 @@ export function FeePlanForm({ mode, feePlanId, onSuccess }: Props) {
           sequence: index + 1,
         }));
 
+      const total = updated.reduce(
+        (sum, item) => sum + Number(item.amount || 0),
+        0,
+      );
+
+      form.setValue(`items.${itemIndex}.amount`, total, {
+        shouldValidate: true,
+      });
+
       return {
         ...current,
         [itemIndex]: updated,
@@ -246,6 +266,15 @@ export function FeePlanForm({ mode, feePlanId, onSuccess }: Props) {
             }
           : item,
       );
+
+      const total = updated.reduce(
+        (sum, item) => sum + Number(item.amount || 0),
+        0,
+      );
+
+      form.setValue(`items.${itemIndex}.amount`, total, {
+        shouldValidate: true,
+      });
 
       return {
         ...current,
@@ -364,6 +393,7 @@ export function FeePlanForm({ mode, feePlanId, onSuccess }: Props) {
         <label className="text-sm font-medium">Academic Year</label>
 
         <select
+          disabled={mode === "edit"}
           className="w-full rounded-md border bg-background px-3 py-2 text-sm"
           {...form.register("academicYearId")}
         >
@@ -426,6 +456,17 @@ export function FeePlanForm({ mode, feePlanId, onSuccess }: Props) {
         )}
       </div>
 
+      {mode === "edit" && hasGeneratedInstallments && (
+        <div className="rounded-md border bg-muted/30 p-3 text-sm">
+          <p className="font-medium">🔒 Fee structure locked</p>
+
+          <p className="mt-1 text-muted-foreground">
+            Installments have already been generated for this fee plan. Fee
+            category, frequency, amount, and mandatory status cannot be changed.
+          </p>
+        </div>
+      )}
+
       {/* Fee Items */}
 
       <div className="space-y-4">
@@ -435,6 +476,7 @@ export function FeePlanForm({ mode, feePlanId, onSuccess }: Props) {
           <Button
             type="button"
             variant="outline"
+            disabled={hasGeneratedInstallments}
             onClick={() =>
               append({
                 feeCategoryId: "",
@@ -456,6 +498,7 @@ export function FeePlanForm({ mode, feePlanId, onSuccess }: Props) {
               <label className="text-sm font-medium">Fee Category</label>
 
               <select
+                disabled={hasGeneratedInstallments}
                 className="w-full rounded-md border bg-background px-3 py-2 text-sm"
                 {...form.register(`items.${index}.feeCategoryId`)}
               >
@@ -475,6 +518,7 @@ export function FeePlanForm({ mode, feePlanId, onSuccess }: Props) {
               <label className="text-sm font-medium">Frequency</label>
 
               <select
+                disabled={hasGeneratedInstallments}
                 className="w-full rounded-md border bg-background px-3 py-2 text-sm"
                 {...form.register(`items.${index}.frequency`)}
               >
@@ -496,6 +540,7 @@ export function FeePlanForm({ mode, feePlanId, onSuccess }: Props) {
                   type="number"
                   min="0"
                   step="0.01"
+                  disabled={hasGeneratedInstallments}
                   {...form.register(`items.${index}.amount`, {
                     valueAsNumber: true,
                   })}
@@ -536,6 +581,7 @@ export function FeePlanForm({ mode, feePlanId, onSuccess }: Props) {
                     type="button"
                     variant="outline"
                     size="sm"
+                    disabled={hasGeneratedInstallments}
                     onClick={() => addCustomInstallment(index)}
                   >
                     Add Installment
@@ -556,6 +602,7 @@ export function FeePlanForm({ mode, feePlanId, onSuccess }: Props) {
                         <Button
                           type="button"
                           variant="destructive"
+                          disabled={hasGeneratedInstallments}
                           size="sm"
                           onClick={() =>
                             removeCustomInstallment(index, installmentIndex)
@@ -571,6 +618,7 @@ export function FeePlanForm({ mode, feePlanId, onSuccess }: Props) {
 
                           <Input
                             placeholder="April Fee"
+                            disabled={hasGeneratedInstallments}
                             value={installment.name}
                             onChange={(event) =>
                               updateCustomInstallment(
@@ -592,6 +640,7 @@ export function FeePlanForm({ mode, feePlanId, onSuccess }: Props) {
                             step="0.01"
                             placeholder="10000"
                             value={installment.amount || ""}
+                            disabled={hasGeneratedInstallments}
                             onChange={(event) =>
                               updateCustomInstallment(
                                 index,
@@ -611,6 +660,7 @@ export function FeePlanForm({ mode, feePlanId, onSuccess }: Props) {
                           <Input
                             type="date"
                             value={installment.dueDate}
+                            disabled={hasGeneratedInstallments}
                             onChange={(event) =>
                               updateCustomInstallment(
                                 index,
@@ -630,6 +680,7 @@ export function FeePlanForm({ mode, feePlanId, onSuccess }: Props) {
                           <Input
                             type="date"
                             value={installment.periodStart}
+                            disabled={hasGeneratedInstallments}
                             onChange={(event) =>
                               updateCustomInstallment(
                                 index,
@@ -648,6 +699,7 @@ export function FeePlanForm({ mode, feePlanId, onSuccess }: Props) {
 
                           <Input
                             type="date"
+                            disabled={hasGeneratedInstallments}
                             value={installment.periodEnd}
                             onChange={(event) =>
                               updateCustomInstallment(
@@ -677,6 +729,7 @@ export function FeePlanForm({ mode, feePlanId, onSuccess }: Props) {
             <label className="flex items-center gap-2 text-sm">
               <input
                 type="checkbox"
+                disabled={hasGeneratedInstallments}
                 {...form.register(`items.${index}.mandatory`)}
               />
               Mandatory
@@ -687,6 +740,7 @@ export function FeePlanForm({ mode, feePlanId, onSuccess }: Props) {
                 type="button"
                 variant="destructive"
                 onClick={() => remove(index)}
+                disabled={hasGeneratedInstallments}
               >
                 Remove
               </Button>
@@ -694,6 +748,12 @@ export function FeePlanForm({ mode, feePlanId, onSuccess }: Props) {
           </div>
         ))}
       </div>
+
+      {Object.keys(form.formState.errors).length > 0 && (
+        <div className="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
+          Please complete all required fields.
+        </div>
+      )}
 
       <Button type="submit" className="w-full" disabled={loading}>
         {loading
