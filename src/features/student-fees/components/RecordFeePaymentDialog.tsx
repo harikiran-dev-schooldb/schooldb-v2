@@ -64,6 +64,8 @@ export function RecordFeePaymentDialog({
 
   const [loading, setLoading] = useState(false);
 
+  const [paymentId, setPaymentId] = useState<string | null>(null);
+
   useEffect(() => {
     if (!open) return;
 
@@ -117,6 +119,11 @@ export function RecordFeePaymentDialog({
 
     try {
       setLoading(true);
+      console.log({
+        studentEnrollmentId,
+        installmentId,
+        amount: numericAmount,
+      });
 
       const response = await fetch("/api/v1/fee-payments", {
         method: "POST",
@@ -155,9 +162,22 @@ export function RecordFeePaymentDialog({
 
       toast.success("Fee payment recorded successfully.");
 
+      const newPaymentId = result.data?.id;
+
+      if (!newPaymentId) {
+        toast.error("Payment was recorded, but receipt ID was not returned.");
+        onOpenChange(false);
+        onSuccess();
+        return;
+      }
+
+      setPaymentId(newPaymentId);
+
       onOpenChange(false);
 
       onSuccess();
+
+      window.open(`/fee-receipts/${newPaymentId}`, "_blank");
     } catch {
       toast.error("Failed to record payment.");
     } finally {

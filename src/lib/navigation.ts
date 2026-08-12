@@ -123,6 +123,22 @@ export const navigation = [
         title: "Fee Plans",
         href: "fees/plans",
       },
+      {
+        title: "Fee Categories",
+        href: "fees/categories",
+      },
+      {
+        title: "Fee Dashboard",
+        href: "fees/dashboard",
+      },
+      {
+        title: "Fee Due",
+        href: "fees/outstanding",
+      },
+      {
+        title: "Reciepts",
+        href: "fees/receipts",
+      },
     ],
   },
   

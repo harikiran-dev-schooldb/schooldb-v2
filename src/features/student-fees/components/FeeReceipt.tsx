@@ -349,6 +349,26 @@ export function FeeReceipt({ paymentId }: Props) {
           body {
             background: white !important;
           }
+
+          body * {
+            visibility: hidden;
+          }
+
+          #fee-receipt,
+          #fee-receipt * {
+            visibility: visible;
+          }
+
+          #fee-receipt {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            margin: 0;
+            padding: 0;
+            border: 0 !important;
+            box-shadow: none !important;
+          }
         }
       `}</style>
     </>
