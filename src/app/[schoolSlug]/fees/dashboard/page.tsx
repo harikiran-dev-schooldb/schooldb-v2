@@ -7,6 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
+import { useParams } from "next/navigation";
+
 type DashboardData = {
   summary: {
     totalAmount: number;
@@ -133,6 +135,10 @@ export default function FeeDashboardPage() {
   }
 
   const { summary, collection, paymentModes, recentPayments } = data;
+
+  const { schoolSlug } = useParams<{
+    schoolSlug: string;
+  }>();
 
   return (
     <div className="space-y-6 p-6">
@@ -391,7 +397,7 @@ export default function FeeDashboardPage() {
                             size="sm"
                             onClick={() =>
                               window.open(
-                                `/fees/receipts/${payment.id}`,
+                                `/${schoolSlug}/fees/receipts/${payment.id}`,
                                 "_blank",
                               )
                             }
