@@ -10,6 +10,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RecordFeePaymentDialog } from "./RecordFeePaymentDialog";
 import { useParams } from "next/navigation";
 
+import { ConcessionDialog } from "./ConcessionDialog";
+
 type Installment = {
   id: string;
   feeCategory: {
@@ -136,6 +138,11 @@ export function StudentFeeLedger({ studentFeeId }: Props) {
   const params = useParams<{
     schoolSlug: string;
   }>();
+
+  const [concessionOpen, setConcessionOpen] = useState(false);
+
+  const [selectedInstallment, setSelectedInstallment] =
+    useState<Installment | null>(null);
 
   const loadLedger = useCallback(async () => {
     try {
@@ -315,6 +322,8 @@ export function StudentFeeLedger({ studentFeeId }: Props) {
                   <th className="p-3 text-right">Balance</th>
 
                   <th className="p-3">Status</th>
+
+                  <th className="p-3">Action</th>
                 </tr>
               </thead>
 
@@ -352,6 +361,19 @@ export function StudentFeeLedger({ studentFeeId }: Props) {
                         {installment.status}
                       </Badge>
                     </td>
+
+                    <td className="p-3">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedInstallment(installment);
+                          setConcessionOpen(true);
+                        }}
+                      >
+                        Concession
+                      </Button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -359,8 +381,6 @@ export function StudentFeeLedger({ studentFeeId }: Props) {
           </div>
         </CardContent>
       </Card>
-
-      {/* Payment History */}
 
       {/* Payment History */}
 
@@ -449,6 +469,13 @@ export function StudentFeeLedger({ studentFeeId }: Props) {
           )}
         </CardContent>
       </Card>
+
+      <ConcessionDialog
+        open={concessionOpen}
+        onOpenChange={setConcessionOpen}
+        installment={selectedInstallment}
+        onSuccess={loadLedger}
+      />
 
       <RecordFeePaymentDialog
         open={paymentOpen}
