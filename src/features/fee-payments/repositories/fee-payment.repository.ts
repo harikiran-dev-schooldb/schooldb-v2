@@ -247,4 +247,87 @@ export const feePaymentRepository = {
       return payment;
     });
   },
+
+  async void(
+  schoolId: string,
+  paymentId: string,
+  reason: string,
+) {
+  return prisma.$transaction(async (tx) => {
+    const payment =
+      await tx.feePayment.findFirst({
+        where: {
+          id: paymentId,
+          schoolId,
+        },
+        include: {
+          allocations: {
+            include: {
+              studentFeeInstallment: true,
+            },
+          },
+        },
+      });
+
+    if (!payment) {
+      throw new Error("Payment not found.");
+    }
+
+    if (payment.status === "VOID") {
+      throw new Error(
+        "This payment has already been voided.",
+      );
+    }
+
+    if (payment.status !== "SUCCESS") {
+      throw new Error(
+        "Only successful payments can be voided.",
+      );
+    }
+
+    // Reverse every payment allocation
+    for (const allocation of payment.allocations) {
+      const installment =
+        allocation.studentFeeInstallment;
+
+      const newPaidAmount = Math.max(
+        0,
+        Number(installment.paidAmount) -
+          Number(allocation.amount),
+      );
+
+      const payableAmount = Number(
+        installment.payableAmount,
+      );
+
+      const status =
+        newPaidAmount <= 0
+          ? "PENDING"
+          : newPaidAmount < payableAmount
+            ? "PARTIAL"
+            : "PAID";
+
+      await tx.studentFeeInstallment.update({
+        where: {
+          id: installment.id,
+        },
+        data: {
+          paidAmount: newPaidAmount,
+          status,
+        },
+      });
+    }
+
+    return tx.feePayment.update({
+      where: {
+        id: payment.id,
+      },
+      data: {
+        status: "VOID",
+        voidReason: reason,
+        voidedAt: new Date(),
+      },
+    });
+  });
+},
 };

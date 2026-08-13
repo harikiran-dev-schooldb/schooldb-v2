@@ -35,6 +35,8 @@ type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 
+  schoolSlug: string;
+
   studentFeeId: string;
   studentEnrollmentId: string;
 
@@ -46,6 +48,7 @@ type Props = {
 export function RecordFeePaymentDialog({
   open,
   onOpenChange,
+  schoolSlug,
   studentEnrollmentId,
   installments,
   onSuccess,
@@ -63,8 +66,6 @@ export function RecordFeePaymentDialog({
   const [remarks, setRemarks] = useState("");
 
   const [loading, setLoading] = useState(false);
-
-  const [paymentId, setPaymentId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -171,13 +172,11 @@ export function RecordFeePaymentDialog({
         return;
       }
 
-      setPaymentId(newPaymentId);
-
       onOpenChange(false);
 
       onSuccess();
 
-      window.open(`/fee-receipts/${newPaymentId}`, "_blank");
+      window.open(`/${schoolSlug}/fees/receipts/${newPaymentId}`, "_blank");
     } catch {
       toast.error("Failed to record payment.");
     } finally {

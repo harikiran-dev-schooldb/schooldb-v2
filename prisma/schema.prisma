@@ -926,6 +926,10 @@ model FeePayment {
 
   status FeePaymentStatus @default(SUCCESS)
 
+  voidReason String?
+  voidedAt   DateTime?
+  voidedBy   String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -974,6 +978,7 @@ enum FeePaymentStatus {
   SUCCESS
   CANCELLED
   REFUNDED
+  VOID
 }
 
 enum FeeFrequency {
