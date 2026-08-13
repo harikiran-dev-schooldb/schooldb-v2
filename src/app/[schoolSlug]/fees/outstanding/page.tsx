@@ -9,6 +9,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { RecordFeePaymentDialog } from "@/features/student-fees/components/RecordFeePaymentDialog";
 
+type Props = {
+  params: Promise<{
+    schoolSlug: string;
+  }>;
+};
+
 type OutstandingRow = {
   id: string;
   installmentName: string;
@@ -83,7 +89,8 @@ function formatDate(value: string) {
   });
 }
 
-export default function OutstandingFeesPage() {
+export default function OutstandingFeesPage({ params }: Props) {
+  const [schoolSlug, setSchoolSlug] = useState("");
   const [data, setData] = useState<DashboardData | null>(null);
 
   const [loading, setLoading] = useState(true);
@@ -95,6 +102,15 @@ export default function OutstandingFeesPage() {
   const [selectedRow, setSelectedRow] = useState<OutstandingRow | null>(null);
 
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
+
+  useEffect(() => {
+    async function loadParams() {
+      const resolvedParams = await params;
+      setSchoolSlug(resolvedParams.schoolSlug);
+    }
+
+    loadParams();
+  }, [params]);
 
   async function loadOutstanding(searchValue = "") {
     try {
@@ -366,6 +382,7 @@ export default function OutstandingFeesPage() {
         <RecordFeePaymentDialog
           open={paymentDialogOpen}
           onOpenChange={setPaymentDialogOpen}
+          schoolSlug={schoolSlug}
           studentFeeId={selectedRow.studentFeeId}
           studentEnrollmentId={selectedRow.studentEnrollmentId}
           installments={[

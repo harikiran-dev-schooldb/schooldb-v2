@@ -11,4 +11,16 @@ export const feePaymentService = {
       input,
     );
   },
+
+  void(
+    schoolId: string,
+    paymentId: string,
+    reason: string,
+  ) {
+    return feePaymentRepository.void(
+      schoolId,
+      paymentId,
+      reason,
+    );
+  },
 };

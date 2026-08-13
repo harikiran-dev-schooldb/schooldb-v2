@@ -120,16 +120,12 @@ export const navigation = [
     icon: IndianRupee,
     children: [
       {
-        title: "Fee Plans",
-        href: "fees/plans",
-      },
-      {
-        title: "Fee Categories",
-        href: "fees/categories",
-      },
-      {
         title: "Fee Dashboard",
         href: "fees/dashboard",
+      },
+      {
+        title: "Payments",
+        href: "fees/payments",
       },
       {
         title: "Fee Due",
@@ -138,6 +134,14 @@ export const navigation = [
       {
         title: "Reciepts",
         href: "fees/receipts",
+      },
+      {
+        title: "Fee Plans",
+        href: "fees/plans",
+      },
+      {
+        title: "Fee Categories",
+        href: "fees/categories",
       },
     ],
   },
