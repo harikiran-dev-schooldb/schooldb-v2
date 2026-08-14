@@ -11,14 +11,19 @@ import {
   studentFeeService,
 } from "@/features/student-fees/services/student-fee.service";
 
-export async function GET() {
+export async function GET(req: Request) {
   return apiHandler(async () => {
-    const tenant =
-      await requireTenant();
+    const tenant = await requireTenant();
+
+    const { searchParams } = new URL(req.url);
+
+    const studentId =
+      searchParams.get("studentId") || undefined;
 
     const fees =
       await studentFeeService.list(
         tenant.schoolId,
+        studentId,
       );
 
     return ApiResponse.success(fees);

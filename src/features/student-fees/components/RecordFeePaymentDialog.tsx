@@ -35,7 +35,7 @@ type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 
-  schoolSlug: string;
+  schoolSlug?: string;
 
   studentFeeId: string;
   studentEnrollmentId: string;

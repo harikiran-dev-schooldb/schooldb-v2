@@ -72,6 +72,10 @@ function date(value: string) {
 }
 
 export default function FeeDashboardPage() {
+  const { schoolSlug } = useParams<{
+    schoolSlug: string;
+  }>();
+
   const [data, setData] = useState<DashboardData | null>(null);
 
   const [loading, setLoading] = useState(true);
@@ -135,10 +139,6 @@ export default function FeeDashboardPage() {
   }
 
   const { summary, collection, paymentModes, recentPayments } = data;
-
-  const { schoolSlug } = useParams<{
-    schoolSlug: string;
-  }>();
 
   return (
     <div className="space-y-6 p-6">

@@ -68,7 +68,7 @@ export function StudentProfile({ studentId }: Props) {
         </TabsContent>
 
         <TabsContent value="fees">
-          <StudentFeeTab />
+          <StudentFeeTab studentId={studentId} />
         </TabsContent>
 
         <TabsContent value="documents">
