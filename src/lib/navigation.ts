@@ -88,6 +88,46 @@ export const navigation = [
     ],
   },
 
+  
+  {
+    title: "Fees",
+    icon: IndianRupee,
+    children: [
+      {
+        title: "Fee Dashboard",
+        href: "fees/dashboard",
+      },
+      {
+        title: "Collect",
+        href: "fees/collection",
+      },
+      {
+        title: "Payments",
+        href: "fees/payments",
+      },
+      {
+        title: "Fee Due",
+        href: "fees/outstanding",
+      },
+      {
+        title: "Reciepts",
+        href: "fees/receipts",
+      },
+      {
+        title: "Fee Plans",
+        href: "fees/plans",
+      },
+      {
+        title: "Fee Categories",
+        href: "fees/categories",
+      },
+      {
+        title: "Student Allocation",
+        href: "fees/students",
+      },
+    ],
+  },
+  
   {
     title: "Timetable",
     icon: CalendarCheck,
@@ -111,37 +151,6 @@ export const navigation = [
       {
         title: "Teacher Timetable",
         href: "timetable/teacher",
-      },
-    ],
-  },
-
-  {
-    title: "Fees",
-    icon: IndianRupee,
-    children: [
-      {
-        title: "Fee Dashboard",
-        href: "fees/dashboard",
-      },
-      {
-        title: "Payments",
-        href: "fees/payments",
-      },
-      {
-        title: "Fee Due",
-        href: "fees/outstanding",
-      },
-      {
-        title: "Reciepts",
-        href: "fees/receipts",
-      },
-      {
-        title: "Fee Plans",
-        href: "fees/plans",
-      },
-      {
-        title: "Fee Categories",
-        href: "fees/categories",
       },
     ],
   },

@@ -5,9 +5,13 @@ import type {
 } from "../schemas/student-fee.schema";
 
 export const studentFeeService = {
-  list(schoolId: string) {
+  list(
+    schoolId: string,
+    studentId?: string,
+  ) {
     return studentFeeRepository.list(
       schoolId,
+      studentId,
     );
   },
 
@@ -31,4 +35,14 @@ export const studentFeeService = {
       schoolId,
     );
   },
+
+  applyFeePlanToStudents(
+  schoolId: string,
+  feePlanId: string,
+) {
+  return studentFeeRepository.applyFeePlanToStudents(
+    schoolId,
+    feePlanId,
+  );
+},
 };

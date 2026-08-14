@@ -90,42 +90,53 @@ export const studentFeeRepository = {
     });
   },
 
-  list(schoolId: string) {
-    return prisma.studentFee.findMany({
-      where: {
-        schoolId,
-        active: true,
-      },
+  list(
+  schoolId: string,
+  studentId?: string,
+) {
+  return prisma.studentFee.findMany({
+    where: {
+      schoolId,
+      active: true,
 
-      include: {
-        studentEnrollment: {
-          include: {
-            student: true,
-            class: true,
-            section: true,
-            academicYear: true,
-          },
-        },
+      ...(studentId
+        ? {
+            studentEnrollment: {
+              studentId,
+            },
+          }
+        : {}),
+    },
 
-        feePlan: {
-          include: {
-            academicYear: true,
-          },
-        },
-
-        items: {
-          include: {
-            feeCategory: true,
-            installments: true,
-          },
+    include: {
+      studentEnrollment: {
+        include: {
+          student: true,
+          class: true,
+          section: true,
+          academicYear: true,
         },
       },
 
-      orderBy: {
-        createdAt: "desc",
+      feePlan: {
+        include: {
+          academicYear: true,
+        },
       },
-    });
-  },
+
+      items: {
+        include: {
+          feeCategory: true,
+          installments: true,
+        },
+      },
+    },
+
+    orderBy: {
+      createdAt: "desc",
+    },
+  });
+},
 
   create(
     schoolId: string,
@@ -295,4 +306,99 @@ export const studentFeeRepository = {
       return studentFee;
     });
   },
+
+  async applyFeePlanToStudents(
+  schoolId: string,
+  feePlanId: string,
+) {
+  const plan = await prisma.feePlan.findFirst({
+    where: {
+      id: feePlanId,
+      schoolId,
+      active: true,
+    },
+
+    include: {
+      classes: {
+        select: {
+          classId: true,
+        },
+      },
+    },
+  });
+
+  if (!plan) {
+    throw new Error("Active fee plan not found.");
+  }
+
+  const enrollments =
+    await prisma.studentEnrollment.findMany({
+      where: {
+        schoolId,
+        active: true,
+        academicYearId: plan.academicYearId,
+
+        ...(!plan.appliesToAllClasses
+          ? {
+              classId: {
+                in: plan.classes.map(
+                  (item) => item.classId,
+                ),
+              },
+            }
+          : {}),
+      },
+
+      select: {
+        id: true,
+      },
+    });
+
+  let created = 0;
+  let existing = 0;
+  let failed = 0;
+
+  for (const enrollment of enrollments) {
+    try {
+      const alreadyAssigned =
+        await prisma.studentFee.findFirst({
+          where: {
+            schoolId,
+            studentEnrollmentId: enrollment.id,
+            feePlanId,
+          },
+          select: {
+            id: true,
+          },
+        });
+
+      if (alreadyAssigned) {
+        existing++;
+        continue;
+      }
+
+      await this.create(
+        schoolId,
+        enrollment.id,
+        feePlanId,
+      );
+
+      created++;
+    } catch (error) {
+      console.error(
+        `Failed to apply fee plan to enrollment ${enrollment.id}`,
+        error,
+      );
+
+      failed++;
+    }
+  }
+
+  return {
+    totalStudents: enrollments.length,
+    created,
+    existing,
+    failed,
+  };
+},
 };

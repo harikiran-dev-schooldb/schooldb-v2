@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Eye, Pencil, Play, X } from "lucide-react";
+import { Check, Eye, Pencil, Play, X, Users } from "lucide-react";
 
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { ActionMenu } from "@/components/common/actions/ActionMenu";
@@ -81,6 +81,31 @@ export function FeePlanActions({ feePlanId, active, feePlanName }: Props) {
     router.refresh();
   }
 
+  async function applyToStudents() {
+    const response = await fetch(`/api/v1/fee-plans/${feePlanId}/apply`, {
+      method: "POST",
+    });
+
+    const result = await response.json();
+
+    if (!response.ok || !result.success) {
+      toast.error(result.message || "Failed to apply fee plan.");
+      return;
+    }
+
+    const data = result.data;
+
+    toast.success(
+      `Applied successfully. Created: ${data.created}, Existing: ${data.existing}`,
+    );
+
+    if (data.failed > 0) {
+      toast.warning(`${data.failed} student fee assignments failed.`);
+    }
+
+    router.refresh();
+  }
+
   return (
     <>
       <ActionMenu>
@@ -92,6 +117,11 @@ export function FeePlanActions({ feePlanId, active, feePlanName }: Props) {
         <DropdownMenuItem onClick={generateInstallments}>
           <Play className="mr-2 h-4 w-4" />
           Generate Installments
+        </DropdownMenuItem>
+
+        <DropdownMenuItem onClick={applyToStudents}>
+          <Users className="mr-2 h-4 w-4" />
+          Apply to Students
         </DropdownMenuItem>
 
         {active ? (
