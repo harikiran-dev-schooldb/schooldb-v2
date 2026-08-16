@@ -65,6 +65,7 @@ const toDate =
       await prisma.feePayment.findMany({
         where: {
   schoolId: tenant.schoolId,
+  status: "SUCCESS",
 
   ...(paymentMode
     ? {

@@ -21,6 +21,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+import { Checkbox } from "@/components/ui/checkbox";
+
 import { toast } from "sonner";
 
 type Installment = {
@@ -29,6 +31,7 @@ type Installment = {
   payableAmount: number;
   paidAmount: number;
   outstanding: number;
+  sequence?: number;
 };
 
 type Props = {
@@ -53,9 +56,9 @@ export function RecordFeePaymentDialog({
   installments,
   onSuccess,
 }: Props) {
-  const [installmentId, setInstallmentId] = useState("");
-
-  const [amount, setAmount] = useState("");
+  const [selectedInstallmentIds, setSelectedInstallmentIds] = useState<
+    string[]
+  >([]);
 
   const [paymentMode, setPaymentMode] = useState("CASH");
 
@@ -67,6 +70,12 @@ export function RecordFeePaymentDialog({
 
   const [loading, setLoading] = useState(false);
 
+  /*
+   * Sort installments in payment order.
+   * Oldest unpaid term comes first.
+   */
+  const sortedInstallments = installments;
+
   useEffect(() => {
     if (!open) return;
 
@@ -74,57 +83,132 @@ export function RecordFeePaymentDialog({
 
     setPaymentDate(today);
 
-    setInstallmentId(installments[0]?.id ?? "");
-
-    setAmount(installments[0] ? String(installments[0].outstanding) : "");
+    /*
+     * Select the first unpaid installment by default.
+     */
+    setSelectedInstallmentIds(
+      sortedInstallments[0]?.id ? [sortedInstallments[0].id] : [],
+    );
 
     setPaymentMode("CASH");
     setReferenceNo("");
     setRemarks("");
   }, [open, installments]);
 
-  function handleInstallmentChange(id: string) {
-    setInstallmentId(id);
+  /*
+   * User can select only consecutive installments.
+   *
+   * Example:
+   * Q1 unpaid
+   * Q2 unpaid
+   * Q3 unpaid
+   *
+   * Allowed:
+   * ✓ Q1
+   * ✓ Q1 + Q2
+   * ✓ Q1 + Q2 + Q3
+   *
+   * Not allowed:
+   * ✗ Q2 alone
+   * ✗ Q1 + Q3
+   */
+  function toggleInstallment(installmentId: string) {
+    const clickedIndex = sortedInstallments.findIndex(
+      (item) => item.id === installmentId,
+    );
 
-    const installment = installments.find((item) => item.id === id);
+    if (clickedIndex === -1) return;
 
-    if (installment) {
-      setAmount(String(installment.outstanding));
+    const currentlySelected = selectedInstallmentIds.includes(installmentId);
+
+    if (currentlySelected) {
+      /*
+       * Remove this installment and all later terms.
+       *
+       * This keeps selection consecutive.
+       */
+      setSelectedInstallmentIds(
+        sortedInstallments
+          .slice(0, clickedIndex)
+          .filter((item) => selectedInstallmentIds.includes(item.id))
+          .map((item) => item.id),
+      );
+
+      return;
     }
+
+    /*
+     * Cannot skip previous unpaid terms.
+     *
+     * If clicking Q3, Q1 and Q2 must already
+     * be selected.
+     */
+    const previousIds = sortedInstallments
+      .slice(0, clickedIndex)
+      .map((item) => item.id);
+
+    const allPreviousSelected = previousIds.every((id) =>
+      selectedInstallmentIds.includes(id),
+    );
+
+    if (!allPreviousSelected) {
+      toast.error("Please select and pay the previous term first.");
+      return;
+    }
+
+    setSelectedInstallmentIds((current) => [...current, installmentId]);
   }
 
+  const selectedInstallments = sortedInstallments.filter((item) =>
+    selectedInstallmentIds.includes(item.id),
+  );
+
+  const totalOutstanding = selectedInstallments.reduce(
+    (sum, installment) => sum + installment.outstanding,
+    0,
+  );
+
   async function submit() {
-    const numericAmount = Number(amount);
-
-    if (!installmentId) {
-      toast.error("Select an installment.");
+    if (selectedInstallmentIds.length === 0) {
+      toast.error("Select at least one installment.");
       return;
     }
 
-    if (!numericAmount || numericAmount <= 0) {
-      toast.error("Enter a valid payment amount.");
-      return;
-    }
+    /*
+     * Recheck consecutive terms before payment.
+     */
+    const selectedIndexes = sortedInstallments
+      .map((item, index) =>
+        selectedInstallmentIds.includes(item.id) ? index : -1,
+      )
+      .filter((index) => index !== -1);
 
-    const installment = installments.find((item) => item.id === installmentId);
+    const isConsecutive = selectedIndexes.every(
+      (index, position) => index === position,
+    );
 
-    if (!installment) {
-      toast.error("Installment not found.");
-      return;
-    }
-
-    if (numericAmount > installment.outstanding) {
-      toast.error(`Maximum payable amount is ₹${installment.outstanding}.`);
+    if (!isConsecutive) {
+      toast.error("Previous unpaid terms must be paid first.");
       return;
     }
 
     try {
       setLoading(true);
-      console.log({
-        studentEnrollmentId,
-        installmentId,
-        amount: numericAmount,
-      });
+
+      /*
+       * Each selected term is paid in full.
+       *
+       * Example:
+       * Q1 = ₹9,000
+       * Q2 = ₹8,000
+       *
+       * One payment receipt = ₹17,000
+       */
+      const allocations = selectedInstallments.map((installment) => ({
+        studentFeeInstallmentId: installment.id,
+
+        amount: installment.outstanding,
+      }));
 
       const response = await fetch("/api/v1/fee-payments", {
         method: "POST",
@@ -136,13 +220,7 @@ export function RecordFeePaymentDialog({
         body: JSON.stringify({
           studentEnrollmentId,
 
-          allocations: [
-            {
-              studentFeeInstallmentId: installmentId,
-
-              amount: numericAmount,
-            },
-          ],
+          allocations,
 
           paymentDate,
 
@@ -165,28 +243,19 @@ export function RecordFeePaymentDialog({
 
       const newPaymentId = result.data?.id;
 
-      if (!newPaymentId) {
-        toast.error("Payment was recorded, but receipt ID was not returned.");
-        onOpenChange(false);
-        onSuccess();
-        return;
-      }
-
       onOpenChange(false);
 
-      onSuccess();
+      await onSuccess();
 
-      window.open(`/${schoolSlug}/fees/receipts/${newPaymentId}`, "_blank");
+      if (newPaymentId && schoolSlug) {
+        window.open(`/${schoolSlug}/fees/receipts/${newPaymentId}`, "_blank");
+      }
     } catch {
       toast.error("Failed to record payment.");
     } finally {
       setLoading(false);
     }
   }
-
-  const selectedInstallment = installments.find(
-    (item) => item.id === installmentId,
-  );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -195,59 +264,82 @@ export function RecordFeePaymentDialog({
           <DialogTitle>Record Fee Payment</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4">
-          {/* Installment */}
+        <div className="space-y-5">
+          {/* Installments */}
 
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Installment</label>
+          <div className="space-y-3">
+            <label className="text-sm font-medium">Select Terms to Pay</label>
 
-            <Select
-              value={installmentId}
-              onValueChange={handleInstallmentChange}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select installment" />
-              </SelectTrigger>
+            <div className="rounded-md border">
+              {sortedInstallments.map((installment, index) => {
+                const checked = selectedInstallmentIds.includes(installment.id);
 
-              <SelectContent>
-                {installments.map((installment) => (
-                  <SelectItem key={installment.id} value={installment.id}>
-                    {installment.name} — ₹{installment.outstanding} outstanding
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+                /*
+                 * A term can be selected only when
+                 * all previous terms are selected.
+                 */
+                const previousTermsSelected = sortedInstallments
+                  .slice(0, index)
+                  .every((item) => selectedInstallmentIds.includes(item.id));
 
-          {/* Outstanding */}
+                const disabled = !checked && !previousTermsSelected;
 
-          {selectedInstallment && (
-            <div className="rounded-md border bg-muted/40 p-3">
-              <div className="flex justify-between text-sm">
-                <span>Outstanding</span>
+                return (
+                  <label
+                    key={installment.id}
+                    className={`flex cursor-pointer items-center justify-between gap-4 border-b p-3 last:border-b-0 ${
+                      disabled ? "cursor-not-allowed opacity-50" : ""
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Checkbox
+                        checked={checked}
+                        disabled={disabled}
+                        onCheckedChange={() =>
+                          toggleInstallment(installment.id)
+                        }
+                      />
 
-                <span className="font-semibold">
-                  ₹{selectedInstallment.outstanding}
-                </span>
-              </div>
+                      <div>
+                        <div className="font-medium">{installment.name}</div>
+
+                        <div className="text-xs text-muted-foreground">
+                          Outstanding: ₹{installment.outstanding}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="font-semibold">
+                      ₹{installment.outstanding}
+                    </div>
+                  </label>
+                );
+              })}
             </div>
-          )}
 
-          {/* Amount */}
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Amount</label>
-
-            <Input
-              type="number"
-              min="0"
-              step="0.01"
-              value={amount}
-              onChange={(event) => setAmount(event.target.value)}
-            />
+            <p className="text-xs text-muted-foreground">
+              Previous unpaid terms must be selected before selecting the next
+              term.
+            </p>
           </div>
 
-          {/* Date */}
+          {/* Total */}
+
+          <div className="rounded-md border bg-muted/40 p-4">
+            <div className="flex items-center justify-between">
+              <span className="text-sm">Selected Terms</span>
+
+              <span className="font-medium">{selectedInstallments.length}</span>
+            </div>
+
+            <div className="mt-2 flex items-center justify-between">
+              <span className="font-medium">Total Payment</span>
+
+              <span className="text-lg font-bold">₹{totalOutstanding}</span>
+            </div>
+          </div>
+
+          {/* Payment Date */}
 
           <div className="space-y-2">
             <label className="text-sm font-medium">Payment Date</label>
@@ -323,8 +415,12 @@ export function RecordFeePaymentDialog({
               Cancel
             </Button>
 
-            <Button type="button" onClick={submit} disabled={loading}>
-              {loading ? "Saving..." : "Record Payment"}
+            <Button
+              type="button"
+              onClick={submit}
+              disabled={loading || selectedInstallmentIds.length === 0}
+            >
+              {loading ? "Saving..." : `Pay ₹${totalOutstanding}`}
             </Button>
           </div>
         </div>
