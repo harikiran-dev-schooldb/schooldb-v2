@@ -7,16 +7,6 @@ datasource db {
   provider = "postgresql"
 }
 
-enum Role {
-  SUPER_ADMIN
-  SCHOOL_ADMIN
-  TEACHER
-  ACCOUNTANT
-  RECEPTIONIST
-  PARENT
-  STUDENT
-}
-
 model AcademicYear {
   id String @id @default(cuid())
 
@@ -37,6 +27,7 @@ model AcademicYear {
   timetables         Timetable[]
   attendanceSessions AttendanceSession[]
   homeworks          Homework[]
+  exams              Exam[]
 
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
@@ -99,6 +90,9 @@ model School {
   feePlans           FeePlan[]
   studentFees        StudentFee[]
   feePayments        FeePayment[]
+  exams              Exam[]
+  examSchedules      ExamSchedule[]
+  studentExamMarks   StudentExamMark[]
 }
 
 model User {
@@ -295,6 +289,7 @@ model Class {
   allocations        TeacherAllocation[]
   attendanceSessions AttendanceSession[]
   homeworks          Homework[]
+  examSchedules      ExamSchedule[]
 
   createdAt DateTime       @default(now())
   updatedAt DateTime       @updatedAt
@@ -320,6 +315,7 @@ model Section {
   allocations        TeacherAllocation[]
   attendanceSessions AttendanceSession[]
   homeworks          Homework[]
+  examSchedules      ExamSchedule[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -365,6 +361,7 @@ model StudentEnrollment {
 
   studentFees StudentFee[]
   feePayments FeePayment[]
+  examMarks   StudentExamMark[]
 
   @@unique([studentId, academicYearId])
   @@unique([academicYearId, classId, sectionId, rollNo])
@@ -395,6 +392,7 @@ model Subject {
   allocations        TeacherAllocation[]
   attendanceSessions AttendanceSession[]
   homeworks          Homework[]
+  examSchedules      ExamSchedule[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -958,6 +956,100 @@ model FeePaymentAllocation {
   @@index([studentFeeInstallmentId])
 }
 
+model Exam {
+  id String @id @default(cuid())
+
+  schoolId String
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  academicYearId String
+  academicYear   AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+
+  name String
+
+  startDate DateTime?
+  endDate   DateTime?
+
+  status ExamStatus @default(DRAFT)
+
+  active Boolean @default(true)
+
+  schedules ExamSchedule[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([schoolId, academicYearId, name])
+  @@index([schoolId])
+  @@index([academicYearId])
+  @@index([schoolId, academicYearId])
+}
+
+model ExamSchedule {
+  id String @id @default(cuid())
+
+  schoolId String
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  examId String
+  exam   Exam   @relation(fields: [examId], references: [id], onDelete: Cascade)
+
+  classId String
+  class   Class  @relation(fields: [classId], references: [id], onDelete: Cascade)
+
+  sectionId String?
+  section   Section? @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+
+  subjectId String
+  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  examDate DateTime @db.Date
+
+  startTime String?
+  endTime   String?
+
+  maxMarks  Decimal  @db.Decimal(10, 2)
+  passMarks Decimal? @db.Decimal(10, 2)
+
+  marks StudentExamMark[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([examId, classId, sectionId, subjectId])
+  @@index([schoolId])
+  @@index([examId])
+  @@index([classId, sectionId])
+  @@index([subjectId])
+}
+
+model StudentExamMark {
+  id String @id @default(cuid())
+
+  schoolId String
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  examScheduleId String
+  examSchedule   ExamSchedule @relation(fields: [examScheduleId], references: [id], onDelete: Cascade)
+
+  studentEnrollmentId String
+  studentEnrollment   StudentEnrollment @relation(fields: [studentEnrollmentId], references: [id], onDelete: Cascade)
+
+  marksObtained Decimal? @db.Decimal(10, 2)
+
+  status StudentExamStatus @default(PRESENT)
+
+  remarks String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([examScheduleId, studentEnrollmentId])
+  @@index([schoolId])
+  @@index([studentEnrollmentId])
+  @@index([examScheduleId])
+}
+
 enum StudentFeeInstallmentStatus {
   PENDING
   PARTIAL
@@ -1061,4 +1153,27 @@ enum Category {
   ST
   EWS
   RTE
+}
+
+enum Role {
+  SUPER_ADMIN
+  SCHOOL_ADMIN
+  TEACHER
+  ACCOUNTANT
+  RECEPTIONIST
+  PARENT
+  STUDENT
+}
+
+enum ExamStatus {
+  DRAFT
+  PUBLISHED
+  COMPLETED
+  CANCELLED
+}
+
+enum StudentExamStatus {
+  PRESENT
+  ABSENT
+  EXEMPTED
 }
