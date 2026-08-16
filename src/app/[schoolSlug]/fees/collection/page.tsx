@@ -482,15 +482,15 @@ export default function FeeCollectionPage({ params }: Props) {
               schoolSlug={schoolSlug}
               studentFeeId=""
               studentEnrollmentId={studentEnrollmentId}
-              installments={[
-                {
-                  id: selectedInstallment.id,
-                  name: selectedInstallment.name,
-                  payableAmount: selectedInstallment.payableAmount,
-                  paidAmount: selectedInstallment.paidAmount,
-                  outstanding: selectedInstallment.outstanding,
-                },
-              ]}
+              installments={installments
+                .filter((installment) => installment.outstanding > 0)
+                .map((installment) => ({
+                  id: installment.id,
+                  name: installment.name,
+                  payableAmount: installment.payableAmount,
+                  paidAmount: installment.paidAmount,
+                  outstanding: installment.outstanding,
+                }))}
               onSuccess={() => {
                 setSelectedInstallment(null);
                 void selectStudent(selectedStudent);

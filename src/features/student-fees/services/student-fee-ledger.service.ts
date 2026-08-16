@@ -44,8 +44,8 @@ export const studentFeeLedgerService = {
     }
 
     /*
-     * Get all payments belonging to this
-     * student fee through the installment
+     * Get all successful payments belonging
+     * to this student fee through installment
      * allocations.
      */
     const payments =
@@ -102,87 +102,94 @@ export const studentFeeLedgerService = {
     let concession = 0;
     let paid = 0;
 
+    /*
+     * Convert all installments into a flat array.
+     */
     const installments =
-      studentFee.items.flatMap(
-        (item) =>
-          item.installments.map(
-            (installment) => {
-              const amount =
-                Number(
-                  installment.amount,
-                );
+  studentFee.items.flatMap((item) =>
+    item.installments.map((installment) => {
+      const amount =
+        Number(installment.amount);
 
-              const installmentConcession =
-                Number(
-                  installment.concession,
-                );
+      const installmentConcession =
+        Number(installment.concession);
 
-              const payableAmount =
-                Number(
-                  installment.payableAmount,
-                );
+      const payableAmount =
+        Number(installment.payableAmount);
 
-              const paidAmount =
-                Number(
-                  installment.paidAmount,
-                );
+      const paidAmount =
+        Number(installment.paidAmount);
 
-              total += amount;
+      total += amount;
 
-              concession +=
-                installmentConcession;
+      concession +=
+        installmentConcession;
 
-              paid += paidAmount;
+      paid += paidAmount;
 
-              return {
-                id: installment.id,
+      return {
+        id: installment.id,
 
-                feeCategory: {
-                  id:
-                    item.feeCategory.id,
-                  name:
-                    item.feeCategory.name,
-                  code:
-                    item.feeCategory.code,
-                },
+        feeCategory: {
+          id: item.feeCategory.id,
+          name: item.feeCategory.name,
+          code: item.feeCategory.code,
+        },
 
-                name:
-                  installment.name,
+        name: installment.name,
 
-                amount,
+        amount,
 
-                concession:
-                  installmentConcession,
+        concession:
+          installmentConcession,
 
-                payableAmount,
+        payableAmount,
 
-                paidAmount,
+        paidAmount,
 
-                outstanding:
-                  Math.max(
-                    payableAmount -
-                      paidAmount,
-                    0,
-                  ),
+        outstanding: Math.max(
+          payableAmount - paidAmount,
+          0,
+        ),
 
-                dueDate:
-                  installment.dueDate,
+        dueDate: installment.dueDate,
 
-                status:
-                  installment.status,
+        status: installment.status,
 
-                sequence:
-                  installment.sequence,
+        sequence: installment.sequence,
 
-                periodStart:
-                  installment.periodStart,
+        periodStart:
+          installment.periodStart,
 
-                periodEnd:
-                  installment.periodEnd,
-              };
-            },
-          ),
-      );
+        periodEnd:
+          installment.periodEnd,
+      };
+    }),
+  );
+
+/*
+ * First sort by academic period/date.
+ * Then sort Quarter 1, Quarter 2, Quarter 3, etc.
+ */
+installments.sort((a, b) => {
+  const aDate = a.periodStart
+    ? new Date(a.periodStart).getTime()
+    : new Date(a.dueDate).getTime();
+
+  const bDate = b.periodStart
+    ? new Date(b.periodStart).getTime()
+    : new Date(b.dueDate).getTime();
+
+  const dateDifference =
+    aDate - bDate;
+
+  if (dateDifference !== 0) {
+    return dateDifference;
+  }
+
+  return a.sequence - b.sequence;
+});
+    
 
     const outstanding =
       Math.max(
@@ -194,18 +201,19 @@ export const studentFeeLedgerService = {
 
     return {
       studentFee: {
-  id: studentFee.id,
+        id: studentFee.id,
 
-  studentEnrollmentId:
-    studentFee.studentEnrollmentId,
+        studentEnrollmentId:
+          studentFee.studentEnrollmentId,
 
-  feePlan: {
+        feePlan: {
           id: studentFee.feePlan.id,
+
           name:
             studentFee.feePlan.name,
+
           academicYearId:
-            studentFee.feePlan
-              .academicYearId,
+            studentFee.feePlan.academicYearId,
         },
 
         assignedAt:

@@ -480,6 +480,7 @@ export function StudentFeeLedger({ studentFeeId }: Props) {
       <RecordFeePaymentDialog
         open={paymentOpen}
         onOpenChange={setPaymentOpen}
+        schoolSlug={params.schoolSlug}
         studentFeeId={ledger.studentFee.id}
         studentEnrollmentId={ledger.studentFee.studentEnrollmentId}
         installments={unpaidInstallments}
