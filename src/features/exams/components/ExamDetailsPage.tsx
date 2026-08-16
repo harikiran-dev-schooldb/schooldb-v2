@@ -1,11 +1,20 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Plus, RefreshCw, Pencil, Trash2 } from "lucide-react";
+import {
+  Plus,
+  RefreshCw,
+  Pencil,
+  Trash2,
+  ClipboardPenLine,
+  BarChart3,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
+import { useRouter } from "next/navigation";
 
 import {
   AlertDialog,
@@ -78,6 +87,8 @@ function formatDate(value: string | null) {
 }
 
 export function ExamDetailsPage({ schoolSlug, examId }: Props) {
+  const router = useRouter();
+
   const [exam, setExam] = useState<Exam | null>(null);
 
   const [schedules, setSchedules] = useState<ExamSchedule[]>([]);
@@ -236,10 +247,20 @@ export function ExamDetailsPage({ schoolSlug, examId }: Props) {
           </p>
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button variant="outline" onClick={() => void loadData()}>
             <RefreshCw className="mr-2 h-4 w-4" />
             Refresh
+          </Button>
+
+          <Button
+            variant="outline"
+            onClick={() =>
+              router.push(`/${schoolSlug}/exams/${examId}/results`)
+            }
+          >
+            <BarChart3 className="mr-2 h-4 w-4" />
+            Results
           </Button>
 
           <Button onClick={() => setScheduleOpen(true)}>
@@ -349,6 +370,19 @@ export function ExamDetailsPage({ schoolSlug, examId }: Props) {
 
                       <td className="p-3">
                         <div className="flex justify-end gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() =>
+                              router.push(
+                                `/${schoolSlug}/exams/${examId}/schedules/${schedule.id}/marks`,
+                              )
+                            }
+                          >
+                            <ClipboardPenLine className="mr-2 h-4 w-4" />
+                            Enter Marks
+                          </Button>
+
                           <Button
                             variant="outline"
                             size="sm"
