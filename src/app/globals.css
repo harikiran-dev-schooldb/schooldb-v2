@@ -169,3 +169,43 @@
     display: none !important;
   }
 }
+
+@media print {
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+
+  html,
+  body {
+    width: 210mm;
+    background: white !important;
+  }
+
+  body {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  .report-card-page {
+    width: 100%;
+    min-height: auto;
+    margin: 0 !important;
+    box-shadow: none !important;
+  }
+
+  .report-card-final {
+    break-before: page;
+    page-break-before: always;
+  }
+
+  table {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}

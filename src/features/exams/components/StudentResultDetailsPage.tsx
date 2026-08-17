@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { ArrowLeft, RefreshCw, Printer } from "lucide-react";
+import { ArrowLeft, RefreshCw, Printer, FileText } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
@@ -180,6 +180,17 @@ export function StudentResultDetailsPage({
         </div>
 
         <div className="flex gap-2">
+          <Button
+            onClick={() =>
+              router.push(
+                `/${schoolSlug}/exams/${examId}/results/${studentId}/report-card`,
+              )
+            }
+          >
+            <FileText className="mr-2 h-4 w-4" />
+            View Report Card
+          </Button>
+
           <Button variant="outline" onClick={() => window.print()}>
             <Printer className="mr-2 h-4 w-4" />
             Print Result
