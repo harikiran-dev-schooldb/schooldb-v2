@@ -31,9 +31,32 @@ function money(value: unknown) {
   return Number(value ?? 0);
 }
 
-export async function GET() {
+export async function GET(req: Request) {
   return apiHandler(async () => {
     const tenant = await requireTenant();
+
+    const { searchParams } = new URL(req.url);
+
+const academicYearId =
+  searchParams.get("academicYearId") || undefined;
+
+  const academicYearPaymentFilter = academicYearId
+  ? {
+      allocations: {
+        some: {
+          studentFeeInstallment: {
+            studentFeeItem: {
+              studentFee: {
+                feePlan: {
+                  academicYearId,
+                },
+              },
+            },
+          },
+        },
+      },
+    }
+  : {};
 
     const now = new Date();
 
@@ -54,6 +77,8 @@ export async function GET() {
           schoolId: tenant.schoolId,
 
           status: "SUCCESS",
+
+          ...academicYearPaymentFilter,
 
           paymentDate: {
             gte: todayStart,
@@ -77,6 +102,8 @@ export async function GET() {
 
           status: "SUCCESS",
 
+          ...academicYearPaymentFilter,
+
           paymentDate: {
             gte: monthStart,
             lte: todayEnd,
@@ -99,15 +126,23 @@ export async function GET() {
      */
 
     const installments =
-      await prisma.studentFeeInstallment.findMany({
-        where: {
-          studentFeeItem: {
-            studentFee: {
-              schoolId: tenant.schoolId,
-              active: true,
-            },
-          },
+  await prisma.studentFeeInstallment.findMany({
+    where: {
+      studentFeeItem: {
+        studentFee: {
+          schoolId: tenant.schoolId,
+          active: true,
+
+          ...(academicYearId
+            ? {
+                feePlan: {
+                  academicYearId,
+                },
+              }
+            : {}),
         },
+      },
+    },
 
         select: {
           amount: true,
@@ -177,6 +212,9 @@ export async function GET() {
 
           status: "SUCCESS",
 
+
+          ...academicYearPaymentFilter,
+
           paymentDate: {
             gte: monthStart,
             lte: todayEnd,
@@ -225,6 +263,8 @@ export async function GET() {
         where: {
           schoolId: tenant.schoolId,
           status: "SUCCESS",
+
+          ...academicYearPaymentFilter,
         },
 
         orderBy: {
