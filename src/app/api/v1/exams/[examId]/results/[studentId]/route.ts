@@ -32,6 +32,34 @@ export async function GET(
     }
 
     /* ------------------------------------------------------------------ */
+    /* School                                                             */
+    /* ------------------------------------------------------------------ */
+
+    const school = await prisma.school.findFirst({
+      where: {
+        id: tenant.schoolId,
+      },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        logo: true,
+      },
+    });
+
+    if (!school) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "School not found.",
+        },
+        {
+          status: 404,
+        },
+      );
+    }
+
+    /* ------------------------------------------------------------------ */
     /* Verify Exam                                                        */
     /* ------------------------------------------------------------------ */
 
@@ -46,6 +74,7 @@ export async function GET(
         startDate: true,
         endDate: true,
         academicYearId: true,
+
         academicYear: {
           select: {
             id: true,
@@ -96,7 +125,7 @@ export async function GET(
     }
 
     /* ------------------------------------------------------------------ */
-    /* Get Student Marks For This Exam                                    */
+    /* Get Student Marks                                                  */
     /* ------------------------------------------------------------------ */
 
     const marks = await prisma.studentExamMark.findMany({
@@ -148,7 +177,7 @@ export async function GET(
     });
 
     /* ------------------------------------------------------------------ */
-    /* Calculate Subject Results                                          */
+    /* Subject Results                                                    */
     /* ------------------------------------------------------------------ */
 
     const subjects = marks.map((mark) => {
@@ -160,7 +189,9 @@ export async function GET(
           : null;
 
       const marksObtained =
-        mark.marksObtained !== null ? Number(mark.marksObtained) : null;
+        mark.marksObtained !== null
+          ? Number(mark.marksObtained)
+          : null;
 
       let resultStatus: "PASS" | "FAIL" | "ABSENT";
 
@@ -198,8 +229,8 @@ export async function GET(
     });
 
     /* ------------------------------------------------------------------ */
-    /* Calculate Exam Date Limit                                          */
-    /* Use latest scheduled subject exam date.                             */
+    /* Exam Date Limit                                                    */
+    /* Attendance only up to last exam date                               */
     /* ------------------------------------------------------------------ */
 
     const examDateLimit =
@@ -214,24 +245,8 @@ export async function GET(
         : exam.endDate || exam.startDate;
 
     /* ------------------------------------------------------------------ */
-    /* Get Student Enrollment                                             */
-    /* Needed for attendance filtering.                                   */
-    /* ------------------------------------------------------------------ */
-
-    const enrollment = await prisma.studentEnrollment.findFirst({
-      where: {
-        schoolId: tenant.schoolId,
-        studentId,
-        academicYearId: exam.academicYearId,
-      },
-      select: {
-        id: true,
-      },
-    });
-
-    /* ------------------------------------------------------------------ */
-    /* Calculate Attendance                                               */
-    /* Attendance counted only up to the latest exam date.                 */
+    /* Attendance                                                         */
+    /* Group by date so multiple period sessions do not count as days.    */
     /* ------------------------------------------------------------------ */
 
     let totalAttendanceDays = 0;
@@ -239,34 +254,82 @@ export async function GET(
     let absentDays = 0;
     let attendancePercentage = 0;
 
-    if (enrollment && examDateLimit) {
+    if (examDateLimit) {
       const attendanceRecords = await prisma.attendance.findMany({
         where: {
           schoolId: tenant.schoolId,
 
-          studentEnrollmentId: enrollment.id,
+          studentId: student.id,
 
-          date: {
-            lte: examDateLimit,
+          session: {
+            schoolId: tenant.schoolId,
+
+            academicYearId: exam.academicYearId,
+
+            attendanceDate: {
+              lte: examDateLimit,
+            },
           },
         },
 
         select: {
           status: true,
+
+          session: {
+            select: {
+              attendanceDate: true,
+            },
+          },
+        },
+
+        orderBy: {
+          session: {
+            attendanceDate: "asc",
+          },
         },
       });
 
-      totalAttendanceDays = attendanceRecords.length;
+      /*
+       * One student may have multiple attendance sessions on the same day.
+       * Group them by date so the report card shows actual days.
+       */
 
-      presentDays = attendanceRecords.filter(
-        (attendance) =>
-          attendance.status === "PRESENT" ||
-          attendance.status === "LATE",
-      ).length;
+      const attendanceByDate = new Map<
+        string,
+        {
+          statuses: string[];
+        }
+      >();
 
-      absentDays = attendanceRecords.filter(
-        (attendance) => attendance.status === "ABSENT",
-      ).length;
+      for (const attendance of attendanceRecords) {
+        const dateKey = new Date(attendance.session.attendanceDate)
+          .toISOString()
+          .slice(0, 10);
+
+        const existing = attendanceByDate.get(dateKey);
+
+        if (existing) {
+          existing.statuses.push(attendance.status);
+        } else {
+          attendanceByDate.set(dateKey, {
+            statuses: [attendance.status],
+          });
+        }
+      }
+
+      totalAttendanceDays = attendanceByDate.size;
+
+      for (const [, attendance] of attendanceByDate) {
+        const isPresent =
+          attendance.statuses.includes("PRESENT") ||
+          attendance.statuses.includes("LATE");
+
+        if (isPresent) {
+          presentDays += 1;
+        } else {
+          absentDays += 1;
+        }
+      }
 
       attendancePercentage =
         totalAttendanceDays > 0
@@ -280,7 +343,7 @@ export async function GET(
     }
 
     /* ------------------------------------------------------------------ */
-    /* Calculate Overall Result                                           */
+    /* Overall Result                                                     */
     /* ------------------------------------------------------------------ */
 
     const totalMaxMarks = subjects.reduce(
@@ -290,7 +353,10 @@ export async function GET(
 
     const totalObtained = subjects.reduce(
       (total, subject) =>
-        total + (subject.marksObtained !== null ? subject.marksObtained : 0),
+        total +
+        (subject.marksObtained !== null
+          ? subject.marksObtained
+          : 0),
       0,
     );
 
@@ -308,11 +374,15 @@ export async function GET(
 
     const percentage =
       totalMaxMarks > 0
-        ? Number(((totalObtained / totalMaxMarks) * 100).toFixed(2))
+        ? Number(
+            ((totalObtained / totalMaxMarks) * 100).toFixed(2),
+          )
         : 0;
 
     const overallStatus =
-      failedSubjects === 0 && absentSubjects === 0 && subjects.length > 0
+      failedSubjects === 0 &&
+      absentSubjects === 0 &&
+      subjects.length > 0
         ? "PASS"
         : "FAIL";
 
@@ -324,7 +394,15 @@ export async function GET(
       success: true,
 
       data: {
-        exam,
+        school,
+
+        exam: {
+          id: exam.id,
+          name: exam.name,
+          startDate: exam.startDate,
+          endDate: exam.endDate,
+          academicYear: exam.academicYear,
+        },
 
         student,
 
