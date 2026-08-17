@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { ArrowLeft, RefreshCw } from "lucide-react";
+import { ArrowLeft, RefreshCw, Eye } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
@@ -299,6 +299,8 @@ export function ExamResultsPage({ schoolSlug, examId }: Props) {
                     <th className="p-3 text-center">Absent</th>
 
                     <th className="p-3 text-center">Result</th>
+
+                    <th className="p-3 text-right">Actions</th>
                   </tr>
                 </thead>
 
@@ -343,6 +345,21 @@ export function ExamResultsPage({ schoolSlug, examId }: Props) {
                         >
                           {student.status}
                         </span>
+                      </td>
+
+                      <td className="p-3 text-right">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            router.push(
+                              `/${schoolSlug}/exams/${examId}/results/${student.studentId}`,
+                            )
+                          }
+                        >
+                          <Eye className="mr-2 h-4 w-4" />
+                          View Result
+                        </Button>
                       </td>
                     </tr>
                   ))}
