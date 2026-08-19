@@ -12,7 +12,7 @@ export function TeacherTimetable() {
   const [academicYearId, setAcademicYearId] = useState("");
   const [teacherId, setTeacherId] = useState("");
 
-  const { data, loading } = useTeacherTimetable(academicYearId, teacherId);
+  const { data } = useTeacherTimetable(academicYearId, teacherId);
 
   return (
     <div className="space-y-6">

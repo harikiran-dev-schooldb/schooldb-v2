@@ -80,45 +80,53 @@ export function PaymentHistoryContainer({ params }: Props) {
   /* Load Payments                                                          */
   /* ---------------------------------------------------------------------- */
 
+  async function fetchPayments(
+    currentFilters: PaymentFilters,
+  ): Promise<PaymentData> {
+    const queryParams = new URLSearchParams();
+
+    if (currentFilters.search.trim()) {
+      queryParams.set("search", currentFilters.search.trim());
+    }
+
+    if (currentFilters.paymentMode) {
+      queryParams.set("paymentMode", currentFilters.paymentMode);
+    }
+
+    if (currentFilters.fromDate) {
+      queryParams.set("fromDate", currentFilters.fromDate);
+    }
+
+    if (currentFilters.toDate) {
+      queryParams.set("toDate", currentFilters.toDate);
+    }
+
+    const query = queryParams.toString();
+
+    const response = await fetch(
+      `/api/v1/fee-payments${query ? `?${query}` : ""}`,
+      {
+        cache: "no-store",
+      },
+    );
+
+    const result = await response.json();
+
+    if (!response.ok || !result.success) {
+      throw new Error(result.message || "Failed to load payment history.");
+    }
+
+    return result.data;
+  }
+
   async function loadPayments(currentFilters: PaymentFilters = filters) {
     try {
       setLoading(true);
       setError(null);
 
-      const queryParams = new URLSearchParams();
+      const paymentData = await fetchPayments(currentFilters);
 
-      if (currentFilters.search.trim()) {
-        queryParams.set("search", currentFilters.search.trim());
-      }
-
-      if (currentFilters.paymentMode) {
-        queryParams.set("paymentMode", currentFilters.paymentMode);
-      }
-
-      if (currentFilters.fromDate) {
-        queryParams.set("fromDate", currentFilters.fromDate);
-      }
-
-      if (currentFilters.toDate) {
-        queryParams.set("toDate", currentFilters.toDate);
-      }
-
-      const query = queryParams.toString();
-
-      const response = await fetch(
-        `/api/v1/fee-payments${query ? `?${query}` : ""}`,
-        {
-          cache: "no-store",
-        },
-      );
-
-      const result = await response.json();
-
-      if (!response.ok || !result.success) {
-        throw new Error(result.message || "Failed to load payment history.");
-      }
-
-      setData(result.data);
+      setData(paymentData);
     } catch (error) {
       setError(
         error instanceof Error
@@ -130,8 +138,41 @@ export function PaymentHistoryContainer({ params }: Props) {
     }
   }
 
+  /* ---------------------------------------------------------------------- */
+  /* Initial Load                                                           */
+  /* ---------------------------------------------------------------------- */
+
   useEffect(() => {
-    void loadPayments();
+    let cancelled = false;
+
+    async function loadInitialPayments() {
+      try {
+        const paymentData = await fetchPayments(EMPTY_FILTERS);
+
+        if (!cancelled) {
+          setData(paymentData);
+          setError(null);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setError(
+            error instanceof Error
+              ? error.message
+              : "Failed to load payment history.",
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    }
+
+    void loadInitialPayments();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   /* ---------------------------------------------------------------------- */

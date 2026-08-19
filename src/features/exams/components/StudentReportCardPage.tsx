@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   ArrowLeft,
-  Award,
   CalendarDays,
   CheckCircle2,
   Printer,
@@ -15,6 +14,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import Image from "next/image";
 
 type SubjectResult = {
   scheduleId: string;
@@ -117,16 +117,6 @@ function formatDate(value: string | null) {
   }).format(new Date(value));
 }
 
-function getInitials(name: string) {
-  return name
-    .split(" ")
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((word) => word[0])
-    .join("")
-    .toUpperCase();
-}
-
 export function StudentReportCardPage({
   schoolSlug,
   examId,
@@ -140,8 +130,6 @@ export function StudentReportCardPage({
 
   const loadReportCard = useCallback(async () => {
     try {
-      setLoading(true);
-
       const response = await fetch(
         `/api/v1/exams/${examId}/results/${studentId}`,
         {
@@ -152,22 +140,29 @@ export function StudentReportCardPage({
       const result = await response.json();
 
       if (!response.ok || !result.success) {
-        toast.error(result.message || "Failed to load report card.");
-        return;
+        throw new Error(result.message || "Failed to load report card.");
       }
 
       setData(result.data);
     } catch (error) {
       console.error("Failed to load report card:", error);
 
-      toast.error("Failed to load report card.");
+      toast.error(
+        error instanceof Error ? error.message : "Failed to load report card.",
+      );
     } finally {
       setLoading(false);
     }
   }, [examId, studentId]);
 
   useEffect(() => {
-    void loadReportCard();
+    const timeoutId = window.setTimeout(() => {
+      void loadReportCard();
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
   }, [loadReportCard]);
 
   if (loading) {
@@ -191,7 +186,7 @@ export function StudentReportCardPage({
           <h2 className="text-lg font-semibold">Report card not found</h2>
 
           <p className="mt-1 text-sm text-muted-foreground">
-            Unable to load the student's report card.
+            Unable to load the student&apos; report card.
           </p>
         </div>
       </div>
@@ -243,7 +238,7 @@ export function StudentReportCardPage({
           <div className="flex items-center justify-center gap-5">
             {data.school.logo ? (
               <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full border bg-white p-1">
-                <img
+                <Image
                   src={data.school.logo}
                   alt={`${data.school.name} logo`}
                   className="h-full w-full object-contain"

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 
 import { zodResolver } from "@hookform/resolvers/zod";
 
@@ -43,6 +43,11 @@ export function AcademicYearForm({ mode, academicYearId, onSuccess }: Props) {
       endDate: "",
       attendanceMode: "ONCE_DAILY",
     },
+  });
+
+  const attendanceMode = useWatch({
+    control: form.control,
+    name: "attendanceMode",
   });
 
   useEffect(() => {
@@ -118,7 +123,7 @@ export function AcademicYearForm({ mode, academicYearId, onSuccess }: Props) {
         <label className="text-sm font-medium">Attendance Mode</label>
 
         <Select
-          value={form.watch("attendanceMode")}
+          value={attendanceMode}
           onValueChange={(value) =>
             form.setValue(
               "attendanceMode",

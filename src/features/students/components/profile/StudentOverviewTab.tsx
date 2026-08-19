@@ -1,46 +1,51 @@
 "use client";
 
+type Student = {
+  admissionNo: string;
+  fullName: string;
+  gender: string;
+  dob: string | null;
+  phone: string | null;
+  email: string | null;
+};
+
 type Props = {
-  student: any;
+  student: Student;
 };
 
 export function StudentOverviewTab({ student }: Props) {
+  const dob = student.dob ? student.dob.substring(0, 10) : "—";
+
   return (
-    <div className="grid grid-cols-2 gap-4 rounded-lg border p-6">
+    <div className="grid gap-4 rounded-lg border p-6 sm:grid-cols-2">
       <div>
-        Admission No
-        <br />
-        <b>{student.admissionNo}</b>
+        <p className="text-sm text-muted-foreground">Admission No</p>
+        <p className="font-semibold">{student.admissionNo}</p>
       </div>
 
       <div>
-        Student Name
-        <br />
-        <b>{student.fullName}</b>
+        <p className="text-sm text-muted-foreground">Student Name</p>
+        <p className="font-semibold">{student.fullName}</p>
       </div>
 
       <div>
-        Gender
-        <br />
-        <b>{student.gender}</b>
+        <p className="text-sm text-muted-foreground">Gender</p>
+        <p className="font-semibold">{student.gender}</p>
       </div>
 
       <div>
-        DOB
-        <br />
-        <b>{student.dob.substring(0, 10)}</b>
+        <p className="text-sm text-muted-foreground">Date of Birth</p>
+        <p className="font-semibold">{dob}</p>
       </div>
 
       <div>
-        Phone
-        <br />
-        <b>{student.phone}</b>
+        <p className="text-sm text-muted-foreground">Phone</p>
+        <p className="font-semibold">{student.phone ?? "—"}</p>
       </div>
 
       <div>
-        Email
-        <br />
-        <b>{student.email}</b>
+        <p className="text-sm text-muted-foreground">Email</p>
+        <p className="font-semibold">{student.email ?? "—"}</p>
       </div>
     </div>
   );

@@ -55,18 +55,15 @@ export function AttendancePage({ schoolSlug }: Props) {
   const [sectionId, setSectionId] = useState("");
 
   const [academicYears, setAcademicYears] = useState<AcademicYearOption[]>([]);
-
   const [loading, setLoading] = useState(false);
 
   const [timetable, setTimetable] = useState<TimetableOption[]>([]);
-
   const [timetableLoading, setTimetableLoading] = useState(false);
 
   useEffect(() => {
     async function loadAcademicYears() {
       try {
         const response = await fetch("/api/v1/academic-years/options");
-
         const result = await response.json();
 
         if (!result.success) {
@@ -94,6 +91,12 @@ export function AttendancePage({ schoolSlug }: Props) {
   );
 
   const attendanceMode = selectedAcademicYear?.attendanceMode ?? "ONCE_DAILY";
+
+  const canLoadTimetable =
+    attendanceMode === "EVERY_PERIOD" &&
+    Boolean(academicYearId) &&
+    Boolean(classId) &&
+    Boolean(sectionId);
 
   function changeClass(value: string) {
     setClassId(value);
@@ -129,11 +132,9 @@ export function AttendancePage({ schoolSlug }: Props) {
 
       const response = await fetch("/api/v1/attendance/session", {
         method: "POST",
-
         headers: {
           "Content-Type": "application/json",
         },
-
         body: JSON.stringify({
           sessionType,
           timetableId,
@@ -160,26 +161,15 @@ export function AttendancePage({ schoolSlug }: Props) {
   }
 
   useEffect(() => {
-    if (
-      attendanceMode !== "EVERY_PERIOD" ||
-      !academicYearId ||
-      !classId ||
-      !sectionId
-    ) {
-      setTimetable([]);
-      return;
-    }
+    if (!canLoadTimetable) return;
+
+    let cancelled = false;
 
     async function loadTimetable() {
       try {
         setTimetableLoading(true);
 
-        const day = "getTodayWeekDay()";
-
-        if (!day) {
-          setTimetable([]);
-          return;
-        }
+        const day = getTodayWeekDay();
 
         const params = new URLSearchParams({
           academicYearId,
@@ -194,6 +184,8 @@ export function AttendancePage({ schoolSlug }: Props) {
 
         const result = await response.json();
 
+        if (cancelled) return;
+
         if (!result.success) {
           toast.error(result.message);
           setTimetable([]);
@@ -202,15 +194,25 @@ export function AttendancePage({ schoolSlug }: Props) {
 
         setTimetable(result.data);
       } catch {
-        toast.error("Failed to load today's timetable.");
-        setTimetable([]);
+        if (!cancelled) {
+          toast.error("Failed to load today's timetable.");
+          setTimetable([]);
+        }
       } finally {
-        setTimetableLoading(false);
+        if (!cancelled) {
+          setTimetableLoading(false);
+        }
       }
     }
 
     loadTimetable();
-  }, [attendanceMode, academicYearId, classId, sectionId]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [canLoadTimetable, academicYearId, classId, sectionId]);
+
+  const displayTimetable = canLoadTimetable ? timetable : [];
 
   return (
     <div className="space-y-6">
@@ -260,27 +262,29 @@ export function AttendancePage({ schoolSlug }: Props) {
       {attendanceMode === "EVERY_PERIOD" && (
         <div className="space-y-4">
           <div>
-            <h2 className="text-lg font-semibold">Today's Periods</h2>
+            <h2 className="text-lg font-semibold">Today&apos;s Periods</h2>
 
             <p className="text-sm text-muted-foreground">
               Select a period to take attendance.
             </p>
           </div>
 
-          {timetableLoading && (
+          {canLoadTimetable && timetableLoading && (
             <div className="rounded-lg border p-4 text-sm text-muted-foreground">
-              Loading today's timetable...
+              Loading today&apos;s timetable...
             </div>
           )}
 
-          {!timetableLoading && timetable.length === 0 && (
-            <div className="rounded-lg border p-4 text-sm text-muted-foreground">
-              No timetable periods found for today.
-            </div>
-          )}
+          {canLoadTimetable &&
+            !timetableLoading &&
+            displayTimetable.length === 0 && (
+              <div className="rounded-lg border p-4 text-sm text-muted-foreground">
+                No timetable periods found for today.
+              </div>
+            )}
 
           {!timetableLoading &&
-            timetable.map((item) => (
+            displayTimetable.map((item) => (
               <div
                 key={item.id}
                 className="flex items-center justify-between rounded-lg border p-4"

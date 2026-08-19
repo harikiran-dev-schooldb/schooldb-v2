@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 import {
@@ -46,45 +46,85 @@ export function TeacherAllocationForm({
     },
   });
 
-  const classId = form.watch("classId");
+  const academicYearId = useWatch({
+    control: form.control,
+    name: "academicYearId",
+  });
+
+  const teacherId = useWatch({
+    control: form.control,
+    name: "teacherId",
+  });
+
+  const subjectId = useWatch({
+    control: form.control,
+    name: "subjectId",
+  });
+
+  const classId = useWatch({
+    control: form.control,
+    name: "classId",
+  });
+
+  const sectionId = useWatch({
+    control: form.control,
+    name: "sectionId",
+  });
+
+  const active = useWatch({
+    control: form.control,
+    name: "active",
+  });
 
   useEffect(() => {
     form.setValue("sectionId", "");
-  }, [classId]);
+  }, [classId, form]);
 
   useEffect(() => {
-    if (mode !== "edit" || !allocationId) return;
-
-    async function loadAllocation() {
-      const res = await fetch(`/api/v1/teacher-allocations/${allocationId}`);
-
-      const result = await res.json();
-
-      if (!result.success) {
-        toast.error(result.message);
-        return;
-      }
-
-      const allocation = result.data;
-
-      form.reset({
-        academicYearId: allocation.academicYearId,
-
-        teacherId: allocation.teacherId,
-
-        subjectId: allocation.subjectId,
-
-        classId: allocation.classId,
-
-        sectionId: allocation.sectionId,
-
-        remarks: allocation.remarks ?? "",
-
-        active: allocation.active,
-      });
+    if (mode !== "edit" || !allocationId) {
+      return;
     }
 
-    loadAllocation();
+    let cancelled = false;
+
+    async function loadAllocation() {
+      try {
+        const res = await fetch(`/api/v1/teacher-allocations/${allocationId}`);
+
+        const result = await res.json();
+
+        if (cancelled) {
+          return;
+        }
+
+        if (!result.success) {
+          toast.error(result.message || "Failed to load teacher allocation.");
+          return;
+        }
+
+        const allocation = result.data;
+
+        form.reset({
+          academicYearId: allocation.academicYearId,
+          teacherId: allocation.teacherId,
+          subjectId: allocation.subjectId,
+          classId: allocation.classId,
+          sectionId: allocation.sectionId,
+          remarks: allocation.remarks ?? "",
+          active: allocation.active,
+        });
+      } catch {
+        if (!cancelled) {
+          toast.error("Failed to load teacher allocation.");
+        }
+      }
+    }
+
+    void loadAllocation();
+
+    return () => {
+      cancelled = true;
+    };
   }, [mode, allocationId, form]);
 
   async function onSubmit(values: TeacherAllocationFormInput) {
@@ -113,7 +153,7 @@ export function TeacherAllocationForm({
       const result = await res.json();
 
       if (!result.success) {
-        toast.error(result.message);
+        toast.error(result.message || "Failed to save teacher allocation.");
         return;
       }
 
@@ -126,6 +166,11 @@ export function TeacherAllocationForm({
       form.reset();
 
       onSuccess();
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : "Something went wrong.";
+
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -136,7 +181,7 @@ export function TeacherAllocationForm({
       <FormField label="Academic Year" required>
         <RemoteCombobox
           url="/api/v1/academic-years/options"
-          value={form.watch("academicYearId")}
+          value={academicYearId}
           placeholder="Select Academic Year"
           onChange={(value) =>
             form.setValue("academicYearId", value, {
@@ -150,7 +195,7 @@ export function TeacherAllocationForm({
       <FormField label="Teacher" required>
         <RemoteCombobox
           url="/api/v1/teachers/options"
-          value={form.watch("teacherId")}
+          value={teacherId}
           placeholder="Select Teacher"
           onChange={(value) =>
             form.setValue("teacherId", value, {
@@ -164,7 +209,7 @@ export function TeacherAllocationForm({
       <FormField label="Subject" required>
         <RemoteCombobox
           url="/api/v1/subjects/options"
-          value={form.watch("subjectId")}
+          value={subjectId}
           placeholder="Select Subject"
           onChange={(value) =>
             form.setValue("subjectId", value, {
@@ -191,8 +236,14 @@ export function TeacherAllocationForm({
 
       <FormField label="Section" required>
         <RemoteCombobox
-          url={`/api/v1/sections/options?classId=${classId}`}
-          value={form.watch("sectionId")}
+          url={
+            classId
+              ? `/api/v1/sections/options?classId=${encodeURIComponent(
+                  classId,
+                )}`
+              : "/api/v1/sections/options"
+          }
+          value={sectionId}
           disabled={!classId}
           placeholder="Select Section"
           onChange={(value) =>
@@ -218,8 +269,12 @@ export function TeacherAllocationForm({
         </div>
 
         <Switch
-          checked={form.watch("active")}
-          onCheckedChange={(checked) => form.setValue("active", checked)}
+          checked={active}
+          onCheckedChange={(checked) =>
+            form.setValue("active", checked, {
+              shouldDirty: true,
+            })
+          }
         />
       </div>
 

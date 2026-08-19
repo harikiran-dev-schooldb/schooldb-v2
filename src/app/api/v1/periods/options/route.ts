@@ -4,7 +4,7 @@ import { ApiResponse } from "@/lib/response";
 
 import { periodService } from "@/features/periods/services/period.service";
 
-export async function GET(req: Request) {
+export async function GET() {
   return apiHandler(async () => {
     const tenant = await requireTenant();
 

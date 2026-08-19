@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 import {
@@ -41,33 +40,58 @@ export function StudentForm({ mode, studentId, onSuccess }: Props) {
     defaultValues,
   });
 
+  const gender = useWatch({
+    control: form.control,
+    name: "gender",
+  });
+
   useEffect(() => {
-    if (mode !== "edit" || !studentId) return;
-
-    async function loadStudent() {
-      const res = await fetch(`/api/v1/students/${studentId}`);
-
-      const result = await res.json();
-
-      if (!result.success) {
-        toast.error(result.message);
-        return;
-      }
-
-      const student = result.data;
-
-      form.reset({
-        admissionNo: student.admissionNo,
-        fullName: student.fullName,
-        gender: student.gender,
-        dob: student.dob.substring(0, 10),
-        phone: student.phone ?? "",
-        email: student.email ?? "",
-        status: student.status,
-      });
+    if (mode !== "edit" || !studentId) {
+      return;
     }
 
-    loadStudent();
+    let cancelled = false;
+
+    async function loadStudent() {
+      try {
+        const res = await fetch(`/api/v1/students/${studentId}`, {
+          cache: "no-store",
+        });
+
+        const result = await res.json();
+
+        if (cancelled) {
+          return;
+        }
+
+        if (!result.success) {
+          toast.error(result.message || "Failed to load student.");
+          return;
+        }
+
+        const student = result.data;
+
+        form.reset({
+          admissionNo: student.admissionNo ?? "",
+          fullName: student.fullName ?? "",
+          gender: student.gender,
+          dob: student.dob ? student.dob.substring(0, 10) : "",
+          phone: student.phone ?? "",
+          email: student.email ?? "",
+          status: student.status,
+        });
+      } catch {
+        if (!cancelled) {
+          toast.error("Failed to load student.");
+        }
+      }
+    }
+
+    void loadStudent();
+
+    return () => {
+      cancelled = true;
+    };
   }, [mode, studentId, form]);
 
   async function onSubmit(values: StudentFormInput) {
@@ -76,12 +100,13 @@ export function StudentForm({ mode, studentId, onSuccess }: Props) {
 
       const payload = createStudentSchema.parse(values);
 
-      const url =
-        mode === "create"
-          ? "/api/v1/students"
-          : `/api/v1/students/${studentId}`;
+      const isCreate = mode === "create";
 
-      const method = mode === "create" ? "POST" : "PUT";
+      const url = isCreate
+        ? "/api/v1/students"
+        : `/api/v1/students/${studentId}`;
+
+      const method = isCreate ? "POST" : "PUT";
 
       const res = await fetch(url, {
         method,
@@ -96,19 +121,24 @@ export function StudentForm({ mode, studentId, onSuccess }: Props) {
       const result = await res.json();
 
       if (!result.success) {
-        toast.error(result.message);
+        toast.error(result.message || "Failed to save student.");
         return;
       }
 
       toast.success(
-        mode === "create"
-          ? "Student created successfully."
-          : "Student updated successfully.",
+        result.message ||
+          (isCreate
+            ? "Student created successfully."
+            : "Student updated successfully."),
       );
 
-      form.reset(defaultValues);
+      if (isCreate) {
+        form.reset(defaultValues);
+      }
 
       onSuccess();
+    } catch {
+      toast.error("Something went wrong while saving the student.");
     } finally {
       setLoading(false);
     }
@@ -141,7 +171,7 @@ export function StudentForm({ mode, studentId, onSuccess }: Props) {
         error={form.formState.errors.gender?.message}
       >
         <GenderSelect
-          value={form.watch("gender")}
+          value={gender}
           onChange={(value) =>
             form.setValue("gender", value, {
               shouldDirty: true,
@@ -165,7 +195,7 @@ export function StudentForm({ mode, studentId, onSuccess }: Props) {
 
       <div className="md:col-span-2">
         <FormField label="Email" error={form.formState.errors.email?.message}>
-          <Input placeholder="Email" {...form.register("email")} />
+          <Input type="email" placeholder="Email" {...form.register("email")} />
         </FormField>
       </div>
 

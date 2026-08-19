@@ -13,9 +13,7 @@ import { FormField } from "@/components/common/forms";
 
 type TimetableItem = {
   id: string;
-
   day: string;
-
   active: boolean;
 
   period: {
@@ -60,25 +58,25 @@ const DAYS = [
 
 export function ClassTimetableContainer() {
   const [academicYearId, setAcademicYearId] = useState("");
-
   const [classId, setClassId] = useState("");
-
   const [sectionId, setSectionId] = useState("");
-
   const [data, setData] = useState<TimetableItem[]>([]);
-
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
+  const canLoad =
+    Boolean(academicYearId) && Boolean(classId) && Boolean(sectionId);
+
+  function handleClassChange(value: string) {
+    setClassId(value);
     setSectionId("");
-    setData([]);
-  }, [classId]);
+  }
 
   useEffect(() => {
-    if (!academicYearId || !classId || !sectionId) {
-      setData([]);
+    if (!canLoad) {
       return;
     }
+
+    let cancelled = false;
 
     async function load() {
       try {
@@ -96,29 +94,46 @@ export function ClassTimetableContainer() {
 
         const result = await response.json();
 
+        if (cancelled) {
+          return;
+        }
+
         if (!result.success) {
           toast.error(result.message);
-          setData([]);
           return;
         }
 
         setData(result.data);
       } catch {
-        toast.error("Failed to load timetable.");
-
-        setData([]);
+        if (!cancelled) {
+          toast.error("Failed to load timetable.");
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     }
 
-    load();
-  }, [academicYearId, classId, sectionId]);
+    void load();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [canLoad, academicYearId, classId, sectionId]);
+
+  /*
+   * Do not display old timetable data when
+   * the current filters are incomplete.
+   */
+  const visibleData = useMemo(() => {
+    return canLoad ? data : [];
+  }, [canLoad, data]);
 
   const periods = useMemo(() => {
     const map = new Map<string, TimetableItem["period"]>();
 
-    for (const item of data) {
+    for (const item of visibleData) {
       if (!map.has(item.period.id)) {
         map.set(item.period.id, item.period);
       }
@@ -127,10 +142,12 @@ export function ClassTimetableContainer() {
     return Array.from(map.values()).sort(
       (a, b) => a.displayOrder - b.displayOrder,
     );
-  }, [data]);
+  }, [visibleData]);
 
   function getItem(periodId: string, day: string) {
-    return data.find((item) => item.period.id === periodId && item.day === day);
+    return visibleData.find(
+      (item) => item.period.id === periodId && item.day === day,
+    );
   }
 
   return (
@@ -144,7 +161,7 @@ export function ClassTimetableContainer() {
         </FormField>
 
         <FormField label="Class">
-          <ClassSelect value={classId} onChange={setClassId} />
+          <ClassSelect value={classId} onChange={handleClassChange} />
         </FormField>
 
         <FormField label="Section">
@@ -157,7 +174,7 @@ export function ClassTimetableContainer() {
         </FormField>
       </div>
 
-      {!academicYearId || !classId || !sectionId ? (
+      {!canLoad ? (
         <div className="rounded-lg border p-10 text-center text-sm text-muted-foreground">
           Select academic year, class and section to view the timetable.
         </div>
@@ -165,7 +182,7 @@ export function ClassTimetableContainer() {
         <div className="rounded-lg border p-10 text-center text-sm text-muted-foreground">
           Loading timetable...
         </div>
-      ) : data.length === 0 ? (
+      ) : visibleData.length === 0 ? (
         <div className="rounded-lg border p-10 text-center text-sm text-muted-foreground">
           No timetable entries found.
         </div>

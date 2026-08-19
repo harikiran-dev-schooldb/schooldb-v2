@@ -3,11 +3,8 @@
 import { useEffect, useState } from "react";
 
 import { OutstandingFeesSummary } from "@/features/student-fees/components/OutstandingFeesSummary";
-
 import { OutstandingFeesSearch } from "@/features/student-fees/components/OutstandingFeesSearch";
-
 import { OutstandingFeesTable } from "@/features/student-fees/components/OutstandingFeesTable";
-
 import { RecordFeePaymentDialog } from "@/features/student-fees/components/RecordFeePaymentDialog";
 
 import type {
@@ -16,7 +13,6 @@ import type {
 } from "@/features/student-fees/types/outstanding-fees";
 
 import { Card, CardContent } from "@/components/ui/card";
-
 import { Button } from "@/components/ui/button";
 
 type Props = {
@@ -25,20 +21,12 @@ type Props = {
 
 export function OutstandingFeesContainer({ schoolSlug }: Props) {
   const [data, setData] = useState<OutstandingFeesData | null>(null);
-
   const [loading, setLoading] = useState(true);
-
   const [error, setError] = useState<string | null>(null);
-
   const [search, setSearch] = useState("");
 
   const [selectedRow, setSelectedRow] = useState<OutstandingRow | null>(null);
-
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
-
-  /* ---------------------------------------------------------------------- */
-  /* Load Outstanding Fees                                                  */
-  /* ---------------------------------------------------------------------- */
 
   async function loadOutstanding(searchValue = "") {
     try {
@@ -64,7 +52,6 @@ export function OutstandingFeesContainer({ schoolSlug }: Props) {
 
       if (!response.ok || !result.success) {
         setError(result.message || "Failed to load outstanding fees.");
-
         return;
       }
 
@@ -76,35 +63,64 @@ export function OutstandingFeesContainer({ schoolSlug }: Props) {
     }
   }
 
-  /* ---------------------------------------------------------------------- */
-  /* Initial Load                                                           */
-  /* ---------------------------------------------------------------------- */
-
   useEffect(() => {
-    void loadOutstanding();
-  }, []);
+    let cancelled = false;
 
-  /* ---------------------------------------------------------------------- */
-  /* Search                                                                 */
-  /* ---------------------------------------------------------------------- */
+    async function initialLoad() {
+      try {
+        const response = await fetch("/api/v1/fees/outstanding", {
+          cache: "no-store",
+        });
+
+        const result = await response.json();
+
+        if (cancelled) return;
+
+        if (!response.ok || !result.success) {
+          setError(result.message || "Failed to load outstanding fees.");
+          return;
+        }
+
+        setData(result.data);
+      } catch {
+        if (!cancelled) {
+          setError("Failed to load outstanding fees.");
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    }
+
+    void initialLoad();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   function handleSearch() {
     void loadOutstanding(search);
   }
 
-  /* ---------------------------------------------------------------------- */
-  /* Collect                                                                */
-  /* ---------------------------------------------------------------------- */
-
   function handleCollect(row: OutstandingRow) {
     setSelectedRow(row);
-
     setPaymentDialogOpen(true);
   }
 
-  /* ---------------------------------------------------------------------- */
-  /* Loading                                                                */
-  /* ---------------------------------------------------------------------- */
+  function handlePaymentDialogChange(open: boolean) {
+    setPaymentDialogOpen(open);
+
+    if (!open) {
+      setSelectedRow(null);
+    }
+  }
+
+  function handlePaymentSuccess() {
+    setSelectedRow(null);
+    void loadOutstanding(search);
+  }
 
   if (loading && !data) {
     return (
@@ -113,10 +129,6 @@ export function OutstandingFeesContainer({ schoolSlug }: Props) {
       </div>
     );
   }
-
-  /* ---------------------------------------------------------------------- */
-  /* Initial Error                                                          */
-  /* ---------------------------------------------------------------------- */
 
   if (error && !data) {
     return (
@@ -135,10 +147,6 @@ export function OutstandingFeesContainer({ schoolSlug }: Props) {
   if (!data) {
     return null;
   }
-
-  /* ---------------------------------------------------------------------- */
-  /* Render                                                                 */
-  /* ---------------------------------------------------------------------- */
 
   return (
     <div className="space-y-6">
@@ -164,13 +172,7 @@ export function OutstandingFeesContainer({ schoolSlug }: Props) {
       {selectedRow && (
         <RecordFeePaymentDialog
           open={paymentDialogOpen}
-          onOpenChange={(open) => {
-            setPaymentDialogOpen(open);
-
-            if (!open) {
-              setSelectedRow(null);
-            }
-          }}
+          onOpenChange={handlePaymentDialogChange}
           schoolSlug={schoolSlug}
           studentFeeId={selectedRow.studentFeeId}
           studentEnrollmentId={selectedRow.studentEnrollmentId}
@@ -183,11 +185,7 @@ export function OutstandingFeesContainer({ schoolSlug }: Props) {
               outstanding: selectedRow.outstanding,
             },
           ]}
-          onSuccess={() => {
-            setSelectedRow(null);
-
-            void loadOutstanding(search);
-          }}
+          onSuccess={handlePaymentSuccess}
         />
       )}
     </div>

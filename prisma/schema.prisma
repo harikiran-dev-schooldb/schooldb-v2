@@ -610,6 +610,8 @@ model Attendance {
 
   @@unique([sessionId, studentId])
   @@index([studentId])
+    @@index([schoolId, studentId])
+
 }
 
 model Homework {

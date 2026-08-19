@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
+
 import { zodResolver } from "@hookform/resolvers/zod";
 
 import {
@@ -15,6 +16,7 @@ import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 
 import { RemoteCombobox } from "@/components/common/combobox/RemoteCombobox";
+
 import {
   FormField,
   NumberInput,
@@ -49,48 +51,98 @@ export function StudentEnrollmentForm({
     defaultValues,
   });
 
-  const classId = form.watch("classId");
+  const studentId = useWatch({
+    control: form.control,
+    name: "studentId",
+  });
 
-  const previousClass = useRef(classId);
+  const academicYearId = useWatch({
+    control: form.control,
+    name: "academicYearId",
+  });
+
+  const classId = useWatch({
+    control: form.control,
+    name: "classId",
+  });
+
+  const sectionId = useWatch({
+    control: form.control,
+    name: "sectionId",
+  });
 
   useEffect(() => {
-    if (previousClass.current && previousClass.current !== classId) {
-      form.setValue("sectionId", "");
+    if (mode !== "edit" || !enrollmentId) {
+      return;
     }
-
-    previousClass.current = classId;
-  }, [classId, form]);
-
-  useEffect(() => {
-    if (mode !== "edit" || !enrollmentId) return;
 
     async function loadEnrollment() {
-      const res = await fetch(`/api/v1/student-enrollments/${enrollmentId}`);
+      try {
+        const res = await fetch(`/api/v1/student-enrollments/${enrollmentId}`);
 
-      const result = await res.json();
+        const result = await res.json();
 
-      if (!result.success) {
-        toast.error(result.message);
-        return;
+        if (!res.ok || !result.success) {
+          toast.error(result.message || "Failed to load enrollment.");
+
+          return;
+        }
+
+        const item = result.data;
+
+        form.reset({
+          studentId: item.studentId,
+          academicYearId: item.academicYearId,
+          classId: item.classId,
+          sectionId: item.sectionId,
+          rollNo: item.rollNo ?? undefined,
+          admissionDate: item.admissionDate
+            ? item.admissionDate.substring(0, 10)
+            : "",
+          active: item.active,
+        });
+      } catch {
+        toast.error("Failed to load enrollment.");
       }
-
-      const item = result.data;
-
-      form.reset({
-        studentId: item.studentId,
-        academicYearId: item.academicYearId,
-        classId: item.classId,
-        sectionId: item.sectionId,
-        rollNo: item.rollNo ?? undefined,
-        admissionDate: item.admissionDate
-          ? item.admissionDate.substring(0, 10)
-          : "",
-        active: item.active,
-      });
     }
 
-    loadEnrollment();
+    void loadEnrollment();
   }, [mode, enrollmentId, form]);
+
+  function handleStudentChange(value: string) {
+    form.setValue("studentId", value, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+  }
+
+  function handleAcademicYearChange(value: string) {
+    form.setValue("academicYearId", value, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+  }
+
+  function handleClassChange(value: string) {
+    form.setValue("classId", value, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+
+    // Section belongs to the selected class.
+    // Clear the old section immediately when the class changes.
+    form.setValue("sectionId", "", {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+  }
+
+  function handleSectionChange(value: string) {
+    form.setValue("sectionId", value, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+  }
 
   async function onSubmit(values: StudentEnrollmentFormInput) {
     try {
@@ -117,8 +169,9 @@ export function StudentEnrollmentForm({
 
       const result = await res.json();
 
-      if (!result.success) {
-        toast.error(result.message);
+      if (!res.ok || !result.success) {
+        toast.error(result.message || "Failed to save enrollment.");
+
         return;
       }
 
@@ -131,6 +184,8 @@ export function StudentEnrollmentForm({
       form.reset(defaultValues);
 
       onSuccess();
+    } catch {
+      toast.error("Failed to save enrollment.");
     } finally {
       setLoading(false);
     }
@@ -148,14 +203,9 @@ export function StudentEnrollmentForm({
       >
         <RemoteCombobox
           url="/api/v1/students/options"
-          value={form.watch("studentId")}
+          value={studentId ?? ""}
           placeholder="Select Student"
-          onChange={(value) =>
-            form.setValue("studentId", value, {
-              shouldDirty: true,
-              shouldValidate: true,
-            })
-          }
+          onChange={handleStudentChange}
         />
       </FormField>
 
@@ -166,14 +216,9 @@ export function StudentEnrollmentForm({
       >
         <RemoteCombobox
           url="/api/v1/academic-years/options"
-          value={form.watch("academicYearId")}
+          value={academicYearId ?? ""}
           placeholder="Select Academic Year"
-          onChange={(value) =>
-            form.setValue("academicYearId", value, {
-              shouldDirty: true,
-              shouldValidate: true,
-            })
-          }
+          onChange={handleAcademicYearChange}
         />
       </FormField>
 
@@ -184,14 +229,9 @@ export function StudentEnrollmentForm({
       >
         <RemoteCombobox
           url="/api/v1/classes/options"
-          value={classId}
+          value={classId ?? ""}
           placeholder="Select Class"
-          onChange={(value) =>
-            form.setValue("classId", value, {
-              shouldDirty: true,
-              shouldValidate: true,
-            })
-          }
+          onChange={handleClassChange}
         />
       </FormField>
 
@@ -201,16 +241,15 @@ export function StudentEnrollmentForm({
         error={form.formState.errors.sectionId?.message}
       >
         <RemoteCombobox
-          url={`/api/v1/sections/options?classId=${classId}`}
-          value={form.watch("sectionId")}
+          url={
+            classId
+              ? `/api/v1/sections/options?classId=${classId}`
+              : "/api/v1/sections/options"
+          }
+          value={sectionId ?? ""}
           placeholder="Select Section"
           disabled={!classId}
-          onChange={(value) =>
-            form.setValue("sectionId", value, {
-              shouldDirty: true,
-              shouldValidate: true,
-            })
-          }
+          onChange={handleSectionChange}
         />
       </FormField>
 

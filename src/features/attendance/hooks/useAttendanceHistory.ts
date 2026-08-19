@@ -135,8 +135,14 @@ export function useAttendanceHistory(
   );
 
   useEffect(() => {
-    load();
-  }, [load]);
+  const timeoutId = window.setTimeout(() => {
+    void load();
+  }, 0);
+
+  return () => {
+    window.clearTimeout(timeoutId);
+  };
+}, [load]);
 
   return {
     data,

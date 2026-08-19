@@ -94,18 +94,26 @@ export function EditExamScheduleDialog({
   useEffect(() => {
     if (!open || !schedule) return;
 
-    setClassId(schedule.class.id);
-    setSectionId(schedule.section?.id ?? "");
-    setSubjectId(schedule.subject.id);
+    const frameId = requestAnimationFrame(() => {
+      setClassId(schedule.class.id);
+      setSectionId(schedule.section?.id ?? "");
+      setSubjectId(schedule.subject.id);
 
-    setExamDate(toDateInputValue(schedule.examDate));
+      setExamDate(toDateInputValue(schedule.examDate));
 
-    setStartTime(schedule.startTime ?? "");
-    setEndTime(schedule.endTime ?? "");
+      setStartTime(schedule.startTime ?? "");
+      setEndTime(schedule.endTime ?? "");
 
-    setMaxMarks(String(schedule.maxMarks));
+      setMaxMarks(String(schedule.maxMarks));
 
-    setPassMarks(schedule.passMarks !== null ? String(schedule.passMarks) : "");
+      setPassMarks(
+        schedule.passMarks !== null ? String(schedule.passMarks) : "",
+      );
+    });
+
+    return () => {
+      cancelAnimationFrame(frameId);
+    };
   }, [open, schedule]);
 
   /* ---------------------------------------------------------------------- */

@@ -39,20 +39,16 @@ export function LowAttendanceReport({ schoolSlug }: Props) {
   const router = useRouter();
 
   const [academicYearId, setAcademicYearId] = useState("");
-
   const [classId, setClassId] = useState("");
-
   const [sectionId, setSectionId] = useState("");
-
   const [fromDate, setFromDate] = useState("");
-
   const [toDate, setToDate] = useState("");
-
   const [threshold, setThreshold] = useState("75");
 
   const [data, setData] = useState<ReportData | null>(null);
-
   const [loading, setLoading] = useState(false);
+
+  const canLoadReport = Boolean(academicYearId);
 
   function changeClass(value: string) {
     setClassId(value);
@@ -61,55 +57,74 @@ export function LowAttendanceReport({ schoolSlug }: Props) {
   }
 
   useEffect(() => {
-    if (!academicYearId) {
-      setData(null);
-      return;
+    if (!canLoadReport) return;
+
+    let cancelled = false;
+
+    async function loadReport() {
+      try {
+        setLoading(true);
+
+        const params = new URLSearchParams({
+          academicYearId,
+          threshold,
+        });
+
+        if (classId) {
+          params.set("classId", classId);
+        }
+
+        if (sectionId) {
+          params.set("sectionId", sectionId);
+        }
+
+        if (fromDate) {
+          params.set("fromDate", fromDate);
+        }
+
+        if (toDate) {
+          params.set("toDate", toDate);
+        }
+
+        const response = await fetch(
+          `/api/v1/attendance/reports/low?${params.toString()}`,
+        );
+
+        const result = await response.json();
+
+        if (cancelled) return;
+
+        if (!result.success) {
+          toast.error(result.message);
+          return;
+        }
+
+        setData(result.data);
+      } catch {
+        if (!cancelled) {
+          toast.error("Failed to load low attendance report.");
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
     }
 
     loadReport();
-  }, [academicYearId, classId, sectionId, fromDate, toDate, threshold]);
 
-  async function loadReport() {
-    try {
-      setLoading(true);
-
-      const params = new URLSearchParams({
-        academicYearId,
-        threshold,
-      });
-
-      if (classId) {
-        params.set("classId", classId);
-      }
-
-      if (sectionId) {
-        params.set("sectionId", sectionId);
-      }
-
-      if (fromDate) {
-        params.set("fromDate", fromDate);
-      }
-
-      if (toDate) {
-        params.set("toDate", toDate);
-      }
-
-      const response = await fetch(`/api/v1/attendance/reports/low?${params}`);
-
-      const result = await response.json();
-
-      if (!result.success) {
-        toast.error(result.message);
-        return;
-      }
-
-      setData(result.data);
-    } catch {
-      toast.error("Failed to load low attendance report.");
-    } finally {
-      setLoading(false);
-    }
-  }
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    canLoadReport,
+    academicYearId,
+    classId,
+    sectionId,
+    fromDate,
+    toDate,
+    threshold,
+  ]);
 
   function openStudent(studentId: string) {
     router.push(
@@ -119,8 +134,6 @@ export function LowAttendanceReport({ schoolSlug }: Props) {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-
       <div>
         <h1 className="text-2xl font-semibold">Low Attendance</h1>
 
@@ -128,8 +141,6 @@ export function LowAttendanceReport({ schoolSlug }: Props) {
           Students whose attendance is below the selected threshold.
         </p>
       </div>
-
-      {/* Filters */}
 
       <div className="rounded-xl border bg-card p-4">
         <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
@@ -182,9 +193,7 @@ export function LowAttendanceReport({ schoolSlug }: Props) {
         </div>
       </div>
 
-      {/* Empty state */}
-
-      {!academicYearId ? (
+      {!canLoadReport ? (
         <div className="rounded-xl border bg-card p-10 text-center">
           <FileText className="mx-auto mb-3 h-10 w-10 text-muted-foreground" />
 
@@ -200,12 +209,9 @@ export function LowAttendanceReport({ schoolSlug }: Props) {
         </div>
       ) : data ? (
         <>
-          {/* Summary */}
-
           <div className="grid gap-4 md:grid-cols-3">
             <div className="rounded-xl border bg-card p-5">
               <p className="text-sm text-muted-foreground">Total Students</p>
-
               <p className="mt-2 text-3xl font-semibold">
                 {data.totalStudents}
               </p>
@@ -213,7 +219,6 @@ export function LowAttendanceReport({ schoolSlug }: Props) {
 
             <div className="rounded-xl border bg-card p-5">
               <p className="text-sm text-muted-foreground">Below Threshold</p>
-
               <p className="mt-2 text-3xl font-semibold text-red-600">
                 {data.lowAttendanceCount}
               </p>
@@ -221,12 +226,9 @@ export function LowAttendanceReport({ schoolSlug }: Props) {
 
             <div className="rounded-xl border bg-card p-5">
               <p className="text-sm text-muted-foreground">Threshold</p>
-
               <p className="mt-2 text-3xl font-semibold">{data.threshold}%</p>
             </div>
           </div>
-
-          {/* Table */}
 
           <div className="rounded-xl border bg-card">
             <div className="flex items-center gap-3 border-b p-4">
@@ -257,21 +259,13 @@ export function LowAttendanceReport({ schoolSlug }: Props) {
                   <thead>
                     <tr className="border-b bg-muted/40 text-left">
                       <th className="px-4 py-3">Roll No</th>
-
                       <th className="px-4 py-3">Admission No</th>
-
                       <th className="px-4 py-3">Student</th>
-
                       <th className="px-4 py-3">Total</th>
-
                       <th className="px-4 py-3">Present</th>
-
                       <th className="px-4 py-3">Absent</th>
-
                       <th className="px-4 py-3">Late</th>
-
                       <th className="px-4 py-3">Leave</th>
-
                       <th className="px-4 py-3">Attendance</th>
                     </tr>
                   </thead>
@@ -283,7 +277,6 @@ export function LowAttendanceReport({ schoolSlug }: Props) {
                         className="border-b last:border-0 hover:bg-muted/30"
                       >
                         <td className="px-4 py-3">{student.rollNo ?? "-"}</td>
-
                         <td className="px-4 py-3">{student.admissionNo}</td>
 
                         <td className="px-4 py-3">

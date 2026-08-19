@@ -1,4 +1,4 @@
-import { Prisma, StudentExamStatus } from "@/generated/prisma/client";
+import { StudentExamStatus } from "@/generated/prisma/client";
 
 import { prisma } from "@/lib/prisma";
 

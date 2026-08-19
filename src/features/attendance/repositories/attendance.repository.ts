@@ -585,8 +585,6 @@ lowAttendanceReport(
   academicYearId: string,
   classId?: string,
   sectionId?: string,
-  fromDate?: Date,
-  toDate?: Date
 ) {
   return prisma.studentEnrollment.findMany({
     where: {

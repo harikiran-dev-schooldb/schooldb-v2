@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   CalendarDays,
   CheckCircle2,
@@ -13,10 +13,6 @@ import { toast } from "sonner";
 
 import { AcademicYearSelect } from "@/components/common/select/AcademicYearSelect";
 import { StudentSelect } from "@/components/common/select/StudentSelect";
-
-type Props = {
-  schoolSlug: string;
-};
 
 type AttendanceStatus = "PRESENT" | "ABSENT" | "LATE" | "LEAVE";
 
@@ -63,7 +59,7 @@ type ReportData = {
   records: AttendanceRecord[];
 };
 
-export function StudentAttendanceReport({ schoolSlug }: Props) {
+export function StudentAttendanceReport() {
   const [academicYearId, setAcademicYearId] = useState("");
 
   const [studentId, setStudentId] = useState("");
@@ -76,9 +72,8 @@ export function StudentAttendanceReport({ schoolSlug }: Props) {
 
   const [loading, setLoading] = useState(false);
 
-  async function loadReport() {
+  const loadReport = useCallback(async () => {
     if (!academicYearId || !studentId) {
-      setData(null);
       return;
     }
 
@@ -115,16 +110,21 @@ export function StudentAttendanceReport({ schoolSlug }: Props) {
     } finally {
       setLoading(false);
     }
-  }
+  }, [academicYearId, studentId, fromDate, toDate]);
 
   useEffect(() => {
     if (!academicYearId || !studentId) {
-      setData(null);
       return;
     }
 
-    loadReport();
-  }, [academicYearId, studentId, fromDate, toDate]);
+    const timeoutId = window.setTimeout(() => {
+      void loadReport();
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [academicYearId, studentId, loadReport]);
 
   function statusLabel(status: AttendanceStatus) {
     switch (status) {

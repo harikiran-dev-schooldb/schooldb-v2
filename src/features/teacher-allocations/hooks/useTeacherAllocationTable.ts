@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { TeacherAllocationListItem } from "../types";
 
@@ -13,44 +13,89 @@ export function useTeacherAllocationTable() {
   const [allocations, setAllocations] =
     useState<TeacherAllocationListItem[]>([]);
 
-  const [loading, setLoading] =
-    useState(true);
+  const [loading, setLoading] = useState(true);
 
-  const [search, setSearch] =
-    useState("");
+  const [search, setSearch] = useState("");
 
-  async function load() {
-    try {
-      setLoading(true);
+  const load = useCallback(
+    async (signal?: AbortSignal) => {
+      const params = new URLSearchParams();
 
-      const res = await fetch(
-        `/api/v1/teacher-allocations?search=${search}`
-      );
+      if (search.trim()) {
+        params.set("search", search.trim());
+      }
 
-      const result = await res.json();
+      const queryString = params.toString();
 
-      if (!result.success) return;
+      try {
+        const res = await fetch(
+          `/api/v1/teacher-allocations${
+            queryString ? `?${queryString}` : ""
+          }`,
+          { signal },
+        );
 
-      const data: Response = result.data;
+        if (!res.ok) {
+          throw new Error("Failed to load teacher allocations");
+        }
 
-      setAllocations(data.data);
-    } finally {
-      setLoading(false);
-    }
-  }
+        const result = await res.json();
+
+        if (signal?.aborted) return;
+
+        if (!result.success) {
+          setAllocations([]);
+          return;
+        }
+
+        const data: Response = result.data;
+
+        setAllocations(data.data);
+      } catch (error) {
+        if (
+          error instanceof DOMException &&
+          error.name === "AbortError"
+        ) {
+          return;
+        }
+
+        if (!signal?.aborted) {
+          setAllocations([]);
+        }
+      } finally {
+        if (!signal?.aborted) {
+          setLoading(false);
+        }
+      }
+    },
+    [search],
+  );
 
   useEffect(() => {
-    load();
-  }, [search]);
+    const controller = new AbortController();
+
+    const timeoutId = window.setTimeout(() => {
+      void load(controller.signal);
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+      controller.abort();
+    };
+  }, [load]);
+
+  const reload = useCallback(() => {
+    setLoading(true);
+    return load();
+  }, [load]);
 
   return {
     allocations,
-
     loading,
 
     search,
     setSearch,
 
-    reload: load,
+    reload,
   };
 }

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 import { teacherSchema, TeacherFormInput } from "../schemas/teacher.schema";
@@ -10,11 +10,9 @@ import { teacherSchema, TeacherFormInput } from "../schemas/teacher.schema";
 import { toast } from "sonner";
 
 import { Input } from "@/components/ui/input";
-
 import { Button } from "@/components/ui/button";
 
 import { GenderSelect } from "@/components/common/select/GenderSelect";
-
 import { FormField } from "@/components/common/forms";
 
 type Props = {
@@ -43,38 +41,47 @@ export function TeacherForm({ mode, teacherId, onSuccess }: Props) {
     },
   });
 
+  const gender = useWatch({
+    control: form.control,
+    name: "gender",
+  });
+
   useEffect(() => {
     if (mode !== "edit" || !teacherId) return;
 
     async function loadTeacher() {
-      const res = await fetch(`/api/v1/teachers/${teacherId}`);
+      try {
+        const res = await fetch(`/api/v1/teachers/${teacherId}`);
 
-      const result = await res.json();
+        const result = await res.json();
 
-      if (!result.success) {
-        toast.error(result.message);
-        return;
+        if (!result.success) {
+          toast.error(result.message ?? "Failed to load teacher.");
+          return;
+        }
+
+        const teacher = result.data;
+
+        form.reset({
+          employeeId: teacher.employeeId ?? "",
+          fullName: teacher.fullName ?? "",
+          gender: teacher.gender ?? "MALE",
+          dob: teacher.dob ? teacher.dob.substring(0, 10) : "",
+          joiningDate: teacher.joiningDate
+            ? teacher.joiningDate.substring(0, 10)
+            : "",
+          phone: teacher.phone ?? "",
+          email: teacher.email ?? "",
+          qualification: teacher.qualification ?? "",
+          designation: teacher.designation ?? "",
+          active: teacher.active ?? true,
+        });
+      } catch {
+        toast.error("Failed to load teacher.");
       }
-
-      const teacher = result.data;
-
-      form.reset({
-        employeeId: teacher.employeeId,
-        fullName: teacher.fullName,
-        gender: teacher.gender,
-        dob: teacher.dob ? teacher.dob.substring(0, 10) : "",
-        joiningDate: teacher.joiningDate
-          ? teacher.joiningDate.substring(0, 10)
-          : "",
-        phone: teacher.phone ?? "",
-        email: teacher.email ?? "",
-        qualification: teacher.qualification ?? "",
-        designation: teacher.designation ?? "",
-        active: teacher.active,
-      });
     }
 
-    loadTeacher();
+    void loadTeacher();
   }, [mode, teacherId, form]);
 
   async function onSubmit(values: TeacherFormInput) {
@@ -103,7 +110,13 @@ export function TeacherForm({ mode, teacherId, onSuccess }: Props) {
       const result = await res.json();
 
       if (!result.success) {
-        toast.error(result.message);
+        toast.error(
+          result.message ??
+            (mode === "create"
+              ? "Failed to create teacher."
+              : "Failed to update teacher."),
+        );
+
         return;
       }
 
@@ -116,6 +129,12 @@ export function TeacherForm({ mode, teacherId, onSuccess }: Props) {
       form.reset();
 
       onSuccess();
+    } catch {
+      toast.error(
+        mode === "create"
+          ? "Failed to create teacher."
+          : "Failed to update teacher.",
+      );
     } finally {
       setLoading(false);
     }
@@ -143,8 +162,13 @@ export function TeacherForm({ mode, teacherId, onSuccess }: Props) {
       </FormField>
 
       <GenderSelect
-        value={form.watch("gender")}
-        onChange={(value) => form.setValue("gender", value)}
+        value={gender}
+        onChange={(value) =>
+          form.setValue("gender", value, {
+            shouldDirty: true,
+            shouldValidate: true,
+          })
+        }
       />
 
       <FormField
@@ -154,7 +178,10 @@ export function TeacherForm({ mode, teacherId, onSuccess }: Props) {
         <Input type="date" {...form.register("dob")} />
       </FormField>
 
-      <FormField label="Joining Date">
+      <FormField
+        label="Joining Date"
+        error={form.formState.errors.joiningDate?.message}
+      >
         <Input type="date" {...form.register("joiningDate")} />
       </FormField>
 
@@ -166,11 +193,17 @@ export function TeacherForm({ mode, teacherId, onSuccess }: Props) {
         <Input type="email" {...form.register("email")} />
       </FormField>
 
-      <FormField label="Qualification">
+      <FormField
+        label="Qualification"
+        error={form.formState.errors.qualification?.message}
+      >
         <Input {...form.register("qualification")} />
       </FormField>
 
-      <FormField label="Designation">
+      <FormField
+        label="Designation"
+        error={form.formState.errors.designation?.message}
+      >
         <Input {...form.register("designation")} />
       </FormField>
 

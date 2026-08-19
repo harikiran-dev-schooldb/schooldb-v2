@@ -2,6 +2,7 @@ import { z } from "zod";
 
 export const feePlanItemSchema = z.object({
   feeCategoryId: z.string().min(1),
+
   frequency: z.enum([
     "MONTHLY",
     "QUARTERLY",
@@ -10,7 +11,9 @@ export const feePlanItemSchema = z.object({
     "ANNUAL",
     "CUSTOM",
   ]),
+
   amount: z.coerce.number().positive(),
+
   mandatory: z.boolean().optional().default(true),
 });
 
@@ -38,5 +41,10 @@ export const feePlanSchema = z.object({
     .min(1, "At least one fee item is required."),
 });
 
+// Raw values used by React Hook Form
+export type FeePlanFormValues =
+  z.input<typeof feePlanSchema>;
+
+// Validated/transformed values after Zod parsing
 export type FeePlanInput =
-  z.infer<typeof feePlanSchema>;
+  z.output<typeof feePlanSchema>;

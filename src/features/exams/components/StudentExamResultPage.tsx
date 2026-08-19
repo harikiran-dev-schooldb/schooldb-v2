@@ -126,7 +126,13 @@ export function StudentExamResultPage({
   }, [examId, studentId]);
 
   useEffect(() => {
-    void loadResult();
+    const timeoutId = window.setTimeout(() => {
+      void loadResult();
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
   }, [loadResult]);
 
   if (loading) {

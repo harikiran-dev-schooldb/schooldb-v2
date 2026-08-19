@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 import { sectionSchema, SectionFormInput } from "../schemas/section.schema";
@@ -21,6 +21,12 @@ type Props = {
   onSuccess: () => void;
 };
 
+const defaultValues: SectionFormInput = {
+  classId: "",
+  name: "",
+  displayOrder: 0,
+};
+
 export function SectionForm({ mode, sectionId, onSuccess }: Props) {
   const router = useRouter();
 
@@ -28,37 +34,41 @@ export function SectionForm({ mode, sectionId, onSuccess }: Props) {
 
   const form = useForm<SectionFormInput>({
     resolver: zodResolver(sectionSchema),
+    defaultValues,
+  });
 
-    defaultValues: {
-      classId: "",
-      name: "",
-      displayOrder: 0,
-    },
+  const classId = useWatch({
+    control: form.control,
+    name: "classId",
   });
 
   useEffect(() => {
     if (mode !== "edit" || !sectionId) return;
 
     async function loadSection() {
-      const res = await fetch(`/api/v1/sections/${sectionId}`);
+      try {
+        const res = await fetch(`/api/v1/sections/${sectionId}`);
 
-      const result = await res.json();
+        const result = await res.json();
 
-      if (!result.success) {
-        toast.error(result.message);
-        return;
+        if (!res.ok || !result.success) {
+          toast.error(result.message || "Failed to load section.");
+          return;
+        }
+
+        const section = result.data;
+
+        form.reset({
+          classId: section.classId,
+          name: section.name,
+          displayOrder: section.displayOrder,
+        });
+      } catch {
+        toast.error("Failed to load section.");
       }
-
-      const section = result.data;
-
-      form.reset({
-        classId: section.classId,
-        name: section.name,
-        displayOrder: section.displayOrder,
-      });
     }
 
-    loadSection();
+    void loadSection();
   }, [mode, sectionId, form]);
 
   async function onSubmit(values: SectionFormInput) {
@@ -76,32 +86,37 @@ export function SectionForm({ mode, sectionId, onSuccess }: Props) {
 
       const res = await fetch(url, {
         method,
-
         headers: {
           "Content-Type": "application/json",
         },
-
         body: JSON.stringify(payload),
       });
 
       const result = await res.json();
 
-      if (!result.success) {
-        toast.error(result.message);
+      if (!res.ok || !result.success) {
+        toast.error(result.message || "Failed to save section.");
         return;
       }
 
       toast.success(
-        mode === "create"
-          ? "Section created successfully."
-          : "Section updated successfully.",
+        result.message ||
+          (mode === "create"
+            ? "Section created successfully."
+            : "Section updated successfully."),
       );
 
-      form.reset();
+      form.reset(defaultValues);
 
       onSuccess();
 
       router.refresh();
+    } catch (error) {
+      if (error instanceof Error) {
+        toast.error(error.message);
+      } else {
+        toast.error("Failed to save section.");
+      }
     } finally {
       setLoading(false);
     }
@@ -110,8 +125,13 @@ export function SectionForm({ mode, sectionId, onSuccess }: Props) {
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
       <ClassSelect
-        value={form.watch("classId")}
-        onChange={(value) => form.setValue("classId", value)}
+        value={classId}
+        onChange={(value) =>
+          form.setValue("classId", value, {
+            shouldDirty: true,
+            shouldValidate: true,
+          })
+        }
       />
 
       <Input placeholder="Section Name" {...form.register("name")} />

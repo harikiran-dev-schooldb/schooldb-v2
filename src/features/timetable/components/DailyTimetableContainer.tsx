@@ -89,11 +89,14 @@ export function DailyTimetableContainer() {
 
   const [loading, setLoading] = useState(false);
 
+  const canLoad = Boolean(academicYearId) && Boolean(day);
+
   useEffect(() => {
-    if (!academicYearId || !day) {
-      setData([]);
+    if (!canLoad) {
       return;
     }
+
+    let cancelled = false;
 
     async function load() {
       try {
@@ -110,24 +113,33 @@ export function DailyTimetableContainer() {
 
         const result = await response.json();
 
+        if (cancelled) {
+          return;
+        }
+
         if (!result.success) {
-          toast.error(result.message);
-          setData([]);
+          toast.error(result.message ?? "Failed to load timetable.");
           return;
         }
 
         setData(result.data);
       } catch {
-        toast.error("Failed to load timetable.");
-
-        setData([]);
+        if (!cancelled) {
+          toast.error("Failed to load timetable.");
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     }
 
-    load();
-  }, [academicYearId, day]);
+    void load();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [canLoad, academicYearId, day]);
 
   return (
     <div className="space-y-6">
@@ -135,12 +147,12 @@ export function DailyTimetableContainer() {
         <FormField label="Academic Year">
           <AcademicYearSelect
             value={academicYearId}
-            onChange={setAcademicYearId}
+            onChange={handleAcademicYearChange}
           />
         </FormField>
 
         <FormField label="Day">
-          <Select value={day} onValueChange={setDay}>
+          <Select value={day} onValueChange={handleDayChange}>
             <SelectTrigger>
               <SelectValue placeholder="Select Day" />
             </SelectTrigger>
@@ -231,4 +243,14 @@ export function DailyTimetableContainer() {
       )}
     </div>
   );
+
+  function handleAcademicYearChange(value: string) {
+    setAcademicYearId(value);
+    setData([]);
+  }
+
+  function handleDayChange(value: string) {
+    setDay(value);
+    setData([]);
+  }
 }

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 import { periodSchema, PeriodFormInput } from "../schemas/period.schema";
@@ -25,43 +25,61 @@ type Props = {
   onSuccess: () => void;
 };
 
+const defaultValues: PeriodFormInput = {
+  name: "",
+  startTime: "",
+  endTime: "",
+  displayOrder: 0,
+  active: true,
+};
+
 export function PeriodForm({ mode, periodId, onSuccess }: Props) {
   const [loading, setLoading] = useState(false);
 
   const form = useForm<PeriodFormInput>({
     resolver: zodResolver(periodSchema),
+    defaultValues,
+  });
 
-    defaultValues: {
-      name: "",
-      startTime: "",
-      endTime: "",
-      displayOrder: 0,
-      active: true,
-    },
+  const active = useWatch({
+    control: form.control,
+    name: "active",
   });
 
   useEffect(() => {
     if (mode !== "edit" || !periodId) return;
 
     async function load() {
-      const res = await fetch(`/api/v1/periods/${periodId}`);
+      try {
+        const res = await fetch(`/api/v1/periods/${periodId}`);
 
-      const result = await res.json();
+        const result = await res.json();
 
-      if (!result.success) {
-        toast.error(result.message);
-        return;
+        if (!res.ok || !result.success) {
+          toast.error(result.message || "Failed to load period.");
+          return;
+        }
+
+        form.reset({
+          name: result.data.name,
+          startTime: result.data.startTime,
+          endTime: result.data.endTime,
+          displayOrder: result.data.displayOrder,
+          active: result.data.active,
+        });
+      } catch {
+        toast.error("Failed to load period.");
       }
-
-      form.reset(result.data);
     }
 
-    load();
+    void load();
   }, [mode, periodId, form]);
 
   async function onSubmit(values: PeriodFormInput) {
     try {
       setLoading(true);
+
+      const payload = periodSchema.parse(values);
 
       const url =
         mode === "create" ? "/api/v1/periods" : `/api/v1/periods/${periodId}`;
@@ -70,26 +88,35 @@ export function PeriodForm({ mode, periodId, onSuccess }: Props) {
 
       const res = await fetch(url, {
         method,
-
         headers: {
           "Content-Type": "application/json",
         },
-
-        body: JSON.stringify(values),
+        body: JSON.stringify(payload),
       });
 
       const result = await res.json();
 
-      if (!result.success) {
-        toast.error(result.message);
+      if (!res.ok || !result.success) {
+        toast.error(result.message || "Failed to save period.");
         return;
       }
 
-      toast.success(result.message);
+      toast.success(
+        result.message ||
+          (mode === "create"
+            ? "Period created successfully."
+            : "Period updated successfully."),
+      );
 
-      form.reset();
+      form.reset(defaultValues);
 
       onSuccess();
+    } catch (error) {
+      if (error instanceof Error) {
+        toast.error(error.message);
+      } else {
+        toast.error("Failed to save period.");
+      }
     } finally {
       setLoading(false);
     }
@@ -144,8 +171,13 @@ export function PeriodForm({ mode, periodId, onSuccess }: Props) {
         </div>
 
         <Switch
-          checked={form.watch("active")}
-          onCheckedChange={(checked) => form.setValue("active", checked)}
+          checked={active}
+          onCheckedChange={(checked) =>
+            form.setValue("active", checked, {
+              shouldDirty: true,
+              shouldValidate: true,
+            })
+          }
         />
       </div>
 

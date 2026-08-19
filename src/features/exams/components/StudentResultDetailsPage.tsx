@@ -141,7 +141,13 @@ export function StudentResultDetailsPage({
   }, [examId, studentId]);
 
   useEffect(() => {
-    void loadResult();
+    const timer = window.setTimeout(() => {
+      void loadResult();
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
   }, [loadResult]);
 
   if (loading) {

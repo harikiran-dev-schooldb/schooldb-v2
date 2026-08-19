@@ -26,10 +26,9 @@ export function SectionSelect({ classId, value, disabled, onChange }: Props) {
   const [sections, setSections] = useState<SectionOption[]>([]);
 
   useEffect(() => {
-    if (!classId) {
-      setSections([]);
-      return;
-    }
+    if (!classId) return;
+
+    let cancelled = false;
 
     async function loadSections() {
       try {
@@ -37,16 +36,24 @@ export function SectionSelect({ classId, value, disabled, onChange }: Props) {
 
         const result = await res.json();
 
-        if (result.success) {
+        if (!cancelled && result.success) {
           setSections(result.data);
         }
       } catch {
-        setSections([]);
+        if (!cancelled) {
+          setSections([]);
+        }
       }
     }
 
     loadSections();
+
+    return () => {
+      cancelled = true;
+    };
   }, [classId]);
+
+  const displaySections = classId ? sections : [];
 
   return (
     <Select
@@ -61,7 +68,7 @@ export function SectionSelect({ classId, value, disabled, onChange }: Props) {
       <SelectContent>
         <SelectItem value="ALL">All Sections</SelectItem>
 
-        {sections.map((section) => (
+        {displaySections.map((section) => (
           <SelectItem key={section.id} value={section.id}>
             {section.label}
           </SelectItem>

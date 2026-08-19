@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CalendarDays, Pencil, Plus, RefreshCw, Trash2 } from "lucide-react";
 
@@ -48,7 +48,7 @@ export function ExamList({ schoolSlug, onCreate, onEdit, onDelete }: Props) {
 
   const [error, setError] = useState<string | null>(null);
 
-  async function loadExams() {
+  const loadExams = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -73,11 +73,17 @@ export function ExamList({ schoolSlug, onCreate, onEdit, onDelete }: Props) {
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
 
   useEffect(() => {
-    void loadExams();
-  }, []);
+    const timeoutId = window.setTimeout(() => {
+      void loadExams();
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [loadExams]);
 
   if (loading) {
     return (

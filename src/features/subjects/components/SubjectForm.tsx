@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
+
 import { zodResolver } from "@hookform/resolvers/zod";
 
 import { subjectSchema, SubjectFormInput } from "../schemas/subject.schema";
@@ -45,23 +46,54 @@ export function SubjectForm({ mode, subjectId, onSuccess }: Props) {
     defaultValues,
   });
 
+  // Replace form.watch() with useWatch()
+  const subjectType = useWatch({
+    control: form.control,
+    name: "type",
+  });
+
+  const active = useWatch({
+    control: form.control,
+    name: "active",
+  });
+
   useEffect(() => {
     if (mode !== "edit" || !subjectId) return;
 
+    let cancelled = false;
+
     async function loadSubject() {
-      const res = await fetch(`/api/v1/subjects/${subjectId}`);
+      try {
+        const res = await fetch(`/api/v1/subjects/${subjectId}`);
 
-      const result = await res.json();
+        const result = await res.json();
 
-      if (!result.success) {
-        toast.error(result.message);
-        return;
+        if (cancelled) return;
+
+        if (!result.success) {
+          toast.error(result.message ?? "Failed to load subject.");
+          return;
+        }
+
+        form.reset({
+          name: result.data.name ?? "",
+          code: result.data.code ?? "",
+          type: result.data.type ?? "SCHOLASTIC",
+          displayOrder: result.data.displayOrder ?? 0,
+          active: result.data.active ?? true,
+        });
+      } catch {
+        if (!cancelled) {
+          toast.error("Failed to load subject.");
+        }
       }
-
-      form.reset(result.data);
     }
 
-    loadSubject();
+    void loadSubject();
+
+    return () => {
+      cancelled = true;
+    };
   }, [mode, subjectId, form]);
 
   async function onSubmit(values: SubjectFormInput) {
@@ -90,19 +122,22 @@ export function SubjectForm({ mode, subjectId, onSuccess }: Props) {
       const result = await res.json();
 
       if (!result.success) {
-        toast.error(result.message);
+        toast.error(result.message ?? "Failed to save subject.");
         return;
       }
 
       toast.success(
-        mode === "create"
-          ? "Subject created successfully."
-          : "Subject updated successfully.",
+        result.message ??
+          (mode === "create"
+            ? "Subject created successfully."
+            : "Subject updated successfully."),
       );
 
       form.reset(defaultValues);
 
       onSuccess();
+    } catch {
+      toast.error("Failed to save subject.");
     } finally {
       setLoading(false);
     }
@@ -127,13 +162,16 @@ export function SubjectForm({ mode, subjectId, onSuccess }: Props) {
 
       <FormField label="Subject Type">
         <Select
-          value={form.watch("type")}
+          value={subjectType}
           onValueChange={(value) =>
-            form.setValue("type", value as SubjectFormInput["type"])
+            form.setValue("type", value as SubjectFormInput["type"], {
+              shouldDirty: true,
+              shouldValidate: true,
+            })
           }
         >
           <SelectTrigger>
-            <SelectValue />
+            <SelectValue placeholder="Select Subject Type" />
           </SelectTrigger>
 
           <SelectContent>
@@ -157,10 +195,20 @@ export function SubjectForm({ mode, subjectId, onSuccess }: Props) {
       </FormField>
 
       <FormField label="Active">
-        <Switch
-          checked={form.watch("active")}
-          onCheckedChange={(checked) => form.setValue("active", checked)}
-        />
+        <div className="flex items-center justify-between rounded-lg border p-4">
+          <p className="text-sm text-muted-foreground">
+            Enable this subject for use in the school.
+          </p>
+
+          <Switch
+            checked={active}
+            onCheckedChange={(checked) =>
+              form.setValue("active", checked, {
+                shouldDirty: true,
+              })
+            }
+          />
+        </div>
       </FormField>
 
       <SubmitButton

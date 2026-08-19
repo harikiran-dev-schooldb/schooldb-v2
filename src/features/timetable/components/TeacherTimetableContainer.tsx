@@ -61,11 +61,14 @@ export function TeacherTimetableContainer() {
 
   const [loading, setLoading] = useState(false);
 
+  const canLoad = Boolean(academicYearId) && Boolean(teacherId);
+
   useEffect(() => {
-    if (!academicYearId || !teacherId) {
-      setData([]);
+    if (!canLoad) {
       return;
     }
+
+    let cancelled = false;
 
     async function load() {
       try {
@@ -82,24 +85,33 @@ export function TeacherTimetableContainer() {
 
         const result = await response.json();
 
+        if (cancelled) {
+          return;
+        }
+
         if (!result.success) {
-          toast.error(result.message);
-          setData([]);
+          toast.error(result.message ?? "Failed to load timetable.");
           return;
         }
 
         setData(result.data);
       } catch {
-        toast.error("Failed to load timetable.");
-
-        setData([]);
+        if (!cancelled) {
+          toast.error("Failed to load timetable.");
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     }
 
-    load();
-  }, [academicYearId, teacherId]);
+    void load();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [canLoad, academicYearId, teacherId]);
 
   const periods = useMemo(() => {
     const map = new Map<string, TimetableItem["period"]>();
@@ -115,6 +127,16 @@ export function TeacherTimetableContainer() {
     );
   }, [data]);
 
+  function handleAcademicYearChange(value: string) {
+    setAcademicYearId(value);
+    setData([]);
+  }
+
+  function handleTeacherChange(value: string) {
+    setTeacherId(value);
+    setData([]);
+  }
+
   function getItem(periodId: string, day: string) {
     return data.find((item) => item.period.id === periodId && item.day === day);
   }
@@ -125,16 +147,16 @@ export function TeacherTimetableContainer() {
         <FormField label="Academic Year">
           <AcademicYearSelect
             value={academicYearId}
-            onChange={setAcademicYearId}
+            onChange={handleAcademicYearChange}
           />
         </FormField>
 
         <FormField label="Teacher">
-          <TeacherSelect value={teacherId} onChange={setTeacherId} />
+          <TeacherSelect value={teacherId} onChange={handleTeacherChange} />
         </FormField>
       </div>
 
-      {!academicYearId || !teacherId ? (
+      {!canLoad ? (
         <div className="rounded-lg border p-10 text-center text-sm text-muted-foreground">
           Select academic year and teacher to view the timetable.
         </div>

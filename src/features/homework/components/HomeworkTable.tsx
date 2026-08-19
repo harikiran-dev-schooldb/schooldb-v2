@@ -6,7 +6,7 @@ import { homeworkColumns } from "../columns";
 import { useHomeworkTable } from "../hooks/useHomeworkTable";
 
 export function HomeworkTable() {
-  const { data, loading, search, setSearch, reload } = useHomeworkTable();
+  const { data, loading, reload } = useHomeworkTable();
 
   return (
     <div className="space-y-4">

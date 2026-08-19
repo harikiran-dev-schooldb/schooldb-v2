@@ -1,6 +1,4 @@
 import { PageHeader } from "@/components/common/PageHeader";
-
-import { AddSubjectButton } from "@/features/subjects/components/AddSubjectButton";
 import { SubjectTable } from "@/features/subjects/components/SubjectTable";
 
 export default function SubjectsPage() {

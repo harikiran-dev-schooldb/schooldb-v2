@@ -166,18 +166,19 @@ function calculateEveryPeriod(
   >();
 
   for (const record of records) {
+    if (
+      record.session.sessionType !== "PERIOD" ||
+      !record.session.periodId
+    ) {
+      continue;
+    }
+
     const date = normalizeDate(
       record.session.attendanceDate
     );
 
-    const periodId =
-      record.session.periodId ?? "";
-
-    /*
-     * PERIOD sessions should normally have
-     * a periodId.
-     */
-    const key = `${date}:PERIOD:${periodId}`;
+    const key =
+      `${date}:PERIOD:${record.session.periodId}`;
 
     periods.set(key, record);
   }

@@ -3,9 +3,7 @@
 import { useEffect, useState } from "react";
 
 import { FeeReceiptsTable, type PaymentRow } from "./FeeReceiptsTable";
-
 import { FeeReceiptsSummary } from "./FeeReceiptsSummary";
-
 import { FeeReceiptsFilters } from "./FeeReceiptsFilters";
 
 import { Button } from "@/components/ui/button";
@@ -24,14 +22,30 @@ type Props = {
   schoolSlug: string;
 };
 
+type ReceiptFilters = {
+  search: string;
+  paymentMode: string;
+  academicYearId: string;
+  fromDate: string;
+  toDate: string;
+};
+
+const EMPTY_FILTERS: ReceiptFilters = {
+  search: "",
+  paymentMode: "",
+  academicYearId: "",
+  fromDate: "",
+  toDate: "",
+};
+
 export function FeeReceiptsContainer({ schoolSlug }: Props) {
   const [data, setData] = useState<ReceiptData | null>(null);
-
-  const [search, setSearch] = useState("");
 
   const [loading, setLoading] = useState(true);
 
   const [error, setError] = useState<string | null>(null);
+
+  const [search, setSearch] = useState("");
 
   const [paymentMode, setPaymentMode] = useState("");
 
@@ -41,49 +55,71 @@ export function FeeReceiptsContainer({ schoolSlug }: Props) {
 
   const [academicYearId, setAcademicYearId] = useState("");
 
-  async function loadPayments() {
+  /* ---------------------------------------------------------------------- */
+  /* Fetch Payments - No React State                                       */
+  /* ---------------------------------------------------------------------- */
+
+  async function fetchPayments(filters: ReceiptFilters): Promise<ReceiptData> {
+    const query = new URLSearchParams();
+
+    if (filters.search.trim()) {
+      query.set("search", filters.search.trim());
+    }
+
+    if (filters.paymentMode) {
+      query.set("paymentMode", filters.paymentMode);
+    }
+
+    if (filters.academicYearId) {
+      query.set("academicYearId", filters.academicYearId);
+    }
+
+    if (filters.fromDate) {
+      query.set("fromDate", filters.fromDate);
+    }
+
+    if (filters.toDate) {
+      query.set("toDate", filters.toDate);
+    }
+
+    const queryString = query.toString();
+
+    const response = await fetch(
+      `/api/v1/fee-payments${queryString ? `?${queryString}` : ""}`,
+      {
+        cache: "no-store",
+      },
+    );
+
+    const result = await response.json();
+
+    if (!response.ok || !result.success) {
+      throw new Error(result.message || "Failed to load receipts.");
+    }
+
+    return result.data;
+  }
+
+  /* ---------------------------------------------------------------------- */
+  /* Load Payments - Used by User Actions                                  */
+  /* ---------------------------------------------------------------------- */
+
+  async function loadPayments(
+    currentFilters: ReceiptFilters = {
+      search,
+      paymentMode,
+      academicYearId,
+      fromDate,
+      toDate,
+    },
+  ) {
     try {
       setLoading(true);
       setError(null);
 
-      const query = new URLSearchParams();
+      const receiptData = await fetchPayments(currentFilters);
 
-      if (search.trim()) {
-        query.set("search", search.trim());
-      }
-
-      if (paymentMode) {
-        query.set("paymentMode", paymentMode);
-      }
-
-      if (academicYearId) {
-        query.set("academicYearId", academicYearId);
-      }
-
-      if (fromDate) {
-        query.set("fromDate", fromDate);
-      }
-
-      if (toDate) {
-        query.set("toDate", toDate);
-      }
-
-      const queryString = query.toString();
-
-      const response = await fetch(
-        `/api/v1/fee-payments${queryString ? `?${queryString}` : ""}`,
-        {
-          cache: "no-store",
-        },
-      );
-
-      const result = await response.json();
-
-      if (!response.ok || !result.success) {
-        throw new Error(result.message || "Failed to load receipts.");
-      }
-
-      setData(result.data);
+      setData(receiptData);
     } catch (error) {
       setError(
         error instanceof Error ? error.message : "Failed to load receipts.",
@@ -93,9 +129,44 @@ export function FeeReceiptsContainer({ schoolSlug }: Props) {
     }
   }
 
+  /* ---------------------------------------------------------------------- */
+  /* Initial Load                                                           */
+  /* ---------------------------------------------------------------------- */
+
   useEffect(() => {
-    void loadPayments();
+    let cancelled = false;
+
+    async function loadInitialPayments() {
+      try {
+        const receiptData = await fetchPayments(EMPTY_FILTERS);
+
+        if (!cancelled) {
+          setData(receiptData);
+          setError(null);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setError(
+            error instanceof Error ? error.message : "Failed to load receipts.",
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    }
+
+    void loadInitialPayments();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
+
+  /* ---------------------------------------------------------------------- */
+  /* Clear Filters                                                          */
+  /* ---------------------------------------------------------------------- */
 
   function clearFilters() {
     setSearch("");
@@ -104,43 +175,22 @@ export function FeeReceiptsContainer({ schoolSlug }: Props) {
     setFromDate("");
     setToDate("");
 
-    /*
-     * Load unfiltered data directly.
-     * Do not rely on updated React state immediately.
-     */
-    void loadAllPayments();
+    void loadPayments(EMPTY_FILTERS);
   }
 
-  async function loadAllPayments() {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const response = await fetch("/api/v1/fee-payments", {
-        cache: "no-store",
-      });
-
-      const result = await response.json();
-
-      if (!response.ok || !result.success) {
-        throw new Error(result.message || "Failed to load receipts.");
-      }
-
-      setData(result.data);
-    } catch (error) {
-      setError(
-        error instanceof Error ? error.message : "Failed to load receipts.",
-      );
-    } finally {
-      setLoading(false);
-    }
-  }
+  /* ---------------------------------------------------------------------- */
+  /* Loading                                                                */
+  /* ---------------------------------------------------------------------- */
 
   if (loading && !data) {
     return (
       <div className="text-sm text-muted-foreground">Loading receipts...</div>
     );
   }
+
+  /* ---------------------------------------------------------------------- */
+  /* Initial Error                                                          */
+  /* ---------------------------------------------------------------------- */
 
   if (error && !data) {
     return (
@@ -159,6 +209,10 @@ export function FeeReceiptsContainer({ schoolSlug }: Props) {
   if (!data) {
     return null;
   }
+
+  /* ---------------------------------------------------------------------- */
+  /* Render                                                                 */
+  /* ---------------------------------------------------------------------- */
 
   return (
     <>

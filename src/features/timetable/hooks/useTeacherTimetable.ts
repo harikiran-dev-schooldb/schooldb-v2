@@ -9,42 +9,66 @@ export function useTeacherTimetable(
   teacherId?: string
 ) {
   const [loading, setLoading] = useState(false);
+
   const [data, setData] = useState<TimetableGridItem[]>([]);
 
+  const canLoad = Boolean(
+    academicYearId && teacherId
+  );
+
   useEffect(() => {
-    if (!academicYearId || !teacherId) {
-      setData([]);
+    if (!canLoad) {
       return;
     }
 
-    async function load() {
-      setLoading(true);
+    let cancelled = false;
 
+    async function load() {
       try {
-             const params = new URLSearchParams({
-  academicYearId: academicYearId!,
-    teacherId: teacherId!,
-});
+        setLoading(true);
+
+        const params = new URLSearchParams({
+          academicYearId: academicYearId!,
+          teacherId: teacherId!,
+        });
 
         const res = await fetch(
-          `/api/v1/timetables/views/teacher?${params}`
+          `/api/v1/timetables/views/teacher?${params.toString()}`
         );
 
         const result = await res.json();
 
-        if (result.success) {
-          setData(result.data);
+        if (!cancelled) {
+          if (result.success) {
+            setData(result.data);
+          } else {
+            setData([]);
+          }
+        }
+      } catch {
+        if (!cancelled) {
+          setData([]);
         }
       } finally {
-        setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     }
 
-    load();
-  }, [academicYearId, teacherId]);
+    void load();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    canLoad,
+    academicYearId,
+    teacherId,
+  ]);
 
   return {
-    loading,
-    data,
+    loading: canLoad ? loading : false,
+    data: canLoad ? data : [],
   };
 }
