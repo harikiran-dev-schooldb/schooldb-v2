@@ -1,16 +1,20 @@
-import { LucideIcon } from "lucide-react";
+// src/components/common/StatCard.tsx
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { cn } from "@/lib/utils"; // Assuming you have this standard utility
+import { LucideIcon } from "lucide-react";
 
-type StatCardProps = {
+interface StatCardProps {
   title: string;
   value: string | number;
   icon: LucideIcon;
   description?: string;
   trend?: {
     value: string;
-    positive?: boolean;
+    positive: boolean;
   };
-};
+  // 1. Add this line to the interface:
+  className?: string;
+}
 
 export function StatCard({
   title,
@@ -18,34 +22,35 @@ export function StatCard({
   icon: Icon,
   description,
   trend,
+  className, // 2. Destructure the prop here
 }: StatCardProps) {
   return (
-    <Card className="premium-card transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_42px_rgb(15_23_42/0.1)]">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-        <CardTitle className="text-sm font-medium text-muted-foreground">
+    // 3. Merge the incoming className with the Card's default classes
+    <Card className={cn("flex flex-col", className)}>
+      <CardHeader className="flex flex-row items-center justify-between pb-2">
+        <CardTitle className="text-sm font-medium text-slate-500">
           {title}
         </CardTitle>
-
-        <div className="rounded-xl bg-primary/10 p-2.5 ring-1 ring-primary/10">
-          <Icon className="h-5 w-5 text-primary" />
-        </div>
+        <Icon className="size-4 text-slate-400" />
       </CardHeader>
-
       <CardContent>
-        <div className="text-3xl font-bold tracking-[-0.04em]">{value}</div>
-
-        {description && (
-          <p className="mt-1 text-sm text-muted-foreground">{description}</p>
-        )}
-
-        {trend && (
-          <p
-            className={`mt-3 text-xs font-semibold ${
-              trend.positive ? "text-primary" : "text-destructive"
-            }`}
-          >
-            {trend.value}
-          </p>
+        <div className="text-2xl font-bold text-slate-800">{value}</div>
+        {(description || trend) && (
+          <div className="mt-1 flex items-center gap-2 text-xs">
+            {trend && (
+              <span
+                className={cn(
+                  "font-medium",
+                  trend.positive ? "text-emerald-600" : "text-red-600",
+                )}
+              >
+                {trend.value}
+              </span>
+            )}
+            {description && (
+              <span className="text-slate-500">{description}</span>
+            )}
+          </div>
         )}
       </CardContent>
     </Card>
