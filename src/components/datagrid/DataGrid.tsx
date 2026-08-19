@@ -49,7 +49,7 @@ export function DataGrid<TData>({
   });
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-border/80 bg-card/90 shadow-[0_1px_2px_rgb(15_23_42/0.04)]">
+    <div className="premium-card overflow-hidden rounded-3xl">
       {toolbar}
       <Table>
         <TableHeader>
@@ -58,12 +58,12 @@ export function DataGrid<TData>({
               {headerGroup.headers.map((header) => (
                 <TableHead
                   key={header.id}
-                  className="h-12 bg-muted/40 px-5 text-[11px] font-semibold tracking-[0.08em] text-muted-foreground uppercase"
+                  className="h-14 bg-slate-50/75 px-5 text-[10px] font-bold tracking-[0.13em] text-muted-foreground uppercase"
                 >
                   {header.isPlaceholder ? null : (
                     <button
                       type="button"
-                      className="flex cursor-pointer select-none items-center gap-2 hover:text-foreground"
+                      className="flex cursor-pointer select-none items-center gap-2 transition-colors hover:text-primary"
                       onClick={header.column.getToggleSortingHandler()}
                     >
                       {flexRender(
@@ -85,7 +85,7 @@ export function DataGrid<TData>({
         <TableBody>
           {loading ? (
             <TableRow>
-              <TableCell colSpan={columns.length} className="h-32 text-center">
+              <TableCell colSpan={columns.length} className="h-32 text-center text-muted-foreground">
                 Loading...
               </TableCell>
             </TableRow>
@@ -93,7 +93,7 @@ export function DataGrid<TData>({
             table.getRowModel().rows.map((row) => (
               <TableRow key={row.id}>
                 {row.getVisibleCells().map((cell) => (
-                  <TableCell key={cell.id}>
+                  <TableCell key={cell.id} className="px-5 py-4">
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </TableCell>
                 ))}
