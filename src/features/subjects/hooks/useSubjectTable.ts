@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { SubjectListItem } from "../types";
 
@@ -17,47 +17,66 @@ export function useSubjectTable() {
   const [loading, setLoading] = useState(true);
 
   const [search, setSearch] = useState("");
-
   const [page, setPage] = useState(1);
-
   const [pageSize] = useState(25);
-
   const [total, setTotal] = useState(0);
 
-  async function load() {
+  const load = useCallback(async () => {
+    const params = new URLSearchParams({
+      page: page.toString(),
+      pageSize: pageSize.toString(),
+    });
+
+    const trimmedSearch = search.trim();
+
+    if (trimmedSearch) {
+      params.set("search", trimmedSearch);
+    }
+
     try {
-      setLoading(true);
-
-      const params = new URLSearchParams({
-        page: page.toString(),
-        pageSize: pageSize.toString(),
-      });
-
-      if (search) {
-        params.set("search", search);
-      }
-
       const res = await fetch(
-        `/api/v1/subjects?${params}`
+        `/api/v1/subjects?${params.toString()}`,
       );
 
       const result = await res.json();
 
-      if (!result.success) return;
+      if (!result.success) {
+        setSubjects([]);
+        setTotal(0);
+        return;
+      }
 
       const data: Response = result.data;
 
       setSubjects(data.data);
-
       setTotal(data.total);
+    } catch {
+      setSubjects([]);
+      setTotal(0);
+    }
+  }, [page, pageSize, search]);
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      void load().finally(() => {
+        setLoading(false);
+      });
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [load]);
+
+  const reload = useCallback(async () => {
+    setLoading(true);
+
+    try {
+      await load();
     } finally {
       setLoading(false);
     }
-  }
-
-  useEffect(() => {
-    load();
-  }, [page, search]);
+  }, [load]);
 
   return {
     subjects,
@@ -72,6 +91,6 @@ export function useSubjectTable() {
     total,
     pageSize,
 
-    reload: load,
+    reload,
   };
 }

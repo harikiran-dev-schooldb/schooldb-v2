@@ -40,7 +40,6 @@ export function CreateExamScheduleDialog({
   open,
   onOpenChange,
   examId,
-  schoolSlug: _schoolSlug,
   startDate,
   endDate,
   onSuccess,
@@ -66,18 +65,23 @@ export function CreateExamScheduleDialog({
   useEffect(() => {
     if (!open) return;
 
-    setClassId("");
-    setSectionId("");
-    setSubjectId("");
+    const frameId = requestAnimationFrame(() => {
+      setClassId("");
+      setSectionId("");
+      setSubjectId("");
 
-    // Default to exam start date if available
-    setExamDate(toDateInputValue(startDate) ?? "");
+      setExamDate(toDateInputValue(startDate) ?? "");
 
-    setStartTime("");
-    setEndTime("");
+      setStartTime("");
+      setEndTime("");
 
-    setMaxMarks("");
-    setPassMarks("");
+      setMaxMarks("");
+      setPassMarks("");
+    });
+
+    return () => {
+      cancelAnimationFrame(frameId);
+    };
   }, [open, startDate]);
 
   /* ---------------------------------------------------------------------- */

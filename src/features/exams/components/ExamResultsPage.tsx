@@ -97,7 +97,13 @@ export function ExamResultsPage({ schoolSlug, examId }: Props) {
   }, [examId, selectedClassId, sectionId]);
 
   useEffect(() => {
-    void loadResults();
+    const timeoutId = window.setTimeout(() => {
+      void loadResults();
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
   }, [loadResults]);
 
   if (loading) {
@@ -116,10 +122,6 @@ export function ExamResultsPage({ schoolSlug, examId }: Props) {
 
   const failCount = data.results.filter(
     (student) => student.status === "FAIL",
-  ).length;
-
-  const absentCount = data.results.filter(
-    (student) => student.absentSubjects > 0,
   ).length;
 
   const passPercentage =

@@ -1,19 +1,18 @@
 "use client";
 
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-
 import { Label } from "@/components/ui/label";
+
+type AttendanceStatus = "PRESENT" | "ABSENT" | "LATE" | "LEAVE";
 
 type Props = {
   rollNo: number;
-
   admissionNo: string;
-
   fullName: string;
 
-  value: string;
+  value: AttendanceStatus;
 
-  onChange: (value: "PRESENT" | "ABSENT" | "LATE" | "LEAVE") => void;
+  onChange: (value: AttendanceStatus) => void;
 };
 
 export function StudentAttendanceRow({
@@ -35,7 +34,7 @@ export function StudentAttendanceRow({
 
       <RadioGroup
         value={value}
-        onValueChange={(v) => onChange(v as any)}
+        onValueChange={(v) => onChange(v as AttendanceStatus)}
         className="flex gap-4"
       >
         <Label className="flex items-center gap-2">

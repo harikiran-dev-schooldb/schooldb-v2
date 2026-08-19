@@ -5,14 +5,11 @@ import { useCallback, useEffect, useState } from "react";
 import type { FeeDashboardData } from "../types/fee-dashboard.types";
 
 export function useFeeDashboard(academicYearId?: string) {
-  const [data, setData] =
-    useState<FeeDashboardData | null>(null);
+  const [data, setData] = useState<FeeDashboardData | null>(null);
 
-  const [loading, setLoading] =
-    useState(true);
+  const [loading, setLoading] = useState(true);
 
-  const [error, setError] =
-    useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const loadDashboard = useCallback(async () => {
     try {
@@ -22,43 +19,46 @@ export function useFeeDashboard(academicYearId?: string) {
       const params = new URLSearchParams();
 
       if (academicYearId) {
-        params.set(
-          "academicYearId",
-          academicYearId,
-        );
+        params.set("academicYearId", academicYearId);
       }
 
       const query = params.toString();
 
       const response = await fetch(
-        `/api/v1/fees/dashboard${
-          query ? `?${query}` : ""
-        }`,
+        `/api/v1/fees/dashboard${query ? `?${query}` : ""}`,
+        {
+          cache: "no-store",
+        },
       );
 
       const result = await response.json();
 
-      if (!result.success) {
-        setError(
-          result.message ||
-            "Failed to load fee dashboard.",
-        );
+      if (!response.ok || !result.success) {
+        setError(result.message || "Failed to load fee dashboard.");
 
         return;
       }
 
       setData(result.data);
     } catch {
-      setError(
-        "Failed to load fee dashboard.",
-      );
+      setError("Failed to load fee dashboard.");
     } finally {
       setLoading(false);
     }
   }, [academicYearId]);
 
   useEffect(() => {
-    loadDashboard();
+    const controller = new AbortController();
+
+    queueMicrotask(() => {
+      if (!controller.signal.aborted) {
+        void loadDashboard();
+      }
+    });
+
+    return () => {
+      controller.abort();
+    };
   }, [loadDashboard]);
 
   return {

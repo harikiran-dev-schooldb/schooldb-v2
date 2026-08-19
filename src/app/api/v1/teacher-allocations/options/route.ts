@@ -4,7 +4,7 @@ import { ApiResponse } from "@/lib/response";
 
 import { teacherAllocationService } from "@/features/teacher-allocations/services/teacher-allocation.service";
 
-export async function GET(req: Request) {
+export async function GET() {
   return apiHandler(async () => {
     const tenant = await requireTenant();
 

@@ -56,18 +56,16 @@ export function ClassAttendanceReport({ schoolSlug }: Props) {
   const router = useRouter();
 
   const [academicYearId, setAcademicYearId] = useState("");
-
   const [classId, setClassId] = useState("");
-
   const [sectionId, setSectionId] = useState("");
-
   const [fromDate, setFromDate] = useState("");
-
   const [toDate, setToDate] = useState("");
 
   const [data, setData] = useState<ReportData | null>(null);
-
   const [loading, setLoading] = useState(false);
+
+  const canLoadReport =
+    Boolean(academicYearId) && Boolean(classId) && Boolean(sectionId);
 
   function changeClass(value: string) {
     setClassId(value);
@@ -75,51 +73,60 @@ export function ClassAttendanceReport({ schoolSlug }: Props) {
     setData(null);
   }
 
-  async function loadReport() {
-    if (!academicYearId || !classId || !sectionId) {
-      setData(null);
-      return;
-    }
-
-    try {
-      setLoading(true);
-
-      const params = new URLSearchParams({
-        academicYearId,
-        classId,
-        sectionId,
-      });
-
-      if (fromDate) {
-        params.set("fromDate", fromDate);
-      }
-
-      if (toDate) {
-        params.set("toDate", toDate);
-      }
-
-      const response = await fetch(
-        `/api/v1/attendance/reports/class?${params}`,
-      );
-
-      const result = await response.json();
-
-      if (!result.success) {
-        toast.error(result.message);
-        return;
-      }
-
-      setData(result.data);
-    } catch {
-      toast.error("Failed to load class attendance report.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
   useEffect(() => {
+    if (!canLoadReport) return;
+
+    let cancelled = false;
+
+    async function loadReport() {
+      try {
+        setLoading(true);
+
+        const params = new URLSearchParams({
+          academicYearId,
+          classId,
+          sectionId,
+        });
+
+        if (fromDate) {
+          params.set("fromDate", fromDate);
+        }
+
+        if (toDate) {
+          params.set("toDate", toDate);
+        }
+
+        const response = await fetch(
+          `/api/v1/attendance/reports/class?${params.toString()}`,
+        );
+
+        const result = await response.json();
+
+        if (cancelled) return;
+
+        if (!result.success) {
+          toast.error(result.message);
+          return;
+        }
+
+        setData(result.data);
+      } catch {
+        if (!cancelled) {
+          toast.error("Failed to load class attendance report.");
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    }
+
     loadReport();
-  }, [academicYearId, classId, sectionId, fromDate, toDate]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [canLoadReport, academicYearId, classId, sectionId, fromDate, toDate]);
 
   function openStudent(studentId: string) {
     router.push(
@@ -136,8 +143,6 @@ export function ClassAttendanceReport({ schoolSlug }: Props) {
           View attendance performance for the entire class.
         </p>
       </div>
-
-      {/* Filters */}
 
       <div className="rounded-xl border bg-card p-4">
         <div className="grid gap-4 md:grid-cols-4">
@@ -180,7 +185,7 @@ export function ClassAttendanceReport({ schoolSlug }: Props) {
         </div>
       </div>
 
-      {!academicYearId || !classId || !sectionId ? (
+      {!canLoadReport ? (
         <div className="rounded-xl border bg-card p-10 text-center">
           <FileText className="mx-auto mb-3 h-10 w-10 text-muted-foreground" />
 
@@ -196,8 +201,6 @@ export function ClassAttendanceReport({ schoolSlug }: Props) {
         </div>
       ) : data ? (
         <>
-          {/* Summary */}
-
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
             <SummaryCard
               label="Students"
@@ -240,8 +243,6 @@ export function ClassAttendanceReport({ schoolSlug }: Props) {
             />
           </div>
 
-          {/* Student table */}
-
           <div className="rounded-xl border bg-card">
             <div className="border-b p-4">
               <h2 className="font-semibold">Student Attendance</h2>
@@ -261,21 +262,13 @@ export function ClassAttendanceReport({ schoolSlug }: Props) {
                   <thead>
                     <tr className="border-b bg-muted/40 text-left">
                       <th className="px-4 py-3">Roll No</th>
-
                       <th className="px-4 py-3">Admission No</th>
-
                       <th className="px-4 py-3">Student</th>
-
                       <th className="px-4 py-3">Total</th>
-
                       <th className="px-4 py-3">Present</th>
-
                       <th className="px-4 py-3">Absent</th>
-
                       <th className="px-4 py-3">Late</th>
-
                       <th className="px-4 py-3">Leave</th>
-
                       <th className="px-4 py-3">%</th>
                     </tr>
                   </thead>
@@ -287,7 +280,6 @@ export function ClassAttendanceReport({ schoolSlug }: Props) {
                         className="border-b last:border-0 hover:bg-muted/30"
                       >
                         <td className="px-4 py-3">{student.rollNo ?? "-"}</td>
-
                         <td className="px-4 py-3">{student.admissionNo}</td>
 
                         <td className="px-4 py-3">
@@ -349,7 +341,6 @@ function SummaryCard({
     <div className="rounded-xl border bg-card p-4">
       <div className="flex items-center justify-between">
         <span className="text-sm text-muted-foreground">{label}</span>
-
         <span className={className}>{icon}</span>
       </div>
 

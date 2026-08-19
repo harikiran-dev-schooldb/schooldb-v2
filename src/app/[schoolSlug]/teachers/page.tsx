@@ -1,6 +1,5 @@
 import { PageHeader } from "@/components/common/PageHeader";
 
-import { AddTeacherButton } from "@/features/teachers/components/AddTeacherButton";
 import { TeacherTable } from "@/features/teachers/components/TeacherTable";
 
 export default function TeachersPage() {

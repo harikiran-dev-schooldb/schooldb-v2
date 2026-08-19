@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import {
   Dialog,
@@ -13,46 +13,36 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
+type Installment = {
+  id: string;
+  name: string;
+  amount: number;
+  concession: number;
+  paidAmount: number;
+  payableAmount: number;
+};
+
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-
-  installment: {
-    id: string;
-    name: string;
-    amount: number;
-    concession: number;
-    paidAmount: number;
-    payableAmount: number;
-  } | null;
-
+  installment: Installment | null;
   onSuccess: () => void;
 };
 
-export function ConcessionDialog({
-  open,
-  onOpenChange,
+function ConcessionForm({
   installment,
+  onOpenChange,
   onSuccess,
-}: Props) {
-  const [concession, setConcession] = useState("");
+}: {
+  installment: Installment;
+  onOpenChange: (open: boolean) => void;
+  onSuccess: () => void;
+}) {
+  const [concession, setConcession] = useState(String(installment.concession));
 
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    if (!installment || !open) {
-      return;
-    }
-
-    setConcession(String(installment.concession));
-  }, [installment, open]);
-
-  if (!installment) {
-    return null;
-  }
-
   const amount = Number(installment.amount);
-
   const paid = Number(installment.paidAmount);
 
   const maximumConcession = Math.max(0, amount - paid);
@@ -61,13 +51,19 @@ export function ConcessionDialog({
 
   const payable = Math.max(0, amount - newConcession);
 
-  async function save() {
-    if (!installment) {
-      return;
-    }
+  const isValidConcession =
+    Number.isFinite(newConcession) &&
+    newConcession >= 0 &&
+    newConcession <= maximumConcession;
 
-    if (!Number.isFinite(newConcession) || newConcession < 0) {
-      toast.error("Enter a valid concession amount.");
+  async function save() {
+    if (!isValidConcession) {
+      toast.error(
+        `Concession must be between ₹0 and ₹${maximumConcession.toLocaleString(
+          "en-IN",
+        )}.`,
+      );
+
       return;
     }
 
@@ -78,11 +74,9 @@ export function ConcessionDialog({
         `/api/v1/student-fee-installments/${installment.id}/concession`,
         {
           method: "PATCH",
-
           headers: {
             "Content-Type": "application/json",
           },
-
           body: JSON.stringify({
             concession: newConcession,
           }),
@@ -91,14 +85,16 @@ export function ConcessionDialog({
 
       const result = await response.json();
 
-      if (!result.success) {
+      if (!response.ok || !result.success) {
         toast.error(result.message || "Failed to update concession.");
+
         return;
       }
 
       toast.success("Concession updated successfully.");
 
       onOpenChange(false);
+
       onSuccess();
     } catch {
       toast.error("Failed to update concession.");
@@ -108,78 +104,101 @@ export function ConcessionDialog({
   }
 
   return (
+    <div className="space-y-5">
+      <div className="rounded-md border p-4 text-sm">
+        <div className="flex justify-between gap-4">
+          <span>Installment</span>
+
+          <span className="font-medium">{installment.name}</span>
+        </div>
+
+        <div className="mt-2 flex justify-between">
+          <span>Amount</span>
+
+          <span>₹{amount.toLocaleString("en-IN")}</span>
+        </div>
+
+        <div className="mt-2 flex justify-between">
+          <span>Already Paid</span>
+
+          <span>₹{paid.toLocaleString("en-IN")}</span>
+        </div>
+
+        <div className="mt-2 flex justify-between font-medium">
+          <span>Maximum Concession</span>
+
+          <span>₹{maximumConcession.toLocaleString("en-IN")}</span>
+        </div>
+      </div>
+
+      <div>
+        <label className="mb-2 block text-sm font-medium">
+          Concession Amount
+        </label>
+
+        <Input
+          type="number"
+          min="0"
+          max={maximumConcession}
+          step="0.01"
+          value={concession}
+          onChange={(event) => setConcession(event.target.value)}
+        />
+      </div>
+
+      <div className="rounded-md bg-muted p-4">
+        <div className="flex justify-between text-sm">
+          <span>New Payable Amount</span>
+
+          <span className="font-semibold">
+            ₹{payable.toLocaleString("en-IN")}
+          </span>
+        </div>
+      </div>
+
+      <div className="flex justify-end gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => onOpenChange(false)}
+          disabled={loading}
+        >
+          Cancel
+        </Button>
+
+        <Button
+          type="button"
+          onClick={save}
+          disabled={loading || !isValidConcession}
+        >
+          {loading ? "Saving..." : "Save Concession"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+export function ConcessionDialog({
+  open,
+  onOpenChange,
+  installment,
+  onSuccess,
+}: Props) {
+  return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Apply Concession</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-5">
-          <div className="rounded-md border p-4 text-sm">
-            <div className="flex justify-between">
-              <span>Installment</span>
-
-              <span className="font-medium">{installment.name}</span>
-            </div>
-
-            <div className="mt-2 flex justify-between">
-              <span>Amount</span>
-
-              <span>₹{amount.toLocaleString("en-IN")}</span>
-            </div>
-
-            <div className="mt-2 flex justify-between">
-              <span>Already Paid</span>
-
-              <span>₹{paid.toLocaleString("en-IN")}</span>
-            </div>
-
-            <div className="mt-2 flex justify-between font-medium">
-              <span>Maximum Concession</span>
-
-              <span>₹{maximumConcession.toLocaleString("en-IN")}</span>
-            </div>
-          </div>
-
-          <div>
-            <label className="mb-2 block text-sm font-medium">
-              Concession Amount
-            </label>
-
-            <Input
-              type="number"
-              min="0"
-              max={maximumConcession}
-              step="0.01"
-              value={concession}
-              onChange={(e) => setConcession(e.target.value)}
-            />
-          </div>
-
-          <div className="rounded-md bg-muted p-4">
-            <div className="flex justify-between text-sm">
-              <span>New Payable Amount</span>
-
-              <span className="font-semibold">
-                ₹{payable.toLocaleString("en-IN")}
-              </span>
-            </div>
-          </div>
-
-          <div className="flex justify-end gap-2">
-            <Button
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={loading}
-            >
-              Cancel
-            </Button>
-
-            <Button onClick={save} disabled={loading}>
-              {loading ? "Saving..." : "Save Concession"}
-            </Button>
-          </div>
-        </div>
+        {installment ? (
+          <ConcessionForm
+            key={installment.id}
+            installment={installment}
+            onOpenChange={onOpenChange}
+            onSuccess={onSuccess}
+          />
+        ) : null}
       </DialogContent>
     </Dialog>
   );

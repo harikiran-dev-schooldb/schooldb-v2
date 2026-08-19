@@ -1,15 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { toast } from "sonner";
 
 import {
   timetableSchema,
   TimetableFormInput,
 } from "../schemas/timetable.schema";
-
-import { toast } from "sonner";
 
 import {
   AcademicYearSelect,
@@ -33,9 +32,7 @@ import { WEEKDAY_OPTIONS } from "../constants/weekdays";
 
 type Props = {
   mode: "create" | "edit";
-
   timetableId?: string;
-
   onSuccess: () => void;
 };
 
@@ -54,39 +51,82 @@ export function TimetableForm({ mode, timetableId, onSuccess }: Props) {
     },
   });
 
+  const academicYearId = useWatch({
+    control: form.control,
+    name: "academicYearId",
+  });
+
+  const teacherAllocationId = useWatch({
+    control: form.control,
+    name: "teacherAllocationId",
+  });
+
+  const periodId = useWatch({
+    control: form.control,
+    name: "periodId",
+  });
+
+  const selectedDay = useWatch({
+    control: form.control,
+    name: "day",
+  });
+
+  const active = useWatch({
+    control: form.control,
+    name: "active",
+  });
+
   useEffect(() => {
-    if (mode !== "edit" || !timetableId) return;
-
-    async function load() {
-      const res = await fetch(`/api/v1/timetables/${timetableId}`);
-
-      const result = await res.json();
-
-      if (!result.success) {
-        toast.error(result.message);
-        return;
-      }
-
-      form.reset({
-        academicYearId: result.data.academicYearId,
-
-        teacherAllocationId: result.data.teacherAllocationId,
-
-        periodId: result.data.periodId,
-
-        day: result.data.day,
-
-        active: result.data.active,
-      });
+    if (mode !== "edit" || !timetableId) {
+      return;
     }
 
-    load();
+    let cancelled = false;
+
+    async function load() {
+      try {
+        const res = await fetch(`/api/v1/timetables/${timetableId}`);
+
+        const result = await res.json();
+
+        if (cancelled) {
+          return;
+        }
+
+        if (!result.success) {
+          toast.error(result.message || "Failed to load timetable.");
+          return;
+        }
+
+        form.reset({
+          academicYearId: result.data.academicYearId,
+
+          teacherAllocationId: result.data.teacherAllocationId,
+
+          periodId: result.data.periodId,
+
+          day: result.data.day,
+
+          active: result.data.active,
+        });
+      } catch {
+        if (!cancelled) {
+          toast.error("Failed to load timetable.");
+        }
+      }
+    }
+
+    void load();
+
+    return () => {
+      cancelled = true;
+    };
   }, [mode, timetableId, form]);
 
   async function onSubmit(values: TimetableFormInput) {
-    setLoading(true);
-
     try {
+      setLoading(true);
+
       const url =
         mode === "create"
           ? "/api/v1/timetables"
@@ -107,13 +147,15 @@ export function TimetableForm({ mode, timetableId, onSuccess }: Props) {
       const result = await response.json();
 
       if (!result.success) {
-        toast.error(result.message);
+        toast.error(result.message || "Failed to save timetable.");
         return;
       }
 
-      toast.success(result.message);
+      toast.success(result.message || "Timetable saved successfully.");
 
       onSuccess();
+    } catch {
+      toast.error("Something went wrong while saving the timetable.");
     } finally {
       setLoading(false);
     }
@@ -123,7 +165,7 @@ export function TimetableForm({ mode, timetableId, onSuccess }: Props) {
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
       <FormField label="Academic Year" required>
         <AcademicYearSelect
-          value={form.watch("academicYearId")}
+          value={academicYearId}
           onChange={(value) =>
             form.setValue("academicYearId", value, {
               shouldDirty: true,
@@ -135,7 +177,7 @@ export function TimetableForm({ mode, timetableId, onSuccess }: Props) {
 
       <FormField label="Teacher Allocation" required>
         <TeacherAllocationSelect
-          value={form.watch("teacherAllocationId")}
+          value={teacherAllocationId}
           onChange={(value) =>
             form.setValue("teacherAllocationId", value, {
               shouldDirty: true,
@@ -147,7 +189,7 @@ export function TimetableForm({ mode, timetableId, onSuccess }: Props) {
 
       <FormField label="Period" required>
         <PeriodSelect
-          value={form.watch("periodId")}
+          value={periodId}
           onChange={(value) =>
             form.setValue("periodId", value, {
               shouldDirty: true,
@@ -159,8 +201,21 @@ export function TimetableForm({ mode, timetableId, onSuccess }: Props) {
 
       <FormField label="Week Day" required>
         <Select
-          value={form.watch("day")}
-          onValueChange={(value) => form.setValue("day", value as any)}
+          value={selectedDay}
+          onValueChange={(value) => {
+            const day = WEEKDAY_OPTIONS.find(
+              (option) => option.value === value,
+            );
+
+            if (!day) {
+              return;
+            }
+
+            form.setValue("day", day.value, {
+              shouldDirty: true,
+              shouldValidate: true,
+            });
+          }}
         >
           <SelectTrigger>
             <SelectValue placeholder="Select Day" />
@@ -186,8 +241,12 @@ export function TimetableForm({ mode, timetableId, onSuccess }: Props) {
         </div>
 
         <Switch
-          checked={form.watch("active")}
-          onCheckedChange={(checked) => form.setValue("active", checked)}
+          checked={active}
+          onCheckedChange={(checked) =>
+            form.setValue("active", checked, {
+              shouldDirty: true,
+            })
+          }
         />
       </div>
 

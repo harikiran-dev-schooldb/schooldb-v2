@@ -8,7 +8,7 @@ import { useTimetableTable } from "../hooks/useTimetableTable";
 import { TimetableToolbar } from "./TimetableToolbar";
 
 export function TimetableTable() {
-  const { data, loading, search, setSearch, reload } = useTimetableTable();
+  const { data, loading, search, setSearch } = useTimetableTable();
 
   return (
     <div className="space-y-4">

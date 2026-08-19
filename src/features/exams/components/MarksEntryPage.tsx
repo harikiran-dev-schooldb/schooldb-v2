@@ -123,7 +123,13 @@ export function MarksEntryPage({ schoolSlug, examId, scheduleId }: Props) {
   }, [scheduleId]);
 
   useEffect(() => {
-    void loadData();
+    const timeoutId = window.setTimeout(() => {
+      void loadData();
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
   }, [loadData]);
 
   /* ---------------------------------------------------------------------- */

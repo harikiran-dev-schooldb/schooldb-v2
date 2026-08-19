@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 import { toast } from "sonner";
@@ -19,31 +19,56 @@ import { homeworkSchema, HomeworkFormInput } from "../schemas/homework.schema";
 
 type Props = {
   mode: "create" | "edit";
-
   homeworkId?: string;
-
   onSuccess: () => void;
+};
+
+function getToday() {
+  return new Date().toISOString().split("T")[0];
+}
+
+function getTomorrow() {
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+
+  return tomorrow.toISOString().split("T")[0];
+}
+
+const defaultValues: HomeworkFormInput = {
+  classId: "",
+  sectionId: "",
+  title: "Today's Homework",
+  description: "",
+  assignedDate: "",
+  dueDate: "",
+  active: true,
 };
 
 export function HomeworkForm({ mode, homeworkId, onSuccess }: Props) {
   const [loading, setLoading] = useState(false);
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-
-  const dueDate = tomorrow.toISOString().split("T")[0];
 
   const form = useForm<HomeworkFormInput>({
     resolver: zodResolver(homeworkSchema),
-
     defaultValues: {
-      classId: "",
-      sectionId: "",
-      title: "Today's Homework",
-      description: "",
-      assignedDate: new Date().toISOString().split("T")[0],
-      dueDate: dueDate,
-      active: true,
+      ...defaultValues,
+      assignedDate: getToday(),
+      dueDate: getTomorrow(),
     },
+  });
+
+  const classId = useWatch({
+    control: form.control,
+    name: "classId",
+  });
+
+  const sectionId = useWatch({
+    control: form.control,
+    name: "sectionId",
+  });
+
+  const active = useWatch({
+    control: form.control,
+    name: "active",
   });
 
   useEffect(() => {
@@ -57,8 +82,8 @@ export function HomeworkForm({ mode, homeworkId, onSuccess }: Props) {
 
         const result = await response.json();
 
-        if (!result.success) {
-          toast.error(result.message);
+        if (!response.ok || !result.success) {
+          toast.error(result.message || "Failed to load homework.");
           return;
         }
 
@@ -66,19 +91,13 @@ export function HomeworkForm({ mode, homeworkId, onSuccess }: Props) {
 
         form.reset({
           classId: item.classId,
-
           sectionId: item.sectionId ?? "",
-
           title: item.title,
-
           description: item.description ?? "",
-
           assignedDate: new Date(item.assignedDate).toISOString().split("T")[0],
-
           dueDate: item.dueDate
             ? new Date(item.dueDate).toISOString().split("T")[0]
             : "",
-
           active: item.active,
         });
       } catch {
@@ -86,13 +105,15 @@ export function HomeworkForm({ mode, homeworkId, onSuccess }: Props) {
       }
     }
 
-    load();
+    void load();
   }, [mode, homeworkId, form]);
 
   async function onSubmit(values: HomeworkFormInput) {
-    setLoading(true);
-
     try {
+      setLoading(true);
+
+      const payload = homeworkSchema.parse(values);
+
       const url =
         mode === "create"
           ? "/api/v1/homework"
@@ -102,26 +123,41 @@ export function HomeworkForm({ mode, homeworkId, onSuccess }: Props) {
 
       const response = await fetch(url, {
         method,
-
         headers: {
           "Content-Type": "application/json",
         },
-
-        body: JSON.stringify(values),
+        body: JSON.stringify(payload),
       });
 
       const result = await response.json();
 
-      if (!result.success) {
-        toast.error(result.message);
+      if (!response.ok || !result.success) {
+        toast.error(result.message || "Failed to save homework.");
         return;
       }
 
-      toast.success(result.message);
+      toast.success(
+        result.message ||
+          (mode === "create"
+            ? "Homework created successfully."
+            : "Homework updated successfully."),
+      );
+
+      if (mode === "create") {
+        form.reset({
+          ...defaultValues,
+          assignedDate: getToday(),
+          dueDate: getTomorrow(),
+        });
+      }
 
       onSuccess();
-    } catch {
-      toast.error("Failed to save homework.");
+    } catch (error) {
+      if (error instanceof Error) {
+        toast.error(error.message);
+      } else {
+        toast.error("Failed to save homework.");
+      }
     } finally {
       setLoading(false);
     }
@@ -131,7 +167,7 @@ export function HomeworkForm({ mode, homeworkId, onSuccess }: Props) {
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
       <FormField label="Class" required>
         <ClassSelect
-          value={form.watch("classId")}
+          value={classId}
           onChange={(value) => {
             form.setValue("classId", value, {
               shouldDirty: true,
@@ -148,8 +184,8 @@ export function HomeworkForm({ mode, homeworkId, onSuccess }: Props) {
 
       <FormField label="Section">
         <SectionSelect
-          classId={form.watch("classId")}
-          value={form.watch("sectionId")}
+          classId={classId}
+          value={sectionId}
           onChange={(value) =>
             form.setValue("sectionId", value, {
               shouldDirty: true,
@@ -168,9 +204,9 @@ export function HomeworkForm({ mode, homeworkId, onSuccess }: Props) {
           placeholder="Enter homework..."
           rows={5}
           {...form.register("description")}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.stopPropagation();
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              event.stopPropagation();
             }
           }}
         />
@@ -190,7 +226,7 @@ export function HomeworkForm({ mode, homeworkId, onSuccess }: Props) {
         </div>
 
         <Switch
-          checked={form.watch("active")}
+          checked={active}
           onCheckedChange={(checked) =>
             form.setValue("active", checked, {
               shouldDirty: true,

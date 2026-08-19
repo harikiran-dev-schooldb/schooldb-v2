@@ -26,7 +26,7 @@ export function FeeCollectionCards({
       <Card>
         <CardHeader>
           <CardTitle className="text-sm font-medium">
-            Today's Collection
+            Today&apos;s Collection
           </CardTitle>
         </CardHeader>
 

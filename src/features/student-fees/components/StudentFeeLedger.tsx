@@ -8,17 +8,19 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 import { RecordFeePaymentDialog } from "./RecordFeePaymentDialog";
-import { useParams } from "next/navigation";
-
 import { ConcessionDialog } from "./ConcessionDialog";
+
+import { useParams } from "next/navigation";
 
 type Installment = {
   id: string;
+
   feeCategory: {
     id: string;
     name: string;
     code: string;
   };
+
   name: string;
   amount: number;
   concession: number;
@@ -41,6 +43,7 @@ type Payment = {
   referenceNo: string | null;
   remarks: string | null;
   status: string;
+
   allocations: {
     installmentId: string;
     installmentName: string;
@@ -53,11 +56,13 @@ type Ledger = {
   studentFee: {
     id: string;
     studentEnrollmentId: string;
+
     feePlan: {
       id: string;
       name: string;
       academicYearId: string;
     };
+
     assignedAt: string;
   };
 
@@ -65,10 +70,12 @@ type Ledger = {
     id: string;
     admissionNo: string;
     fullName: string | null;
+
     class: {
       id: string;
       name: string;
     };
+
     section: {
       id: string;
       name: string;
@@ -88,7 +95,6 @@ type Ledger = {
   };
 
   installments: Installment[];
-
   payments: Payment[];
 };
 
@@ -135,14 +141,14 @@ export function StudentFeeLedger({ studentFeeId }: Props) {
 
   const [paymentOpen, setPaymentOpen] = useState(false);
 
-  const params = useParams<{
-    schoolSlug: string;
-  }>();
-
   const [concessionOpen, setConcessionOpen] = useState(false);
 
   const [selectedInstallment, setSelectedInstallment] =
     useState<Installment | null>(null);
+
+  const params = useParams<{
+    schoolSlug: string;
+  }>();
 
   const loadLedger = useCallback(async () => {
     try {
@@ -164,13 +170,20 @@ export function StudentFeeLedger({ studentFeeId }: Props) {
       setLedger(result.data);
     } catch (error) {
       console.error(error);
+      setLedger(null);
     } finally {
       setLoading(false);
     }
   }, [studentFeeId]);
 
   useEffect(() => {
-    loadLedger();
+    const timeoutId = window.setTimeout(() => {
+      void loadLedger();
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
   }, [loadLedger]);
 
   if (loading) {
@@ -195,8 +208,6 @@ export function StudentFeeLedger({ studentFeeId }: Props) {
 
   return (
     <div className="space-y-6">
-      {/* Student Header */}
-
       <Card>
         <CardContent className="pt-6">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -220,7 +231,11 @@ export function StudentFeeLedger({ studentFeeId }: Props) {
             </div>
 
             <div className="flex gap-2">
-              <Button variant="outline" onClick={loadLedger} disabled={loading}>
+              <Button
+                variant="outline"
+                onClick={() => void loadLedger()}
+                disabled={loading}
+              >
                 <RefreshCw className="mr-2 h-4 w-4" />
                 Refresh
               </Button>
@@ -236,8 +251,6 @@ export function StudentFeeLedger({ studentFeeId }: Props) {
           </div>
         </CardContent>
       </Card>
-
-      {/* Summary */}
 
       <div className="grid gap-4 md:grid-cols-4">
         <Card>
@@ -297,8 +310,6 @@ export function StudentFeeLedger({ studentFeeId }: Props) {
         </Card>
       </div>
 
-      {/* Fee Plan */}
-
       <Card>
         <CardHeader>
           <CardTitle>{ledger.studentFee.feePlan.name}</CardTitle>
@@ -310,19 +321,12 @@ export function StudentFeeLedger({ studentFeeId }: Props) {
               <thead>
                 <tr className="border-b text-left">
                   <th className="p-3">Installment</th>
-
                   <th className="p-3">Due Date</th>
-
                   <th className="p-3 text-right">Amount</th>
-
                   <th className="p-3 text-right">Concession</th>
-
                   <th className="p-3 text-right">Paid</th>
-
                   <th className="p-3 text-right">Balance</th>
-
                   <th className="p-3">Status</th>
-
                   <th className="p-3">Action</th>
                 </tr>
               </thead>
@@ -382,8 +386,6 @@ export function StudentFeeLedger({ studentFeeId }: Props) {
         </CardContent>
       </Card>
 
-      {/* Payment History */}
-
       <Card>
         <CardHeader>
           <CardTitle>Payment History</CardTitle>
@@ -400,15 +402,10 @@ export function StudentFeeLedger({ studentFeeId }: Props) {
                 <thead>
                   <tr className="border-b text-left">
                     <th className="p-3">Receipt No</th>
-
                     <th className="p-3">Date</th>
-
                     <th className="p-3">Mode</th>
-
                     <th className="p-3">Allocation</th>
-
                     <th className="p-3 text-right">Amount</th>
-
                     <th className="p-3 text-right">Action</th>
                   </tr>
                 </thead>
@@ -419,7 +416,6 @@ export function StudentFeeLedger({ studentFeeId }: Props) {
                       <td className="p-3 font-medium">
                         <div className="flex items-center gap-2">
                           <Receipt className="h-4 w-4" />
-
                           {payment.receiptNo}
                         </div>
                       </td>

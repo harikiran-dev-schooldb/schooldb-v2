@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
 import { StudentProfileHeader } from "./StudentProfileHeader";
 import { StudentOverviewTab } from "./StudentOverviewTab";
 import { StudentEnrollmentTab } from "./StudentEnrollmentTab";
@@ -11,29 +12,96 @@ import { StudentFeeTab } from "./StudentFeeTab";
 import { StudentDocumentsTab } from "./StudentDocumentsTab";
 import { StudentActivityTab } from "./StudentActivityTab";
 
+type Enrollment = {
+  id: string;
+  rollNo: string | null;
+
+  academicYear: {
+    id: string;
+    name: string;
+  };
+
+  class: {
+    id: string;
+    name: string;
+  };
+
+  section: {
+    id: string;
+    name: string;
+  };
+};
+
+type StudentProfileData = {
+  id: string;
+  admissionNo: string;
+  fullName: string;
+  gender: string;
+  dob: string | null;
+  phone: string | null;
+  email: string | null;
+  status: string;
+
+  enrollments: Enrollment[];
+};
+
 type Props = {
   studentId: string;
 };
 
 export function StudentProfile({ studentId }: Props) {
-  const [student, setStudent] = useState<any>();
+  const [student, setStudent] = useState<StudentProfileData | null>(null);
+
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function load() {
-      const res = await fetch(`/api/v1/students/${studentId}/profile`);
+    let cancelled = false;
 
-      const result = await res.json();
+    async function loadStudent() {
+      try {
+        const res = await fetch(`/api/v1/students/${studentId}/profile`, {
+          cache: "no-store",
+        });
 
-      if (result.success) {
-        setStudent(result.data);
+        const result = await res.json();
+
+        if (cancelled) {
+          return;
+        }
+
+        if (result.success) {
+          setStudent(result.data);
+        }
+      } catch (error) {
+        console.error("Failed to load student profile:", error);
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     }
 
-    load();
+    void loadStudent();
+
+    return () => {
+      cancelled = true;
+    };
   }, [studentId]);
 
+  if (loading) {
+    return (
+      <div className="py-10 text-center text-sm text-muted-foreground">
+        Loading student profile...
+      </div>
+    );
+  }
+
   if (!student) {
-    return <div>Loading...</div>;
+    return (
+      <div className="rounded-lg border p-6 text-center text-sm text-muted-foreground">
+        Student profile not found.
+      </div>
+    );
   }
 
   return (
@@ -41,7 +109,7 @@ export function StudentProfile({ studentId }: Props) {
       <StudentProfileHeader student={student} />
 
       <Tabs defaultValue="overview">
-        <TabsList>
+        <TabsList className="flex h-auto w-full flex-wrap justify-start">
           <TabsTrigger value="overview">Overview</TabsTrigger>
 
           <TabsTrigger value="enrollment">Enrollment</TabsTrigger>

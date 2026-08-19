@@ -1,7 +1,7 @@
 "use client";
 
 import { TeacherListItem } from "@/features/teachers/types";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 
 
@@ -36,45 +36,43 @@ export function useTeacherTable() {
   const [total, setTotal] =
     useState(0);
 
-  async function load() {
-    try {
-      setLoading(true);
+  const load = useCallback(async () => {
+  try {
+    setLoading(true);
 
-      const params =
-        new URLSearchParams({
-          page: page.toString(),
-          pageSize: pageSize.toString(),
-        });
+    const params = new URLSearchParams({
+      page: page.toString(),
+      pageSize: pageSize.toString(),
+    });
 
-      if (search) {
-        params.set(
-          "search",
-          search
-        );
-      }
-
-      const res = await fetch(
-        `/api/v1/teachers?${params}`
-      );
-
-      const result = await res.json();
-
-      if (!result.success) return;
-
-      const data: Response =
-        result.data;
-
-      setTeachers(data.data);
-
-      setTotal(data.total);
-    } finally {
-      setLoading(false);
+    if (search) {
+      params.set("search", search);
     }
+
+    const res = await fetch(`/api/v1/teachers?${params}`);
+
+    const result = await res.json();
+
+    if (!result.success) return;
+
+    const data: Response = result.data;
+
+    setTeachers(data.data);
+    setTotal(data.total);
+  } finally {
+    setLoading(false);
   }
+}, [page, pageSize, search]);
 
   useEffect(() => {
-    load();
-  }, [page, search]);
+  const timeoutId = window.setTimeout(() => {
+    void load();
+  }, 0);
+
+  return () => {
+    window.clearTimeout(timeoutId);
+  };
+}, [load]);
 
   return {
     teachers,

@@ -9,42 +9,60 @@ export function useDailyTimetable(
   day?: string
 ) {
   const [loading, setLoading] = useState(false);
+
   const [data, setData] = useState<TimetableGridItem[]>([]);
 
+  const canLoad = Boolean(academicYearId && day);
+
   useEffect(() => {
-    if (!academicYearId || !day) {
-      setData([]);
+    if (!canLoad) {
       return;
     }
 
-    async function load() {
-      setLoading(true);
+    let cancelled = false;
 
+    async function load() {
       try {
+        setLoading(true);
+
         const params = new URLSearchParams({
-  academicYearId: academicYearId!,
-    day: day!,
-});
+          academicYearId: academicYearId!,
+          day: day!,
+        });
 
         const res = await fetch(
-          `/api/v1/timetables/views/daily?${params}`
+          `/api/v1/timetables/views/daily?${params.toString()}`
         );
 
         const result = await res.json();
 
-        if (result.success) {
-          setData(result.data);
+        if (!cancelled) {
+          if (result.success) {
+            setData(result.data);
+          } else {
+            setData([]);
+          }
+        }
+      } catch {
+        if (!cancelled) {
+          setData([]);
         }
       } finally {
-        setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     }
 
-    load();
-  }, [academicYearId, day]);
+    void load();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [canLoad, academicYearId, day]);
 
   return {
-    loading,
-    data,
+    loading: canLoad ? loading : false,
+    data: canLoad ? data : [],
   };
 }

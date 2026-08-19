@@ -1,10 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useForm, useFieldArray } from "react-hook-form";
+import { useFieldArray, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
-import { feePlanSchema, FeePlanInput } from "../schemas/fee-plan.schema";
+import {
+  feePlanSchema,
+  FeePlanInput,
+  FeePlanFormValues,
+} from "../schemas/fee-plan.schema";
 
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -52,6 +56,22 @@ const frequencies = [
   { value: "CUSTOM", label: "Custom" },
 ] as const;
 
+const defaultValues: FeePlanFormValues = {
+  academicYearId: "",
+  name: "",
+  description: "",
+  appliesToAllClasses: false,
+  classIds: [],
+  items: [
+    {
+      feeCategoryId: "",
+      frequency: "MONTHLY",
+      amount: 0,
+      mandatory: true,
+    },
+  ],
+};
+
 export function FeePlanForm({ mode, feePlanId, onSuccess }: Props) {
   const [loading, setLoading] = useState(false);
 
@@ -68,24 +88,9 @@ export function FeePlanForm({ mode, feePlanId, onSuccess }: Props) {
     Record<number, CustomInstallment[]>
   >({});
 
-  const form = useForm({
+  const form = useForm<FeePlanFormValues, unknown, FeePlanInput>({
     resolver: zodResolver(feePlanSchema),
-
-    defaultValues: {
-      academicYearId: "",
-      name: "",
-      description: "",
-      appliesToAllClasses: false,
-      classIds: [],
-      items: [
-        {
-          feeCategoryId: "",
-          frequency: "MONTHLY",
-          amount: 0,
-          mandatory: true,
-        },
-      ],
-    },
+    defaultValues,
   });
 
   const { fields, append, remove } = useFieldArray({
@@ -93,8 +98,23 @@ export function FeePlanForm({ mode, feePlanId, onSuccess }: Props) {
     name: "items",
   });
 
-  const appliesToAllClasses = form.watch("appliesToAllClasses");
+  /*
+   * React Compiler-safe form subscriptions.
+   * Do not use form.watch().
+   */
+  const appliesToAllClasses = useWatch({
+    control: form.control,
+    name: "appliesToAllClasses",
+  });
 
+  const watchedItems = useWatch({
+    control: form.control,
+    name: "items",
+  });
+
+  /*
+   * Load dropdown data.
+   */
   useEffect(() => {
     async function loadData() {
       try {
@@ -132,9 +152,12 @@ export function FeePlanForm({ mode, feePlanId, onSuccess }: Props) {
       }
     }
 
-    loadData();
+    void loadData();
   }, []);
 
+  /*
+   * Load existing fee plan in edit mode.
+   */
   useEffect(() => {
     if (mode !== "edit" || !feePlanId) {
       return;
@@ -155,8 +178,11 @@ export function FeePlanForm({ mode, feePlanId, onSuccess }: Props) {
 
         const hasInstallments =
           plan.items?.some(
-            (item: { _count?: { installments: number } }) =>
-              (item._count?.installments ?? 0) > 0,
+            (item: {
+              _count?: {
+                installments: number;
+              };
+            }) => (item._count?.installments ?? 0) > 0,
           ) ?? false;
 
         setHasGeneratedInstallments(hasInstallments);
@@ -189,22 +215,25 @@ export function FeePlanForm({ mode, feePlanId, onSuccess }: Props) {
       }
     }
 
-    loadPlan();
+    void loadPlan();
   }, [mode, feePlanId, form]);
 
   function getCustomInstallments(index: number): CustomInstallment[] {
     return customInstallments[index] ?? [];
   }
 
-  function addCustomInstallment(index: number) {
+  /*
+   * Add custom installment.
+   */
+  function addCustomInstallment(itemIndex: number) {
     setCustomInstallments((current) => {
-      const existing = current[index] ?? [];
+      const existing = current[itemIndex] ?? [];
 
       const sequence = existing.length + 1;
 
       return {
         ...current,
-        [index]: [
+        [itemIndex]: [
           ...existing,
           {
             name: "",
@@ -219,72 +248,151 @@ export function FeePlanForm({ mode, feePlanId, onSuccess }: Props) {
     });
   }
 
+  /*
+   * Remove custom installment.
+   *
+   * Calculate the new total first and then
+   * update the React Hook Form value.
+   */
   function removeCustomInstallment(
     itemIndex: number,
     installmentIndex: number,
   ) {
-    setCustomInstallments((current) => {
-      const existing = current[itemIndex] ?? [];
+    const existing = customInstallments[itemIndex] ?? [];
 
-      const updated = existing
-        .filter((_, index) => index !== installmentIndex)
-        .map((item, index) => ({
-          ...item,
-          sequence: index + 1,
-        }));
+    const updated = existing
+      .filter((_, index) => index !== installmentIndex)
+      .map((item, index) => ({
+        ...item,
+        sequence: index + 1,
+      }));
 
-      const total = updated.reduce(
-        (sum, item) => sum + Number(item.amount || 0),
-        0,
-      );
+    const total = updated.reduce(
+      (sum, item) => sum + Number(item.amount || 0),
+      0,
+    );
 
-      form.setValue(`items.${itemIndex}.amount`, total, {
-        shouldValidate: true,
-      });
-
-      return {
-        ...current,
-        [itemIndex]: updated,
-      };
+    form.setValue(`items.${itemIndex}.amount`, total, {
+      shouldDirty: true,
+      shouldValidate: true,
     });
+
+    setCustomInstallments((current) => ({
+      ...current,
+      [itemIndex]: updated,
+    }));
   }
 
+  /*
+   * Update custom installment.
+   *
+   * Do not call form.setValue() inside the
+   * setCustomInstallments updater.
+   */
   function updateCustomInstallment(
     itemIndex: number,
     installmentIndex: number,
     field: keyof CustomInstallment,
     value: string | number,
   ) {
+    const existing = customInstallments[itemIndex] ?? [];
+
+    const updated = existing.map((item, index) =>
+      index === installmentIndex
+        ? {
+            ...item,
+            [field]: value,
+          }
+        : item,
+    );
+
+    const total = updated.reduce(
+      (sum, item) => sum + Number(item.amount || 0),
+      0,
+    );
+
+    form.setValue(`items.${itemIndex}.amount`, total, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+
+    setCustomInstallments((current) => ({
+      ...current,
+      [itemIndex]: updated,
+    }));
+  }
+
+  /*
+   * Remove fee item and its related
+   * custom installment data.
+   */
+  function removeFeeItem(itemIndex: number) {
+    remove(itemIndex);
+
     setCustomInstallments((current) => {
-      const existing = current[itemIndex] ?? [];
+      const updated: Record<number, CustomInstallment[]> = {};
 
-      const updated = existing.map((item, index) =>
-        index === installmentIndex
-          ? {
-              ...item,
-              [field]: value,
-            }
-          : item,
-      );
+      Object.entries(current).forEach(([key, installments]) => {
+        const index = Number(key);
 
-      const total = updated.reduce(
-        (sum, item) => sum + Number(item.amount || 0),
-        0,
-      );
+        if (index < itemIndex) {
+          updated[index] = installments;
+        }
 
-      form.setValue(`items.${itemIndex}.amount`, total, {
-        shouldValidate: true,
+        if (index > itemIndex) {
+          updated[index - 1] = installments;
+        }
       });
 
-      return {
-        ...current,
-        [itemIndex]: updated,
-      };
+      return updated;
     });
+  }
+
+  /*
+   * Validate custom installments before
+   * creating the fee plan.
+   */
+  function validateCustomInstallments(values: FeePlanInput): boolean {
+    for (let index = 0; index < values.items.length; index++) {
+      const item = values.items[index];
+
+      if (item.frequency !== "CUSTOM") {
+        continue;
+      }
+
+      const installments = getCustomInstallments(index);
+
+      if (installments.length === 0) {
+        toast.error("Add at least one custom installment.");
+
+        return false;
+      }
+
+      const invalidInstallment = installments.find(
+        (installment) =>
+          !installment.name.trim() ||
+          installment.amount <= 0 ||
+          !installment.dueDate ||
+          !installment.periodStart ||
+          !installment.periodEnd,
+      );
+
+      if (invalidInstallment) {
+        toast.error("Complete all custom installment fields.");
+
+        return false;
+      }
+    }
+
+    return true;
   }
 
   async function onSubmit(values: FeePlanInput) {
     try {
+      if (!validateCustomInstallments(values)) {
+        return;
+      }
+
       setLoading(true);
 
       const url =
@@ -296,19 +404,26 @@ export function FeePlanForm({ mode, feePlanId, onSuccess }: Props) {
 
       const response = await fetch(url, {
         method,
+
         headers: {
           "Content-Type": "application/json",
         },
+
         body: JSON.stringify(values),
       });
 
       const result = await response.json();
 
       if (!result.success) {
-        toast.error(result.message);
+        toast.error(result.message || "Failed to save fee plan.");
+
         return;
       }
 
+      /*
+       * Save custom installments after
+       * creating the fee plan.
+       */
       if (mode === "create") {
         const createdPlan = result.data;
 
@@ -323,31 +438,11 @@ export function FeePlanForm({ mode, feePlanId, onSuccess }: Props) {
 
           const installments = getCustomInstallments(index);
 
-          if (installments.length === 0) {
-            toast.error(
-              `Add at least one custom installment for ${item.frequency} fee item.`,
-            );
-            return;
-          }
-
-          const invalidInstallment = installments.find(
-            (installment) =>
-              !installment.name.trim() ||
-              installment.amount <= 0 ||
-              !installment.dueDate ||
-              !installment.periodStart ||
-              !installment.periodEnd,
-          );
-
-          if (invalidInstallment) {
-            toast.error("Complete all custom installment fields.");
-            return;
-          }
-
           const createdItem = createdItems[index];
 
           if (!createdItem?.id) {
             toast.error("Fee plan item was not returned by the server.");
+
             return;
           }
 
@@ -355,9 +450,11 @@ export function FeePlanForm({ mode, feePlanId, onSuccess }: Props) {
             `/api/v1/fee-plan-items/${createdItem.id}/custom-installments`,
             {
               method: "POST",
+
               headers: {
                 "Content-Type": "application/json",
               },
+
               body: JSON.stringify({
                 installments,
               }),
@@ -367,7 +464,11 @@ export function FeePlanForm({ mode, feePlanId, onSuccess }: Props) {
           const installmentResult = await installmentResponse.json();
 
           if (!installmentResult.success) {
-            toast.error(installmentResult.message);
+            toast.error(
+              installmentResult.message ||
+                "Failed to create custom installments.",
+            );
+
             return;
           }
         }
@@ -456,6 +557,8 @@ export function FeePlanForm({ mode, feePlanId, onSuccess }: Props) {
         )}
       </div>
 
+      {/* Locked Notice */}
+
       {mode === "edit" && hasGeneratedInstallments && (
         <div className="rounded-md border bg-muted/30 p-3 text-sm">
           <p className="font-medium">🔒 Fee structure locked</p>
@@ -490,106 +593,117 @@ export function FeePlanForm({ mode, feePlanId, onSuccess }: Props) {
           </Button>
         </div>
 
-        {fields.map((field, index) => (
-          <div key={field.id} className="space-y-4 rounded-lg border p-4">
-            {/* Category */}
+        {fields.map((field, index) => {
+          const frequency = watchedItems?.[index]?.frequency;
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Fee Category</label>
+          const installments = getCustomInstallments(index);
 
-              <select
-                disabled={hasGeneratedInstallments}
-                className="w-full rounded-md border bg-background px-3 py-2 text-sm"
-                {...form.register(`items.${index}.feeCategoryId`)}
-              >
-                <option value="">Select category</option>
+          return (
+            <div key={field.id} className="space-y-4 rounded-lg border p-4">
+              {/* Category */}
 
-                {feeCategories.map((category) => (
-                  <option key={category.id} value={category.id}>
-                    {category.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Frequency */}
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Frequency</label>
-
-              <select
-                disabled={hasGeneratedInstallments}
-                className="w-full rounded-md border bg-background px-3 py-2 text-sm"
-                {...form.register(`items.${index}.frequency`)}
-              >
-                {frequencies.map((frequency) => (
-                  <option key={frequency.value} value={frequency.value}>
-                    {frequency.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Amount */}
-
-            {form.watch(`items.${index}.frequency`) !== "CUSTOM" && (
               <div className="space-y-2">
-                <label className="text-sm font-medium">Amount</label>
+                <label className="text-sm font-medium">Fee Category</label>
 
-                <Input
-                  type="number"
-                  min="0"
-                  step="0.01"
+                <select
                   disabled={hasGeneratedInstallments}
-                  {...form.register(`items.${index}.amount`, {
-                    valueAsNumber: true,
-                  })}
-                />
+                  className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                  {...form.register(`items.${index}.feeCategoryId`)}
+                >
+                  <option value="">Select category</option>
+
+                  {feeCategories.map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.name}
+                    </option>
+                  ))}
+                </select>
               </div>
-            )}
 
-            {form.watch(`items.${index}.frequency`) === "TERMLY" && (
-              <div className="rounded-md border bg-muted/30 p-4">
-                <p className="text-sm font-medium">Termly Installments</p>
+              {/* Frequency */}
 
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Four installments will be generated automatically for the
-                  academic year.
-                </p>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Frequency</label>
 
-                <div className="mt-3 space-y-1 text-sm">
-                  <p>Term 1</p>
-                  <p>Term 2</p>
-                  <p>Term 3</p>
-                  <p>Term 4</p>
+                <select
+                  disabled={hasGeneratedInstallments}
+                  className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                  {...form.register(`items.${index}.frequency`)}
+                >
+                  {frequencies.map((frequencyOption) => (
+                    <option
+                      key={frequencyOption.value}
+                      value={frequencyOption.value}
+                    >
+                      {frequencyOption.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Standard Amount */}
+
+              {frequency !== "CUSTOM" && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Amount</label>
+
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    disabled={hasGeneratedInstallments}
+                    {...form.register(`items.${index}.amount`, {
+                      valueAsNumber: true,
+                    })}
+                  />
                 </div>
-              </div>
-            )}
+              )}
 
-            {form.watch(`items.${index}.frequency`) === "CUSTOM" && (
-              <div className="space-y-4 rounded-md border bg-muted/30 p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium">Custom Installments</p>
+              {/* Termly */}
 
-                    <p className="text-xs text-muted-foreground">
-                      Define your own payment schedule.
-                    </p>
+              {frequency === "TERMLY" && (
+                <div className="rounded-md border bg-muted/30 p-4">
+                  <p className="text-sm font-medium">Termly Installments</p>
+
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Four installments will be generated automatically for the
+                    academic year.
+                  </p>
+
+                  <div className="mt-3 space-y-1 text-sm">
+                    <p>Term 1</p>
+                    <p>Term 2</p>
+                    <p>Term 3</p>
+                    <p>Term 4</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Custom Installments */}
+
+              {frequency === "CUSTOM" && (
+                <div className="space-y-4 rounded-md border bg-muted/30 p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium">Custom Installments</p>
+
+                      <p className="text-xs text-muted-foreground">
+                        Define your own payment schedule.
+                      </p>
+                    </div>
+
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={hasGeneratedInstallments}
+                      onClick={() => addCustomInstallment(index)}
+                    >
+                      Add Installment
+                    </Button>
                   </div>
 
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={hasGeneratedInstallments}
-                    onClick={() => addCustomInstallment(index)}
-                  >
-                    Add Installment
-                  </Button>
-                </div>
-
-                {getCustomInstallments(index).map(
-                  (installment, installmentIndex) => (
+                  {installments.map((installment, installmentIndex) => (
                     <div
                       key={`${field.id}-${installmentIndex}`}
                       className="space-y-3 rounded-md border bg-background p-3"
@@ -602,8 +716,8 @@ export function FeePlanForm({ mode, feePlanId, onSuccess }: Props) {
                         <Button
                           type="button"
                           variant="destructive"
-                          disabled={hasGeneratedInstallments}
                           size="sm"
+                          disabled={hasGeneratedInstallments}
                           onClick={() =>
                             removeCustomInstallment(index, installmentIndex)
                           }
@@ -639,8 +753,8 @@ export function FeePlanForm({ mode, feePlanId, onSuccess }: Props) {
                             min="0"
                             step="0.01"
                             placeholder="10000"
-                            value={installment.amount || ""}
                             disabled={hasGeneratedInstallments}
+                            value={installment.amount || ""}
                             onChange={(event) =>
                               updateCustomInstallment(
                                 index,
@@ -659,8 +773,8 @@ export function FeePlanForm({ mode, feePlanId, onSuccess }: Props) {
 
                           <Input
                             type="date"
-                            value={installment.dueDate}
                             disabled={hasGeneratedInstallments}
+                            value={installment.dueDate}
                             onChange={(event) =>
                               updateCustomInstallment(
                                 index,
@@ -679,8 +793,8 @@ export function FeePlanForm({ mode, feePlanId, onSuccess }: Props) {
 
                           <Input
                             type="date"
-                            value={installment.periodStart}
                             disabled={hasGeneratedInstallments}
+                            value={installment.periodStart}
                             onChange={(event) =>
                               updateCustomInstallment(
                                 index,
@@ -713,41 +827,45 @@ export function FeePlanForm({ mode, feePlanId, onSuccess }: Props) {
                         </div>
                       </div>
                     </div>
-                  ),
-                )}
+                  ))}
 
-                {getCustomInstallments(index).length === 0 && (
-                  <div className="rounded-md border border-dashed p-4 text-center text-sm text-muted-foreground">
-                    No custom installments added.
-                  </div>
-                )}
-              </div>
-            )}
+                  {installments.length === 0 && (
+                    <div className="rounded-md border border-dashed p-4 text-center text-sm text-muted-foreground">
+                      No custom installments added.
+                    </div>
+                  )}
+                </div>
+              )}
 
-            {/* Mandatory */}
+              {/* Mandatory */}
 
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                disabled={hasGeneratedInstallments}
-                {...form.register(`items.${index}.mandatory`)}
-              />
-              Mandatory
-            </label>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  disabled={hasGeneratedInstallments}
+                  {...form.register(`items.${index}.mandatory`)}
+                />
+                Mandatory
+              </label>
 
-            {fields.length > 1 && (
-              <Button
-                type="button"
-                variant="destructive"
-                onClick={() => remove(index)}
-                disabled={hasGeneratedInstallments}
-              >
-                Remove
-              </Button>
-            )}
-          </div>
-        ))}
+              {/* Remove Fee Item */}
+
+              {fields.length > 1 && (
+                <Button
+                  type="button"
+                  variant="destructive"
+                  disabled={hasGeneratedInstallments}
+                  onClick={() => removeFeeItem(index)}
+                >
+                  Remove
+                </Button>
+              )}
+            </div>
+          );
+        })}
       </div>
+
+      {/* Validation Error */}
 
       {Object.keys(form.formState.errors).length > 0 && (
         <div className="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">

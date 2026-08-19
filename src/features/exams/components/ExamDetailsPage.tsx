@@ -211,7 +211,13 @@ export function ExamDetailsPage({ schoolSlug, examId }: Props) {
   /* ---------------------------------------------------------------------- */
 
   useEffect(() => {
-    void loadData();
+    const timeoutId = window.setTimeout(() => {
+      void loadData();
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
   }, [loadData]);
 
   /* ---------------------------------------------------------------------- */

@@ -55,16 +55,6 @@ export function MarkAttendance({ sessionId }: Props) {
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   /*
-   * Keep existing session data → student state logic.
-   */
-  useEffect(() => {
-    if (data?.students) {
-      setStudents(data.students);
-      setOriginalStudents(data.students);
-    }
-  }, [data]);
-
-  /*
    * Ctrl + F / Cmd + F → attendance search.
    */
   useEffect(() => {
@@ -115,13 +105,6 @@ export function MarkAttendance({ sessionId }: Props) {
       );
     });
   }, [students, searchQuery]);
-
-  /*
-   * Reset pagination when searching.
-   */
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchQuery]);
 
   /*
    * Pagination.

@@ -5,11 +5,7 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
-import {
-  classSchema,
-  ClassFormOutput,
-  ClassFormInput,
-} from "../schemas/class.schema";
+import { classSchema, ClassFormInput } from "../schemas/class.schema";
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
