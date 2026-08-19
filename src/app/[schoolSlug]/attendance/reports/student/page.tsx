@@ -8,13 +8,11 @@ type Props = {
 };
 
 export default async function StudentAttendanceReportPage({ params }: Props) {
-  const { schoolSlug } = await params;
-
   await requireTenant();
 
   return (
     <div className="container mx-auto py-6">
-      <StudentAttendanceReport schoolSlug={schoolSlug} />
+      <StudentAttendanceReport />
     </div>
   );
 }

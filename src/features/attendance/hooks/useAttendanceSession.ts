@@ -3,19 +3,49 @@
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 
-type AttendanceSession = {
+type AttendanceSessionData = {
   id: string;
-  // Add the actual fields returned by your API
+  attendanceDate: string;
+  locked: boolean;
+
+  class: {
+    id: string;
+    name: string;
+  };
+
+  section: {
+    id: string;
+    name: string;
+  };
+
+  subject: {
+    id: string;
+    name: string;
+  } | null;
+
+  teacher: {
+    id: string;
+    fullName: string;
+  } | null;
+
+  period: {
+    id: string;
+    name: string;
+  } | null;
 };
 
-type AttendanceStudent = {
-  id: string;
-  // Add the actual fields returned by your API
+type StudentAttendance = {
+  studentId: string;
+  rollNo: number;
+  admissionNo: string;
+  fullName: string;
+  status: "PRESENT" | "ABSENT" | "LATE" | "LEAVE";
+  remarks?: string;
 };
 
 type AttendanceSessionResponse = {
-  session: AttendanceSession;
-  students: AttendanceStudent[];
+  session: AttendanceSessionData;
+  students: StudentAttendance[];
 };
 
 export function useAttendanceSession(sessionId: string) {

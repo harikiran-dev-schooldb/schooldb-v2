@@ -21,20 +21,55 @@ import { Button } from "@/components/ui/button";
 import { AttendanceSummary } from "./AttendanceSummary";
 import { useAttendanceSession } from "../hooks/useAttendanceSession";
 import { AttendanceHeader } from "./AttendanceHeader";
+import { AttendanceStatus } from "@/generated/prisma/enums";
 
 type Props = {
   sessionId: string;
 };
 
-type AttendanceStatus = "PRESENT" | "ABSENT" | "LATE" | "LEAVE";
+type AttendanceSessionData = {
+  id: string;
+  attendanceDate: string;
+  locked: boolean;
+
+  class: {
+    id: string;
+    name: string;
+  };
+
+  section: {
+    id: string;
+    name: string;
+  };
+
+  subject: {
+    id: string;
+    name: string;
+  } | null;
+
+  teacher: {
+    id: string;
+    fullName: string;
+  } | null;
+
+  period: {
+    id: string;
+    name: string;
+  } | null;
+};
 
 type StudentAttendance = {
   studentId: string;
   rollNo: number;
   admissionNo: string;
   fullName: string;
-  status: AttendanceStatus;
+  status: "PRESENT" | "ABSENT" | "LATE" | "LEAVE";
   remarks?: string;
+};
+
+type AttendanceSessionResponse = {
+  session: AttendanceSessionData;
+  students: StudentAttendance[];
 };
 
 const ITEMS_PER_PAGE = 50;
@@ -48,6 +83,7 @@ export function MarkAttendance({ sessionId }: Props) {
   const [currentPage, setCurrentPage] = useState(1);
   const [saving, setSaving] = useState(false);
   const [editing, setEditing] = useState(false);
+
   const [originalStudents, setOriginalStudents] = useState<StudentAttendance[]>(
     [],
   );
