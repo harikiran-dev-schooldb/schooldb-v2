@@ -14,8 +14,8 @@ export function EmptyState({
   action,
 }: EmptyStateProps) {
   return (
-    <div className="flex flex-col items-center justify-center rounded-xl border border-dashed py-20 text-center">
-      {icon}
+    <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-primary/25 bg-card/55 py-20 text-center">
+      {icon && <div className="rounded-2xl bg-primary/10 p-3 text-primary">{icon}</div>}
 
       <h2 className="mt-4 text-xl font-semibold">{title}</h2>
 

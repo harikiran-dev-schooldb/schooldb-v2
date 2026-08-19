@@ -10,7 +10,7 @@ type Props = {
 
 export function DataGridPagination({ page, totalPages, onPageChange }: Props) {
   return (
-    <div className="flex items-center justify-between border-t p-4">
+    <div className="flex items-center justify-between border-t border-border/70 bg-card p-4 md:px-5">
       <Button
         variant="outline"
         disabled={page <= 1}
@@ -19,7 +19,7 @@ export function DataGridPagination({ page, totalPages, onPageChange }: Props) {
         Previous
       </Button>
 
-      <span className="text-sm text-muted-foreground">
+      <span className="text-xs font-medium tracking-wide text-muted-foreground">
         Page {page} of {totalPages}
       </span>
 

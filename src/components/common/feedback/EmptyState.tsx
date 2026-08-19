@@ -16,8 +16,8 @@ export function EmptyState({
   icon,
 }: Props) {
   return (
-    <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-12 text-center">
-      {icon ?? <Inbox className="mb-4 h-10 w-10 text-muted-foreground" />}
+    <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-primary/25 bg-card/55 py-14 text-center">
+      <div className="mb-4 rounded-2xl bg-primary/10 p-3 text-primary">{icon ?? <Inbox className="h-7 w-7" />}</div>
 
       <h3 className="text-lg font-semibold">{title}</h3>
 

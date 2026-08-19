@@ -12,12 +12,12 @@ type Props = {
 
 export function PageHeader({ title, description, actions }: Props) {
   return (
-    <div className="flex items-center justify-between gap-4">
+    <div className="mb-8 flex items-center justify-between gap-4 md:mb-10">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">{title}</h1>
+        <h1 className="text-3xl font-bold tracking-[-0.035em] md:text-4xl">{title}</h1>
 
         {description && (
-          <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">{description}</p>
         )}
       </div>
 
