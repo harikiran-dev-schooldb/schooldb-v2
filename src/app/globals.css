@@ -117,24 +117,55 @@
   --sidebar-ring: oklch(0.556 0 0);
 }
 
+/* ADDED THE MISSING @ SYMBOL HERE */
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
-  body {
-    @apply bg-background text-foreground antialiased;
-    background-image: none;
-  }
+  
   html {
     @apply font-sans;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    /* Premium off-white background with crisp text rendering */
+    @apply bg-slate-50/50 text-foreground antialiased;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background-image: none;
   }
 }
 
+/* Premium text selection (like macOS) */
 ::selection {
-  background: oklch(0.78 0.1 168 / 0.4);
+  @apply bg-teal-500/20 text-teal-900;
+}
+.dark ::selection {
+  @apply bg-teal-500/30 text-teal-100;
+}
+
+@layer utilities {
+  /* Global Glass Panel - Use this instead of standard bg-white */
+  .glass-panel {
+    @apply border border-white/60 bg-white/70 shadow-xl shadow-slate-200/40 backdrop-blur-xl transition-all;
+  }
+  
+  .glass-panel-dark {
+    @apply border border-white/10 bg-white/5 backdrop-blur-md shadow-xl shadow-black/20;
+  }
+
+  /* Premium Text Gradient */
+  .text-gradient {
+    @apply text-transparent bg-clip-text bg-gradient-to-r from-teal-600 to-blue-600;
+  }
+  .dark .text-gradient {
+    @apply from-teal-300 to-blue-300;
+  }
 }
 
 @layer components {
+  /* Your existing premium hero and card styles */
   .premium-hero {
     position: relative;
     isolation: isolate;
@@ -163,17 +194,26 @@
     border: 1px solid rgb(255 255 255 / 0.85);
     background: linear-gradient(145deg, rgb(255 255 255 / 0.94), rgb(250 249 246 / 0.86));
     box-shadow: 0 12px 30px rgb(15 23 42 / 0.05), inset 0 1px rgb(255 255 255 / 0.85);
+    backdrop-filter: blur(12px);
   }
 }
 
+/* MERGED PRINT STYLES */
 @media print {
   @page {
     size: A4;
     margin: 12mm;
   }
 
+  html,
   body {
+    width: 210mm;
     background: white !important;
+  }
+
+  body {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
   }
 
   aside,
@@ -200,24 +240,6 @@
   .print-hidden {
     display: none !important;
   }
-}
-
-@media print {
-  @page {
-    size: A4;
-    margin: 12mm;
-  }
-
-  html,
-  body {
-    width: 210mm;
-    background: white !important;
-  }
-
-  body {
-    print-color-adjust: exact;
-    -webkit-print-color-adjust: exact;
-  }
 
   .report-card-page {
     width: 100%;
@@ -231,12 +253,7 @@
     page-break-before: always;
   }
 
-  table {
-    break-inside: avoid;
-    page-break-inside: avoid;
-  }
-
-  tr {
+  table, tr {
     break-inside: avoid;
     page-break-inside: avoid;
   }

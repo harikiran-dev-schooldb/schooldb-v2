@@ -15,10 +15,21 @@ export default function RootLayout({
 }>) {
   return (
     <ClerkProvider>
-      <html lang="en" className="font-sans">
-        <body className="min-h-screen">
+      {/* Added antialiased and selection colors here for safety */}
+      <html
+        lang="en"
+        className="font-sans antialiased selection:bg-teal-500/30 selection:text-teal-900"
+      >
+        <body className="min-h-screen bg-slate-50/50 text-slate-900 flex flex-col">
           {children}
-          <Toaster richColors position="top-right" />
+          {/* Upgraded toaster to match premium feel */}
+          <Toaster
+            richColors
+            position="top-right"
+            toastOptions={{
+              className: "glass-panel !border-slate-200/60 !shadow-2xl",
+            }}
+          />
         </body>
       </html>
     </ClerkProvider>
