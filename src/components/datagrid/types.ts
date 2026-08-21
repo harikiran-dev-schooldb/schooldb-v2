@@ -1,7 +1,8 @@
-import { ColumnDef } from "@tanstack/react-table";
+import type { ColumnDef } from "@tanstack/react-table";
+import type { ReactNode } from "react";
 
 export interface DataGridProps<TData> {
-  columns: ColumnDef<TData>[];
+  columns: ColumnDef<TData, unknown>[];
   data: TData[];
 
   loading?: boolean;
@@ -10,5 +11,9 @@ export interface DataGridProps<TData> {
   totalPages?: number;
   onPageChange?: (page: number) => void;
 
-  toolbar?: React.ReactNode;
+  toolbar?: ReactNode;
+
+  emptyTitle?: string;
+  emptyDescription?: string;
+  emptyAction?: ReactNode;
 }

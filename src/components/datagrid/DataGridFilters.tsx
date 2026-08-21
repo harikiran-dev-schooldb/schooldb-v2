@@ -1,5 +1,7 @@
 "use client";
 
+import type { StudentStatus } from "@/generated/prisma/client";
+
 import {
   Select,
   SelectContent,
@@ -7,8 +9,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
-import { StudentStatus } from "@/generated/prisma/client";
 
 type Props = {
   value: StudentStatus | "";
@@ -19,17 +19,20 @@ export function DataGridFilters({ value, onChange }: Props) {
   return (
     <Select
       value={value || "ALL"}
-      onValueChange={(v) => onChange(v === "ALL" ? "" : (v as StudentStatus))}
+      onValueChange={(nextValue) =>
+        onChange(nextValue === "ALL" ? "" : (nextValue as StudentStatus))
+      }
     >
-      <SelectTrigger className="w-44">
+      <SelectTrigger className="h-10 w-full rounded-xl border-border/70 bg-background shadow-sm sm:w-44">
         <SelectValue placeholder="Status" />
       </SelectTrigger>
 
       <SelectContent>
-        <SelectItem value="ALL">All</SelectItem>
+        <SelectItem value="ALL">All Statuses</SelectItem>
         <SelectItem value="ACTIVE">Active</SelectItem>
+        <SelectItem value="NOT_COMING">Not Coming</SelectItem>
         <SelectItem value="INACTIVE">Inactive</SelectItem>
-        <SelectItem value="TRANSFERRED">Transferred</SelectItem>
+        <SelectItem value="TC_ISSUED">TC Issued</SelectItem>
         <SelectItem value="DROPPED">Dropped</SelectItem>
         <SelectItem value="ALUMNI">Alumni</SelectItem>
       </SelectContent>

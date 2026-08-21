@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { useDebounce } from "@/hooks/useDebounce";
 import { ClassListItem } from "../types";
+import { subscribeTableRefresh } from "@/lib/table-events";
 
 type ClassResponse = {
   data: ClassListItem[];
@@ -76,6 +77,10 @@ export function useClassTable() {
       active = false;
     };
   }, [page, pageSize, debouncedSearch, reloadVersion]);
+
+  useEffect(() => {
+      return subscribeTableRefresh("classes", reload);
+    }, [reload]);
 
   return {
     classes,

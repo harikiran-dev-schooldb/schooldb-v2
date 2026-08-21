@@ -1,59 +1,86 @@
 "use client";
 
-import { useSchool } from "@/contexts/school-context";
 import { Bell, ChevronDown, Search } from "lucide-react";
+
+import { useSchool } from "@/contexts/school-context";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 
+function formatRole(role: string) {
+  return role
+    .toLowerCase()
+    .split("_")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
 export function AppHeader() {
-  const { school, role, user } = useSchool();
+  const { role, user } = useSchool();
+
+  const initials =
+    `${user.firstName?.[0] ?? ""}${user.lastName?.[0] ?? ""}` || "U";
 
   return (
-    <header className="sticky top-0 z-40 flex h-[78px] items-center justify-between border-b border-slate-200/60 bg-white/70 px-5 backdrop-blur-xl md:px-8 xl:px-11">
-      <div>
-        <p className="text-[10px] font-bold tracking-[0.2em] text-teal-600 uppercase">
-          {role.replaceAll("_", " ")}
-        </p>
-        <h2 className="mt-1 text-[15px] font-bold tracking-tight text-slate-800">
-          {school.name}
-        </h2>
-      </div>
+    <header className="sticky top-0 z-40 h-[72px] border-b border-border/70 bg-background/80 backdrop-blur-xl">
+      <div className="flex h-full items-center justify-between px-4 sm:px-6 lg:px-8">
+        {/* Workspace context */}
+        <div className="min-w-0">
+          <p className="section-label">School workspace</p>
 
-      <div className="flex items-center gap-3">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="hidden text-slate-500 hover:bg-white hover:text-slate-900 hover:shadow-sm sm:inline-flex"
-        >
-          <Search className="size-4.5" />
-        </Button>
+          <p className="mt-1 text-sm font-semibold tracking-tight text-foreground">
+            {formatRole(role)} Portal
+          </p>
+        </div>
 
-        <Button
-          variant="ghost"
-          size="icon"
-          className="relative text-slate-500 hover:bg-white hover:text-slate-900 hover:shadow-sm"
-        >
-          <Bell className="size-4.5" />
-          {/* Premium glowing notification dot */}
-          <span className="absolute right-2.5 top-2.5 size-2 rounded-full bg-teal-500 shadow-[0_0_8px_rgba(20,184,166,0.8)] ring-2 ring-white" />
-        </Button>
+        {/* Actions */}
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            aria-label="Search"
+            className="hidden rounded-xl text-muted-foreground transition-all hover:bg-card hover:text-foreground hover:shadow-sm sm:inline-flex"
+          >
+            <Search className="size-[18px]" />
+          </Button>
 
-        <div className="ml-2 flex items-center gap-3 border-l border-slate-200/60 pl-5">
-          <Avatar className="size-9 border border-teal-100 bg-teal-50 shadow-sm transition-transform hover:scale-105 cursor-pointer">
-            <AvatarFallback className="bg-transparent text-xs font-bold text-teal-700">
-              {user.firstName?.[0] ?? "U"}
-              {user.lastName?.[0] ?? ""}
-            </AvatarFallback>
-          </Avatar>
-          <div className="hidden text-left sm:block">
-            <p className="max-w-36 truncate text-sm font-bold text-slate-800">
-              {user.firstName} {user.lastName}
-            </p>
-            <p className="max-w-36 truncate text-[11px] font-medium text-slate-500">
-              {user.email}
-            </p>
-          </div>
-          <ChevronDown className="hidden size-4 text-slate-400 transition-colors hover:text-slate-700 cursor-pointer sm:block" />
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            aria-label="Notifications"
+            className="relative rounded-xl text-muted-foreground transition-all hover:bg-card hover:text-foreground hover:shadow-sm"
+          >
+            <Bell className="size-[18px]" />
+
+            <span className="absolute right-2.5 top-2.5 size-2 rounded-full border-2 border-background bg-primary" />
+          </Button>
+
+          <div className="mx-2 hidden h-7 w-px bg-border sm:block" />
+
+          <Button
+            type="button"
+            variant="ghost"
+            className="h-auto gap-3 rounded-2xl px-2 py-1.5 hover:bg-card hover:shadow-sm"
+          >
+            <Avatar className="size-9 border border-border bg-muted">
+              <AvatarFallback className="bg-primary/10 text-xs font-bold text-primary">
+                {initials}
+              </AvatarFallback>
+            </Avatar>
+
+            <div className="hidden min-w-0 text-left md:block">
+              <p className="max-w-40 truncate text-sm font-semibold text-foreground">
+                {user.firstName} {user.lastName}
+              </p>
+
+              <p className="max-w-40 truncate text-[11px] text-muted-foreground">
+                {formatRole(role)}
+              </p>
+            </div>
+
+            <ChevronDown className="hidden size-4 text-muted-foreground md:block" />
+          </Button>
         </div>
       </div>
     </header>

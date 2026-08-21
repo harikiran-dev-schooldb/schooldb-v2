@@ -8,7 +8,7 @@ export default function SectionsPage() {
     <>
       <PageHeader
         title="Sections"
-        description="Manage school sections"
+        description="Create and organize sections for each academic class."
         action={<AddSectionButton />}
       />
 

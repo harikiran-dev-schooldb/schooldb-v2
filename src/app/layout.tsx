@@ -1,11 +1,15 @@
 import type { Metadata } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
+
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 
 export const metadata: Metadata = {
-  title: "SchoolDB",
-  description: "School Management System",
+  title: {
+    default: "SchoolDB",
+    template: "%s | SchoolDB",
+  },
+  description: "Modern school management platform",
 };
 
 export default function RootLayout({
@@ -15,19 +19,20 @@ export default function RootLayout({
 }>) {
   return (
     <ClerkProvider>
-      {/* Added antialiased and selection colors here for safety */}
       <html
         lang="en"
-        className="font-sans antialiased selection:bg-teal-500/30 selection:text-teal-900"
+        suppressHydrationWarning
+        className="font-sans antialiased"
       >
-        <body className="min-h-screen bg-slate-50/50 text-slate-900 flex flex-col">
+        <body className="flex min-h-screen flex-col bg-background text-foreground">
           {children}
-          {/* Upgraded toaster to match premium feel */}
+
           <Toaster
             richColors
             position="top-right"
             toastOptions={{
-              className: "glass-panel !border-slate-200/60 !shadow-2xl",
+              className:
+                "rounded-2xl border-border/70 bg-card/95 shadow-2xl backdrop-blur-xl",
             }}
           />
         </body>

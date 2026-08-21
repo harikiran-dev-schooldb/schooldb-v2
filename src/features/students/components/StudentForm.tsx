@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 
 import { GenderSelect } from "@/components/common/select/GenderSelect";
 import { FormField, SubmitButton } from "@/components/common/forms";
+import { refreshTable } from "@/lib/table-events";
 
 type Props = {
   mode: "create" | "edit";
@@ -132,6 +133,8 @@ export function StudentForm({ mode, studentId, onSuccess }: Props) {
             : "Student updated successfully."),
       );
 
+      refreshTable("students");
+
       if (isCreate) {
         form.reset(defaultValues);
       }
@@ -145,67 +148,112 @@ export function StudentForm({ mode, studentId, onSuccess }: Props) {
   }
 
   return (
-    <form
-      onSubmit={form.handleSubmit(onSubmit)}
-      className="grid gap-4 md:grid-cols-2"
-    >
-      <FormField
-        label="Admission No"
-        required
-        error={form.formState.errors.admissionNo?.message}
-      >
-        <Input placeholder="Admission No" {...form.register("admissionNo")} />
-      </FormField>
+    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+      {/* Student identity */}
+      <section className="rounded-2xl border border-border/70 bg-muted/20 p-5 sm:p-6">
+        <div className="mb-6">
+          <p className="text-sm font-semibold text-foreground">
+            Student identity
+          </p>
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">
+            Basic identification details for the student record.
+          </p>
+        </div>
 
-      <FormField
-        label="Student Name"
-        required
-        error={form.formState.errors.fullName?.message}
-      >
-        <Input placeholder="Student Name" {...form.register("fullName")} />
-      </FormField>
+        <div className="grid gap-5 md:grid-cols-2">
+          <FormField
+            label="Admission No"
+            required
+            error={form.formState.errors.admissionNo?.message}
+          >
+            <Input
+              placeholder="e.g. ADM-2026-001"
+              className="h-11 bg-background"
+              {...form.register("admissionNo")}
+            />
+          </FormField>
 
-      <FormField
-        label="Gender"
-        required
-        error={form.formState.errors.gender?.message}
-      >
-        <GenderSelect
-          value={gender}
-          onChange={(value) =>
-            form.setValue("gender", value, {
-              shouldDirty: true,
-              shouldValidate: true,
-            })
-          }
-        />
-      </FormField>
+          <FormField
+            label="Student Name"
+            required
+            error={form.formState.errors.fullName?.message}
+          >
+            <Input
+              placeholder="Enter full name"
+              className="h-11 bg-background"
+              {...form.register("fullName")}
+            />
+          </FormField>
 
-      <FormField
-        label="Date of Birth"
-        required
-        error={form.formState.errors.dob?.message}
-      >
-        <Input type="date" {...form.register("dob")} />
-      </FormField>
+          <FormField
+            label="Gender"
+            required
+            error={form.formState.errors.gender?.message}
+          >
+            <GenderSelect
+              value={gender}
+              onChange={(value) =>
+                form.setValue("gender", value, {
+                  shouldDirty: true,
+                  shouldValidate: true,
+                })
+              }
+            />
+          </FormField>
 
-      <FormField label="Phone" error={form.formState.errors.phone?.message}>
-        <Input placeholder="Phone" {...form.register("phone")} />
-      </FormField>
+          <FormField
+            label="Date of Birth"
+            required
+            error={form.formState.errors.dob?.message}
+          >
+            <Input
+              type="date"
+              className="h-11 bg-background"
+              {...form.register("dob")}
+            />
+          </FormField>
+        </div>
+      </section>
 
-      <div className="md:col-span-2">
-        <FormField label="Email" error={form.formState.errors.email?.message}>
-          <Input type="email" placeholder="Email" {...form.register("email")} />
-        </FormField>
-      </div>
+      {/* Contact details */}
+      <section className="rounded-2xl border border-border/70 bg-muted/20 p-5 sm:p-6">
+        <div className="mb-6">
+          <p className="text-sm font-semibold text-foreground">
+            Contact information
+          </p>
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">
+            Add contact details for communication and future notifications.
+          </p>
+        </div>
 
-      <div className="md:col-span-2">
+        <div className="grid gap-5 md:grid-cols-2">
+          <FormField label="Phone" error={form.formState.errors.phone?.message}>
+            <Input
+              placeholder="Enter phone number"
+              className="h-11 bg-background"
+              {...form.register("phone")}
+            />
+          </FormField>
+
+          <FormField label="Email" error={form.formState.errors.email?.message}>
+            <Input
+              type="email"
+              placeholder="Enter email address"
+              className="h-11 bg-background"
+              {...form.register("email")}
+            />
+          </FormField>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <div className="sticky bottom-0 -mx-6 -mb-6 border-t border-border/60 bg-card/95 px-6 py-4 backdrop-blur-xl sm:-mx-8 sm:-mb-8 sm:px-8">
         <SubmitButton
           loading={loading}
           mode={mode}
           createLabel="Create Student"
-          updateLabel="Update Student"
-          className="w-full"
+          updateLabel="Save Changes"
+          className="h-11 w-full rounded-xl font-semibold shadow-lg shadow-primary/15"
         />
       </div>
     </form>

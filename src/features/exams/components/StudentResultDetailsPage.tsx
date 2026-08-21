@@ -165,7 +165,7 @@ export function StudentResultDetailsPage({
         <AlertCircle className="size-12 text-slate-300" />
         <h2 className="text-xl font-bold text-slate-800">Result Not Found</h2>
         <p className="text-sm text-slate-500">
-          We couldn't retrieve the data for this exam result.
+          We couldn&apos;t retrieve the data for this exam result.
         </p>
       </div>
     );

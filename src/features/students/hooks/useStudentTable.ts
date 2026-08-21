@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { StudentListItem } from "../types";
 import { useDebounce } from "@/hooks/useDebounce";
 import { StudentStatus } from "@/generated/prisma/enums";
+import { subscribeTableRefresh } from "@/lib/table-events";
 
 type StudentResponse = {
   data: StudentListItem[];
@@ -81,6 +82,10 @@ export function useStudentTable() {
       active = false;
     };
   }, [page, pageSize, debouncedSearch, status, reloadVersion]);
+
+  useEffect(() => {
+      return subscribeTableRefresh("students", reload);
+    }, [reload]);
 
   return {
     students,

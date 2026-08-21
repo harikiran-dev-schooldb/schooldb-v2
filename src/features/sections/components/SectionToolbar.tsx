@@ -1,6 +1,6 @@
 "use client";
 
-import { DataGridSearch } from "@/components/datagrid/DataGridSearch";
+import { CrudToolbar } from "@/components/common/crud";
 
 type Props = {
   search: string;
@@ -9,12 +9,10 @@ type Props = {
 
 export function SectionToolbar({ search, onSearch }: Props) {
   return (
-    <div className="flex items-center justify-between border-b p-4">
-      <DataGridSearch
-        value={search}
-        placeholder="Search sections..."
-        onSearch={onSearch}
-      />
-    </div>
+    <CrudToolbar
+      search={search}
+      onSearch={onSearch}
+      placeholder="Search sections..."
+    />
   );
 }

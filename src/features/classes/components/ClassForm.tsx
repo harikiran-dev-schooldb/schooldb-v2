@@ -1,16 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
-
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 import { classSchema, ClassFormInput } from "../schemas/class.schema";
 
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
-import { useRouter } from "next/navigation";
+import { FormField, SubmitButton } from "@/components/common/forms";
+import { refreshTable } from "@/lib/table-events";
 
 type Props = {
   mode: "create" | "edit";
@@ -18,46 +18,62 @@ type Props = {
   onSuccess: () => void;
 };
 
+const defaultValues: ClassFormInput = {
+  name: "",
+  code: "",
+  description: "",
+  displayOrder: 0,
+};
+
 export function ClassForm({ mode, classId, onSuccess }: Props) {
   const router = useRouter();
-
   const [loading, setLoading] = useState(false);
 
   const form = useForm<ClassFormInput>({
     resolver: zodResolver(classSchema),
-
-    defaultValues: {
-      name: "",
-      code: "",
-      description: "",
-      displayOrder: 0,
-    },
+    defaultValues,
   });
 
   useEffect(() => {
     if (mode !== "edit" || !classId) return;
 
+    let cancelled = false;
+
     async function loadClass() {
-      const res = await fetch(`/api/v1/classes/${classId}`);
+      try {
+        const res = await fetch(`/api/v1/classes/${classId}`, {
+          cache: "no-store",
+        });
 
-      const result = await res.json();
+        const result = await res.json();
 
-      if (!result.success) {
-        toast.error(result.message);
-        return;
+        if (cancelled) return;
+
+        if (!result.success) {
+          toast.error(result.message || "Failed to load class.");
+          return;
+        }
+
+        const item = result.data;
+
+        form.reset({
+          name: item.name ?? "",
+          code: item.code ?? "",
+          description: item.description ?? "",
+          displayOrder: item.displayOrder ?? 0,
+        });
+      } catch {
+        if (!cancelled) {
+          toast.error("Failed to load class.");
+        }
       }
-
-      const item = result.data;
-
-      form.reset({
-        name: item.name,
-        code: item.code ?? "",
-        description: item.description ?? "",
-        displayOrder: item.displayOrder,
-      });
     }
 
-    loadClass();
+    void loadClass();
+
+    return () => {
+      cancelled = true;
+    };
   }, [mode, classId, form]);
 
   async function onSubmit(values: ClassFormInput) {
@@ -66,10 +82,11 @@ export function ClassForm({ mode, classId, onSuccess }: Props) {
 
       const payload = classSchema.parse(values);
 
-      const url =
-        mode === "create" ? "/api/v1/classes" : `/api/v1/classes/${classId}`;
+      const isCreate = mode === "create";
 
-      const method = mode === "create" ? "POST" : "PUT";
+      const url = isCreate ? "/api/v1/classes" : `/api/v1/classes/${classId}`;
+
+      const method = isCreate ? "POST" : "PUT";
 
       const res = await fetch(url, {
         method,
@@ -82,49 +99,107 @@ export function ClassForm({ mode, classId, onSuccess }: Props) {
       const result = await res.json();
 
       if (!result.success) {
-        toast.error(result.message);
+        toast.error(result.message || "Failed to save class.");
         return;
       }
 
       toast.success(
-        mode === "create"
-          ? "Class created successfully."
-          : "Class updated successfully.",
+        result.message ||
+          (isCreate
+            ? "Class created successfully."
+            : "Class updated successfully."),
       );
 
-      form.reset();
+      if (isCreate) {
+        form.reset(defaultValues);
+      }
+
+      refreshTable("classes");
 
       onSuccess();
-
       router.refresh();
+    } catch {
+      toast.error("Something went wrong while saving the class.");
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
-      <Input placeholder="Class Name" {...form.register("name")} />
+    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+      <section className="rounded-2xl border border-border/70 bg-muted/20 p-5 sm:p-6">
+        <div className="mb-6">
+          <p className="text-sm font-semibold text-foreground">
+            Class information
+          </p>
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">
+            Configure the basic details used to identify and organize this
+            class.
+          </p>
+        </div>
 
-      <Input placeholder="Code" {...form.register("code")} />
+        <div className="grid gap-5 md:grid-cols-2">
+          <FormField
+            label="Class Name"
+            required
+            error={form.formState.errors.name?.message}
+          >
+            <Input
+              placeholder="e.g. Class 10"
+              className="h-11 bg-background"
+              {...form.register("name")}
+            />
+          </FormField>
 
-      <Input placeholder="Description" {...form.register("description")} />
+          <FormField
+            label="Class Code"
+            error={form.formState.errors.code?.message}
+          >
+            <Input
+              placeholder="e.g. X"
+              className="h-11 bg-background"
+              {...form.register("code")}
+            />
+          </FormField>
 
-      <Input
-        type="number"
-        placeholder="Display Order"
-        {...form.register("displayOrder", {
-          valueAsNumber: true,
-        })}
-      />
+          <div className="md:col-span-2">
+            <FormField
+              label="Description"
+              error={form.formState.errors.description?.message}
+            >
+              <Input
+                placeholder="Optional description for this class"
+                className="h-11 bg-background"
+                {...form.register("description")}
+              />
+            </FormField>
+          </div>
 
-      <Button type="submit" className="w-full" disabled={loading}>
-        {loading
-          ? "Saving..."
-          : mode === "create"
-            ? "Create Class"
-            : "Update Class"}
-      </Button>
+          <FormField
+            label="Display Order"
+            error={form.formState.errors.displayOrder?.message}
+          >
+            <Input
+              type="number"
+              min="0"
+              className="h-11 bg-background"
+              {...form.register("displayOrder", {
+                valueAsNumber: true,
+              })}
+            />
+          </FormField>
+        </div>
+      </section>
+
+      <div className="sticky bottom-0 -mx-6 -mb-6 border-t border-border/60 bg-card/95 px-6 py-4 backdrop-blur-xl sm:-mx-8 sm:-mb-8 sm:px-8">
+        <SubmitButton
+          loading={loading}
+          mode={mode}
+          createLabel="Create Class"
+          updateLabel="Save Changes"
+          className="h-11 w-full rounded-xl font-semibold shadow-lg shadow-primary/15"
+        />
+      </div>
     </form>
   );
 }

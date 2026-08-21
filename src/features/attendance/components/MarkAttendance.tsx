@@ -27,37 +27,6 @@ type Props = {
   sessionId: string;
 };
 
-type AttendanceSessionData = {
-  id: string;
-  attendanceDate: string;
-  locked: boolean;
-
-  class: {
-    id: string;
-    name: string;
-  };
-
-  section: {
-    id: string;
-    name: string;
-  };
-
-  subject: {
-    id: string;
-    name: string;
-  } | null;
-
-  teacher: {
-    id: string;
-    fullName: string;
-  } | null;
-
-  period: {
-    id: string;
-    name: string;
-  } | null;
-};
-
 type StudentAttendance = {
   studentId: string;
   rollNo: number;
@@ -65,11 +34,6 @@ type StudentAttendance = {
   fullName: string;
   status: "PRESENT" | "ABSENT" | "LATE" | "LEAVE";
   remarks?: string;
-};
-
-type AttendanceSessionResponse = {
-  session: AttendanceSessionData;
-  students: StudentAttendance[];
 };
 
 const ITEMS_PER_PAGE = 50;

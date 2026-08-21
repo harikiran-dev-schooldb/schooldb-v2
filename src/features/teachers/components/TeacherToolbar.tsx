@@ -1,7 +1,6 @@
 "use client";
 
 import { CrudToolbar } from "@/components/common/crud";
-import { AddTeacherButton } from "./AddTeacherButton";
 
 type Props = {
   search: string;
@@ -14,8 +13,6 @@ export function TeacherToolbar({ search, onSearch }: Props) {
       search={search}
       onSearch={onSearch}
       placeholder="Search teachers..."
-    >
-      <AddTeacherButton />
-    </CrudToolbar>
+    />
   );
 }

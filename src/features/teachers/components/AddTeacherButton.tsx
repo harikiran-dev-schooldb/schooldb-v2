@@ -1,11 +1,9 @@
 "use client";
 
 import { useState } from "react";
-
 import { Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-
 import { TeacherDialog } from "./TeacherDialog";
 
 export function AddTeacherButton() {
@@ -13,8 +11,12 @@ export function AddTeacherButton() {
 
   return (
     <>
-      <Button onClick={() => setOpen(true)}>
-        <Plus className="mr-2 h-4 w-4" />
+      <Button
+        size="lg"
+        className="shadow-md shadow-primary/20"
+        onClick={() => setOpen(true)}
+      >
+        <Plus />
         Add Teacher
       </Button>
 
