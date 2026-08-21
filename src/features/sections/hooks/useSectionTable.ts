@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useDebounce } from "@/hooks/useDebounce";
 
 import { SectionListItem } from "../types";
+import { subscribeTableRefresh } from "@/lib/table-events";
 
 type SectionResponse = {
   data: SectionListItem[];
@@ -77,6 +78,10 @@ export function useSectionTable() {
       active = false;
     };
   }, [page, pageSize, debouncedSearch, reloadVersion]);
+
+  useEffect(() => {
+      return subscribeTableRefresh("teachers", reload);
+    }, [reload]);
 
   return {
     sections,

@@ -12,7 +12,6 @@ import {
   FileSignature,
   Award,
   BookOpen,
-  Target,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -169,7 +168,7 @@ export function StudentReportCardPage({
             Report card not found
           </h2>
           <p className="max-w-xs text-sm text-slate-500">
-            Unable to load the student's report card.
+            Unable to load the student&apos;s report card.
           </p>
         </div>
       </div>

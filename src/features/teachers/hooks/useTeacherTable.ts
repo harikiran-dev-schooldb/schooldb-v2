@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { TeacherListItem } from "../types";
+import { subscribeTableRefresh } from "@/lib/table-events";
 
 type Response = {
   data: TeacherListItem[];
@@ -21,6 +22,8 @@ export function useTeacherTable() {
   const [total, setTotal] = useState(0);
 
   const load = useCallback(async () => {
+    setLoading(true);
+
     const params = new URLSearchParams({
       page: page.toString(),
       pageSize: pageSize.toString(),
@@ -33,6 +36,9 @@ export function useTeacherTable() {
     try {
       const res = await fetch(
         `/api/v1/teachers?${params.toString()}`,
+        {
+          cache: "no-store",
+        },
       );
 
       const result = await res.json();
@@ -56,32 +62,22 @@ export function useTeacherTable() {
   }, [page, pageSize, search]);
 
   useEffect(() => {
-    let cancelled = false;
+    void load();
+  }, [load]);
 
-    queueMicrotask(() => {
-      if (!cancelled) {
-        void load();
-      }
-    });
-
-    return () => {
-      cancelled = true;
-    };
+  useEffect(() => {
+    return subscribeTableRefresh("teachers", load);
   }, [load]);
 
   return {
     teachers,
     loading,
-
     search,
     setSearch,
-
     page,
     setPage,
-
     total,
     pageSize,
-
     reload: load,
   };
 }

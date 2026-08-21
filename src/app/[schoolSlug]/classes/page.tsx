@@ -7,7 +7,7 @@ export default function ClassesPage() {
     <>
       <PageHeader
         title="Classes"
-        description="Manage school classes"
+        description="Create and manage the academic classes available in your school."
         action={<AddClassButton />}
       />
 

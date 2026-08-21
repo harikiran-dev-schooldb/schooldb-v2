@@ -6,6 +6,7 @@ export default function AcademicYearPage() {
   return (
     <>
       <PageHeader
+        eyebrow="Academic Year"
         title="Academic Year"
         description="Manage academic year settings and configurations for the school.s"
         action={<AddAcademicYearButton />}

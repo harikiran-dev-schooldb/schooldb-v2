@@ -4,6 +4,7 @@ export type StudentListItem = {
   fullName: string | null;
   gender: "MALE" | "FEMALE" | "OTHER";
   phone: string | null;
+  fatherName: string | null;
   className: string | null;
   sectionName: string | null;
   status:

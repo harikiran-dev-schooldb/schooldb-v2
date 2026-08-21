@@ -1,28 +1,34 @@
 "use client";
 
 import { DataGrid } from "@/components/datagrid/DataGrid";
-
 import { teacherColumns } from "../columns";
-
 import { useTeacherTable } from "../hooks/useTeacherTable";
-
 import { TeacherToolbar } from "./TeacherToolbar";
 
 export function TeacherTable() {
   const {
     teachers,
-
     loading,
-
+    page,
+    setPage,
+    total,
+    pageSize,
     search,
     setSearch,
+    reload,
   } = useTeacherTable();
 
-  return (
-    <div className="space-y-4">
-      <TeacherToolbar search={search} onSearch={setSearch} />
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
-      <DataGrid columns={teacherColumns} data={teachers} loading={loading} />
-    </div>
+  return (
+    <DataGrid
+      columns={teacherColumns}
+      data={teachers}
+      loading={loading}
+      page={page}
+      totalPages={totalPages}
+      onPageChange={setPage}
+      toolbar={<TeacherToolbar search={search} onSearch={setSearch} />}
+    />
   );
 }

@@ -1,13 +1,7 @@
 import { StudentAttendanceReport } from "@/features/attendance/components/StudentAttendanceReport";
 import { requireTenant } from "@/lib/auth";
 
-type Props = {
-  params: Promise<{
-    schoolSlug: string;
-  }>;
-};
-
-export default async function StudentAttendanceReportPage({ params }: Props) {
+export default async function StudentAttendanceReportPage() {
   await requireTenant();
 
   return (
