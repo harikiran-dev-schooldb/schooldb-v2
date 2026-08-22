@@ -72,6 +72,29 @@ export function MarkAttendance({ sessionId }: Props) {
     };
   }, []);
 
+  /* ------------------------------------------------------------------------ */
+  /* Load Students                                                            */
+  /* ------------------------------------------------------------------------ */
+
+  useEffect(() => {
+    if (!data?.students) return;
+
+    const attendanceStudents: StudentAttendance[] = data.students.map(
+      (student) => ({
+        studentId: student.studentId,
+        rollNo: student.rollNo,
+        admissionNo: student.admissionNo,
+        fullName: student.fullName,
+        status: student.status,
+        remarks: student.remarks ?? "",
+      }),
+    );
+
+    setStudents(attendanceStudents);
+    setOriginalStudents(attendanceStudents);
+    setCurrentPage(1);
+  }, [data]);
+
   /*
    * Existing summary logic.
    */
@@ -348,7 +371,10 @@ export function MarkAttendance({ sessionId }: Props) {
               ref={searchInputRef}
               type="text"
               value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
+              onChange={(event) => {
+                setSearchQuery(event.target.value);
+                setCurrentPage(1);
+              }}
               placeholder="Search name or admission no..."
               className="h-10 w-full rounded-lg border bg-background pl-9 pr-16 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
             />
@@ -458,13 +484,24 @@ export function MarkAttendance({ sessionId }: Props) {
             const isLeave = student.status === "LEAVE";
 
             return (
-              <button
-                type="button"
+              <div
                 key={student.studentId}
-                onClick={() => toggleStudent(student)}
-                disabled={saving || !editing || data.session.locked}
+                role="button"
+                tabIndex={saving || !editing || data.session.locked ? -1 : 0}
+                onClick={() => {
+                  if (saving || !editing || data.session.locked) return;
+                  toggleStudent(student);
+                }}
+                onKeyDown={(event) => {
+                  if (saving || !editing || data.session.locked) return;
+
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    toggleStudent(student);
+                  }
+                }}
                 className={[
-                  "group relative flex min-h-[120px] items-center rounded-xl border-2 p-4 text-left shadow-sm transition-all duration-200",
+                  "group relative flex min-h-[145px] items-center rounded-xl border-2 p-4 text-left shadow-sm transition-all duration-200",
                   "hover:-translate-y-0.5 hover:shadow-md",
                   "active:scale-[0.98]",
                   "disabled:pointer-events-none disabled:opacity-70",
@@ -542,23 +579,90 @@ export function MarkAttendance({ sessionId }: Props) {
                   </div>
                 </div>
 
-                {/* Status */}
-                <div className="absolute bottom-3 right-4">
-                  <span
-                    className={[
-                      "text-[10px] font-bold uppercase tracking-wider",
-                      isPresent
-                        ? "text-muted-foreground group-hover:text-primary"
-                        : "",
-                      isAbsent ? "text-destructive" : "",
-                      isLate ? "text-amber-600" : "",
-                      isLeave ? "text-blue-600" : "",
-                    ].join(" ")}
+                {/* Status controls */}
+                {editing && !data.session.locked ? (
+                  <div
+                    className="absolute bottom-3 left-4 right-4 flex items-center justify-between gap-2"
+                    onClick={(event) => event.stopPropagation()}
                   >
-                    {student.status}
-                  </span>
-                </div>
-              </button>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={isPresent ? "default" : "outline"}
+                        className="h-7 px-2 text-xs"
+                        onClick={() =>
+                          updateStatus(student.studentId, "PRESENT")
+                        }
+                        disabled={saving}
+                      >
+                        P
+                      </Button>
+
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={isAbsent ? "destructive" : "outline"}
+                        className="h-7 px-2 text-xs"
+                        onClick={() =>
+                          updateStatus(student.studentId, "ABSENT")
+                        }
+                        disabled={saving}
+                      >
+                        A
+                      </Button>
+
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={isLate ? "default" : "outline"}
+                        className="h-7 px-2 text-xs"
+                        onClick={() => updateStatus(student.studentId, "LATE")}
+                        disabled={saving}
+                      >
+                        L
+                      </Button>
+
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={isLeave ? "default" : "outline"}
+                        className="h-7 px-2 text-xs"
+                        onClick={() => updateStatus(student.studentId, "LEAVE")}
+                        disabled={saving}
+                      >
+                        LV
+                      </Button>
+                    </div>
+
+                    <span
+                      className={[
+                        "text-[10px] font-bold uppercase tracking-wider",
+                        isPresent ? "text-muted-foreground" : "",
+                        isAbsent ? "text-destructive" : "",
+                        isLate ? "text-amber-600" : "",
+                        isLeave ? "text-blue-600" : "",
+                      ].join(" ")}
+                    >
+                      {student.status}
+                    </span>
+                  </div>
+                ) : (
+                  <div className="absolute bottom-3 right-4">
+                    <span
+                      className={[
+                        "text-[10px] font-bold uppercase tracking-wider",
+                        isPresent ? "text-muted-foreground" : "",
+                        isAbsent ? "text-destructive" : "",
+                        isLate ? "text-amber-600" : "",
+                        isLeave ? "text-blue-600" : "",
+                      ].join(" ")}
+                    >
+                      {student.status}
+                    </span>
+                  </div>
+                )}
+              </div>
             );
           })}
         </div>
@@ -627,7 +731,7 @@ export function MarkAttendance({ sessionId }: Props) {
                 type="button"
                 size="lg"
                 onClick={lockAttendance}
-                disabled={saving || students.length === 0}
+                disabled={saving || students.length === 0 || editing}
               >
                 🔒 Lock Attendance
               </Button>

@@ -8,6 +8,8 @@ import {
   CheckCircle2,
   Clock,
   Eye,
+  Filter,
+  Loader2,
   Users,
   XCircle,
 } from "lucide-react";
@@ -30,11 +32,8 @@ export function AttendanceHistory({ schoolSlug }: Props) {
   const router = useRouter();
 
   const [academicYearId, setAcademicYearId] = useState("");
-
   const [classId, setClassId] = useState("");
-
   const [sectionId, setSectionId] = useState("");
-
   const [date, setDate] = useState("");
 
   const { data, loading } = useAttendanceHistory({
@@ -53,39 +52,104 @@ export function AttendanceHistory({ schoolSlug }: Props) {
     router.push(`/${schoolSlug}/attendance/session/${sessionId}`);
   }
 
+  function clearFilters() {
+    setAcademicYearId("");
+    setClassId("");
+    setSectionId("");
+    setDate("");
+  }
+
   function getSessionLabel(type: string) {
     switch (type) {
       case "DAILY":
         return "Daily";
-
       case "MORNING":
         return "Morning";
-
       case "AFTERNOON":
         return "Afternoon";
-
       case "PERIOD":
         return "Period";
-
       default:
         return type;
     }
   }
 
-  return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-semibold">Attendance History</h1>
+  const sessions = data?.data ?? [];
 
-        <p className="text-sm text-muted-foreground">
-          View and manage previously recorded attendance sessions.
-        </p>
+  const hasFilters =
+    Boolean(academicYearId) ||
+    Boolean(classId) ||
+    Boolean(sectionId) ||
+    Boolean(date);
+
+  return (
+    <div className="min-h-screen space-y-6 pb-10">
+      {/* ================================================================ */}
+      {/* Header */}
+      {/* ================================================================ */}
+
+      <div className="rounded-2xl border bg-card p-5 shadow-sm">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex items-start gap-3">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+              <CalendarDays className="h-5 w-5" />
+            </div>
+
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight">
+                Attendance History
+              </h1>
+
+              <p className="mt-1 text-sm text-muted-foreground">
+                View, review and manage previously recorded attendance sessions.
+              </p>
+            </div>
+          </div>
+
+          {!loading && sessions.length > 0 && (
+            <div className="rounded-xl border bg-muted/40 px-4 py-2 text-sm">
+              <span className="font-semibold">{sessions.length}</span>{" "}
+              <span className="text-muted-foreground">
+                {sessions.length === 1 ? "Session" : "Sessions"}
+              </span>
+            </div>
+          )}
+        </div>
       </div>
 
+      {/* ================================================================ */}
       {/* Filters */}
-      <div className="rounded-xl border bg-card p-4">
-        <div className="grid gap-4 md:grid-cols-4">
+      {/* ================================================================ */}
+
+      <div className="rounded-2xl border bg-card p-5 shadow-sm">
+        <div className="mb-4 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-2">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <Filter className="h-4 w-4" />
+            </div>
+
+            <div>
+              <h2 className="font-semibold">Filters</h2>
+
+              <p className="text-xs text-muted-foreground">
+                Narrow down attendance sessions.
+              </p>
+            </div>
+          </div>
+
+          {hasFilters && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={clearFilters}
+            >
+              Clear Filters
+            </Button>
+          )}
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <AcademicYearSelect
             value={academicYearId}
             onChange={setAcademicYearId}
@@ -106,108 +170,172 @@ export function AttendanceHistory({ schoolSlug }: Props) {
               type="date"
               value={date}
               onChange={(event) => setDate(event.target.value)}
-              className="h-10 w-full rounded-md border bg-background pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+              className="h-10 w-full rounded-lg border bg-background pl-9 pr-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+              aria-label="Filter by attendance date"
             />
           </div>
         </div>
       </div>
 
+      {/* ================================================================ */}
       {/* Loading */}
+      {/* ================================================================ */}
+
       {loading && (
-        <div className="rounded-xl border bg-card p-8 text-center text-sm text-muted-foreground">
-          Loading attendance history...
+        <div className="flex min-h-[300px] items-center justify-center">
+          <div className="flex items-center gap-3 text-sm text-muted-foreground">
+            <Loader2 className="h-5 w-5 animate-spin" />
+            Loading attendance history...
+          </div>
         </div>
       )}
 
-      {/* Empty */}
-      {!loading && data?.data.length === 0 && (
-        <div className="rounded-xl border bg-card p-10 text-center">
-          <CalendarDays className="mx-auto mb-3 h-10 w-10 text-muted-foreground" />
+      {/* ================================================================ */}
+      {/* Empty State */}
+      {/* ================================================================ */}
 
-          <p className="font-medium">No attendance records found</p>
+      {!loading && sessions.length === 0 && (
+        <div className="rounded-2xl border bg-card p-10 text-center shadow-sm">
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-muted">
+            <CalendarDays className="h-6 w-6 text-muted-foreground" />
+          </div>
 
-          <p className="mt-1 text-sm text-muted-foreground">
-            Try changing your filters.
+          <h3 className="font-semibold">No attendance records found</h3>
+
+          <p className="mx-auto mt-2 max-w-sm text-sm text-muted-foreground">
+            {hasFilters
+              ? "No attendance sessions match the selected filters."
+              : "There are no attendance sessions available yet."}
           </p>
+
+          {hasFilters && (
+            <Button
+              type="button"
+              variant="outline"
+              className="mt-5"
+              onClick={clearFilters}
+            >
+              Clear Filters
+            </Button>
+          )}
         </div>
       )}
 
-      {/* History */}
-      {!loading && data && data.data.length > 0 && (
+      {/* ================================================================ */}
+      {/* Session List */}
+      {/* ================================================================ */}
+
+      {!loading && sessions.length > 0 && (
         <div className="space-y-3">
-          {data.data.map((item) => (
-            <div
-              key={item.id}
-              className="rounded-xl border bg-card p-4 shadow-sm transition hover:shadow-md"
-            >
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                {/* Main */}
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="font-semibold">
-                      {item.className} - {item.sectionName}
-                    </h3>
+          {sessions.map((item) => {
+            const attendanceDate = new Date(
+              item.attendanceDate,
+            ).toLocaleDateString(undefined, {
+              day: "2-digit",
+              month: "short",
+              year: "numeric",
+            });
 
-                    <span className="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
-                      {getSessionLabel(item.sessionType)}
-                    </span>
+            return (
+              <div
+                key={item.id}
+                className="group rounded-2xl border bg-card p-4 shadow-sm transition-all duration-200 hover:border-primary/30 hover:shadow-md"
+              >
+                <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
+                  {/* ---------------------------------------------------- */}
+                  {/* Session Information */}
+                  {/* ---------------------------------------------------- */}
 
-                    {item.completed ? (
-                      <span className="flex items-center gap-1 rounded-full bg-green-500/10 px-2.5 py-1 text-xs font-medium text-green-600">
-                        <CheckCircle2 className="h-3 w-3" />
-                        Completed
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="text-base font-semibold">
+                        {item.className} - {item.sectionName}
+                      </h3>
+
+                      <span className="rounded-full border bg-muted px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        {getSessionLabel(item.sessionType)}
                       </span>
-                    ) : (
-                      <span className="flex items-center gap-1 rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-600">
-                        <Clock className="h-3 w-3" />
-                        Not Marked
-                      </span>
-                    )}
+
+                      {item.completed ? (
+                        <span className="flex items-center gap-1 rounded-full bg-green-500/10 px-2.5 py-1 text-[11px] font-semibold text-green-600">
+                          <CheckCircle2 className="h-3.5 w-3.5" />
+                          Completed
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-1 rounded-full bg-amber-500/10 px-2.5 py-1 text-[11px] font-semibold text-amber-600">
+                          <Clock className="h-3.5 w-3.5" />
+                          Pending
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-muted-foreground">
+                      <div className="flex items-center gap-1.5">
+                        <CalendarDays className="h-4 w-4" />
+                        <span>{attendanceDate}</span>
+                      </div>
+
+                      {item.subjectName && (
+                        <span className="truncate">{item.subjectName}</span>
+                      )}
+
+                      {item.periodName && (
+                        <span className="truncate">{item.periodName}</span>
+                      )}
+
+                      {item.teacherName && (
+                        <span className="truncate">{item.teacherName}</span>
+                      )}
+                    </div>
                   </div>
 
-                  <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
-                    <span>
-                      {new Date(item.attendanceDate).toLocaleDateString()}
-                    </span>
+                  {/* ---------------------------------------------------- */}
+                  {/* Statistics + Action */}
+                  {/* ---------------------------------------------------- */}
 
-                    {item.subjectName && <span>{item.subjectName}</span>}
+                  <div className="flex flex-wrap items-center gap-2 xl:justify-end">
+                    <div
+                      title="Total Students"
+                      className="flex min-w-[74px] items-center justify-center gap-1.5 rounded-xl border bg-muted/50 px-3 py-2 text-sm font-medium"
+                    >
+                      <Users className="h-4 w-4 text-muted-foreground" />
 
-                    {item.periodName && <span>{item.periodName}</span>}
+                      <span>{item.totalStudents}</span>
+                    </div>
 
-                    {item.teacherName && <span>{item.teacherName}</span>}
+                    <div
+                      title="Present"
+                      className="flex min-w-[74px] items-center justify-center gap-1.5 rounded-xl bg-green-500/10 px-3 py-2 text-sm font-semibold text-green-600"
+                    >
+                      <CheckCircle2 className="h-4 w-4" />
+
+                      <span>{item.present}</span>
+                    </div>
+
+                    <div
+                      title="Absent"
+                      className="flex min-w-[74px] items-center justify-center gap-1.5 rounded-xl bg-destructive/10 px-3 py-2 text-sm font-semibold text-destructive"
+                    >
+                      <XCircle className="h-4 w-4" />
+
+                      <span>{item.absent}</span>
+                    </div>
+
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => openSession(item.id)}
+                      className="gap-2 sm:ml-2"
+                    >
+                      <Eye className="h-4 w-4" />
+                      View
+                    </Button>
                   </div>
-                </div>
-
-                {/* Statistics */}
-                <div className="flex flex-wrap items-center gap-2">
-                  <div className="flex items-center gap-1 rounded-lg bg-muted px-3 py-2 text-sm">
-                    <Users className="h-4 w-4 text-muted-foreground" />
-                    {item.totalStudents}
-                  </div>
-
-                  <div className="flex items-center gap-1 rounded-lg bg-green-500/10 px-3 py-2 text-sm text-green-600">
-                    <CheckCircle2 className="h-4 w-4" />
-                    {item.present}
-                  </div>
-
-                  <div className="flex items-center gap-1 rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-600">
-                    <XCircle className="h-4 w-4" />
-                    {item.absent}
-                  </div>
-
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => openSession(item.id)}
-                    className="gap-2"
-                  >
-                    <Eye className="h-4 w-4" />
-                    View
-                  </Button>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

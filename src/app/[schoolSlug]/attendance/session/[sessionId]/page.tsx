@@ -1,4 +1,5 @@
 import { MarkAttendance } from "@/features/attendance/components/MarkAttendance";
+import { requireTenant } from "@/lib/auth";
 
 type Props = {
   params: Promise<{
@@ -9,6 +10,8 @@ type Props = {
 
 export default async function AttendanceSessionPage({ params }: Props) {
   const { sessionId } = await params;
+
+  await requireTenant();
 
   return (
     <div className="container mx-auto py-6">

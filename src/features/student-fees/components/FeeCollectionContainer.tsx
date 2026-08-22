@@ -170,6 +170,7 @@ export function FeeCollectionContainer({ schoolSlug }: Props) {
         <div className="space-y-6">
           <SelectedStudentCard
             student={selectedStudent}
+            installments={installments}
             onChangeStudent={resetStudent}
           />
 

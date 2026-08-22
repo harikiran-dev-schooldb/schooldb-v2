@@ -13,7 +13,7 @@ export default async function AttendanceRoutePage({ params }: Props) {
   await requireTenant();
 
   return (
-    <div className="container mx-auto py-6">
+    <div className="container mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
       <AttendancePage schoolSlug={schoolSlug} />
     </div>
   );

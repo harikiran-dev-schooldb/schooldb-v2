@@ -709,38 +709,48 @@ async lowAttendanceReport(
   sectionId?: string,
   fromDate?: string,
   toDate?: string,
-  threshold = 75
+  threshold = 75,
 ) {
   const academicYear =
     await academicYearRepository.findById(
       academicYearId,
-      schoolId
+      schoolId,
     );
 
   if (!academicYear) {
     throw new Error(
-      "Academic year not found."
+      "Academic year not found.",
     );
   }
 
+  /*
+   * Get all active/enrolled students matching
+   * the optional class and section filters.
+   */
   const enrollments =
     await attendanceRepository.lowAttendanceReport(
       schoolId,
       academicYearId,
       classId,
-      sectionId
+      sectionId,
     );
+
+  if (enrollments.length === 0) {
+    return {
+      threshold,
+      totalStudents: 0,
+      lowAttendanceCount: 0,
+      students: [],
+    };
+  }
 
   const studentIds =
     enrollments.map(
-      (enrollment) =>
-        enrollment.studentId
+      (enrollment) => enrollment.studentId,
     );
 
   /*
-   * IMPORTANT:
-   *
-   * One database query for all students.
+   * Fetch all attendance records in one query.
    */
   const records =
     await attendanceRepository.lowAttendanceRecords(
@@ -752,97 +762,90 @@ async lowAttendanceReport(
         : undefined,
       toDate
         ? new Date(`${toDate}T23:59:59.999`)
-        : undefined
+        : undefined,
     );
 
   /*
-   * Group attendance records by student.
+   * Group records by student.
    */
   const recordsByStudent =
     new Map<string, typeof records>();
 
   for (const record of records) {
-    const existing =
-      recordsByStudent.get(
-        record.studentId
-      ) ?? [];
+    const studentRecords =
+      recordsByStudent.get(record.studentId) ?? [];
 
-    existing.push(record);
+    studentRecords.push(record);
 
     recordsByStudent.set(
       record.studentId,
-      existing
+      studentRecords,
     );
   }
 
   /*
-   * Calculate attendance for every
-   * student without additional DB queries.
+   * Calculate attendance for every enrolled student.
    */
   const results =
     enrollments.map((enrollment) => {
       const studentRecords =
         recordsByStudent.get(
-          enrollment.studentId
+          enrollment.studentId,
         ) ?? [];
 
       const summary =
         calculateAttendance(
           studentRecords,
-          academicYear.attendanceMode
+          academicYear.attendanceMode,
         );
 
       return {
-        studentId:
-          enrollment.studentId,
+        studentId: enrollment.studentId,
+        rollNo: enrollment.rollNo,
+        admissionNo: enrollment.student.admissionNo,
+        fullName: enrollment.student.fullName,
 
-        rollNo:
-          enrollment.rollNo,
-
-        admissionNo:
-          enrollment.student.admissionNo,
-
-        fullName:
-          enrollment.student.fullName,
-
-        total:
-          summary.total,
-
-        present:
-          summary.present,
-
-        absent:
-          summary.absent,
-
-        late:
-          summary.late,
-
-        leave:
-          summary.leave,
+        total: summary.total,
+        present: summary.present,
+        absent: summary.absent,
+        late: summary.late,
+        leave: summary.leave,
 
         attendancePercentage:
           summary.attendancePercentage,
       };
     });
 
+  /*
+   * Only students below the selected threshold.
+   *
+   * Example:
+   * Threshold = 75
+   * 74.99 = included
+   * 75.00 = not included
+   */
   const lowAttendance =
-    results.filter(
-      (student) =>
-        student.attendancePercentage <
-        threshold
-    );
+    results
+      .filter(
+        (student) =>
+          student.attendancePercentage < threshold,
+      )
+      .sort(
+  (a, b) =>
+    a.attendancePercentage -
+      b.attendancePercentage ||
+    (a.fullName ?? "").localeCompare(b.fullName ?? ""),
+);
 
   return {
     threshold,
 
-    totalStudents:
-      results.length,
+    totalStudents: results.length,
 
     lowAttendanceCount:
       lowAttendance.length,
 
-    students:
-      lowAttendance,
+    students: lowAttendance,
   };
 },
 
