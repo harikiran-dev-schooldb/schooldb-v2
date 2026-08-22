@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from "react";
 
+import { AlertCircle, CreditCard, Loader2, RefreshCw } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
 import { PaymentHistoryFilters } from "@/features/fee-payments/components/PaymentHistoryFilters";
-
 import { PaymentHistorySummary } from "@/features/fee-payments/components/PaymentHistorySummary";
 
 import {
@@ -15,6 +16,10 @@ import {
 } from "@/features/fee-payments/components/PaymentHistoryTable";
 
 import { VoidPaymentDialog } from "@/features/fee-payments/components/VoidPaymentDialog";
+
+/* -------------------------------------------------------------------------- */
+/* Types                                                                      */
+/* -------------------------------------------------------------------------- */
 
 type PaymentData = {
   rows: PaymentRow[];
@@ -45,6 +50,10 @@ const EMPTY_FILTERS: PaymentFilters = {
   toDate: "",
 };
 
+/* -------------------------------------------------------------------------- */
+/* Component                                                                  */
+/* -------------------------------------------------------------------------- */
+
 export function PaymentHistoryContainer({ params }: Props) {
   const [schoolSlug, setSchoolSlug] = useState("");
 
@@ -62,23 +71,31 @@ export function PaymentHistoryContainer({ params }: Props) {
 
   const [voidDialogOpen, setVoidDialogOpen] = useState(false);
 
-  /* ---------------------------------------------------------------------- */
-  /* School Slug                                                            */
-  /* ---------------------------------------------------------------------- */
+  /* ------------------------------------------------------------------------ */
+  /* Resolve School Slug                                                      */
+  /* ------------------------------------------------------------------------ */
 
   useEffect(() => {
+    let cancelled = false;
+
     async function loadParams() {
       const resolvedParams = await params;
 
-      setSchoolSlug(resolvedParams.schoolSlug);
+      if (!cancelled) {
+        setSchoolSlug(resolvedParams.schoolSlug);
+      }
     }
 
     void loadParams();
+
+    return () => {
+      cancelled = true;
+    };
   }, [params]);
 
-  /* ---------------------------------------------------------------------- */
-  /* Load Payments                                                          */
-  /* ---------------------------------------------------------------------- */
+  /* ------------------------------------------------------------------------ */
+  /* Fetch Payments                                                           */
+  /* ------------------------------------------------------------------------ */
 
   async function fetchPayments(
     currentFilters: PaymentFilters,
@@ -119,6 +136,10 @@ export function PaymentHistoryContainer({ params }: Props) {
     return result.data;
   }
 
+  /* ------------------------------------------------------------------------ */
+  /* Load Payments                                                            */
+  /* ------------------------------------------------------------------------ */
+
   async function loadPayments(currentFilters: PaymentFilters = filters) {
     try {
       setLoading(true);
@@ -138,20 +159,22 @@ export function PaymentHistoryContainer({ params }: Props) {
     }
   }
 
-  /* ---------------------------------------------------------------------- */
-  /* Initial Load                                                           */
-  /* ---------------------------------------------------------------------- */
+  /* ------------------------------------------------------------------------ */
+  /* Initial Load                                                             */
+  /* ------------------------------------------------------------------------ */
 
   useEffect(() => {
     let cancelled = false;
 
     async function loadInitialPayments() {
       try {
+        setLoading(true);
+        setError(null);
+
         const paymentData = await fetchPayments(EMPTY_FILTERS);
 
         if (!cancelled) {
           setData(paymentData);
-          setError(null);
         }
       } catch (error) {
         if (!cancelled) {
@@ -175,9 +198,9 @@ export function PaymentHistoryContainer({ params }: Props) {
     };
   }, []);
 
-  /* ---------------------------------------------------------------------- */
-  /* Filters                                                                */
-  /* ---------------------------------------------------------------------- */
+  /* ------------------------------------------------------------------------ */
+  /* Filters                                                                  */
+  /* ------------------------------------------------------------------------ */
 
   function updateFilter(key: keyof PaymentFilters, value: string) {
     setFilters((previous) => ({
@@ -196,42 +219,71 @@ export function PaymentHistoryContainer({ params }: Props) {
     void loadPayments(EMPTY_FILTERS);
   }
 
-  /* ---------------------------------------------------------------------- */
-  /* Void Payment                                                           */
-  /* ---------------------------------------------------------------------- */
+  /* ------------------------------------------------------------------------ */
+  /* Void Payment                                                             */
+  /* ------------------------------------------------------------------------ */
 
   function handleVoid(payment: PaymentRow) {
     setSelectedPayment(payment);
-
     setVoidDialogOpen(true);
   }
 
-  /* ---------------------------------------------------------------------- */
-  /* Loading                                                                */
-  /* ---------------------------------------------------------------------- */
+  function handleDialogChange(open: boolean) {
+    setVoidDialogOpen(open);
+
+    if (!open) {
+      setSelectedPayment(null);
+    }
+  }
+
+  /* ------------------------------------------------------------------------ */
+  /* Initial Loading                                                          */
+  /* ------------------------------------------------------------------------ */
 
   if (loading && !data) {
     return (
-      <div className="p-6">
-        <p className="text-sm text-muted-foreground">
-          Loading payment history...
-        </p>
+      <div className="p-4 sm:p-6">
+        <div className="flex min-h-[420px] flex-col items-center justify-center text-center">
+          <div className="flex size-14 items-center justify-center rounded-2xl bg-primary/10">
+            <Loader2 className="size-6 animate-spin text-primary" />
+          </div>
+
+          <h2 className="mt-5 font-semibold">Loading payment history</h2>
+
+          <p className="mt-1 text-sm text-muted-foreground">
+            Retrieving fee payment records...
+          </p>
+        </div>
       </div>
     );
   }
 
-  /* ---------------------------------------------------------------------- */
-  /* Initial Error                                                          */
-  /* ---------------------------------------------------------------------- */
+  /* ------------------------------------------------------------------------ */
+  /* Initial Error                                                            */
+  /* ------------------------------------------------------------------------ */
 
   if (error && !data) {
     return (
-      <div className="p-6">
-        <Card>
-          <CardContent className="p-6">
-            <p className="text-sm text-destructive">{error}</p>
+      <div className="p-4 sm:p-6">
+        <Card className="mx-auto max-w-lg overflow-hidden border-destructive/20">
+          <CardContent className="flex flex-col items-center px-6 py-12 text-center">
+            <div className="flex size-14 items-center justify-center rounded-2xl bg-destructive/10">
+              <AlertCircle className="size-6 text-destructive" />
+            </div>
 
-            <Button className="mt-4" onClick={() => void loadPayments()}>
+            <h2 className="mt-5 font-semibold">
+              Unable to load payment history
+            </h2>
+
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+              {error}
+            </p>
+
+            <Button
+              className="mt-6 rounded-xl"
+              onClick={() => void loadPayments(EMPTY_FILTERS)}
+            >
+              <RefreshCw className="mr-2 size-4" />
               Try Again
             </Button>
           </CardContent>
@@ -240,20 +292,42 @@ export function PaymentHistoryContainer({ params }: Props) {
     );
   }
 
-  /* ---------------------------------------------------------------------- */
-  /* Render                                                                 */
-  /* ---------------------------------------------------------------------- */
+  /* ------------------------------------------------------------------------ */
+  /* Render                                                                   */
+  /* ------------------------------------------------------------------------ */
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6 p-4 sm:p-6">
       {/* Header */}
 
-      <div>
-        <h1 className="text-2xl font-semibold">Payment History</h1>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-start gap-4">
+          <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10">
+            <CreditCard className="size-5 text-primary" />
+          </div>
 
-        <p className="text-sm text-muted-foreground">
-          View and manage all fee payments.
-        </p>
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">
+              Payment History
+            </h1>
+
+            <p className="mt-1 text-sm text-muted-foreground">
+              View, search, and manage all fee payments.
+            </p>
+          </div>
+        </div>
+
+        <Button
+          variant="outline"
+          className="rounded-xl"
+          onClick={() => void loadPayments()}
+          disabled={loading}
+        >
+          <RefreshCw
+            className={`mr-2 size-4 ${loading ? "animate-spin" : ""}`}
+          />
+          Refresh
+        </Button>
       </div>
 
       {/* Summary */}
@@ -279,11 +353,34 @@ export function PaymentHistoryContainer({ params }: Props) {
         onClear={clearFilters}
       />
 
-      {/* Error After Existing Data */}
+      {/* Refresh Error */}
 
-      {error && <p className="text-sm text-destructive">{error}</p>}
+      {error && data && (
+        <Card className="border-destructive/20 bg-destructive/5">
+          <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3">
+              <AlertCircle className="size-5 shrink-0 text-destructive" />
 
-      {/* Table */}
+              <p className="text-sm text-destructive">{error}</p>
+            </div>
+
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-lg"
+              onClick={() => void loadPayments()}
+              disabled={loading}
+            >
+              <RefreshCw
+                className={`mr-2 size-4 ${loading ? "animate-spin" : ""}`}
+              />
+              Retry
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Payment Table */}
 
       <PaymentHistoryTable
         rows={data?.rows ?? []}
@@ -291,23 +388,16 @@ export function PaymentHistoryContainer({ params }: Props) {
         onVoid={handleVoid}
       />
 
-      {/* Void Dialog */}
+      {/* Void Payment Dialog */}
 
       {selectedPayment && (
         <VoidPaymentDialog
           open={voidDialogOpen}
-          onOpenChange={(open) => {
-            setVoidDialogOpen(open);
-
-            if (!open) {
-              setSelectedPayment(null);
-            }
-          }}
+          onOpenChange={handleDialogChange}
           paymentId={selectedPayment.id}
           receiptNo={selectedPayment.receiptNo}
           onSuccess={() => {
             setSelectedPayment(null);
-
             void loadPayments();
           }}
         />

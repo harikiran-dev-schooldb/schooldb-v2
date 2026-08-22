@@ -1,10 +1,25 @@
 "use client";
 
-import { Search } from "lucide-react";
+import {
+  CalendarDays,
+  CreditCard,
+  Filter,
+  Loader2,
+  RotateCcw,
+  Search,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 type Props = {
   search: string;
@@ -23,6 +38,33 @@ type Props = {
   onClear: () => void;
 };
 
+const paymentModes = [
+  {
+    value: "CASH",
+    label: "Cash",
+  },
+  {
+    value: "UPI",
+    label: "UPI",
+  },
+  {
+    value: "CARD",
+    label: "Card",
+  },
+  {
+    value: "BANK_TRANSFER",
+    label: "Bank Transfer",
+  },
+  {
+    value: "ONLINE",
+    label: "Online",
+  },
+  {
+    value: "CHEQUE",
+    label: "Cheque",
+  },
+];
+
 export function PaymentHistoryFilters({
   search,
   paymentMode,
@@ -36,14 +78,51 @@ export function PaymentHistoryFilters({
   onSearch,
   onClear,
 }: Props) {
+  const hasActiveFilters =
+    Boolean(search.trim()) ||
+    Boolean(paymentMode) ||
+    Boolean(fromDate) ||
+    Boolean(toDate);
+
   return (
-    <Card>
-      <CardContent className="space-y-4 p-4">
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+    <Card className="overflow-hidden border-border/60 shadow-sm">
+      {/* Header */}
+
+      <div className="flex flex-col gap-3 border-b bg-muted/20 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+        <div className="flex items-center gap-3">
+          <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10">
+            <Filter className="size-4 text-primary" />
+          </div>
+
+          <div>
+            <h2 className="font-semibold">Search & Filters</h2>
+
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              Find payments by student, receipt, mode, or date.
+            </p>
+          </div>
+        </div>
+
+        {hasActiveFilters && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-fit rounded-lg text-muted-foreground"
+            onClick={onClear}
+            disabled={loading}
+          >
+            <RotateCcw className="mr-2 size-4" />
+            Clear filters
+          </Button>
+        )}
+      </div>
+
+      <CardContent className="p-5 sm:p-6">
+        <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-6">
           {/* Search */}
 
           <div className="relative xl:col-span-2">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
 
             <Input
               value={search}
@@ -53,53 +132,100 @@ export function PaymentHistoryFilters({
                   onSearch();
                 }
               }}
-              placeholder="Search student, admission no or receipt..."
-              className="pl-9"
+              placeholder="Student, admission no. or receipt..."
+              className="h-11 rounded-xl pl-10"
             />
           </div>
 
           {/* Payment Mode */}
 
-          <select
-            value={paymentMode}
-            onChange={(event) => onPaymentModeChange(event.target.value)}
-            className="h-10 rounded-md border bg-background px-3 text-sm"
-          >
-            <option value="">All Payment Modes</option>
+          <div className="relative">
+            <CreditCard className="pointer-events-none absolute left-3 top-1/2 z-10 size-4 -translate-y-1/2 text-muted-foreground" />
 
-            <option value="CASH">Cash</option>
-            <option value="UPI">UPI</option>
-            <option value="CARD">Card</option>
-            <option value="BANK_TRANSFER">Bank Transfer</option>
-            <option value="ONLINE">Online</option>
-          </select>
+            <Select
+              value={paymentMode || "ALL"}
+              onValueChange={(value) =>
+                onPaymentModeChange(value === "ALL" ? "" : value)
+              }
+            >
+              <SelectTrigger className="h-11 rounded-xl pl-10">
+                <SelectValue placeholder="Payment Mode" />
+              </SelectTrigger>
+
+              <SelectContent>
+                <SelectItem value="ALL">All Payment Modes</SelectItem>
+
+                {paymentModes.map((mode) => (
+                  <SelectItem key={mode.value} value={mode.value}>
+                    {mode.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
           {/* From Date */}
 
-          <Input
-            type="date"
-            value={fromDate}
-            onChange={(event) => onFromDateChange(event.target.value)}
-          />
+          <div className="relative">
+            <CalendarDays className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+
+            <Input
+              type="date"
+              value={fromDate}
+              onChange={(event) => onFromDateChange(event.target.value)}
+              className="h-11 rounded-xl pl-10"
+            />
+          </div>
 
           {/* To Date */}
 
-          <Input
-            type="date"
-            value={toDate}
-            onChange={(event) => onToDateChange(event.target.value)}
-          />
+          <div className="relative">
+            <CalendarDays className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+
+            <Input
+              type="date"
+              value={toDate}
+              onChange={(event) => onToDateChange(event.target.value)}
+              className="h-11 rounded-xl pl-10"
+            />
+          </div>
+
+          {/* Search Button */}
+
+          <Button
+            onClick={onSearch}
+            disabled={loading}
+            className="h-11 rounded-xl"
+          >
+            {loading ? (
+              <>
+                <Loader2 className="mr-2 size-4 animate-spin" />
+                Loading...
+              </>
+            ) : (
+              <>
+                <Search className="mr-2 size-4" />
+                Search
+              </>
+            )}
+          </Button>
         </div>
 
-        <div className="flex gap-2">
-          <Button onClick={onSearch} disabled={loading}>
-            {loading ? "Loading..." : "Search"}
-          </Button>
+        {/* Mobile / additional clear action */}
 
-          <Button variant="outline" onClick={onClear} disabled={loading}>
-            Clear
-          </Button>
-        </div>
+        {hasActiveFilters && (
+          <div className="mt-4 border-t pt-4 sm:hidden">
+            <Button
+              variant="outline"
+              className="w-full rounded-xl"
+              onClick={onClear}
+              disabled={loading}
+            >
+              <RotateCcw className="mr-2 size-4" />
+              Clear All Filters
+            </Button>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
