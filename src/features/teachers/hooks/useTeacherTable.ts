@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { TeacherListItem } from "../types";
-import { subscribeTableRefresh } from "@/lib/table-events";
+import { subscribeTableRefresh } from "@/lib/table-event";
 
 type Response = {
   data: TeacherListItem[];

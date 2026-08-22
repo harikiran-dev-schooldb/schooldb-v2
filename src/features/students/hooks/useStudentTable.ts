@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { StudentListItem } from "../types";
 import { useDebounce } from "@/hooks/useDebounce";
 import { StudentStatus } from "@/generated/prisma/enums";
-import { subscribeTableRefresh } from "@/lib/table-events";
+import { subscribeTableRefresh } from "@/lib/table-event";
 
 type StudentResponse = {
   data: StudentListItem[];

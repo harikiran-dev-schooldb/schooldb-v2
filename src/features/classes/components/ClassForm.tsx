@@ -10,7 +10,7 @@ import { classSchema, ClassFormInput } from "../schemas/class.schema";
 
 import { Input } from "@/components/ui/input";
 import { FormField, SubmitButton } from "@/components/common/forms";
-import { refreshTable } from "@/lib/table-events";
+import { refreshTable } from "@/lib/table-event";
 
 type Props = {
   mode: "create" | "edit";

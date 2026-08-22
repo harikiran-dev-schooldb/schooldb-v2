@@ -5,7 +5,8 @@ import { useCallback, useEffect, useState } from "react";
 import { useDebounce } from "@/hooks/useDebounce";
 
 import { SectionListItem } from "../types";
-import { subscribeTableRefresh } from "@/lib/table-events";
+import { subscribeTableRefresh } from "@/lib/table-event";
+
 
 type SectionResponse = {
   data: SectionListItem[];
