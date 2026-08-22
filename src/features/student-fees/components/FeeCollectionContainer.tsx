@@ -35,6 +35,15 @@ type FeeRow = {
   studentEnrollmentId: string;
 };
 
+type FeeDetailsResponse = {
+  success?: boolean;
+  message?: string;
+  data?: {
+    studentEnrollmentId?: string | null;
+    rows?: FeeRow[];
+  };
+};
+
 type Props = {
   schoolSlug: string;
 };
@@ -55,17 +64,18 @@ export function FeeCollectionContainer({ schoolSlug }: Props) {
 
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
 
+  const [feesError, setFeesError] = useState<string | null>(null);
+
   /* ---------------------------------------------------------------------- */
   /* Select Student                                                         */
   /* ---------------------------------------------------------------------- */
 
   async function selectStudent(student: Student) {
     try {
-      setSelectedStudent(student);
-
       setInstallments([]);
       setStudentEnrollmentId(null);
-
+      setFeesError(null);
+      setSelectedStudent(student);
       setFeesLoading(true);
 
       const response = await fetch(
@@ -77,10 +87,25 @@ export function FeeCollectionContainer({ schoolSlug }: Props) {
         },
       );
 
-      const result = await response.json();
+      const text = await response.text();
+
+      let result: FeeDetailsResponse = {};
+
+      try {
+        result = text ? JSON.parse(text) : {};
+      } catch {
+        console.error(
+          "Failed to parse fee details response:",
+          response.status,
+          text,
+        );
+        return;
+      }
 
       if (!response.ok || !result.success) {
-        console.error("Failed to load fee details:", result);
+        setFeesError(
+          result.message || "Unable to load fee details for this student.",
+        );
 
         return;
       }
@@ -120,6 +145,7 @@ export function FeeCollectionContainer({ schoolSlug }: Props) {
     setSelectedInstallment(null);
 
     setPaymentDialogOpen(false);
+    setFeesError(null);
   }
 
   /* ---------------------------------------------------------------------- */
@@ -147,11 +173,29 @@ export function FeeCollectionContainer({ schoolSlug }: Props) {
             onChangeStudent={resetStudent}
           />
 
-          <FeeTermsCard
-            installments={installments}
-            loading={feesLoading}
-            onCollect={handleCollect}
-          />
+          {feesLoading ? (
+            <FeeTermsCard installments={[]} loading onCollect={handleCollect} />
+          ) : feesError ? (
+            <div className="rounded-2xl border border-dashed p-8 text-center">
+              <h3 className="font-semibold">Unable to load fee details</h3>
+
+              <p className="mt-2 text-sm text-muted-foreground">{feesError}</p>
+            </div>
+          ) : installments.length === 0 ? (
+            <div className="rounded-2xl border border-dashed bg-muted/20 p-8 text-center">
+              <h3 className="font-semibold">No fees assigned</h3>
+
+              <p className="mt-2 text-sm text-muted-foreground">
+                No fee installments have been assigned to this student yet.
+              </p>
+            </div>
+          ) : (
+            <FeeTermsCard
+              installments={installments}
+              loading={false}
+              onCollect={handleCollect}
+            />
+          )}
         </div>
       )}
 
