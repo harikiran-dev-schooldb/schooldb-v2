@@ -4,7 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 
 import { useDebounce } from "@/hooks/useDebounce";
 import { ClassListItem } from "../types";
-import { subscribeTableRefresh } from "@/lib/table-events";
+import { subscribeTableRefresh } from "@/lib/table-event";
+
 
 type ClassResponse = {
   data: ClassListItem[];
