@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useDebounce } from "@/hooks/useDebounce";
 
 import { StudentEnrollmentListItem } from "../types";
+import { subscribeTableRefresh } from "@/lib/table-event";
 
 type Response = {
   data: StudentEnrollmentListItem[];
@@ -67,6 +68,10 @@ export function useStudentEnrollmentTable() {
       active = false;
     };
   }, [page, pageSize, debouncedSearch, reloadVersion]);
+
+  useEffect(() => {
+    return subscribeTableRefresh("enrollments", reload);
+  }, [reload]);
 
   return {
     enrollments,

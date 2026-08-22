@@ -22,6 +22,7 @@ import {
   NumberInput,
   SubmitButton,
 } from "@/components/common/forms";
+import { refreshTable } from "@/lib/table-event";
 
 type Props = {
   mode: "create" | "edit";
@@ -182,6 +183,8 @@ export function StudentEnrollmentForm({
       );
 
       form.reset(defaultValues);
+
+      refreshTable("enrollments");
 
       onSuccess();
     } catch {
