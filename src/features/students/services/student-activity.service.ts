@@ -15,9 +15,6 @@ type CreateActivityInput = {
   title: string;
 
   description?: string;
-
-  performedByUserId?: string;
-
   metadata?: Prisma.InputJsonValue;
 };
 
@@ -39,8 +36,6 @@ export const studentActivityService = {
         title: input.title,
 
         description: input.description,
-
-        performedByUserId: input.performedByUserId,
 
         metadata: input.metadata,
       },
