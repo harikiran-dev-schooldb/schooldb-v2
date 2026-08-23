@@ -10,5 +10,5 @@ type Props = {
 export default async function StudentFeeLedgerPage({ params }: Props) {
   const { studentFeeId } = await params;
 
-  return <StudentFeeLedger studentFeeId={studentFeeId} />;
+  return <StudentFeeLedger studentFeeIds={[studentFeeId]} />;
 }
