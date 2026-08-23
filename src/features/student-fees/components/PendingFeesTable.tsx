@@ -157,7 +157,6 @@ export function PendingFeesTable({ rows, onPaymentSuccess }: Props) {
         <RecordFeePaymentDialog
           open={paymentOpen}
           onOpenChange={handleOpenChange}
-          studentFeeId={selectedRow.studentFeeId}
           studentEnrollmentId={selectedRow.studentEnrollmentId}
           installments={[
             {

@@ -174,7 +174,6 @@ export function OutstandingFeesContainer({ schoolSlug }: Props) {
           open={paymentDialogOpen}
           onOpenChange={handlePaymentDialogChange}
           schoolSlug={schoolSlug}
-          studentFeeId={selectedRow.studentFeeId}
           studentEnrollmentId={selectedRow.studentEnrollmentId}
           installments={[
             {

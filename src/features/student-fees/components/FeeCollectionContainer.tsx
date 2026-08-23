@@ -211,7 +211,6 @@ export function FeeCollectionContainer({ schoolSlug }: Props) {
             }
           }}
           schoolSlug={schoolSlug}
-          studentFeeId=""
           studentEnrollmentId={studentEnrollmentId}
           installments={installments
             .filter((installment) => installment.outstanding > 0)
