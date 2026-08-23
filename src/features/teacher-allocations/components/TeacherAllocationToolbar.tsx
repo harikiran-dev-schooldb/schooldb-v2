@@ -1,26 +1,23 @@
 "use client";
 
-import { Input } from "@/components/ui/input";
-
-import { AddTeacherAllocationButton } from "./AddTeacherAllocationButton";
+import { CrudToolbar } from "@/components/common/crud";
 
 type Props = {
   search: string;
-
   onSearchChange: (value: string) => void;
+  onSuccess?: () => void;
 };
 
-export function TeacherAllocationToolbar({ search, onSearchChange }: Props) {
+export function TeacherAllocationToolbar({
+  search,
+  onSearchChange,
+  onSuccess,
+}: Props) {
   return (
-    <div className="flex items-center justify-between gap-4">
-      <Input
-        placeholder="Search allocations..."
-        value={search}
-        onChange={(e) => onSearchChange(e.target.value)}
-        className="max-w-sm"
-      />
-
-      <AddTeacherAllocationButton />
-    </div>
+    <CrudToolbar
+      search={search}
+      onSearch={onSearchChange}
+      placeholder="Search teacher, subject, class or section..."
+    />
   );
 }

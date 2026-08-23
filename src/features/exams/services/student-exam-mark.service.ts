@@ -49,6 +49,7 @@ export const studentExamMarkService = {
     const enrollments = await prisma.studentEnrollment.findMany({
       where: {
         schoolId,
+        active: true,
 
         classId: schedule.classId,
 
@@ -202,6 +203,7 @@ export const studentExamMarkService = {
         },
 
         schoolId,
+        active:true,
 
         classId: schedule.classId,
 
@@ -226,33 +228,33 @@ export const studentExamMarkService = {
     const maxMarks = Number(schedule.maxMarks);
 
     const operations = marks.map((input) => {
-      const status = input.status ?? StudentExamStatus.PRESENT;
+      const status =
+  input.status ?? StudentExamStatus.PRESENT;
 
-      let marksObtained: number | null = null;
+let marksObtained: number | null = null;
 
-      if (status === StudentExamStatus.PRESENT) {
-        if (
-          input.marksObtained !== undefined &&
-          input.marksObtained !== null &&
-          input.marksObtained !== null
-        ) {
-          marksObtained = Number(input.marksObtained);
+if (status === StudentExamStatus.PRESENT) {
+  if (
+    input.marksObtained !== undefined &&
+    input.marksObtained !== null
+  ) {
+    marksObtained = Number(input.marksObtained);
 
-          if (!Number.isFinite(marksObtained)) {
-            throw new Error("Invalid marks value.");
-          }
+    if (!Number.isFinite(marksObtained)) {
+      throw new Error("Invalid marks value.");
+    }
 
-          if (marksObtained < 0) {
-            throw new Error("Marks cannot be less than zero.");
-          }
+    if (marksObtained < 0) {
+      throw new Error("Marks cannot be less than zero.");
+    }
 
-          if (marksObtained > maxMarks) {
-            throw new Error(
-              `Marks cannot be greater than maximum marks (${maxMarks}).`,
-            );
-          }
-        }
-      }
+    if (marksObtained > maxMarks) {
+      throw new Error(
+        `Marks cannot be greater than maximum marks (${maxMarks}).`,
+      );
+    }
+  }
+}
 
       return prisma.studentExamMark.upsert({
         where: {

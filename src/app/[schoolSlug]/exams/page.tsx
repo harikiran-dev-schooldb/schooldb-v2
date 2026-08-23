@@ -2,10 +2,8 @@
 
 import { useState } from "react";
 import { useParams } from "next/navigation";
-import { Plus } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
-
+import { PageHeader } from "@/components/common/PageHeader";
 import { ExamList } from "@/features/exams/components/ExamList";
 import { CreateExamDialog } from "@/features/exams/components/CreateExamDialog";
 
@@ -15,7 +13,6 @@ export default function ExamsPage() {
   const schoolSlug = params.schoolSlug;
 
   const [createOpen, setCreateOpen] = useState(false);
-
   const [refreshKey, setRefreshKey] = useState(0);
 
   function handleSuccess() {
@@ -23,33 +20,27 @@ export default function ExamsPage() {
   }
 
   return (
-    <div className="space-y-6 p-6">
-      {/* Header */}
-
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">Exams</h1>
-
-          <p className="text-sm text-muted-foreground">
-            Create and manage examinations.
-          </p>
-        </div>
-
-        <Button onClick={() => setCreateOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Create Exam
-        </Button>
-      </div>
-
-      {/* Exam List */}
+    <div className="space-y-8">
+      <PageHeader
+        title="Exams"
+        description="Plan examinations, schedules, marks and results."
+        action={
+          <button
+            type="button"
+            onClick={() => setCreateOpen(true)}
+            className="inline-flex h-10 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-[0_8px_20px_rgb(15_118_110_/_0.18)] transition-all hover:bg-primary/90 hover:shadow-[0_10px_25px_rgb(15_118_110_/_0.24)] active:scale-[0.98]"
+          >
+            <span className="text-base">+</span>
+            Create Exam
+          </button>
+        }
+      />
 
       <ExamList
         key={refreshKey}
         schoolSlug={schoolSlug}
         onCreate={() => setCreateOpen(true)}
       />
-
-      {/* Create Exam Dialog */}
 
       <CreateExamDialog
         open={createOpen}

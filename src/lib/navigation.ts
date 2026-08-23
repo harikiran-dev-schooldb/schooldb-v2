@@ -16,6 +16,20 @@ export const navigation = [
   },
 
   {
+    title: "Users",
+    icon: Users,
+    children: [
+      {
+        title: "Students",
+        href: "students",
+      },
+      {
+        title: "Teachers",
+        href: "teachers",
+      },
+    ],
+  },
+  {
     title: "Academic",
     icon: GraduationCap,
     children: [
@@ -39,32 +53,20 @@ export const navigation = [
         title: "Enrollments",
         href: "enrollments",
       },
-    ],
-  },
-
-  {
-    title: "Users",
-    icon: Users,
-    children: [
-      {
-        title: "Students",
-        href: "students",
-      },
-      {
-        title: "Teachers",
-        href: "teachers",
-      },
       {
         title: "Teacher Allocations",
         href: "teacher-allocations",
       },
     ],
   },
-
   {
     title: "Attendance",
     icon: CalendarCheck,
     children: [
+      {
+        title: "Dashboard",
+        href: "attendance/dashboard",
+      },
       {
         title: "Attendance",
         href: "attendance",
@@ -120,10 +122,6 @@ export const navigation = [
       {
         title: "Fee Categories",
         href: "fees/categories",
-      },
-      {
-        title: "Student Allocation",
-        href: "fees/students",
       },
     ],
   },

@@ -15,6 +15,9 @@ import {
   XCircle,
   AlertCircle,
   FileBarChart,
+  GraduationCap,
+  Hash,
+  ClipboardCheck,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -24,25 +27,32 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 type SubjectResult = {
   scheduleId: string;
+
   subject: {
     id: string;
     name: string;
     code: string | null;
   };
+
   class: {
     id: string;
     name: string;
   };
+
   section: {
     id: string;
     name: string;
   } | null;
+
   examDate: string;
+
   maxMarks: number;
   passMarks: number | null;
   marksObtained: number | null;
+
   status: string;
   resultStatus: "PASS" | "FAIL" | "ABSENT";
+
   remarks: string | null;
 };
 
@@ -58,27 +68,34 @@ type StudentResultData = {
   exam: {
     id: string;
     name: string;
+
     academicYear: {
       id: string;
       name: string;
     };
   };
+
   student: {
     id: string;
     admissionNo: string;
     fullName: string | null;
   };
+
   summary: {
     totalSubjects: number;
     passedSubjects: number;
     failedSubjects: number;
     absentSubjects: number;
+
     totalObtained: number;
     totalMaxMarks: number;
+
     percentage: number;
     status: "PASS" | "FAIL";
+
     attendance: AttendanceSummary;
   };
+
   subjects: SubjectResult[];
 };
 
@@ -90,6 +107,7 @@ type Props = {
 
 function formatDate(value: string | null) {
   if (!value) return "—";
+
   return new Intl.DateTimeFormat("en-IN", {
     day: "2-digit",
     month: "short",
@@ -103,25 +121,33 @@ export function StudentResultDetailsPage({
   studentId,
 }: Props) {
   const router = useRouter();
+
   const [data, setData] = useState<StudentResultData | null>(null);
+
   const [loading, setLoading] = useState(true);
 
   const loadResult = useCallback(async () => {
     try {
       setLoading(true);
+
       const response = await fetch(
         `/api/v1/exams/${examId}/results/${studentId}`,
-        { cache: "no-store" },
+        {
+          cache: "no-store",
+        },
       );
+
       const result = await response.json();
 
       if (!response.ok || !result.success) {
         toast.error(result.message || "Failed to load student result.");
         return;
       }
+
       setData(result.data);
     } catch (error) {
       console.error("Failed to load student result:", error);
+
       toast.error("Failed to load student result.");
     } finally {
       setLoading(false);
@@ -132,57 +158,102 @@ export function StudentResultDetailsPage({
     const timer = window.setTimeout(() => {
       void loadResult();
     }, 0);
+
     return () => {
       window.clearTimeout(timer);
     };
   }, [loadResult]);
 
+  /* ---------------------------------------------------------------------- */
+  /* LOADING                                                                */
+  /* ---------------------------------------------------------------------- */
+
   if (loading) {
     return (
-      <div className="flex flex-col gap-6 p-6 md:p-8">
-        <div className="flex items-center gap-4">
-          <div className="size-10 animate-pulse rounded-lg bg-slate-200" />
-          <div className="h-10 w-64 animate-pulse rounded-lg bg-slate-200" />
+      <div className="space-y-6 p-6 md:p-8">
+        <div className="flex items-center gap-3">
+          <div className="size-10 animate-pulse rounded-xl bg-muted" />
+
+          <div className="space-y-2">
+            <div className="h-6 w-48 animate-pulse rounded bg-muted" />
+            <div className="h-4 w-72 animate-pulse rounded bg-muted" />
+          </div>
         </div>
-        <div className="h-32 w-full animate-pulse rounded-3xl bg-slate-200/60" />
-        <div className="grid gap-6 md:grid-cols-5">
-          {[1, 2, 3, 4, 5].map((i) => (
-            <div
-              key={i}
-              className="h-32 animate-pulse rounded-3xl bg-slate-200/60"
-            />
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="h-24 animate-pulse rounded-xl bg-muted/50" />
+          </CardContent>
+        </Card>
+
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+          {Array.from({ length: 5 }).map((_, index) => (
+            <Card key={index}>
+              <CardContent className="p-5">
+                <div className="h-4 w-24 animate-pulse rounded bg-muted" />
+                <div className="mt-4 h-8 w-20 animate-pulse rounded bg-muted" />
+              </CardContent>
+            </Card>
           ))}
         </div>
-        <div className="h-40 w-full animate-pulse rounded-3xl bg-slate-200/60" />
-        <div className="h-96 w-full animate-pulse rounded-3xl bg-slate-200/60" />
+
+        <Card>
+          <CardContent className="h-72 animate-pulse bg-muted/20" />
+        </Card>
       </div>
     );
   }
 
+  /* ---------------------------------------------------------------------- */
+  /* NOT FOUND                                                              */
+  /* ---------------------------------------------------------------------- */
+
   if (!data) {
     return (
-      <div className="flex min-h-[50vh] flex-col items-center justify-center gap-4 p-6 text-center">
-        <AlertCircle className="size-12 text-slate-300" />
-        <h2 className="text-xl font-bold text-slate-800">Result Not Found</h2>
-        <p className="text-sm text-slate-500">
-          We couldn&apos;t retrieve the data for this exam result.
+      <div className="flex min-h-[60vh] flex-col items-center justify-center px-6 text-center">
+        <div className="flex size-16 items-center justify-center rounded-2xl bg-muted">
+          <AlertCircle className="size-8 text-muted-foreground" />
+        </div>
+
+        <h2 className="mt-5 text-xl font-bold">Result Not Found</h2>
+
+        <p className="mt-2 max-w-md text-sm text-muted-foreground">
+          We couldn&apos;t retrieve the result information for this student.
         </p>
+
+        <Button
+          className="mt-5"
+          variant="outline"
+          onClick={() => router.push(`/${schoolSlug}/exams/${examId}/results`)}
+        >
+          <ArrowLeft className="mr-2 size-4" />
+          Back to Results
+        </Button>
       </div>
     );
   }
 
   const attendance = data.summary.attendance;
+
   const isPass = data.summary.status === "PASS";
 
+  const attendancePercentage = Math.min(
+    Math.max(attendance.percentage, 0),
+    100,
+  );
+
   return (
-    <div className="space-y-8 p-6 md:p-8 print:space-y-6 print:p-0">
-      {/* HEADER & ACTIONS */}
-      <div className="flex flex-col gap-5 print:hidden sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-4">
+    <div className="space-y-6 p-6 md:p-8 print:space-y-5 print:p-0">
+      {/* ------------------------------------------------------------------ */}
+      {/* HEADER                                                             */}
+      {/* ------------------------------------------------------------------ */}
+
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between print:hidden">
+        <div className="flex items-start gap-3">
           <Button
             variant="outline"
             size="icon"
-            className="shrink-0 bg-white/60 backdrop-blur-sm hover:bg-white"
+            className="shrink-0"
             onClick={() =>
               router.push(`/${schoolSlug}/exams/${examId}/results`)
             }
@@ -191,35 +262,42 @@ export function StudentResultDetailsPage({
           </Button>
 
           <div>
-            <h1 className="text-2xl font-black tracking-tight text-slate-900">
-              Student Result
-            </h1>
-            <p className="mt-0.5 text-sm font-medium text-slate-500">
-              {data.exam.name} <span className="mx-1.5 text-slate-300">•</span>{" "}
-              {data.exam.academicYear.name}
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-2xl font-bold tracking-tight">
+                Student Result
+              </h1>
+
+              <span
+                className={
+                  isPass
+                    ? "rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold text-emerald-600"
+                    : "rounded-full bg-destructive/10 px-2.5 py-1 text-xs font-semibold text-destructive"
+                }
+              >
+                {data.summary.status}
+              </span>
+            </div>
+
+            <p className="mt-1 text-sm text-muted-foreground">
+              {data.exam.name}
+              <span className="mx-2">•</span>
+              Academic Year: {data.exam.academicYear.name}
             </p>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
-          <Button
-            variant="outline"
-            className="bg-white/60 backdrop-blur-sm hover:bg-white"
-            onClick={() => void loadResult()}
-          >
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" onClick={() => void loadResult()}>
             <RefreshCw className="mr-2 size-4" />
             Refresh
           </Button>
-          <Button
-            variant="outline"
-            className="bg-white/60 backdrop-blur-sm hover:bg-white"
-            onClick={() => window.print()}
-          >
+
+          <Button variant="outline" onClick={() => window.print()}>
             <Printer className="mr-2 size-4" />
-            Print Result
+            Print
           </Button>
+
           <Button
-            className="shadow-lg shadow-teal-500/20"
             onClick={() =>
               router.push(
                 `/${schoolSlug}/exams/${examId}/results/${studentId}/report-card`,
@@ -227,217 +305,267 @@ export function StudentResultDetailsPage({
             }
           >
             <FileText className="mr-2 size-4" />
-            View Report Card
+            Report Card
           </Button>
         </div>
       </div>
 
-      {/* PRINT ONLY HEADER */}
-      <div className="hidden print:block mb-8 border-b-2 border-black pb-4">
-        <h1 className="text-3xl font-black uppercase tracking-tight">
-          Student Result
-        </h1>
-        <p className="mt-1 font-medium text-black">
-          {data.exam.name} • Academic Year: {data.exam.academicYear.name}
-        </p>
+      {/* ------------------------------------------------------------------ */}
+      {/* PRINT HEADER                                                       */}
+      {/* ------------------------------------------------------------------ */}
+
+      <div className="hidden border-b-2 border-black pb-4 print:block">
+        <div className="flex items-start justify-between">
+          <div>
+            <h1 className="text-3xl font-bold uppercase">Student Result</h1>
+
+            <p className="mt-1 text-sm">
+              {data.exam.name} • {data.exam.academicYear.name}
+            </p>
+          </div>
+
+          <div className="text-right">
+            <div className="text-xs font-semibold uppercase">Admission No.</div>
+
+            <div className="text-lg font-bold">{data.student.admissionNo}</div>
+          </div>
+        </div>
       </div>
 
-      {/* 1. STUDENT INFORMATION CARD */}
-      <Card className="glass-panel overflow-hidden border-slate-200/60 shadow-xl shadow-slate-200/40 print:rounded-none print:border-black print:shadow-none">
-        <CardHeader className="border-b border-slate-100 bg-slate-50/50 pb-4 print:border-black print:bg-transparent">
-          <div className="flex items-center gap-2">
-            <UserRound className="size-5 text-teal-600 print:hidden" />
-            <CardTitle className="text-lg font-bold text-slate-900 print:text-black">
-              Student Information
-            </CardTitle>
-          </div>
-        </CardHeader>
-        <CardContent className="grid gap-6 p-6 sm:grid-cols-2">
-          <div>
-            <div className="text-[10px] font-bold tracking-[0.15em] text-slate-400 uppercase print:text-black">
-              Student Name
+      {/* ------------------------------------------------------------------ */}
+      {/* STUDENT PROFILE                                                    */}
+      {/* ------------------------------------------------------------------ */}
+
+      <Card className="overflow-hidden border-border/70 shadow-sm print:rounded-none print:border-black print:shadow-none">
+        <CardContent className="p-0">
+          <div className="flex flex-col gap-5 p-6 md:flex-row md:items-center md:justify-between">
+            <div className="flex items-center gap-4">
+              <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                <UserRound className="size-7" />
+              </div>
+
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Student
+                </p>
+
+                <h2 className="mt-1 text-xl font-bold">
+                  {data.student.fullName || "Unnamed Student"}
+                </h2>
+
+                <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                  <span className="inline-flex items-center gap-1.5">
+                    <Hash className="size-3.5" />
+                    {data.student.admissionNo}
+                  </span>
+
+                  <span className="inline-flex items-center gap-1.5">
+                    <GraduationCap className="size-3.5" />
+                    {data.subjects[0]?.class.name || "Class"}
+                  </span>
+
+                  <span className="inline-flex items-center gap-1.5">
+                    <UsersIcon />
+                    {data.subjects[0]?.section?.name || "All Sections"}
+                  </span>
+                </div>
+              </div>
             </div>
-            <div className="mt-1.5 text-lg font-bold text-slate-900 print:text-black">
-              {data.student.fullName || "Unnamed Student"}
-            </div>
-          </div>
-          <div>
-            <div className="text-[10px] font-bold tracking-[0.15em] text-slate-400 uppercase print:text-black">
-              Admission Number
-            </div>
-            <div className="mt-1.5 text-lg font-bold text-slate-900 print:text-black">
-              {data.student.admissionNo}
+
+            <div
+              className={
+                isPass
+                  ? "rounded-2xl border border-emerald-200 bg-emerald-50 px-6 py-4 text-center"
+                  : "rounded-2xl border border-red-200 bg-red-50 px-6 py-4 text-center"
+              }
+            >
+              <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Final Result
+              </div>
+
+              <div
+                className={
+                  isPass
+                    ? "mt-1 text-2xl font-black text-emerald-600"
+                    : "mt-1 text-2xl font-black text-destructive"
+                }
+              >
+                {data.summary.status}
+              </div>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* 2. RESULT SUMMARY (5-GRID) */}
-      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-5">
-        <Card className="glass-panel transition-all hover:-translate-y-1 hover:shadow-xl print:rounded-none print:border-black print:shadow-none">
-          <CardContent className="p-5">
-            <div className="flex items-center justify-between">
-              <div className="text-[10px] font-bold tracking-[0.15em] text-slate-400 uppercase print:text-black">
-                Total Marks
-              </div>
-              <Target className="size-4 text-teal-600 print:hidden" />
-            </div>
-            <div className="mt-3 flex items-baseline gap-2">
-              <span className="text-3xl font-black text-slate-900 print:text-black">
-                {data.summary.totalObtained}
-              </span>
-              <span className="text-sm font-bold text-slate-400 print:text-black">
-                / {data.summary.totalMaxMarks}
-              </span>
-            </div>
-          </CardContent>
-        </Card>
+      {/* ------------------------------------------------------------------ */}
+      {/* RESULT SUMMARY                                                     */}
+      {/* ------------------------------------------------------------------ */}
 
-        <Card className="glass-panel transition-all hover:-translate-y-1 hover:shadow-xl print:rounded-none print:border-black print:shadow-none">
-          <CardContent className="p-5">
-            <div className="flex items-center justify-between">
-              <div className="text-[10px] font-bold tracking-[0.15em] text-slate-400 uppercase print:text-black">
-                Percentage
-              </div>
-              <TrendingUp className="size-4 text-blue-600 print:hidden" />
-            </div>
-            <div className="mt-3 flex items-baseline gap-1">
-              <span className="text-3xl font-black text-slate-900 print:text-black">
-                {data.summary.percentage.toFixed(2)}
-              </span>
-              <span className="text-lg font-bold text-slate-400 print:text-black">
-                %
-              </span>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        <SummaryCard
+          icon={<Target className="size-5" />}
+          label="Total Marks"
+          value={`${data.summary.totalObtained} / ${data.summary.totalMaxMarks}`}
+        />
 
-        <Card className="glass-panel transition-all hover:-translate-y-1 hover:shadow-xl print:rounded-none print:border-black print:shadow-none">
-          <CardContent className="p-5">
-            <div className="flex items-center justify-between">
-              <div className="text-[10px] font-bold tracking-[0.15em] text-slate-400 uppercase print:text-black">
-                Subjects Passed
-              </div>
-              <BookOpen className="size-4 text-indigo-600 print:hidden" />
-            </div>
-            <div className="mt-3 flex items-baseline gap-2">
-              <span className="text-3xl font-black text-slate-900 print:text-black">
-                {data.summary.passedSubjects}
-              </span>
-              <span className="text-sm font-bold text-slate-400 print:text-black">
-                / {data.summary.totalSubjects}
-              </span>
-            </div>
-          </CardContent>
-        </Card>
+        <SummaryCard
+          icon={<TrendingUp className="size-5" />}
+          label="Percentage"
+          value={`${data.summary.percentage.toFixed(2)}%`}
+        />
 
-        <Card className="glass-panel transition-all hover:-translate-y-1 hover:shadow-xl print:rounded-none print:border-black print:shadow-none">
-          <CardContent className="p-5">
-            <div className="flex items-center justify-between">
-              <div className="text-[10px] font-bold tracking-[0.15em] text-slate-400 uppercase print:text-black">
-                Attendance
-              </div>
-              <CalendarDays className="size-4 text-purple-600 print:hidden" />
-            </div>
-            <div className="mt-3 flex items-baseline gap-1">
-              <span className="text-3xl font-black text-slate-900 print:text-black">
-                {attendance.percentage.toFixed(0)}
-              </span>
-              <span className="text-lg font-bold text-slate-400 print:text-black">
-                %
-              </span>
-            </div>
-            <div className="mt-1 text-[11px] font-medium text-slate-400 print:text-black">
-              {attendance.presentDays} of {attendance.totalDays} days
-            </div>
-          </CardContent>
-        </Card>
+        <SummaryCard
+          icon={<BookOpen className="size-5" />}
+          label="Subjects Passed"
+          value={`${data.summary.passedSubjects} / ${data.summary.totalSubjects}`}
+          description={
+            data.summary.failedSubjects > 0
+              ? `${data.summary.failedSubjects} failed`
+              : "All subjects passed"
+          }
+        />
+
+        <SummaryCard
+          icon={<CalendarDays className="size-5" />}
+          label="Attendance"
+          value={`${attendance.percentage.toFixed(2)}%`}
+          description={`${attendance.presentDays} of ${attendance.totalDays} days`}
+        />
 
         <Card
-          className={`overflow-hidden transition-all hover:-translate-y-1 hover:shadow-xl print:rounded-none print:border-black print:bg-transparent print:shadow-none ${isPass ? "bg-gradient-to-br from-emerald-500 to-emerald-600 border-emerald-400 text-white" : "bg-gradient-to-br from-red-500 to-red-600 border-red-400 text-white"}`}
+          className={
+            isPass
+              ? "border-emerald-200 bg-emerald-50 shadow-sm"
+              : "border-red-200 bg-red-50 shadow-sm"
+          }
         >
           <CardContent className="p-5">
             <div className="flex items-center justify-between">
-              <div className="text-[10px] font-bold tracking-[0.15em] text-white/80 uppercase print:text-black">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Final Result
-              </div>
+              </p>
+
               {isPass ? (
-                <CheckCircle2 className="size-4 text-white/80 print:hidden" />
+                <CheckCircle2 className="size-5 text-emerald-600" />
               ) : (
-                <XCircle className="size-4 text-white/80 print:hidden" />
+                <XCircle className="size-5 text-destructive" />
               )}
             </div>
-            <div className="mt-3 text-3xl font-black tracking-tight text-white print:text-black">
+
+            <div
+              className={
+                isPass
+                  ? "mt-3 text-2xl font-black text-emerald-600"
+                  : "mt-3 text-2xl font-black text-destructive"
+              }
+            >
               {data.summary.status}
             </div>
-            <div className="mt-1 text-[11px] font-medium text-white/80 print:text-black">
-              {data.summary.passedSubjects} passed •{" "}
-              {data.summary.failedSubjects} failed
-            </div>
+
+            <p className="mt-1 text-xs text-muted-foreground">
+              {data.summary.passedSubjects} passed
+              {data.summary.failedSubjects > 0 &&
+                ` • ${data.summary.failedSubjects} failed`}
+              {data.summary.absentSubjects > 0 &&
+                ` • ${data.summary.absentSubjects} absent`}
+            </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* 3. ATTENDANCE SUMMARY CARD */}
-      <Card className="glass-panel overflow-hidden border-slate-200/60 shadow-xl shadow-slate-200/40 print:rounded-none print:border-black print:shadow-none">
-        <CardHeader className="border-b border-slate-100 bg-slate-50/50 pb-4 print:border-black print:bg-transparent">
+      {/* ------------------------------------------------------------------ */}
+      {/* ATTENDANCE                                                         */}
+      {/* ------------------------------------------------------------------ */}
+
+      <Card className="border-border/70 shadow-sm print:rounded-none print:border-black print:shadow-none">
+        <CardHeader className="border-b bg-muted/20 px-5 py-4">
           <div className="flex items-center gap-2">
-            <CalendarDays className="size-5 text-teal-600 print:hidden" />
-            <CardTitle className="text-lg font-bold text-slate-900 print:text-black">
-              Attendance Summary
-            </CardTitle>
+            <ClipboardCheck className="size-5 text-primary" />
+
+            <div>
+              <CardTitle className="text-base">Attendance Summary</CardTitle>
+
+              <p className="mt-1 text-xs text-muted-foreground">
+                Overall attendance up to {formatDate(attendance.upToDate)}
+              </p>
+            </div>
           </div>
         </CardHeader>
-        <CardContent className="grid gap-6 p-6 sm:grid-cols-4">
-          <div>
-            <div className="text-[10px] font-bold tracking-[0.15em] text-slate-400 uppercase print:text-black">
-              Present Days
-            </div>
-            <div className="mt-1.5 text-3xl font-black text-emerald-600 print:text-black">
-              {attendance.presentDays}
-            </div>
+
+        <CardContent className="p-5">
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            <AttendanceMetric
+              label="Present Days"
+              value={attendance.presentDays}
+              icon={<CheckCircle2 className="size-4" />}
+              valueClass="text-emerald-600"
+            />
+
+            <AttendanceMetric
+              label="Absent Days"
+              value={attendance.absentDays}
+              icon={<XCircle className="size-4" />}
+              valueClass="text-destructive"
+            />
+
+            <AttendanceMetric
+              label="Working Days"
+              value={attendance.totalDays}
+              icon={<CalendarDays className="size-4" />}
+              valueClass="text-foreground"
+            />
+
+            <AttendanceMetric
+              label="Attendance"
+              value={`${attendance.percentage.toFixed(2)}%`}
+              icon={<TrendingUp className="size-4" />}
+              valueClass="text-primary"
+            />
           </div>
-          <div>
-            <div className="text-[10px] font-bold tracking-[0.15em] text-slate-400 uppercase print:text-black">
-              Absent Days
+
+          <div className="mt-6">
+            <div className="mb-2 flex items-center justify-between text-xs font-medium">
+              <span className="text-muted-foreground">
+                Attendance Percentage
+              </span>
+
+              <span>{attendance.percentage.toFixed(2)}%</span>
             </div>
-            <div className="mt-1.5 text-3xl font-black text-red-500 print:text-black">
-              {attendance.absentDays}
-            </div>
-          </div>
-          <div>
-            <div className="text-[10px] font-bold tracking-[0.15em] text-slate-400 uppercase print:text-black">
-              Total Working Days
-            </div>
-            <div className="mt-1.5 text-3xl font-black text-slate-900 print:text-black">
-              {attendance.totalDays}
-            </div>
-          </div>
-          <div>
-            <div className="text-[10px] font-bold tracking-[0.15em] text-slate-400 uppercase print:text-black">
-              Attendance Percentage
-            </div>
-            <div className="mt-1.5 text-3xl font-black text-slate-900 print:text-black">
-              {attendance.percentage.toFixed(2)}%
-            </div>
-            <div className="mt-1 text-[11px] font-medium text-slate-400 print:text-black">
-              Up to {formatDate(attendance.upToDate)}
+
+            <div className="h-2.5 overflow-hidden rounded-full bg-muted">
+              <div
+                className="h-full rounded-full bg-primary transition-all"
+                style={{
+                  width: `${attendancePercentage}%`,
+                }}
+              />
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* 4. SUBJECT RESULTS TABLE */}
-      <Card className="glass-panel overflow-hidden border-slate-200/60 shadow-xl shadow-slate-200/40 print:rounded-none print:border-black print:shadow-none">
-        <CardHeader className="border-b border-slate-100 bg-slate-50/50 pb-4 print:border-black print:bg-transparent">
-          <div className="flex items-center justify-between">
+      {/* ------------------------------------------------------------------ */}
+      {/* SUBJECT RESULTS                                                    */}
+      {/* ------------------------------------------------------------------ */}
+
+      <Card className="overflow-hidden border-border/70 shadow-sm print:rounded-none print:border-black print:shadow-none">
+        <CardHeader className="border-b bg-muted/20 px-5 py-4">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-2">
-              <FileBarChart className="size-5 text-teal-600 print:hidden" />
-              <CardTitle className="text-lg font-bold text-slate-900 print:text-black">
-                Subject-wise Results
-              </CardTitle>
+              <FileBarChart className="size-5 text-primary" />
+
+              <div>
+                <CardTitle className="text-base">
+                  Subject-wise Results
+                </CardTitle>
+
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Detailed performance for each scheduled subject
+                </p>
+              </div>
             </div>
-            <span className="rounded-full bg-white px-3 py-1 text-[11px] font-bold tracking-wide text-slate-600 shadow-sm print:hidden">
+
+            <span className="w-fit rounded-full bg-muted px-3 py-1 text-xs font-semibold">
               {data.subjects.length} Subjects
             </span>
           </div>
@@ -445,104 +573,107 @@ export function StudentResultDetailsPage({
 
         <CardContent className="p-0">
           {data.subjects.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-center">
-              <BookOpen className="mb-3 size-10 text-slate-300" />
-              <p className="text-sm font-medium text-slate-500">
-                No subject results recorded yet.
+            <div className="flex min-h-[250px] flex-col items-center justify-center px-6 text-center">
+              <div className="flex size-12 items-center justify-center rounded-2xl bg-muted">
+                <BookOpen className="size-6 text-muted-foreground" />
+              </div>
+
+              <h3 className="mt-4 font-semibold">No subject results</h3>
+
+              <p className="mt-1 text-sm text-muted-foreground">
+                No marks have been recorded for this student yet.
               </p>
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full min-w-[1000px] text-sm">
                 <thead>
-                  <tr className="border-b border-slate-100 bg-slate-50/50 print:border-black print:bg-transparent">
-                    <th className="px-5 py-4 text-left text-[10px] font-bold tracking-[0.15em] text-slate-500 uppercase print:text-black">
+                  <tr className="border-b bg-muted/30">
+                    <th className="px-5 py-3 text-left text-xs font-semibold">
                       Subject
                     </th>
-                    <th className="px-5 py-4 text-left text-[10px] font-bold tracking-[0.15em] text-slate-500 uppercase print:text-black">
-                      Class
-                    </th>
-                    <th className="px-5 py-4 text-left text-[10px] font-bold tracking-[0.15em] text-slate-500 uppercase print:text-black">
-                      Section
-                    </th>
-                    <th className="px-5 py-4 text-left text-[10px] font-bold tracking-[0.15em] text-slate-500 uppercase print:text-black">
+
+                    <th className="px-5 py-3 text-left text-xs font-semibold">
                       Exam Date
                     </th>
-                    <th className="px-5 py-4 text-right text-[10px] font-bold tracking-[0.15em] text-slate-500 uppercase print:text-black">
-                      Max Marks
+
+                    <th className="px-5 py-3 text-right text-xs font-semibold">
+                      Max
                     </th>
-                    <th className="px-5 py-4 text-right text-[10px] font-bold tracking-[0.15em] text-slate-500 uppercase print:text-black">
-                      Pass Marks
+
+                    <th className="px-5 py-3 text-right text-xs font-semibold">
+                      Pass
                     </th>
-                    <th className="px-5 py-4 text-right text-[10px] font-bold tracking-[0.15em] text-slate-500 uppercase print:text-black">
+
+                    <th className="px-5 py-3 text-right text-xs font-semibold">
                       Obtained
                     </th>
-                    <th className="px-5 py-4 text-center text-[10px] font-bold tracking-[0.15em] text-slate-500 uppercase print:text-black">
+
+                    <th className="px-5 py-3 text-center text-xs font-semibold">
                       Status
                     </th>
-                    <th className="px-5 py-4 text-center text-[10px] font-bold tracking-[0.15em] text-slate-500 uppercase print:text-black">
+
+                    <th className="px-5 py-3 text-center text-xs font-semibold">
                       Result
                     </th>
-                    <th className="px-5 py-4 text-left text-[10px] font-bold tracking-[0.15em] text-slate-500 uppercase print:text-black">
+
+                    <th className="px-5 py-3 text-left text-xs font-semibold">
                       Remarks
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-50 print:divide-black">
+
+                <tbody>
                   {data.subjects.map((subject) => (
                     <tr
                       key={subject.scheduleId}
-                      className="group transition-colors hover:bg-slate-50/60 print:hover:bg-transparent"
+                      className="border-b last:border-0 hover:bg-muted/20"
                     >
                       <td className="px-5 py-4">
-                        <div className="font-bold text-slate-900 group-hover:text-teal-700 transition-colors print:text-black">
+                        <div className="font-semibold">
                           {subject.subject.name}
                         </div>
+
                         {subject.subject.code && (
-                          <div className="mt-0.5 text-[11px] font-medium text-slate-400 print:text-black">
-                            ({subject.subject.code})
+                          <div className="mt-0.5 text-xs text-muted-foreground">
+                            {subject.subject.code}
                           </div>
                         )}
                       </td>
-                      <td className="px-5 py-4 font-medium text-slate-700 print:text-black">
-                        {subject.class.name}
-                      </td>
-                      <td className="px-5 py-4 font-medium text-slate-700 print:text-black">
-                        {subject.section?.name || "All"}
-                      </td>
-                      <td className="px-5 py-4 font-medium text-slate-500 print:text-black">
+
+                      <td className="px-5 py-4 text-muted-foreground">
                         {formatDate(subject.examDate)}
                       </td>
-                      <td className="px-5 py-4 text-right font-medium text-slate-600 print:text-black">
+
+                      <td className="px-5 py-4 text-right font-medium">
                         {subject.maxMarks}
                       </td>
-                      <td className="px-5 py-4 text-right font-medium text-slate-600 print:text-black">
+
+                      <td className="px-5 py-4 text-right text-muted-foreground">
                         {subject.passMarks ?? "—"}
                       </td>
+
                       <td className="px-5 py-4 text-right">
-                        <span className="text-base font-bold text-slate-900 print:text-black">
-                          {subject.status === "ABSENT"
-                            ? "—"
-                            : (subject.marksObtained ?? "—")}
-                        </span>
+                        {subject.resultStatus === "ABSENT" ? (
+                          <span className="font-semibold text-muted-foreground">
+                            —
+                          </span>
+                        ) : (
+                          <span className="font-bold">
+                            {subject.marksObtained ?? "—"}
+                          </span>
+                        )}
                       </td>
-                      <td className="px-5 py-4 text-center font-medium text-slate-600 print:text-black">
-                        {subject.status}
-                      </td>
+
                       <td className="px-5 py-4 text-center">
-                        <span
-                          className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-bold tracking-widest uppercase print:border print:border-black print:bg-transparent print:text-black ${
-                            subject.resultStatus === "PASS"
-                              ? "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/20"
-                              : subject.resultStatus === "ABSENT"
-                                ? "bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-600/20"
-                                : "bg-red-50 text-red-700 ring-1 ring-inset ring-red-600/20"
-                          }`}
-                        >
-                          {subject.resultStatus}
-                        </span>
+                        <StatusBadge status={subject.status} />
                       </td>
-                      <td className="px-5 py-4 text-sm font-medium text-slate-500 print:text-black">
+
+                      <td className="px-5 py-4 text-center">
+                        <ResultBadge status={subject.resultStatus} />
+                      </td>
+
+                      <td className="max-w-[220px] px-5 py-4 text-muted-foreground">
                         {subject.remarks || "—"}
                       </td>
                     </tr>
@@ -553,6 +684,156 @@ export function StudentResultDetailsPage({
           )}
         </CardContent>
       </Card>
+
+      {/* ------------------------------------------------------------------ */}
+      {/* FOOTER                                                             */}
+      {/* ------------------------------------------------------------------ */}
+
+      <div className="flex flex-col gap-3 rounded-xl border bg-muted/20 p-4 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between print:hidden">
+        <div>
+          <span className="font-medium text-foreground">{data.exam.name}</span>{" "}
+          • {data.exam.academicYear.name}
+        </div>
+
+        <div>
+          Result generated for{" "}
+          <span className="font-medium text-foreground">
+            {data.student.fullName || "Unnamed Student"}
+          </span>
+        </div>
+      </div>
     </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* SUMMARY CARD                                                               */
+/* -------------------------------------------------------------------------- */
+
+function SummaryCard({
+  icon,
+  label,
+  value,
+  description,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  description?: string;
+}) {
+  return (
+    <Card className="border-border/70 shadow-sm transition-shadow hover:shadow-md">
+      <CardContent className="p-5">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              {label}
+            </p>
+
+            <p className="mt-3 text-2xl font-bold tracking-tight">{value}</p>
+
+            {description && (
+              <p className="mt-1 text-xs text-muted-foreground">
+                {description}
+              </p>
+            )}
+          </div>
+
+          <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+            {icon}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* ATTENDANCE METRIC                                                          */
+/* -------------------------------------------------------------------------- */
+
+function AttendanceMetric({
+  label,
+  value,
+  icon,
+  valueClass,
+}: {
+  label: string;
+  value: string | number;
+  icon: React.ReactNode;
+  valueClass: string;
+}) {
+  return (
+    <div className="rounded-xl border bg-background p-4">
+      <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
+        {icon}
+        {label}
+      </div>
+
+      <div className={`mt-2 text-2xl font-bold ${valueClass}`}>{value}</div>
+    </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* STATUS BADGE                                                               */
+/* -------------------------------------------------------------------------- */
+
+function StatusBadge({ status }: { status: string }) {
+  if (status === "ABSENT") {
+    return (
+      <span className="inline-flex rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-semibold text-amber-600">
+        ABSENT
+      </span>
+    );
+  }
+
+  return (
+    <span className="inline-flex rounded-full bg-muted px-2.5 py-1 text-xs font-semibold">
+      {status}
+    </span>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* RESULT BADGE                                                               */
+/* -------------------------------------------------------------------------- */
+
+function ResultBadge({ status }: { status: "PASS" | "FAIL" | "ABSENT" }) {
+  if (status === "PASS") {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold text-emerald-600">
+        <CheckCircle2 className="size-3.5" />
+        PASS
+      </span>
+    );
+  }
+
+  if (status === "ABSENT") {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-semibold text-amber-600">
+        <AlertCircle className="size-3.5" />
+        ABSENT
+      </span>
+    );
+  }
+
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-full bg-destructive/10 px-2.5 py-1 text-xs font-semibold text-destructive">
+      <XCircle className="size-3.5" />
+      FAIL
+    </span>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* SMALL USERS ICON                                                           */
+/* -------------------------------------------------------------------------- */
+
+function UsersIcon() {
+  return (
+    <span className="inline-flex items-center justify-center">
+      <UserRound className="size-3.5" />
+    </span>
   );
 }

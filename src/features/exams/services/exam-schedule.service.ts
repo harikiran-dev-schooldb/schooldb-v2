@@ -27,6 +27,21 @@ type UpdateExamScheduleInput = {
   passMarks?: number | null;
 };
 
+function validateExamTime(
+  startTime?: string | null,
+  endTime?: string | null,
+) {
+  if (!startTime || !endTime) {
+    return;
+  }
+
+  if (endTime <= startTime) {
+    throw new Error(
+      "End time must be after start time.",
+    );
+  }
+}
+
 export const examScheduleService = {
   async list(examId: string, schoolId: string) {
     return prisma.examSchedule.findMany({
@@ -233,6 +248,31 @@ export const examScheduleService = {
       );
     }
 
+    const duplicate = await prisma.examSchedule.findFirst({
+  where: {
+    schoolId,
+    examId: input.examId,
+    classId: input.classId,
+    sectionId: input.sectionId ?? null,
+    subjectId: input.subjectId,
+  },
+
+  select: {
+    id: true,
+  },
+});
+
+if (duplicate) {
+  throw new Error(
+    "This subject is already scheduled for the selected class and section.",
+  );
+}
+
+validateExamTime(
+  input.startTime,
+  input.endTime,
+);
+
     return prisma.examSchedule.create({
       data: {
         schoolId,
@@ -361,6 +401,34 @@ export const examScheduleService = {
       }
     }
 
+    const subjectId =
+  input.subjectId ?? existing.subjectId;
+
+const duplicate =
+  await prisma.examSchedule.findFirst({
+    where: {
+      schoolId,
+      examId: existing.examId,
+      classId,
+      sectionId: sectionId ?? null,
+      subjectId,
+
+      id: {
+        not: id,
+      },
+    },
+
+    select: {
+      id: true,
+    },
+  });
+
+if (duplicate) {
+  throw new Error(
+    "This subject is already scheduled for the selected class and section.",
+  );
+}
+
     const maxMarks =
       input.maxMarks ?? Number(existing.maxMarks);
 
@@ -421,6 +489,21 @@ export const examScheduleService = {
         "Exam date cannot be after the exam end date.",
       );
     }
+
+    const startTime =
+  input.startTime !== undefined
+    ? input.startTime
+    : existing.startTime;
+
+const endTime =
+  input.endTime !== undefined
+    ? input.endTime
+    : existing.endTime;
+
+validateExamTime(
+  startTime,
+  endTime,
+);
 
     return prisma.examSchedule.update({
       where: {

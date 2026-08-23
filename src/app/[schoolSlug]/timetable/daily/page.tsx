@@ -1,17 +1,17 @@
+import { PageHeader } from "@/components/common/PageHeader";
 import { DailyTimetableContainer } from "@/features/timetable/components/DailyTimetableContainer";
 
 export default function DailyTimetablePage() {
   return (
-    <div className="container mx-auto space-y-6 py-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Daily Timetable</h1>
+    <>
+      <PageHeader
+        title="Daily Timetable"
+        description="View the complete teaching schedule for a selected day."
+      />
 
-        <p className="text-sm text-muted-foreground">
-          View all classes scheduled for a selected day.
-        </p>
+      <div className="mt-6">
+        <DailyTimetableContainer />
       </div>
-
-      <DailyTimetableContainer />
-    </div>
+    </>
   );
 }

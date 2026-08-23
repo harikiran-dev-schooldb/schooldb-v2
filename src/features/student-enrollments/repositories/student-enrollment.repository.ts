@@ -7,7 +7,7 @@ export const studentEnrollmentRepository = {
     options?: {
       skip?: number;
       take?: number;
-    }
+    },
   ) {
     return prisma.studentEnrollment.findMany({
       where,
@@ -48,10 +48,7 @@ export const studentEnrollmentRepository = {
     });
   },
 
-  findById(
-    id: string,
-    schoolId: string
-  ) {
+  findById(id: string, schoolId: string) {
     return prisma.studentEnrollment.findFirst({
       where: {
         id,
@@ -70,88 +67,101 @@ export const studentEnrollmentRepository = {
   create(data: Prisma.StudentEnrollmentCreateInput) {
     return prisma.studentEnrollment.create({
       data,
+
+      include: {
+        student: true,
+        academicYear: true,
+        class: true,
+        section: true,
+      },
     });
   },
 
   update(
     id: string,
-    data: Prisma.StudentEnrollmentUpdateInput
+    data: Prisma.StudentEnrollmentUpdateInput,
   ) {
     return prisma.studentEnrollment.update({
       where: {
         id,
       },
+
       data,
+
+      include: {
+        student: true,
+        academicYear: true,
+        class: true,
+        section: true,
+      },
     });
   },
 
-  findFirst(
-    where: Prisma.StudentEnrollmentWhereInput
-  ) {
+  findFirst(where: Prisma.StudentEnrollmentWhereInput) {
     return prisma.studentEnrollment.findFirst({
       where,
     });
   },
 
   options(schoolId: string) {
-  return prisma.studentEnrollment.findMany({
-    where: {
-      schoolId,
-      active: true,
-    },
+    return prisma.studentEnrollment.findMany({
+      where: {
+        schoolId,
+        active: true,
+      },
 
-    include: {
-      student: true,
-      class: true,
-      section: true,
-      academicYear: true,
-    },
+      include: {
+        student: true,
+        class: true,
+        section: true,
+        academicYear: true,
+      },
 
-    orderBy: [
-      {
-        academicYear: {
-          startDate: "desc",
+      orderBy: [
+        {
+          academicYear: {
+            startDate: "desc",
+          },
         },
-      },
-      {
-        class: {
-          displayOrder: "asc",
+        {
+          class: {
+            displayOrder: "asc",
+          },
         },
-      },
-      {
-        section: {
-          displayOrder: "asc",
+        {
+          section: {
+            displayOrder: "asc",
+          },
         },
+        {
+          rollNo: "asc",
+        },
+      ],
+    });
+  },
+
+  getAttendanceStudents(
+    schoolId: string,
+    academicYearId: string,
+    classId: string,
+    sectionId: string,
+  ) {
+    return prisma.studentEnrollment.findMany({
+      where: {
+        schoolId,
+        academicYearId,
+        classId,
+        sectionId,
+        active: true,
       },
-      {
+
+      include: {
+        student: true,
+      },
+
+      orderBy: {
         rollNo: "asc",
       },
-    ],
-  });
-},
-
-getAttendanceStudents(
-  schoolId: string,
-  academicYearId: string,
-  classId: string,
-  sectionId: string
-) {
-  return prisma.studentEnrollment.findMany({
-    where: {
-      schoolId,
-      academicYearId,
-      classId,
-      sectionId,
-      active: true,
-    },
-
-    include: {
-      student: true,
-    },
-
-    orderBy: {
-      rollNo: "asc",
-    },
-  });
-}
+    });
+  },
 };

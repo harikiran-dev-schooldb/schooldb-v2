@@ -1,28 +1,42 @@
 "use client";
 
 import { useEffect, useState } from "react";
-
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import {
+  BookOpen,
+  GraduationCap,
+  MessageSquare,
+  UserRound,
+  CalendarDays,
+  ToggleRight,
+} from "lucide-react";
+import { toast } from "sonner";
+
+import { FormField, SubmitButton } from "@/components/common/forms";
+import { RemoteCombobox } from "@/components/common/combobox/RemoteCombobox";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 
 import {
   teacherAllocationSchema,
   TeacherAllocationFormInput,
 } from "../schemas/teacher-allocation.schema";
 
-import { toast } from "sonner";
-
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
-
-import { FormField } from "@/components/common/forms";
-import { RemoteCombobox } from "@/components/common/combobox/RemoteCombobox";
-
 type Props = {
   mode: "create" | "edit";
   allocationId?: string;
   onSuccess: () => void;
+};
+
+const defaultValues: TeacherAllocationFormInput = {
+  academicYearId: "",
+  teacherId: "",
+  subjectId: "",
+  classId: "",
+  sectionId: "",
+  remarks: "",
+  active: true,
 };
 
 export function TeacherAllocationForm({
@@ -34,70 +48,58 @@ export function TeacherAllocationForm({
 
   const form = useForm<TeacherAllocationFormInput>({
     resolver: zodResolver(teacherAllocationSchema),
-
-    defaultValues: {
-      academicYearId: "",
-      teacherId: "",
-      subjectId: "",
-      classId: "",
-      sectionId: "",
-      remarks: "",
-      active: true,
-    },
+    defaultValues,
   });
 
   const academicYearId = useWatch({
     control: form.control,
     name: "academicYearId",
   });
-
   const teacherId = useWatch({
     control: form.control,
     name: "teacherId",
   });
-
   const subjectId = useWatch({
     control: form.control,
     name: "subjectId",
   });
-
   const classId = useWatch({
     control: form.control,
     name: "classId",
   });
-
   const sectionId = useWatch({
     control: form.control,
     name: "sectionId",
   });
-
   const active = useWatch({
     control: form.control,
     name: "active",
   });
 
   useEffect(() => {
-    form.setValue("sectionId", "");
-  }, [classId, form]);
+    if (mode === "create") {
+      form.setValue("sectionId", "", {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+    }
+  }, [classId, form, mode]);
 
   useEffect(() => {
-    if (mode !== "edit" || !allocationId) {
-      return;
-    }
+    if (mode !== "edit" || !allocationId) return;
 
     let cancelled = false;
 
     async function loadAllocation() {
       try {
-        const res = await fetch(`/api/v1/teacher-allocations/${allocationId}`);
+        const response = await fetch(
+          `/api/v1/teacher-allocations/${allocationId}`,
+        );
+        const result = await response.json();
 
-        const result = await res.json();
+        if (cancelled) return;
 
-        if (cancelled) {
-          return;
-        }
-
-        if (!result.success) {
+        if (!response.ok || !result.success) {
           toast.error(result.message || "Failed to load teacher allocation.");
           return;
         }
@@ -138,153 +140,217 @@ export function TeacherAllocationForm({
           ? "/api/v1/teacher-allocations"
           : `/api/v1/teacher-allocations/${allocationId}`;
 
-      const method = mode === "create" ? "POST" : "PUT";
-
-      const res = await fetch(url, {
-        method,
-
-        headers: {
-          "Content-Type": "application/json",
-        },
-
+      const response = await fetch(url, {
+        method: mode === "create" ? "POST" : "PUT",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
 
-      const result = await res.json();
+      const result = await response.json();
 
-      if (!result.success) {
+      if (!response.ok || !result.success) {
         toast.error(result.message || "Failed to save teacher allocation.");
         return;
       }
 
       toast.success(
-        mode === "create"
-          ? "Teacher allocated successfully."
-          : "Allocation updated successfully.",
+        result.message ||
+          (mode === "create"
+            ? "Teacher allocated successfully."
+            : "Allocation updated successfully."),
       );
 
-      form.reset();
+      if (mode === "create") {
+        form.reset(defaultValues);
+      }
 
       onSuccess();
-    } catch (error: unknown) {
-      const message =
-        error instanceof Error ? error.message : "Something went wrong.";
-
-      toast.error(message);
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to save teacher allocation.",
+      );
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
-      <FormField label="Academic Year" required>
-        <RemoteCombobox
-          url="/api/v1/academic-years/options"
-          value={academicYearId}
-          placeholder="Select Academic Year"
-          onChange={(value) =>
-            form.setValue("academicYearId", value, {
-              shouldDirty: true,
-              shouldValidate: true,
-            })
-          }
-        />
-      </FormField>
-
-      <FormField label="Teacher" required>
-        <RemoteCombobox
-          url="/api/v1/teachers/options"
-          value={teacherId}
-          placeholder="Select Teacher"
-          onChange={(value) =>
-            form.setValue("teacherId", value, {
-              shouldDirty: true,
-              shouldValidate: true,
-            })
-          }
-        />
-      </FormField>
-
-      <FormField label="Subject" required>
-        <RemoteCombobox
-          url="/api/v1/subjects/options"
-          value={subjectId}
-          placeholder="Select Subject"
-          onChange={(value) =>
-            form.setValue("subjectId", value, {
-              shouldDirty: true,
-              shouldValidate: true,
-            })
-          }
-        />
-      </FormField>
-
-      <FormField label="Class" required>
-        <RemoteCombobox
-          url="/api/v1/classes/options"
-          value={classId}
-          placeholder="Select Class"
-          onChange={(value) =>
-            form.setValue("classId", value, {
-              shouldDirty: true,
-              shouldValidate: true,
-            })
-          }
-        />
-      </FormField>
-
-      <FormField label="Section" required>
-        <RemoteCombobox
-          url={
-            classId
-              ? `/api/v1/sections/options?classId=${encodeURIComponent(
-                  classId,
-                )}`
-              : "/api/v1/sections/options"
-          }
-          value={sectionId}
-          disabled={!classId}
-          placeholder="Select Section"
-          onChange={(value) =>
-            form.setValue("sectionId", value, {
-              shouldDirty: true,
-              shouldValidate: true,
-            })
-          }
-        />
-      </FormField>
-
-      <FormField label="Remarks">
-        <Textarea rows={3} {...form.register("remarks")} />
-      </FormField>
-
-      <div className="flex items-center justify-between rounded-lg border p-4">
-        <div>
-          <h4 className="font-medium">Active Allocation</h4>
-
-          <p className="text-sm text-muted-foreground">
-            Teacher can be used in Timetable, Attendance and Exams.
-          </p>
+    <form
+      onSubmit={form.handleSubmit(onSubmit)}
+      className="max-h-[75vh] space-y-5 overflow-y-auto pr-1"
+    >
+      <div className="rounded-xl border bg-muted/20 p-4">
+        <div className="mb-4 flex items-center gap-3">
+          <CalendarDays className="size-5 text-primary" />
+          <div>
+            <p className="text-sm font-semibold">Academic Year</p>
+            <p className="text-xs text-muted-foreground">
+              Select the academic year for this allocation.
+            </p>
+          </div>
         </div>
 
-        <Switch
-          checked={active}
-          onCheckedChange={(checked) =>
-            form.setValue("active", checked, {
-              shouldDirty: true,
-            })
-          }
-        />
+        <FormField label="Academic Year" required>
+          <RemoteCombobox
+            url="/api/v1/academic-years/options"
+            value={academicYearId}
+            placeholder="Select academic year"
+            onChange={(value) =>
+              form.setValue("academicYearId", value, {
+                shouldDirty: true,
+                shouldValidate: true,
+              })
+            }
+          />
+        </FormField>
       </div>
 
-      <Button type="submit" disabled={loading} className="w-full">
-        {loading
-          ? "Saving..."
-          : mode === "create"
-            ? "Allocate Teacher"
-            : "Update Allocation"}
-      </Button>
+      <div className="rounded-xl border bg-muted/20 p-4">
+        <div className="mb-4 flex items-center gap-3">
+          <UserRound className="size-5 text-primary" />
+          <div>
+            <p className="text-sm font-semibold">Teacher & Subject</p>
+            <p className="text-xs text-muted-foreground">
+              Define who teaches which subject.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <FormField label="Teacher" required>
+            <RemoteCombobox
+              url="/api/v1/teachers/options"
+              value={teacherId}
+              placeholder="Select teacher"
+              onChange={(value) =>
+                form.setValue("teacherId", value, {
+                  shouldDirty: true,
+                  shouldValidate: true,
+                })
+              }
+            />
+          </FormField>
+
+          <FormField label="Subject" required>
+            <RemoteCombobox
+              url="/api/v1/subjects/options"
+              value={subjectId}
+              placeholder="Select subject"
+              onChange={(value) =>
+                form.setValue("subjectId", value, {
+                  shouldDirty: true,
+                  shouldValidate: true,
+                })
+              }
+            />
+          </FormField>
+        </div>
+      </div>
+
+      <div className="rounded-xl border bg-muted/20 p-4">
+        <div className="mb-4 flex items-center gap-3">
+          <GraduationCap className="size-5 text-primary" />
+          <div>
+            <p className="text-sm font-semibold">Class Assignment</p>
+            <p className="text-xs text-muted-foreground">
+              Select the class and section where the teacher is assigned.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <FormField label="Class" required>
+            <RemoteCombobox
+              url="/api/v1/classes/options"
+              value={classId}
+              placeholder="Select class"
+              onChange={(value) => {
+                form.setValue("classId", value, {
+                  shouldDirty: true,
+                  shouldValidate: true,
+                });
+                form.setValue("sectionId", "", {
+                  shouldDirty: true,
+                  shouldValidate: true,
+                });
+              }}
+            />
+          </FormField>
+
+          <FormField label="Section" required>
+            <RemoteCombobox
+              url={
+                classId
+                  ? `/api/v1/sections/options?classId=${encodeURIComponent(classId)}`
+                  : "/api/v1/sections/options"
+              }
+              value={sectionId}
+              disabled={!classId}
+              placeholder={classId ? "Select section" : "Select class first"}
+              onChange={(value) =>
+                form.setValue("sectionId", value, {
+                  shouldDirty: true,
+                  shouldValidate: true,
+                })
+              }
+            />
+          </FormField>
+        </div>
+      </div>
+
+      <div className="rounded-xl border bg-muted/20 p-4">
+        <div className="mb-4 flex items-center gap-3">
+          <MessageSquare className="size-5 text-primary" />
+          <div>
+            <p className="text-sm font-semibold">Additional Details</p>
+            <p className="text-xs text-muted-foreground">
+              Add optional notes and control the allocation status.
+            </p>
+          </div>
+        </div>
+
+        <FormField label="Remarks">
+          <Textarea
+            rows={3}
+            placeholder="Add notes about this allocation..."
+            {...form.register("remarks")}
+          />
+        </FormField>
+
+        <div className="mt-4 flex items-center justify-between rounded-lg border bg-background p-4">
+          <div className="flex items-start gap-3">
+            <ToggleRight className="mt-0.5 size-4 text-primary" />
+            <div>
+              <p className="text-sm font-medium">Active Allocation</p>
+              <p className="text-xs text-muted-foreground">
+                {active
+                  ? "Available for timetable, attendance and exams."
+                  : "This allocation is currently inactive."}
+              </p>
+            </div>
+          </div>
+
+          <Switch
+            checked={active}
+            onCheckedChange={(checked) =>
+              form.setValue("active", checked, {
+                shouldDirty: true,
+                shouldValidate: true,
+              })
+            }
+          />
+        </div>
+      </div>
+
+      <SubmitButton
+        loading={loading}
+        mode={mode}
+        createLabel="Allocate Teacher"
+        updateLabel="Update Allocation"
+        className="w-full"
+      />
     </form>
   );
 }

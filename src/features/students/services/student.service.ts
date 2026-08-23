@@ -2,6 +2,7 @@ import { studentRepository } from "../repositories/student.repository";
 import { StudentFormOutput } from "../schemas/student.schema";
 import { StudentStatus } from "@/generated/prisma/enums";
 import { ListQuery } from "@/types/query";
+import { studentActivityService } from "./student-activity.service";
 
 export const studentService = {
   async list(schoolId: string, query: ListQuery) {
@@ -42,6 +43,7 @@ export const studentService = {
         skip: (page - 1) * pageSize,
         take: pageSize,
       }),
+
       studentRepository.count(where),
     ]);
 
@@ -55,6 +57,7 @@ export const studentService = {
           sectionName: enrollment?.section.name ?? null,
         };
       }),
+
       total,
       page,
       pageSize,
@@ -62,140 +65,276 @@ export const studentService = {
     };
   },
 
+  /* ---------------------------------------------------------------------- */
+  /* Create                                                                 */
+  /* ---------------------------------------------------------------------- */
+
   async create(
     schoolId: string,
-    input: StudentFormOutput
+    input: StudentFormOutput,
   ) {
-    const exists = await studentRepository.findByAdmissionNo(
-      schoolId,
-      input.admissionNo
-    );
+    const exists =
+      await studentRepository.findByAdmissionNo(
+        schoolId,
+        input.admissionNo,
+      );
 
     if (exists) {
-      throw new Error("Admission number already exists.");
+      throw new Error(
+        "Admission number already exists.",
+      );
     }
 
-    return studentRepository.create({
-      admissionNo: input.admissionNo,
-      fullName: input.fullName,
-      gender: input.gender,
-      dob: new Date(input.dob),
-      phone: input.phone,
-      email: input.email,
-      status: StudentStatus.ACTIVE,
+    /* -------------------------------------------------------------- */
+    /* Create student                                                  */
+    /* -------------------------------------------------------------- */
 
-      school: {
-        connect: {
-          id: schoolId,
+    const student =
+      await studentRepository.create({
+        admissionNo: input.admissionNo,
+        fullName: input.fullName,
+        gender: input.gender,
+        dob: new Date(input.dob),
+        phone: input.phone,
+        email: input.email,
+        status: StudentStatus.ACTIVE,
+
+        school: {
+          connect: {
+            id: schoolId,
+          },
         },
-      },
+      });
 
+    /* -------------------------------------------------------------- */
+    /* Create activity                                                 */
+    /* -------------------------------------------------------------- */
+
+    await studentActivityService.create({
+      schoolId,
+
+      studentId: student.id,
+
+      type: "STUDENT_CREATED",
+
+      title: "Student profile created",
+
+      description: `Student ${student.admissionNo}${
+        student.fullName
+          ? ` — ${student.fullName}`
+          : ""
+      } was added to SchoolDB.`,
     });
+
+    return student;
   },
 
-  async get(id: string, schoolId: string) {
-    const student = await studentRepository.findById(
-      id,
-      schoolId
-    );
+  /* ---------------------------------------------------------------------- */
+  /* Get                                                                    */
+  /* ---------------------------------------------------------------------- */
+
+  async get(
+    id: string,
+    schoolId: string,
+  ) {
+    const student =
+      await studentRepository.findById(
+        id,
+        schoolId,
+      );
 
     if (!student) {
-      throw new Error("Student not found.");
+      throw new Error(
+        "Student not found.",
+      );
     }
 
     return student;
   },
 
+  /* ---------------------------------------------------------------------- */
+  /* Update                                                                 */
+  /* ---------------------------------------------------------------------- */
+
   async update(
     id: string,
     schoolId: string,
-    input: StudentFormOutput
+    input: StudentFormOutput,
   ) {
-    const student = await studentRepository.findById(
-      id,
-      schoolId
-    );
+    const student =
+      await studentRepository.findById(
+        id,
+        schoolId,
+      );
 
     if (!student) {
-      throw new Error("Student not found.");
+      throw new Error(
+        "Student not found.",
+      );
     }
 
-    const duplicate = await studentRepository.findFirst({
-      schoolId,
-      admissionNo: input.admissionNo,
-      NOT: {
-        id,
-      },
-    });
+    const duplicate =
+      await studentRepository.findFirst({
+        schoolId,
+
+        admissionNo: input.admissionNo,
+
+        NOT: {
+          id,
+        },
+      });
 
     if (duplicate) {
-      throw new Error("Admission number already exists.");
+      throw new Error(
+        "Admission number already exists.",
+      );
     }
 
-    return studentRepository.update(id, {
-      admissionNo: input.admissionNo,
-      fullName: input.fullName,
-      gender: input.gender,
-      dob: new Date(input.dob),
-      phone: input.phone,
-      email: input.email,
-      status: StudentStatus.ACTIVE,
+    /* -------------------------------------------------------------- */
+    /* Update student                                                  */
+    /* -------------------------------------------------------------- */
 
+    const updated =
+      await studentRepository.update(
+        id,
+        {
+          admissionNo: input.admissionNo,
+          fullName: input.fullName,
+          gender: input.gender,
+          dob: new Date(input.dob),
+          phone: input.phone,
+          email: input.email,
+          status: StudentStatus.ACTIVE,
+        },
+      );
+
+    /* -------------------------------------------------------------- */
+    /* Activity                                                        */
+    /* -------------------------------------------------------------- */
+
+    await studentActivityService.create({
+      schoolId,
+
+      studentId: id,
+
+      type: "PROFILE_UPDATED",
+
+      title: "Student profile updated",
+
+      description: `Profile information for ${
+        updated.fullName ??
+        updated.admissionNo
+      } was updated.`,
     });
+
+    return updated;
   },
+
+  /* ---------------------------------------------------------------------- */
+  /* Change Status                                                          */
+  /* ---------------------------------------------------------------------- */
 
   async changeStatus(
     id: string,
     schoolId: string,
     status: StudentStatus,
-    remarks?: string
+    remarks?: string,
   ) {
-    const student = await studentRepository.findById(
-      id,
-      schoolId
-    );
+    const student =
+      await studentRepository.findById(
+        id,
+        schoolId,
+      );
 
     if (!student) {
-      throw new Error("Student not found.");
+      throw new Error(
+        "Student not found.",
+      );
     }
 
     if (student.status === status) {
       throw new Error(
-        "Student already has this status."
+        "Student already has this status.",
       );
     }
 
-    return studentRepository.changeStatus(
-      id,
-      status,
-      remarks
-    );
+    const updated =
+      await studentRepository.changeStatus(
+        id,
+        status,
+        remarks,
+      );
+
+    /* -------------------------------------------------------------- */
+    /* Activity                                                        */
+    /* -------------------------------------------------------------- */
+
+    await studentActivityService.create({
+      schoolId,
+
+      studentId: id,
+
+      type: "STATUS_CHANGED",
+
+      title: "Student status changed",
+
+      description: `Student status changed from ${student.status} to ${status}${
+        remarks
+          ? `. Remark: ${remarks}`
+          : "."
+      }`,
+
+      metadata: {
+        previousStatus: student.status,
+        newStatus: status,
+        remarks: remarks ?? null,
+      },
+    });
+
+    return updated;
   },
 
+  /* ---------------------------------------------------------------------- */
+  /* Profile                                                                */
+  /* ---------------------------------------------------------------------- */
+
   async profile(
-  id: string,
-  schoolId: string
-) {
-  const student = await studentRepository.profile(
-    id,
-    schoolId
-  );
+    id: string,
+    schoolId: string,
+  ) {
+    const student =
+      await studentRepository.profile(
+        id,
+        schoolId,
+      );
 
-  if (!student) {
-    throw new Error("Student not found.");
-  }
+    if (!student) {
+      throw new Error(
+        "Student not found.",
+      );
+    }
 
-  return student;
-},
+    return student;
+  },
 
-  async options(schoolId: string) {
-  const students = await studentRepository.options(schoolId);
+  /* ---------------------------------------------------------------------- */
+  /* Options                                                                */
+  /* ---------------------------------------------------------------------- */
 
-  return students.map((student) => ({
-    id: student.id,
-    label: student.fullName
-      ? `${student.admissionNo} — ${student.fullName}`
-      : student.admissionNo,
-  }));
-},
+  async options(
+    schoolId: string,
+  ) {
+    const students =
+      await studentRepository.options(
+        schoolId,
+      );
+
+    return students.map((student) => ({
+      id: student.id,
+
+      label: student.fullName
+        ? `${student.admissionNo} — ${student.fullName}`
+        : student.admissionNo,
+    }));
+  },
 };

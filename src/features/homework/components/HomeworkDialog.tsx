@@ -6,13 +6,9 @@ import { HomeworkForm } from "./HomeworkForm";
 
 type Props = {
   open: boolean;
-
   onOpenChange: (open: boolean) => void;
-
   mode: "create" | "edit";
-
   homeworkId?: string;
-
   onSuccess: () => void;
 };
 
@@ -30,8 +26,8 @@ export function HomeworkDialog({
       title={mode === "create" ? "Add Homework" : "Edit Homework"}
       description={
         mode === "create"
-          ? "Create a new homework assignment."
-          : "Update homework assignment."
+          ? "Create a homework assignment for a class or section."
+          : "Update the homework assignment details."
       }
     >
       <HomeworkForm

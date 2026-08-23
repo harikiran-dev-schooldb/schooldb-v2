@@ -1,12 +1,23 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { ArrowLeft, RefreshCw, Save } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  ArrowLeft,
+  BarChart3,
+  CalendarDays,
+  CheckCircle2,
+  ClipboardList,
+  Clock3,
+  RefreshCw,
+  Save,
+  Users,
+  XCircle,
+} from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 
 type StudentExamStatus = "PRESENT" | "ABSENT";
@@ -80,7 +91,6 @@ export function MarksEntryPage({ schoolSlug, examId, scheduleId }: Props) {
   const router = useRouter();
 
   const [data, setData] = useState<MarksData | null>(null);
-
   const [students, setStudents] = useState<StudentRow[]>([]);
 
   const [loading, setLoading] = useState(true);
@@ -198,6 +208,39 @@ export function MarksEntryPage({ schoolSlug, examId, scheduleId }: Props) {
   }
 
   /* ---------------------------------------------------------------------- */
+  /* SUMMARY                                                                */
+  /* ---------------------------------------------------------------------- */
+
+  const presentCount = useMemo(
+    () =>
+      students.filter((student) => student.mark.status === "PRESENT").length,
+    [students],
+  );
+
+  const absentCount = useMemo(
+    () => students.filter((student) => student.mark.status === "ABSENT").length,
+    [students],
+  );
+
+  const enteredCount = useMemo(
+    () =>
+      students.filter(
+        (student) =>
+          student.mark.status === "PRESENT" &&
+          student.mark.marksObtained !== null &&
+          student.mark.marksObtained !== "",
+      ).length,
+    [students],
+  );
+
+  const pendingCount = presentCount - enteredCount;
+
+  const progress =
+    students.length > 0
+      ? Math.round((enteredCount / students.length) * 100)
+      : 0;
+
+  /* ---------------------------------------------------------------------- */
   /* SAVE                                                                   */
   /* ---------------------------------------------------------------------- */
 
@@ -207,7 +250,9 @@ export function MarksEntryPage({ schoolSlug, examId, scheduleId }: Props) {
     const maxMarks = Number(data.schedule.maxMarks);
 
     for (const student of students) {
-      if (student.mark.status === "ABSENT") continue;
+      if (student.mark.status === "ABSENT") {
+        continue;
+      }
 
       if (
         student.mark.marksObtained !== null &&
@@ -217,14 +262,18 @@ export function MarksEntryPage({ schoolSlug, examId, scheduleId }: Props) {
 
         if (!Number.isFinite(marks)) {
           toast.error(
-            `Invalid marks for ${student.student.fullName || student.student.admissionNo}.`,
+            `Invalid marks for ${
+              student.student.fullName || student.student.admissionNo
+            }.`,
           );
           return;
         }
 
         if (marks < 0 || marks > maxMarks) {
           toast.error(
-            `Marks for ${student.student.fullName || student.student.admissionNo} must be between 0 and ${maxMarks}.`,
+            `Marks for ${
+              student.student.fullName || student.student.admissionNo
+            } must be between 0 and ${maxMarks}.`,
           );
           return;
         }
@@ -287,21 +336,59 @@ export function MarksEntryPage({ schoolSlug, examId, scheduleId }: Props) {
   /* ---------------------------------------------------------------------- */
 
   if (loading) {
-    return <div className="p-6">Loading marks...</div>;
+    return (
+      <div className="space-y-6">
+        <div className="h-8 w-56 animate-pulse rounded-lg bg-muted" />
+
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {[1, 2, 3, 4].map((item) => (
+            <Card key={item} className="rounded-2xl border-border/60">
+              <CardContent className="p-5">
+                <div className="h-4 w-24 animate-pulse rounded bg-muted" />
+                <div className="mt-3 h-7 w-14 animate-pulse rounded bg-muted" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        <Card className="rounded-2xl border-border/60">
+          <CardContent className="space-y-3 p-6">
+            {[1, 2, 3, 4, 5].map((item) => (
+              <div
+                key={item}
+                className="h-14 animate-pulse rounded-xl bg-muted"
+              />
+            ))}
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
+
+  /* ---------------------------------------------------------------------- */
+  /* NOT FOUND                                                              */
+  /* ---------------------------------------------------------------------- */
 
   if (!data) {
     return (
-      <div className="space-y-4 p-6">
-        <p>Marks data not found.</p>
+      <Card className="rounded-2xl border-border/60">
+        <CardContent className="flex flex-col items-center py-16 text-center">
+          <div className="flex size-14 items-center justify-center rounded-2xl bg-muted">
+            <ClipboardList className="size-6 text-muted-foreground" />
+          </div>
 
-        <Button
-          variant="outline"
-          onClick={() => router.push(`/${schoolSlug}/exams/${examId}`)}
-        >
-          Back to Exam
-        </Button>
-      </div>
+          <h2 className="mt-4 font-semibold">Marks data not found</h2>
+
+          <Button
+            variant="outline"
+            className="mt-5 rounded-xl"
+            onClick={() => router.push(`/${schoolSlug}/exams/${examId}`)}
+          >
+            <ArrowLeft className="mr-2 size-4" />
+            Back to Exam
+          </Button>
+        </CardContent>
+      </Card>
     );
   }
 
@@ -312,133 +399,398 @@ export function MarksEntryPage({ schoolSlug, examId, scheduleId }: Props) {
   /* ---------------------------------------------------------------------- */
 
   return (
-    <div className="space-y-6 p-6">
-      {/* Header */}
+    <div className="space-y-7">
+      {/* ------------------------------------------------------------------ */}
+      {/* Header                                                             */}
+      {/* ------------------------------------------------------------------ */}
 
-      <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
-        <div className="flex items-start gap-3">
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => router.push(`/${schoolSlug}/exams/${examId}`)}
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
+      <div className="space-y-4">
+        <button
+          type="button"
+          onClick={() => router.push(`/${schoolSlug}/exams/${examId}`)}
+          className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <ArrowLeft className="size-4" />
+          Back to Exam
+        </button>
 
+        <div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-end">
           <div>
-            <h1 className="text-2xl font-semibold">Enter Marks</h1>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="rounded-full border border-primary/15 bg-primary/[0.07] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-primary">
+                Marks Entry
+              </span>
 
-            <p className="text-sm text-muted-foreground">
-              {schedule.examName} • {schedule.academicYear}
+              <span className="rounded-full bg-muted px-2.5 py-1 text-[10px] font-semibold">
+                {schedule.academicYear}
+              </span>
+            </div>
+
+            <h1 className="mt-3 text-3xl font-bold tracking-tight">
+              {schedule.subject.name}
+            </h1>
+
+            <p className="mt-1.5 text-sm text-muted-foreground">
+              {schedule.examName}
+              {" • "}
+              {schedule.class.name}
+              {schedule.section ? ` • ${schedule.section.name}` : ""}
             </p>
           </div>
-        </div>
 
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            disabled={saving}
-            onClick={() => void loadData()}
-          >
-            <RefreshCw className="mr-2 h-4 w-4" />
-            Refresh
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              className="rounded-xl"
+              disabled={saving}
+              onClick={() => void loadData()}
+            >
+              <RefreshCw className="mr-2 size-4" />
+              Refresh
+            </Button>
 
-          <Button disabled={saving} onClick={() => void saveMarks()}>
-            <Save className="mr-2 h-4 w-4" />
-            {saving ? "Saving..." : "Save Marks"}
-          </Button>
+            <Button
+              className="rounded-xl"
+              disabled={saving}
+              onClick={() => void saveMarks()}
+            >
+              <Save className="mr-2 size-4" />
+              {saving ? "Saving..." : "Save Marks"}
+            </Button>
+          </div>
         </div>
       </div>
 
-      {/* Schedule Information */}
+      {/* ------------------------------------------------------------------ */}
+      {/* Schedule summary                                                   */}
+      {/* ------------------------------------------------------------------ */}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Schedule Information</CardTitle>
-        </CardHeader>
+      <Card className="overflow-hidden rounded-2xl border-border/60 shadow-sm">
+        <div className="h-1 bg-gradient-to-r from-primary via-primary/70 to-emerald-400" />
 
-        <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div>
-            <div className="text-sm text-muted-foreground">Class</div>
+        <CardContent className="p-6">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <SummaryItem
+              icon={<Users className="size-5" />}
+              label="Class"
+              value={
+                schedule.section
+                  ? `${schedule.class.name} - ${schedule.section.name}`
+                  : schedule.class.name
+              }
+            />
 
-            <div className="font-medium">
-              {schedule.class.name}
-              {schedule.section ? ` - ${schedule.section.name}` : ""}
-            </div>
-          </div>
+            <SummaryItem
+              icon={<CalendarDays className="size-5" />}
+              label="Exam Date"
+              value={formatDate(schedule.examDate)}
+            />
 
-          <div>
-            <div className="text-sm text-muted-foreground">Subject</div>
+            <SummaryItem
+              icon={<BarChart3 className="size-5" />}
+              label="Maximum Marks"
+              value={String(Number(schedule.maxMarks))}
+            />
 
-            <div className="font-medium">
-              {schedule.subject.name}
-
-              {schedule.subject.code && (
-                <span className="ml-2 text-sm text-muted-foreground">
-                  ({schedule.subject.code})
-                </span>
-              )}
-            </div>
-          </div>
-
-          <div>
-            <div className="text-sm text-muted-foreground">Exam Date</div>
-
-            <div className="font-medium">{formatDate(schedule.examDate)}</div>
-          </div>
-
-          <div>
-            <div className="text-sm text-muted-foreground">Maximum Marks</div>
-
-            <div className="font-medium">{Number(schedule.maxMarks)}</div>
+            <SummaryItem
+              icon={<CheckCircle2 className="size-5" />}
+              label="Pass Marks"
+              value={
+                schedule.passMarks !== null
+                  ? String(Number(schedule.passMarks))
+                  : "Not set"
+              }
+            />
           </div>
         </CardContent>
       </Card>
 
-      {/* Student Marks */}
+      {/* ------------------------------------------------------------------ */}
+      {/* Progress                                                           */}
+      {/* ------------------------------------------------------------------ */}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Student Marks ({students.length})</CardTitle>
-        </CardHeader>
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard
+          label="Total Students"
+          value={students.length}
+          icon={<Users className="size-5" />}
+        />
 
-        <CardContent>
-          {students.length === 0 ? (
-            <div className="py-10 text-center text-sm text-muted-foreground">
-              No students found for this class and section.
+        <StatCard
+          label="Marks Entered"
+          value={enteredCount}
+          icon={<CheckCircle2 className="size-5" />}
+          tone="success"
+        />
+
+        <StatCard
+          label="Pending"
+          value={pendingCount}
+          icon={<Clock3 className="size-5" />}
+          tone="warning"
+        />
+
+        <StatCard
+          label="Absent"
+          value={absentCount}
+          icon={<XCircle className="size-5" />}
+          tone="danger"
+        />
+      </div>
+
+      {/* ------------------------------------------------------------------ */}
+      {/* Progress bar                                                       */}
+      {/* ------------------------------------------------------------------ */}
+
+      <Card className="rounded-2xl border-border/60 shadow-sm">
+        <CardContent className="p-5">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-sm font-semibold">Entry Progress</p>
+
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                {enteredCount} of {students.length} students have marks entered.
+              </p>
             </div>
-          ) : (
-            <div className="overflow-x-auto">
+
+            <span className="text-sm font-bold text-primary">{progress}%</span>
+          </div>
+
+          <div className="mt-4 h-2 overflow-hidden rounded-full bg-muted">
+            <div
+              className="h-full rounded-full bg-primary transition-all duration-300"
+              style={{
+                width: `${progress}%`,
+              }}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* ------------------------------------------------------------------ */}
+      {/* Student marks                                                      */}
+      {/* ------------------------------------------------------------------ */}
+
+      <Card className="overflow-hidden rounded-2xl border-border/60 shadow-sm">
+        <div className="flex flex-col justify-between gap-4 border-b border-border/60 px-6 py-5 sm:flex-row sm:items-center">
+          <div>
+            <div className="flex items-center gap-2">
+              <ClipboardList className="size-5 text-primary" />
+
+              <h2 className="font-semibold">Student Marks</h2>
+
+              <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-semibold">
+                {students.length}
+              </span>
+            </div>
+
+            <p className="mt-1 text-xs text-muted-foreground">
+              Enter marks and attendance for each student.
+            </p>
+          </div>
+
+          <div className="text-xs text-muted-foreground">
+            Maximum:{" "}
+            <span className="font-semibold text-foreground">
+              {Number(schedule.maxMarks)}
+            </span>
+          </div>
+        </div>
+
+        {students.length === 0 ? (
+          <div className="flex flex-col items-center py-16 text-center">
+            <div className="flex size-14 items-center justify-center rounded-2xl bg-muted">
+              <Users className="size-6 text-muted-foreground" />
+            </div>
+
+            <h3 className="mt-4 font-semibold">No students found</h3>
+
+            <p className="mt-1 text-sm text-muted-foreground">
+              No students are currently enrolled in this class and section.
+            </p>
+          </div>
+        ) : (
+          <>
+            {/* Desktop */}
+            <div className="hidden overflow-x-auto lg:block">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b text-left">
-                    <th className="p-3">#</th>
+                  <tr className="border-b border-border/60 bg-muted/[0.3]">
+                    <th className="w-14 px-4 py-3 text-center text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                      #
+                    </th>
 
-                    <th className="p-3">Admission No.</th>
+                    <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                      Student
+                    </th>
 
-                    <th className="p-3">Student Name</th>
+                    <th className="w-44 px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                      Marks
+                    </th>
 
-                    <th className="min-w-[130px] p-3">Marks</th>
+                    <th className="w-36 px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                      Status
+                    </th>
 
-                    <th className="min-w-[130px] p-3">Status</th>
-
-                    <th className="min-w-[200px] p-3">Remarks</th>
+                    <th className="w-72 px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                      Remarks
+                    </th>
                   </tr>
                 </thead>
 
                 <tbody>
-                  {students.map((student, index) => (
-                    <tr key={student.studentEnrollmentId} className="border-b">
-                      <td className="p-3">{index + 1}</td>
+                  {students.map((student, index) => {
+                    const absent = student.mark.status === "ABSENT";
 
-                      <td className="p-3 font-medium">
-                        {student.student.admissionNo}
-                      </td>
+                    return (
+                      <tr
+                        key={student.studentEnrollmentId}
+                        className={`border-b border-border/50 transition-colors last:border-0 ${
+                          absent ? "bg-muted/[0.35]" : "hover:bg-muted/[0.2]"
+                        }`}
+                      >
+                        <td className="px-4 py-4 text-center text-xs font-medium text-muted-foreground">
+                          {index + 1}
+                        </td>
 
-                      <td className="p-3">{student.student.fullName || "—"}</td>
+                        <td className="px-4 py-4">
+                          <div className="font-semibold">
+                            {student.student.fullName || "Unnamed Student"}
+                          </div>
 
-                      <td className="p-3">
+                          <div className="mt-0.5 text-xs text-muted-foreground">
+                            {student.student.admissionNo}
+                          </div>
+                        </td>
+
+                        <td className="px-4 py-4">
+                          <Input
+                            type="number"
+                            min="0"
+                            max={Number(schedule.maxMarks)}
+                            step="0.01"
+                            value={
+                              student.mark.marksObtained === null
+                                ? ""
+                                : student.mark.marksObtained
+                            }
+                            disabled={saving || absent}
+                            onChange={(event) =>
+                              updateMarks(
+                                student.studentEnrollmentId,
+                                event.target.value,
+                              )
+                            }
+                            className="h-10 rounded-lg text-center text-base font-semibold"
+                            placeholder="—"
+                          />
+                        </td>
+
+                        <td className="px-4 py-4">
+                          <div className="flex gap-1 rounded-lg bg-muted p-1">
+                            <button
+                              type="button"
+                              disabled={saving}
+                              onClick={() =>
+                                updateStatus(
+                                  student.studentEnrollmentId,
+                                  "PRESENT",
+                                )
+                              }
+                              className={`flex-1 rounded-md px-3 py-1.5 text-xs font-semibold transition-colors ${
+                                !absent
+                                  ? "bg-background text-foreground shadow-sm"
+                                  : "text-muted-foreground hover:text-foreground"
+                              }`}
+                            >
+                              Present
+                            </button>
+
+                            <button
+                              type="button"
+                              disabled={saving}
+                              onClick={() =>
+                                updateStatus(
+                                  student.studentEnrollmentId,
+                                  "ABSENT",
+                                )
+                              }
+                              className={`flex-1 rounded-md px-3 py-1.5 text-xs font-semibold transition-colors ${
+                                absent
+                                  ? "bg-background text-foreground shadow-sm"
+                                  : "text-muted-foreground hover:text-foreground"
+                              }`}
+                            >
+                              Absent
+                            </button>
+                          </div>
+                        </td>
+
+                        <td className="px-4 py-4">
+                          <Input
+                            placeholder="Optional remarks"
+                            value={student.mark.remarks || ""}
+                            disabled={saving}
+                            onChange={(event) =>
+                              updateRemarks(
+                                student.studentEnrollmentId,
+                                event.target.value,
+                              )
+                            }
+                            className="h-10 rounded-lg"
+                          />
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile */}
+            <div className="divide-y divide-border/50 lg:hidden">
+              {students.map((student, index) => {
+                const absent = student.mark.status === "ABSENT";
+
+                return (
+                  <div
+                    key={student.studentEnrollmentId}
+                    className={`p-5 ${absent ? "bg-muted/[0.35]" : ""}`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex min-w-0 items-start gap-3">
+                        <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted text-xs font-semibold">
+                          {index + 1}
+                        </div>
+
+                        <div className="min-w-0">
+                          <p className="truncate font-semibold">
+                            {student.student.fullName || "Unnamed Student"}
+                          </p>
+
+                          <p className="mt-0.5 text-xs text-muted-foreground">
+                            {student.student.admissionNo}
+                          </p>
+                        </div>
+                      </div>
+
+                      {absent ? (
+                        <span className="rounded-full bg-muted px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                          Absent
+                        </span>
+                      ) : (
+                        <span className="rounded-full bg-primary/[0.08] px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-primary">
+                          Present
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="mt-4 grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="mb-1.5 block text-xs font-semibold text-muted-foreground">
+                          Marks / {Number(schedule.maxMarks)}
+                        </label>
+
                         <Input
                           type="number"
                           min="0"
@@ -449,55 +801,199 @@ export function MarksEntryPage({ schoolSlug, examId, scheduleId }: Props) {
                               ? ""
                               : student.mark.marksObtained
                           }
-                          disabled={saving || student.mark.status === "ABSENT"}
+                          disabled={saving || absent}
                           onChange={(event) =>
                             updateMarks(
                               student.studentEnrollmentId,
                               event.target.value,
                             )
                           }
+                          className="h-11 rounded-xl text-center text-base font-semibold"
+                          placeholder="Enter marks"
                         />
-                      </td>
+                      </div>
 
-                      <td className="p-3">
-                        <select
-                          value={student.mark.status}
-                          disabled={saving}
-                          onChange={(event) =>
-                            updateStatus(
-                              student.studentEnrollmentId,
-                              event.target.value as StudentExamStatus,
-                            )
-                          }
-                          className="h-9 w-full rounded-md border bg-background px-3 text-sm"
-                        >
-                          <option value="PRESENT">Present</option>
+                      <div>
+                        <label className="mb-1.5 block text-xs font-semibold text-muted-foreground">
+                          Status
+                        </label>
 
-                          <option value="ABSENT">Absent</option>
-                        </select>
-                      </td>
+                        <div className="flex h-11 gap-1 rounded-xl bg-muted p-1">
+                          <button
+                            type="button"
+                            disabled={saving}
+                            onClick={() =>
+                              updateStatus(
+                                student.studentEnrollmentId,
+                                "PRESENT",
+                              )
+                            }
+                            className={`flex-1 rounded-lg text-xs font-semibold ${
+                              !absent
+                                ? "bg-background shadow-sm"
+                                : "text-muted-foreground"
+                            }`}
+                          >
+                            Present
+                          </button>
 
-                      <td className="p-3">
-                        <Input
-                          placeholder="Remarks"
-                          value={student.mark.remarks || ""}
-                          disabled={saving}
-                          onChange={(event) =>
-                            updateRemarks(
-                              student.studentEnrollmentId,
-                              event.target.value,
-                            )
-                          }
-                        />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                          <button
+                            type="button"
+                            disabled={saving}
+                            onClick={() =>
+                              updateStatus(
+                                student.studentEnrollmentId,
+                                "ABSENT",
+                              )
+                            }
+                            className={`flex-1 rounded-lg text-xs font-semibold ${
+                              absent
+                                ? "bg-background shadow-sm"
+                                : "text-muted-foreground"
+                            }`}
+                          >
+                            Absent
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-3">
+                      <Input
+                        placeholder="Optional remarks"
+                        value={student.mark.remarks || ""}
+                        disabled={saving}
+                        onChange={(event) =>
+                          updateRemarks(
+                            student.studentEnrollmentId,
+                            event.target.value,
+                          )
+                        }
+                        className="h-11 rounded-xl"
+                      />
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-          )}
-        </CardContent>
+          </>
+        )}
       </Card>
+
+      {/* ------------------------------------------------------------------ */}
+      {/* Bottom save action                                                 */}
+      {/* ------------------------------------------------------------------ */}
+
+      {students.length > 0 && (
+        <div className="sticky bottom-4 z-20">
+          <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 rounded-2xl border border-border/70 bg-background/95 p-3 shadow-[0_12px_40px_rgb(15_23_42_/_0.14)] backdrop-blur-xl">
+            <div className="hidden min-w-0 sm:block">
+              <p className="text-sm font-semibold">
+                {enteredCount} of {students.length} marks entered
+              </p>
+
+              <p className="text-xs text-muted-foreground">
+                {absentCount} absent
+                {pendingCount > 0
+                  ? ` • ${pendingCount} pending`
+                  : " • All marks entered"}
+              </p>
+            </div>
+
+            <div className="ml-auto flex gap-2">
+              <Button
+                variant="outline"
+                className="rounded-xl"
+                disabled={saving}
+                onClick={() => void loadData()}
+              >
+                <RefreshCw className="size-4 sm:mr-2" />
+                <span className="hidden sm:inline">Refresh</span>
+              </Button>
+
+              <Button
+                className="rounded-xl"
+                disabled={saving}
+                onClick={() => void saveMarks()}
+              >
+                <Save className="size-4 sm:mr-2" />
+                {saving ? "Saving..." : "Save Marks"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* UI helpers                                                                 */
+/* -------------------------------------------------------------------------- */
+
+function SummaryItem({
+  icon,
+  label,
+  value,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="flex items-center gap-3 rounded-xl border border-border/60 bg-muted/[0.25] p-4">
+      <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/[0.07] text-primary">
+        {icon}
+      </div>
+
+      <div className="min-w-0">
+        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+          {label}
+        </p>
+
+        <p className="mt-1 truncate text-sm font-semibold">{value}</p>
+      </div>
+    </div>
+  );
+}
+
+function StatCard({
+  label,
+  value,
+  icon,
+  tone = "default",
+}: {
+  label: string;
+  value: number;
+  icon: React.ReactNode;
+  tone?: "default" | "success" | "warning" | "danger";
+}) {
+  const toneClass = {
+    default: "bg-primary/[0.07] text-primary",
+    success: "bg-emerald-500/[0.08] text-emerald-600",
+    warning: "bg-amber-500/[0.08] text-amber-600",
+    danger: "bg-red-500/[0.08] text-red-600",
+  }[tone];
+
+  return (
+    <Card className="rounded-2xl border-border/60 shadow-sm">
+      <CardContent className="p-5">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
+              {label}
+            </p>
+
+            <p className="mt-2 text-2xl font-bold tracking-tight">{value}</p>
+          </div>
+
+          <div
+            className={`flex size-10 items-center justify-center rounded-xl ${toneClass}`}
+          >
+            {icon}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

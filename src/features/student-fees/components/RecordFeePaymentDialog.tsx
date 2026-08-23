@@ -41,20 +41,33 @@ import { toast } from "sonner";
 
 type Installment = {
   id: string;
+
   name: string;
+
   payableAmount: number;
+
   paidAmount: number;
+
   outstanding: number;
+
   sequence?: number;
+
+  dueDate?: string;
+
+  feePlanId?: string;
+
+  feePlanName?: string;
+
+  feeCategoryName?: string;
 };
 
 type Props = {
   open: boolean;
+
   onOpenChange: (open: boolean) => void;
 
   schoolSlug?: string;
 
-  studentFeeId: string;
   studentEnrollmentId: string;
 
   installments: Installment[];
@@ -64,9 +77,13 @@ type Props = {
 
 type PaymentFormProps = {
   schoolSlug?: string;
+
   studentEnrollmentId: string;
+
   installments: Installment[];
+
   onOpenChange: (open: boolean) => void;
+
   onSuccess: () => void;
 };
 
@@ -85,6 +102,16 @@ function money(value: number) {
   })}`;
 }
 
+function formatDate(value?: string) {
+  if (!value) return null;
+
+  return new Intl.DateTimeFormat("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).format(new Date(value));
+}
+
 /* -------------------------------------------------------------------------- */
 /* Payment Form                                                               */
 /* -------------------------------------------------------------------------- */
@@ -96,11 +123,36 @@ function PaymentForm({
   onOpenChange,
   onSuccess,
 }: PaymentFormProps) {
+  /* ------------------------------------------------------------------------ */
+  /* Sort installments                                                        */
+  /* ------------------------------------------------------------------------ */
+
   const sortedInstallments = useMemo(() => {
-    return [...installments].sort(
-      (a, b) => (a.sequence ?? 0) - (b.sequence ?? 0),
-    );
+    return [...installments].sort((a, b) => {
+      /*
+       * First sort by fee plan.
+       *
+       * This keeps each fee plan grouped together.
+       */
+      const planA = a.feePlanName ?? "";
+      const planB = b.feePlanName ?? "";
+
+      const planCompare = planA.localeCompare(planB);
+
+      if (planCompare !== 0) {
+        return planCompare;
+      }
+
+      /*
+       * Then sort by installment sequence.
+       */
+      return (a.sequence ?? 0) - (b.sequence ?? 0);
+    });
   }, [installments]);
+
+  /* ------------------------------------------------------------------------ */
+  /* Initial selection                                                        */
+  /* ------------------------------------------------------------------------ */
 
   const firstInstallmentId = sortedInstallments[0]?.id;
 
@@ -108,16 +160,6 @@ function PaymentForm({
     string[]
   >(() => (firstInstallmentId ? [firstInstallmentId] : []));
 
-  /*
-   * Stores manually entered payment amounts.
-   *
-   * Example:
-   *
-   * {
-   *   "installment-id-1": 5000,
-   *   "installment-id-2": 2500
-   * }
-   */
   const [paymentAmounts, setPaymentAmounts] = useState<Record<string, number>>(
     {},
   );
@@ -133,23 +175,27 @@ function PaymentForm({
   const [loading, setLoading] = useState(false);
 
   /* ------------------------------------------------------------------------ */
-  /* Initialize first installment                                            */
+  /* Initialize first installment                                             */
   /* ------------------------------------------------------------------------ */
 
   useEffect(() => {
-    if (!firstInstallmentId) return;
+    if (!firstInstallmentId) {
+      setSelectedInstallmentIds([]);
+      setPaymentAmounts({});
+      return;
+    }
 
     const firstInstallment = sortedInstallments[0];
 
-    setSelectedInstallmentIds([firstInstallmentId]);
+    setSelectedInstallmentIds([firstInstallment.id]);
 
     setPaymentAmounts({
-      [firstInstallmentId]: firstInstallment.outstanding,
+      [firstInstallment.id]: firstInstallment.outstanding,
     });
   }, [firstInstallmentId, sortedInstallments]);
 
   /* ------------------------------------------------------------------------ */
-  /* Selected installments                                                   */
+  /* Selected installments                                                    */
   /* ------------------------------------------------------------------------ */
 
   const selectedInstallments = useMemo(() => {
@@ -159,7 +205,7 @@ function PaymentForm({
   }, [selectedInstallmentIds, sortedInstallments]);
 
   /* ------------------------------------------------------------------------ */
-  /* Total outstanding                                                       */
+  /* Total outstanding                                                        */
   /* ------------------------------------------------------------------------ */
 
   const selectedOutstanding = useMemo(() => {
@@ -170,7 +216,7 @@ function PaymentForm({
   }, [selectedInstallments]);
 
   /* ------------------------------------------------------------------------ */
-  /* Actual entered payment total                                            */
+  /* Total payment                                                            */
   /* ------------------------------------------------------------------------ */
 
   const totalPayment = useMemo(() => {
@@ -181,7 +227,19 @@ function PaymentForm({
   }, [paymentAmounts, selectedInstallments]);
 
   /* ------------------------------------------------------------------------ */
-  /* Toggle installment                                                      */
+  /* Fee plan groups                                                           */
+  /* ------------------------------------------------------------------------ */
+
+  const selectedPlanCount = useMemo(() => {
+    return new Set(
+      selectedInstallments.map(
+        (installment) => installment.feePlanId ?? installment.feePlanName,
+      ),
+    ).size;
+  }, [selectedInstallments]);
+
+  /* ------------------------------------------------------------------------ */
+  /* Toggle installment                                                       */
   /* ------------------------------------------------------------------------ */
 
   function toggleInstallment(installmentId: string) {
@@ -191,75 +249,100 @@ function PaymentForm({
 
     if (clickedIndex === -1) return;
 
+    const clickedInstallment = sortedInstallments[clickedIndex];
+
     const currentlySelected = selectedInstallmentIds.includes(installmentId);
 
+    /* ---------------------------------------------------------------------- */
+    /* Remove                                                                 */
+    /* ---------------------------------------------------------------------- */
+
+    if (currentlySelected) {
+      setSelectedInstallmentIds((current) =>
+        current.filter((id) => id !== installmentId),
+      );
+
+      setPaymentAmounts((current) => {
+        const next = { ...current };
+
+        delete next[installmentId];
+
+        return next;
+      });
+
+      return;
+    }
+
+    /* ---------------------------------------------------------------------- */
+    /* Add                                                                     */
+    /* ---------------------------------------------------------------------- */
+
     /*
-     * Removing an installment also removes all terms after it.
+     * IMPORTANT:
+     *
+     * We no longer force one global sequence across different fee plans.
      *
      * Example:
      *
-     * Q1 ✓
-     * Q2 ✓
-     * Q3 ✓
+     * Tuition:
+     *   Term 1
+     *   Term 2
      *
-     * Remove Q2:
+     * Transport:
+     *   Term 1
+     *   Term 2
      *
-     * Q1 ✓
-     * Q2 ✗
-     * Q3 ✗
+     * The cashier can select:
+     *
+     * Tuition Term 1
+     * Tuition Term 2
+     * Transport Term 1
+     * Transport Term 2
+     *
+     * independently.
+     *
+     * We only ensure the previous installment of the SAME fee plan
+     * has been selected first.
      */
-    if (currentlySelected) {
-      const remainingInstallments = sortedInstallments.slice(0, clickedIndex);
 
-      const remainingIds = remainingInstallments.map((item) => item.id);
-
-      const newAmounts: Record<string, number> = {};
-
-      remainingIds.forEach((id) => {
-        newAmounts[id] = paymentAmounts[id] ?? 0;
-      });
-
-      setSelectedInstallmentIds(remainingIds);
-
-      setPaymentAmounts(newAmounts);
-
-      return;
-    }
-
-    /*
-     * Previous terms must be selected first.
-     */
-    const previousIds = sortedInstallments
-      .slice(0, clickedIndex)
-      .map((item) => item.id);
-
-    const allPreviousSelected = previousIds.every((id) =>
-      selectedInstallmentIds.includes(id),
+    const samePlanInstallments = sortedInstallments.filter(
+      (item) =>
+        item.feePlanId === clickedInstallment.feePlanId ||
+        item.feePlanName === clickedInstallment.feePlanName,
     );
 
-    if (!allPreviousSelected) {
-      toast.error("Please select the previous term first.");
+    const samePlanIndex = samePlanInstallments.findIndex(
+      (item) => item.id === clickedInstallment.id,
+    );
 
-      return;
+    if (samePlanIndex > 0) {
+      const previousInstallment = samePlanInstallments[samePlanIndex - 1];
+
+      const previousSelected = selectedInstallmentIds.includes(
+        previousInstallment.id,
+      );
+
+      if (!previousSelected) {
+        toast.error(
+          `Please select ${previousInstallment.name} from ${
+            clickedInstallment.feePlanName ?? "this fee plan"
+          } first.`,
+        );
+
+        return;
+      }
     }
-
-    const installment = sortedInstallments[clickedIndex];
 
     setSelectedInstallmentIds((current) => [...current, installmentId]);
 
-    /*
-     * Default amount = full outstanding amount.
-     *
-     * User can manually edit it.
-     */
     setPaymentAmounts((current) => ({
       ...current,
-      [installmentId]: installment.outstanding,
+      [installmentId]: clickedInstallment.outstanding,
     }));
   }
 
   /* ------------------------------------------------------------------------ */
-  /* Update manual amount                                                    */
+  /* Update amount                                                            */
   /* ------------------------------------------------------------------------ */
 
   function updatePaymentAmount(installment: Installment, value: string) {
@@ -278,14 +361,8 @@ function PaymentForm({
       amount = 0;
     }
 
-    /*
-     * Prevent negative amounts.
-     */
     amount = Math.max(0, amount);
 
-    /*
-     * Prevent payment greater than outstanding.
-     */
     if (amount > installment.outstanding) {
       amount = installment.outstanding;
     }
@@ -297,7 +374,35 @@ function PaymentForm({
   }
 
   /* ------------------------------------------------------------------------ */
-  /* Submit                                                                  */
+  /* Select all                                                               */
+  /* ------------------------------------------------------------------------ */
+
+  function selectAllOutstanding() {
+    const ids = sortedInstallments.map((installment) => installment.id);
+
+    const amounts: Record<string, number> = {};
+
+    sortedInstallments.forEach((installment) => {
+      amounts[installment.id] = installment.outstanding;
+    });
+
+    setSelectedInstallmentIds(ids);
+
+    setPaymentAmounts(amounts);
+  }
+
+  /* ------------------------------------------------------------------------ */
+  /* Clear all                                                                */
+  /* ------------------------------------------------------------------------ */
+
+  function clearSelection() {
+    setSelectedInstallmentIds([]);
+
+    setPaymentAmounts({});
+  }
+
+  /* ------------------------------------------------------------------------ */
+  /* Submit                                                                   */
   /* ------------------------------------------------------------------------ */
 
   async function submit() {
@@ -307,28 +412,10 @@ function PaymentForm({
       return;
     }
 
-    /*
-     * Validate selected terms are consecutive.
-     */
-    const selectedIndexes = sortedInstallments
-      .map((item, index) =>
-        selectedInstallmentIds.includes(item.id) ? index : -1,
-      )
-      .filter((index) => index !== -1);
+    /* ---------------------------------------------------------------------- */
+    /* Validate amounts                                                       */
+    /* ---------------------------------------------------------------------- */
 
-    const isConsecutive = selectedIndexes.every(
-      (index, position) => index === position,
-    );
-
-    if (!isConsecutive) {
-      toast.error("Previous unpaid terms must be selected first.");
-
-      return;
-    }
-
-    /*
-     * Validate entered amounts.
-     */
     for (const installment of selectedInstallments) {
       const amount = paymentAmounts[installment.id] ?? 0;
 
@@ -358,14 +445,19 @@ function PaymentForm({
     try {
       setLoading(true);
 
-      /*
-       * Send MANUALLY entered amounts.
-       */
+      /* -------------------------------------------------------------------- */
+      /* Build allocations                                                     */
+      /* -------------------------------------------------------------------- */
+
       const allocations = selectedInstallments.map((installment) => ({
         studentFeeInstallmentId: installment.id,
 
         amount: paymentAmounts[installment.id] ?? 0,
       }));
+
+      /* -------------------------------------------------------------------- */
+      /* Submit                                                                */
+      /* -------------------------------------------------------------------- */
 
       const response = await fetch("/api/v1/fee-payments", {
         method: "POST",
@@ -418,34 +510,52 @@ function PaymentForm({
   }
 
   /* ------------------------------------------------------------------------ */
-  /* Render                                                                  */
+  /* Render                                                                   */
   /* ------------------------------------------------------------------------ */
 
   return (
     <div className="space-y-6">
-      {/* -------------------------------------------------------------- */}
-      {/* Installment Selection                                          */}
-      {/* -------------------------------------------------------------- */}
+      {/* ==================================================================== */}
+      {/* PAYMENT ALLOCATION                                                   */}
+      {/* ==================================================================== */}
 
       <section className="space-y-3">
-        <div>
-          <h3 className="text-sm font-semibold">Payment Allocation</h3>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h3 className="text-sm font-semibold">Payment Allocation</h3>
 
-          <p className="mt-1 text-xs leading-5 text-muted-foreground">
-            Select installments and enter the amount you want to collect for
-            each term.
-          </p>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">
+              Select installments from one or multiple fee plans and enter the
+              amount to collect.
+            </p>
+          </div>
+
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="rounded-lg"
+              onClick={selectAllOutstanding}
+            >
+              Select All
+            </Button>
+
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="rounded-lg"
+              onClick={clearSelection}
+            >
+              Clear
+            </Button>
+          </div>
         </div>
 
         <div className="overflow-hidden rounded-2xl border">
-          {sortedInstallments.map((installment, index) => {
+          {sortedInstallments.map((installment) => {
             const checked = selectedInstallmentIds.includes(installment.id);
-
-            const previousTermsSelected = sortedInstallments
-              .slice(0, index)
-              .every((item) => selectedInstallmentIds.includes(item.id));
-
-            const disabled = !checked && !previousTermsSelected;
 
             const enteredAmount =
               paymentAmounts[installment.id] ?? installment.outstanding;
@@ -453,45 +563,69 @@ function PaymentForm({
             return (
               <div
                 key={installment.id}
-                className={`border-b p-4 last:border-b-0 ${
-                  disabled ? "bg-muted/30 opacity-50" : "bg-card"
+                className={`border-b p-4 last:border-b-0 transition-colors ${
+                  checked ? "bg-primary/[0.03]" : "bg-card"
                 }`}
               >
                 <div className="flex items-start gap-3">
                   <Checkbox
                     className="mt-1"
                     checked={checked}
-                    disabled={disabled}
                     onCheckedChange={() => toggleInstallment(installment.id)}
                   />
 
                   <div className="min-w-0 flex-1">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                      <div>
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                      {/* LEFT */}
+
+                      <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
                           <h4 className="font-semibold">{installment.name}</h4>
+
+                          {installment.feePlanName && (
+                            <Badge
+                              variant="outline"
+                              className="border-primary/20 bg-primary/10 text-primary"
+                            >
+                              {installment.feePlanName}
+                            </Badge>
+                          )}
 
                           {checked && (
                             <Badge
                               variant="outline"
-                              className="border-primary/20 bg-primary/10 text-primary"
+                              className="border-emerald-200 bg-emerald-50 text-emerald-700"
                             >
                               Selected
                             </Badge>
                           )}
                         </div>
 
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          Outstanding balance
-                        </p>
+                        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                          {installment.feeCategoryName && (
+                            <span>{installment.feeCategoryName}</span>
+                          )}
 
-                        <p className="mt-0.5 font-semibold">
-                          {money(installment.outstanding)}
-                        </p>
+                          {installment.dueDate && (
+                            <span>Due {formatDate(installment.dueDate)}</span>
+                          )}
+                        </div>
+
+                        <div className="mt-2">
+                          <span className="text-xs text-muted-foreground">
+                            Outstanding
+                          </span>
+
+                          <p className="font-semibold">
+                            {money(installment.outstanding)}
+                          </p>
+                        </div>
                       </div>
 
+                      {/* RIGHT */}
+
                       {checked && (
-                        <div className="w-full sm:w-40">
+                        <div className="w-full shrink-0 lg:w-44">
                           <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
                             Pay Now
                           </label>
@@ -538,14 +672,14 @@ function PaymentForm({
         </div>
 
         <p className="text-xs text-muted-foreground">
-          Terms must be selected in sequence. You can collect a partial amount
-          from any selected term.
+          You can collect payment from multiple fee plans in one receipt.
+          Installments within the same fee plan must be selected in sequence.
         </p>
       </section>
 
-      {/* -------------------------------------------------------------- */}
-      {/* Payment Summary                                                */}
-      {/* -------------------------------------------------------------- */}
+      {/* ==================================================================== */}
+      {/* SUMMARY                                                              */}
+      {/* ==================================================================== */}
 
       <section className="overflow-hidden rounded-2xl border bg-muted/30">
         <div className="border-b bg-muted/20 px-4 py-3">
@@ -558,7 +692,7 @@ function PaymentForm({
               <h3 className="text-sm font-semibold">Payment Summary</h3>
 
               <p className="text-xs text-muted-foreground">
-                Review the collection amount.
+                Review the collection before recording it.
               </p>
             </div>
           </div>
@@ -566,9 +700,15 @@ function PaymentForm({
 
         <div className="space-y-3 p-4">
           <div className="flex items-center justify-between text-sm">
-            <span className="text-muted-foreground">Selected Terms</span>
+            <span className="text-muted-foreground">Selected Installments</span>
 
             <span className="font-semibold">{selectedInstallments.length}</span>
+          </div>
+
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-muted-foreground">Fee Plans</span>
+
+            <span className="font-semibold">{selectedPlanCount}</span>
           </div>
 
           <div className="flex items-center justify-between text-sm">
@@ -597,9 +737,9 @@ function PaymentForm({
         </div>
       </section>
 
-      {/* -------------------------------------------------------------- */}
-      {/* Payment Details                                                */}
-      {/* -------------------------------------------------------------- */}
+      {/* ==================================================================== */}
+      {/* PAYMENT DETAILS                                                      */}
+      {/* ==================================================================== */}
 
       <section className="space-y-4">
         <div className="flex items-center gap-2">
@@ -609,7 +749,7 @@ function PaymentForm({
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
-          {/* Payment date */}
+          {/* DATE */}
 
           <div className="space-y-2">
             <label className="text-sm font-medium">Payment Date</label>
@@ -626,7 +766,7 @@ function PaymentForm({
             </div>
           </div>
 
-          {/* Payment mode */}
+          {/* MODE */}
 
           <div className="space-y-2">
             <label className="text-sm font-medium">Payment Mode</label>
@@ -653,7 +793,7 @@ function PaymentForm({
           </div>
         </div>
 
-        {/* Reference */}
+        {/* REFERENCE */}
 
         {paymentMode !== "CASH" && (
           <div className="space-y-2">
@@ -676,7 +816,7 @@ function PaymentForm({
           </div>
         )}
 
-        {/* Remarks */}
+        {/* REMARKS */}
 
         <div className="space-y-2">
           <label className="text-sm font-medium">
@@ -695,9 +835,9 @@ function PaymentForm({
         </div>
       </section>
 
-      {/* -------------------------------------------------------------- */}
-      {/* Actions                                                        */}
-      {/* -------------------------------------------------------------- */}
+      {/* ==================================================================== */}
+      {/* ACTIONS                                                              */}
+      {/* ==================================================================== */}
 
       <div className="flex flex-col-reverse gap-3 border-t pt-5 sm:flex-row sm:justify-end">
         <Button
@@ -740,12 +880,11 @@ export function RecordFeePaymentDialog({
   open,
   onOpenChange,
   schoolSlug,
-  studentFeeId,
   studentEnrollmentId,
   installments,
   onSuccess,
 }: Props) {
-  const formKey = `${studentFeeId}-${studentEnrollmentId}-${open ? "open" : "closed"}-${installments
+  const formKey = `${studentEnrollmentId}-${open ? "open" : "closed"}-${installments
     .map((item) => item.id)
     .join("-")}`;
 
@@ -762,7 +901,8 @@ export function RecordFeePaymentDialog({
               <DialogTitle className="text-lg">Record Fee Payment</DialogTitle>
 
               <p className="mt-1 text-sm text-muted-foreground">
-                Select terms and enter the amount to collect.
+                Collect payment from one or multiple fee plans in a single
+                receipt.
               </p>
             </div>
           </div>

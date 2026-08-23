@@ -18,7 +18,7 @@ export function AppShell({ children }: Props) {
         <div className="flex min-w-0 flex-1 flex-col">
           <AppHeader />
 
-          <main className="flex-1">
+          <main className="min-w-0 flex-1">
             <div className="page-container">{children}</div>
           </main>
         </div>

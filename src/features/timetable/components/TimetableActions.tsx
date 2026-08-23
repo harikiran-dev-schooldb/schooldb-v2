@@ -11,13 +11,22 @@ type Props = {
   onSuccess?: () => void;
 };
 
-export function TimetableActions({ timetableId, onSuccess = () => {} }: Props) {
+export function TimetableActions({ timetableId, onSuccess }: Props) {
   const [open, setOpen] = useState(false);
+
+  function handleEdit() {
+    setOpen(true);
+  }
+
+  function handleSuccess() {
+    setOpen(false);
+    onSuccess?.();
+  }
 
   return (
     <>
       <CrudActions>
-        <CrudActionItem type="edit" onClick={() => setOpen(true)} />
+        <CrudActionItem type="edit" onClick={handleEdit} />
       </CrudActions>
 
       <TimetableDialog
@@ -25,7 +34,7 @@ export function TimetableActions({ timetableId, onSuccess = () => {} }: Props) {
         onOpenChange={setOpen}
         mode="edit"
         timetableId={timetableId}
-        onSuccess={onSuccess}
+        onSuccess={handleSuccess}
       />
     </>
   );
