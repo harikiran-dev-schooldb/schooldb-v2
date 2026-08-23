@@ -10,4 +10,3 @@ export * from "./schemas/homework.schema";
 export * from "./types";
 
 export * from "./components/HomeworkTable";
-export * from "./components/HomeworkToolbar";

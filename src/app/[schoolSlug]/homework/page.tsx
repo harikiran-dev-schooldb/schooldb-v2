@@ -3,12 +3,12 @@
 import { PageContainer, PageHeader } from "@/components/common/layout";
 import { AddHomeworkButton, HomeworkTable } from "@/features/homework";
 
-export default function PeriodPage() {
+export default function HomeworkPage() {
   return (
     <PageContainer>
       <PageHeader
-        title="Periods"
-        description="Manage school periods."
+        title="Homework"
+        description="Create, manage, and track homework assigned to students."
         actions={<AddHomeworkButton />}
       />
 

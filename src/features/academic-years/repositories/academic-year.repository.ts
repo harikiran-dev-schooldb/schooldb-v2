@@ -128,4 +128,16 @@ export const academicYearRepository = {
       },
     });
   },
+
+  getCurrent(schoolId: string) {
+  return prisma.academicYear.findFirst({
+    where: {
+      schoolId,
+      active: true,
+    },
+    orderBy: {
+      startDate: "desc",
+    },
+  });
+},
 };

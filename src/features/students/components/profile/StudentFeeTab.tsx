@@ -32,11 +32,7 @@ export function StudentFeeTab({ studentId }: Props) {
           },
         );
 
-        console.log("PROFILE STUDENT ID:", studentId);
-
         const result = await response.json();
-
-        console.log("STUDENT FEES RESPONSE:", result);
 
         if (!response.ok || !result.success) {
           setStudentFees([]);
@@ -57,7 +53,7 @@ export function StudentFeeTab({ studentId }: Props) {
 
   if (loading) {
     return (
-      <div className="rounded-lg border p-6 text-sm text-muted-foreground">
+      <div className="rounded-xl border p-6 text-sm text-muted-foreground">
         Loading fee details...
       </div>
     );
@@ -65,23 +61,11 @@ export function StudentFeeTab({ studentId }: Props) {
 
   if (studentFees.length === 0) {
     return (
-      <div className="rounded-lg border p-6 text-sm text-muted-foreground">
+      <div className="rounded-xl border p-6 text-sm text-muted-foreground">
         No fee plan assigned to this student.
       </div>
     );
   }
 
-  return (
-    <div className="space-y-6">
-      {studentFees.map((studentFee) => (
-        <div key={studentFee.id}>
-          <div className="mb-4">
-            <h3 className="font-semibold">{studentFee.feePlan.name}</h3>
-          </div>
-
-          <StudentFeeLedger studentFeeId={studentFee.id} />
-        </div>
-      ))}
-    </div>
-  );
+  return <StudentFeeLedger studentFeeIds={studentFees.map((fee) => fee.id)} />;
 }

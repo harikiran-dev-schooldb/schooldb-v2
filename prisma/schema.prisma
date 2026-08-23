@@ -69,7 +69,7 @@ model School {
   id        String   @id @default(cuid())
   name      String
   slug      String   @unique
-  logo String?
+  logo      String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -94,6 +94,7 @@ model School {
   exams              Exam[]
   examSchedules      ExamSchedule[]
   studentExamMarks   StudentExamMark[]
+  activities         StudentActivity[]
 }
 
 model User {
@@ -255,6 +256,7 @@ model Student {
 
   enrollments StudentEnrollment[]
   attendance  Attendance[]
+  activities  StudentActivity[]
 
   // ==========================
   // Audit
@@ -363,6 +365,7 @@ model StudentEnrollment {
   studentFees StudentFee[]
   feePayments FeePayment[]
   examMarks   StudentExamMark[]
+  activities  StudentActivity[]
 
   @@unique([studentId, academicYearId])
   @@unique([academicYearId, classId, sectionId, rollNo])
@@ -610,8 +613,7 @@ model Attendance {
 
   @@unique([sessionId, studentId])
   @@index([studentId])
-    @@index([schoolId, studentId])
-
+  @@index([schoolId, studentId])
 }
 
 model Homework {
@@ -1051,6 +1053,45 @@ model StudentExamMark {
   @@index([schoolId])
   @@index([studentEnrollmentId])
   @@index([examScheduleId])
+}
+
+enum StudentActivityType {
+  STUDENT_CREATED
+  PROFILE_UPDATED
+  ENROLLMENT_CREATED
+  ENROLLMENT_CHANGED
+  ATTENDANCE_MARKED
+  FEE_PAYMENT
+  FEE_CONCESSION
+  STATUS_CHANGED
+  PARENT_UPDATED
+  DOCUMENT_UPLOADED
+  DOCUMENT_DELETED
+}
+
+model StudentActivity {
+  id String @id @default(cuid())
+
+  schoolId String
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  studentId String
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  enrollmentId String?
+  enrollment   StudentEnrollment? @relation(fields: [enrollmentId], references: [id], onDelete: SetNull)
+
+  type        StudentActivityType
+  title       String
+  description String?
+  metadata    Json?
+
+  createdAt DateTime @default(now())
+
+  @@index([schoolId])
+  @@index([studentId])
+  @@index([enrollmentId])
+  @@index([createdAt])
 }
 
 enum StudentFeeInstallmentStatus {

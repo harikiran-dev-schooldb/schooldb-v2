@@ -129,52 +129,60 @@ export async function GET(
     /* ------------------------------------------------------------------ */
 
     const marks = await prisma.studentExamMark.findMany({
-      where: {
-        schoolId: tenant.schoolId,
+  where: {
+    schoolId: tenant.schoolId,
 
-        examSchedule: {
-          examId,
+    examSchedule: {
+      examId,
+    },
+
+    studentEnrollment: {
+      studentId,
+    },
+  },
+
+  include: {
+    studentEnrollment: {
+      select: {
+        id: true,
+
+        class: {
+          select: {
+            id: true,
+            name: true,
+          },
         },
 
-        studentEnrollment: {
-          studentId,
+        section: {
+          select: {
+            id: true,
+            name: true,
+          },
         },
+
+        academicYearId: true,
       },
+    },
 
+    examSchedule: {
       include: {
-        examSchedule: {
-          include: {
-            subject: {
-              select: {
-                id: true,
-                name: true,
-                code: true,
-              },
-            },
-
-            class: {
-              select: {
-                id: true,
-                name: true,
-              },
-            },
-
-            section: {
-              select: {
-                id: true,
-                name: true,
-              },
-            },
+        subject: {
+          select: {
+            id: true,
+            name: true,
+            code: true,
           },
         },
       },
+    },
+  },
 
-      orderBy: {
-        examSchedule: {
-          examDate: "asc",
-        },
-      },
-    });
+  orderBy: {
+    examSchedule: {
+      examDate: "asc",
+    },
+  },
+});
 
     /* ------------------------------------------------------------------ */
     /* Subject Results                                                    */
@@ -207,25 +215,25 @@ export async function GET(
       }
 
       return {
-        scheduleId: mark.examScheduleId,
+  scheduleId: mark.examScheduleId,
 
-        subject: mark.examSchedule.subject,
+  subject: mark.examSchedule.subject,
 
-        class: mark.examSchedule.class,
+  class: mark.studentEnrollment.class,
 
-        section: mark.examSchedule.section,
+  section: mark.studentEnrollment.section,
 
-        examDate: mark.examSchedule.examDate,
+  examDate: mark.examSchedule.examDate,
 
-        maxMarks,
-        passMarks,
-        marksObtained,
+  maxMarks,
+  passMarks,
+  marksObtained,
 
-        status: mark.status,
-        resultStatus,
+  status: mark.status,
+  resultStatus,
 
-        remarks: mark.remarks,
-      };
+  remarks: mark.remarks,
+};
     });
 
     /* ------------------------------------------------------------------ */

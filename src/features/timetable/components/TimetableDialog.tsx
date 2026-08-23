@@ -6,11 +6,8 @@ import { TimetableForm } from "./TimetableForm";
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-
   mode: "create" | "edit";
-
   timetableId?: string;
-
   onSuccess: () => void;
 };
 
@@ -21,6 +18,14 @@ export function TimetableDialog({
   timetableId,
   onSuccess,
 }: Props) {
+  function handleSuccess() {
+    // Close first
+    onOpenChange(false);
+
+    // Then refresh parent data
+    onSuccess();
+  }
+
   return (
     <CrudDialog
       open={open}
@@ -35,10 +40,7 @@ export function TimetableDialog({
       <TimetableForm
         mode={mode}
         timetableId={timetableId}
-        onSuccess={() => {
-          onSuccess();
-          onOpenChange(false);
-        }}
+        onSuccess={handleSuccess}
       />
     </CrudDialog>
   );

@@ -1,21 +1,14 @@
 "use client";
 
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-
+import { CrudDialog } from "@/components/common/crud";
 import { TeacherAllocationForm } from "./TeacherAllocationForm";
 
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-
   mode: "create" | "edit";
-
   allocationId?: string;
+  onSuccess?: () => void;
 };
 
 export function TeacherAllocationDialog({
@@ -23,22 +16,27 @@ export function TeacherAllocationDialog({
   onOpenChange,
   mode,
   allocationId,
+  onSuccess,
 }: Props) {
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>
-            {mode === "create" ? "Allocate Teacher" : "Edit Allocation"}
-          </DialogTitle>
-        </DialogHeader>
-
-        <TeacherAllocationForm
-          mode={mode}
-          allocationId={allocationId}
-          onSuccess={() => onOpenChange(false)}
-        />
-      </DialogContent>
-    </Dialog>
+    <CrudDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      title={mode === "create" ? "Allocate Teacher" : "Edit Teacher Allocation"}
+      description={
+        mode === "create"
+          ? "Assign a teacher to a subject, class and section for an academic year."
+          : "Update the teacher allocation details."
+      }
+    >
+      <TeacherAllocationForm
+        mode={mode}
+        allocationId={allocationId}
+        onSuccess={() => {
+          onSuccess?.();
+          onOpenChange(false);
+        }}
+      />
+    </CrudDialog>
   );
 }

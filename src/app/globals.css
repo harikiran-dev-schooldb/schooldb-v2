@@ -257,64 +257,233 @@
   }
 }
 
+/* ============================================================
+   STUDENT REPORT CARD - PRINT ONLY
+   ============================================================ */
+
 @media print {
   @page {
-    size: A4;
-    margin: 12mm;
+    size: A4 portrait;
+    margin: 5mm;
   }
+
+  /* ----------------------------------------------------------
+     PAGE
+     ---------------------------------------------------------- */
 
   html,
   body {
-    width: 210mm;
-    background: white !important;
+    width: 100% !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
   }
 
   body {
-    print-color-adjust: exact;
-    -webkit-print-color-adjust: exact;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
-  aside,
-  header,
-  nav,
-  [data-sidebar="sidebar"] {
-    display: none !important;
+  /* ----------------------------------------------------------
+     HIDE THE ENTIRE APPLICATION SHELL
+     ---------------------------------------------------------- */
+
+  body * {
+    visibility: hidden !important;
   }
 
-  main {
+  /* Only report card becomes visible */
+  .report-card-print,
+  .report-card-print * {
+    visibility: visible !important;
+  }
+
+  /* Remove the report card from the normal app layout */
+  .report-card-print {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+
     width: 100% !important;
     max-width: none !important;
+
     margin: 0 !important;
     padding: 0 !important;
-  }
 
-  .print-result {
-    width: 100% !important;
-    max-width: none !important;
-    margin: 0 !important;
-    padding: 0 !important;
-  }
+    background: #ffffff !important;
 
-  .print-hidden,
-  .print-hidden * {
-    display: none !important;
-  }
-
-  .report-card-page {
-    width: 100%;
-    min-height: auto;
-    margin: 0 !important;
     box-shadow: none !important;
+    border: 0 !important;
+    outline: none !important;
+
+    /*
+     * Compact enough for one A4 page.
+     */
+    zoom: 0.78 !important;
   }
 
-  .report-card-final {
-    break-before: page;
-    page-break-before: always;
+  /* ----------------------------------------------------------
+     HEADER
+     ---------------------------------------------------------- */
+
+  .report-card-print header {
+    padding: 8px 12px !important;
+    margin: 0 !important;
+
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
   }
 
-  table,
-  tr {
-    break-inside: avoid;
-    page-break-inside: avoid;
+  .report-card-print header img {
+    width: 55px !important;
+    height: 55px !important;
+  }
+
+  .report-card-print header h1 {
+    font-size: 18px !important;
+    line-height: 1.1 !important;
+  }
+
+  .report-card-print header h2 {
+    font-size: 13px !important;
+  }
+
+  /* ----------------------------------------------------------
+     ALL SECTIONS
+     ---------------------------------------------------------- */
+
+  .report-card-print section {
+    margin: 0 !important;
+    padding: 5px 12px !important;
+
+    break-inside: auto !important;
+    page-break-inside: auto !important;
+  }
+
+  /* Section heading */
+  .report-card-print section > div:first-child {
+    margin-bottom: 3px !important;
+    padding-bottom: 2px !important;
+  }
+
+  .report-card-print section h2 {
+    font-size: 10px !important;
+    line-height: 1.1 !important;
+  }
+
+  /* ----------------------------------------------------------
+     INFORMATION CELLS
+     ---------------------------------------------------------- */
+
+  .report-card-print .p-4 {
+    padding: 6px !important;
+  }
+
+  .report-card-print .p-4 .mt-1 {
+    margin-top: 1px !important;
+  }
+
+  /* ----------------------------------------------------------
+     RESULT SUMMARY
+     ---------------------------------------------------------- */
+
+  .report-card-print .text-lg {
+    font-size: 11px !important;
+  }
+
+  .report-card-print .text-xl {
+    font-size: 13px !important;
+  }
+
+  /* ----------------------------------------------------------
+     TABLE
+     ---------------------------------------------------------- */
+
+  .report-card-print table {
+    width: 100% !important;
+    font-size: 8px !important;
+    table-layout: fixed !important;
+  }
+
+  .report-card-print table th,
+  .report-card-print table td {
+    padding: 3px 4px !important;
+    line-height: 1.15 !important;
+  }
+
+  .report-card-print table th {
+    font-size: 7px !important;
+  }
+
+  .report-card-print table .text-base {
+    font-size: 9px !important;
+  }
+
+  .report-card-print table tr {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  /* ----------------------------------------------------------
+     FINAL RESULT
+     ---------------------------------------------------------- */
+
+  .report-card-print .final-result {
+    padding: 6px 10px !important;
+    margin: 0 !important;
+
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  .report-card-print .final-result .result-text {
+    font-size: 24px !important;
+    margin-top: 2px !important;
+  }
+
+  /* ----------------------------------------------------------
+     SIGNATURES
+     ---------------------------------------------------------- */
+
+  .report-card-print .signatures {
+    padding: 6px 12px !important;
+    margin: 0 !important;
+
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  .report-card-print .signatures > div {
+    padding-top: 3px !important;
+  }
+
+  .report-card-print .signatures .mt-2 {
+    margin-top: 2px !important;
+  }
+
+  /* ----------------------------------------------------------
+     FOOTER
+     ---------------------------------------------------------- */
+
+  .report-card-print footer {
+    padding: 4px 12px !important;
+    margin: 0 !important;
+
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  .report-card-print footer p {
+    margin-top: 2px !important;
+    line-height: 1.1 !important;
+  }
+
+  /* ----------------------------------------------------------
+     DO NOT PRINT UI ELEMENTS
+     ---------------------------------------------------------- */
+
+  .print\:hidden {
+    display: none !important;
   }
 }

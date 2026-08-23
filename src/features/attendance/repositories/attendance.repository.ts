@@ -831,4 +831,142 @@ lockSession(
     },
   });
 },
+
+dashboardData(
+  schoolId: string,
+  academicYearId: string,
+) {
+  return Promise.all([
+    prisma.studentEnrollment.findMany({
+      where: {
+        schoolId,
+        academicYearId,
+        active: true,
+      },
+
+      select: {
+        studentId: true,
+      },
+    }),
+
+    prisma.attendanceSession.findMany({
+      where: {
+        schoolId,
+        academicYearId,
+      },
+
+      orderBy: {
+        attendanceDate: "desc",
+      },
+
+      take: 8,
+
+      select: {
+        id: true,
+        attendanceDate: true,
+        sessionType: true,
+
+        class: {
+          select: {
+            name: true,
+          },
+        },
+
+        section: {
+          select: {
+            name: true,
+          },
+        },
+
+        records: {
+          select: {
+            status: true,
+          },
+        },
+      },
+    }),
+
+    prisma.attendance.findMany({
+      where: {
+        schoolId,
+
+        session: {
+          academicYearId,
+        },
+      },
+
+      select: {
+        studentId: true,
+        status: true,
+
+        session: {
+          select: {
+            attendanceDate: true,
+            sessionType: true,
+            periodId: true,
+          },
+        },
+      },
+    }),
+  ]);
+},
+
+todayAttendanceSessions(
+  schoolId: string,
+  academicYearId: string,
+  from: Date,
+  to: Date,
+) {
+  return prisma.attendanceSession.findMany({
+    where: {
+      schoolId,
+      academicYearId,
+
+      attendanceDate: {
+        gte: from,
+        lt: to,
+      },
+    },
+
+    select: {
+      id: true,
+    },
+  });
+},
+
+attendanceBySessions(
+  schoolId: string,
+  sessionIds: string[],
+) {
+  if (sessionIds.length === 0) {
+    return Promise.resolve([]);
+  }
+
+  return prisma.attendance.findMany({
+    where: {
+      schoolId,
+
+      sessionId: {
+        in: sessionIds,
+      },
+    },
+
+    select: {
+      studentId: true,
+      status: true,
+    },
+  });
+},
+
+getCurrent(schoolId: string) {
+  return prisma.academicYear.findFirst({
+    where: {
+      schoolId,
+      active: true,
+    },
+    orderBy: {
+      startDate: "desc",
+    },
+  });
+},
 };

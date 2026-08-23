@@ -1,28 +1,51 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { ArrowLeft, RefreshCw, Eye } from "lucide-react";
+import {
+  ArrowLeft,
+  RefreshCw,
+  Eye,
+  Users,
+  Trophy,
+  CircleCheck,
+  CircleX,
+  TrendingUp,
+  TrendingDown,
+  ClipboardList,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
 import { ClassSelect, SectionSelect } from "@/components/common/select";
+
+/* -------------------------------------------------------------------------- */
+/* TYPES                                                                      */
+/* -------------------------------------------------------------------------- */
 
 type Result = {
   studentId: string;
+
   admissionNo: string;
+
   fullName: string;
 
   totalObtained: number;
+
   totalMaxMarks: number;
 
   subjects: number;
+
   passedSubjects: number;
+
   failedSubjects: number;
+
   absentSubjects: number;
 
   percentage: number;
+
   status: "PASS" | "FAIL";
 
   rank: number;
@@ -31,6 +54,7 @@ type Result = {
 type ExamResultData = {
   exam: {
     id: string;
+
     name: string;
   };
 
@@ -39,8 +63,13 @@ type ExamResultData = {
 
 type Props = {
   schoolSlug: string;
+
   examId: string;
 };
+
+/* -------------------------------------------------------------------------- */
+/* PAGE                                                                       */
+/* -------------------------------------------------------------------------- */
 
 export function ExamResultsPage({ schoolSlug, examId }: Props) {
   const router = useRouter();
@@ -51,28 +80,36 @@ export function ExamResultsPage({ schoolSlug, examId }: Props) {
 
   const [data, setData] = useState<ExamResultData | null>(null);
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+
+  /* ---------------------------------------------------------------------- */
+  /* LOAD RESULTS                                                            */
+  /* ---------------------------------------------------------------------- */
 
   const loadResults = useCallback(async () => {
+    /*
+     * Do not load anything until a class is selected.
+     */
+    if (!selectedClassId) {
+      setData(null);
+      setLoading(false);
+
+      return;
+    }
+
     try {
       setLoading(true);
 
       const params = new URLSearchParams();
 
-      if (selectedClassId) {
-        params.set("classId", selectedClassId);
-      }
+      params.set("classId", selectedClassId);
 
       if (sectionId) {
         params.set("sectionId", sectionId);
       }
 
-      const queryString = params.toString();
-
       const response = await fetch(
-        `/api/v1/exams/${examId}/results${
-          queryString ? `?${queryString}` : ""
-        }`,
+        `/api/v1/exams/${examId}/results?${params.toString()}`,
         {
           cache: "no-store",
         },
@@ -83,6 +120,8 @@ export function ExamResultsPage({ schoolSlug, examId }: Props) {
       if (!response.ok || !result.success) {
         toast.error(result.message || "Failed to load exam results.");
 
+        setData(null);
+
         return;
       }
 
@@ -91,10 +130,16 @@ export function ExamResultsPage({ schoolSlug, examId }: Props) {
       console.error("Failed to load exam results:", error);
 
       toast.error("Failed to load exam results.");
+
+      setData(null);
     } finally {
       setLoading(false);
     }
   }, [examId, selectedClassId, sectionId]);
+
+  /* ---------------------------------------------------------------------- */
+  /* LOAD WHEN FILTER CHANGES                                               */
+  /* ---------------------------------------------------------------------- */
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -106,21 +151,19 @@ export function ExamResultsPage({ schoolSlug, examId }: Props) {
     };
   }, [loadResults]);
 
-  if (loading) {
-    return <div className="p-6">Loading exam results...</div>;
-  }
+  /* ---------------------------------------------------------------------- */
+  /* CALCULATIONS                                                            */
+  /* ---------------------------------------------------------------------- */
 
-  if (!data) {
-    return <div className="p-6">Results not found.</div>;
-  }
+  const results = data?.results ?? [];
 
-  const totalStudents = data.results.length;
+  const totalStudents = results.length;
 
-  const passCount = data.results.filter(
+  const passCount = results.filter(
     (student) => student.status === "PASS",
   ).length;
 
-  const failCount = data.results.filter(
+  const failCount = results.filter(
     (student) => student.status === "FAIL",
   ).length;
 
@@ -129,7 +172,7 @@ export function ExamResultsPage({ schoolSlug, examId }: Props) {
       ? Number(((passCount / totalStudents) * 100).toFixed(2))
       : 0;
 
-  const percentages = data.results.map((student) => student.percentage);
+  const percentages = results.map((student) => student.percentage);
 
   const highestPercentage =
     percentages.length > 0 ? Math.max(...percentages) : 0;
@@ -137,240 +180,464 @@ export function ExamResultsPage({ schoolSlug, examId }: Props) {
   const lowestPercentage =
     percentages.length > 0 ? Math.min(...percentages) : 0;
 
+  /* ---------------------------------------------------------------------- */
+  /* CLEAR FILTERS                                                           */
+  /* ---------------------------------------------------------------------- */
+
+  function clearFilters() {
+    setSelectedClassId("");
+
+    setSectionId("");
+
+    setData(null);
+  }
+
+  /* ---------------------------------------------------------------------- */
+  /* UI                                                                       */
+  /* ---------------------------------------------------------------------- */
+
   return (
     <div className="space-y-6 p-6">
-      {/* Header */}
+      {/* ------------------------------------------------------------------ */}
+      {/* HEADER                                                             */}
+      {/* ------------------------------------------------------------------ */}
 
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex items-start gap-3">
           <Button
             variant="outline"
             size="icon"
+            className="shrink-0"
             onClick={() => router.push(`/${schoolSlug}/exams/${examId}`)}
           >
-            <ArrowLeft className="h-4 w-4" />
+            <ArrowLeft className="size-4" />
           </Button>
 
           <div>
-            <h1 className="text-2xl font-semibold">Exam Results</h1>
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-2xl font-bold tracking-tight">
+                Exam Results
+              </h1>
 
-            <p className="text-sm text-muted-foreground">{data.exam.name}</p>
+              {selectedClassId && (
+                <span className="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">
+                  {totalStudents} Students
+                </span>
+              )}
+            </div>
+
+            <p className="mt-1 text-sm text-muted-foreground">
+              {data?.exam.name ?? "Select a class to view results"}
+            </p>
           </div>
         </div>
 
-        <Button variant="outline" onClick={() => void loadResults()}>
-          <RefreshCw className="mr-2 h-4 w-4" />
+        <Button
+          variant="outline"
+          disabled={!selectedClassId || loading}
+          onClick={() => void loadResults()}
+        >
+          <RefreshCw
+            className={`mr-2 size-4 ${loading ? "animate-spin" : ""}`}
+          />
           Refresh
         </Button>
       </div>
 
-      {/* Filters */}
+      {/* ------------------------------------------------------------------ */}
+      {/* FILTERS                                                            */}
+      {/* ------------------------------------------------------------------ */}
 
-      <Card>
-        <CardContent className="p-5">
-          <div className="flex flex-col gap-4 sm:flex-row">
-            <div className="w-full sm:w-64">
+      <Card className="border-border/70 shadow-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Select Class & Section</CardTitle>
+        </CardHeader>
+
+        <CardContent className="p-4 pt-0">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-end">
+            {/* CLASS */}
+
+            <div className="w-full lg:max-w-xs">
               <ClassSelect
                 value={selectedClassId}
                 onChange={(value) => {
                   setSelectedClassId(value);
+
+                  /*
+                   * Section belongs to
+                   * selected class.
+                   */
                   setSectionId("");
+
+                  /*
+                   * Clear previous results
+                   * while new class loads.
+                   */
+                  setData(null);
                 }}
               />
             </div>
 
-            <div className="w-full sm:w-64">
+            {/* SECTION */}
+
+            <div className="w-full lg:max-w-xs">
               <SectionSelect
                 value={sectionId}
-                onChange={setSectionId}
+                onChange={(value) => {
+                  setSectionId(value);
+                }}
                 classId={selectedClassId}
                 disabled={!selectedClassId}
               />
             </div>
+
+            {/* CLEAR */}
+
+            {selectedClassId && (
+              <Button variant="ghost" onClick={clearFilters}>
+                Clear filters
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>
 
-      {/* Result Statistics */}
+      {/* ------------------------------------------------------------------ */}
+      {/* NO CLASS SELECTED                                                  */}
+      {/* ------------------------------------------------------------------ */}
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {/* Total Students */}
+      {!selectedClassId && (
+        <Card className="border-border/70 shadow-sm">
+          <CardContent className="flex min-h-[320px] flex-col items-center justify-center px-6 text-center">
+            <div className="flex size-14 items-center justify-center rounded-2xl bg-muted">
+              <ClipboardList className="size-7 text-muted-foreground" />
+            </div>
 
-        <Card>
-          <CardContent className="p-5">
-            <div className="text-sm text-muted-foreground">Total Students</div>
+            <h3 className="mt-4 text-base font-semibold">Select a class</h3>
 
-            <div className="mt-2 text-2xl font-semibold">{totalStudents}</div>
+            <p className="mt-1 max-w-sm text-sm text-muted-foreground">
+              Select a class to view the examination results. You can optionally
+              select a section to view only that section's students.
+            </p>
           </CardContent>
         </Card>
+      )}
 
-        {/* Passed */}
+      {/* ------------------------------------------------------------------ */}
+      {/* LOADING                                                            */}
+      {/* ------------------------------------------------------------------ */}
 
-        <Card>
-          <CardContent className="p-5">
-            <div className="text-sm text-muted-foreground">Passed</div>
+      {selectedClassId && loading && (
+        <Card className="border-border/70 shadow-sm">
+          <CardContent className="flex min-h-[320px] items-center justify-center">
+            <div className="text-center">
+              <RefreshCw className="mx-auto size-7 animate-spin text-muted-foreground" />
 
-            <div className="mt-2 text-2xl font-semibold">{passCount}</div>
-          </CardContent>
-        </Card>
-
-        {/* Failed */}
-
-        <Card>
-          <CardContent className="p-5">
-            <div className="text-sm text-muted-foreground">Failed</div>
-
-            <div className="mt-2 text-2xl font-semibold">{failCount}</div>
-          </CardContent>
-        </Card>
-
-        {/* Pass Percentage */}
-
-        <Card>
-          <CardContent className="p-5">
-            <div className="text-sm text-muted-foreground">Pass Percentage</div>
-
-            <div className="mt-2 text-2xl font-semibold">
-              {passPercentage.toFixed(2)}%
+              <p className="mt-3 text-sm text-muted-foreground">
+                Loading exam results...
+              </p>
             </div>
           </CardContent>
         </Card>
+      )}
 
-        {/* Highest Percentage */}
+      {/* ------------------------------------------------------------------ */}
+      {/* RESULTS                                                            */}
+      {/* ------------------------------------------------------------------ */}
 
-        <Card>
-          <CardContent className="p-5">
-            <div className="text-sm text-muted-foreground">
-              Highest Percentage
-            </div>
+      {selectedClassId && !loading && data && (
+        <>
+          {/* ------------------------------------------------------------ */}
+          {/* STATISTICS                                                   */}
+          {/* ------------------------------------------------------------ */}
 
-            <div className="mt-2 text-2xl font-semibold">
-              {highestPercentage.toFixed(2)}%
-            </div>
-          </CardContent>
-        </Card>
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+            <StatCard
+              icon={<Users className="size-5" />}
+              label="Total Students"
+              value={totalStudents}
+            />
 
-        {/* Lowest Percentage */}
+            <StatCard
+              icon={<CircleCheck className="size-5" />}
+              label="Passed"
+              value={passCount}
+              description={`${passPercentage.toFixed(2)}% pass rate`}
+            />
 
-        <Card>
-          <CardContent className="p-5">
-            <div className="text-sm text-muted-foreground">
-              Lowest Percentage
-            </div>
+            <StatCard
+              icon={<CircleX className="size-5" />}
+              label="Failed"
+              value={failCount}
+            />
 
-            <div className="mt-2 text-2xl font-semibold">
-              {lowestPercentage.toFixed(2)}%
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+            <StatCard
+              icon={<TrendingUp className="size-5" />}
+              label="Highest"
+              value={`${highestPercentage.toFixed(2)}%`}
+            />
 
-      {/* Results Table */}
+            <StatCard
+              icon={<TrendingDown className="size-5" />}
+              label="Lowest"
+              value={`${lowestPercentage.toFixed(2)}%`}
+            />
+          </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Student Results ({data.results.length})</CardTitle>
-        </CardHeader>
+          {/* ------------------------------------------------------------ */}
+          {/* RESULTS TABLE                                                */}
+          {/* ------------------------------------------------------------ */}
 
-        <CardContent>
-          {data.results.length === 0 ? (
-            <div className="py-10 text-center text-sm text-muted-foreground">
-              No marks have been entered for this exam yet.
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b text-left">
-                    <th className="p-3">Rank</th>
+          <Card className="overflow-hidden border-border/70 shadow-sm">
+            <CardHeader className="border-b bg-muted/20 px-5 py-4">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <CardTitle className="text-base font-semibold">
+                    Student Results
+                  </CardTitle>
 
-                    <th className="p-3">Admission No.</th>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {sectionId
+                      ? "Results for the selected class and section"
+                      : "Results for the selected class"}
+                  </p>
+                </div>
 
-                    <th className="p-3">Student Name</th>
+                <div className="text-sm text-muted-foreground">
+                  {totalStudents} result
+                  {totalStudents !== 1 ? "s" : ""}
+                </div>
+              </div>
+            </CardHeader>
 
-                    <th className="p-3 text-center">Subjects</th>
+            <CardContent className="p-0">
+              {results.length === 0 ? (
+                <div className="flex min-h-[280px] flex-col items-center justify-center px-6 text-center">
+                  <div className="flex size-12 items-center justify-center rounded-2xl bg-muted">
+                    <ClipboardList className="size-6 text-muted-foreground" />
+                  </div>
 
-                    <th className="p-3 text-right">Marks</th>
+                  <h3 className="mt-4 font-semibold">No results available</h3>
 
-                    <th className="p-3 text-right">Percentage</th>
+                  <p className="mt-1 max-w-sm text-sm text-muted-foreground">
+                    No marks have been entered for this exam and selected class
+                    {sectionId ? " or section" : ""} yet.
+                  </p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[1100px] text-sm">
+                    <thead className="bg-muted/30">
+                      <tr className="border-b">
+                        <th className="sticky left-0 z-10 bg-muted/30 px-4 py-3 text-left font-semibold">
+                          Rank
+                        </th>
 
-                    <th className="p-3 text-center">Passed</th>
+                        <th className="px-4 py-3 text-left font-semibold">
+                          Admission No.
+                        </th>
 
-                    <th className="p-3 text-center">Failed</th>
+                        <th className="px-4 py-3 text-left font-semibold">
+                          Student
+                        </th>
 
-                    <th className="p-3 text-center">Absent</th>
+                        <th className="px-4 py-3 text-center font-semibold">
+                          Subjects
+                        </th>
 
-                    <th className="p-3 text-center">Result</th>
+                        <th className="px-4 py-3 text-right font-semibold">
+                          Marks
+                        </th>
 
-                    <th className="p-3 text-right">Actions</th>
-                  </tr>
-                </thead>
+                        <th className="px-4 py-3 text-right font-semibold">
+                          Percentage
+                        </th>
 
-                <tbody>
-                  {data.results.map((student) => (
-                    <tr key={student.studentId} className="border-b">
-                      <td className="p-3 font-semibold">#{student.rank}</td>
+                        <th className="px-4 py-3 text-center font-semibold">
+                          Passed
+                        </th>
 
-                      <td className="p-3">{student.admissionNo}</td>
+                        <th className="px-4 py-3 text-center font-semibold">
+                          Failed
+                        </th>
 
-                      <td className="p-3 font-medium">{student.fullName}</td>
+                        <th className="px-4 py-3 text-center font-semibold">
+                          Absent
+                        </th>
 
-                      <td className="p-3 text-center">{student.subjects}</td>
+                        <th className="px-4 py-3 text-center font-semibold">
+                          Result
+                        </th>
 
-                      <td className="p-3 text-right font-medium">
-                        {student.totalObtained} / {student.totalMaxMarks}
-                      </td>
+                        <th className="px-4 py-3 text-right font-semibold">
+                          Action
+                        </th>
+                      </tr>
+                    </thead>
 
-                      <td className="p-3 text-right">
-                        {student.percentage.toFixed(2)}%
-                      </td>
-
-                      <td className="p-3 text-center">
-                        {student.passedSubjects}
-                      </td>
-
-                      <td className="p-3 text-center">
-                        {student.failedSubjects}
-                      </td>
-
-                      <td className="p-3 text-center">
-                        {student.absentSubjects}
-                      </td>
-
-                      <td className="p-3 text-center">
-                        <span
-                          className={
-                            student.status === "PASS"
-                              ? "font-semibold text-green-600"
-                              : "font-semibold text-destructive"
-                          }
+                    <tbody>
+                      {results.map((student) => (
+                        <tr
+                          key={student.studentId}
+                          className="group border-b last:border-0 transition-colors hover:bg-muted/30"
                         >
-                          {student.status}
-                        </span>
-                      </td>
+                          <td className="sticky left-0 z-10 bg-background px-4 py-3 group-hover:bg-muted/30">
+                            <RankBadge rank={student.rank} />
+                          </td>
 
-                      <td className="p-3 text-right">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() =>
-                            router.push(
-                              `/${schoolSlug}/exams/${examId}/results/${student.studentId}`,
-                            )
-                          }
-                        >
-                          <Eye className="mr-2 h-4 w-4" />
-                          View Result
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                          <td className="px-4 py-3 text-muted-foreground">
+                            {student.admissionNo}
+                          </td>
+
+                          <td className="px-4 py-3">
+                            <div className="font-medium">
+                              {student.fullName}
+                            </div>
+                          </td>
+
+                          <td className="px-4 py-3 text-center">
+                            <span className="rounded-md bg-muted px-2 py-1 text-xs font-medium">
+                              {student.subjects}
+                            </span>
+                          </td>
+
+                          <td className="px-4 py-3 text-right font-medium">
+                            {student.totalObtained}
+
+                            <span className="mx-1 text-muted-foreground">
+                              /
+                            </span>
+
+                            {student.totalMaxMarks}
+                          </td>
+
+                          <td className="px-4 py-3 text-right">
+                            <span className="font-semibold">
+                              {student.percentage.toFixed(2)}%
+                            </span>
+                          </td>
+
+                          <td className="px-4 py-3 text-center">
+                            {student.passedSubjects}
+                          </td>
+
+                          <td className="px-4 py-3 text-center">
+                            {student.failedSubjects}
+                          </td>
+
+                          <td className="px-4 py-3 text-center">
+                            {student.absentSubjects}
+                          </td>
+
+                          <td className="px-4 py-3 text-center">
+                            <ResultBadge status={student.status} />
+                          </td>
+
+                          <td className="px-4 py-3 text-right">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() =>
+                                router.push(
+                                  `/${schoolSlug}/exams/${examId}/results/${student.studentId}`,
+                                )
+                              }
+                            >
+                              <Eye className="mr-2 size-4" />
+                              View
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </>
+      )}
     </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* STAT CARD                                                                  */
+/* -------------------------------------------------------------------------- */
+
+function StatCard({
+  icon,
+  label,
+  value,
+  description,
+}: {
+  icon: React.ReactNode;
+
+  label: string;
+
+  value: string | number;
+
+  description?: string;
+}) {
+  return (
+    <Card className="border-border/70 shadow-sm">
+      <CardContent className="p-5">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-sm text-muted-foreground">{label}</p>
+
+            <p className="mt-2 text-2xl font-bold tracking-tight">{value}</p>
+
+            {description && (
+              <p className="mt-1 text-xs text-muted-foreground">
+                {description}
+              </p>
+            )}
+          </div>
+
+          <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+            {icon}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* RANK BADGE                                                                 */
+/* -------------------------------------------------------------------------- */
+
+function RankBadge({ rank }: { rank: number }) {
+  if (rank === 1) {
+    return (
+      <div className="flex items-center gap-2 font-bold">
+        <span className="flex size-7 items-center justify-center rounded-full bg-primary/10 text-primary">
+          <Trophy className="size-4" />
+        </span>
+
+        <span>1</span>
+      </div>
+    );
+  }
+
+  return <span className="font-semibold text-muted-foreground">#{rank}</span>;
+}
+
+/* -------------------------------------------------------------------------- */
+/* RESULT BADGE                                                               */
+/* -------------------------------------------------------------------------- */
+
+function ResultBadge({ status }: { status: "PASS" | "FAIL" }) {
+  return (
+    <span
+      className={
+        status === "PASS"
+          ? "inline-flex items-center rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold text-emerald-600"
+          : "inline-flex items-center rounded-full bg-destructive/10 px-2.5 py-1 text-xs font-semibold text-destructive"
+      }
+    >
+      {status}
+    </span>
   );
 }

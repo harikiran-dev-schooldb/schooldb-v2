@@ -3,16 +3,15 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-
 import {
   AcademicYearSelect,
   ClassSelect,
   SectionSelect,
 } from "@/components/common/select";
-
 import {
   BookOpenCheck,
   CalendarDays,
+  CheckCircle2,
   Clock3,
   Loader2,
   Sun,
@@ -20,8 +19,7 @@ import {
   UserCheck,
 } from "lucide-react";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
 type AttendanceMode = "ONCE_DAILY" | "MORNING_AFTERNOON" | "EVERY_PERIOD";
@@ -59,6 +57,17 @@ function getTodayWeekDay(): string {
   return days[new Date().getDay()];
 }
 
+function getModeLabel(mode: AttendanceMode) {
+  switch (mode) {
+    case "ONCE_DAILY":
+      return "Once Daily";
+    case "MORNING_AFTERNOON":
+      return "Morning & Afternoon";
+    case "EVERY_PERIOD":
+      return "Every Period";
+  }
+}
+
 export function AttendancePage({ schoolSlug }: Props) {
   const router = useRouter();
 
@@ -67,6 +76,7 @@ export function AttendancePage({ schoolSlug }: Props) {
   const [sectionId, setSectionId] = useState("");
 
   const [academicYears, setAcademicYears] = useState<AcademicYearOption[]>([]);
+
   const [loading, setLoading] = useState(false);
 
   const [timetable, setTimetable] = useState<TimetableOption[]>([]);
@@ -76,6 +86,7 @@ export function AttendancePage({ schoolSlug }: Props) {
     async function loadAcademicYears() {
       try {
         const response = await fetch("/api/v1/academic-years/options");
+
         const result = await response.json();
 
         if (!result.success) {
@@ -95,7 +106,7 @@ export function AttendancePage({ schoolSlug }: Props) {
       }
     }
 
-    loadAcademicYears();
+    void loadAcademicYears();
   }, []);
 
   const selectedAcademicYear = academicYears.find(
@@ -173,7 +184,10 @@ export function AttendancePage({ schoolSlug }: Props) {
   }
 
   useEffect(() => {
-    if (!canLoadTimetable) return;
+    if (!canLoadTimetable) {
+      setTimetable([]);
+      return;
+    }
 
     let cancelled = false;
 
@@ -181,13 +195,11 @@ export function AttendancePage({ schoolSlug }: Props) {
       try {
         setTimetableLoading(true);
 
-        const day = getTodayWeekDay();
-
         const params = new URLSearchParams({
           academicYearId,
           classId,
           sectionId,
-          day,
+          day: getTodayWeekDay(),
         });
 
         const response = await fetch(
@@ -217,59 +229,65 @@ export function AttendancePage({ schoolSlug }: Props) {
       }
     }
 
-    loadTimetable();
+    void loadTimetable();
 
     return () => {
       cancelled = true;
     };
   }, [canLoadTimetable, academicYearId, classId, sectionId]);
 
-  const displayTimetable = canLoadTimetable ? timetable : [];
-
   return (
-    <div className="space-y-6">
-      {/* Page Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex items-start gap-4">
-          <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-            <UserCheck className="size-6" />
+    <div className="mx-auto w-full max-w-6xl space-y-6">
+      {/* ============================================================ */}
+      {/* HEADER                                                       */}
+      {/* ============================================================ */}
+
+      <div className="flex flex-col gap-4 border-b pb-5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3">
+          <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+            <UserCheck className="size-5" />
           </div>
 
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">Attendance</h1>
+            <h1 className="text-xl font-bold tracking-tight sm:text-2xl">
+              Attendance
+            </h1>
 
-            <p className="mt-1 text-sm text-muted-foreground">
-              Select a class and create an attendance session.
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              Select a class and start today&apos;s attendance.
             </p>
           </div>
         </div>
 
         {selectedAcademicYear && (
-          <div className="flex items-center gap-2 rounded-xl border bg-muted/30 px-4 py-2 text-sm">
-            <CalendarDays className="size-4 text-muted-foreground" />
+          <div className="flex w-fit items-center gap-2 rounded-lg border bg-card px-3 py-2 text-sm shadow-sm">
+            <CalendarDays className="size-4 text-primary" />
 
-            <span className="text-muted-foreground">
-              {selectedAcademicYear.label}
-            </span>
+            <span className="font-medium">{selectedAcademicYear.label}</span>
           </div>
         )}
       </div>
 
-      {/* Attendance Setup */}
-      <Card className="overflow-hidden border-border/60 shadow-sm">
-        <CardHeader className="border-b bg-muted/20">
-          <CardTitle className="flex items-center gap-2 text-base">
+      {/* ============================================================ */}
+      {/* SETUP                                                        */}
+      {/* ============================================================ */}
+
+      <Card className="overflow-hidden">
+        <div className="border-b bg-muted/20 px-5 py-4">
+          <div className="flex items-center gap-3">
             <BookOpenCheck className="size-5 text-primary" />
-            Attendance Setup
-          </CardTitle>
 
-          <p className="text-sm text-muted-foreground">
-            Choose the academic year, class, and section.
-          </p>
-        </CardHeader>
+            <div>
+              <h2 className="text-sm font-semibold">Attendance Setup</h2>
 
-        <CardContent className="space-y-6 p-5 sm:p-6">
-          {/* Selectors */}
+              <p className="text-xs text-muted-foreground">
+                Choose the academic year, class and section.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <CardContent className="space-y-5 p-5">
           <div className="grid gap-4 md:grid-cols-3">
             <AcademicYearSelect
               value={academicYearId}
@@ -287,200 +305,267 @@ export function AttendancePage({ schoolSlug }: Props) {
             />
           </div>
 
-          {/* Selected Mode */}
-          <div className="flex flex-col gap-3 rounded-xl border bg-muted/20 p-4 sm:flex-row sm:items-center sm:justify-between">
+          {/* MODE */}
+          <div className="flex flex-col gap-3 rounded-lg border bg-muted/20 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-sm font-medium">Attendance Mode</p>
-
-              <p className="mt-1 text-xs text-muted-foreground">
-                The session options below are based on the selected academic
-                year's attendance configuration.
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Attendance Mode
               </p>
+
+              <p className="mt-1 text-sm">{getModeLabel(attendanceMode)}</p>
             </div>
 
-            <div className="w-fit rounded-lg border bg-background px-3 py-1.5 text-xs font-semibold">
-              {attendanceMode === "ONCE_DAILY" && "Once Daily"}
-
-              {attendanceMode === "MORNING_AFTERNOON" && "Morning & Afternoon"}
-
-              {attendanceMode === "EVERY_PERIOD" && "Every Period"}
+            <div className="flex items-center gap-2 text-xs font-medium">
+              <span className="size-2 rounded-full bg-primary" />
+              Configuration active
             </div>
           </div>
+        </CardContent>
+      </Card>
 
-          {/* ONCE DAILY */}
-          {attendanceMode === "ONCE_DAILY" && (
-            <div className="flex flex-col gap-4 rounded-xl border p-5 sm:flex-row sm:items-center sm:justify-between">
+      {/* ============================================================ */}
+      {/* ONCE DAILY                                                   */}
+      {/* ============================================================ */}
+
+      {attendanceMode === "ONCE_DAILY" && (
+        <Card>
+          <CardContent className="flex flex-col gap-5 p-5 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-3">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <CalendarDays className="size-5" />
+              </div>
+
               <div>
-                <div className="flex items-center gap-2">
-                  <CalendarDays className="size-5 text-primary" />
-
-                  <p className="font-semibold">Daily Attendance</p>
-                </div>
+                <h2 className="font-semibold">Daily Attendance</h2>
 
                 <p className="mt-1 text-sm text-muted-foreground">
                   Create one attendance session for the selected class today.
                 </p>
               </div>
-
-              <Button
-                size="lg"
-                className="gap-2"
-                disabled={loading || !academicYearId || !classId || !sectionId}
-                onClick={() => createSession("DAILY")}
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="size-4 animate-spin" />
-                    Creating...
-                  </>
-                ) : (
-                  <>
-                    <UserCheck className="size-4" />
-                    Take Attendance
-                  </>
-                )}
-              </Button>
             </div>
-          )}
 
-          {/* MORNING + AFTERNOON */}
-          {attendanceMode === "MORNING_AFTERNOON" && (
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="rounded-xl border p-5">
-                <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                  <Sunrise className="size-5" />
-                </div>
-
-                <h3 className="mt-4 font-semibold">Morning Attendance</h3>
-
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Mark attendance for the morning session.
-                </p>
-
-                <Button
-                  className="mt-5 w-full gap-2"
-                  disabled={
-                    loading || !academicYearId || !classId || !sectionId
-                  }
-                  onClick={() => createSession("MORNING")}
-                >
-                  {loading && <Loader2 className="size-4 animate-spin" />}
-                  Morning Attendance
-                </Button>
-              </div>
-
-              <div className="rounded-xl border p-5">
-                <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                  <Sun className="size-5" />
-                </div>
-
-                <h3 className="mt-4 font-semibold">Afternoon Attendance</h3>
-
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Mark attendance for the afternoon session.
-                </p>
-
-                <Button
-                  variant="outline"
-                  className="mt-5 w-full gap-2"
-                  disabled={
-                    loading || !academicYearId || !classId || !sectionId
-                  }
-                  onClick={() => createSession("AFTERNOON")}
-                >
-                  {loading && <Loader2 className="size-4 animate-spin" />}
-                  Afternoon Attendance
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {/* EVERY PERIOD */}
-          {attendanceMode === "EVERY_PERIOD" && (
-            <div className="space-y-4">
-              <div className="flex items-start gap-3">
-                <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                  <Clock3 className="size-5" />
-                </div>
-
-                <div>
-                  <h2 className="font-semibold">Today&apos;s Periods</h2>
-
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Select a period to create an attendance session.
-                  </p>
-                </div>
-              </div>
-
-              {!classId || !sectionId ? (
-                <div className="rounded-xl border border-dashed p-8 text-center">
-                  <p className="font-medium">
-                    Select a class and section first
-                  </p>
-
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Today's timetable will appear here.
-                  </p>
-                </div>
-              ) : timetableLoading ? (
-                <div className="flex min-h-40 items-center justify-center rounded-xl border">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Loader2 className="size-5 animate-spin" />
-                    Loading today&apos;s timetable...
-                  </div>
-                </div>
-              ) : displayTimetable.length === 0 ? (
-                <div className="rounded-xl border border-dashed p-8 text-center">
-                  <Clock3 className="mx-auto size-8 text-muted-foreground" />
-
-                  <p className="mt-3 font-medium">No periods found for today</p>
-
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Check the timetable configuration for this class and
-                    section.
-                  </p>
-                </div>
+            <Button
+              size="lg"
+              className="gap-2 sm:min-w-[180px]"
+              disabled={loading || !academicYearId || !classId || !sectionId}
+              onClick={() => createSession("DAILY")}
+            >
+              {loading ? (
+                <Loader2 className="size-4 animate-spin" />
               ) : (
-                <div className="space-y-3">
-                  {displayTimetable.map((item) => (
-                    <div
-                      key={item.id}
-                      className="flex flex-col gap-4 rounded-xl border p-4 transition-colors hover:bg-muted/20 sm:flex-row sm:items-center sm:justify-between"
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-muted font-semibold">
-                          <Clock3 className="size-5 text-muted-foreground" />
-                        </div>
+                <UserCheck className="size-4" />
+              )}
 
-                        <div>
-                          <p className="font-semibold">{item.periodName}</p>
+              {loading ? "Creating..." : "Take Attendance"}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
-                          <p className="mt-1 text-sm text-muted-foreground">
-                            {item.subjectName} · {item.teacherName}
-                          </p>
-                        </div>
+      {/* ============================================================ */}
+      {/* MORNING / AFTERNOON                                          */}
+      {/* ============================================================ */}
+
+      {attendanceMode === "MORNING_AFTERNOON" && (
+        <div className="grid gap-4 md:grid-cols-2">
+          <AttendanceOption
+            icon={<Sunrise className="size-5" />}
+            title="Morning Attendance"
+            description="Mark attendance for the morning session."
+            buttonLabel="Take Morning Attendance"
+            loading={loading}
+            disabled={loading || !academicYearId || !classId || !sectionId}
+            onClick={() => createSession("MORNING")}
+          />
+
+          <AttendanceOption
+            icon={<Sun className="size-5" />}
+            title="Afternoon Attendance"
+            description="Mark attendance for the afternoon session."
+            buttonLabel="Take Afternoon Attendance"
+            loading={loading}
+            disabled={loading || !academicYearId || !classId || !sectionId}
+            onClick={() => createSession("AFTERNOON")}
+            secondary
+          />
+        </div>
+      )}
+
+      {/* ============================================================ */}
+      {/* EVERY PERIOD                                                 */}
+      {/* ============================================================ */}
+
+      {attendanceMode === "EVERY_PERIOD" && (
+        <Card className="overflow-hidden">
+          <div className="border-b bg-muted/20 px-5 py-4">
+            <div className="flex items-center gap-3">
+              <Clock3 className="size-5 text-primary" />
+
+              <div>
+                <h2 className="text-sm font-semibold">Today&apos;s Periods</h2>
+
+                <p className="text-xs text-muted-foreground">
+                  Select a period to create an attendance session.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <CardContent className="p-5">
+            {!classId || !sectionId ? (
+              <EmptyState
+                title="Select a class and section"
+                description="Today's timetable will appear here."
+              />
+            ) : timetableLoading ? (
+              <div className="flex min-h-36 items-center justify-center">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="size-5 animate-spin" />
+                  Loading today&apos;s timetable...
+                </div>
+              </div>
+            ) : timetable.length === 0 ? (
+              <EmptyState
+                icon={
+                  <Clock3 className="mx-auto size-8 text-muted-foreground" />
+                }
+                title="No periods found"
+                description="There are no timetable periods configured for this class and section today."
+              />
+            ) : (
+              <div className="divide-y rounded-xl border">
+                {timetable.map((item) => (
+                  <div
+                    key={item.id}
+                    className="flex flex-col gap-4 p-4 transition-colors hover:bg-muted/30 sm:flex-row sm:items-center sm:justify-between"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted font-medium">
+                        <Clock3 className="size-4 text-muted-foreground" />
                       </div>
 
-                      <Button
-                        className="gap-2"
-                        disabled={loading}
-                        onClick={() => createSession("PERIOD", item.id)}
-                      >
-                        {loading ? (
-                          <Loader2 className="size-4 animate-spin" />
-                        ) : (
-                          <UserCheck className="size-4" />
-                        )}
-                        Take Attendance
-                      </Button>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <p className="font-semibold">{item.periodName}</p>
+
+                          <span className="rounded-md bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
+                            {item.day}
+                          </span>
+                        </div>
+
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          {item.subjectName}
+                          <span className="mx-1.5">·</span>
+                          {item.teacherName}
+                        </p>
+                      </div>
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+
+                    <Button
+                      className="gap-2 sm:min-w-[165px]"
+                      disabled={loading}
+                      onClick={() => createSession("PERIOD", item.id)}
+                    >
+                      {loading ? (
+                        <Loader2 className="size-4 animate-spin" />
+                      ) : (
+                        <UserCheck className="size-4" />
+                      )}
+                      Take Attendance
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ============================================================ */}
+      {/* FOOTNOTE                                                      */}
+      {/* ============================================================ */}
+
+      <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+        <CheckCircle2 className="size-3.5" />
+        Attendance sessions are created for the selected class and section.
+      </div>
+    </div>
+  );
+}
+
+/* ========================================================================== */
+/* ATTENDANCE OPTION                                                          */
+/* ========================================================================== */
+
+function AttendanceOption({
+  icon,
+  title,
+  description,
+  buttonLabel,
+  loading,
+  disabled,
+  onClick,
+  secondary = false,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+  buttonLabel: string;
+  loading: boolean;
+  disabled: boolean;
+  onClick: () => void;
+  secondary?: boolean;
+}) {
+  return (
+    <Card>
+      <CardContent className="flex h-full flex-col p-5">
+        <div className="flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+          {icon}
+        </div>
+
+        <h2 className="mt-4 font-semibold">{title}</h2>
+
+        <p className="mt-1 flex-1 text-sm leading-6 text-muted-foreground">
+          {description}
+        </p>
+
+        <Button
+          variant={secondary ? "outline" : "default"}
+          className="mt-5 w-full gap-2"
+          disabled={disabled}
+          onClick={onClick}
+        >
+          {loading && <Loader2 className="size-4 animate-spin" />}
+
+          {buttonLabel}
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+/* ========================================================================== */
+/* EMPTY STATE                                                                */
+/* ========================================================================== */
+
+function EmptyState({
+  icon,
+  title,
+  description,
+}: {
+  icon?: React.ReactNode;
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="flex min-h-36 flex-col items-center justify-center rounded-xl border border-dashed px-6 py-8 text-center">
+      {icon}
+
+      <p className="font-medium">{title}</p>
+
+      <p className="mt-1 max-w-md text-sm text-muted-foreground">
+        {description}
+      </p>
     </div>
   );
 }

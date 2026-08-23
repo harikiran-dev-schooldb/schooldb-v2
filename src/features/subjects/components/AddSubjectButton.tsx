@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-
 import { Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -13,8 +12,12 @@ export function AddSubjectButton() {
 
   return (
     <>
-      <Button onClick={() => setOpen(true)}>
-        <Plus className="mr-2 h-4 w-4" />
+      <Button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="h-10 rounded-xl px-4 shadow-sm"
+      >
+        <Plus className="mr-2 size-4" />
         Add Subject
       </Button>
 

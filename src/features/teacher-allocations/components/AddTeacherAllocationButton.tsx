@@ -1,20 +1,22 @@
 "use client";
 
 import { useState } from "react";
-
 import { Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-
 import { TeacherAllocationDialog } from "./TeacherAllocationDialog";
 
-export function AddTeacherAllocationButton() {
+type Props = {
+  onSuccess?: () => void;
+};
+
+export function AddTeacherAllocationButton({ onSuccess }: Props) {
   const [open, setOpen] = useState(false);
 
   return (
     <>
-      <Button onClick={() => setOpen(true)}>
-        <Plus className="mr-2 h-4 w-4" />
+      <Button onClick={() => setOpen(true)} className="gap-2">
+        <Plus className="size-4" />
         Allocate Teacher
       </Button>
 
@@ -22,6 +24,7 @@ export function AddTeacherAllocationButton() {
         open={open}
         onOpenChange={setOpen}
         mode="create"
+        onSuccess={onSuccess}
       />
     </>
   );

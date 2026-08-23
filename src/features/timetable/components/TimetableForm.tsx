@@ -4,6 +4,16 @@ import { useEffect, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
+import {
+  CalendarDays,
+  Check,
+  ClipboardList,
+  Clock3,
+  GraduationCap,
+  Layers3,
+  Loader2,
+  Users,
+} from "lucide-react";
 
 import {
   timetableSchema,
@@ -38,6 +48,7 @@ type Props = {
 
 export function TimetableForm({ mode, timetableId, onSuccess }: Props) {
   const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(mode === "edit");
 
   const form = useForm<TimetableFormInput>({
     resolver: zodResolver(timetableSchema),
@@ -78,6 +89,7 @@ export function TimetableForm({ mode, timetableId, onSuccess }: Props) {
 
   useEffect(() => {
     if (mode !== "edit" || !timetableId) {
+      setInitialLoading(false);
       return;
     }
 
@@ -85,6 +97,8 @@ export function TimetableForm({ mode, timetableId, onSuccess }: Props) {
 
     async function load() {
       try {
+        setInitialLoading(true);
+
         const res = await fetch(`/api/v1/timetables/${timetableId}`);
 
         const result = await res.json();
@@ -112,6 +126,10 @@ export function TimetableForm({ mode, timetableId, onSuccess }: Props) {
       } catch {
         if (!cancelled) {
           toast.error("Failed to load timetable.");
+        }
+      } finally {
+        if (!cancelled) {
+          setInitialLoading(false);
         }
       }
     }
@@ -161,102 +179,215 @@ export function TimetableForm({ mode, timetableId, onSuccess }: Props) {
     }
   }
 
+  if (initialLoading) {
+    return (
+      <div className="flex min-h-[420px] items-center justify-center">
+        <div className="flex flex-col items-center gap-3 text-center">
+          <div className="flex size-11 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+            <Loader2 className="size-5 animate-spin" />
+          </div>
+
+          <div>
+            <p className="text-sm font-semibold">Loading timetable</p>
+
+            <p className="mt-1 text-xs text-muted-foreground">
+              Preparing the timetable details...
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
-      <FormField label="Academic Year" required>
-        <AcademicYearSelect
-          value={academicYearId}
-          onChange={(value) =>
-            form.setValue("academicYearId", value, {
-              shouldDirty: true,
-              shouldValidate: true,
-            })
-          }
-        />
-      </FormField>
-
-      <FormField label="Teacher Allocation" required>
-        <TeacherAllocationSelect
-          value={teacherAllocationId}
-          onChange={(value) =>
-            form.setValue("teacherAllocationId", value, {
-              shouldDirty: true,
-              shouldValidate: true,
-            })
-          }
-        />
-      </FormField>
-
-      <FormField label="Period" required>
-        <PeriodSelect
-          value={periodId}
-          onChange={(value) =>
-            form.setValue("periodId", value, {
-              shouldDirty: true,
-              shouldValidate: true,
-            })
-          }
-        />
-      </FormField>
-
-      <FormField label="Week Day" required>
-        <Select
-          value={selectedDay}
-          onValueChange={(value) => {
-            const day = WEEKDAY_OPTIONS.find(
-              (option) => option.value === value,
-            );
-
-            if (!day) {
-              return;
-            }
-
-            form.setValue("day", day.value, {
-              shouldDirty: true,
-              shouldValidate: true,
-            });
-          }}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Select Day" />
-          </SelectTrigger>
-
-          <SelectContent>
-            {WEEKDAY_OPTIONS.map((day) => (
-              <SelectItem key={day.value} value={day.value}>
-                {day.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </FormField>
-
-      <div className="flex items-center justify-between rounded-lg border p-4">
+    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+      {/* Academic Configuration */}
+      <div className="space-y-5">
         <div>
-          <h4 className="font-medium">Active</h4>
+          <h3 className="text-sm font-semibold">Academic Configuration</h3>
 
-          <p className="text-sm text-muted-foreground">
-            Enable this timetable entry.
+          <p className="mt-1 text-xs text-muted-foreground">
+            Choose where this timetable entry belongs.
           </p>
         </div>
 
-        <Switch
-          checked={active}
-          onCheckedChange={(checked) =>
-            form.setValue("active", checked, {
-              shouldDirty: true,
-            })
-          }
-        />
+        <FormField label="Academic Year" required>
+          <AcademicYearSelect
+            value={academicYearId}
+            onChange={(value) =>
+              form.setValue("academicYearId", value, {
+                shouldDirty: true,
+                shouldValidate: true,
+              })
+            }
+          />
+        </FormField>
+
+        <FormField label="Teacher Allocation" required>
+          <TeacherAllocationSelect
+            value={teacherAllocationId}
+            onChange={(value) =>
+              form.setValue("teacherAllocationId", value, {
+                shouldDirty: true,
+                shouldValidate: true,
+              })
+            }
+          />
+        </FormField>
       </div>
 
-      <SubmitButton
-        loading={loading}
-        mode={mode}
-        createLabel="Create Timetable"
-        updateLabel="Update Timetable"
-        className="w-full"
-      />
+      {/* Schedule */}
+      <div className="space-y-5 border-t pt-5">
+        <div>
+          <h3 className="text-sm font-semibold">Schedule</h3>
+
+          <p className="mt-1 text-xs text-muted-foreground">
+            Assign the period and weekday.
+          </p>
+        </div>
+
+        <div className="grid gap-5 sm:grid-cols-2">
+          <FormField label="Period" required>
+            <PeriodSelect
+              value={periodId}
+              onChange={(value) =>
+                form.setValue("periodId", value, {
+                  shouldDirty: true,
+                  shouldValidate: true,
+                })
+              }
+            />
+          </FormField>
+
+          <FormField label="Weekday" required>
+            <Select
+              value={selectedDay}
+              onValueChange={(value) => {
+                const day = WEEKDAY_OPTIONS.find(
+                  (option) => option.value === value,
+                );
+
+                if (!day) {
+                  return;
+                }
+
+                form.setValue("day", day.value, {
+                  shouldDirty: true,
+                  shouldValidate: true,
+                });
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select weekday" />
+              </SelectTrigger>
+
+              <SelectContent>
+                {WEEKDAY_OPTIONS.map((day) => (
+                  <SelectItem key={day.value} value={day.value}>
+                    {day.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FormField>
+        </div>
+      </div>
+
+      {/* Status */}
+      <div className="space-y-5 border-t pt-5">
+        <div>
+          <h3 className="text-sm font-semibold">Status</h3>
+
+          <p className="mt-1 text-xs text-muted-foreground">
+            Control whether this timetable entry is active.
+          </p>
+        </div>
+
+        <div className="flex items-center justify-between rounded-xl border bg-muted/20 p-4">
+          <div>
+            <h4 className="text-sm font-medium">Timetable entry active</h4>
+
+            <p className="mt-1 text-xs text-muted-foreground">
+              This entry will appear in timetable views.
+            </p>
+          </div>
+
+          <Switch
+            checked={active}
+            onCheckedChange={(checked) =>
+              form.setValue("active", checked, {
+                shouldDirty: true,
+              })
+            }
+          />
+        </div>
+      </div>
+
+      {/* Submit */}
+      <div className="border-t pt-5">
+        <SubmitButton
+          loading={loading}
+          mode={mode}
+          createLabel="Create Timetable"
+          updateLabel="Update Timetable"
+          className="h-11 w-full"
+        />
+      </div>
     </form>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* UI Helpers                                                                 */
+/* -------------------------------------------------------------------------- */
+
+function SectionHeading({
+  icon,
+  title,
+  description,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="flex items-start gap-3">
+      <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+        {icon}
+      </div>
+
+      <div>
+        <h3 className="text-sm font-semibold">{title}</h3>
+
+        <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>
+      </div>
+    </div>
+  );
+}
+
+function PremiumField({
+  icon,
+  label,
+  required,
+  children,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  required?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <FormField
+      label={
+        <span className="flex items-center gap-1.5">
+          <span className="text-muted-foreground">{icon}</span>
+
+          <span>{label}</span>
+        </span>
+      }
+      required={required}
+    >
+      {children}
+    </FormField>
   );
 }

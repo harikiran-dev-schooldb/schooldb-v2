@@ -1,20 +1,23 @@
 "use client";
 
 import { useState } from "react";
-
 import { Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
 import { HomeworkDialog } from "./HomeworkDialog";
 
-export function AddHomeworkButton() {
+type Props = {
+  onSuccess?: () => void;
+};
+
+export function AddHomeworkButton({ onSuccess }: Props) {
   const [open, setOpen] = useState(false);
 
   return (
     <>
-      <Button onClick={() => setOpen(true)}>
-        <Plus className="mr-2 h-4 w-4" />
+      <Button onClick={() => setOpen(true)} className="shrink-0">
+        <Plus className="mr-2 size-4" />
         Add Homework
       </Button>
 
@@ -22,7 +25,9 @@ export function AddHomeworkButton() {
         open={open}
         onOpenChange={setOpen}
         mode="create"
-        onSuccess={() => {}}
+        onSuccess={() => {
+          onSuccess?.();
+        }}
       />
     </>
   );

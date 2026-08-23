@@ -2,11 +2,7 @@
 
 import { useState } from "react";
 
-import { Pencil } from "lucide-react";
-
-import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
-
-import { CrudActions } from "@/components/common/crud";
+import { CrudActionItem, CrudActions } from "@/components/common/crud";
 
 import { PeriodDialog } from "./PeriodDialog";
 
@@ -20,10 +16,7 @@ export function PeriodActions({ periodId }: Props) {
   return (
     <>
       <CrudActions>
-        <DropdownMenuItem onClick={() => setOpen(true)}>
-          <Pencil className="mr-2 h-4 w-4" />
-          Edit
-        </DropdownMenuItem>
+        <CrudActionItem type="edit" onClick={() => setOpen(true)} />
       </CrudActions>
 
       <PeriodDialog

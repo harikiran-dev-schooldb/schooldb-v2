@@ -1,31 +1,33 @@
 "use client";
 
 import { DataGrid } from "@/components/datagrid/DataGrid";
-
-import { teacherAllocationColumns } from "../columns";
-
 import { useTeacherAllocationTable } from "../hooks/useTeacherAllocationTable";
-
+import { teacherAllocationColumns } from "../columns";
 import { TeacherAllocationToolbar } from "./TeacherAllocationToolbar";
 
-export function TeacherAllocationTable() {
-  const {
-    allocations,
-    loading,
+type Props = {
+  className?: string;
+};
 
-    search,
-    setSearch,
-  } = useTeacherAllocationTable();
+export function TeacherAllocationTable({ className }: Props) {
+  const { allocations, loading, search, setSearch, reload } =
+    useTeacherAllocationTable();
 
   return (
-    <div className="space-y-4">
-      <TeacherAllocationToolbar search={search} onSearchChange={setSearch} />
-
-      <DataGrid
-        columns={teacherAllocationColumns}
-        data={allocations}
-        loading={loading}
+    <div className={className}>
+      <TeacherAllocationToolbar
+        search={search}
+        onSearchChange={setSearch}
+        onSuccess={reload}
       />
+
+      <div className="mt-4 overflow-hidden rounded-xl border bg-card shadow-sm">
+        <DataGrid
+          columns={teacherAllocationColumns}
+          data={allocations}
+          loading={loading}
+        />
+      </div>
     </div>
   );
 }

@@ -958,4 +958,221 @@ async lockAttendanceSession(
     locked: true,
   };
 },
+
+async dashboard(
+  schoolId: string,
+) {
+  const academicYear =
+    await academicYearRepository.getCurrent(
+      schoolId,
+    );
+
+  if (!academicYear) {
+    throw new Error(
+      "No active academic year found.",
+    );
+  }
+
+  const [
+    enrollments,
+    sessions,
+    attendanceRecords,
+  ] =
+    await attendanceRepository.dashboardData(
+      schoolId,
+      academicYear.id,
+    );
+
+  const today = new Date();
+
+  today.setHours(0, 0, 0, 0);
+
+  const tomorrow = new Date(today);
+
+  tomorrow.setDate(
+    tomorrow.getDate() + 1,
+  );
+
+  /*
+   * Today's attendance records.
+   *
+   * We use the session relation because
+   * attendanceDate belongs to the session.
+   */
+  const todaySessions =
+  await attendanceRepository.todayAttendanceSessions(
+    schoolId,
+    academicYear.id,
+    today,
+    tomorrow,
+  );
+
+const todayRecords =
+  await attendanceRepository.attendanceBySessions(
+    schoolId,
+    todaySessions.map(
+      (session) => session.id,
+    ),
+  );
+
+  const present =
+    todayRecords.filter(
+      (record) =>
+        record.status === "PRESENT",
+    ).length;
+
+  const absent =
+    todayRecords.filter(
+      (record) =>
+        record.status === "ABSENT",
+    ).length;
+
+  const late =
+    todayRecords.filter(
+      (record) =>
+        record.status === "LATE",
+    ).length;
+
+  const leave =
+    todayRecords.filter(
+      (record) =>
+        record.status === "LEAVE",
+    ).length;
+
+  const totalMarked =
+    todayRecords.length;
+
+  const attendancePercentage =
+    totalMarked > 0
+      ? Number(
+          (
+            ((present + late) /
+              totalMarked) *
+            100
+          ).toFixed(2),
+        )
+      : 0;
+
+  /*
+   * Recent sessions.
+   */
+  const recentSessions =
+    sessions.map((session) => {
+      const records = session.records;
+
+      const sessionPresent =
+        records.filter(
+          (record) =>
+            record.status === "PRESENT",
+        ).length;
+
+      const sessionAbsent =
+        records.filter(
+          (record) =>
+            record.status === "ABSENT",
+        ).length;
+
+      return {
+        id: session.id,
+
+        attendanceDate:
+          session.attendanceDate,
+
+        sessionType:
+          session.sessionType,
+
+        className:
+          session.class.name,
+
+        sectionName:
+          session.section.name,
+
+        totalStudents:
+          records.length,
+
+        present:
+          sessionPresent,
+
+        absent:
+          sessionAbsent,
+
+        completed:
+          records.length > 0,
+      };
+    });
+
+  /*
+   * Calculate low attendance using
+   * all available records in the
+   * active academic year.
+   */
+  const recordsByStudent =
+    new Map<
+      string,
+      typeof attendanceRecords
+    >();
+
+  for (const record of attendanceRecords) {
+    const existing =
+      recordsByStudent.get(
+        record.studentId,
+      ) ?? [];
+
+    existing.push(record);
+
+    recordsByStudent.set(
+      record.studentId,
+      existing,
+    );
+  }
+
+  const threshold = 75;
+
+  let lowAttendanceCount = 0;
+
+  for (const enrollment of enrollments) {
+    const studentRecords =
+      recordsByStudent.get(
+        enrollment.studentId,
+      ) ?? [];
+
+    if (studentRecords.length === 0) {
+      continue;
+    }
+
+    const summary =
+      calculateAttendance(
+        studentRecords,
+        academicYear.attendanceMode,
+      );
+
+    if (
+      summary.attendancePercentage <
+      threshold
+    ) {
+      lowAttendanceCount++;
+    }
+  }
+
+  return {
+    summary: {
+      totalStudents:
+        enrollments.length,
+
+      present,
+      absent,
+      late,
+      leave,
+
+      attendancePercentage,
+    },
+
+    recentSessions,
+
+    alerts: {
+      lowAttendanceCount,
+      threshold,
+    },
+  };
+},
 };

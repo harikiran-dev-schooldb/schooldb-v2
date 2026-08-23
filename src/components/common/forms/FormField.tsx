@@ -1,12 +1,12 @@
 "use client";
 
-import { ReactNode } from "react";
+import type { ReactNode } from "react";
 
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
 type Props = {
-  label: string;
+  label: ReactNode;
   children: ReactNode;
   required?: boolean;
   error?: string;
