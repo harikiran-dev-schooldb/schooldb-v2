@@ -6,7 +6,6 @@ import { useEffect, useMemo, useState } from "react";
 import {
   Building2,
   ChevronDown,
-  ChevronRight,
   PanelLeftClose,
   PanelLeftOpen,
   Search,
