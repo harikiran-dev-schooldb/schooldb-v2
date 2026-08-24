@@ -8,11 +8,7 @@ type Props = {
   onSuccess?: () => void;
 };
 
-export function TeacherAllocationToolbar({
-  search,
-  onSearchChange,
-  onSuccess,
-}: Props) {
+export function TeacherAllocationToolbar({ search, onSearchChange }: Props) {
   return (
     <CrudToolbar
       search={search}

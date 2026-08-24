@@ -12,7 +12,6 @@ import {
   FileEdit,
   FileUp,
   GraduationCap,
-  Loader2,
   UserPlus,
   UserRound,
 } from "lucide-react";

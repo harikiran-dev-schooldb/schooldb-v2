@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useSyncExternalStore, useState } from "react";
 import {
   Building2,
   ChevronDown,
@@ -12,44 +12,84 @@ import {
   Settings,
   UserCircle2,
 } from "lucide-react";
-
 import { useSchool } from "@/contexts/school-context";
 import { navigation } from "@/lib/navigation";
 import { cn } from "@/lib/utils";
 
 const STORAGE_KEY = "schooldb-sidebar-collapsed";
 
+/* -------------------------------------------------------------------------- */
+/* Sidebar persistence                                                         */
+/* -------------------------------------------------------------------------- */
+
+function subscribeToSidebarStorage(onStoreChange: () => void) {
+  window.addEventListener("storage", onStoreChange);
+
+  window.addEventListener("schooldb-sidebar-change", onStoreChange);
+
+  return () => {
+    window.removeEventListener("storage", onStoreChange);
+
+    window.removeEventListener("schooldb-sidebar-change", onStoreChange);
+  };
+}
+
+function getSidebarSnapshot() {
+  return window.localStorage.getItem(STORAGE_KEY) === "true";
+}
+
+function getSidebarServerSnapshot() {
+  return false;
+}
+
+function useSidebarCollapsed() {
+  return useSyncExternalStore(
+    subscribeToSidebarStorage,
+    getSidebarSnapshot,
+    getSidebarServerSnapshot,
+  );
+}
+
+function setSidebarCollapsed(collapsed: boolean) {
+  window.localStorage.setItem(STORAGE_KEY, String(collapsed));
+
+  /*
+   * The native "storage" event does not fire
+   * in the same browser tab that changed
+   * localStorage.
+   *
+   * This custom event updates the sidebar
+   * immediately in the current tab.
+   */
+  window.dispatchEvent(new Event("schooldb-sidebar-change"));
+}
+
+/* -------------------------------------------------------------------------- */
+/* Route helpers                                                               */
+/* -------------------------------------------------------------------------- */
+
 function isRouteActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
+
+/* -------------------------------------------------------------------------- */
+/* Component                                                                   */
+/* -------------------------------------------------------------------------- */
 
 export function AppSidebar() {
   const pathname = usePathname();
   const { school } = useSchool();
 
-  const [collapsed, setCollapsed] = useState(false);
+  const collapsed = useSidebarCollapsed();
+
   const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({});
 
   /* ---------------------------------------------------------------------- */
-  /* Restore sidebar state                                                   */
+  /* Sidebar controls                                                        */
   /* ---------------------------------------------------------------------- */
 
-  useEffect(() => {
-    const stored = window.localStorage.getItem(STORAGE_KEY);
-
-    if (stored === "true") {
-      setCollapsed(true);
-    }
-  }, []);
-
   function toggleSidebar() {
-    setCollapsed((current) => {
-      const next = !current;
-
-      window.localStorage.setItem(STORAGE_KEY, String(next));
-
-      return next;
-    });
+    setSidebarCollapsed(!collapsed);
   }
 
   function toggleMenu(title: string) {
@@ -67,7 +107,9 @@ export function AppSidebar() {
     const active = new Set<string>();
 
     for (const item of navigation) {
-      if (!item.children?.length) continue;
+      if (!item.children?.length) {
+        continue;
+      }
 
       const hasActiveChild = item.children.some((child) => {
         const href = `/${school.slug}/${child.href}`;
@@ -262,15 +304,17 @@ export function AppSidebar() {
                   activeParents.has(item.title) ||
                   openMenus[item.title] === true;
 
+                /* -------------------------------------------------------- */
+                /* Collapsed parent                                          */
+                /* -------------------------------------------------------- */
+
                 if (collapsed) {
                   return (
                     <div key={item.title} className="group relative">
                       <button
                         type="button"
                         onClick={() => {
-                          setCollapsed(false);
-
-                          window.localStorage.setItem(STORAGE_KEY, "false");
+                          setSidebarCollapsed(false);
 
                           setOpenMenus((current) => ({
                             ...current,
@@ -288,7 +332,6 @@ export function AppSidebar() {
                         <item.icon className="size-[18px]" />
                       </button>
 
-                      {/* Tooltip */}
                       <div
                         className={cn(
                           "pointer-events-none absolute left-full top-1/2 z-[100]",
@@ -306,6 +349,10 @@ export function AppSidebar() {
                     </div>
                   );
                 }
+
+                /* -------------------------------------------------------- */
+                /* Expanded parent                                           */
+                /* -------------------------------------------------------- */
 
                 return (
                   <div key={item.title}>

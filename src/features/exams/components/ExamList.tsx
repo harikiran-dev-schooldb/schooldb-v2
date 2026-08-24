@@ -209,7 +209,7 @@ export function ExamList({ schoolSlug, onCreate, onEdit, onDelete }: Props) {
           </p>
 
           <p className="text-xs text-muted-foreground">
-            Manage your school's examination cycles.
+            Manage your school&apos;s examination cycles.
           </p>
         </div>
 

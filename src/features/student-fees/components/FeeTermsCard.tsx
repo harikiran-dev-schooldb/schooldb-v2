@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  CheckCircle2,
-  CircleDollarSign,
-  Clock3,
-  IndianRupee,
-  WalletCards,
-} from "lucide-react";
+import { CheckCircle2, Clock3, IndianRupee, WalletCards } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -79,7 +73,7 @@ export function FeeTermsCard({ installments, loading, onCollect }: Props) {
               <p className="mt-4 text-sm font-medium">Loading fee details...</p>
 
               <p className="mt-1 text-xs text-muted-foreground">
-                Please wait while we retrieve the student's installments.
+                Please wait while we retrieve the student&apos;s installments.
               </p>
             </div>
           ) : installments.length === 0 ? (

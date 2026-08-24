@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 import {
   CalendarDays,
@@ -29,6 +29,7 @@ type AttendanceRecord = {
 
   session: {
     attendanceDate: string;
+
     sessionType: "DAILY" | "MORNING" | "AFTERNOON" | "PERIOD";
 
     class: {
@@ -68,12 +69,22 @@ type ReportData = {
 
 export function StudentAttendanceReport() {
   const [academicYearId, setAcademicYearId] = useState("");
+
   const [studentId, setStudentId] = useState("");
+
   const [fromDate, setFromDate] = useState("");
+
   const [toDate, setToDate] = useState("");
 
   const [data, setData] = useState<ReportData | null>(null);
+
   const [loading, setLoading] = useState(false);
+
+  /*
+   * ------------------------------------------------------------------------
+   * Filters
+   * ------------------------------------------------------------------------
+   */
 
   const hasRequiredFilters = Boolean(academicYearId && studentId);
 
@@ -83,56 +94,80 @@ export function StudentAttendanceReport() {
     Boolean(fromDate) ||
     Boolean(toDate);
 
-  const loadReport = useCallback(async () => {
-    if (!academicYearId || !studentId) {
-      return;
-    }
-
-    try {
-      setLoading(true);
-
-      const params = new URLSearchParams({
-        academicYearId,
-        studentId,
-      });
-
-      if (fromDate) {
-        params.set("fromDate", fromDate);
-      }
-
-      if (toDate) {
-        params.set("toDate", toDate);
-      }
-
-      const response = await fetch(
-        `/api/v1/attendance/reports/student?${params.toString()}`,
-      );
-
-      const result = await response.json();
-
-      if (!result.success) {
-        toast.error(result.message);
-        setData(null);
-        return;
-      }
-
-      setData(result.data);
-    } catch {
-      toast.error("Failed to load attendance report.");
-      setData(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [academicYearId, studentId, fromDate, toDate]);
+  /*
+   * ------------------------------------------------------------------------
+   * Load report
+   * ------------------------------------------------------------------------
+   */
 
   useEffect(() => {
     if (!academicYearId || !studentId) {
-      setData(null);
       return;
     }
 
+    let cancelled = false;
+
+    async function loadReport() {
+      try {
+        setLoading(true);
+
+        const params = new URLSearchParams({
+          academicYearId,
+          studentId,
+        });
+
+        if (fromDate) {
+          params.set("fromDate", fromDate);
+        }
+
+        if (toDate) {
+          params.set("toDate", toDate);
+        }
+
+        const response = await fetch(
+          `/api/v1/attendance/reports/student?${params.toString()}`,
+          {
+            cache: "no-store",
+          },
+        );
+
+        const result = await response.json();
+
+        if (cancelled) {
+          return;
+        }
+
+        if (!response.ok || !result.success) {
+          toast.error(result.message || "Failed to load attendance report.");
+          setData(null);
+          return;
+        }
+
+        setData(result.data);
+      } catch {
+        if (!cancelled) {
+          toast.error("Failed to load attendance report.");
+          setData(null);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    }
+
     void loadReport();
-  }, [academicYearId, studentId, loadReport]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [academicYearId, studentId, fromDate, toDate]);
+
+  /*
+   * ------------------------------------------------------------------------
+   * Clear filters
+   * ------------------------------------------------------------------------
+   */
 
   function clearFilters() {
     setAcademicYearId("");
@@ -141,6 +176,27 @@ export function StudentAttendanceReport() {
     setToDate("");
     setData(null);
   }
+
+  /*
+   * ------------------------------------------------------------------------
+   * Academic year change
+   * ------------------------------------------------------------------------
+   *
+   * Resetting dependent UI state belongs to the
+   * event handler, not an effect.
+   */
+
+  function handleAcademicYearChange(value: string) {
+    setAcademicYearId(value);
+    setStudentId("");
+    setData(null);
+  }
+
+  /*
+   * ------------------------------------------------------------------------
+   * Status helpers
+   * ------------------------------------------------------------------------
+   */
 
   function statusLabel(status: AttendanceStatus) {
     switch (status) {
@@ -196,7 +252,7 @@ export function StudentAttendanceReport() {
   return (
     <div className="min-h-screen space-y-6 pb-10">
       {/* ============================================================ */}
-      {/* Header */}
+      {/* HEADER                                                       */}
       {/* ============================================================ */}
 
       <div className="rounded-2xl border bg-card p-5 shadow-sm">
@@ -230,7 +286,7 @@ export function StudentAttendanceReport() {
       </div>
 
       {/* ============================================================ */}
-      {/* Filters */}
+      {/* FILTERS                                                      */}
       {/* ============================================================ */}
 
       <div className="rounded-2xl border bg-card p-5 shadow-sm">
@@ -266,11 +322,7 @@ export function StudentAttendanceReport() {
         <div className="grid gap-4 md:grid-cols-4">
           <AcademicYearSelect
             value={academicYearId}
-            onChange={(value) => {
-              setAcademicYearId(value);
-              setStudentId("");
-              setData(null);
-            }}
+            onChange={handleAcademicYearChange}
           />
 
           <StudentSelect
@@ -304,7 +356,7 @@ export function StudentAttendanceReport() {
       </div>
 
       {/* ============================================================ */}
-      {/* Initial Empty State */}
+      {/* INITIAL EMPTY STATE                                          */}
       {/* ============================================================ */}
 
       {!hasRequiredFilters && (
@@ -323,7 +375,7 @@ export function StudentAttendanceReport() {
       )}
 
       {/* ============================================================ */}
-      {/* Loading */}
+      {/* LOADING                                                      */}
       {/* ============================================================ */}
 
       {hasRequiredFilters && loading && (
@@ -336,14 +388,14 @@ export function StudentAttendanceReport() {
       )}
 
       {/* ============================================================ */}
-      {/* Report */}
+      {/* REPORT                                                       */}
       {/* ============================================================ */}
 
       {hasRequiredFilters && !loading && data && (
         <>
-          {/* -------------------------------------------------------- */}
-          {/* Summary */}
-          {/* -------------------------------------------------------- */}
+          {/* ------------------------------------------------------ */}
+          {/* SUMMARY                                                */}
+          {/* ------------------------------------------------------ */}
 
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
             <SummaryCard
@@ -388,9 +440,9 @@ export function StudentAttendanceReport() {
             />
           </div>
 
-          {/* -------------------------------------------------------- */}
-          {/* Attendance Records */}
-          {/* -------------------------------------------------------- */}
+          {/* ------------------------------------------------------ */}
+          {/* RECORDS                                                 */}
+          {/* ------------------------------------------------------ */}
 
           <div className="overflow-hidden rounded-2xl border bg-card shadow-sm">
             <div className="flex flex-col gap-3 border-b p-5 sm:flex-row sm:items-center sm:justify-between">
@@ -475,7 +527,9 @@ export function StudentAttendanceReport() {
 
                         <td className="px-5 py-4">
                           {record.session.class.name}
+
                           <span className="mx-1 text-muted-foreground">-</span>
+
                           {record.session.section.name}
                         </td>
 

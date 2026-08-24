@@ -223,26 +223,6 @@ function ParentCard({
 }
 
 export function StudentParentsTab({ student }: Props) {
-  const hasFather = Boolean(
-    student.fatherName ||
-    student.fatherPhone ||
-    student.fatherEmail ||
-    student.fatherOccupation ||
-    student.fatherQualification ||
-    student.fatherIncome ||
-    student.fatherAadhar,
-  );
-
-  const hasMother = Boolean(
-    student.motherName ||
-    student.motherPhone ||
-    student.motherEmail ||
-    student.motherOccupation ||
-    student.motherQualification ||
-    student.motherIncome ||
-    student.motherAadhar,
-  );
-
   const hasGuardian = Boolean(
     student.guardianName || student.guardianRelation || student.guardianPhone,
   );

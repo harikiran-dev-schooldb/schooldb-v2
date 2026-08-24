@@ -1,6 +1,6 @@
 "use client";
 
-import { BookOpen, Pencil, Plus } from "lucide-react";
+import { Pencil, Plus } from "lucide-react";
 
 import {
   Dialog,

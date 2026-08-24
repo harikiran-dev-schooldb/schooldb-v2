@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import {
   CalendarDays,
@@ -154,14 +154,19 @@ function PaymentForm({
   /* Initial selection                                                        */
   /* ------------------------------------------------------------------------ */
 
-  const firstInstallmentId = sortedInstallments[0]?.id;
+  const firstInstallment = sortedInstallments[0];
 
   const [selectedInstallmentIds, setSelectedInstallmentIds] = useState<
     string[]
-  >(() => (firstInstallmentId ? [firstInstallmentId] : []));
+  >(() => (firstInstallment ? [firstInstallment.id] : []));
 
   const [paymentAmounts, setPaymentAmounts] = useState<Record<string, number>>(
-    {},
+    () =>
+      firstInstallment
+        ? {
+            [firstInstallment.id]: firstInstallment.outstanding,
+          }
+        : {},
   );
 
   const [paymentMode, setPaymentMode] = useState("CASH");
@@ -173,26 +178,6 @@ function PaymentForm({
   const [remarks, setRemarks] = useState("");
 
   const [loading, setLoading] = useState(false);
-
-  /* ------------------------------------------------------------------------ */
-  /* Initialize first installment                                             */
-  /* ------------------------------------------------------------------------ */
-
-  useEffect(() => {
-    if (!firstInstallmentId) {
-      setSelectedInstallmentIds([]);
-      setPaymentAmounts({});
-      return;
-    }
-
-    const firstInstallment = sortedInstallments[0];
-
-    setSelectedInstallmentIds([firstInstallment.id]);
-
-    setPaymentAmounts({
-      [firstInstallment.id]: firstInstallment.outstanding,
-    });
-  }, [firstInstallmentId, sortedInstallments]);
 
   /* ------------------------------------------------------------------------ */
   /* Selected installments                                                    */

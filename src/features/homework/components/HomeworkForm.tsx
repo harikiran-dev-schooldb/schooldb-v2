@@ -47,7 +47,9 @@ const defaultValues: HomeworkFormInput = {
 
 export function HomeworkForm({ mode, homeworkId, onSuccess }: Props) {
   const [loading, setLoading] = useState(false);
-  const [loadingHomework, setLoadingHomework] = useState(mode === "edit");
+  const [loadingHomework, setLoadingHomework] = useState(
+    mode === "edit" && Boolean(homeworkId),
+  );
 
   const form = useForm<HomeworkFormInput>({
     resolver: zodResolver(homeworkSchema),
@@ -80,7 +82,6 @@ export function HomeworkForm({ mode, homeworkId, onSuccess }: Props) {
 
   useEffect(() => {
     if (mode !== "edit" || !homeworkId) {
-      setLoadingHomework(false);
       return;
     }
 
