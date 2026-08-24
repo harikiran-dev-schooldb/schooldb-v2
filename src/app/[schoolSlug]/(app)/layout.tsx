@@ -6,7 +6,7 @@ import { getMembership, getSchoolBySlug } from "@/lib/tenant";
 import { SchoolProvider } from "@/contexts/school-context";
 import { AppShell } from "@/components/layout/AppShell";
 
-export default async function SchoolLayout({
+export default async function SchoolAppLayout({
   children,
   params,
 }: {

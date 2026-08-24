@@ -1,9 +1,5 @@
-import { SignIn } from "@clerk/nextjs";
+import { PremiumSignIn } from "@/features/auth/components/PremiumSignIn";
 
 export default function LoginPage() {
-  return (
-    <div className="flex min-h-screen items-center justify-center">
-      <SignIn />
-    </div>
-  );
+  return <PremiumSignIn />;
 }
