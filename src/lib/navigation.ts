@@ -6,6 +6,8 @@ import {
   IndianRupee,
   BookOpen,
   Settings,
+  LogOut,
+  LogOutIcon,
 } from "lucide-react";
 
 export const navigation = [
@@ -167,16 +169,9 @@ export const navigation = [
       },
     ],
   },
-
-
   {
     title: "Settings",
     href: "settings",
     icon: Settings,
-  },
-  {
-    title: "Logout",
-    href: "logout",
-    icon: Settings,
-  },
+  }
 ];
