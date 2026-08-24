@@ -254,7 +254,7 @@ export function TeacherTimetableContainer() {
           <p className="mt-4 text-sm font-medium">Loading timetable</p>
 
           <p className="mt-1 text-xs text-muted-foreground">
-            Preparing the teacher's weekly schedule...
+            Preparing the teacher&apos;s weekly schedule...
           </p>
         </div>
       )}

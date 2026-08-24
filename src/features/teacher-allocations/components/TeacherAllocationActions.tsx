@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { Pencil } from "lucide-react";
 
 import { CrudActions, CrudActionItem } from "@/components/common/crud";
 import { TeacherAllocationDialog } from "./TeacherAllocationDialog";

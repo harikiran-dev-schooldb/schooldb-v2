@@ -48,7 +48,6 @@ export function PeriodForm({ mode, periodId, onSuccess }: Props) {
 
   useEffect(() => {
     if (mode !== "edit" || !periodId) {
-      setInitialLoading(false);
       return;
     }
 
@@ -56,8 +55,6 @@ export function PeriodForm({ mode, periodId, onSuccess }: Props) {
 
     async function load() {
       try {
-        setInitialLoading(true);
-
         const res = await fetch(`/api/v1/periods/${periodId}`);
 
         const result = await res.json();
@@ -68,7 +65,7 @@ export function PeriodForm({ mode, periodId, onSuccess }: Props) {
 
         if (!res.ok || !result.success) {
           toast.error(result.message || "Failed to load period.");
-
+          setInitialLoading(false);
           return;
         }
 
@@ -79,12 +76,11 @@ export function PeriodForm({ mode, periodId, onSuccess }: Props) {
           displayOrder: result.data.displayOrder,
           active: result.data.active,
         });
+
+        setInitialLoading(false);
       } catch {
         if (!cancelled) {
           toast.error("Failed to load period.");
-        }
-      } finally {
-        if (!cancelled) {
           setInitialLoading(false);
         }
       }

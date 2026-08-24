@@ -201,7 +201,7 @@ export function StudentReportCardPage({
           <h2 className="mt-4 text-xl font-bold">Report Card Not Found</h2>
 
           <p className="mt-1 text-sm text-muted-foreground">
-            Unable to load the student's report card.
+            Unable to load the student&apos;s report card.
           </p>
 
           <Button

@@ -93,7 +93,7 @@ export function StudentStatusDialog({ open, onOpenChange, studentId }: Props) {
               </DialogTitle>
 
               <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                Update the student's current enrollment or academic status.
+                Update the student&apos;s current enrollment or academic status.
               </p>
             </div>
           </div>
@@ -163,8 +163,8 @@ export function StudentStatusDialog({ open, onOpenChange, studentId }: Props) {
             <CircleAlert className="mt-0.5 size-4 shrink-0 text-primary" />
 
             <p className="text-xs leading-5 text-muted-foreground">
-              Changing a student's status affects how they appear across student
-              records and school operations.
+              Changing a student&apos;s status affects how they appear across
+              student records and school operations.
             </p>
           </div>
 
@@ -189,7 +189,7 @@ export function StudentStatusDialog({ open, onOpenChange, studentId }: Props) {
 
         <div className="flex items-center gap-2 border-t border-border/50 bg-muted/20 px-6 py-3 text-xs text-muted-foreground">
           <GraduationCap className="size-3.5 text-primary" />
-          Changes are applied to the student's school record.
+          Changes are applied to the student&apos;s school record.
         </div>
       </DialogContent>
     </Dialog>

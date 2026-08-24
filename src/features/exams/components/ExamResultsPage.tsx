@@ -317,7 +317,7 @@ export function ExamResultsPage({ schoolSlug, examId }: Props) {
 
             <p className="mt-1 max-w-sm text-sm text-muted-foreground">
               Select a class to view the examination results. You can optionally
-              select a section to view only that section's students.
+              select a section to view only that section&apos;s students.
             </p>
           </CardContent>
         </Card>

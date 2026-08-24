@@ -1,10 +1,9 @@
 "use client";
 
 import type { ColumnDef } from "@tanstack/react-table";
-import { BookOpen, GraduationCap, MoreHorizontal } from "lucide-react";
+import { BookOpen, GraduationCap } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 
 import { SubjectListItem } from "./types";
 import { SubjectActions } from "./components/SubjectActions";

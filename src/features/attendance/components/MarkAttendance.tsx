@@ -38,29 +38,85 @@ type StudentAttendance = {
 
 const ITEMS_PER_PAGE = 50;
 
+function mapStudents(
+  students: NonNullable<
+    ReturnType<typeof useAttendanceSession>["data"]
+  >["students"],
+): StudentAttendance[] {
+  return students.map((student) => ({
+    studentId: student.studentId,
+    rollNo: student.rollNo,
+    admissionNo: student.admissionNo,
+    fullName: student.fullName,
+    status: student.status,
+    remarks: student.remarks ?? "",
+  }));
+}
+
 export function MarkAttendance({ sessionId }: Props) {
   const { loading, data, reload } = useAttendanceSession(sessionId);
 
-  const [students, setStudents] = useState<StudentAttendance[]>([]);
+  /*
+   * ------------------------------------------------------------------------
+   * Local editing state
+   * ------------------------------------------------------------------------
+   *
+   * We store only attendance changes here.
+   *
+   * When the session data arrives, students are derived from `data`.
+   * This avoids synchronously copying props/API data into state inside
+   * useEffect.
+   */
+
+  const [editedStudents, setEditedStudents] = useState<
+    StudentAttendance[] | null
+  >(null);
+
+  const [originalStudents, setOriginalStudents] = useState<
+    StudentAttendance[] | null
+  >(null);
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [saving, setSaving] = useState(false);
-  const [editing, setEditing] = useState(false);
 
-  const [originalStudents, setOriginalStudents] = useState<StudentAttendance[]>(
-    [],
-  );
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const [saving, setSaving] = useState(false);
+
+  const [editing, setEditing] = useState(false);
 
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   /*
-   * Ctrl + F / Cmd + F → attendance search.
+   * ------------------------------------------------------------------------
+   * Students
+   * ------------------------------------------------------------------------
    */
+
+  const serverStudents = useMemo(() => {
+    if (!data?.students) {
+      return [];
+    }
+
+    return mapStudents(data.students);
+  }, [data]);
+
+  /*
+   * Use edited state when available.
+   * Otherwise use the server data directly.
+   */
+  const students = editedStudents ?? serverStudents;
+
+  /*
+   * ------------------------------------------------------------------------
+   * Ctrl + F / Cmd + F
+   * ------------------------------------------------------------------------
+   */
+
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "f") {
         event.preventDefault();
+
         searchInputRef.current?.focus();
       }
     }
@@ -72,32 +128,42 @@ export function MarkAttendance({ sessionId }: Props) {
     };
   }, []);
 
-  /* ------------------------------------------------------------------------ */
-  /* Load Students                                                            */
-  /* ------------------------------------------------------------------------ */
+  /*
+   * ------------------------------------------------------------------------
+   * Begin editing
+   * ------------------------------------------------------------------------
+   */
 
-  useEffect(() => {
-    if (!data?.students) return;
+  function beginEditing() {
+    const snapshot = mapStudents(data?.students ?? []);
 
-    const attendanceStudents: StudentAttendance[] = data.students.map(
-      (student) => ({
-        studentId: student.studentId,
-        rollNo: student.rollNo,
-        admissionNo: student.admissionNo,
-        fullName: student.fullName,
-        status: student.status,
-        remarks: student.remarks ?? "",
-      }),
-    );
+    setOriginalStudents(snapshot);
 
-    setStudents(attendanceStudents);
-    setOriginalStudents(attendanceStudents);
+    setEditedStudents(snapshot);
+
     setCurrentPage(1);
-  }, [data]);
+    setEditing(true);
+  }
 
   /*
-   * Existing summary logic.
+   * ------------------------------------------------------------------------
+   * Cancel editing
+   * ------------------------------------------------------------------------
    */
+
+  function cancelEditing() {
+    setEditedStudents(originalStudents);
+
+    setEditing(false);
+    setCurrentPage(1);
+  }
+
+  /*
+   * ------------------------------------------------------------------------
+   * Summary
+   * ------------------------------------------------------------------------
+   */
+
   const summary = useMemo(() => {
     return {
       present: students.filter((student) => student.status === "PRESENT")
@@ -112,8 +178,11 @@ export function MarkAttendance({ sessionId }: Props) {
   }, [students]);
 
   /*
-   * Search.
+   * ------------------------------------------------------------------------
+   * Search
+   * ------------------------------------------------------------------------
    */
+
   const filteredStudents = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
 
@@ -121,51 +190,59 @@ export function MarkAttendance({ sessionId }: Props) {
       return students;
     }
 
-    return students.filter((student) => {
-      return (
+    return students.filter(
+      (student) =>
         student.fullName.toLowerCase().includes(query) ||
-        student.admissionNo.toLowerCase().includes(query)
-      );
-    });
+        student.admissionNo.toLowerCase().includes(query),
+    );
   }, [students, searchQuery]);
 
   /*
-   * Pagination.
+   * ------------------------------------------------------------------------
+   * Pagination
+   * ------------------------------------------------------------------------
    */
+
   const totalPages = Math.max(
     1,
     Math.ceil(filteredStudents.length / ITEMS_PER_PAGE),
   );
 
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+
   const visibleStudents = useMemo(() => {
-    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    const start = (safeCurrentPage - 1) * ITEMS_PER_PAGE;
 
     return filteredStudents.slice(start, start + ITEMS_PER_PAGE);
-  }, [filteredStudents, currentPage]);
+  }, [filteredStudents, safeCurrentPage]);
 
   /*
-   * Existing status update logic.
+   * ------------------------------------------------------------------------
+   * Status update
+   * ------------------------------------------------------------------------
    */
+
   function updateStatus(studentId: string, status: AttendanceStatus) {
-    setStudents((previous) =>
-      previous.map((student) =>
+    setEditedStudents((previous) => {
+      const source = previous ?? serverStudents;
+
+      return source.map((student) =>
         student.studentId === studentId
           ? {
               ...student,
               status,
             }
           : student,
-      ),
-    );
+      );
+    });
   }
 
   /*
-   * UI card click:
-   * Present ↔ Absent.
-   *
-   * Other statuses remain available through
-   * your existing StudentAttendanceRow if needed.
+   * ------------------------------------------------------------------------
+   * Toggle Present / Absent
+   * ------------------------------------------------------------------------
    */
+
   function toggleStudent(student: StudentAttendance) {
     updateStatus(
       student.studentId,
@@ -174,46 +251,61 @@ export function MarkAttendance({ sessionId }: Props) {
   }
 
   /*
-   * Mark all present.
+   * ------------------------------------------------------------------------
+   * Mark all present
+   * ------------------------------------------------------------------------
    */
+
   function markAllPresent() {
-    setStudents((previous) =>
-      previous.map((student) => ({
+    setEditedStudents((previous) => {
+      const source = previous ?? serverStudents;
+
+      return source.map((student) => ({
         ...student,
         status: "PRESENT",
-      })),
-    );
+      }));
+    });
   }
 
   /*
-   * Mark all absent.
+   * ------------------------------------------------------------------------
+   * Mark all absent
+   * ------------------------------------------------------------------------
    */
+
   function markAllAbsent() {
-    setStudents((previous) =>
-      previous.map((student) => ({
+    setEditedStudents((previous) => {
+      const source = previous ?? serverStudents;
+
+      return source.map((student) => ({
         ...student,
         status: "ABSENT",
-      })),
-    );
+      }));
+    });
   }
 
   /*
-   * Existing save business logic.
+   * ------------------------------------------------------------------------
+   * Save attendance
+   * ------------------------------------------------------------------------
    */
+
   async function saveAttendance() {
+    const original = originalStudents ?? serverStudents;
+
     try {
       setSaving(true);
 
       const changes = students
         .filter((student) => {
-          const original = originalStudents.find(
+          const originalStudent = original.find(
             (item) => item.studentId === student.studentId,
           );
 
           return (
-            original &&
-            (original.status !== student.status ||
-              original.remarks !== student.remarks)
+            originalStudent &&
+            (originalStudent.status !== student.status ||
+              originalStudent.remarks !== student.remarks)
           );
         })
         .map((student) => ({
@@ -224,6 +316,7 @@ export function MarkAttendance({ sessionId }: Props) {
 
       if (changes.length === 0) {
         toast.info("No attendance changes to save.");
+
         setEditing(false);
         return;
       }
@@ -256,7 +349,14 @@ export function MarkAttendance({ sessionId }: Props) {
         } updated successfully.`,
       );
 
+      /*
+       * Keep the edited data as the new
+       * local baseline.
+       */
       setOriginalStudents(students);
+
+      setEditedStudents(students);
+
       setEditing(false);
     } catch {
       toast.error("Failed to update attendance.");
@@ -265,33 +365,16 @@ export function MarkAttendance({ sessionId }: Props) {
     }
   }
 
-  if (loading) {
-    return (
-      <div className="flex min-h-[400px] items-center justify-center">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="h-5 w-5 animate-spin" />
-          Loading attendance...
-        </div>
-      </div>
-    );
-  }
-
-  if (!data) {
-    return (
-      <div className="flex min-h-[400px] items-center justify-center">
-        <div className="rounded-xl border bg-card px-6 py-5 text-sm text-muted-foreground">
-          Attendance session not found.
-        </div>
-      </div>
-    );
-  }
-
-  const allPresent =
-    students.length > 0 &&
-    students.every((student) => student.status === "PRESENT");
+  /*
+   * ------------------------------------------------------------------------
+   * Lock attendance
+   * ------------------------------------------------------------------------
+   */
 
   async function lockAttendance() {
-    if (!data?.session?.id) return;
+    if (!data?.session?.id) {
+      return;
+    }
 
     try {
       setSaving(true);
@@ -314,6 +397,9 @@ export function MarkAttendance({ sessionId }: Props) {
 
       setEditing(false);
 
+      setEditedStudents(null);
+      setOriginalStudents(null);
+
       await reload();
     } catch {
       toast.error("Failed to lock attendance session.");
@@ -321,6 +407,49 @@ export function MarkAttendance({ sessionId }: Props) {
       setSaving(false);
     }
   }
+
+  /*
+   * ------------------------------------------------------------------------
+   * Loading state
+   * ------------------------------------------------------------------------
+   */
+
+  if (loading) {
+    return (
+      <div className="flex min-h-[400px] items-center justify-center">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="h-5 w-5 animate-spin" />
+          Loading attendance...
+        </div>
+      </div>
+    );
+  }
+
+  /*
+   * ------------------------------------------------------------------------
+   * Not found
+   * ------------------------------------------------------------------------
+   */
+
+  if (!data) {
+    return (
+      <div className="flex min-h-[400px] items-center justify-center">
+        <div className="rounded-xl border bg-card px-6 py-5 text-sm text-muted-foreground">
+          Attendance session not found.
+        </div>
+      </div>
+    );
+  }
+
+  /*
+   * ------------------------------------------------------------------------
+   * Derived values
+   * ------------------------------------------------------------------------
+   */
+
+  const allPresent =
+    students.length > 0 &&
+    students.every((student) => student.status === "PRESENT");
 
   return (
     <div className="min-h-screen space-y-6 pb-24">
@@ -373,6 +502,7 @@ export function MarkAttendance({ sessionId }: Props) {
               value={searchQuery}
               onChange={(event) => {
                 setSearchQuery(event.target.value);
+
                 setCurrentPage(1);
               }}
               placeholder="Search name or admission no..."
@@ -489,14 +619,20 @@ export function MarkAttendance({ sessionId }: Props) {
                 role="button"
                 tabIndex={saving || !editing || data.session.locked ? -1 : 0}
                 onClick={() => {
-                  if (saving || !editing || data.session.locked) return;
+                  if (saving || !editing || data.session.locked) {
+                    return;
+                  }
+
                   toggleStudent(student);
                 }}
                 onKeyDown={(event) => {
-                  if (saving || !editing || data.session.locked) return;
+                  if (saving || !editing || data.session.locked) {
+                    return;
+                  }
 
                   if (event.key === "Enter" || event.key === " ") {
                     event.preventDefault();
+
                     toggleStudent(student);
                   }
                 }}
@@ -504,7 +640,6 @@ export function MarkAttendance({ sessionId }: Props) {
                   "group relative flex min-h-[145px] items-center rounded-xl border-2 p-4 text-left shadow-sm transition-all duration-200",
                   "hover:-translate-y-0.5 hover:shadow-md",
                   "active:scale-[0.98]",
-                  "disabled:pointer-events-none disabled:opacity-70",
 
                   isPresent
                     ? "border-border bg-card hover:border-primary/40"
@@ -519,7 +654,9 @@ export function MarkAttendance({ sessionId }: Props) {
                   isLeave
                     ? "border-blue-300 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/20"
                     : "",
-                ].join(" ")}
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
               >
                 {/* Roll number */}
                 <div className="absolute left-3 top-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -530,13 +667,19 @@ export function MarkAttendance({ sessionId }: Props) {
                 <div
                   className={[
                     "absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-full",
+
                     isPresent
                       ? "bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary"
                       : "",
+
                     isAbsent ? "bg-destructive/10 text-destructive" : "",
+
                     isLate ? "bg-amber-500/10 text-amber-600" : "",
+
                     isLeave ? "bg-blue-500/10 text-blue-600" : "",
-                  ].join(" ")}
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
                 >
                   {isPresent && <Check className="h-4 w-4" />}
 
@@ -552,13 +695,19 @@ export function MarkAttendance({ sessionId }: Props) {
                   <div
                     className={[
                       "flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-sm font-bold transition-colors",
+
                       isPresent
                         ? "bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary"
                         : "",
+
                       isAbsent ? "bg-destructive/10 text-destructive" : "",
+
                       isLate ? "bg-amber-500/10 text-amber-600" : "",
+
                       isLeave ? "bg-blue-500/10 text-blue-600" : "",
-                    ].join(" ")}
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
                   >
                     {student.fullName.charAt(0).toUpperCase()}
                   </div>
@@ -567,6 +716,7 @@ export function MarkAttendance({ sessionId }: Props) {
                     <p
                       className={[
                         "truncate text-sm font-semibold",
+
                         isAbsent ? "text-destructive" : "text-foreground",
                       ].join(" ")}
                     >
@@ -638,11 +788,17 @@ export function MarkAttendance({ sessionId }: Props) {
                     <span
                       className={[
                         "text-[10px] font-bold uppercase tracking-wider",
+
                         isPresent ? "text-muted-foreground" : "",
+
                         isAbsent ? "text-destructive" : "",
+
                         isLate ? "text-amber-600" : "",
+
                         isLeave ? "text-blue-600" : "",
-                      ].join(" ")}
+                      ]
+                        .filter(Boolean)
+                        .join(" ")}
                     >
                       {student.status}
                     </span>
@@ -652,11 +808,17 @@ export function MarkAttendance({ sessionId }: Props) {
                     <span
                       className={[
                         "text-[10px] font-bold uppercase tracking-wider",
+
                         isPresent ? "text-muted-foreground" : "",
+
                         isAbsent ? "text-destructive" : "",
+
                         isLate ? "text-amber-600" : "",
+
                         isLeave ? "text-blue-600" : "",
-                      ].join(" ")}
+                      ]
+                        .filter(Boolean)
+                        .join(" ")}
                     >
                       {student.status}
                     </span>
@@ -676,13 +838,13 @@ export function MarkAttendance({ sessionId }: Props) {
             variant="outline"
             size="icon"
             onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
-            disabled={currentPage === 1}
+            disabled={safeCurrentPage === 1}
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
 
           <span className="text-sm font-medium text-muted-foreground">
-            Page {currentPage} of {totalPages}
+            Page {safeCurrentPage} of {totalPages}
           </span>
 
           <Button
@@ -692,7 +854,7 @@ export function MarkAttendance({ sessionId }: Props) {
             onClick={() =>
               setCurrentPage((page) => Math.min(totalPages, page + 1))
             }
-            disabled={currentPage === totalPages}
+            disabled={safeCurrentPage === totalPages}
           >
             <ChevronRight className="h-4 w-4" />
           </Button>
@@ -722,7 +884,7 @@ export function MarkAttendance({ sessionId }: Props) {
                 type="button"
                 variant="outline"
                 size="lg"
-                onClick={() => setEditing(true)}
+                onClick={beginEditing}
               >
                 Edit Attendance
               </Button>
@@ -742,10 +904,7 @@ export function MarkAttendance({ sessionId }: Props) {
                 type="button"
                 variant="outline"
                 size="lg"
-                onClick={() => {
-                  setStudents(originalStudents);
-                  setEditing(false);
-                }}
+                onClick={cancelEditing}
                 disabled={saving}
               >
                 Cancel

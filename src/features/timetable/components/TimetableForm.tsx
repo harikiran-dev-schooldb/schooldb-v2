@@ -4,16 +4,7 @@ import { useEffect, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import {
-  CalendarDays,
-  Check,
-  ClipboardList,
-  Clock3,
-  GraduationCap,
-  Layers3,
-  Loader2,
-  Users,
-} from "lucide-react";
+import { Loader2 } from "lucide-react";
 
 import {
   timetableSchema,
@@ -89,7 +80,6 @@ export function TimetableForm({ mode, timetableId, onSuccess }: Props) {
 
   useEffect(() => {
     if (mode !== "edit" || !timetableId) {
-      setInitialLoading(false);
       return;
     }
 
@@ -334,60 +324,5 @@ export function TimetableForm({ mode, timetableId, onSuccess }: Props) {
         />
       </div>
     </form>
-  );
-}
-
-/* -------------------------------------------------------------------------- */
-/* UI Helpers                                                                 */
-/* -------------------------------------------------------------------------- */
-
-function SectionHeading({
-  icon,
-  title,
-  description,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  description: string;
-}) {
-  return (
-    <div className="flex items-start gap-3">
-      <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
-        {icon}
-      </div>
-
-      <div>
-        <h3 className="text-sm font-semibold">{title}</h3>
-
-        <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>
-      </div>
-    </div>
-  );
-}
-
-function PremiumField({
-  icon,
-  label,
-  required,
-  children,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  required?: boolean;
-  children: React.ReactNode;
-}) {
-  return (
-    <FormField
-      label={
-        <span className="flex items-center gap-1.5">
-          <span className="text-muted-foreground">{icon}</span>
-
-          <span>{label}</span>
-        </span>
-      }
-      required={required}
-    >
-      {children}
-    </FormField>
   );
 }

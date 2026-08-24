@@ -21,7 +21,15 @@ export function useTeacherTable() {
   const [pageSize] = useState(25);
   const [total, setTotal] = useState(0);
 
-  const load = useCallback(async () => {
+  /*
+   * ------------------------------------------------------------------------
+   * Load teachers
+   * ------------------------------------------------------------------------
+   *
+   * This function is kept for manual reloads and table refresh events.
+   */
+
+  const reload = useCallback(async () => {
     setLoading(true);
 
     const params = new URLSearchParams({
@@ -34,16 +42,13 @@ export function useTeacherTable() {
     }
 
     try {
-      const res = await fetch(
-        `/api/v1/teachers?${params.toString()}`,
-        {
-          cache: "no-store",
-        },
-      );
+      const res = await fetch(`/api/v1/teachers?${params.toString()}`, {
+        cache: "no-store",
+      });
 
       const result = await res.json();
 
-      if (!result.success) {
+      if (!res.ok || !result.success) {
         setTeachers([]);
         setTotal(0);
         return;
@@ -61,13 +66,80 @@ export function useTeacherTable() {
     }
   }, [page, pageSize, search]);
 
-  useEffect(() => {
-    void load();
-  }, [load]);
+  /*
+   * ------------------------------------------------------------------------
+   * Initial / filter / pagination loading
+   * ------------------------------------------------------------------------
+   *
+   * The fetch is performed directly inside the effect.
+   * This avoids react-hooks/set-state-in-effect being triggered by
+   * calling a callback that synchronously performs state updates.
+   */
 
   useEffect(() => {
-    return subscribeTableRefresh("teachers", load);
-  }, [load]);
+    let cancelled = false;
+
+    async function loadTeachers() {
+      setLoading(true);
+
+      const params = new URLSearchParams({
+        page: page.toString(),
+        pageSize: pageSize.toString(),
+      });
+
+      if (search.trim()) {
+        params.set("search", search.trim());
+      }
+
+      try {
+        const res = await fetch(`/api/v1/teachers?${params.toString()}`, {
+          cache: "no-store",
+        });
+
+        const result = await res.json();
+
+        if (cancelled) {
+          return;
+        }
+
+        if (!res.ok || !result.success) {
+          setTeachers([]);
+          setTotal(0);
+          return;
+        }
+
+        const data: Response = result.data;
+
+        setTeachers(data.data);
+        setTotal(data.total);
+      } catch {
+        if (!cancelled) {
+          setTeachers([]);
+          setTotal(0);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    }
+
+    void loadTeachers();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [page, pageSize, search]);
+
+  /*
+   * ------------------------------------------------------------------------
+   * External table refresh
+   * ------------------------------------------------------------------------
+   */
+
+  useEffect(() => {
+    return subscribeTableRefresh("teachers", reload);
+  }, [reload]);
 
   return {
     teachers,
@@ -78,6 +150,6 @@ export function useTeacherTable() {
     setPage,
     total,
     pageSize,
-    reload: load,
+    reload,
   };
 }

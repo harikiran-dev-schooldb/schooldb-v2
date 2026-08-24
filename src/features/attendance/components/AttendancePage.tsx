@@ -61,8 +61,10 @@ function getModeLabel(mode: AttendanceMode) {
   switch (mode) {
     case "ONCE_DAILY":
       return "Once Daily";
+
     case "MORNING_AFTERNOON":
       return "Morning & Afternoon";
+
     case "EVERY_PERIOD":
       return "Every Period";
   }
@@ -72,7 +74,9 @@ export function AttendancePage({ schoolSlug }: Props) {
   const router = useRouter();
 
   const [academicYearId, setAcademicYearId] = useState("");
+
   const [classId, setClassId] = useState("");
+
   const [sectionId, setSectionId] = useState("");
 
   const [academicYears, setAcademicYears] = useState<AcademicYearOption[]>([]);
@@ -80,33 +84,58 @@ export function AttendancePage({ schoolSlug }: Props) {
   const [loading, setLoading] = useState(false);
 
   const [timetable, setTimetable] = useState<TimetableOption[]>([]);
+
   const [timetableLoading, setTimetableLoading] = useState(false);
 
+  /*
+   * ------------------------------------------------------------------------
+   * LOAD ACADEMIC YEARS
+   * ------------------------------------------------------------------------
+   */
+
   useEffect(() => {
-    async function loadAcademicYears() {
+    const controller = new AbortController();
+
+    const loadAcademicYears = async () => {
       try {
-        const response = await fetch("/api/v1/academic-years/options");
+        const response = await fetch("/api/v1/academic-years/options", {
+          signal: controller.signal,
+        });
 
         const result = await response.json();
+
+        if (controller.signal.aborted) {
+          return;
+        }
 
         if (!result.success) {
           toast.error(result.message);
           return;
         }
 
-        setAcademicYears(result.data);
+        const options = (result.data ?? []) as AcademicYearOption[];
 
-        const activeYear = result.data[0];
+        setAcademicYears(options);
+
+        const activeYear = options[0];
 
         if (activeYear) {
           setAcademicYearId(activeYear.id);
         }
-      } catch {
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") {
+          return;
+        }
+
         toast.error("Failed to load academic years.");
       }
-    }
+    };
 
     void loadAcademicYears();
+
+    return () => {
+      controller.abort();
+    };
   }, []);
 
   const selectedAcademicYear = academicYears.find(
@@ -121,10 +150,22 @@ export function AttendancePage({ schoolSlug }: Props) {
     Boolean(classId) &&
     Boolean(sectionId);
 
+  /*
+   * ------------------------------------------------------------------------
+   * CLASS CHANGE
+   * ------------------------------------------------------------------------
+   */
+
   function changeClass(value: string) {
     setClassId(value);
     setSectionId("");
   }
+
+  /*
+   * ------------------------------------------------------------------------
+   * CREATE SESSION
+   * ------------------------------------------------------------------------
+   */
 
   async function createSession(
     sessionType: "DAILY" | "MORNING" | "AFTERNOON" | "PERIOD",
@@ -183,15 +224,34 @@ export function AttendancePage({ schoolSlug }: Props) {
     }
   }
 
+  /*
+   * ------------------------------------------------------------------------
+   * LOAD TODAY'S TIMETABLE
+   * ------------------------------------------------------------------------
+   *
+   * IMPORTANT:
+   *
+   * We no longer do:
+   *
+   *   setTimetable([])
+   *
+   * when the prerequisites are missing.
+   *
+   * The state is simply left untouched until
+   * a valid timetable request is made.
+   *
+   * The UI only renders the timetable when
+   * canLoadTimetable is true.
+   */
+
   useEffect(() => {
     if (!canLoadTimetable) {
-      setTimetable([]);
       return;
     }
 
-    let cancelled = false;
+    const controller = new AbortController();
 
-    async function loadTimetable() {
+    const loadTimetable = async () => {
       try {
         setTimetableLoading(true);
 
@@ -204,35 +264,46 @@ export function AttendancePage({ schoolSlug }: Props) {
 
         const response = await fetch(
           `/api/v1/attendance/timetable?${params.toString()}`,
+          {
+            signal: controller.signal,
+          },
         );
 
         const result = await response.json();
 
-        if (cancelled) return;
+        if (controller.signal.aborted) {
+          return;
+        }
 
         if (!result.success) {
           toast.error(result.message);
+
           setTimetable([]);
           return;
         }
 
-        setTimetable(result.data);
-      } catch {
-        if (!cancelled) {
+        setTimetable((result.data ?? []) as TimetableOption[]);
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") {
+          return;
+        }
+
+        if (!controller.signal.aborted) {
           toast.error("Failed to load today's timetable.");
+
           setTimetable([]);
         }
       } finally {
-        if (!cancelled) {
+        if (!controller.signal.aborted) {
           setTimetableLoading(false);
         }
       }
-    }
+    };
 
     void loadTimetable();
 
     return () => {
-      cancelled = true;
+      controller.abort();
     };
   }, [canLoadTimetable, academicYearId, classId, sectionId]);
 
@@ -455,7 +526,9 @@ export function AttendancePage({ schoolSlug }: Props) {
 
                         <p className="mt-1 text-sm text-muted-foreground">
                           {item.subjectName}
+
                           <span className="mx-1.5">·</span>
+
                           {item.teacherName}
                         </p>
                       </div>

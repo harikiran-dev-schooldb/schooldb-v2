@@ -4,8 +4,6 @@ import { Clock3 } from "lucide-react";
 
 import { CrudToolbar } from "@/components/common/crud";
 
-import { AddPeriodButton } from "./AddPeriodButton";
-
 type Props = {
   search: string;
   onSearch: (value: string) => void;
@@ -24,7 +22,7 @@ export function PeriodToolbar({ search, onSearch }: Props) {
             <h2 className="text-sm font-semibold">Academic Periods</h2>
 
             <p className="text-xs text-muted-foreground">
-              Configure the school's daily schedule.
+              Configure the school&apos;s daily schedule.
             </p>
           </div>
         </div>
