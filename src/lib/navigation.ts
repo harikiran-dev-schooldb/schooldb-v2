@@ -174,4 +174,9 @@ export const navigation = [
     href: "settings",
     icon: Settings,
   },
+  {
+    title: "Logout",
+    href: "logout",
+    icon: Settings,
+  },
 ];
