@@ -574,16 +574,16 @@ export default function DashboardPage() {
       )}
 
       {/* HERO */}
-      <section className="premium-hero px-6 py-7 text-white md:px-10 md:py-10">
-        <div className="relative flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
+      <section className="premium-hero px-6 py-5 text-white md:px-8 md:py-6">
+        <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
           <div className="max-w-2xl">
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.07] px-3 py-1.5 text-[10px] font-bold tracking-[0.18em] text-teal-200 uppercase backdrop-blur-md">
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.07] px-3 py-1 text-[10px] font-bold tracking-[0.18em] text-teal-200 uppercase backdrop-blur-md">
               <Sparkles className="size-3" />
 
               {data.academicYear?.name ?? "No active academic year"}
             </div>
 
-            <h2 className="mt-6 text-3xl font-bold tracking-[-0.04em] text-white md:text-5xl md:leading-[1.08]">
+            <h2 className="mt-3 text-2xl font-bold tracking-[-0.04em] text-white md:text-4xl md:leading-[1.08]">
               Run your school
               <br className="hidden md:block" />{" "}
               <span className="bg-gradient-to-r from-teal-200 via-cyan-200 to-blue-200 bg-clip-text text-transparent">
@@ -591,39 +591,39 @@ export default function DashboardPage() {
               </span>
             </h2>
 
-            <p className="mt-4 max-w-xl text-sm leading-6 text-white/65 md:text-base">
+            <p className="mt-2 max-w-xl text-sm leading-5 text-white/65">
               Live attendance, student, teacher and fee metrics for the current
               academic year.
             </p>
 
-            <div className="mt-8 flex flex-wrap items-center gap-x-7 gap-y-4">
-              <div className="flex items-center gap-3">
-                <CalendarCheck className="size-5 text-teal-200" />
+            <div className="mt-5 flex flex-wrap items-center gap-x-6 gap-y-3">
+              <div className="flex items-center gap-2.5">
+                <CalendarCheck className="size-4 text-teal-200" />
 
                 <div>
-                  <p className="text-lg font-bold leading-none text-white">
+                  <p className="text-base font-bold leading-none text-white">
                     {loading
                       ? "—"
                       : `${attendance?.summary.attendancePercentage ?? 0}%`}
                   </p>
 
-                  <p className="mt-1 text-[11px] font-medium text-white/45">
+                  <p className="mt-1 text-[10px] font-medium text-white/45">
                     Attendance today
                   </p>
                 </div>
               </div>
 
-              <div className="hidden h-9 w-px bg-white/10 sm:block" />
+              <div className="hidden h-7 w-px bg-white/10 sm:block" />
 
-              <div className="flex items-center gap-3">
-                <GraduationCap className="size-5 text-blue-200" />
+              <div className="flex items-center gap-2.5">
+                <GraduationCap className="size-4 text-blue-200" />
 
                 <div>
-                  <p className="text-lg font-bold leading-none text-white">
+                  <p className="text-base font-bold leading-none text-white">
                     {loading ? "—" : data.students.toLocaleString("en-IN")}
                   </p>
 
-                  <p className="mt-1 text-[11px] font-medium text-white/45">
+                  <p className="mt-1 text-[10px] font-medium text-white/45">
                     Students
                   </p>
                 </div>
@@ -631,17 +631,17 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="flex min-w-[220px] items-center gap-4 rounded-2xl border border-white/10 bg-white/[0.07] p-5 shadow-2xl shadow-black/10 backdrop-blur-xl">
-            <div className="flex size-12 items-center justify-center rounded-2xl border border-teal-300/15 bg-gradient-to-br from-teal-300/20 to-cyan-400/5">
-              <WalletCards className="size-5 text-teal-200" />
+          <div className="flex min-w-[200px] items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.07] p-4 shadow-2xl shadow-black/10 backdrop-blur-xl">
+            <div className="flex size-10 items-center justify-center rounded-xl border border-teal-300/15 bg-gradient-to-br from-teal-300/20 to-cyan-400/5">
+              <WalletCards className="size-4 text-teal-200" />
             </div>
 
             <div>
-              <p className="text-2xl font-bold tracking-tight text-white">
+              <p className="text-xl font-bold tracking-tight text-white">
                 {fees ? formatCurrency(fees.collection.thisMonth) : "—"}
               </p>
 
-              <p className="mt-1 text-[10px] font-bold tracking-[0.14em] text-white/45 uppercase">
+              <p className="mt-1 text-[9px] font-bold tracking-[0.14em] text-white/45 uppercase">
                 This month collection
               </p>
             </div>
