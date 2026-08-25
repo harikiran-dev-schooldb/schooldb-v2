@@ -6,6 +6,7 @@ import {
   IndianRupee,
   BookOpen,
   Settings,
+  Upload,
 } from "lucide-react";
 
 export const navigation = [
@@ -90,7 +91,6 @@ export const navigation = [
     ],
   },
 
-  
   {
     title: "Fees",
     icon: IndianRupee,
@@ -125,7 +125,7 @@ export const navigation = [
       },
     ],
   },
-  
+
   {
     title: "Timetable",
     icon: CalendarCheck,
@@ -152,7 +152,7 @@ export const navigation = [
       },
     ],
   },
-  
+
   {
     title: "Academic Work",
     icon: BookOpen,
@@ -167,9 +167,16 @@ export const navigation = [
       },
     ],
   },
+
+  {
+    title: "Bulk Operations",
+    href: "bulk-operations",
+    icon: Upload,
+  },
+
   {
     title: "Settings",
     href: "settings",
     icon: Settings,
-  }
+  },
 ];
