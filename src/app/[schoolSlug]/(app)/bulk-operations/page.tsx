@@ -18,26 +18,24 @@ import { Badge } from "@/components/ui/badge";
 const operations = [
   {
     title: "Students",
-    description:
-      "Add student records in bulk with validation and duplicate checks.",
+    description: "Add student records in bulk with validation and duplicate checks.",
     href: "bulk-operations/students",
     icon: GraduationCap,
     status: "Ready",
   },
   {
     title: "Teachers",
-    description:
-      "Import teacher records with employee ID validation and duplicate checks.",
+    description: "Import teacher records with employee ID validation and duplicate checks.",
     href: "bulk-operations/teachers",
     icon: UserRound,
     status: "Ready",
   },
   {
     title: "Classes & Sections",
-    description: "Create or update classes and sections in bulk.",
-    href: "../classes",
+    description: "Create classes and their sections together from one validated CSV.",
+    href: "bulk-operations/classes",
     icon: Users,
-    status: "Next",
+    status: "Ready",
   },
   {
     title: "Subjects",
@@ -88,25 +86,13 @@ export default function BulkOperationsPage() {
       <section className="premium-hero px-6 py-6 text-white md:px-8 md:py-7">
         <div className="relative flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-teal-300">
-              SchoolDB Import Center
-            </p>
-            <h2 className="mt-2 text-2xl font-bold tracking-tight md:text-3xl">
-              Move school data in minutes.
-            </h2>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-white/65">
-              Use templates, validate before writing to the database, review
-              errors, and keep the existing school records safe.
-            </p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-teal-300">SchoolDB Import Center</p>
+            <h2 className="mt-2 text-2xl font-bold tracking-tight md:text-3xl">Move school data in minutes.</h2>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-white/65">Use templates, validate before writing to the database, review errors, and keep the existing school records safe.</p>
           </div>
-
           <div className="rounded-2xl border border-white/10 bg-white/[0.06] px-5 py-4 backdrop-blur-xl">
-            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/40">
-              Workflow
-            </p>
-            <p className="mt-1 text-sm font-semibold text-white">
-              Template → Validate → Review → Import
-            </p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/40">Workflow</p>
+            <p className="mt-1 text-sm font-semibold text-white">Template → Validate → Review → Import</p>
           </div>
         </div>
       </section>
@@ -115,42 +101,20 @@ export default function BulkOperationsPage() {
         {operations.map((operation) => {
           const Icon = operation.icon;
           const ready = operation.status === "Ready";
-
           return (
-            <Card
-              key={operation.title}
-              className="premium-card group rounded-2xl border-0 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
-            >
+            <Card key={operation.title} className="premium-card group rounded-2xl border-0 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
               <CardContent className="flex h-full flex-col p-5">
                 <div className="flex items-start justify-between gap-3">
-                  <div className="flex size-11 items-center justify-center rounded-2xl bg-primary/10 text-primary transition-transform group-hover:scale-105">
-                    <Icon className="size-5" />
-                  </div>
-                  <Badge variant={ready ? "success" : "outline"}>
-                    {operation.status}
-                  </Badge>
+                  <div className="flex size-11 items-center justify-center rounded-2xl bg-primary/10 text-primary transition-transform group-hover:scale-105"><Icon className="size-5" /></div>
+                  <Badge variant={ready ? "success" : "outline"}>{operation.status}</Badge>
                 </div>
-
-                <h3 className="mt-5 text-base font-bold tracking-tight">
-                  {operation.title}
-                </h3>
-                <p className="mt-2 min-h-10 text-xs leading-5 text-muted-foreground">
-                  {operation.description}
-                </p>
-
+                <h3 className="mt-5 text-base font-bold tracking-tight">{operation.title}</h3>
+                <p className="mt-2 min-h-10 text-xs leading-5 text-muted-foreground">{operation.description}</p>
                 <div className="mt-5">
                   {ready ? (
-                    <Link
-                      href={operation.href}
-                      className="inline-flex items-center gap-2 text-sm font-semibold text-primary"
-                    >
-                      Open import
-                      <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
-                    </Link>
+                    <Link href={operation.href} className="inline-flex items-center gap-2 text-sm font-semibold text-primary">Open import<ArrowRight className="size-4 transition-transform group-hover:translate-x-1" /></Link>
                   ) : (
-                    <span className="text-xs font-medium text-muted-foreground">
-                      Implementation follows the same import engine
-                    </span>
+                    <span className="text-xs font-medium text-muted-foreground">Implementation follows the same import engine</span>
                   )}
                 </div>
               </CardContent>
