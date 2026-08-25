@@ -1,10 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import Link from "next/link";
 import {
-  ArrowLeft,
-  CheckCircle2,
   Download,
   FileSpreadsheet,
   Loader2,
@@ -15,32 +12,21 @@ import { PageHeader } from "@/components/common/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { useSchool } from "@/contexts/school-context";
 
-type Row = {
-  admissionNo: string;
-  academicYear: string;
-  className: string;
-  sectionName: string;
-  rollNo: string;
-  admissionDate: string;
-  active: string;
+type ExamRow = {
+  academicYearId: string;
+  name: string;
+  startDate: string;
+  endDate: string;
 };
-type ErrorRow = { row: number; message: string };
-const HEADERS = [
-  "admissionNo",
-  "academicYear",
-  "className",
-  "sectionName",
-  "rollNo",
-  "admissionDate",
-  "active",
-] as const;
+type RowError = { row: number; message: string };
+const HEADERS = ["academicYearId", "name", "startDate", "endDate"] as const;
 const TEMPLATE = [
   HEADERS.join(","),
-  "00005,2026-27,Class 1,A,1,15/06/2026,true",
-  "00006,2026-27,Class 1,A,2,15/06/2026,true",
+  "PASTE_ACADEMIC_YEAR_ID,Quarterly Exam 1,2026-07-01,2026-07-10",
+  "PASTE_ACADEMIC_YEAR_ID,Half Yearly Exam,2026-10-01,2026-10-15",
 ].join("\n");
+
 function parseLine(line: string) {
   const values: string[] = [];
   let current = "";
@@ -55,6 +41,35 @@ function parseLine(line: string) {
   values.push(current.trim());
   return values;
 }
+
+function parseDate(value: string): string | null {
+  const input = value.trim();
+  let day: number;
+  let month: number;
+  let year: number;
+  let match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(input);
+  if (match) {
+    year = Number(match[1]);
+    month = Number(match[2]);
+    day = Number(match[3]);
+  } else {
+    match = /^(\d{2})[\/-](\d{2})[\/-](\d{2}|\d{4})$/.exec(input);
+    if (!match) return null;
+    day = Number(match[1]);
+    month = Number(match[2]);
+    year = Number(match[3]);
+    if (match[3].length === 2) year += year >= 70 ? 1900 : 2000;
+  }
+  const date = new Date(Date.UTC(year, month - 1, day));
+  if (
+    date.getUTCFullYear() !== year ||
+    date.getUTCMonth() !== month - 1 ||
+    date.getUTCDate() !== day
+  )
+    return null;
+  return `${year.toString().padStart(4, "0")}-${month.toString().padStart(2, "0")}-${day.toString().padStart(2, "0")}`;
+}
+
 function parseCsv(text: string) {
   const lines = text
     .replace(/^\uFEFF/, "")
@@ -63,145 +78,150 @@ function parseCsv(text: string) {
   if (!lines.length) throw new Error("The file is empty.");
   if (parseLine(lines[0]).join("|") !== HEADERS.join("|"))
     throw new Error(`Invalid columns. Expected: ${HEADERS.join(", ")}`);
-  const rows: Row[] = [];
-  const errors: ErrorRow[] = [];
+  const rows: ExamRow[] = [];
+  const errors: RowError[] = [];
   lines.slice(1).forEach((line, index) => {
     const v = parseLine(line);
     const row = Object.fromEntries(
       HEADERS.map((h, i) => [h, v[i] ?? ""]),
-    ) as Row;
+    ) as ExamRow;
     if (
-      !row.admissionNo ||
-      !row.academicYear ||
-      !row.className ||
-      !row.sectionName
+      !row.academicYearId ||
+      row.academicYearId === "PASTE_ACADEMIC_YEAR_ID"
     ) {
       errors.push({
         row: index + 2,
+        message: "A valid academic year ID is required.",
+      });
+      return;
+    }
+    if (!row.name || row.name.length > 100) {
+      errors.push({
+        row: index + 2,
+        message: "Exam name is required and must be 100 characters or less.",
+      });
+      return;
+    }
+    const startDate = parseDate(row.startDate);
+    const endDate = parseDate(row.endDate);
+    if (!startDate) {
+      errors.push({
+        row: index + 2,
         message:
-          "Admission number, academic year, class and section are required.",
+          "Start date must be YYYY-MM-DD, DD/MM/YYYY, DD/MM/YY, DD-MM-YYYY, or DD-MM-YY.",
       });
       return;
     }
-    if (row.rollNo && (!/^\d+$/.test(row.rollNo) || Number(row.rollNo) <= 0)) {
+    if (!endDate) {
       errors.push({
         row: index + 2,
-        message: "Roll number must be a positive integer.",
+        message:
+          "End date must be YYYY-MM-DD, DD/MM/YYYY, DD/MM/YY, DD-MM-YYYY, or DD-MM-YY.",
       });
       return;
     }
-    if (row.admissionDate && !/^\d{2}\/\d{2}\/\d{4}$/.test(row.admissionDate)) {
+    if (endDate < startDate) {
       errors.push({
         row: index + 2,
-        message: "Admission date must use DD/MM/YYYY.",
+        message: "End date must be on or after the start date.",
       });
       return;
     }
-    if (!/^(true|false|yes|no|1|0)$/i.test(row.active || "true")) {
-      errors.push({
-        row: index + 2,
-        message: "Active must be true/false, yes/no, or 1/0.",
-      });
-      return;
-    }
-    row.active = /^(true|yes|1)$/i.test(row.active || "true")
-      ? "true"
-      : "false";
-    rows.push(row);
+    rows.push({ ...row, startDate, endDate });
   });
   return { rows, errors, totalRows: lines.length - 1 };
 }
+
 function downloadTemplate() {
   const blob = new Blob([TEMPLATE], { type: "text/csv;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = "schooldb-student-enrollment-template.csv";
+  a.download = "schooldb-exams-template.csv";
   a.click();
   URL.revokeObjectURL(url);
 }
-export default function BulkStudentEnrollmentsPage() {
-  const { school } = useSchool();
+
+export default function BulkExamsPage() {
   const inputRef = useRef<HTMLInputElement>(null);
   const [fileName, setFileName] = useState("");
+  const [rows, setRows] = useState<ExamRow[]>([]);
+  const [errors, setErrors] = useState<RowError[]>([]);
   const [totalRows, setTotalRows] = useState(0);
-  const [rows, setRows] = useState<Row[]>([]);
-  const [errors, setErrors] = useState<ErrorRow[]>([]);
-  const [message, setMessage] = useState<string | null>(null);
+  const [fileError, setFileError] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
-  const [result, setResult] = useState<number | null>(null);
+  const [result, setResult] = useState<{
+    created: number;
+    failed: number;
+  } | null>(null);
   const duplicateCount = useMemo(() => {
-    const keys = new Set<string>();
-    let count = 0;
+    const counts = new Map<string, number>();
     rows.forEach((r) => {
-      const key = `${r.admissionNo.toLowerCase()}:${r.academicYear.toLowerCase()}`;
-      if (keys.has(key)) count += 1;
-      keys.add(key);
+      const key = `${r.academicYearId}:${r.name.toLowerCase()}`;
+      counts.set(key, (counts.get(key) ?? 0) + 1);
     });
-    return count;
+    return [...counts.values()].filter((n) => n > 1).length;
   }, [rows]);
   async function handleFile(file: File) {
     setFileName(file.name);
-    setMessage(null);
-    setResult(null);
-    setTotalRows(0);
     setRows([]);
     setErrors([]);
+    setTotalRows(0);
+    setFileError(null);
+    setResult(null);
     if (!file.name.toLowerCase().endsWith(".csv")) {
-      setMessage("Upload a CSV file using the Student Enrollment template.");
+      setFileError("Upload a CSV file using the SchoolDB exam template.");
       return;
     }
     try {
       const parsed = parseCsv(await file.text());
-      setTotalRows(parsed.totalRows);
       setRows(parsed.rows);
       setErrors(parsed.errors);
+      setTotalRows(parsed.totalRows);
     } catch (e) {
-      setMessage(e instanceof Error ? e.message : "Unable to read the file.");
+      setFileError(e instanceof Error ? e.message : "Unable to read the file.");
     }
   }
-  async function importRows() {
+  async function importExams() {
     if (!rows.length || errors.length || duplicateCount) return;
     setImporting(true);
-    setMessage(null);
+    setFileError(null);
+    setResult(null);
     try {
-      const response = await fetch("/api/v1/student-enrollments/bulk", {
+      const response = await fetch("/api/v1/exams/bulk", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ enrollments: rows }),
+        body: JSON.stringify({ exams: rows }),
       });
       const payload = (await response.json()) as {
         success?: boolean;
         message?: string;
-        data?: { created: number };
+        data?: { created: number; failed: number };
       };
       if (!response.ok || !payload.success || !payload.data)
-        throw new Error(payload.message ?? "Bulk student enrollment failed.");
-      setResult(payload.data.created);
+        throw new Error(payload.message ?? "Bulk exam import failed.");
+      setResult(payload.data);
     } catch (e) {
-      setMessage(
-        e instanceof Error ? e.message : "Bulk student enrollment failed.",
-      );
+      setFileError(e instanceof Error ? e.message : "Bulk exam import failed.");
     } finally {
       setImporting(false);
     }
   }
   function reset() {
     setFileName("");
-    setTotalRows(0);
     setRows([]);
     setErrors([]);
-    setMessage(null);
+    setTotalRows(0);
+    setFileError(null);
     setResult(null);
     if (inputRef.current) inputRef.current.value = "";
   }
-  const hasFile = Boolean(fileName);
   return (
     <div className="space-y-8 pb-12">
       <PageHeader
         eyebrow="Bulk Operations"
-        title="Bulk Student Enrollment"
-        description="Enroll existing students into an academic year, class, section and roll number from one CSV."
+        title="Bulk Exams"
+        description="Create exam master records for an academic year from a validated CSV."
         action={
           <Button variant="outline" onClick={downloadTemplate}>
             <Download className="size-4" />
@@ -209,16 +229,10 @@ export default function BulkStudentEnrollmentsPage() {
           </Button>
         }
       />
-      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-        <Link
-          href={`/${school.slug}/bulk-operations`}
-          className="font-semibold text-primary hover:underline"
-        >
-          Bulk Operations
-        </Link>
-        <span>/</span>
-        <span>Student Enrollment</span>
-      </div>
+      <p className="text-xs text-muted-foreground">
+        Academic year ID is required because an exam belongs to a specific
+        academic year.
+      </p>
       <Card className="premium-card overflow-hidden rounded-2xl border-0">
         <CardHeader className="border-b border-border/60 px-6 py-5">
           <div className="flex items-center gap-3">
@@ -226,10 +240,9 @@ export default function BulkStudentEnrollmentsPage() {
               <FileSpreadsheet className="size-5" />
             </div>
             <div>
-              <CardTitle>Enrollment import</CardTitle>
+              <CardTitle>Exam import</CardTitle>
               <p className="mt-1 text-xs text-muted-foreground">
-                CSV columns: admissionNo, academicYear, className, sectionName,
-                rollNo, admissionDate, active
+                CSV columns: academicYearId, name, startDate, endDate
               </p>
             </div>
           </div>
@@ -241,11 +254,11 @@ export default function BulkStudentEnrollmentsPage() {
             accept=".csv,text/csv"
             className="hidden"
             onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) void handleFile(f);
+              const file = e.target.files?.[0];
+              if (file) void handleFile(file);
             }}
           />
-          {!hasFile && !message && (
+          {!fileName && !fileError && (
             <button
               type="button"
               onClick={() => inputRef.current?.click()}
@@ -254,53 +267,46 @@ export default function BulkStudentEnrollmentsPage() {
               <div className="flex size-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
                 <UploadCloud className="size-7" />
               </div>
-              <p className="mt-4 text-base font-bold">Upload enrollment CSV</p>
-              <p className="mt-1 max-w-md text-sm text-muted-foreground">
-                Students must already exist. The importer only creates
-                enrollments.
+              <p className="mt-4 text-base font-bold">Upload exam CSV</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Validation happens before database changes.
               </p>
             </button>
           )}
-          {message && (
+          {fileError && (
             <div className="flex items-start gap-3 rounded-2xl border border-destructive/20 bg-destructive/5 p-4">
               <XCircle className="mt-0.5 size-5 shrink-0 text-destructive" />
-              <div className="flex-1 text-sm">
-                <p className="font-semibold">Import cannot continue</p>
-                <p className="mt-1 text-muted-foreground">{message}</p>
+              <div className="flex-1">
+                <p className="text-sm font-semibold">Import cannot continue</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {fileError}
+                </p>
               </div>
               <Button size="sm" variant="outline" onClick={reset}>
                 Reset
               </Button>
             </div>
           )}
-          {hasFile && !message && (
+          {fileName && !fileError && (
             <>
               <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border/60 bg-muted/20 p-4">
                 <div>
                   <p className="text-sm font-semibold">{fileName}</p>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {totalRows} total rows detected · {rows.length} valid rows
-                    ready for review
+                    {totalRows} total rows · {rows.length} valid rows
                   </p>
                 </div>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex gap-2">
                   <Badge variant={rows.length ? "success" : "destructive"}>
-                    {rows.length ? (
-                      <CheckCircle2 className="size-3" />
-                    ) : (
-                      <XCircle className="size-3" />
-                    )}
                     {rows.length} valid
                   </Badge>
                   {duplicateCount > 0 && (
                     <Badge variant="destructive">
-                      {duplicateCount} duplicate student/year rows
+                      {duplicateCount} duplicates
                     </Badge>
                   )}
                   {errors.length > 0 && (
-                    <Badge variant="destructive">
-                      {errors.length} validation errors
-                    </Badge>
+                    <Badge variant="destructive">{errors.length} errors</Badge>
                   )}
                 </div>
               </div>
@@ -310,12 +316,12 @@ export default function BulkStudentEnrollmentsPage() {
                     Fix these rows before importing
                   </p>
                   <div className="mt-3 max-h-44 space-y-2 overflow-auto text-xs text-muted-foreground">
-                    {errors.slice(0, 50).map((e) => (
-                      <p key={`${e.row}-${e.message}`}>
+                    {errors.slice(0, 50).map((error) => (
+                      <p key={`${error.row}-${error.message}`}>
                         <span className="font-semibold text-foreground">
-                          Row {e.row}:
+                          Row {error.row}:
                         </span>{" "}
-                        {e.message}
+                        {error.message}
                       </p>
                     ))}
                   </div>
@@ -330,31 +336,31 @@ export default function BulkStudentEnrollmentsPage() {
                           <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                             #
                           </th>
-                          {HEADERS.map((h) => (
+                          {HEADERS.map((header) => (
                             <th
-                              key={h}
+                              key={header}
                               className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-muted-foreground"
                             >
-                              {h}
+                              {header}
                             </th>
                           ))}
                         </tr>
                       </thead>
                       <tbody>
-                        {rows.slice(0, 100).map((r, i) => (
+                        {rows.slice(0, 100).map((row, index) => (
                           <tr
-                            key={`${r.admissionNo}-${i}`}
+                            key={`${row.academicYearId}-${row.name}-${index}`}
                             className="border-b border-border/40 last:border-0 hover:bg-muted/20"
                           >
                             <td className="px-4 py-3 text-xs text-muted-foreground">
-                              {i + 1}
+                              {index + 1}
                             </td>
-                            {HEADERS.map((h) => (
+                            {HEADERS.map((header) => (
                               <td
-                                key={h}
+                                key={header}
                                 className="whitespace-nowrap px-4 py-3"
                               >
-                                {r[h]}
+                                {row[header]}
                               </td>
                             ))}
                           </tr>
@@ -363,22 +369,21 @@ export default function BulkStudentEnrollmentsPage() {
                     </table>
                   </div>
                 </div>
-              )}
-              {result !== null && (
+              )}{" "}
+              {result && (
                 <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4">
                   <p className="text-sm font-bold">Import complete</p>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {result} student enrollments created.
+                    {result.created} exams created · {result.failed} failed
                   </p>
                 </div>
               )}
               <div className="flex justify-end gap-3">
                 <Button variant="outline" onClick={reset} disabled={importing}>
-                  <ArrowLeft className="size-4" />
                   Start Over
                 </Button>
                 <Button
-                  onClick={() => void importRows()}
+                  onClick={() => void importExams()}
                   disabled={
                     importing ||
                     !!errors.length ||
@@ -391,9 +396,7 @@ export default function BulkStudentEnrollmentsPage() {
                   ) : (
                     <UploadCloud className="size-4" />
                   )}
-                  {importing
-                    ? "Importing..."
-                    : `Import ${rows.length} Enrollments`}
+                  {importing ? "Importing..." : `Import ${rows.length} Exams`}
                 </Button>
               </div>
             </>

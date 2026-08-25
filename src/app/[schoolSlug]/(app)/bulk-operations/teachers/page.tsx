@@ -125,12 +125,18 @@ function parseCsv(text: string) {
     ) as TeacherRow;
 
     if (!row.employeeId || row.fullName.length < 3 || !row.gender) {
-      errors.push({ row: index + 2, message: "Employee ID, full name, and gender are required." });
+      errors.push({
+        row: index + 2,
+        message: "Employee ID, full name, and gender are required.",
+      });
       return;
     }
 
     if (!/^(MALE|FEMALE|OTHER)$/i.test(row.gender)) {
-      errors.push({ row: index + 2, message: "Gender must be MALE, FEMALE, or OTHER." });
+      errors.push({
+        row: index + 2,
+        message: "Gender must be MALE, FEMALE, or OTHER.",
+      });
       return;
     }
 
@@ -138,12 +144,18 @@ function parseCsv(text: string) {
     const joiningDate = normalizeDate(row.joiningDate);
 
     if (row.dob && !dob) {
-      errors.push({ row: index + 2, message: "DOB must use YYYY-MM-DD or DD/MM/YY format." });
+      errors.push({
+        row: index + 2,
+        message: "DOB must use YYYY-MM-DD or DD/MM/YY format.",
+      });
       return;
     }
 
     if (row.joiningDate && !joiningDate) {
-      errors.push({ row: index + 2, message: "Joining date must use YYYY-MM-DD or DD/MM/YY format." });
+      errors.push({
+        row: index + 2,
+        message: "Joining date must use YYYY-MM-DD or DD/MM/YY format.",
+      });
       return;
     }
 
@@ -153,7 +165,10 @@ function parseCsv(text: string) {
     }
 
     if (!/^(true|false|yes|no|1|0)$/i.test(row.active)) {
-      errors.push({ row: index + 2, message: "Active must be true/false, yes/no, or 1/0." });
+      errors.push({
+        row: index + 2,
+        message: "Active must be true/false, yes/no, or 1/0.",
+      });
       return;
     }
 
@@ -186,11 +201,16 @@ export default function BulkTeachersPage() {
   const [errors, setErrors] = useState<RowError[]>([]);
   const [fileError, setFileError] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
-  const [result, setResult] = useState<{ created: number; failed: number } | null>(null);
+  const [result, setResult] = useState<{
+    created: number;
+    failed: number;
+  } | null>(null);
 
   const duplicateCount = useMemo(() => {
     const counts = new Map<string, number>();
-    rows.forEach((row) => counts.set(row.employeeId, (counts.get(row.employeeId) ?? 0) + 1));
+    rows.forEach((row) =>
+      counts.set(row.employeeId, (counts.get(row.employeeId) ?? 0) + 1),
+    );
     return [...counts.values()].filter((count) => count > 1).length;
   }, [rows]);
 
@@ -213,7 +233,9 @@ export default function BulkTeachersPage() {
       setRows(parsed.rows);
       setErrors(parsed.errors);
     } catch (error) {
-      setFileError(error instanceof Error ? error.message : "Unable to read the file.");
+      setFileError(
+        error instanceof Error ? error.message : "Unable to read the file.",
+      );
     }
   }
 
@@ -249,7 +271,9 @@ export default function BulkTeachersPage() {
         setErrors(payload.data.errors);
       }
     } catch (error) {
-      setFileError(error instanceof Error ? error.message : "Bulk teacher import failed.");
+      setFileError(
+        error instanceof Error ? error.message : "Bulk teacher import failed.",
+      );
     } finally {
       setImporting(false);
     }
@@ -273,62 +297,215 @@ export default function BulkTeachersPage() {
         eyebrow="Bulk Operations"
         title="Bulk Teachers"
         description="Upload teacher records, validate them before import, and review the result."
-        action={<Button variant="outline" onClick={downloadTemplate}><Download className="size-4" />Download Template</Button>}
+        action={
+          <Button variant="outline" onClick={downloadTemplate}>
+            <Download className="size-4" />
+            Download Template
+          </Button>
+        }
       />
 
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
-        <Link href={`/${school.slug}/bulk-operations`} className="font-semibold text-primary hover:underline">Bulk Operations</Link>
-        <span>/</span><span>Teachers</span>
+        <Link
+          href={`/${school.slug}/bulk-operations`}
+          className="font-semibold text-primary hover:underline"
+        >
+          Bulk Operations
+        </Link>
+        <span>/</span>
+        <span>Teachers</span>
       </div>
 
       <Card className="premium-card overflow-hidden rounded-2xl border-0">
         <CardHeader className="border-b border-border/60 px-6 py-5">
           <div className="flex items-center gap-3">
-            <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><FileSpreadsheet className="size-5" /></div>
+            <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+              <FileSpreadsheet className="size-5" />
+            </div>
             <div>
               <CardTitle>Teacher import</CardTitle>
-              <p className="mt-1 text-xs text-muted-foreground">CSV columns: employeeId, fullName, gender, dob, joiningDate, phone, email, qualification, designation, active</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                CSV columns: employeeId, fullName, gender, dob, joiningDate,
+                phone, email, qualification, designation, active
+              </p>
             </div>
           </div>
         </CardHeader>
 
         <CardContent className="space-y-6 p-6">
-          <input ref={inputRef} type="file" accept=".csv,text/csv" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (file) void handleFile(file); }} />
+          <input
+            ref={inputRef}
+            type="file"
+            accept=".csv,text/csv"
+            className="hidden"
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (file) void handleFile(file);
+            }}
+          />
 
           {!hasFile && !fileError && (
-            <button type="button" onClick={() => inputRef.current?.click()} className="flex min-h-64 w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed border-border/70 bg-muted/20 px-6 text-center transition-all hover:border-primary/40 hover:bg-primary/[0.03]">
-              <div className="flex size-14 items-center justify-center rounded-2xl bg-primary/10 text-primary"><UploadCloud className="size-7" /></div>
+            <button
+              type="button"
+              onClick={() => inputRef.current?.click()}
+              className="flex min-h-64 w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed border-border/70 bg-muted/20 px-6 text-center transition-all hover:border-primary/40 hover:bg-primary/[0.03]"
+            >
+              <div className="flex size-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                <UploadCloud className="size-7" />
+              </div>
               <p className="mt-4 text-base font-bold">Upload teacher CSV</p>
-              <p className="mt-1 max-w-md text-sm text-muted-foreground">Validation happens before any database changes.</p>
+              <p className="mt-1 max-w-md text-sm text-muted-foreground">
+                Validation happens before any database changes.
+              </p>
             </button>
           )}
 
           {fileError && (
             <div className="flex items-start gap-3 rounded-2xl border border-destructive/20 bg-destructive/5 p-4">
               <XCircle className="mt-0.5 size-5 shrink-0 text-destructive" />
-              <div className="flex-1 text-sm"><p className="font-semibold">Import cannot continue</p><p className="mt-1 text-muted-foreground">{fileError}</p></div>
-              <Button size="sm" variant="outline" onClick={reset}>Reset</Button>
+              <div className="flex-1 text-sm">
+                <p className="font-semibold">Import cannot continue</p>
+                <p className="mt-1 text-muted-foreground">{fileError}</p>
+              </div>
+              <Button size="sm" variant="outline" onClick={reset}>
+                Reset
+              </Button>
             </div>
           )}
 
           {hasFile && (
             <>
               <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border/60 bg-muted/20 p-4">
-                <div><p className="text-sm font-semibold">{fileName}</p><p className="mt-1 text-xs text-muted-foreground">{totalRows} total rows detected · {rows.length} valid rows ready for review</p></div>
+                <div>
+                  <p className="text-sm font-semibold">{fileName}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {totalRows} total rows detected · {rows.length} valid rows
+                    ready for review
+                  </p>
+                </div>
                 <div className="flex flex-wrap gap-2">
-                  <Badge variant={rows.length ? "success" : "destructive"}>{rows.length ? <CheckCircle2 className="size-3" /> : <XCircle className="size-3" />}{rows.length} valid</Badge>
-                  {duplicateCount > 0 && <Badge variant="destructive">{duplicateCount} duplicate employee IDs</Badge>}
-                  {errors.length > 0 && <Badge variant="destructive">{errors.length} validation errors</Badge>}
+                  <Badge variant={rows.length ? "success" : "destructive"}>
+                    {rows.length ? (
+                      <CheckCircle2 className="size-3" />
+                    ) : (
+                      <XCircle className="size-3" />
+                    )}
+                    {rows.length} valid
+                  </Badge>
+                  {duplicateCount > 0 && (
+                    <Badge variant="destructive">
+                      {duplicateCount} duplicate employee IDs
+                    </Badge>
+                  )}
+                  {errors.length > 0 && (
+                    <Badge variant="destructive">
+                      {errors.length} validation errors
+                    </Badge>
+                  )}
                 </div>
               </div>
 
-              {errors.length > 0 && <div className="rounded-2xl border border-destructive/20 bg-destructive/5 p-4"><p className="text-sm font-semibold text-destructive">Fix these rows before importing</p><div className="mt-3 max-h-44 space-y-2 overflow-auto text-xs text-muted-foreground">{errors.slice(0, 50).map((error) => <p key={`${error.row}-${error.message}`}><span className="font-semibold text-foreground">Row {error.row}:</span> {error.message}</p>)}</div></div>}
+              {errors.length > 0 && (
+                <div className="rounded-2xl border border-destructive/20 bg-destructive/5 p-4">
+                  <p className="text-sm font-semibold text-destructive">
+                    Fix these rows before importing
+                  </p>
+                  <div className="mt-3 max-h-44 space-y-2 overflow-auto text-xs text-muted-foreground">
+                    {errors.slice(0, 50).map((error) => (
+                      <p key={`${error.row}-${error.message}`}>
+                        <span className="font-semibold text-foreground">
+                          Row {error.row}:
+                        </span>{" "}
+                        {error.message}
+                      </p>
+                    ))}
+                  </div>
+                </div>
+              )}
 
-              {rows.length > 0 && <div className="overflow-hidden rounded-2xl border border-border/60"><div className="max-h-[460px] overflow-auto"><table className="w-full text-sm"><thead className="sticky top-0 z-10 border-b border-border/60 bg-card"><tr><th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-muted-foreground">#</th>{HEADERS.map((header) => <th key={header} className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{header}</th>)}</tr></thead><tbody>{rows.slice(0, 100).map((row, index) => <tr key={`${row.employeeId}-${index}`} className="border-b border-border/40 last:border-0 hover:bg-muted/20"><td className="px-4 py-3 text-xs text-muted-foreground">{index + 1}</td>{HEADERS.map((header) => <td key={header} className="whitespace-nowrap px-4 py-3">{row[header]}</td>)}</tr>)}</tbody></table></div>{rows.length > 100 && <p className="border-t border-border/60 px-4 py-3 text-xs text-muted-foreground">Showing the first 100 rows. All {rows.length} valid rows will be imported.</p>}</div>}
+              {rows.length > 0 && (
+                <div className="overflow-hidden rounded-2xl border border-border/60">
+                  <div className="max-h-[460px] overflow-auto">
+                    <table className="w-full text-sm">
+                      <thead className="sticky top-0 z-10 border-b border-border/60 bg-card">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                            #
+                          </th>
+                          {HEADERS.map((header) => (
+                            <th
+                              key={header}
+                              className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-muted-foreground"
+                            >
+                              {header}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {rows.slice(0, 100).map((row, index) => (
+                          <tr
+                            key={`${row.employeeId}-${index}`}
+                            className="border-b border-border/40 last:border-0 hover:bg-muted/20"
+                          >
+                            <td className="px-4 py-3 text-xs text-muted-foreground">
+                              {index + 1}
+                            </td>
+                            {HEADERS.map((header) => (
+                              <td
+                                key={header}
+                                className="whitespace-nowrap px-4 py-3"
+                              >
+                                {row[header]}
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  {rows.length > 100 && (
+                    <p className="border-t border-border/60 px-4 py-3 text-xs text-muted-foreground">
+                      Showing the first 100 rows. All {rows.length} valid rows
+                      will be imported.
+                    </p>
+                  )}
+                </div>
+              )}
 
-              {result && <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4"><p className="text-sm font-bold">Import complete</p><p className="mt-1 text-xs text-muted-foreground">{result.created} teachers created · {result.failed} failed</p></div>}
+              {result && (
+                <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4">
+                  <p className="text-sm font-bold">Import complete</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {result.created} teachers created · {result.failed} failed
+                  </p>
+                </div>
+              )}
 
-              <div className="flex flex-wrap justify-end gap-3"><Button variant="outline" onClick={reset} disabled={importing}><ArrowLeft className="size-4" />Start Over</Button><Button onClick={() => void importTeachers()} disabled={importing || !!errors.length || duplicateCount > 0 || !rows.length}>{importing ? <Loader2 className="size-4 animate-spin" /> : <UploadCloud className="size-4" />}{importing ? "Importing..." : `Import ${rows.length} Teachers`}</Button></div>
+              <div className="flex flex-wrap justify-end gap-3">
+                <Button variant="outline" onClick={reset} disabled={importing}>
+                  <ArrowLeft className="size-4" />
+                  Start Over
+                </Button>
+                <Button
+                  onClick={() => void importTeachers()}
+                  disabled={
+                    importing ||
+                    !!errors.length ||
+                    duplicateCount > 0 ||
+                    !rows.length
+                  }
+                >
+                  {importing ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <UploadCloud className="size-4" />
+                  )}
+                  {importing
+                    ? "Importing..."
+                    : `Import ${rows.length} Teachers`}
+                </Button>
+              </div>
             </>
           )}
         </CardContent>
