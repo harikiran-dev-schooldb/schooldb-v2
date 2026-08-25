@@ -8,6 +8,7 @@ const operations = [
   { title: "Students", description: "Add student records in bulk with validation and duplicate checks.", href: "bulk-operations/students", icon: GraduationCap, status: "Ready" },
   { title: "Student Enrollment", description: "Enroll existing students into an academic year, class, section and roll number.", href: "bulk-operations/student-enrollments", icon: GraduationCap, status: "Ready" },
   { title: "Teachers", description: "Import teacher records with employee ID validation and duplicate checks.", href: "bulk-operations/teachers", icon: UserRound, status: "Ready" },
+  { title: "Teacher Allocation", description: "Assign teachers to academic-year subject, class and section combinations.", href: "bulk-operations/teacher-allocations", icon: UserRound, status: "Ready" },
   { title: "Classes & Sections", description: "Create classes and their sections together from one validated CSV.", href: "bulk-operations/classes", icon: Users, status: "Ready" },
   { title: "Subjects", description: "Import subjects with type, code, ordering, and active status validation.", href: "bulk-operations/subjects", icon: Layers3, status: "Ready" },
   { title: "Exams", description: "Prepare exam structures and schedules in bulk.", href: "../exams", icon: ClipboardList, status: "Planned" },
