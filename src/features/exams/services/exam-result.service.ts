@@ -7,6 +7,15 @@ type GetExamResultsOptions = {
   sectionId?: string | null;
 };
 
+type SubjectResultStatus =
+  | "PENDING"
+  | "PASS"
+  | "FAIL"
+  | "ABSENT"
+  | "EXEMPTED";
+
+type OverallStatus = "PENDING" | "PASS" | "FAIL";
+
 export const examResultService = {
   async getResults({
     examId,
@@ -14,6 +23,12 @@ export const examResultService = {
     classId,
     sectionId,
   }: GetExamResultsOptions) {
+    /*
+     * ----------------------------------------------------------------------
+     * FIND EXAM
+     * ----------------------------------------------------------------------
+     */
+
     const exam = await prisma.exam.findFirst({
       where: {
         id: examId,
@@ -23,6 +38,14 @@ export const examResultService = {
       select: {
         id: true,
         name: true,
+        academicYearId: true,
+
+        academicYear: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
       },
     });
 
@@ -34,8 +57,8 @@ export const examResultService = {
      * ----------------------------------------------------------------------
      * FIND EXAM SCHEDULES
      *
-     * sectionId = null means the schedule applies to ALL sections
-     * of the selected class.
+     * A schedule with sectionId = null applies to all sections
+     * of that class.
      * ----------------------------------------------------------------------
      */
 
@@ -117,252 +140,335 @@ export const examResultService = {
 
     /*
      * ----------------------------------------------------------------------
-     * FIND STUDENTS
+     * FIND STUDENTS FROM ENROLLMENTS
      *
-     * Students are determined from enrollment, NOT from existing marks.
-     *
-     * Therefore students with no marks entered yet still appear.
+     * Important:
+     * Enrollment must belong to the SAME academic year as the exam.
      * ----------------------------------------------------------------------
      */
 
     const scheduledClassIds = [
-      ...new Set(schedules.map((schedule) => schedule.classId)),
+      ...new Set(
+        schedules.map((schedule) => schedule.classId),
+      ),
     ];
 
-    const enrollments = await prisma.studentEnrollment.findMany({
-      where: {
-        schoolId,
-        active: true,
+    const enrollments =
+      await prisma.studentEnrollment.findMany({
+        where: {
+          schoolId,
+          academicYearId: exam.academicYearId,
+          active: true,
 
-        classId: {
-          in: scheduledClassIds,
-        },
-
-        ...(sectionId
-          ? {
-              sectionId,
-            }
-          : {}),
-      },
-
-      select: {
-        id: true,
-
-        classId: true,
-        sectionId: true,
-
-        student: {
-          select: {
-            id: true,
-            admissionNo: true,
-            fullName: true,
+          classId: {
+            in: scheduledClassIds,
           },
+
+          ...(sectionId
+            ? {
+                sectionId,
+              }
+            : {}),
         },
 
-        examMarks: {
-          where: {
-            examScheduleId: {
-              in: schedules.map((schedule) => schedule.id),
+        select: {
+          id: true,
+
+          classId: true,
+          sectionId: true,
+
+          student: {
+            select: {
+              id: true,
+              admissionNo: true,
+              fullName: true,
             },
           },
 
-          select: {
-            id: true,
-            examScheduleId: true,
-            marksObtained: true,
-            status: true,
-            remarks: true,
+          examMarks: {
+            where: {
+              examScheduleId: {
+                in: schedules.map(
+                  (schedule) => schedule.id,
+                ),
+              },
+            },
+
+            select: {
+              id: true,
+              examScheduleId: true,
+              marksObtained: true,
+              status: true,
+              remarks: true,
+            },
           },
         },
-      },
 
-      orderBy: {
-        student: {
-          fullName: "asc",
+        orderBy: {
+          student: {
+            fullName: "asc",
+          },
         },
-      },
-    });
+      });
 
     /*
      * ----------------------------------------------------------------------
-     * BUILD RESULTS
+     * BUILD STUDENT RESULTS
      * ----------------------------------------------------------------------
      */
 
-    const results = enrollments.map((enrollment) => {
-      let totalObtained = 0;
-      let totalMaxMarks = 0;
+    const results = enrollments.map(
+      (enrollment) => {
+        let totalObtained = 0;
 
-      let subjects = 0;
-      let passedSubjects = 0;
-      let failedSubjects = 0;
-      let absentSubjects = 0;
+        let subjects = 0;
+        let passedSubjects = 0;
+        let failedSubjects = 0;
+        let absentSubjects = 0;
+        let pendingSubjects = 0;
+        let exemptedSubjects = 0;
 
-      const subjectResults = schedules
-        .filter(
-          (schedule) =>
-            schedule.classId === enrollment.classId &&
-            (!schedule.sectionId ||
-              schedule.sectionId === enrollment.sectionId),
-        )
-        .map((schedule) => {
-          const mark = enrollment.examMarks.find(
-            (item) => item.examScheduleId === schedule.id,
+        const subjectResults =
+          schedules
+            .filter(
+              (schedule) =>
+                schedule.classId ===
+                  enrollment.classId &&
+                (!schedule.sectionId ||
+                  schedule.sectionId ===
+                    enrollment.sectionId),
+            )
+            .map((schedule) => {
+              const mark =
+                enrollment.examMarks.find(
+                  (item) =>
+                    item.examScheduleId ===
+                    schedule.id,
+                );
+
+              const maxMarks = Number(
+                schedule.maxMarks,
+              );
+
+              const passMarks =
+                schedule.passMarks !== null
+                  ? Number(schedule.passMarks)
+                  : null;
+
+              const marksObtained =
+                mark?.marksObtained !== null &&
+                mark?.marksObtained !==
+                  undefined
+                  ? Number(
+                      mark.marksObtained,
+                    )
+                  : null;
+
+              subjects += 1;
+
+              let subjectStatus: SubjectResultStatus;
+
+              /*
+               * No mark entered.
+               */
+
+              if (!mark) {
+                subjectStatus = "PENDING";
+                pendingSubjects += 1;
+              }
+
+              /*
+               * Absent.
+               */
+
+              else if (
+                mark.status === "ABSENT"
+              ) {
+                subjectStatus = "ABSENT";
+                absentSubjects += 1;
+                failedSubjects += 1;
+              }
+
+              /*
+               * Exempted.
+               *
+               * Exempted is not counted as pass or fail.
+               * It also does not contribute marks.
+               */
+
+              else if (
+                mark.status === "EXEMPTED"
+              ) {
+                subjectStatus = "EXEMPTED";
+                exemptedSubjects += 1;
+              }
+
+              /*
+               * Present.
+               */
+
+              else {
+                const obtained =
+                  marksObtained ?? 0;
+
+                totalObtained += obtained;
+
+                if (
+                  passMarks === null ||
+                  obtained >= passMarks
+                ) {
+                  subjectStatus = "PASS";
+                  passedSubjects += 1;
+                } else {
+                  subjectStatus = "FAIL";
+                  failedSubjects += 1;
+                }
+              }
+
+              return {
+                scheduleId: schedule.id,
+
+                subject: {
+                  id: schedule.subject.id,
+                  name: schedule.subject.name,
+                  code: schedule.subject.code,
+                },
+
+                class: schedule.class,
+
+                section: schedule.section,
+
+                examDate:
+                  schedule.examDate,
+
+                marksObtained,
+
+                maxMarks,
+
+                passMarks,
+
+                status: subjectStatus,
+
+                remarks:
+                  mark?.remarks ?? null,
+              };
+            });
+
+        /*
+         * ------------------------------------------------------------------
+         * PERCENTAGE
+         * ------------------------------------------------------------------
+         *
+         * Exempted subjects remain part of the subject list but their
+         * maximum marks are excluded from the percentage denominator.
+         */
+
+        const percentageMaxMarks =
+          subjectResults.reduce(
+            (total, subject) =>
+              subject.status === "EXEMPTED"
+                ? total
+                : total + subject.maxMarks,
+            0,
           );
 
-          const maxMarks = Number(schedule.maxMarks);
+        const percentage =
+          percentageMaxMarks > 0
+            ? Number(
+                (
+                  (totalObtained /
+                    percentageMaxMarks) *
+                  100
+                ).toFixed(2),
+              )
+            : 0;
 
-          const passMarks =
-            schedule.passMarks !== null
-              ? Number(schedule.passMarks)
-              : null;
+        /*
+         * ------------------------------------------------------------------
+         * OVERALL STATUS
+         * ------------------------------------------------------------------
+         */
 
-          const isAbsent = mark?.status === "ABSENT";
+        let status: OverallStatus;
 
-          const marksObtained =
-            mark?.marksObtained !== null &&
-            mark?.marksObtained !== undefined
-              ? Number(mark.marksObtained)
-              : null;
+        if (pendingSubjects > 0) {
+          status = "PENDING";
+        } else if (failedSubjects === 0) {
+          status = "PASS";
+        } else {
+          status = "FAIL";
+        }
 
-          subjects += 1;
-          totalMaxMarks += maxMarks;
+        return {
+          studentId:
+            enrollment.student.id,
 
-          let subjectStatus:
-            | "PENDING"
-            | "PASS"
-            | "FAIL"
-            | "ABSENT";
+          studentEnrollmentId:
+            enrollment.id,
 
-          if (!mark) {
-            subjectStatus = "PENDING";
-          } else if (isAbsent) {
-            subjectStatus = "ABSENT";
-            absentSubjects += 1;
-            failedSubjects += 1;
-          } else {
-            const obtained = marksObtained ?? 0;
+          admissionNo:
+            enrollment.student.admissionNo,
 
-            totalObtained += obtained;
+          fullName:
+            enrollment.student.fullName ||
+            "Unnamed Student",
 
-            if (
-              passMarks === null ||
-              obtained >= passMarks
-            ) {
-              subjectStatus = "PASS";
-              passedSubjects += 1;
-            } else {
-              subjectStatus = "FAIL";
-              failedSubjects += 1;
-            }
-          }
+          classId:
+            enrollment.classId,
 
-          return {
-            scheduleId: schedule.id,
+          sectionId:
+            enrollment.sectionId,
 
-            subject: {
-              id: schedule.subject.id,
-              name: schedule.subject.name,
-              code: schedule.subject.code,
-            },
+          totalObtained,
 
-            marksObtained,
+          totalMaxMarks:
+            percentageMaxMarks,
 
-            maxMarks,
+          subjects,
 
-            passMarks,
+          passedSubjects,
 
-            status: subjectStatus,
+          failedSubjects,
 
-            remarks: mark?.remarks ?? null,
-          };
-        });
+          absentSubjects,
 
-      const percentage =
-        totalMaxMarks > 0
-          ? Number(
-              (
-                (totalObtained / totalMaxMarks) *
-                100
-              ).toFixed(2),
-            )
-          : 0;
+          pendingSubjects,
 
-      /*
-       * A student with subjects not yet entered should not be
-       * marked PASS/FAIL prematurely.
-       */
+          exemptedSubjects,
 
-      const pendingSubjects = subjectResults.filter(
-        (subject) => subject.status === "PENDING",
-      ).length;
+          percentage,
 
-      let status: "PENDING" | "PASS" | "FAIL";
+          status,
 
-      if (pendingSubjects > 0) {
-        status = "PENDING";
-      } else if (
-        failedSubjects === 0 &&
-        absentSubjects === 0
-      ) {
-        status = "PASS";
-      } else {
-        status = "FAIL";
-      }
-
-      return {
-        studentId: enrollment.student.id,
-
-        studentEnrollmentId: enrollment.id,
-
-        admissionNo: enrollment.student.admissionNo,
-
-        fullName:
-          enrollment.student.fullName ||
-          "Unnamed Student",
-
-        classId: enrollment.classId,
-
-        sectionId: enrollment.sectionId,
-
-        totalObtained,
-
-        totalMaxMarks,
-
-        subjects,
-
-        passedSubjects,
-
-        failedSubjects,
-
-        absentSubjects,
-
-        pendingSubjects,
-
-        percentage,
-
-        status,
-
-        subjectResults,
-      };
-    });
+          subjectResults,
+        };
+      },
+    );
 
     /*
      * ----------------------------------------------------------------------
      * RANK
-     *
-     * Only completed PASS/FAIL results participate in ranking.
-     * Pending students remain unranked.
      * ----------------------------------------------------------------------
+     *
+     * Only completed results participate.
+     *
+     * Students with PENDING results are not ranked.
      */
 
     const rankedResults = [...results]
       .filter(
-        (student) => student.status !== "PENDING",
+        (student) =>
+          student.status !== "PENDING",
       )
       .sort((a, b) => {
-        if (b.percentage !== a.percentage) {
-          return b.percentage - a.percentage;
+        if (
+          b.percentage !==
+          a.percentage
+        ) {
+          return (
+            b.percentage -
+            a.percentage
+          );
         }
 
         return (
@@ -371,30 +477,81 @@ export const examResultService = {
         );
       });
 
-    const rankMap = new Map<string, number>();
+    /*
+     * Competition ranking:
+     *
+     * 1
+     * 2
+     * 2
+     * 4
+     *
+     * Students with the same percentage and marks
+     * receive the same rank.
+     */
 
-    rankedResults.forEach((student, index) => {
-      rankMap.set(
-        student.studentId,
-        index + 1,
-      );
-    });
+    const rankMap = new Map<
+      string,
+      number
+    >();
+
+    let previousPercentage:
+      | number
+      | null = null;
+
+    let previousMarks:
+      | number
+      | null = null;
+
+    let currentRank = 0;
+
+    rankedResults.forEach(
+      (student, index) => {
+        if (
+          previousPercentage !==
+            student.percentage ||
+          previousMarks !==
+            student.totalObtained
+        ) {
+          currentRank = index + 1;
+
+          previousPercentage =
+            student.percentage;
+
+          previousMarks =
+            student.totalObtained;
+        }
+
+        rankMap.set(
+          student.studentId,
+          currentRank,
+        );
+      },
+    );
+
+    /*
+     * ----------------------------------------------------------------------
+     * FINAL RESPONSE
+     * ----------------------------------------------------------------------
+     */
 
     return {
       exam,
 
       schedules,
 
-      results: results
+      results: [...results]
         .sort((a, b) =>
-          a.fullName.localeCompare(b.fullName),
+          a.fullName.localeCompare(
+            b.fullName,
+          ),
         )
         .map((student) => ({
           ...student,
 
           rank:
-            rankMap.get(student.studentId) ??
-            null,
+            rankMap.get(
+              student.studentId,
+            ) ?? null,
         })),
     };
   },

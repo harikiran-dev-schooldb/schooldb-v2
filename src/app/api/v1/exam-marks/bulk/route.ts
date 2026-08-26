@@ -5,7 +5,11 @@ import { prisma } from "@/lib/prisma";
 
 const MAX_ROWS = 1000;
 
-const VALID_STATUSES = new Set(["PRESENT", "ABSENT", "EXEMPTED"]);
+const VALID_STATUSES = new Set([
+  "PRESENT",
+  "ABSENT",
+  "EXEMPTED",
+]);
 
 type ImportRow = {
   examName: string;
@@ -19,11 +23,28 @@ type ImportRow = {
   remarks: string;
 };
 
+type PreparedRow = Omit<
+  ImportRow,
+  "status" | "marks"
+> & {
+  status: "PRESENT" | "ABSENT" | "EXEMPTED";
+  marks: number | null;
+};
+
+type ResolvedRow = {
+  schoolId: string;
+  examScheduleId: string;
+  studentEnrollmentId: string;
+  marksObtained: number | null;
+  status: "PRESENT" | "ABSENT" | "EXEMPTED";
+  remarks: string | null;
+};
+
 function normalize(value: string): string {
   return value.trim().toLowerCase();
 }
 
-function normalizeStatus(value: string): string {
+function normalizeStatus(value: string) {
   return value.trim().toUpperCase();
 }
 
@@ -31,31 +52,70 @@ export async function POST(request: Request) {
   return apiHandler(async () => {
     const tenant = await requireTenant();
 
-    const body = (await request.json()) as { marks?: unknown };
-    const input = Array.isArray(body.marks) ? body.marks : [];
+    const body = (await request.json()) as {
+      marks?: unknown;
+    };
+
+    const input = Array.isArray(body.marks)
+      ? body.marks
+      : [];
 
     if (!input.length) {
-      throw new Error("No exam marks were provided.");
+      throw new Error(
+        "No exam marks were provided.",
+      );
     }
 
     if (input.length > MAX_ROWS) {
-      throw new Error(`Maximum ${MAX_ROWS} marks per import.`);
+      throw new Error(
+        `Maximum ${MAX_ROWS} marks per import.`,
+      );
     }
 
     const rows = input as ImportRow[];
-    const seen = new Set<string>();
 
-    const prepared = rows.map((row, index) => {
-      const rowNumber = index + 2;
-      const status = normalizeStatus(row.status || "PRESENT");
-      const marksText = (row.marks ?? "").trim();
+    /*
+     * STEP 1
+     * Validate uploaded rows.
+     */
+    const seen = new Set<string>();
+    const prepared: PreparedRow[] = [];
+
+    for (let i = 0; i < rows.length; i += 1) {
+      const row = rows[i];
+      const rowNumber = i + 2;
+
+      const examName =
+        row.examName?.trim() ?? "";
+
+      const academicYear =
+        row.academicYear?.trim() ?? "";
+
+      const className =
+        row.className?.trim() ?? "";
+
+      const sectionName =
+        row.sectionName?.trim() ?? "";
+
+      const subjectName =
+        row.subjectName?.trim() ?? "";
+
+      const admissionNo =
+        row.admissionNo?.trim() ?? "";
+
+      const status = normalizeStatus(
+        row.status || "PRESENT",
+      );
+
+      const marksText =
+        row.marks?.trim() ?? "";
 
       if (
-        !row.examName?.trim() ||
-        !row.academicYear?.trim() ||
-        !row.className?.trim() ||
-        !row.subjectName?.trim() ||
-        !row.admissionNo?.trim()
+        !examName ||
+        !academicYear ||
+        !className ||
+        !subjectName ||
+        !admissionNo
       ) {
         throw new Error(
           `Row ${rowNumber}: Exam, academic year, class, subject and admission number are required.`,
@@ -68,88 +128,222 @@ export async function POST(request: Request) {
         );
       }
 
-      const marks = marksText === "" ? null : Number(marksText);
+      const marks =
+        marksText === ""
+          ? null
+          : Number(marksText);
 
-      if (status === "PRESENT" && marks === null) {
-        throw new Error(`Row ${rowNumber}: Marks are required for PRESENT students.`);
+      if (
+        status === "PRESENT" &&
+        marks === null
+      ) {
+        throw new Error(
+          `Row ${rowNumber}: Marks are required for PRESENT students.`,
+        );
       }
 
       if (
         marks !== null &&
-        (!Number.isFinite(marks) || marks < 0)
+        (
+          !Number.isFinite(marks) ||
+          marks < 0
+        )
       ) {
-        throw new Error(`Row ${rowNumber}: Marks must be a valid non-negative number.`);
+        throw new Error(
+          `Row ${rowNumber}: Marks must be a valid non-negative number.`,
+        );
       }
 
-      if (status !== "PRESENT" && marks !== null) {
+      if (
+        status !== "PRESENT" &&
+        marks !== null
+      ) {
         throw new Error(
           `Row ${rowNumber}: Marks must be blank when status is ${status}.`,
         );
       }
 
-      const key = [
-        row.examName,
-        row.academicYear,
-        row.className,
-        row.sectionName,
-        row.subjectName,
-        row.admissionNo,
+      const duplicateKey = [
+        examName,
+        academicYear,
+        className,
+        sectionName,
+        subjectName,
+        admissionNo,
       ]
         .map(normalize)
         .join(":");
 
-      if (seen.has(key)) {
-        throw new Error(`Duplicate student mark in import at row ${rowNumber}.`);
+      if (seen.has(duplicateKey)) {
+        throw new Error(
+          `Duplicate student mark in import at row ${rowNumber}.`,
+        );
       }
 
-      seen.add(key);
+      seen.add(duplicateKey);
 
-      return {
+      prepared.push({
         ...row,
-        status,
+        examName,
+        academicYear,
+        className,
+        sectionName,
+        subjectName,
+        admissionNo,
+        status:
+          status as PreparedRow["status"],
         marks,
-      };
-    });
+      });
+    }
 
-    const [academicYears, exams, classes, sections, subjects, students] =
-      await Promise.all([
-        prisma.academicYear.findMany({
-          where: { schoolId: tenant.schoolId },
-          select: { id: true, name: true },
-        }),
-        prisma.exam.findMany({
-          where: { schoolId: tenant.schoolId },
-          select: { id: true, name: true, academicYearId: true },
-        }),
-        prisma.class.findMany({
-          where: { schoolId: tenant.schoolId },
-          select: { id: true, name: true },
-        }),
-        prisma.section.findMany({
-          select: { id: true, name: true, classId: true },
-        }),
-        prisma.subject.findMany({
-          where: { schoolId: tenant.schoolId },
-          select: { id: true, name: true },
-        }),
-        prisma.student.findMany({
-          where: { schoolId: tenant.schoolId },
-          select: { id: true, admissionNo: true },
-        }),
-      ]);
+    /*
+     * STEP 2
+     * Load school-owned master data.
+     */
+    const [
+      academicYears,
+      exams,
+      classes,
+      sections,
+      subjects,
+      students,
+      enrollments,
+      schedules,
+    ] = await Promise.all([
+      prisma.academicYear.findMany({
+        where: {
+          schoolId: tenant.schoolId,
+        },
+        select: {
+          id: true,
+          name: true,
+        },
+      }),
 
+      prisma.exam.findMany({
+        where: {
+          schoolId: tenant.schoolId,
+        },
+        select: {
+          id: true,
+          name: true,
+          academicYearId: true,
+        },
+      }),
+
+      prisma.class.findMany({
+        where: {
+          schoolId: tenant.schoolId,
+        },
+        select: {
+          id: true,
+          name: true,
+        },
+      }),
+
+      /*
+       * Section belongs to Class.
+       *
+       * Therefore we do not filter sections by
+       * schoolId. We validate through classId.
+       */
+      prisma.section.findMany({
+        select: {
+          id: true,
+          name: true,
+          classId: true,
+        },
+      }),
+
+      prisma.subject.findMany({
+        where: {
+          schoolId: tenant.schoolId,
+        },
+        select: {
+          id: true,
+          name: true,
+        },
+      }),
+
+      prisma.student.findMany({
+        where: {
+          schoolId: tenant.schoolId,
+        },
+        select: {
+          id: true,
+          admissionNo: true,
+        },
+      }),
+
+      /*
+       * Only enrollments belonging to this school
+       * are loaded.
+       */
+      prisma.studentEnrollment.findMany({
+        where: {
+          schoolId: tenant.schoolId,
+        },
+        select: {
+          id: true,
+          studentId: true,
+          academicYearId: true,
+          classId: true,
+          sectionId: true,
+        },
+      }),
+
+      /*
+       * Only schedules belonging to this school
+       * are loaded.
+       */
+      prisma.examSchedule.findMany({
+        where: {
+          schoolId: tenant.schoolId,
+        },
+        select: {
+          id: true,
+          examId: true,
+          classId: true,
+          sectionId: true,
+          subjectId: true,
+          maxMarks: true,
+        },
+      }),
+    ]);
+
+    /*
+     * STEP 3
+     * Build lookup maps.
+     */
     const yearByName = new Map(
-      academicYears.map((item) => [normalize(item.name), item]),
+      academicYears.map((item) => [
+        normalize(item.name),
+        item,
+      ]),
     );
+
     const classByName = new Map(
-      classes.map((item) => [normalize(item.name), item]),
+      classes.map((item) => [
+        normalize(item.name),
+        item,
+      ]),
     );
+
     const subjectByName = new Map(
-      subjects.map((item) => [normalize(item.name), item]),
+      subjects.map((item) => [
+        normalize(item.name),
+        item,
+      ]),
     );
-    const studentByAdmission = new Map(
-      students.map((item) => [normalize(item.admissionNo), item]),
-    );
+
+    const studentByAdmission =
+      new Map(
+        students.map((item) => [
+          normalize(item.admissionNo),
+          item,
+        ]),
+      );
+
     const examByKey = new Map(
       exams.map((item) => [
         `${item.academicYearId}:${normalize(item.name)}`,
@@ -157,73 +351,185 @@ export async function POST(request: Request) {
       ]),
     );
 
-    const resolved: Array<{
-      schoolId: string;
-      examScheduleId: string;
-      studentEnrollmentId: string;
-      marksObtained: number | null;
-      status: "PRESENT" | "ABSENT" | "EXEMPTED";
-      remarks: string | null;
-    }> = [];
+    /*
+     * Section lookup:
+     *
+     * CLASS + SECTION
+     */
+    const sectionByKey = new Map(
+      sections.map((section) => [
+        `${section.classId}:${normalize(section.name)}`,
+        section,
+      ]),
+    );
 
-    for (let i = 0; i < prepared.length; i += 1) {
+    /*
+     * Enrollment lookup:
+     *
+     * STUDENT + ACADEMIC YEAR + CLASS + SECTION
+     */
+    const enrollmentByKey =
+      new Map(
+        enrollments.map((enrollment) => [
+          [
+            enrollment.studentId,
+            enrollment.academicYearId,
+            enrollment.classId,
+            enrollment.sectionId ?? "",
+          ].join(":"),
+          enrollment,
+        ]),
+      );
+
+    /*
+     * Schedule lookup:
+     *
+     * EXAM + CLASS + SECTION + SUBJECT
+     */
+    const scheduleByKey =
+      new Map(
+        schedules.map((schedule) => [
+          [
+            schedule.examId,
+            schedule.classId,
+            schedule.sectionId ?? "",
+            schedule.subjectId,
+          ].join(":"),
+          schedule,
+        ]),
+      );
+
+    /*
+     * STEP 4
+     * Resolve every uploaded row.
+     */
+    const resolved: ResolvedRow[] = [];
+
+    for (
+      let i = 0;
+      i < prepared.length;
+      i += 1
+    ) {
       const row = prepared[i];
       const rowNumber = i + 2;
 
-      const year = yearByName.get(normalize(row.academicYear));
+      /*
+       * Academic year
+       */
+      const year = yearByName.get(
+        normalize(row.academicYear),
+      );
+
       if (!year) {
-        throw new Error(`Row ${rowNumber}: Academic year not found: ${row.academicYear}.`);
+        throw new Error(
+          `Row ${rowNumber}: Academic year not found: ${row.academicYear}.`,
+        );
       }
 
+      /*
+       * Exam
+       */
       const exam = examByKey.get(
         `${year.id}:${normalize(row.examName)}`,
       );
+
       if (!exam) {
-        throw new Error(`Row ${rowNumber}: Exam not found: ${row.examName}.`);
-      }
-
-      const classRecord = classByName.get(normalize(row.className));
-      if (!classRecord) {
-        throw new Error(`Row ${rowNumber}: Class not found: ${row.className}.`);
-      }
-
-      let sectionId: string | null = null;
-      if (row.sectionName?.trim()) {
-        const section = sections.find(
-          (item) =>
-            item.classId === classRecord.id &&
-            normalize(item.name) === normalize(row.sectionName),
+        throw new Error(
+          `Row ${rowNumber}: Exam not found: ${row.examName}.`,
         );
+      }
+
+      /*
+       * Class
+       */
+      const classRecord =
+        classByName.get(
+          normalize(row.className),
+        );
+
+      if (!classRecord) {
+        throw new Error(
+          `Row ${rowNumber}: Class not found: ${row.className}.`,
+        );
+      }
+
+      /*
+       * Section
+       *
+       * Section is resolved through classId.
+       */
+      let sectionId: string | null =
+        null;
+
+      if (row.sectionName) {
+        const section =
+          sectionByKey.get(
+            `${classRecord.id}:${normalize(row.sectionName)}`,
+          );
+
         if (!section) {
           throw new Error(
             `Row ${rowNumber}: Section ${row.sectionName} not found in ${row.className}.`,
           );
         }
+
+        if (
+          section.classId !==
+          classRecord.id
+        ) {
+          throw new Error(
+            `Row ${rowNumber}: Section does not belong to the selected class.`,
+          );
+        }
+
         sectionId = section.id;
       }
 
-      const subject = subjectByName.get(normalize(row.subjectName));
+      /*
+       * Subject
+       */
+      const subject =
+        subjectByName.get(
+          normalize(row.subjectName),
+        );
+
       if (!subject) {
-        throw new Error(`Row ${rowNumber}: Subject not found: ${row.subjectName}.`);
+        throw new Error(
+          `Row ${rowNumber}: Subject not found: ${row.subjectName}.`,
+        );
       }
 
-      const student = studentByAdmission.get(normalize(row.admissionNo));
+      /*
+       * Student
+       */
+      const student =
+        studentByAdmission.get(
+          normalize(row.admissionNo),
+        );
+
       if (!student) {
         throw new Error(
           `Row ${rowNumber}: Student not found: ${row.admissionNo}.`,
         );
       }
 
-      const enrollment = await prisma.studentEnrollment.findFirst({
-        where: {
-          schoolId: tenant.schoolId,
-          studentId: student.id,
-          academicYearId: year.id,
-          classId: classRecord.id,
-          ...(sectionId ? { sectionId } : {}),
-        },
-        select: { id: true },
-      });
+      /*
+       * Enrollment
+       *
+       * Student must belong to the selected
+       * academic year + class + section.
+       */
+      const enrollmentKey = [
+        student.id,
+        year.id,
+        classRecord.id,
+        sectionId ?? "",
+      ].join(":");
+
+      const enrollment =
+        enrollmentByKey.get(
+          enrollmentKey,
+        );
 
       if (!enrollment) {
         throw new Error(
@@ -231,19 +537,20 @@ export async function POST(request: Request) {
         );
       }
 
-      const schedule = await prisma.examSchedule.findFirst({
-        where: {
-          schoolId: tenant.schoolId,
-          examId: exam.id,
-          classId: classRecord.id,
-          sectionId,
-          subjectId: subject.id,
-        },
-        select: {
-          id: true,
-          maxMarks: true,
-        },
-      });
+      /*
+       * Exam schedule
+       */
+      const scheduleKey = [
+        exam.id,
+        classRecord.id,
+        sectionId ?? "",
+        subject.id,
+      ].join(":");
+
+      const schedule =
+        scheduleByKey.get(
+          scheduleKey,
+        );
 
       if (!schedule) {
         throw new Error(
@@ -251,9 +558,13 @@ export async function POST(request: Request) {
         );
       }
 
+      /*
+       * Marks cannot exceed schedule max marks.
+       */
       if (
         row.marks !== null &&
-        row.marks > Number(schedule.maxMarks)
+        row.marks >
+          Number(schedule.maxMarks)
       ) {
         throw new Error(
           `Row ${rowNumber}: Marks ${row.marks} exceed the maximum ${schedule.maxMarks}.`,
@@ -263,23 +574,38 @@ export async function POST(request: Request) {
       resolved.push({
         schoolId: tenant.schoolId,
         examScheduleId: schedule.id,
-        studentEnrollmentId: enrollment.id,
+        studentEnrollmentId:
+          enrollment.id,
         marksObtained: row.marks,
-        status: row.status as "PRESENT" | "ABSENT" | "EXEMPTED",
-        remarks: row.remarks?.trim() || null,
+        status: row.status,
+        remarks:
+          row.remarks?.trim() || null,
       });
     }
 
-    const existing = await prisma.studentExamMark.findMany({
-      where: {
-        schoolId: tenant.schoolId,
-        OR: resolved.map((row) => ({
-          examScheduleId: row.examScheduleId,
-          studentEnrollmentId: row.studentEnrollmentId,
-        })),
-      },
-      select: { id: true },
-    });
+    /*
+     * STEP 5
+     * Check existing marks.
+     */
+    const existing =
+      await prisma.studentExamMark.findMany({
+        where: {
+          schoolId: tenant.schoolId,
+
+          OR: resolved.map(
+            (row) => ({
+              examScheduleId:
+                row.examScheduleId,
+              studentEnrollmentId:
+                row.studentEnrollmentId,
+            }),
+          ),
+        },
+
+        select: {
+          id: true,
+        },
+      });
 
     if (existing.length > 0) {
       throw new Error(
@@ -287,16 +613,31 @@ export async function POST(request: Request) {
       );
     }
 
+    /*
+     * STEP 6
+     * Create all marks atomically.
+     */
     await prisma.$transaction(
       resolved.map((row) =>
         prisma.studentExamMark.create({
           data: {
-            schoolId: row.schoolId,
-            examScheduleId: row.examScheduleId,
-            studentEnrollmentId: row.studentEnrollmentId,
-            marksObtained: row.marksObtained,
-            status: row.status,
-            remarks: row.remarks,
+            schoolId:
+              row.schoolId,
+
+            examScheduleId:
+              row.examScheduleId,
+
+            studentEnrollmentId:
+              row.studentEnrollmentId,
+
+            marksObtained:
+              row.marksObtained,
+
+            status:
+              row.status,
+
+            remarks:
+              row.remarks,
           },
         }),
       ),
@@ -304,7 +645,8 @@ export async function POST(request: Request) {
 
     return ApiResponse.success(
       {
-        created: resolved.length,
+        created:
+          resolved.length,
         failed: 0,
         errors: [],
       },

@@ -161,6 +161,7 @@ export const studentEnrollmentService = {
   ) {
     const exists =
       await studentEnrollmentRepository.findFirst({
+        schoolId,
         studentId: input.studentId,
         academicYearId: input.academicYearId,
       });
@@ -282,6 +283,7 @@ export const studentEnrollmentService = {
 
     const duplicate =
       await studentEnrollmentRepository.findFirst({
+        schoolId,
         studentId: input.studentId,
 
         academicYearId: input.academicYearId,

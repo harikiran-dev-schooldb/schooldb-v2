@@ -1,38 +1,28 @@
 import { NextResponse } from "next/server";
 
-import { prisma } from "@/lib/prisma";
 import { requireTenant } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+
+type RouteContext = {
+  params: Promise<{
+    examId: string;
+    studentId: string;
+  }>;
+};
+
+type ResultStatus = "PASS" | "FAIL" | "ABSENT" | "EXEMPTED";
 
 export async function GET(
-  request: Request,
-  {
-    params,
-  }: {
-    params: Promise<{
-      examId: string;
-      studentId: string;
-    }>;
-  },
+  _request: Request,
+  context: RouteContext,
 ) {
   try {
-    const { examId, studentId } = await params;
+    const { examId, studentId } = await context.params;
 
     const tenant = await requireTenant();
 
-    if (!tenant) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Unauthorized.",
-        },
-        {
-          status: 401,
-        },
-      );
-    }
-
     /* ------------------------------------------------------------------ */
-    /* School                                                             */
+    /* SCHOOL                                                             */
     /* ------------------------------------------------------------------ */
 
     const school = await prisma.school.findFirst({
@@ -53,14 +43,12 @@ export async function GET(
           success: false,
           message: "School not found.",
         },
-        {
-          status: 404,
-        },
+        { status: 404 },
       );
     }
 
     /* ------------------------------------------------------------------ */
-    /* Verify Exam                                                        */
+    /* EXAM                                                               */
     /* ------------------------------------------------------------------ */
 
     const exam = await prisma.exam.findFirst({
@@ -90,14 +78,12 @@ export async function GET(
           success: false,
           message: "Exam not found.",
         },
-        {
-          status: 404,
-        },
+        { status: 404 },
       );
     }
 
     /* ------------------------------------------------------------------ */
-    /* Verify Student                                                     */
+    /* STUDENT                                                            */
     /* ------------------------------------------------------------------ */
 
     const student = await prisma.student.findFirst({
@@ -118,78 +104,106 @@ export async function GET(
           success: false,
           message: "Student not found.",
         },
-        {
-          status: 404,
-        },
+        { status: 404 },
       );
     }
 
     /* ------------------------------------------------------------------ */
-    /* Get Student Marks                                                  */
+    /* STUDENT ENROLLMENT                                                 */
+    /*                                                                      */
+    /* The student's class/section must come from the enrollment for the   */
+    /* same academic year as the exam.                                    */
     /* ------------------------------------------------------------------ */
 
-    const marks = await prisma.studentExamMark.findMany({
-  where: {
-    schoolId: tenant.schoolId,
-
-    examSchedule: {
-      examId,
-    },
-
-    studentEnrollment: {
-      studentId,
-    },
-  },
-
-  include: {
-    studentEnrollment: {
-      select: {
-        id: true,
-
-        class: {
-          select: {
-            id: true,
-            name: true,
-          },
+    const enrollment =
+      await prisma.studentEnrollment.findFirst({
+        where: {
+          schoolId: tenant.schoolId,
+          studentId: student.id,
+          academicYearId: exam.academicYearId,
         },
 
-        section: {
-          select: {
-            id: true,
-            name: true,
+        select: {
+          id: true,
+          academicYearId: true,
+
+          class: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+
+          section: {
+            select: {
+              id: true,
+              name: true,
+            },
           },
         },
+      });
 
-        academicYearId: true,
-      },
-    },
-
-    examSchedule: {
-      include: {
-        subject: {
-          select: {
-            id: true,
-            name: true,
-            code: true,
-          },
+    if (!enrollment) {
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            "Student is not enrolled for this exam's academic year.",
         },
-      },
-    },
-  },
-
-  orderBy: {
-    examSchedule: {
-      examDate: "asc",
-    },
-  },
-});
+        { status: 404 },
+      );
+    }
 
     /* ------------------------------------------------------------------ */
-    /* Subject Results                                                    */
+    /* STUDENT MARKS                                                      */
+    /* ------------------------------------------------------------------ */
+
+    const marks =
+      await prisma.studentExamMark.findMany({
+        where: {
+          schoolId: tenant.schoolId,
+
+          studentEnrollmentId: enrollment.id,
+
+          examSchedule: {
+            examId: exam.id,
+          },
+        },
+
+        include: {
+          examSchedule: {
+            select: {
+              id: true,
+              examDate: true,
+              maxMarks: true,
+              passMarks: true,
+
+              subject: {
+                select: {
+                  id: true,
+                  name: true,
+                  code: true,
+                },
+              },
+            },
+          },
+        },
+
+        orderBy: {
+          examSchedule: {
+            examDate: "asc",
+          },
+        },
+      });
+
+    /* ------------------------------------------------------------------ */
+    /* SUBJECT RESULTS                                                    */
     /* ------------------------------------------------------------------ */
 
     const subjects = marks.map((mark) => {
-      const maxMarks = Number(mark.examSchedule.maxMarks);
+      const maxMarks = Number(
+        mark.examSchedule.maxMarks,
+      );
 
       const passMarks =
         mark.examSchedule.passMarks !== null
@@ -201,13 +215,16 @@ export async function GET(
           ? Number(mark.marksObtained)
           : null;
 
-      let resultStatus: "PASS" | "FAIL" | "ABSENT";
+      let resultStatus: ResultStatus;
 
       if (mark.status === "ABSENT") {
         resultStatus = "ABSENT";
+      } else if (mark.status === "EXEMPTED") {
+        resultStatus = "EXEMPTED";
       } else if (
         marksObtained !== null &&
-        (passMarks === null || marksObtained >= passMarks)
+        (passMarks === null ||
+          marksObtained >= passMarks)
       ) {
         resultStatus = "PASS";
       } else {
@@ -215,46 +232,44 @@ export async function GET(
       }
 
       return {
-  scheduleId: mark.examScheduleId,
+        scheduleId: mark.examSchedule.id,
 
-  subject: mark.examSchedule.subject,
+        subject: mark.examSchedule.subject,
 
-  class: mark.studentEnrollment.class,
+        class: enrollment.class,
 
-  section: mark.studentEnrollment.section,
+        section: enrollment.section,
 
-  examDate: mark.examSchedule.examDate,
+        examDate: mark.examSchedule.examDate,
 
-  maxMarks,
-  passMarks,
-  marksObtained,
+        maxMarks,
+        passMarks,
+        marksObtained,
 
-  status: mark.status,
-  resultStatus,
+        status: mark.status,
 
-  remarks: mark.remarks,
-};
+        resultStatus,
+
+        remarks: mark.remarks,
+      };
     });
 
     /* ------------------------------------------------------------------ */
-    /* Exam Date Limit                                                    */
-    /* Attendance only up to last exam date                               */
+    /* EXAM DATE LIMIT                                                    */
     /* ------------------------------------------------------------------ */
+
+    const subjectDates = subjects.map(
+      (subject) =>
+        new Date(subject.examDate).getTime(),
+    );
 
     const examDateLimit =
-      subjects.length > 0
-        ? new Date(
-            Math.max(
-              ...subjects.map((subject) =>
-                new Date(subject.examDate).getTime(),
-              ),
-            ),
-          )
-        : exam.endDate || exam.startDate;
+      subjectDates.length > 0
+        ? new Date(Math.max(...subjectDates))
+        : exam.endDate ?? exam.startDate;
 
     /* ------------------------------------------------------------------ */
-    /* Attendance                                                         */
-    /* Group by date so multiple period sessions do not count as days.    */
+    /* ATTENDANCE                                                         */
     /* ------------------------------------------------------------------ */
 
     let totalAttendanceDays = 0;
@@ -263,76 +278,78 @@ export async function GET(
     let attendancePercentage = 0;
 
     if (examDateLimit) {
-      const attendanceRecords = await prisma.attendance.findMany({
-        where: {
-          schoolId: tenant.schoolId,
-
-          studentId: student.id,
-
-          session: {
+      const attendanceRecords =
+        await prisma.attendance.findMany({
+          where: {
             schoolId: tenant.schoolId,
 
-            academicYearId: exam.academicYearId,
+            studentId: student.id,
 
-            attendanceDate: {
-              lte: examDateLimit,
+            session: {
+              schoolId: tenant.schoolId,
+              academicYearId:
+                exam.academicYearId,
+
+              attendanceDate: {
+                lte: examDateLimit,
+              },
             },
           },
-        },
 
-        select: {
-          status: true,
+          select: {
+            status: true,
 
-          session: {
-            select: {
-              attendanceDate: true,
+            session: {
+              select: {
+                attendanceDate: true,
+              },
             },
           },
-        },
 
-        orderBy: {
-          session: {
-            attendanceDate: "asc",
+          orderBy: {
+            session: {
+              attendanceDate: "asc",
+            },
           },
-        },
-      });
+        });
 
       /*
-       * One student may have multiple attendance sessions on the same day.
-       * Group them by date so the report card shows actual days.
+       * Multiple attendance sessions may exist
+       * on the same date.
+       *
+       * Count one actual attendance day.
        */
-
-      const attendanceByDate = new Map<
-        string,
-        {
-          statuses: string[];
-        }
-      >();
+      const attendanceByDate =
+        new Map<string, string[]>();
 
       for (const attendance of attendanceRecords) {
-        const dateKey = new Date(attendance.session.attendanceDate)
+        const dateKey = new Date(
+          attendance.session.attendanceDate,
+        )
           .toISOString()
           .slice(0, 10);
 
-        const existing = attendanceByDate.get(dateKey);
+        const statuses =
+          attendanceByDate.get(dateKey);
 
-        if (existing) {
-          existing.statuses.push(attendance.status);
+        if (statuses) {
+          statuses.push(attendance.status);
         } else {
-          attendanceByDate.set(dateKey, {
-            statuses: [attendance.status],
-          });
+          attendanceByDate.set(dateKey, [
+            attendance.status,
+          ]);
         }
       }
 
-      totalAttendanceDays = attendanceByDate.size;
+      totalAttendanceDays =
+        attendanceByDate.size;
 
-      for (const [, attendance] of attendanceByDate) {
-        const isPresent =
-          attendance.statuses.includes("PRESENT") ||
-          attendance.statuses.includes("LATE");
+      for (const statuses of attendanceByDate.values()) {
+        const present =
+          statuses.includes("PRESENT") ||
+          statuses.includes("LATE");
 
-        if (isPresent) {
+        if (present) {
           presentDays += 1;
         } else {
           absentDays += 1;
@@ -343,7 +360,8 @@ export async function GET(
         totalAttendanceDays > 0
           ? Number(
               (
-                (presentDays / totalAttendanceDays) *
+                (presentDays /
+                  totalAttendanceDays) *
                 100
               ).toFixed(2),
             )
@@ -351,51 +369,82 @@ export async function GET(
     }
 
     /* ------------------------------------------------------------------ */
-    /* Overall Result                                                     */
+    /* OVERALL RESULT                                                     */
     /* ------------------------------------------------------------------ */
 
-    const totalMaxMarks = subjects.reduce(
-      (total, subject) => total + subject.maxMarks,
-      0,
+    const gradedSubjects = subjects.filter(
+      (subject) =>
+        subject.resultStatus === "PASS" ||
+        subject.resultStatus === "FAIL",
     );
 
-    const totalObtained = subjects.reduce(
-      (total, subject) =>
-        total +
-        (subject.marksObtained !== null
-          ? subject.marksObtained
-          : 0),
-      0,
-    );
+    const totalMaxMarks =
+      gradedSubjects.reduce(
+        (total, subject) =>
+          total + subject.maxMarks,
+        0,
+      );
 
-    const passedSubjects = subjects.filter(
-      (subject) => subject.resultStatus === "PASS",
-    ).length;
+    const totalObtained =
+      gradedSubjects.reduce(
+        (total, subject) =>
+          total +
+          (subject.marksObtained ?? 0),
+        0,
+      );
 
-    const failedSubjects = subjects.filter(
-      (subject) => subject.resultStatus === "FAIL",
-    ).length;
+    const passedSubjects =
+      subjects.filter(
+        (subject) =>
+          subject.resultStatus === "PASS",
+      ).length;
 
-    const absentSubjects = subjects.filter(
-      (subject) => subject.resultStatus === "ABSENT",
-    ).length;
+    const failedSubjects =
+      subjects.filter(
+        (subject) =>
+          subject.resultStatus === "FAIL",
+      ).length;
+
+    const absentSubjects =
+      subjects.filter(
+        (subject) =>
+          subject.resultStatus === "ABSENT",
+      ).length;
+
+    const exemptedSubjects =
+      subjects.filter(
+        (subject) =>
+          subject.resultStatus === "EXEMPTED",
+      ).length;
 
     const percentage =
       totalMaxMarks > 0
         ? Number(
-            ((totalObtained / totalMaxMarks) * 100).toFixed(2),
+            (
+              (totalObtained /
+                totalMaxMarks) *
+              100
+            ).toFixed(2),
           )
         : 0;
 
+    /*
+     * EXEMPTED subjects do not fail the student.
+     *
+     * ABSENT subjects do fail the overall result.
+     *
+     * A student with no marks cannot be declared PASS.
+     */
     const overallStatus =
-      failedSubjects === 0 &&
-      absentSubjects === 0 &&
-      subjects.length > 0
-        ? "PASS"
-        : "FAIL";
+      subjects.length === 0
+        ? "NO_RESULT"
+        : failedSubjects > 0 ||
+            absentSubjects > 0
+          ? "FAIL"
+          : "PASS";
 
     /* ------------------------------------------------------------------ */
-    /* Response                                                           */
+    /* RESPONSE                                                           */
     /* ------------------------------------------------------------------ */
 
     return NextResponse.json({
@@ -414,13 +463,30 @@ export async function GET(
 
         student,
 
+        enrollment: {
+          id: enrollment.id,
+          academicYearId:
+            enrollment.academicYearId,
+          class: enrollment.class,
+          section: enrollment.section,
+        },
+
         summary: {
           totalSubjects: subjects.length,
+
+          gradedSubjects:
+            gradedSubjects.length,
+
           passedSubjects,
+
           failedSubjects,
+
           absentSubjects,
 
+          exemptedSubjects,
+
           totalObtained,
+
           totalMaxMarks,
 
           percentage,
@@ -429,10 +495,16 @@ export async function GET(
 
           attendance: {
             upToDate: examDateLimit,
-            totalDays: totalAttendanceDays,
+
+            totalDays:
+              totalAttendanceDays,
+
             presentDays,
+
             absentDays,
-            percentage: attendancePercentage,
+
+            percentage:
+              attendancePercentage,
           },
         },
 
@@ -440,16 +512,20 @@ export async function GET(
       },
     });
   } catch (error) {
-    console.error("Failed to load student exam result:", error);
+    console.error(
+      "Failed to load student exam result:",
+      error,
+    );
 
     return NextResponse.json(
       {
         success: false,
-        message: "Failed to load student exam result.",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Failed to load student exam result.",
       },
-      {
-        status: 500,
-      },
+      { status: 500 },
     );
   }
 }

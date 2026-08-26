@@ -1,5 +1,40 @@
 import { prisma } from "@/lib/prisma";
 
+function validateExamDates(
+  startDate: Date | null | undefined,
+  endDate: Date | null | undefined,
+) {
+  if (startDate && Number.isNaN(startDate.getTime())) {
+    throw new Error("Invalid exam start date.");
+  }
+
+  if (endDate && Number.isNaN(endDate.getTime())) {
+    throw new Error("Invalid exam end date.");
+  }
+
+  if (startDate && endDate && endDate < startDate) {
+    throw new Error(
+      "Exam end date must be on or after the start date.",
+    );
+  }
+}
+
+function validateExamName(name: string) {
+  const trimmed = name.trim();
+
+  if (!trimmed) {
+    throw new Error("Exam name is required.");
+  }
+
+  if (trimmed.length > 100) {
+    throw new Error(
+      "Exam name must be 100 characters or less.",
+    );
+  }
+
+  return trimmed;
+}
+
 export const examService = {
   /*
    * Get all exams for a school.
@@ -53,6 +88,7 @@ export const examService = {
           include: {
             subject: true,
             class: true,
+            section: true,
           },
 
           orderBy: {
@@ -75,9 +111,16 @@ export const examService = {
       endDate: Date;
     },
   ) {
+    const name = validateExamName(data.name);
+
+    validateExamDates(
+      data.startDate,
+      data.endDate,
+    );
+
     /*
-     * Verify that the academic year
-     * belongs to this school.
+     * Academic year must belong
+     * to the current school.
      */
     const academicYear =
       await prisma.academicYear.findFirst({
@@ -85,10 +128,43 @@ export const examService = {
           id: data.academicYearId,
           schoolId,
         },
+
+        select: {
+          id: true,
+        },
       });
 
     if (!academicYear) {
-      throw new Error("Academic year not found.");
+      throw new Error(
+        "Academic year not found.",
+      );
+    }
+
+    /*
+     * Prevent duplicate exam names
+     * within the same academic year.
+     *
+     * Prisma also enforces:
+     * @@unique([schoolId, academicYearId, name])
+     */
+    const existing =
+      await prisma.exam.findFirst({
+        where: {
+          schoolId,
+          academicYearId:
+            data.academicYearId,
+          name,
+        },
+
+        select: {
+          id: true,
+        },
+      });
+
+    if (existing) {
+      throw new Error(
+        "An exam with this name already exists for the selected academic year.",
+      );
     }
 
     return prisma.exam.create({
@@ -98,7 +174,7 @@ export const examService = {
         academicYearId:
           data.academicYearId,
 
-        name: data.name.trim(),
+        name,
 
         startDate:
           data.startDate,
@@ -125,6 +201,10 @@ export const examService = {
       endDate?: Date;
     },
   ) {
+    /*
+     * Always locate the exam
+     * inside the current school.
+     */
     const exam =
       await prisma.exam.findFirst({
         where: {
@@ -137,25 +217,75 @@ export const examService = {
       return null;
     }
 
+    const name =
+      data.name !== undefined
+        ? validateExamName(data.name)
+        : exam.name;
+
+    const startDate =
+      data.startDate !== undefined
+        ? data.startDate
+        : exam.startDate;
+
+    const endDate =
+      data.endDate !== undefined
+        ? data.endDate
+        : exam.endDate;
+
+    /*
+     * Validate the complete resulting
+     * date range, not only the changed field.
+     */
+    validateExamDates(
+      startDate,
+      endDate,
+    );
+
+    /*
+     * Check duplicate name only when
+     * the name is being changed.
+     */
+    if (
+      data.name !== undefined &&
+      name.toLowerCase() !==
+        exam.name.toLowerCase()
+    ) {
+      const duplicate =
+        await prisma.exam.findFirst({
+          where: {
+            schoolId,
+            academicYearId:
+              exam.academicYearId,
+            name,
+
+            NOT: {
+              id: exam.id,
+            },
+          },
+
+          select: {
+            id: true,
+          },
+        });
+
+      if (duplicate) {
+        throw new Error(
+          "An exam with this name already exists for the selected academic year.",
+        );
+      }
+    }
+
     return prisma.exam.update({
       where: {
         id: exam.id,
       },
 
       data: {
-        ...(data.name !== undefined && {
-          name: data.name.trim(),
-        }),
+        name,
 
-        ...(data.startDate !== undefined && {
-          startDate:
-            data.startDate,
-        }),
+        startDate,
 
-        ...(data.endDate !== undefined && {
-          endDate:
-            data.endDate,
-        }),
+        endDate,
       },
 
       include: {
@@ -171,6 +301,9 @@ export const examService = {
     examId: string,
     schoolId: string,
   ) {
+    /*
+     * Tenant-safe lookup first.
+     */
     const exam =
       await prisma.exam.findFirst({
         where: {
