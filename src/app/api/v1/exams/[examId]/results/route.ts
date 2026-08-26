@@ -1,43 +1,33 @@
-import { NextRequest, NextResponse } from "next/server";
-
+import { apiHandler } from "@/lib/api";
 import { requireTenant } from "@/lib/auth";
+import { ApiResponse } from "@/lib/response";
 
 import { examResultService } from "@/features/exams/services/exam-result.service";
 
+type RouteContext = {
+  params: Promise<{
+    examId: string;
+  }>;
+};
+
 export async function GET(
-  request: NextRequest,
-  {
-    params,
-  }: {
-    params: Promise<{
-      examId: string;
-    }>;
-  },
+  request: Request,
+  context: RouteContext,
 ) {
-  try {
-    const { examId } = await params;
-
-    const classId =
-      request.nextUrl.searchParams.get("classId");
-
-    const sectionId =
-      request.nextUrl.searchParams.get("sectionId");
-
+  return apiHandler(async () => {
     const tenant = await requireTenant();
 
-    if (!tenant) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Unauthorized.",
-        },
-        {
-          status: 401,
-        },
-      );
-    }
+    const { examId } = await context.params;
 
-    const data =
+    const url = new URL(request.url);
+
+    const classId =
+      url.searchParams.get("classId");
+
+    const sectionId =
+      url.searchParams.get("sectionId");
+
+    const results =
       await examResultService.getResults({
         examId,
         schoolId: tenant.schoolId,
@@ -45,31 +35,6 @@ export async function GET(
         sectionId,
       });
 
-    return NextResponse.json({
-      success: true,
-      data,
-    });
-  } catch (error) {
-    console.error(
-      "Failed to load exam results:",
-      error,
-    );
-
-    return NextResponse.json(
-      {
-        success: false,
-        message:
-          error instanceof Error
-            ? error.message
-            : "Failed to load exam results.",
-      },
-      {
-        status:
-          error instanceof Error &&
-          error.message === "Exam not found."
-            ? 404
-            : 500,
-      },
-    );
-  }
+    return ApiResponse.success(results);
+  });
 }

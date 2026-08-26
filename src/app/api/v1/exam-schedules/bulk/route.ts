@@ -3,7 +3,6 @@ import { requireTenant } from "@/lib/auth";
 import { ApiResponse } from "@/lib/response";
 import { prisma } from "@/lib/prisma";
 
-
 const MAX_ROWS = 500;
 
 type ImportRow = {
@@ -28,18 +27,31 @@ type PreparedRow = Omit<
   passMarks: number | null;
 };
 
-function dateOnly(date: Date): string {
-  return date.toISOString().slice(0, 10);
+type ResolvedRow = {
+  schoolId: string;
+  examId: string;
+  classId: string;
+  sectionId: string | null;
+  subjectId: string;
+  examDate: Date;
+  startTime: string | null;
+  endTime: string | null;
+  maxMarks: number;
+  passMarks: number | null;
+};
+
+function normalize(value: string): string {
+  return value.trim().toLowerCase();
 }
 
 function parseDate(value: string): Date | null {
   const input = value.trim();
 
-  // YYYY-MM-DD
   const iso = /^(\d{4})-(\d{2})-(\d{2})$/.exec(input);
 
-  // DD/MM/YYYY, DD-MM-YYYY, DD/MM/YY, DD-MM-YY
-  const dmy = /^(\d{2})[/-](\d{2})[/-](\d{2}|\d{4})$/.exec(input);
+  const dmy = /^(\d{2})[/-](\d{2})[/-](\d{2}|\d{4})$/.exec(
+    input,
+  );
 
   let year: number;
   let month: number;
@@ -61,7 +73,9 @@ function parseDate(value: string): Date | null {
     return null;
   }
 
-  const date = new Date(Date.UTC(year, month - 1, day));
+  const date = new Date(
+    Date.UTC(year, month - 1, day),
+  );
 
   if (
     date.getUTCFullYear() !== year ||
@@ -74,8 +88,8 @@ function parseDate(value: string): Date | null {
   return date;
 }
 
-function normalize(value: string): string {
-  return value.trim().toLowerCase();
+function dateOnly(date: Date): string {
+  return date.toISOString().slice(0, 10);
 }
 
 function isValidTime(value: string): boolean {
@@ -95,7 +109,9 @@ export async function POST(request: Request) {
       : [];
 
     if (schedules.length === 0) {
-      throw new Error("No exam schedules were provided.");
+      throw new Error(
+        "No exam schedules were provided.",
+      );
     }
 
     if (schedules.length > MAX_ROWS) {
@@ -106,32 +122,45 @@ export async function POST(request: Request) {
 
     const rows = schedules as ImportRow[];
 
-    const seen = new Set<string>();
-
     const prepared: PreparedRow[] = [];
+
+    const seen = new Set<string>();
 
     /*
      * STEP 1
-     * Validate CSV values.
+     * Validate uploaded values.
      */
     for (let i = 0; i < rows.length; i += 1) {
       const row = rows[i];
       const rowNumber = i + 2;
 
-      const examDate = parseDate(row.examDate ?? "");
+      const examName = row.examName?.trim() ?? "";
+      const academicYear =
+        row.academicYear?.trim() ?? "";
+      const className =
+        row.className?.trim() ?? "";
+      const sectionName =
+        row.sectionName?.trim() ?? "";
+      const subjectName =
+        row.subjectName?.trim() ?? "";
+
+      const examDate = parseDate(
+        row.examDate ?? "",
+      );
 
       const maxMarks = Number(row.maxMarks);
 
       const passMarks =
-        row.passMarks === "" || row.passMarks == null
+        row.passMarks === "" ||
+        row.passMarks == null
           ? null
           : Number(row.passMarks);
 
       if (
-        !row.examName?.trim() ||
-        !row.academicYear?.trim() ||
-        !row.className?.trim() ||
-        !row.subjectName?.trim()
+        !examName ||
+        !academicYear ||
+        !className ||
+        !subjectName
       ) {
         throw new Error(
           `Row ${rowNumber}: Exam, academic year, class and subject are required.`,
@@ -140,7 +169,7 @@ export async function POST(request: Request) {
 
       if (!examDate) {
         throw new Error(
-          `Row ${rowNumber}: Invalid exam date.`,
+          `Row ${rowNumber}: Invalid exam date. Use YYYY-MM-DD.`,
         );
       }
 
@@ -195,11 +224,11 @@ export async function POST(request: Request) {
       }
 
       const duplicateKey = [
-        row.examName,
-        row.academicYear,
-        row.className,
-        row.sectionName,
-        row.subjectName,
+        examName,
+        academicYear,
+        className,
+        sectionName,
+        subjectName,
       ]
         .map(normalize)
         .join(":");
@@ -214,6 +243,11 @@ export async function POST(request: Request) {
 
       prepared.push({
         ...row,
+        examName,
+        academicYear,
+        className,
+        sectionName,
+        subjectName,
         examDate,
         maxMarks,
         passMarks,
@@ -222,13 +256,13 @@ export async function POST(request: Request) {
 
     /*
      * STEP 2
-     * Load school data.
+     * Load only records belonging to
+     * the current school.
      */
     const [
       academicYears,
       exams,
       classes,
-      sections,
       subjects,
     ] = await Promise.all([
       prisma.academicYear.findMany({
@@ -261,14 +295,6 @@ export async function POST(request: Request) {
         select: {
           id: true,
           name: true,
-        },
-      }),
-
-      prisma.section.findMany({
-        select: {
-          id: true,
-          name: true,
-          classId: true,
         },
       }),
 
@@ -313,25 +339,21 @@ export async function POST(request: Request) {
 
     /*
      * STEP 3
-     * Resolve CSV names to database IDs.
+     * Resolve names and verify relationships.
      */
-    const resolved: Array<{
-      schoolId: string;
-      examId: string;
-      classId: string;
-      sectionId: string | null;
-      subjectId: string;
-      examDate: Date;
-      startTime: string | null;
-      endTime: string | null;
-      maxMarks: number;
-passMarks: number | null;
-    }> = [];
+    const resolved: ResolvedRow[] = [];
 
-    for (let i = 0; i < prepared.length; i += 1) {
+    for (
+      let i = 0;
+      i < prepared.length;
+      i += 1
+    ) {
       const row = prepared[i];
       const rowNumber = i + 2;
 
+      /*
+       * Academic year
+       */
       const year = yearByName.get(
         normalize(row.academicYear),
       );
@@ -342,6 +364,12 @@ passMarks: number | null;
         );
       }
 
+      /*
+       * Exam
+       *
+       * The exam is already restricted to
+       * tenant.schoolId.
+       */
       const exam = examByKey.get(
         `${year.id}:${normalize(row.examName)}`,
       );
@@ -353,26 +381,35 @@ passMarks: number | null;
       }
 
       /*
-       * Check exam date against exam period.
+       * Exam date must be inside the
+       * exam's configured period.
        */
       if (
-  exam.startDate &&
-  dateOnly(row.examDate) < dateOnly(exam.startDate)
-) {
-  throw new Error(
-    `Row ${rowNumber}: Exam date is before the exam start date.`,
-  );
-}
+        exam.startDate &&
+        dateOnly(row.examDate) <
+          dateOnly(exam.startDate)
+      ) {
+        throw new Error(
+          `Row ${rowNumber}: Exam date is before the exam start date.`,
+        );
+      }
 
       if (
-  exam.endDate &&
-  dateOnly(row.examDate) > dateOnly(exam.endDate)
-) {
-  throw new Error(
-    `Row ${rowNumber}: Exam date is after the exam end date.`,
-  );
-}
+        exam.endDate &&
+        dateOnly(row.examDate) >
+          dateOnly(exam.endDate)
+      ) {
+        throw new Error(
+          `Row ${rowNumber}: Exam date is after the exam end date.`,
+        );
+      }
 
+      /*
+       * Class
+       *
+       * classByName contains only classes
+       * belonging to this school.
+       */
       const classRecord = classByName.get(
         normalize(row.className),
       );
@@ -384,17 +421,29 @@ passMarks: number | null;
       }
 
       /*
-       * Section is optional.
+       * Section
+       *
+       * IMPORTANT:
+       * Section belongs to Class, not directly
+       * to School.
+       *
+       * Therefore we resolve the section through
+       * classRecord.id.
        */
       let sectionId: string | null = null;
 
-      if (row.sectionName?.trim()) {
-        const section = sections.find(
-          (item) =>
-            item.classId === classRecord.id &&
-            normalize(item.name) ===
-              normalize(row.sectionName),
-        );
+      if (row.sectionName) {
+        const section =
+          await prisma.section.findFirst({
+            where: {
+              classId: classRecord.id,
+              name: row.sectionName,
+            },
+            select: {
+              id: true,
+              classId: true,
+            },
+          });
 
         if (!section) {
           throw new Error(
@@ -402,9 +451,27 @@ passMarks: number | null;
           );
         }
 
+        /*
+         * Defensive relationship check.
+         */
+        if (
+          section.classId !==
+          classRecord.id
+        ) {
+          throw new Error(
+            `Row ${rowNumber}: Section does not belong to the selected class.`,
+          );
+        }
+
         sectionId = section.id;
       }
 
+      /*
+       * Subject
+       *
+       * subjectByName contains only subjects
+       * belonging to this school.
+       */
       const subject = subjectByName.get(
         normalize(row.subjectName),
       );
@@ -422,10 +489,12 @@ passMarks: number | null;
         sectionId,
         subjectId: subject.id,
         examDate: row.examDate,
-        startTime: row.startTime || null,
-        endTime: row.endTime || null,
+        startTime:
+          row.startTime || null,
+        endTime:
+          row.endTime || null,
         maxMarks: row.maxMarks,
-passMarks: row.passMarks,
+        passMarks: row.passMarks,
       });
     }
 
@@ -437,15 +506,23 @@ passMarks: row.passMarks,
       await prisma.examSchedule.findMany({
         where: {
           schoolId: tenant.schoolId,
-          OR: resolved.map((row) => ({
-            examId: row.examId,
-            classId: row.classId,
-            sectionId: row.sectionId,
-            subjectId: row.subjectId,
-          })),
+
+          OR: resolved.map(
+            (row) => ({
+              examId: row.examId,
+              classId: row.classId,
+              sectionId: row.sectionId,
+              subjectId: row.subjectId,
+            }),
+          ),
         },
+
         select: {
           id: true,
+          examId: true,
+          classId: true,
+          sectionId: true,
+          subjectId: true,
         },
       });
 
@@ -457,22 +534,41 @@ passMarks: row.passMarks,
 
     /*
      * STEP 5
-     * Import everything in one transaction.
+     * Create everything in one transaction.
      */
     await prisma.$transaction(
       resolved.map((row) =>
         prisma.examSchedule.create({
           data: {
-            schoolId: row.schoolId,
-            examId: row.examId,
-            classId: row.classId,
-            sectionId: row.sectionId,
-            subjectId: row.subjectId,
-            examDate: row.examDate,
-            startTime: row.startTime,
-            endTime: row.endTime,
-            maxMarks: row.maxMarks,
-            passMarks: row.passMarks,
+            schoolId:
+              row.schoolId,
+
+            examId:
+              row.examId,
+
+            classId:
+              row.classId,
+
+            sectionId:
+              row.sectionId,
+
+            subjectId:
+              row.subjectId,
+
+            examDate:
+              row.examDate,
+
+            startTime:
+              row.startTime,
+
+            endTime:
+              row.endTime,
+
+            maxMarks:
+              row.maxMarks,
+
+            passMarks:
+              row.passMarks,
           },
         }),
       ),
@@ -480,8 +576,11 @@ passMarks: row.passMarks,
 
     return ApiResponse.success(
       {
-        created: resolved.length,
+        created:
+          resolved.length,
+
         failed: 0,
+
         errors: [],
       },
       "Exam schedules imported successfully.",

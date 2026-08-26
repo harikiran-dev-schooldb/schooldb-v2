@@ -42,6 +42,7 @@ export const examRepository = {
           include: {
             subject: true,
             class: true,
+            section: true,
           },
 
           orderBy: {
@@ -65,7 +66,7 @@ export const examRepository = {
       data: {
         schoolId,
         academicYearId: data.academicYearId,
-        name: data.name,
+        name: data.name.trim(),
         startDate: data.startDate,
         endDate: data.endDate,
       },
@@ -78,26 +79,56 @@ export const examRepository = {
 
   async update(
     examId: string,
+    schoolId: string,
     data: {
       name?: string;
       startDate?: Date;
       endDate?: Date;
     },
   ) {
+    const exam =
+      await prisma.exam.findFirst({
+        where: {
+          id: examId,
+          schoolId,
+        },
+      });
+
+    if (!exam) {
+      return null;
+    }
+
     return prisma.exam.update({
       where: {
-        id: examId,
+        id: exam.id,
       },
 
       data,
     });
   },
 
-  async delete(examId: string) {
-    return prisma.exam.delete({
+  async delete(
+    examId: string,
+    schoolId: string,
+  ) {
+    const exam =
+      await prisma.exam.findFirst({
+        where: {
+          id: examId,
+          schoolId,
+        },
+      });
+
+    if (!exam) {
+      return null;
+    }
+
+    await prisma.exam.delete({
       where: {
-        id: examId,
+        id: exam.id,
       },
     });
+
+    return exam;
   },
 };
