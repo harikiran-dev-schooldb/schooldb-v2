@@ -197,6 +197,7 @@ export const studentService = {
     const updated =
       await studentRepository.update(
         id,
+        schoolId,
         {
           admissionNo: input.admissionNo,
           fullName: input.fullName,
@@ -261,6 +262,7 @@ export const studentService = {
     const updated =
       await studentRepository.changeStatus(
         id,
+        schoolId,
         status,
         remarks,
       );

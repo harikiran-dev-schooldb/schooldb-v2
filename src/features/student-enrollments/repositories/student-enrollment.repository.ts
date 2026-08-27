@@ -79,11 +79,13 @@ export const studentEnrollmentRepository = {
 
   update(
     id: string,
+    schoolId: string,
     data: Prisma.StudentEnrollmentUpdateInput,
   ) {
     return prisma.studentEnrollment.update({
       where: {
         id,
+        schoolId,
       },
 
       data,
@@ -103,42 +105,52 @@ export const studentEnrollmentRepository = {
     });
   },
 
-  options(schoolId: string) {
-    return prisma.studentEnrollment.findMany({
-      where: {
-        schoolId,
-        active: true,
-      },
-
-      include: {
-        student: true,
-        class: true,
-        section: true,
-        academicYear: true,
-      },
-
-      orderBy: [
-        {
-          academicYear: {
-            startDate: "desc",
-          },
-        },
-        {
-          class: {
-            displayOrder: "asc",
-          },
-        },
-        {
-          section: {
-            displayOrder: "asc",
-          },
-        },
-        {
-          rollNo: "asc",
-        },
-      ],
-    });
+  options(
+  schoolId: string,
+  filters?: {
+    academicYearId?: string;
+    classId?: string;
+    sectionId?: string;
   },
+) {
+  return prisma.studentEnrollment.findMany({
+    where: {
+      schoolId,
+      active: true,
+
+      ...(filters?.academicYearId && {
+        academicYearId:
+          filters.academicYearId,
+      }),
+
+      ...(filters?.classId && {
+        classId: filters.classId,
+      }),
+
+      ...(filters?.sectionId && {
+        sectionId: filters.sectionId,
+      }),
+    },
+
+    include: {
+      student: true,
+      class: true,
+      section: true,
+      academicYear: true,
+    },
+
+    orderBy: [
+      {
+        rollNo: "asc",
+      },
+      {
+        student: {
+          fullName: "asc",
+        },
+      },
+    ],
+  });
+},
 
   getAttendanceStudents(
     schoolId: string,

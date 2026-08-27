@@ -9,7 +9,7 @@ import { classRepository } from "@/features/classes/repositories/class.repositor
 export const sectionService = {
   async list(
     schoolId: string,
-    query: ListQuery
+    query: ListQuery,
   ) {
     const page = query.page ?? 1;
     const pageSize = query.pageSize ?? 25;
@@ -41,13 +41,15 @@ export const sectionService = {
       }),
     };
 
-    const [data, total] = await Promise.all([
-      sectionRepository.list(where, {
-        skip: (page - 1) * pageSize,
-        take: pageSize,
-      }),
-      sectionRepository.count(where),
-    ]);
+    const [data, total] =
+      await Promise.all([
+        sectionRepository.list(where, {
+          skip: (page - 1) * pageSize,
+          take: pageSize,
+        }),
+
+        sectionRepository.count(where),
+      ]);
 
     return {
       data: data.map((section) => ({
@@ -55,40 +57,57 @@ export const sectionService = {
         name: section.name,
         classId: section.classId,
         className: section.class.name,
-        displayOrder: section.displayOrder,
+        displayOrder:
+          section.displayOrder,
         active: section.active,
       })),
 
       total,
       page,
       pageSize,
-      totalPages: Math.ceil(total / pageSize),
+      totalPages: Math.ceil(
+        total / pageSize,
+      ),
     };
   },
 
   async create(
     schoolId: string,
-    input: SectionFormOutput
+    input: SectionFormOutput,
   ) {
-    const cls = await classRepository.findById(input.classId, schoolId);
+    /*
+     * The class determines which school the
+     * section belongs to.
+     */
+    const cls =
+      await classRepository.findById(
+        input.classId,
+        schoolId,
+      );
 
     if (!cls) {
-      throw new Error("Class not found.");
+      throw new Error(
+        "Class not found.",
+      );
     }
 
-    const exists = await sectionRepository.findByName(
-      schoolId,
-      input.classId,
-      input.name
-    );
+    const exists =
+      await sectionRepository.findByName(
+        schoolId,
+        input.classId,
+        input.name,
+      );
 
     if (exists) {
-      throw new Error("Section already exists.");
+      throw new Error(
+        "Section already exists.",
+      );
     }
 
     return sectionRepository.create({
       name: input.name,
-      displayOrder: input.displayOrder,
+      displayOrder:
+        input.displayOrder,
 
       class: {
         connect: {
@@ -99,87 +118,145 @@ export const sectionService = {
   },
 
   async get(
-  id: string,
-  schoolId: string
-) {
-  const section = await sectionRepository.findById(
-    id,
-    schoolId
-  );
+    id: string,
+    schoolId: string,
+  ) {
+    const section =
+      await sectionRepository.findById(
+        id,
+        schoolId,
+      );
 
-  if (!section) {
-    throw new Error("Section not found.");
-  }
+    if (!section) {
+      throw new Error(
+        "Section not found.",
+      );
+    }
 
-  const cls = await classRepository.findById(
-    section.classId,
-    schoolId
-  );
+    /*
+     * Confirm the section's class also
+     * belongs to the current school.
+     */
+    const cls =
+      await classRepository.findById(
+        section.classId,
+        schoolId,
+      );
 
-  if (!cls) {
-    throw new Error("Class not found.");
-  }
+    if (!cls) {
+      throw new Error(
+        "Class not found.",
+      );
+    }
 
-  return section;
-},
+    return section;
+  },
 
   async update(
     id: string,
     schoolId: string,
-    input: SectionFormOutput
+    input: SectionFormOutput,
   ) {
-    const section = await sectionRepository.findById(
-      id,
-      schoolId
-    );
+    /*
+     * First verify that the existing section
+     * belongs to the current school.
+     */
+    const section =
+      await sectionRepository.findById(
+        id,
+        schoolId,
+      );
 
     if (!section) {
-      throw new Error("Section not found.");
+      throw new Error(
+        "Section not found.",
+      );
     }
 
-    const duplicate = await sectionRepository.findByName(
-      schoolId,
-      input.classId,
-      input.name
-    );
-
-    if (duplicate && duplicate.id !== id) {
-      throw new Error("Section already exists.");
-    }
-
-    return sectionRepository.update(id, {
-      name: input.name,
-      displayOrder: input.displayOrder,
-
-      class: {
-        connect: {
-          id: input.classId,
-        },
-      },
-    });
-  },
-
-    async options(
-    schoolId: string,
-    classId: string
-  ) {
-    if (!classId) {
-      throw new Error("classId is required.");
-    }
-
-    const cls = await classRepository.findById(
-      classId,
-      schoolId
-    );
+    /*
+     * IMPORTANT:
+     *
+     * Verify that the NEW class also belongs
+     * to the current school.
+     *
+     * Without this check a request could attempt
+     * to move a section to another school's class.
+     */
+    const cls =
+      await classRepository.findById(
+        input.classId,
+        schoolId,
+      );
 
     if (!cls) {
-      throw new Error("Class not found.");
+      throw new Error(
+        "Class not found.",
+      );
     }
 
-    const sections = await sectionRepository.options(
-      schoolId,
-      classId
+    const duplicate =
+      await sectionRepository.findByName(
+        schoolId,
+        input.classId,
+        input.name,
+      );
+
+    if (
+      duplicate &&
+      duplicate.id !== id
+    ) {
+      throw new Error(
+        "Section already exists.",
+      );
+    }
+
+    return sectionRepository.update(
+      id,
+      {
+        name: input.name,
+        displayOrder:
+          input.displayOrder,
+
+        class: {
+          connect: {
+            id: input.classId,
+          },
+        },
+      },
     );
+  },
+
+  async options(
+    schoolId: string,
+    classId: string,
+  ) {
+    if (!classId) {
+      throw new Error(
+        "classId is required.",
+      );
+    }
+
+    /*
+     * Verify the class belongs to this
+     * school before returning its sections.
+     */
+    const cls =
+      await classRepository.findById(
+        classId,
+        schoolId,
+      );
+
+    if (!cls) {
+      throw new Error(
+        "Class not found.",
+      );
+    }
+
+    const sections =
+      await sectionRepository.options(
+        schoolId,
+        classId,
+      );
 
     return sections.map((item) => ({
       id: item.id,

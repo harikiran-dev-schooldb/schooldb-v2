@@ -1,4 +1,8 @@
-import { Prisma, StudentStatus } from "@/generated/prisma/client";
+import {
+  Prisma,
+  StudentStatus,
+} from "@/generated/prisma/client";
+
 import { prisma } from "@/lib/prisma";
 
 export const studentRepository = {
@@ -8,7 +12,7 @@ export const studentRepository = {
       skip?: number;
       take?: number;
       orderBy?: Prisma.StudentOrderByWithRelationInput;
-    }
+    },
   ) {
     return prisma.student.findMany({
       where,
@@ -21,17 +25,20 @@ export const studentRepository = {
                 name: true,
               },
             },
+
             section: {
               select: {
                 name: true,
               },
             },
           },
+
           orderBy: {
             academicYear: {
               startDate: "desc",
             },
           },
+
           take: 1,
         },
       },
@@ -46,7 +53,9 @@ export const studentRepository = {
     });
   },
 
-  count(where: Prisma.StudentWhereInput) {
+  count(
+    where: Prisma.StudentWhereInput,
+  ) {
     return prisma.student.count({
       where,
     });
@@ -54,7 +63,7 @@ export const studentRepository = {
 
   findByAdmissionNo(
     schoolId: string,
-    admissionNo: string
+    admissionNo: string,
   ) {
     return prisma.student.findFirst({
       where: {
@@ -66,7 +75,7 @@ export const studentRepository = {
 
   findById(
     id: string,
-    schoolId: string
+    schoolId: string,
   ) {
     return prisma.student.findFirst({
       where: {
@@ -76,13 +85,17 @@ export const studentRepository = {
     });
   },
 
-  findFirst(where: Prisma.StudentWhereInput) {
+  findFirst(
+    where: Prisma.StudentWhereInput,
+  ) {
     return prisma.student.findFirst({
       where,
     });
   },
 
-  create(data: Prisma.StudentCreateInput) {
+  create(
+    data: Prisma.StudentCreateInput,
+  ) {
     return prisma.student.create({
       data,
     });
@@ -90,24 +103,29 @@ export const studentRepository = {
 
   update(
     id: string,
-    data: Prisma.StudentUpdateInput
+    schoolId: string,
+    data: Prisma.StudentUpdateInput,
   ) {
     return prisma.student.update({
       where: {
         id,
+        schoolId,
       },
+
       data,
     });
   },
 
   changeStatus(
     id: string,
+    schoolId: string,
     status: StudentStatus,
-    remarks?: string
+    remarks?: string,
   ) {
     return prisma.student.update({
       where: {
         id,
+        schoolId,
       },
 
       data: {
@@ -118,47 +136,52 @@ export const studentRepository = {
     });
   },
 
-  options(schoolId: string) {
-  return prisma.student.findMany({
-    where: {
-      schoolId,
-      status: "ACTIVE",
-    },
+  options(
+    schoolId: string,
+  ) {
+    return prisma.student.findMany({
+      where: {
+        schoolId,
+        status: "ACTIVE",
+      },
 
-    select: {
-      id: true,
-      admissionNo: true,
-      fullName: true,
-    },
+      select: {
+        id: true,
+        admissionNo: true,
+        fullName: true,
+      },
 
-    orderBy: {
-      fullName: "asc",
-    },
-  });
-},
+      orderBy: {
+        fullName: "asc",
+      },
+    });
+  },
 
-profile(id: string, schoolId: string) {
-  return prisma.student.findFirst({
-    where: {
-      id,
-      schoolId,
-    },
+  profile(
+    id: string,
+    schoolId: string,
+  ) {
+    return prisma.student.findFirst({
+      where: {
+        id,
+        schoolId,
+      },
 
-    include: {
-      enrollments: {
-        include: {
-          academicYear: true,
-          class: true,
-          section: true,
-        },
+      include: {
+        enrollments: {
+          include: {
+            academicYear: true,
+            class: true,
+            section: true,
+          },
 
-        orderBy: {
-          academicYear: {
-            startDate: "desc",
+          orderBy: {
+            academicYear: {
+              startDate: "desc",
+            },
           },
         },
       },
-    },
-  });
-},
+    });
+  },
 };

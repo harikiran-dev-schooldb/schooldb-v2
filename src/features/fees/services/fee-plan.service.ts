@@ -1,11 +1,11 @@
+import { prisma } from "@/lib/prisma";
+
 import { feePlanRepository } from "../repositories/fee-plan.repository";
 import type { FeePlanInput } from "../schemas/fee-plan.schema";
 
 export const feePlanService = {
   list(schoolId: string) {
-    return feePlanRepository.list(
-      schoolId,
-    );
+    return feePlanRepository.list(schoolId);
   },
 
   findById(
@@ -16,6 +16,104 @@ export const feePlanService = {
       id,
       schoolId,
     );
+  },
+
+  async validateReferences(
+    schoolId: string,
+    input: FeePlanInput,
+  ) {
+    /*
+     * Academic year must belong to this school.
+     */
+    const academicYear =
+      await prisma.academicYear.findFirst({
+        where: {
+          id: input.academicYearId,
+          schoolId,
+        },
+        select: {
+          id: true,
+        },
+      });
+
+    if (!academicYear) {
+      throw new Error(
+        "Academic year not found.",
+      );
+    }
+
+    /*
+     * Classes must belong to this school.
+     *
+     * Only validate classIds when the fee plan
+     * is not applied to all classes.
+     */
+    if (
+      !input.appliesToAllClasses &&
+      input.classIds.length > 0
+    ) {
+      const uniqueClassIds = [
+        ...new Set(input.classIds),
+      ];
+
+      const classes =
+        await prisma.class.findMany({
+          where: {
+            schoolId,
+            id: {
+              in: uniqueClassIds,
+            },
+          },
+          select: {
+            id: true,
+          },
+        });
+
+      if (
+        classes.length !==
+        uniqueClassIds.length
+      ) {
+        throw new Error(
+          "One or more selected classes were not found.",
+        );
+      }
+    }
+
+    /*
+     * Every fee category used by the plan must
+     * belong to this school.
+     */
+    const feeCategoryIds = [
+      ...new Set(
+        input.items.map(
+          (item) => item.feeCategoryId,
+        ),
+      ),
+    ];
+
+    if (feeCategoryIds.length > 0) {
+      const categories =
+        await prisma.feeCategory.findMany({
+          where: {
+            schoolId,
+            id: {
+              in: feeCategoryIds,
+            },
+          },
+          select: {
+            id: true,
+          },
+        });
+
+      if (
+        categories.length !==
+        feeCategoryIds.length
+      ) {
+        throw new Error(
+          "One or more selected fee categories were not found.",
+        );
+      }
+    }
   },
 
   async create(
@@ -31,6 +129,11 @@ export const feePlanService = {
       );
     }
 
+    await this.validateReferences(
+      schoolId,
+      input,
+    );
+
     const existing =
       await feePlanRepository.list(
         schoolId,
@@ -40,8 +143,8 @@ export const feePlanService = {
       (plan) =>
         plan.academicYearId ===
           input.academicYearId &&
-        plan.name.toLowerCase() ===
-          input.name.toLowerCase(),
+        plan.name.trim().toLowerCase() ===
+          input.name.trim().toLowerCase(),
     );
 
     if (duplicate) {
@@ -57,122 +160,135 @@ export const feePlanService = {
   },
 
   async update(
-  id: string,
-  schoolId: string,
-  input: FeePlanInput,
-) {
-  if (
-    !input.appliesToAllClasses &&
-    input.classIds.length === 0
+    id: string,
+    schoolId: string,
+    input: FeePlanInput,
   ) {
-    throw new Error(
-      "Select at least one class or apply the fee plan to all classes.",
-    );
-  }
-
-  const existing =
-    await feePlanRepository.findById(
-      id,
-      schoolId,
-    );
-
-  if (!existing) {
-    throw new Error("Fee plan not found.");
-  }
-
-  /*
-   * Once installments exist, the financial structure
-   * of the fee plan becomes immutable.
-   */
-  const hasGeneratedInstallments =
-    existing.items.some(
-      (item) =>
-        (item._count?.installments ?? 0) > 0,
-    );
-
-  if (hasGeneratedInstallments) {
-    // Academic year cannot change
     if (
-      input.academicYearId !==
-      existing.academicYearId
+      !input.appliesToAllClasses &&
+      input.classIds.length === 0
     ) {
       throw new Error(
-        "Academic year cannot be changed after installments have been generated.",
+        "Select at least one class or apply the fee plan to all classes.",
+      );
+    }
+
+    const existing =
+      await feePlanRepository.findById(
+        id,
+        schoolId,
+      );
+
+    if (!existing) {
+      throw new Error(
+        "Fee plan not found.",
       );
     }
 
     /*
-     * Compare the fee structure.
-     * Order is ignored so the comparison is stable.
+     * Validate all incoming references before
+     * allowing the update.
      */
-    const existingItems =
-      existing.items
-        .map((item) => ({
-          feeCategoryId:
-            item.feeCategoryId,
-          frequency: item.frequency,
-          amount: item.amount.toString(),
-          mandatory: item.mandatory,
-        }))
-        .sort((a, b) =>
-          `${a.feeCategoryId}-${a.frequency}-${a.amount}`
-            .localeCompare(
-              `${b.feeCategoryId}-${b.frequency}-${b.amount}`,
-            ),
+    await this.validateReferences(
+      schoolId,
+      input,
+    );
+
+    /*
+     * Once installments exist, the financial
+     * structure of the fee plan becomes immutable.
+     */
+    const hasGeneratedInstallments =
+      existing.items.some(
+        (item) =>
+          (item._count?.installments ?? 0) > 0,
+      );
+
+    if (hasGeneratedInstallments) {
+      /*
+       * Academic year cannot change.
+       */
+      if (
+        input.academicYearId !==
+        existing.academicYearId
+      ) {
+        throw new Error(
+          "Academic year cannot be changed after installments have been generated.",
         );
+      }
 
-    const incomingItems =
-      input.items
-        .map((item) => ({
-          feeCategoryId:
-            item.feeCategoryId,
-          frequency: item.frequency,
-          amount: String(item.amount),
-          mandatory:
-            item.mandatory ?? true,
-        }))
-        .sort((a, b) =>
-          `${a.feeCategoryId}-${a.frequency}-${a.amount}`
-            .localeCompare(
-              `${b.feeCategoryId}-${b.frequency}-${b.amount}`,
-            ),
+      /*
+       * Compare fee structure.
+       * Order is ignored.
+       */
+      const existingItems =
+        existing.items
+          .map((item) => ({
+            feeCategoryId:
+              item.feeCategoryId,
+            frequency: item.frequency,
+            amount: item.amount.toString(),
+            mandatory: item.mandatory,
+          }))
+          .sort((a, b) =>
+            `${a.feeCategoryId}-${a.frequency}-${a.amount}-${a.mandatory}`
+              .localeCompare(
+                `${b.feeCategoryId}-${b.frequency}-${b.amount}-${b.mandatory}`,
+              ),
+          );
+
+      const incomingItems =
+        input.items
+          .map((item) => ({
+            feeCategoryId:
+              item.feeCategoryId,
+            frequency: item.frequency,
+            amount: String(item.amount),
+            mandatory:
+              item.mandatory ?? true,
+          }))
+          .sort((a, b) =>
+            `${a.feeCategoryId}-${a.frequency}-${a.amount}-${a.mandatory}`
+              .localeCompare(
+                `${b.feeCategoryId}-${b.frequency}-${b.amount}-${b.mandatory}`,
+              ),
+          );
+
+      const structureChanged =
+        JSON.stringify(existingItems) !==
+        JSON.stringify(incomingItems);
+
+      if (structureChanged) {
+        throw new Error(
+          "This fee plan already has generated installments. Fee category, frequency, amount, and mandatory status cannot be changed. Create a new fee plan instead.",
         );
+      }
+    }
 
-    const structureChanged =
-      JSON.stringify(existingItems) !==
-      JSON.stringify(incomingItems);
+    const plans =
+      await feePlanRepository.list(
+        schoolId,
+      );
 
-    if (structureChanged) {
+    const duplicate = plans.some(
+      (plan) =>
+        plan.id !== id &&
+        plan.academicYearId ===
+          input.academicYearId &&
+        plan.name.trim().toLowerCase() ===
+          input.name.trim().toLowerCase(),
+    );
+
+    if (duplicate) {
       throw new Error(
-        "This fee plan already has generated installments. Fee category, frequency, amount, and mandatory status cannot be changed. Create a new fee plan instead.",
+        "A fee plan with this name already exists for this academic year.",
       );
     }
-  }
 
-  const plans =
-    await feePlanRepository.list(
+    return feePlanRepository.update(
+      id,
       schoolId,
+      input,
     );
-
-  const duplicate = plans.some(
-    (plan) =>
-      plan.id !== id &&
-      plan.academicYearId ===
-        input.academicYearId &&
-      plan.name.toLowerCase() ===
-        input.name.toLowerCase(),
-  );
-
-  if (duplicate) {
-    throw new Error(
-      "A fee plan with this name already exists for this academic year.",
-    );
-  }
-
-  return feePlanRepository.update(
-    id,
-    schoolId,
-    input,
-  );
-},
+  },
 };
