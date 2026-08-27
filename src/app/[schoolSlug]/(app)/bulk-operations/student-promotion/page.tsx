@@ -149,11 +149,6 @@ export default function StudentPromotionPage() {
   /* ------------------------------------------------------------------ */
 
   useEffect(() => {
-    setFromSectionId("");
-    setSourceSections([]);
-    setStudents([]);
-    setSelectedStudents(new Set());
-
     if (!fromClassId) {
       return;
     }
@@ -170,7 +165,7 @@ export default function StudentPromotionPage() {
           throw new Error(payload.message ?? "Unable to load source sections.");
         }
 
-        setSourceSections(Array.isArray(payload.data) ? payload.data : []);
+        setSourceSections(payload.data ?? []);
       } catch (err) {
         setError(
           err instanceof Error
@@ -188,9 +183,6 @@ export default function StudentPromotionPage() {
   /* ------------------------------------------------------------------ */
 
   useEffect(() => {
-    setToSectionId("");
-    setTargetSections([]);
-
     if (!toClassId) {
       return;
     }
@@ -207,7 +199,7 @@ export default function StudentPromotionPage() {
           throw new Error(payload.message ?? "Unable to load target sections.");
         }
 
-        setTargetSections(Array.isArray(payload.data) ? payload.data : []);
+        setTargetSections(payload.data ?? []);
       } catch (err) {
         setError(
           err instanceof Error
@@ -598,8 +590,14 @@ export default function StudentPromotionPage() {
 
           <SelectField
             label="Class"
-            value={fromClassId}
-            onChange={setFromClassId}
+            value={toClassId}
+            onChange={(value) => {
+              setToClassId(value);
+              setToSectionId("");
+              setTargetSections([]);
+              setError(null);
+              setResult(null);
+            }}
             options={classes}
           />
 
