@@ -7,7 +7,6 @@ import {
   BookOpen,
   Settings,
   Upload,
-  ArrowUpWideNarrowIcon,
   SlidersHorizontal,
 } from "lucide-react";
 
