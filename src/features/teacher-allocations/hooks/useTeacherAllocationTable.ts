@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { TeacherAllocationListItem } from "../types";
+import { subscribeTableRefresh } from "@/lib/table-event";
 
 type Response = {
   data: TeacherAllocationListItem[];
@@ -12,9 +13,7 @@ type Response = {
 export function useTeacherAllocationTable() {
   const [allocations, setAllocations] =
     useState<TeacherAllocationListItem[]>([]);
-
   const [loading, setLoading] = useState(true);
-
   const [search, setSearch] = useState("");
 
   const load = useCallback(
@@ -49,7 +48,6 @@ export function useTeacherAllocationTable() {
         }
 
         const data: Response = result.data;
-
         setAllocations(data.data);
       } catch (error) {
         if (
@@ -89,13 +87,15 @@ export function useTeacherAllocationTable() {
     return load();
   }, [load]);
 
+  useEffect(() => {
+    return subscribeTableRefresh("teacher-allocations", reload);
+  }, [reload]);
+
   return {
     allocations,
     loading,
-
     search,
     setSearch,
-
     reload,
   };
 }
