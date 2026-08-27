@@ -36,6 +36,9 @@ export function DataGrid<TData>({
 }: DataGridProps<TData>) {
   const [sorting, setSorting] = useState<SortingState>([]);
 
+  // TanStack Table exposes functions that React Compiler cannot safely memoize.
+  // Keep the standard TanStack API and suppress only this known compatibility warning.
+  // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
     data,
     columns,
