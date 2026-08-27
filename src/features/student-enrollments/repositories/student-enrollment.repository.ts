@@ -176,4 +176,236 @@ export const studentEnrollmentRepository = {
       },
     });
   },
+
+    async promoteMany(
+    schoolId: string,
+    input: {
+      studentIds: string[];
+      sourceAcademicYearId: string;
+      sourceClassId: string;
+      sourceSectionId: string;
+      targetAcademicYearId: string;
+      targetClassId: string;
+      targetSectionId: string;
+    },
+  ) {
+    return prisma.$transaction(async (tx) => {
+      /*
+       * --------------------------------------------------------------
+       * Find source enrollments
+       * --------------------------------------------------------------
+       */
+
+      const sourceEnrollments =
+        await tx.studentEnrollment.findMany({
+          where: {
+            schoolId,
+
+            studentId: {
+              in: input.studentIds,
+            },
+
+            academicYearId:
+              input.sourceAcademicYearId,
+
+            classId:
+              input.sourceClassId,
+
+            sectionId:
+              input.sourceSectionId,
+
+            active: true,
+          },
+
+          include: {
+            student: true,
+            academicYear: true,
+            class: true,
+            section: true,
+          },
+
+          orderBy: {
+            rollNo: "asc",
+          },
+        });
+
+      /*
+       * --------------------------------------------------------------
+       * Existing target enrollments
+       * --------------------------------------------------------------
+       */
+
+      const existingTarget =
+        await tx.studentEnrollment.findMany({
+          where: {
+            schoolId,
+
+            academicYearId:
+              input.targetAcademicYearId,
+
+            studentId: {
+              in: input.studentIds,
+            },
+          },
+
+          select: {
+            studentId: true,
+          },
+        });
+
+      const existingStudentIds =
+        new Set(
+          existingTarget.map(
+            (item) => item.studentId,
+          ),
+        );
+
+      /*
+       * --------------------------------------------------------------
+       * Find current highest roll number
+       * --------------------------------------------------------------
+       */
+
+      const highestRoll =
+        await tx.studentEnrollment.findFirst({
+          where: {
+            schoolId,
+
+            academicYearId:
+              input.targetAcademicYearId,
+
+            classId:
+              input.targetClassId,
+
+            sectionId:
+              input.targetSectionId,
+
+            rollNo: {
+              not: null,
+            },
+          },
+
+          orderBy: {
+            rollNo: "desc",
+          },
+
+          select: {
+            rollNo: true,
+          },
+        });
+
+      let nextRollNo =
+        (highestRoll?.rollNo ?? 0) + 1;
+
+      const created = [];
+      const skipped: Array<{
+        studentId: string;
+        admissionNo: string;
+        fullName: string | null;
+        reason: string;
+      }> = [];
+
+      /*
+       * --------------------------------------------------------------
+       * Promote students
+       * --------------------------------------------------------------
+       */
+
+      for (const source of sourceEnrollments) {
+        if (
+          existingStudentIds.has(
+            source.studentId,
+          )
+        ) {
+          skipped.push({
+            studentId:
+              source.studentId,
+
+            admissionNo:
+              source.student.admissionNo,
+
+            fullName:
+              source.student.fullName,
+
+            reason:
+              "Student is already enrolled in the target academic year.",
+          });
+
+          continue;
+        }
+
+        const target =
+          await tx.studentEnrollment.create({
+            data: {
+              school: {
+                connect: {
+                  id: schoolId,
+                },
+              },
+
+              student: {
+                connect: {
+                  id: source.studentId,
+                },
+              },
+
+              academicYear: {
+                connect: {
+                  id: input.targetAcademicYearId,
+                },
+              },
+
+              class: {
+                connect: {
+                  id: input.targetClassId,
+                },
+              },
+
+              section: {
+                connect: {
+                  id: input.targetSectionId,
+                },
+              },
+
+              rollNo: nextRollNo,
+
+              admissionDate:
+                source.admissionDate,
+
+              active: true,
+
+              promotedFrom: {
+                connect: {
+                  id: source.id,
+                },
+              },
+            },
+
+            include: {
+              student: true,
+              academicYear: true,
+              class: true,
+              section: true,
+            },
+          });
+
+        created.push(target);
+
+        nextRollNo += 1;
+
+        /*
+         * Prevent duplicate processing inside
+         * the same request.
+         */
+        existingStudentIds.add(
+          source.studentId,
+        );
+      }
+
+      return {
+        created,
+        skipped,
+      };
+    });
+  },
 };

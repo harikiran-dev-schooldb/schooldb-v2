@@ -32,9 +32,22 @@ type Student = {
 type PromotionResult = {
   created: number;
   skipped: number;
-  errors: Array<{
-    row?: number;
-    message: string;
+
+  students: Array<{
+    studentId: string;
+    admissionNo: string;
+    fullName: string | null;
+    rollNo: number | null;
+    className: string;
+    sectionName: string;
+    academicYearName: string;
+  }>;
+
+  skippedStudents: Array<{
+    studentId: string;
+    admissionNo: string;
+    fullName: string | null;
+    reason: string;
   }>;
 };
 
@@ -59,6 +72,7 @@ export default function StudentPromotionPage() {
   const [toSectionId, setToSectionId] = useState("");
 
   const [students, setStudents] = useState<Student[]>([]);
+
   const [selectedStudents, setSelectedStudents] = useState<Set<string>>(
     new Set(),
   );
@@ -81,6 +95,7 @@ export default function StudentPromotionPage() {
     async function loadAcademicYears() {
       try {
         setLoadingYears(true);
+        setError(null);
 
         const response = await fetch("/api/v1/academic-years/options");
 
@@ -90,7 +105,7 @@ export default function StudentPromotionPage() {
           throw new Error(payload.message ?? "Unable to load academic years.");
         }
 
-        setAcademicYears(payload.data ?? []);
+        setAcademicYears(Array.isArray(payload.data) ? payload.data : []);
       } catch (err) {
         setError(
           err instanceof Error ? err.message : "Unable to load academic years.",
@@ -118,7 +133,7 @@ export default function StudentPromotionPage() {
           throw new Error(payload.message ?? "Unable to load classes.");
         }
 
-        setClasses(payload.data ?? []);
+        setClasses(Array.isArray(payload.data) ? payload.data : []);
       } catch (err) {
         setError(
           err instanceof Error ? err.message : "Unable to load classes.",
@@ -136,6 +151,8 @@ export default function StudentPromotionPage() {
   useEffect(() => {
     setFromSectionId("");
     setSourceSections([]);
+    setStudents([]);
+    setSelectedStudents(new Set());
 
     if (!fromClassId) {
       return;
@@ -153,7 +170,7 @@ export default function StudentPromotionPage() {
           throw new Error(payload.message ?? "Unable to load source sections.");
         }
 
-        setSourceSections(payload.data ?? []);
+        setSourceSections(Array.isArray(payload.data) ? payload.data : []);
       } catch (err) {
         setError(
           err instanceof Error
@@ -190,7 +207,7 @@ export default function StudentPromotionPage() {
           throw new Error(payload.message ?? "Unable to load target sections.");
         }
 
-        setTargetSections(payload.data ?? []);
+        setTargetSections(Array.isArray(payload.data) ? payload.data : []);
       } catch (err) {
         setError(
           err instanceof Error
@@ -221,7 +238,9 @@ export default function StudentPromotionPage() {
 
       const params = new URLSearchParams({
         academicYearId: fromAcademicYearId,
+
         classId: fromClassId,
+
         sectionId: fromSectionId,
       });
 
@@ -246,7 +265,7 @@ export default function StudentPromotionPage() {
               fullName?: string | null;
             };
             rollNo?: number | null;
-          }) => item.student?.id,
+          }) => Boolean(item.student?.id),
         )
         .map(
           (item: {
@@ -312,7 +331,7 @@ export default function StudentPromotionPage() {
     [students, selectedStudents],
   );
 
-  const canPromote =
+  const canPromote = Boolean(
     fromAcademicYearId &&
     toAcademicYearId &&
     fromClassId &&
@@ -320,7 +339,8 @@ export default function StudentPromotionPage() {
     toClassId &&
     toSectionId &&
     selectedStudents.size > 0 &&
-    !promoting;
+    !promoting,
+  );
 
   /* ------------------------------------------------------------------ */
   /* Promote                                                            */
@@ -331,6 +351,11 @@ export default function StudentPromotionPage() {
       return;
     }
 
+    if (fromAcademicYearId === toAcademicYearId) {
+      setError("Source and target academic year must be different.");
+      return;
+    }
+
     try {
       setPromoting(true);
       setError(null);
@@ -338,30 +363,29 @@ export default function StudentPromotionPage() {
 
       const response = await fetch("/api/v1/student-enrollments/promote", {
         method: "POST",
+
         headers: {
           "Content-Type": "application/json",
         },
 
         body: JSON.stringify({
-          fromAcademicYearId,
-          toAcademicYearId,
-          fromClassId,
-          fromSectionId,
-          toClassId,
-          toSectionId,
+          /*
+           * The API expects studentIds,
+           * not a students array.
+           */
+          studentIds: selectedRows.map((student) => student.id),
 
-          students: selectedRows.map((student, index) => ({
-            studentId: student.id,
+          sourceAcademicYearId: fromAcademicYearId,
 
-            /*
-             * Preserve existing roll number
-             * as the initial target roll number.
-             *
-             * This can be changed later
-             * through enrollment management.
-             */
-            rollNo: student.rollNo ?? index + 1,
-          })),
+          sourceClassId: fromClassId,
+
+          sourceSectionId: fromSectionId,
+
+          targetAcademicYearId: toAcademicYearId,
+
+          targetClassId: toClassId,
+
+          targetSectionId: toSectionId,
         }),
       });
 
@@ -371,13 +395,19 @@ export default function StudentPromotionPage() {
         throw new Error(payload.message ?? "Student promotion failed.");
       }
 
-      setResult(payload.data);
+      const promotionResult = payload.data as PromotionResult;
+
+      setResult(promotionResult);
 
       /*
-       * Remove promoted students from the
-       * selectable source list.
+       * Only remove students that were
+       * actually promoted.
+       *
+       * Skipped students remain visible.
        */
-      const promotedIds = new Set(selectedRows.map((student) => student.id));
+      const promotedIds = new Set(
+        promotionResult.students.map((student) => student.studentId),
+      );
 
       setStudents((current) =>
         current.filter((student) => !promotedIds.has(student.id)),
@@ -415,6 +445,15 @@ export default function StudentPromotionPage() {
     setResult(null);
   }
 
+  const targetAcademicYearName =
+    academicYears.find((item) => item.id === toAcademicYearId)?.label ?? "—";
+
+  const targetClassName =
+    classes.find((item) => item.id === toClassId)?.label ?? "—";
+
+  const targetSectionName =
+    targetSections.find((item) => item.id === toSectionId)?.label ?? "—";
+
   return (
     <div className="space-y-8 pb-12">
       <PageHeader
@@ -436,6 +475,10 @@ export default function StudentPromotionPage() {
         <span>Student Promotion</span>
       </div>
 
+      {/* -------------------------------------------------------------- */}
+      {/* ERROR                                                          */}
+      {/* -------------------------------------------------------------- */}
+
       {error && (
         <div className="flex items-start gap-3 rounded-2xl border border-destructive/20 bg-destructive/5 p-4">
           <XCircle className="mt-0.5 size-5 shrink-0 text-destructive" />
@@ -450,24 +493,82 @@ export default function StudentPromotionPage() {
         </div>
       )}
 
+      {/* -------------------------------------------------------------- */}
+      {/* RESULT                                                         */}
+      {/* -------------------------------------------------------------- */}
+
       {result && (
-        <div className="flex items-start gap-3 rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4">
-          <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-emerald-600" />
+        <div className="space-y-3">
+          <div className="flex items-start gap-3 rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4">
+            <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-emerald-600" />
 
-          <div>
-            <p className="text-sm font-semibold">Promotion completed</p>
+            <div>
+              <p className="text-sm font-semibold">Promotion completed</p>
 
-            <p className="mt-1 text-sm text-muted-foreground">
-              {result.created} students promoted successfully.
-              {result.skipped > 0 && ` ${result.skipped} skipped.`}
-            </p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {result.created} students promoted successfully.
+                {result.skipped > 0 && ` ${result.skipped} skipped.`}
+              </p>
+            </div>
           </div>
+
+          {/* Skipped students */}
+          {result.skippedStudents.length > 0 && (
+            <Card className="overflow-hidden rounded-2xl border-amber-500/20">
+              <CardHeader className="border-b border-border/60 px-6 py-4">
+                <CardTitle className="text-sm">Skipped Students</CardTitle>
+              </CardHeader>
+
+              <CardContent className="p-0">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="border-b border-border/60 bg-muted/30">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                          Admission No
+                        </th>
+
+                        <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                          Student
+                        </th>
+
+                        <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                          Reason
+                        </th>
+                      </tr>
+                    </thead>
+
+                    <tbody>
+                      {result.skippedStudents.map((student) => (
+                        <tr
+                          key={student.studentId}
+                          className="border-b border-border/40 last:border-0"
+                        >
+                          <td className="px-4 py-3 font-medium">
+                            {student.admissionNo}
+                          </td>
+
+                          <td className="px-4 py-3">
+                            {student.fullName ?? "Unnamed Student"}
+                          </td>
+
+                          <td className="px-4 py-3 text-muted-foreground">
+                            {student.reason}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
       )}
 
-      {/* ---------------------------------------------------------------- */}
-      {/* SOURCE                                                           */}
-      {/* ---------------------------------------------------------------- */}
+      {/* -------------------------------------------------------------- */}
+      {/* SOURCE                                                         */}
+      {/* -------------------------------------------------------------- */}
 
       <Card className="premium-card overflow-hidden rounded-2xl border-0">
         <CardHeader className="border-b border-border/60 px-6 py-5">
@@ -510,7 +611,7 @@ export default function StudentPromotionPage() {
             disabled={!fromClassId}
           />
 
-          <div className="md:col-span-3 flex justify-end">
+          <div className="flex justify-end md:col-span-3">
             <Button
               variant="outline"
               disabled={
@@ -529,9 +630,9 @@ export default function StudentPromotionPage() {
         </CardContent>
       </Card>
 
-      {/* ---------------------------------------------------------------- */}
-      {/* TARGET                                                           */}
-      {/* ---------------------------------------------------------------- */}
+      {/* -------------------------------------------------------------- */}
+      {/* TARGET                                                         */}
+      {/* -------------------------------------------------------------- */}
 
       <Card className="premium-card overflow-hidden rounded-2xl border-0">
         <CardHeader className="border-b border-border/60 px-6 py-5">
@@ -576,9 +677,9 @@ export default function StudentPromotionPage() {
         </CardContent>
       </Card>
 
-      {/* ---------------------------------------------------------------- */}
-      {/* FLOW INDICATOR                                                   */}
-      {/* ---------------------------------------------------------------- */}
+      {/* -------------------------------------------------------------- */}
+      {/* FLOW                                                           */}
+      {/* -------------------------------------------------------------- */}
 
       <div className="hidden items-center justify-center gap-4 md:flex">
         <div className="rounded-xl border border-border/60 bg-card px-5 py-3 text-sm font-semibold">
@@ -598,9 +699,9 @@ export default function StudentPromotionPage() {
         </div>
       </div>
 
-      {/* ---------------------------------------------------------------- */}
-      {/* STUDENTS                                                         */}
-      {/* ---------------------------------------------------------------- */}
+      {/* -------------------------------------------------------------- */}
+      {/* STUDENTS                                                       */}
+      {/* -------------------------------------------------------------- */}
 
       <Card className="premium-card overflow-hidden rounded-2xl border-0">
         <CardHeader className="border-b border-border/60 px-6 py-5">
@@ -714,9 +815,9 @@ export default function StudentPromotionPage() {
         </CardContent>
       </Card>
 
-      {/* ---------------------------------------------------------------- */}
-      {/* CONFIRMATION                                                     */}
-      {/* ---------------------------------------------------------------- */}
+      {/* -------------------------------------------------------------- */}
+      {/* CONFIRMATION                                                   */}
+      {/* -------------------------------------------------------------- */}
 
       {selectedRows.length > 0 && (
         <Card className="premium-card overflow-hidden rounded-2xl border-0">
@@ -725,26 +826,29 @@ export default function StudentPromotionPage() {
           </CardHeader>
 
           <CardContent className="space-y-5 p-6">
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-4">
               <SummaryItem
                 label="Students"
                 value={String(selectedRows.length)}
               />
 
               <SummaryItem
-                label="Target Class"
-                value={
-                  classes.find((item) => item.id === toClassId)?.label ?? "—"
-                }
+                label="Target Academic Year"
+                value={targetAcademicYearName}
               />
 
-              <SummaryItem
-                label="Target Section"
-                value={
-                  targetSections.find((item) => item.id === toSectionId)
-                    ?.label ?? "—"
-                }
-              />
+              <SummaryItem label="Target Class" value={targetClassName} />
+
+              <SummaryItem label="Target Section" value={targetSectionName} />
+            </div>
+
+            <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
+              <p className="text-xs font-semibold text-primary">Roll numbers</p>
+
+              <p className="mt-1 text-xs text-muted-foreground">
+                New roll numbers will be assigned automatically using the next
+                available roll number in the target class and section.
+              </p>
             </div>
 
             <div className="flex flex-wrap justify-end gap-2 border-t border-border/60 pt-5">
