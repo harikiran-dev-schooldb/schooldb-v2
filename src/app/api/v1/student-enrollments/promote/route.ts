@@ -1,29 +1,114 @@
 import { apiHandler } from "@/lib/api";
 import { requireTenant } from "@/lib/auth";
 import { ApiResponse } from "@/lib/response";
-import { validateBody } from "@/lib/validation";
 
-import {
-  studentPromotionSchema,
-} from "@/features/student-enrollments/schemas/student-promotion.schema";
+import { studentEnrollmentService } from "@/features/student-enrollments/services/student-enrollment.service";
 
-import {
-  studentPromotionService,
-} from "@/features/student-enrollments/services/student-promotion.service";
+type PromotionBody = {
+  studentIds?: unknown;
 
-export async function POST(request: Request) {
-  return apiHandler(async () => {
-    const tenant = await requireTenant();
+  sourceAcademicYearId?: unknown;
+  sourceClassId?: unknown;
+  sourceSectionId?: unknown;
 
-    const input = await validateBody(
-      request,
-      studentPromotionSchema,
+  targetAcademicYearId?: unknown;
+  targetClassId?: unknown;
+  targetSectionId?: unknown;
+};
+
+function requiredString(
+  value: unknown,
+  field: string,
+) {
+  if (
+    typeof value !== "string" ||
+    !value.trim()
+  ) {
+    throw new Error(
+      `${field} is required.`,
     );
+  }
+
+  return value.trim();
+}
+
+export async function POST(
+  request: Request,
+) {
+  return apiHandler(async () => {
+    const tenant =
+      await requireTenant();
+
+    const body =
+      (await request.json()) as PromotionBody;
+
+    if (
+      !Array.isArray(body.studentIds) ||
+      body.studentIds.length === 0
+    ) {
+      throw new Error(
+        "Select at least one student to promote.",
+      );
+    }
+
+    const studentIds =
+      body.studentIds.filter(
+        (value): value is string =>
+          typeof value === "string" &&
+          value.trim().length > 0,
+      );
+
+    if (
+      studentIds.length !==
+      body.studentIds.length
+    ) {
+      throw new Error(
+        "Invalid student selection.",
+      );
+    }
 
     const result =
-      await studentPromotionService.promote(
+      await studentEnrollmentService.promote(
         tenant.schoolId,
-        input,
+        {
+          studentIds,
+
+          sourceAcademicYearId:
+            requiredString(
+              body.sourceAcademicYearId,
+              "Source academic year",
+            ),
+
+          sourceClassId:
+            requiredString(
+              body.sourceClassId,
+              "Source class",
+            ),
+
+          sourceSectionId:
+            requiredString(
+              body.sourceSectionId,
+              "Source section",
+            ),
+
+          targetAcademicYearId:
+            requiredString(
+              body.targetAcademicYearId,
+              "Target academic year",
+            ),
+
+          targetClassId:
+            requiredString(
+              body.targetClassId,
+              "Target class",
+            ),
+
+          targetSectionId:
+            requiredString(
+              body.targetSectionId,
+              "Target section",
+            ),
+        },
       );
 
     return ApiResponse.success(

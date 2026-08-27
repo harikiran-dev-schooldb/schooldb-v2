@@ -451,6 +451,231 @@ export const studentEnrollmentService = {
     return updated;
   },
 
+    /* ------------------------------------------------------------------ */
+  /* PROMOTE STUDENTS                                                   */
+  /* ------------------------------------------------------------------ */
+
+  async promote(
+    schoolId: string,
+    input: {
+      studentIds: string[];
+      sourceAcademicYearId: string;
+      sourceClassId: string;
+      sourceSectionId: string;
+      targetAcademicYearId: string;
+      targetClassId: string;
+      targetSectionId: string;
+    },
+  ) {
+    if (input.studentIds.length === 0) {
+      throw new Error(
+        "Select at least one student to promote.",
+      );
+    }
+
+    if (
+      input.sourceAcademicYearId ===
+      input.targetAcademicYearId
+    ) {
+      throw new Error(
+        "Source and target academic year must be different.",
+      );
+    }
+
+    /*
+     * --------------------------------------------------------------
+     * Validate target academic year
+     * --------------------------------------------------------------
+     */
+
+    const targetAcademicYear =
+      await academicYearRepository.findById(
+        input.targetAcademicYearId,
+        schoolId,
+      );
+
+    if (!targetAcademicYear) {
+      throw new Error(
+        "Target academic year not found.",
+      );
+    }
+
+    /*
+     * --------------------------------------------------------------
+     * Validate target class
+     * --------------------------------------------------------------
+     */
+
+    const targetClass =
+      await classRepository.findById(
+        input.targetClassId,
+        schoolId,
+      );
+
+    if (!targetClass) {
+      throw new Error(
+        "Target class not found.",
+      );
+    }
+
+    /*
+     * --------------------------------------------------------------
+     * Validate target section
+     * --------------------------------------------------------------
+     */
+
+    const targetSection =
+      await sectionRepository.findById(
+        input.targetSectionId,
+        schoolId,
+      );
+
+    if (!targetSection) {
+      throw new Error(
+        "Target section not found.",
+      );
+    }
+
+    if (
+      targetSection.classId !==
+      input.targetClassId
+    ) {
+      throw new Error(
+        "Target section does not belong to the selected target class.",
+      );
+    }
+
+    /*
+     * --------------------------------------------------------------
+     * Validate source enrollments
+     * --------------------------------------------------------------
+     */
+
+    const sourceEnrollments =
+      await studentEnrollmentRepository.list(
+        {
+          schoolId,
+
+          studentId: {
+            in: input.studentIds,
+          },
+
+          academicYearId:
+            input.sourceAcademicYearId,
+
+          classId:
+            input.sourceClassId,
+
+          sectionId:
+            input.sourceSectionId,
+
+          active: true,
+        },
+        {
+          take: input.studentIds.length,
+        },
+      );
+
+    if (
+      sourceEnrollments.length !==
+      input.studentIds.length
+    ) {
+      throw new Error(
+        "One or more selected students do not belong to the selected source class and section.",
+      );
+    }
+
+    /*
+     * --------------------------------------------------------------
+     * Perform promotion
+     * --------------------------------------------------------------
+     */
+
+    const result =
+      await studentEnrollmentRepository.promoteMany(
+        schoolId,
+        input,
+      );
+
+    /*
+     * --------------------------------------------------------------
+     * Record activity
+     * --------------------------------------------------------------
+     */
+
+    for (const enrollment of result.created) {
+      await studentActivityService.create({
+        schoolId,
+
+        studentId:
+          enrollment.studentId,
+
+        enrollmentId:
+          enrollment.id,
+
+        type: "ENROLLMENT_CREATED",
+
+        title: "Student promoted",
+
+        description:
+          `${enrollment.student.fullName ?? enrollment.student.admissionNo} promoted to ${enrollment.class.name} — ${enrollment.section.name} for ${enrollment.academicYear.name}.`,
+
+        metadata: {
+          promotion: true,
+
+          promotedFromId:
+            enrollment.promotedFromId,
+
+          targetAcademicYearId:
+            enrollment.academicYearId,
+
+          targetClassId:
+            enrollment.classId,
+
+          targetSectionId:
+            enrollment.sectionId,
+
+          rollNo:
+            enrollment.rollNo,
+        },
+      });
+    }
+
+    return {
+      created: result.created.length,
+
+      skipped: result.skipped.length,
+
+      students: result.created.map(
+        (enrollment) => ({
+          studentId:
+            enrollment.studentId,
+
+          admissionNo:
+            enrollment.student.admissionNo,
+
+          fullName:
+            enrollment.student.fullName,
+
+          rollNo:
+            enrollment.rollNo,
+
+          className:
+            enrollment.class.name,
+
+          sectionName:
+            enrollment.section.name,
+
+          academicYearName:
+            enrollment.academicYear.name,
+        }),
+      ),
+
+      skippedStudents:
+        result.skipped,
+    };
+  },
+
   /* ------------------------------------------------------------------ */
   /* OPTIONS                                                            */
   /* ------------------------------------------------------------------ */
