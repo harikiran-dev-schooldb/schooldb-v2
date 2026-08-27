@@ -3,7 +3,7 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
-  ArrowRight,
+  ArrowLeft,
   Check,
   CheckCircle2,
   Edit3,
@@ -11,6 +11,7 @@ import {
   Loader2,
   Plus,
   Save,
+  Settings2,
   XCircle,
 } from "lucide-react";
 
@@ -65,17 +66,21 @@ export default function SetupSectionsPage() {
   const [success, setSuccess] = useState<string | null>(null);
 
   /* ------------------------------------------------------------------ */
-  /* Load classes                                                       */
+  /* Load Classes                                                       */
   /* ------------------------------------------------------------------ */
 
   useEffect(() => {
+    let cancelled = false;
+
     async function loadClasses() {
       try {
-        setLoadingClasses(true);
-        setError(null);
+        const response = await fetch("/api/v1/classes/options", {
+          cache: "no-store",
+        });
 
-        const response = await fetch("/api/v1/classes/options");
         const payload = await response.json();
+
+        if (cancelled) return;
 
         if (!response.ok || !payload.success) {
           throw new Error(payload.message ?? "Unable to load classes.");
@@ -83,19 +88,27 @@ export default function SetupSectionsPage() {
 
         setClasses(payload.data ?? []);
       } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Unable to load classes.",
-        );
+        if (!cancelled) {
+          setError(
+            err instanceof Error ? err.message : "Unable to load classes.",
+          );
+        }
       } finally {
-        setLoadingClasses(false);
+        if (!cancelled) {
+          setLoadingClasses(false);
+        }
       }
     }
 
     void loadClasses();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   /* ------------------------------------------------------------------ */
-  /* Load sections                                                      */
+  /* Load Sections                                                      */
   /* ------------------------------------------------------------------ */
 
   async function loadSections() {
@@ -103,7 +116,9 @@ export default function SetupSectionsPage() {
       setLoadingSections(true);
       setError(null);
 
-      const response = await fetch("/api/v1/sections?page=1&pageSize=500");
+      const response = await fetch("/api/v1/sections?page=1&pageSize=500", {
+        cache: "no-store",
+      });
 
       const payload = await response.json();
 
@@ -111,7 +126,9 @@ export default function SetupSectionsPage() {
         throw new Error(payload.message ?? "Unable to load sections.");
       }
 
-      setSections(payload.data?.data ?? []);
+      setSections(
+        payload.data?.data ?? (Array.isArray(payload.data) ? payload.data : []),
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to load sections.");
     } finally {
@@ -120,11 +137,48 @@ export default function SetupSectionsPage() {
   }
 
   useEffect(() => {
-    void loadSections();
+    let cancelled = false;
+
+    async function load() {
+      try {
+        const response = await fetch("/api/v1/sections?page=1&pageSize=500", {
+          cache: "no-store",
+        });
+
+        const payload = await response.json();
+
+        if (cancelled) return;
+
+        if (!response.ok || !payload.success) {
+          throw new Error(payload.message ?? "Unable to load sections.");
+        }
+
+        setSections(
+          payload.data?.data ??
+            (Array.isArray(payload.data) ? payload.data : []),
+        );
+      } catch (err) {
+        if (!cancelled) {
+          setError(
+            err instanceof Error ? err.message : "Unable to load sections.",
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingSections(false);
+        }
+      }
+    }
+
+    void load();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   /* ------------------------------------------------------------------ */
-  /* Group sections by class                                            */
+  /* Group Sections By Class                                            */
   /* ------------------------------------------------------------------ */
 
   const sectionsByClass = useMemo(() => {
@@ -132,7 +186,9 @@ export default function SetupSectionsPage() {
 
     for (const section of sections) {
       const current = map.get(section.classId) ?? [];
+
       current.push(section);
+
       map.set(section.classId, current);
     }
 
@@ -245,19 +301,24 @@ export default function SetupSectionsPage() {
   }
 
   /* ------------------------------------------------------------------ */
-  /* Continue                                                           */
+  /* Continue To Setup Dashboard                                        */
   /* ------------------------------------------------------------------ */
 
-  const canContinue = sections.length > 0;
+  const canFinish = sections.length > 0;
 
-  function continueToSubjects() {
-    if (!canContinue) {
-      setError("Create at least one section before continuing.");
+  function finishSetup() {
+    if (!canFinish) {
+      setError("Create at least one section before finishing setup.");
+
       return;
     }
 
-    window.location.href = `/${school.slug}/setup/subjects`;
+    window.location.href = `/${school.slug}/setup`;
   }
+
+  /* ------------------------------------------------------------------ */
+  /* Render                                                             */
+  /* ------------------------------------------------------------------ */
 
   return (
     <div className="space-y-8 pb-12">
@@ -285,29 +346,17 @@ export default function SetupSectionsPage() {
       </div>
 
       {/* ---------------------------------------------------------------- */}
-      {/* Progress                                                         */}
+      {/* Setup Progress                                                   */}
       {/* ---------------------------------------------------------------- */}
 
       <Card className="premium-card overflow-hidden rounded-2xl border-0">
         <CardContent className="p-5">
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="grid gap-3 md:grid-cols-3">
             <Step number="1" label="Academic Year" complete />
-
-            <ArrowRight className="size-4 text-muted-foreground" />
 
             <Step number="2" label="Classes" complete />
 
-            <ArrowRight className="size-4 text-muted-foreground" />
-
             <Step number="3" label="Sections" active />
-
-            <ArrowRight className="size-4 text-muted-foreground" />
-
-            <Step number="4" label="Subjects" />
-
-            <ArrowRight className="size-4 text-muted-foreground" />
-
-            <Step number="5" label="Periods" />
           </div>
         </CardContent>
       </Card>
@@ -348,24 +397,37 @@ export default function SetupSectionsPage() {
 
       <Card className="premium-card overflow-hidden rounded-2xl border-0">
         <CardHeader className="border-b border-border/60 px-6 py-5">
-          <div className="flex items-center gap-3">
-            <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-              {editingId ? (
-                <Edit3 className="size-5" />
-              ) : (
-                <Plus className="size-5" />
-              )}
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                {editingId ? (
+                  <Edit3 className="size-5" />
+                ) : (
+                  <Plus className="size-5" />
+                )}
+              </div>
+
+              <div>
+                <CardTitle>
+                  {editingId ? "Edit Section" : "Add Section"}
+                </CardTitle>
+
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Add sections such as A, B or C under a class.
+                </p>
+              </div>
             </div>
 
-            <div>
-              <CardTitle>
-                {editingId ? "Edit Section" : "Add Section"}
-              </CardTitle>
-
-              <p className="mt-1 text-xs text-muted-foreground">
-                Add sections such as A, B, C under a class.
-              </p>
-            </div>
+            {editingId && (
+              <Button
+                variant="ghost"
+                size="sm"
+                type="button"
+                onClick={resetForm}
+              >
+                Cancel
+              </Button>
+            )}
           </div>
         </CardHeader>
 
@@ -419,7 +481,7 @@ export default function SetupSectionsPage() {
                 {saving
                   ? "Saving..."
                   : editingId
-                    ? "Update Section"
+                    ? "Save Changes"
                     : "Add Section"}
               </Button>
             </div>
@@ -438,7 +500,7 @@ export default function SetupSectionsPage() {
               <CardTitle>Configured Sections</CardTitle>
 
               <p className="mt-1 text-xs text-muted-foreground">
-                Sections are grouped by class.
+                Sections are organized by class.
               </p>
             </div>
 
@@ -464,7 +526,7 @@ export default function SetupSectionsPage() {
               </p>
 
               <p className="mt-1 max-w-md text-xs text-muted-foreground">
-                Add your first section above. For example, Class 1 → A.
+                Add your first section above. For example, Class 1 → Section A.
               </p>
             </div>
           ) : (
@@ -477,7 +539,7 @@ export default function SetupSectionsPage() {
                     <div className="mb-4 flex items-center justify-between gap-3">
                       <div className="flex items-center gap-3">
                         <div className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                          <GraduationIcon />
+                          <Settings2 className="size-4" />
                         </div>
 
                         <div>
@@ -535,24 +597,38 @@ export default function SetupSectionsPage() {
       </Card>
 
       {/* ---------------------------------------------------------------- */}
-      {/* Continue                                                         */}
+      {/* Finish Setup                                                     */}
       {/* ---------------------------------------------------------------- */}
 
-      <div className="flex flex-col gap-3 rounded-2xl border border-primary/15 bg-primary/[0.03] p-5 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-4 rounded-2xl border border-primary/15 bg-primary/[0.03] p-5 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-sm font-semibold">
-            Classes and sections are configured.
+            Basic school setup is complete.
           </p>
 
           <p className="mt-1 text-xs text-muted-foreground">
-            Continue to subject setup.
+            Academic year, classes and sections are the core setup items. Other
+            data can be managed through their respective modules and bulk
+            imports.
           </p>
         </div>
 
-        <Button onClick={continueToSubjects} disabled={!canContinue}>
-          Continue to Subjects
-          <ArrowRight className="size-4" />
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant="outline"
+            onClick={() =>
+              (window.location.href = `/${school.slug}/setup/classes`)
+            }
+          >
+            <ArrowLeft className="size-4" />
+            Classes
+          </Button>
+
+          <Button onClick={finishSetup} disabled={!canFinish}>
+            Finish Setup
+            <CheckCircle2 className="size-4" />
+          </Button>
+        </div>
       </div>
     </div>
   );
@@ -575,16 +651,16 @@ function Step({
 }) {
   return (
     <div
-      className={`flex items-center gap-2 rounded-xl px-3 py-2 ${
+      className={`flex items-center gap-3 rounded-xl border px-4 py-3 ${
         active
-          ? "bg-primary/10 text-primary"
+          ? "border-primary/20 bg-primary/5 text-primary"
           : complete
-            ? "bg-emerald-500/10 text-emerald-700"
-            : "bg-muted/40 text-muted-foreground"
+            ? "border-emerald-500/20 bg-emerald-500/5 text-emerald-700"
+            : "border-border/60 bg-muted/30 text-muted-foreground"
       }`}
     >
       <span
-        className={`flex size-6 items-center justify-center rounded-full text-[10px] font-bold ${
+        className={`flex size-7 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${
           active
             ? "bg-primary text-primary-foreground"
             : complete
@@ -592,7 +668,7 @@ function Step({
               : "bg-muted text-muted-foreground"
         }`}
       >
-        {complete ? <Check className="size-3" /> : number}
+        {complete ? <Check className="size-3.5" /> : number}
       </span>
 
       <span className="text-xs font-semibold">{label}</span>
@@ -619,13 +695,16 @@ function SelectField({
 }) {
   return (
     <label className="space-y-2">
-      <span className="text-xs font-semibold">{label}</span>
+      <span className="text-xs font-semibold">
+        {label}
+        <span className="ml-1 text-destructive">*</span>
+      </span>
 
       <select
         value={value}
         disabled={disabled}
         onChange={(event) => onChange(event.target.value)}
-        className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm outline-none transition focus:border-primary disabled:cursor-not-allowed disabled:opacity-50"
+        className="h-11 w-full rounded-xl border border-border bg-background px-3 text-sm outline-none transition focus:border-primary disabled:cursor-not-allowed disabled:opacity-50"
       >
         <option value="">Select {label}</option>
 
@@ -671,15 +750,8 @@ function Field({
         value={value}
         placeholder={placeholder}
         onChange={(event) => onChange(event.target.value)}
+        className="h-11 bg-background"
       />
     </label>
   );
-}
-
-/* -------------------------------------------------------------------------- */
-/* SMALL ICON                                                                 */
-/* -------------------------------------------------------------------------- */
-
-function GraduationIcon() {
-  return <span className="text-xs font-black">C</span>;
 }

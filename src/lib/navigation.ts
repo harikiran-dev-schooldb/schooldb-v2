@@ -7,6 +7,8 @@ import {
   BookOpen,
   Settings,
   Upload,
+  ArrowUpWideNarrowIcon,
+  SlidersHorizontal,
 } from "lucide-react";
 
 export const navigation = [
@@ -173,6 +175,12 @@ export const navigation = [
     href: "bulk-operations",
     icon: Upload,
   },
+
+  {
+  title: "Setup",
+  href: "setup",
+  icon: SlidersHorizontal,
+},
 
   {
     title: "Settings",
