@@ -12,14 +12,32 @@ export async function GET(request: Request) {
     const tenant = await requireTenant();
 
     const { searchParams } = new URL(request.url);
-    const page = Number(searchParams.get("page") ?? 1);
-    const pageSize = Number(searchParams.get("pageSize") ?? 25);
-    const search = searchParams.get("search") || undefined;
 
-    const result = await studentEnrollmentService.list(
-      tenant.schoolId,
-      { page, pageSize, search }
+    const page = Math.max(
+      1,
+      Number(searchParams.get("page") ?? 1),
     );
+
+    const pageSize = Math.min(
+      100,
+      Math.max(
+        1,
+        Number(searchParams.get("pageSize") ?? 25),
+      ),
+    );
+
+    const search =
+      searchParams.get("search") || undefined;
+
+    const result =
+      await studentEnrollmentService.list(
+        tenant.schoolId,
+        {
+          page,
+          pageSize,
+          search,
+        },
+      );
 
     return ApiResponse.success(result);
   });

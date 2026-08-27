@@ -307,6 +307,7 @@ export const studentEnrollmentService = {
     const updated =
       await studentEnrollmentRepository.update(
         id,
+        schoolId,
         {
           student: {
             connect: {
@@ -455,10 +456,16 @@ export const studentEnrollmentService = {
   /* ------------------------------------------------------------------ */
 
   async options(
-    schoolId: string,
-  ) {
-    return studentEnrollmentRepository.options(
-      schoolId,
-    );
+  schoolId: string,
+  filters?: {
+    academicYearId?: string;
+    classId?: string;
+    sectionId?: string;
   },
+) {
+  return studentEnrollmentRepository.options(
+    schoolId,
+    filters,
+  );
+},
 };

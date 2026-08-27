@@ -12,21 +12,26 @@ export const timetableService = {
       page: number;
       pageSize: number;
       search?: string;
-    }
+    },
   ) {
-    const skip =
-      (query.page - 1) * query.pageSize;
+    const page = Math.max(1, query.page);
+    const pageSize = Math.min(
+      100,
+      Math.max(1, query.pageSize),
+    );
+
+    const skip = (page - 1) * pageSize;
 
     const where: Prisma.TimetableWhereInput = {
       schoolId,
 
-      ...(query.search && {
+      ...(query.search?.trim() && {
         OR: [
           {
             teacherAllocation: {
               teacher: {
                 fullName: {
-                  contains: query.search,
+                  contains: query.search.trim(),
                   mode: "insensitive",
                 },
               },
@@ -36,7 +41,7 @@ export const timetableService = {
             teacherAllocation: {
               subject: {
                 name: {
-                  contains: query.search,
+                  contains: query.search.trim(),
                   mode: "insensitive",
                 },
               },
@@ -46,7 +51,7 @@ export const timetableService = {
             teacherAllocation: {
               class: {
                 name: {
-                  contains: query.search,
+                  contains: query.search.trim(),
                   mode: "insensitive",
                 },
               },
@@ -56,40 +61,40 @@ export const timetableService = {
       }),
     };
 
-    const [data, total] =
-      await Promise.all([
-        timetableRepository.list(where, {
-          skip,
-          take: query.pageSize,
-        }),
+    const [data, total] = await Promise.all([
+      timetableRepository.list(where, {
+        skip,
+        take: pageSize,
+      }),
 
-        timetableRepository.count(where),
-      ]);
+      timetableRepository.count(where),
+    ]);
 
     return {
       data,
       total,
-      page: query.page,
-      pageSize: query.pageSize,
-      totalPages: Math.ceil(
-        total / query.pageSize
-      ),
+      page,
+      pageSize,
+      totalPages:
+        total > 0
+          ? Math.ceil(total / pageSize)
+          : 0,
     };
   },
 
   async get(
     id: string,
-    schoolId: string
+    schoolId: string,
   ) {
     const timetable =
       await timetableRepository.get(
         id,
-        schoolId
+        schoolId,
       );
 
     if (!timetable) {
       throw new Error(
-        "Timetable entry not found."
+        "Timetable entry not found.",
       );
     }
 
@@ -98,25 +103,52 @@ export const timetableService = {
 
   async create(
     schoolId: string,
-    input: TimetableFormOutput
+    input: TimetableFormOutput,
   ) {
+    /*
+     * --------------------------------------------------------------
+     * Verify teacher allocation
+     * --------------------------------------------------------------
+     */
+
     const allocation =
       await teacherAllocationRepository.getForScheduling(
         input.teacherAllocationId,
-        schoolId
+        schoolId,
       );
 
     if (!allocation) {
       throw new Error(
-        "Teacher allocation not found."
+        "Teacher allocation not found.",
       );
     }
 
     if (!allocation.active) {
       throw new Error(
-        "Teacher allocation is inactive."
+        "Teacher allocation is inactive.",
       );
     }
+
+    /*
+     * --------------------------------------------------------------
+     * Academic year must match allocation
+     * --------------------------------------------------------------
+     */
+
+    if (
+      allocation.academicYearId !==
+      input.academicYearId
+    ) {
+      throw new Error(
+        "Academic year does not match the teacher allocation.",
+      );
+    }
+
+    /*
+     * --------------------------------------------------------------
+     * Duplicate allocation / period / day
+     * --------------------------------------------------------------
+     */
 
     const duplicate =
       await timetableRepository.findDuplicate(
@@ -124,14 +156,20 @@ export const timetableService = {
         allocation.academicYearId,
         allocation.id,
         input.periodId,
-        input.day
+        input.day,
       );
 
     if (duplicate) {
       throw new Error(
-        "Timetable already exists."
+        "Timetable already exists for this teacher allocation, period and day.",
       );
     }
+
+    /*
+     * --------------------------------------------------------------
+     * Teacher conflict
+     * --------------------------------------------------------------
+     */
 
     const teacherConflict =
       await timetableRepository.findTeacherConflict(
@@ -139,14 +177,20 @@ export const timetableService = {
         allocation.teacherId,
         allocation.academicYearId,
         input.periodId,
-        input.day
+        input.day,
       );
 
     if (teacherConflict) {
       throw new Error(
-        "Teacher already has another class during this period."
+        "Teacher already has another class during this period.",
       );
     }
+
+    /*
+     * --------------------------------------------------------------
+     * Class / section conflict
+     * --------------------------------------------------------------
+     */
 
     const classConflict =
       await timetableRepository.findClassConflict(
@@ -155,14 +199,22 @@ export const timetableService = {
         allocation.sectionId,
         allocation.academicYearId,
         input.periodId,
-        input.day
+        input.day,
       );
 
     if (classConflict) {
       throw new Error(
-        "Class already has another subject during this period."
+        "Class already has another subject during this period.",
       );
     }
+
+    /*
+     * --------------------------------------------------------------
+     * Create
+     *
+     * Academic year comes from the validated allocation.
+     * --------------------------------------------------------------
+     */
 
     return timetableRepository.create({
       school: {
@@ -173,13 +225,13 @@ export const timetableService = {
 
       academicYear: {
         connect: {
-          id: input.academicYearId,
+          id: allocation.academicYearId,
         },
       },
 
       teacherAllocation: {
         connect: {
-          id: input.teacherAllocationId,
+          id: allocation.id,
         },
       },
 
@@ -195,30 +247,63 @@ export const timetableService = {
     });
   },
 
-    async update(
+  async update(
     id: string,
     schoolId: string,
-    input: TimetableFormOutput
+    input: TimetableFormOutput,
   ) {
+    /*
+     * --------------------------------------------------------------
+     * Verify timetable belongs to school
+     * --------------------------------------------------------------
+     */
+
     await this.get(id, schoolId);
+
+    /*
+     * --------------------------------------------------------------
+     * Verify teacher allocation
+     * --------------------------------------------------------------
+     */
 
     const allocation =
       await teacherAllocationRepository.getForScheduling(
         input.teacherAllocationId,
-        schoolId
+        schoolId,
       );
 
     if (!allocation) {
       throw new Error(
-        "Teacher allocation not found."
+        "Teacher allocation not found.",
       );
     }
 
     if (!allocation.active) {
       throw new Error(
-        "Teacher allocation is inactive."
+        "Teacher allocation is inactive.",
       );
     }
+
+    /*
+     * --------------------------------------------------------------
+     * Academic year must match allocation
+     * --------------------------------------------------------------
+     */
+
+    if (
+      allocation.academicYearId !==
+      input.academicYearId
+    ) {
+      throw new Error(
+        "Academic year does not match the teacher allocation.",
+      );
+    }
+
+    /*
+     * --------------------------------------------------------------
+     * Duplicate timetable
+     * --------------------------------------------------------------
+     */
 
     const duplicate =
       await timetableRepository.findDuplicate(
@@ -227,14 +312,20 @@ export const timetableService = {
         allocation.id,
         input.periodId,
         input.day,
-        id
+        id,
       );
 
     if (duplicate) {
       throw new Error(
-        "Timetable already exists."
+        "Timetable already exists for this teacher allocation, period and day.",
       );
     }
+
+    /*
+     * --------------------------------------------------------------
+     * Teacher conflict
+     * --------------------------------------------------------------
+     */
 
     const teacherConflict =
       await timetableRepository.findTeacherConflict(
@@ -243,14 +334,20 @@ export const timetableService = {
         allocation.academicYearId,
         input.periodId,
         input.day,
-        id
+        id,
       );
 
     if (teacherConflict) {
       throw new Error(
-        "Teacher already has another class during this period."
+        "Teacher already has another class during this period.",
       );
     }
+
+    /*
+     * --------------------------------------------------------------
+     * Class / section conflict
+     * --------------------------------------------------------------
+     */
 
     const classConflict =
       await timetableRepository.findClassConflict(
@@ -260,14 +357,20 @@ export const timetableService = {
         allocation.academicYearId,
         input.periodId,
         input.day,
-        id
+        id,
       );
 
     if (classConflict) {
       throw new Error(
-        "Class already has another subject during this period."
+        "Class already has another subject during this period.",
       );
     }
+
+    /*
+     * --------------------------------------------------------------
+     * Update
+     * --------------------------------------------------------------
+     */
 
     return timetableRepository.update(
       id,
@@ -275,13 +378,13 @@ export const timetableService = {
       {
         academicYear: {
           connect: {
-            id: input.academicYearId,
+            id: allocation.academicYearId,
           },
         },
 
         teacherAllocation: {
           connect: {
-            id: input.teacherAllocationId,
+            id: allocation.id,
           },
         },
 
@@ -294,60 +397,59 @@ export const timetableService = {
         day: input.day,
 
         active: input.active,
-      }
+      },
     );
   },
 
   async options(
-    schoolId: string
+    schoolId: string,
   ) {
     const rows =
       await timetableRepository.options(
-        schoolId
+        schoolId,
       );
 
     return rows.map((row) => ({
       id: row.id,
-
       label: `${row.day} - ${row.period.name}`,
     }));
   },
 
   async classView(
-  schoolId: string,
-  academicYearId: string,
-  classId: string,
-  sectionId: string
-) {
-  return timetableRepository.getClassTimetable(
-    schoolId,
-    academicYearId,
-    classId,
-    sectionId
-  );
-},
+    schoolId: string,
+    academicYearId: string,
+    classId: string,
+    sectionId: string,
+  ) {
+    return timetableRepository.getClassTimetable(
+      schoolId,
+      academicYearId,
+      classId,
+      sectionId,
+    );
+  },
 
-async teacherView(
-  schoolId: string,
-  academicYearId: string,
-  teacherId: string
-) {
-  return timetableRepository.getTeacherTimetable(
-    schoolId,
-    academicYearId,
-    teacherId
-  );
-},
+  async teacherView(
+    schoolId: string,
+    academicYearId: string,
+    teacherId: string,
+  ) {
+    return timetableRepository.getTeacherTimetable(
+      schoolId,
+      academicYearId,
+      teacherId,
+    );
+  },
 
-async dailyView(
-  schoolId: string,
-  academicYearId: string,
-  day: WeekDay
-) {
-  return timetableRepository.getDailyTimetable(
-    schoolId,
-    academicYearId,
-    day
-  );
-}
+  async dailyView(
+    schoolId: string,
+    academicYearId: string,
+    day: WeekDay,
+  ) {
+    return timetableRepository.getDailyTimetable(
+      schoolId,
+      academicYearId,
+      day,
+    );
+  },
 };

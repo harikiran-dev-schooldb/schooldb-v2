@@ -20,41 +20,34 @@ export async function GET(req: Request) {
     const sectionId =
       searchParams.get("sectionId") ?? "";
 
-    const day =
-      searchParams.get("day") as WeekDay;
+    const dayValue =
+      searchParams.get("day") ?? "";
 
     if (
       !academicYearId ||
       !classId ||
       !sectionId ||
-      !day
+      !dayValue
     ) {
       throw new Error(
-        "Academic year, class, section and day are required."
+        "Academic year, class, section and day are required.",
       );
     }
+
+    const day = dayValue as WeekDay;
 
     const data =
       await timetableService.classView(
         tenant.schoolId,
         academicYearId,
         classId,
-        sectionId
+        sectionId,
       );
 
-    const result = data
-      .filter((item) => item.day === day)
-      .map((item) => ({
-        id: item.id,
-        periodId: item.periodId,
-        periodName: item.period.name,
-        day: item.day,
-        subjectName:
-          item.teacherAllocation.subject.name,
-        teacherName:
-          item.teacherAllocation.teacher.fullName,
-      }));
+    const filtered = data.filter(
+      (item) => item.day === day,
+    );
 
-    return ApiResponse.success(result);
+    return ApiResponse.success(filtered);
   });
 }

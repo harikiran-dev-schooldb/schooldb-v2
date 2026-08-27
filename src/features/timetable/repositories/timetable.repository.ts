@@ -209,53 +209,53 @@ export const timetableRepository = {
   },
 
   findClassConflict(
-    schoolId: string,
-    classId: string,
-    sectionId: string,
-    academicYearId: string,
-    periodId: string,
-    day: WeekDay,
-    excludeId?: string
-  ) {
-    return prisma.timetable.findFirst({
-      where: {
-        schoolId,
-        academicYearId,
-        periodId,
-        day,
+  schoolId: string,
+  classId: string,
+  sectionId: string,
+  academicYearId: string,
+  periodId: string,
+  day: WeekDay,
+  excludeId?: string,
+) {
+  return prisma.timetable.findFirst({
+    where: {
+      schoolId,
+      academicYearId,
+      periodId,
+      day,
 
-        ...(excludeId && {
-          NOT: {
-            id: excludeId,
-          },
-        }),
+      ...(excludeId && {
+        NOT: {
+          id: excludeId,
+        },
+      }),
 
-        teacherAllocation: {
-          classId,
-          sectionId,
+      teacherAllocation: {
+        classId,
+        sectionId,
+      },
+    },
+
+    include: {
+      teacherAllocation: {
+        include: {
+          teacher: true,
+          subject: true,
+          class: true,
+          section: true,
         },
       },
 
-      include: {
-        teacherAllocation: {
-          include: {
-            teacher: true,
-            subject: true,
-            class: true,
-            section: true,
-          },
-        },
-
-        period: true,
-      },
-    });
-  },
+      period: true,
+    },
+  });
+},
 
   getClassTimetable(
   schoolId: string,
   academicYearId: string,
   classId: string,
-  sectionId: string
+  sectionId: string,
 ) {
   return prisma.timetable.findMany({
     where: {
