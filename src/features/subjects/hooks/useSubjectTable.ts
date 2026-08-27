@@ -12,56 +12,71 @@ type Response = {
   totalPages: number;
 };
 
+const DEFAULT_PAGE_SIZE = 25;
+
 export function useSubjectTable() {
   const [subjects, setSubjects] = useState<SubjectListItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [search, setSearch] = useState("");
+
   const [page, setPage] = useState(1);
-  const [pageSize] = useState(25);
+
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+
   const [total, setTotal] = useState(0);
 
+  const [totalPages, setTotalPages] = useState(0);
+
   const load = useCallback(async () => {
-    const params = new URLSearchParams({
-      page: page.toString(),
-      pageSize: pageSize.toString(),
-    });
-
-    const trimmedSearch = search.trim();
-
-    if (trimmedSearch) {
-      params.set("search", trimmedSearch);
-    }
+    setLoading(true);
 
     try {
+      const params = new URLSearchParams({
+        page: String(page),
+        pageSize: String(pageSize),
+      });
+
+      const trimmedSearch = search.trim();
+
+      if (trimmedSearch) {
+        params.set("search", trimmedSearch);
+      }
+
       const res = await fetch(
         `/api/v1/subjects?${params.toString()}`,
+        {
+          cache: "no-store",
+        },
       );
 
       const result = await res.json();
 
-      if (!result.success) {
+      if (!res.ok || !result.success) {
         setSubjects([]);
         setTotal(0);
+        setTotalPages(0);
         return;
       }
 
       const data: Response = result.data;
 
-      setSubjects(data.data);
-      setTotal(data.total);
+      setSubjects(data.data ?? []);
+      setTotal(data.total ?? 0);
+      setTotalPages(data.totalPages ?? 0);
     } catch {
       setSubjects([]);
       setTotal(0);
+      setTotalPages(0);
+    } finally {
+      setLoading(false);
     }
   }, [page, pageSize, search]);
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
-      void load().finally(() => {
-        setLoading(false);
-      });
-    }, 0);
+      void load();
+    }, 250);
 
     return () => {
       window.clearTimeout(timeoutId);
@@ -69,27 +84,34 @@ export function useSubjectTable() {
   }, [load]);
 
   const reload = useCallback(async () => {
-    setLoading(true);
-
-    try {
-      await load();
-    } finally {
-      setLoading(false);
-    }
+    await load();
   }, [load]);
+
+  function changeSearch(value: string) {
+    setSearch(value);
+    setPage(1);
+  }
+
+  function changePageSize(value: number) {
+    setPageSize(value);
+    setPage(1);
+  }
 
   return {
     subjects,
     loading,
 
     search,
-    setSearch,
+    setSearch: changeSearch,
 
     page,
     setPage,
 
-    total,
     pageSize,
+    setPageSize: changePageSize,
+
+    total,
+    totalPages,
 
     reload,
   };
