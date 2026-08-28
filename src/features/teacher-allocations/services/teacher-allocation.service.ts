@@ -1,9 +1,8 @@
+import { Prisma } from "@/generated/prisma/client";
+import { prisma } from "@/lib/prisma";
 import { ListQuery } from "@/types/query";
 
-import {
-  TeacherAllocationFormOutput,
-} from "../schemas/teacher-allocation.schema";
-
+import { TeacherAllocationFormOutput } from "../schemas/teacher-allocation.schema";
 import { teacherAllocationRepository } from "../repositories/teacher-allocation.repository";
 import { academicYearRepository } from "@/features/academic-years/repositories/academic-year.repository";
 import { classRepository } from "@/features/classes/repositories/class.repository";
@@ -30,65 +29,39 @@ async function validateAllocationRelations(
   if (!section || section.classId !== input.classId) {
     throw new Error("Selected section does not belong to the selected class.");
   }
+
+  const mapping = await prisma.$queryRaw<{ id: string }[]>(Prisma.sql`
+    SELECT "id"
+    FROM "ClassSubject"
+    WHERE "schoolId" = ${schoolId}
+      AND "academicYearId" = ${input.academicYearId}
+      AND "classId" = ${input.classId}
+      AND "subjectId" = ${input.subjectId}
+      AND "active" = true
+    LIMIT 1
+  `);
+
+  if (mapping.length === 0) {
+    throw new Error(
+      "This subject is not assigned to the selected class for the selected academic year.",
+    );
+  }
 }
 
 export const teacherAllocationService = {
-  async list(
-    schoolId: string,
-    query: ListQuery
-  ) {
+  async list(schoolId: string, query: ListQuery) {
     const page = query.page ?? 1;
     const pageSize = query.pageSize ?? 25;
 
     const where = {
       schoolId,
-
       ...(query.search && {
         OR: [
-          {
-            teacher: {
-              fullName: {
-                contains: query.search,
-                mode: "insensitive" as const,
-              },
-            },
-          },
-
-          {
-            subject: {
-              name: {
-                contains: query.search,
-                mode: "insensitive" as const,
-              },
-            },
-          },
-
-          {
-            class: {
-              name: {
-                contains: query.search,
-                mode: "insensitive" as const,
-              },
-            },
-          },
-
-          {
-            section: {
-              name: {
-                contains: query.search,
-                mode: "insensitive" as const,
-              },
-            },
-          },
-
-          {
-            academicYear: {
-              name: {
-                contains: query.search,
-                mode: "insensitive" as const,
-              },
-            },
-          },
+          { teacher: { fullName: { contains: query.search, mode: "insensitive" as const } } },
+          { subject: { name: { contains: query.search, mode: "insensitive" as const } } },
+          { class: { name: { contains: query.search, mode: "insensitive" as const } } },
+          { section: { name: { contains: query.search, mode: "insensitive" as const } } },
+          { academicYear: { name: { contains: query.search, mode: "insensitive" as const } } },
         ],
       }),
     };
@@ -98,223 +71,99 @@ export const teacherAllocationService = {
         skip: (page - 1) * pageSize,
         take: pageSize,
       }),
-
       teacherAllocationRepository.count(where),
     ]);
 
     return {
       data: rows.map((row) => ({
         id: row.id,
-
         academicYearId: row.academicYearId,
         academicYearName: row.academicYear.name,
-
         teacherId: row.teacherId,
         teacherName: row.teacher.fullName,
-
         subjectId: row.subjectId,
         subjectName: row.subject.name,
-
         classId: row.classId,
         className: row.class.name,
-
         sectionId: row.sectionId,
         sectionName: row.section.name,
-
         remarks: row.remarks,
-
         active: row.active,
       })),
-
       total,
-
       page,
-
       pageSize,
-
       totalPages: Math.ceil(total / pageSize),
     };
   },
 
-  async create(
-    schoolId: string,
-    input: TeacherAllocationFormOutput
-  ) {
-    const duplicate =
-      await teacherAllocationRepository.findDuplicate(
-        schoolId,
-        input.academicYearId,
-        input.teacherId,
-        input.subjectId,
-        input.classId,
-        input.sectionId
-      );
+  async create(schoolId: string, input: TeacherAllocationFormOutput) {
+    const duplicate = await teacherAllocationRepository.findDuplicate(
+      schoolId,
+      input.academicYearId,
+      input.teacherId,
+      input.subjectId,
+      input.classId,
+      input.sectionId,
+    );
 
-    if (duplicate) {
-      throw new Error(
-        "Teacher allocation already exists."
-      );
-    }
+    if (duplicate) throw new Error("Teacher allocation already exists.");
 
     await validateAllocationRelations(schoolId, input);
 
     return teacherAllocationRepository.create({
-      remarks:
-        input.remarks === ""
-          ? null
-          : input.remarks,
-
+      remarks: input.remarks === "" ? null : input.remarks,
       active: input.active,
-
-      school: {
-        connect: {
-          id: schoolId,
-        },
-      },
-
-      academicYear: {
-        connect: {
-          id: input.academicYearId,
-        },
-      },
-
-      teacher: {
-        connect: {
-          id: input.teacherId,
-        },
-      },
-
-      subject: {
-        connect: {
-          id: input.subjectId,
-        },
-      },
-
-      class: {
-        connect: {
-          id: input.classId,
-        },
-      },
-
-      section: {
-        connect: {
-          id: input.sectionId,
-        },
-      },
+      school: { connect: { id: schoolId } },
+      academicYear: { connect: { id: input.academicYearId } },
+      teacher: { connect: { id: input.teacherId } },
+      subject: { connect: { id: input.subjectId } },
+      class: { connect: { id: input.classId } },
+      section: { connect: { id: input.sectionId } },
     });
   },
 
-  async get(
-    id: string,
-    schoolId: string
-  ) {
-    const allocation =
-      await teacherAllocationRepository.findById(
-        id,
-        schoolId
-      );
-
-    if (!allocation) {
-      throw new Error(
-        "Teacher allocation not found."
-      );
-    }
-
+  async get(id: string, schoolId: string) {
+    const allocation = await teacherAllocationRepository.findById(id, schoolId);
+    if (!allocation) throw new Error("Teacher allocation not found.");
     return allocation;
   },
 
-  async update(
-    id: string,
-    schoolId: string,
-    input: TeacherAllocationFormOutput
-  ) {
-    const allocation =
-      await teacherAllocationRepository.findById(
-        id,
-        schoolId
-      );
+  async update(id: string, schoolId: string, input: TeacherAllocationFormOutput) {
+    const allocation = await teacherAllocationRepository.findById(id, schoolId);
+    if (!allocation) throw new Error("Teacher allocation not found.");
 
-    if (!allocation) {
-      throw new Error(
-        "Teacher allocation not found."
-      );
-    }
+    const duplicate = await teacherAllocationRepository.findDuplicate(
+      schoolId,
+      input.academicYearId,
+      input.teacherId,
+      input.subjectId,
+      input.classId,
+      input.sectionId,
+    );
 
-    const duplicate =
-      await teacherAllocationRepository.findDuplicate(
-        schoolId,
-        input.academicYearId,
-        input.teacherId,
-        input.subjectId,
-        input.classId,
-        input.sectionId
-      );
-
-    if (
-      duplicate &&
-      duplicate.id !== id
-    ) {
-      throw new Error(
-        "Teacher allocation already exists."
-      );
+    if (duplicate && duplicate.id !== id) {
+      throw new Error("Teacher allocation already exists.");
     }
 
     await validateAllocationRelations(schoolId, input);
 
-    return teacherAllocationRepository.update(
-      id,
-      schoolId,
-      {
-        remarks:
-          input.remarks === ""
-            ? null
-            : input.remarks,
-
-        active: input.active,
-
-        academicYear: {
-          connect: {
-            id: input.academicYearId,
-          },
-        },
-
-        teacher: {
-          connect: {
-            id: input.teacherId,
-          },
-        },
-
-        subject: {
-          connect: {
-            id: input.subjectId,
-          },
-        },
-
-        class: {
-          connect: {
-            id: input.classId,
-          },
-        },
-
-        section: {
-          connect: {
-            id: input.sectionId,
-          },
-        },
-      }
-    );
+    return teacherAllocationRepository.update(id, schoolId, {
+      remarks: input.remarks === "" ? null : input.remarks,
+      active: input.active,
+      academicYear: { connect: { id: input.academicYearId } },
+      teacher: { connect: { id: input.teacherId } },
+      subject: { connect: { id: input.subjectId } },
+      class: { connect: { id: input.classId } },
+      section: { connect: { id: input.sectionId } },
+    });
   },
 
   async options(schoolId: string) {
-  const rows =
-    await teacherAllocationRepository.options(
-      schoolId
-    );
-
-  return rows.map((row) => ({
-    id: row.id,
-
-    label: `${row.class.name} • ${row.section.name} • ${row.subject.name} • ${row.teacher.fullName}`,
-  }));
-}
+    const rows = await teacherAllocationRepository.options(schoolId);
+    return rows.map((row) => ({
+      id: row.id,
+      label: `${row.class.name} • ${row.section.name} • ${row.subject.name} • ${row.teacher.fullName}`,
+    }));
+  },
 };

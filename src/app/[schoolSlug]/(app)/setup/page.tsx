@@ -3,6 +3,7 @@
 import Link from "next/link";
 import {
   ArrowRight,
+  BookOpenCheck,
   CalendarDays,
   CheckCircle2,
   Layers3,
@@ -36,6 +37,13 @@ const setupItems = [
     href: "sections",
     icon: Layers3,
   },
+  {
+    title: "Class Subjects",
+    description:
+      "Define the subjects offered to each class for every academic year.",
+    href: "class-subjects",
+    icon: BookOpenCheck,
+  },
 ];
 
 export default function SchoolSetupPage() {
@@ -49,10 +57,6 @@ export default function SchoolSetupPage() {
         description="Configure the core academic structure of your school."
       />
 
-      {/* ---------------------------------------------------------------- */}
-      {/* School                                                            */}
-      {/* ---------------------------------------------------------------- */}
-
       <Card className="premium-card overflow-hidden rounded-3xl border-0">
         <CardContent className="p-6">
           <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
@@ -65,14 +69,11 @@ export default function SchoolSetupPage() {
                 <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   School
                 </p>
-
                 <h2 className="mt-1 text-lg font-bold tracking-tight">
                   {school.name}
                 </h2>
-
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Manage the foundational academic configuration for this
-                  school.
+                  Manage the foundational academic configuration for this school.
                 </p>
               </div>
             </div>
@@ -84,20 +85,15 @@ export default function SchoolSetupPage() {
         </CardContent>
       </Card>
 
-      {/* ---------------------------------------------------------------- */}
-      {/* Setup Items                                                       */}
-      {/* ---------------------------------------------------------------- */}
-
       <div>
         <div className="mb-5">
           <h2 className="text-lg font-bold tracking-tight">Configuration</h2>
-
           <p className="mt-1 text-sm text-muted-foreground">
             Select a setup item to configure or update it.
           </p>
         </div>
 
-        <div className="grid gap-5 md:grid-cols-3">
+        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
           {setupItems.map((item) => {
             const Icon = item.icon;
 
@@ -113,10 +109,8 @@ export default function SchoolSetupPage() {
                       <div className="flex size-11 items-center justify-center rounded-xl bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
                         <Icon className="size-5" />
                       </div>
-
                       <ArrowRight className="mt-1 size-4 text-muted-foreground transition-transform group-hover:translate-x-1 group-hover:text-primary" />
                     </div>
-
                     <CardTitle className="pt-3 text-base">
                       {item.title}
                     </CardTitle>
@@ -126,7 +120,6 @@ export default function SchoolSetupPage() {
                     <p className="text-sm leading-6 text-muted-foreground">
                       {item.description}
                     </p>
-
                     <div className="mt-5 flex items-center gap-2 text-xs font-semibold text-primary">
                       <CheckCircle2 className="size-4" />
                       Manage {item.title}
@@ -139,59 +132,30 @@ export default function SchoolSetupPage() {
         </div>
       </div>
 
-      {/* ---------------------------------------------------------------- */}
-      {/* Setup Information                                                */}
-      {/* ---------------------------------------------------------------- */}
-
       <Card className="premium-card overflow-hidden rounded-2xl border-0">
         <CardHeader className="border-b border-border/60 px-6 py-5">
           <CardTitle className="text-base">Setup Structure</CardTitle>
         </CardHeader>
 
         <CardContent className="p-6">
-          <div className="grid gap-4 md:grid-cols-3">
-            <InfoItem
-              number="01"
-              title="Academic Year"
-              description="Academic calendar and attendance configuration."
-            />
-
-            <InfoItem
-              number="02"
-              title="Classes"
-              description="Academic classes offered by the school."
-            />
-
-            <InfoItem
-              number="03"
-              title="Sections"
-              description="Sections organized under each class."
-            />
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <InfoItem number="01" title="Academic Year" description="Academic calendar and attendance configuration." />
+            <InfoItem number="02" title="Classes" description="Academic classes offered by the school." />
+            <InfoItem number="03" title="Sections" description="Sections organized under each class." />
+            <InfoItem number="04" title="Class Subjects" description="Subjects offered to each class for an academic year." />
           </div>
         </CardContent>
       </Card>
 
-      {/* ---------------------------------------------------------------- */}
-      {/* Independent Configuration                                        */}
-      {/* ---------------------------------------------------------------- */}
-
       <div className="rounded-2xl border border-primary/15 bg-primary/[0.03] p-5">
-        <p className="text-sm font-semibold">
-          Setup items can be configured independently.
-        </p>
-
+        <p className="text-sm font-semibold">Setup items can be configured independently.</p>
         <p className="mt-1 text-xs leading-5 text-muted-foreground">
-          Subjects, periods, students and other operational data are managed
-          separately through their respective modules and bulk-import tools.
+          Students, teachers, teacher allocations, periods, timetables and other operational data are managed separately through their respective modules.
         </p>
       </div>
     </div>
   );
 }
-
-/* -------------------------------------------------------------------------- */
-/* INFO ITEM                                                                  */
-/* -------------------------------------------------------------------------- */
 
 function InfoItem({
   number,
@@ -208,13 +172,9 @@ function InfoItem({
         <span className="flex size-8 items-center justify-center rounded-lg bg-background text-[10px] font-bold text-muted-foreground">
           {number}
         </span>
-
         <p className="text-sm font-semibold">{title}</p>
       </div>
-
-      <p className="mt-3 text-xs leading-5 text-muted-foreground">
-        {description}
-      </p>
+      <p className="mt-3 text-xs leading-5 text-muted-foreground">{description}</p>
     </div>
   );
 }
