@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+import { subscribeTableRefresh } from "@/lib/table-event";
+
 import { SubjectListItem } from "../types";
 
 type Response = {
@@ -19,13 +21,10 @@ export function useSubjectTable() {
   const [loading, setLoading] = useState(true);
 
   const [search, setSearch] = useState("");
-
   const [page, setPage] = useState(1);
-
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
 
   const [total, setTotal] = useState(0);
-
   const [totalPages, setTotalPages] = useState(0);
 
   const load = useCallback(async () => {
@@ -43,16 +42,16 @@ export function useSubjectTable() {
         params.set("search", trimmedSearch);
       }
 
-      const res = await fetch(
+      const response = await fetch(
         `/api/v1/subjects?${params.toString()}`,
         {
           cache: "no-store",
         },
       );
 
-      const result = await res.json();
+      const result = await response.json();
 
-      if (!res.ok || !result.success) {
+      if (!response.ok || !result.success) {
         setSubjects([]);
         setTotal(0);
         setTotalPages(0);
@@ -86,6 +85,10 @@ export function useSubjectTable() {
   const reload = useCallback(async () => {
     await load();
   }, [load]);
+
+  useEffect(() => {
+    return subscribeTableRefresh("subjects", reload);
+  }, [reload]);
 
   function changeSearch(value: string) {
     setSearch(value);

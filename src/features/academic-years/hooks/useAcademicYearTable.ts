@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 
 import { useDebounce } from "@/hooks/useDebounce";
 
+import { subscribeTableRefresh } from "@/lib/table-event";
+
 import { AcademicYearListItem } from "../types";
 
 type AcademicYearResponse = {
@@ -15,22 +17,13 @@ type AcademicYearResponse = {
 };
 
 export function useAcademicYearTable() {
-  const [academicYears, setAcademicYears] = useState<
-    AcademicYearListItem[]
-  >([]);
-
+  const [academicYears, setAcademicYears] = useState<AcademicYearListItem[]>([]);
   const [loading, setLoading] = useState(true);
-
   const [page, setPage] = useState(1);
-
   const [pageSize] = useState(25);
-
   const [search, setSearch] = useState("");
-
   const [total, setTotal] = useState(0);
-
   const [totalPages, setTotalPages] = useState(1);
-
   const [reloadVersion, setReloadVersion] = useState(0);
 
   const debouncedSearch = useDebounce(search);
@@ -46,20 +39,16 @@ export function useAcademicYearTable() {
     async function load() {
       try {
         const res = await fetch(
-          `/api/v1/academic-years?page=${page}&pageSize=${pageSize}&search=${encodeURIComponent(debouncedSearch)}`
+          `/api/v1/academic-years?page=${page}&pageSize=${pageSize}&search=${encodeURIComponent(debouncedSearch)}`,
         );
 
         const result = await res.json();
-
-        const response: AcademicYearResponse =
-          result.data;
+        const response: AcademicYearResponse = result.data;
 
         if (!active) return;
 
         setAcademicYears(response.data);
-
         setTotal(response.total);
-
         setTotalPages(response.totalPages);
       } finally {
         if (active) {
@@ -68,37 +57,27 @@ export function useAcademicYearTable() {
       }
     }
 
-    load();
+    void load();
 
     return () => {
       active = false;
     };
-  }, [
-    page,
-    pageSize,
-    debouncedSearch,
-    reloadVersion,
-  ]);
+  }, [page, pageSize, debouncedSearch, reloadVersion]);
+
+  useEffect(() => {
+    return subscribeTableRefresh("academic-years", reload);
+  }, [reload]);
 
   return {
     academicYears,
-
     loading,
-
     page,
-
     setPage,
-
     pageSize,
-
     total,
-
     totalPages,
-
     search,
-
     setSearch,
-
     reload,
   };
 }

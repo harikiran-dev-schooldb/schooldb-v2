@@ -52,6 +52,10 @@ export const navigation = [
         href: "subjects",
       },
       {
+        title: "Class Subjects",
+        href: "setup/class-subjects",
+      },
+      {
         title: "Enrollments",
         href: "enrollments",
       },

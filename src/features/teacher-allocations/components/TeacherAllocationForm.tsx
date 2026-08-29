@@ -16,6 +16,7 @@ import { FormField, SubmitButton } from "@/components/common/forms";
 import { RemoteCombobox } from "@/components/common/combobox/RemoteCombobox";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { refreshTable } from "@/lib/table-event";
 
 import {
   teacherAllocationSchema,
@@ -76,15 +77,6 @@ export function TeacherAllocationForm({
   });
 
   useEffect(() => {
-    if (mode === "create") {
-      form.setValue("sectionId", "", {
-        shouldDirty: true,
-        shouldValidate: true,
-      });
-    }
-  }, [classId, form, mode]);
-
-  useEffect(() => {
     if (mode !== "edit" || !allocationId) return;
 
     let cancelled = false;
@@ -128,6 +120,18 @@ export function TeacherAllocationForm({
     };
   }, [mode, allocationId, form]);
 
+  function handleClassChange(value: string) {
+    form.setValue("classId", value, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+
+    form.setValue("sectionId", "", {
+      shouldDirty: true,
+      shouldValidate: false,
+    });
+  }
+
   async function onSubmit(values: TeacherAllocationFormInput) {
     try {
       setLoading(true);
@@ -163,6 +167,7 @@ export function TeacherAllocationForm({
         form.reset(defaultValues);
       }
 
+      refreshTable("teacher-allocations");
       onSuccess();
     } catch (error) {
       toast.error(
@@ -191,7 +196,7 @@ export function TeacherAllocationForm({
           </div>
         </div>
 
-        <FormField label="Academic Year" required>
+        <FormField label="Academic Year" required error={form.formState.errors.academicYearId?.message}>
           <RemoteCombobox
             url="/api/v1/academic-years/options"
             value={academicYearId}
@@ -218,7 +223,7 @@ export function TeacherAllocationForm({
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
-          <FormField label="Teacher" required>
+          <FormField label="Teacher" required error={form.formState.errors.teacherId?.message}>
             <RemoteCombobox
               url="/api/v1/teachers/options"
               value={teacherId}
@@ -232,7 +237,7 @@ export function TeacherAllocationForm({
             />
           </FormField>
 
-          <FormField label="Subject" required>
+          <FormField label="Subject" required error={form.formState.errors.subjectId?.message}>
             <RemoteCombobox
               url="/api/v1/subjects/options"
               value={subjectId}
@@ -260,41 +265,33 @@ export function TeacherAllocationForm({
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
-          <FormField label="Class" required>
+          <FormField label="Class" required error={form.formState.errors.classId?.message}>
             <RemoteCombobox
               url="/api/v1/classes/options"
               value={classId}
               placeholder="Select class"
-              onChange={(value) => {
-                form.setValue("classId", value, {
-                  shouldDirty: true,
-                  shouldValidate: true,
-                });
-                form.setValue("sectionId", "", {
-                  shouldDirty: true,
-                  shouldValidate: true,
-                });
-              }}
+              onChange={handleClassChange}
             />
           </FormField>
 
-          <FormField label="Section" required>
-            <RemoteCombobox
-              url={
-                classId
-                  ? `/api/v1/sections/options?classId=${encodeURIComponent(classId)}`
-                  : "/api/v1/sections/options"
-              }
-              value={sectionId}
-              disabled={!classId}
-              placeholder={classId ? "Select section" : "Select class first"}
-              onChange={(value) =>
-                form.setValue("sectionId", value, {
-                  shouldDirty: true,
-                  shouldValidate: true,
-                })
-              }
-            />
+          <FormField label="Section" required error={form.formState.errors.sectionId?.message}>
+            {classId ? (
+              <RemoteCombobox
+                url={`/api/v1/sections/options?classId=${encodeURIComponent(classId)}`}
+                value={sectionId}
+                placeholder="Select section"
+                onChange={(value) =>
+                  form.setValue("sectionId", value, {
+                    shouldDirty: true,
+                    shouldValidate: true,
+                  })
+                }
+              />
+            ) : (
+              <div className="flex h-10 w-full items-center rounded-xl border border-border bg-muted/30 px-3 text-sm text-muted-foreground">
+                Select a class first
+              </div>
+            )}
           </FormField>
         </div>
       </div>
@@ -310,7 +307,7 @@ export function TeacherAllocationForm({
           </div>
         </div>
 
-        <FormField label="Remarks">
+        <FormField label="Remarks" error={form.formState.errors.remarks?.message}>
           <Textarea
             rows={3}
             placeholder="Add notes about this allocation..."

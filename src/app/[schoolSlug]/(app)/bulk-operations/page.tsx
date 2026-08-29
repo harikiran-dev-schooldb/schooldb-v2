@@ -9,6 +9,7 @@ import {
   Layers3,
   Users,
   UserRound,
+  Network,
 } from "lucide-react";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
@@ -68,6 +69,14 @@ const operations = [
       "Import subjects with type, code, ordering, and active status validation.",
     href: "bulk-operations/subjects",
     icon: Layers3,
+    status: "Ready",
+  },
+  {
+    title: "Class Subjects",
+    description:
+      "Map subjects to classes for an academic year with duplicate and reference validation.",
+    href: "bulk-operations/class-subjects",
+    icon: Network,
     status: "Ready",
   },
   {
