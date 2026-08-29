@@ -1,13 +1,9 @@
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 
-import type { ClassSubjectRow } from "../types";
+import type { BulkClassSubjectRow, ClassSubjectRow } from "../types";
 
-export type BulkClassSubjectRow = {
-  className: string;
-  subjectName: string;
-  active?: boolean;
-};
+
 
 export const classSubjectService = {
   async list(
@@ -92,126 +88,277 @@ export const classSubjectService = {
   },
 
   async bulkCreate(
-    schoolId: string,
-    academicYearId: string,
-    rows: BulkClassSubjectRow[],
-  ) {
-    if (rows.length === 0) {
-      throw new Error("No class subject rows were provided.");
-    }
+  schoolId: string,
+  rows: BulkClassSubjectRow[],
+) {
+  if (rows.length === 0) {
+    throw new Error("No class subject rows were provided.");
+  }
 
-    const academicYear = await prisma.academicYear.findFirst({
-      where: { id: academicYearId, schoolId },
-      select: { id: true },
-    });
+  const normalized = rows.map((row, index) => ({
+    rowNumber: index + 2,
+    academicYear: row.academicYear.trim(),
+    className: row.className.trim(),
+    subject: row.subject.trim(),
+    active: row.active ?? true,
+  }));
 
-    if (!academicYear) {
-      throw new Error("Academic year not found.");
-    }
+  const errors: Array<{
+    row: number;
+    message: string;
+  }> = [];
 
-    const normalized = rows.map((row, index) => ({
-      rowNumber: index + 2,
-      className: row.className.trim(),
-      subjectName: row.subjectName.trim(),
-      active: row.active ?? true,
-    }));
+  // ---------------------------------------------------------
+  // 1. Validate required values
+  // ---------------------------------------------------------
 
-    const invalid = normalized.filter(
-      (row) => !row.className || !row.subjectName,
-    );
-
-    if (invalid.length > 0) {
-      throw new Error(
-        `Rows ${invalid.map((row) => row.rowNumber).join(", ")} require Class and Subject.`,
-      );
-    }
-
-    const [classes, subjects] = await Promise.all([
-      prisma.class.findMany({
-        where: { schoolId, active: true },
-        select: { id: true, name: true },
-      }),
-      prisma.subject.findMany({
-        where: { schoolId, active: true },
-        select: { id: true, name: true },
-      }),
-    ]);
-
-    const classMap = new Map(classes.map((item) => [item.name.toLowerCase(), item]));
-    const subjectMap = new Map(subjects.map((item) => [item.name.toLowerCase(), item]));
-    const seen = new Set<string>();
-    const errors: string[] = [];
-    const prepared: Array<{
-      rowNumber: number;
-      classId: string;
-      subjectId: string;
-      active: boolean;
-    }> = [];
-
-    for (const row of normalized) {
-      const cls = classMap.get(row.className.toLowerCase());
-      const subject = subjectMap.get(row.subjectName.toLowerCase());
-
-      if (!cls) {
-        errors.push(`Row ${row.rowNumber}: Class "${row.className}" not found.`);
-        continue;
-      }
-
-      if (!subject) {
-        errors.push(`Row ${row.rowNumber}: Subject "${row.subjectName}" not found.`);
-        continue;
-      }
-
-      const key = `${cls.id}:${subject.id}`;
-      if (seen.has(key)) {
-        errors.push(`Row ${row.rowNumber}: Duplicate class/subject assignment in file.`);
-        continue;
-      }
-
-      seen.add(key);
-      prepared.push({
-        rowNumber: row.rowNumber,
-        classId: cls.id,
-        subjectId: subject.id,
-        active: row.active,
+  for (const row of normalized) {
+    if (!row.academicYear) {
+      errors.push({
+        row: row.rowNumber,
+        message: "Academic year is required.",
       });
     }
 
-    if (errors.length > 0) {
-      throw new Error(errors.join(" "));
+    if (!row.className) {
+      errors.push({
+        row: row.rowNumber,
+        message: "Class is required.",
+      });
     }
 
-    const existing = await prisma.$queryRaw<
-      { classId: string; subjectId: string }[]
-    >(Prisma.sql`
-      SELECT "classId", "subjectId"
-      FROM "ClassSubject"
-      WHERE "schoolId" = ${schoolId}
-        AND "academicYearId" = ${academicYearId}
-    `);
+    if (!row.subject) {
+      errors.push({
+        row: row.rowNumber,
+        message: "Subject is required.",
+      });
+    }
+  }
 
-    const existingKeys = new Set(
-      existing.map((item) => `${item.classId}:${item.subjectId}`),
+  if (errors.length > 0) {
+    return {
+      created: 0,
+      skipped: 0,
+      errors,
+    };
+  }
+
+  // ---------------------------------------------------------
+  // 2. Load all required master data
+  // ---------------------------------------------------------
+
+  const academicYears = await prisma.academicYear.findMany({
+    where: {
+      schoolId,
+    },
+    select: {
+      id: true,
+      name: true,
+    },
+  });
+
+  const classes = await prisma.class.findMany({
+    where: {
+      schoolId,
+      active: true,
+    },
+    select: {
+      id: true,
+      name: true,
+    },
+  });
+
+  const subjects = await prisma.subject.findMany({
+    where: {
+      schoolId,
+      active: true,
+    },
+    select: {
+      id: true,
+      name: true,
+    },
+  });
+
+  // ---------------------------------------------------------
+  // 3. Create lookup maps
+  // ---------------------------------------------------------
+
+  const academicYearMap = new Map(
+    academicYears.map((item) => [
+      item.name.trim().toLowerCase(),
+      item,
+    ]),
+  );
+
+  const classMap = new Map(
+    classes.map((item) => [
+      item.name.trim().toLowerCase(),
+      item,
+    ]),
+  );
+
+  const subjectMap = new Map(
+    subjects.map((item) => [
+      item.name.trim().toLowerCase(),
+      item,
+    ]),
+  );
+
+  // ---------------------------------------------------------
+  // 4. Resolve CSV names to database IDs
+  // ---------------------------------------------------------
+
+  const prepared: Array<{
+    rowNumber: number;
+    academicYearId: string;
+    classId: string;
+    subjectId: string;
+    active: boolean;
+  }> = [];
+
+  const fileKeys = new Set<string>();
+
+  for (const row of normalized) {
+    const academicYear = academicYearMap.get(
+      row.academicYear.toLowerCase(),
     );
 
-    const toCreate = prepared.filter(
-      (row) => !existingKeys.has(`${row.classId}:${row.subjectId}`),
-    );
-
-    if (toCreate.length === 0) {
-      return { imported: 0, skipped: prepared.length };
+    if (!academicYear) {
+      errors.push({
+        row: row.rowNumber,
+        message: `Academic year "${row.academicYear}" not found.`,
+      });
+      continue;
     }
 
+    const cls = classMap.get(row.className.toLowerCase());
+
+    if (!cls) {
+      errors.push({
+        row: row.rowNumber,
+        message: `Class "${row.className}" not found.`,
+      });
+      continue;
+    }
+
+    const subject = subjectMap.get(row.subject.toLowerCase());
+
+    if (!subject) {
+      errors.push({
+        row: row.rowNumber,
+        message: `Subject "${row.subject}" not found.`,
+      });
+      continue;
+    }
+
+    // Academic Year + Class + Subject
+    const key = [
+      academicYear.id,
+      cls.id,
+      subject.id,
+    ].join(":");
+
+    if (fileKeys.has(key)) {
+      errors.push({
+        row: row.rowNumber,
+        message:
+          "Duplicate class-subject mapping in this file.",
+      });
+      continue;
+    }
+
+    fileKeys.add(key);
+
+    prepared.push({
+      rowNumber: row.rowNumber,
+      academicYearId: academicYear.id,
+      classId: cls.id,
+      subjectId: subject.id,
+      active: row.active,
+    });
+  }
+
+  // ---------------------------------------------------------
+  // 5. If there are validation errors, do NOT import anything
+  // ---------------------------------------------------------
+
+  if (errors.length > 0) {
+    return {
+      created: 0,
+      skipped: 0,
+      errors,
+    };
+  }
+
+  // ---------------------------------------------------------
+  // 6. Find existing mappings
+  // ---------------------------------------------------------
+
+  const academicYearIds = [
+    ...new Set(prepared.map((row) => row.academicYearId)),
+  ];
+
+  const existing = await prisma.$queryRaw<
+    {
+      academicYearId: string;
+      classId: string;
+      subjectId: string;
+    }[]
+  >(Prisma.sql`
+    SELECT
+      "academicYearId",
+      "classId",
+      "subjectId"
+    FROM "ClassSubject"
+    WHERE "schoolId" = ${schoolId}
+      AND "academicYearId" IN (${Prisma.join(academicYearIds)})
+  `);
+
+  const existingKeys = new Set(
+    existing.map(
+      (item) =>
+        `${item.academicYearId}:${item.classId}:${item.subjectId}`,
+    ),
+  );
+
+  // ---------------------------------------------------------
+  // 7. Separate new and existing mappings
+  // ---------------------------------------------------------
+
+  const toCreate = prepared.filter((row) => {
+    const key = [
+      row.academicYearId,
+      row.classId,
+      row.subjectId,
+    ].join(":");
+
+    return !existingKeys.has(key);
+  });
+
+  const skipped = prepared.length - toCreate.length;
+
+  // ---------------------------------------------------------
+  // 8. Create new mappings
+  // ---------------------------------------------------------
+
+  if (toCreate.length > 0) {
     await prisma.$transaction(
       toCreate.map((row) =>
         prisma.$executeRaw(Prisma.sql`
           INSERT INTO "ClassSubject" (
-            "id", "schoolId", "academicYearId", "classId", "subjectId",
-            "active", "createdAt", "updatedAt"
-          ) VALUES (
+            "id",
+            "schoolId",
+            "academicYearId",
+            "classId",
+            "subjectId",
+            "active",
+            "createdAt",
+            "updatedAt"
+          )
+          VALUES (
             ${`cs_${crypto.randomUUID().replaceAll("-", "")}`},
             ${schoolId},
-            ${academicYearId},
+            ${row.academicYearId},
             ${row.classId},
             ${row.subjectId},
             ${row.active},
@@ -221,12 +368,18 @@ export const classSubjectService = {
         `),
       ),
     );
+  }
 
-    return {
-      imported: toCreate.length,
-      skipped: prepared.length - toCreate.length,
-    };
-  },
+  // ---------------------------------------------------------
+  // 9. Return import summary
+  // ---------------------------------------------------------
+
+  return {
+    created: toCreate.length,
+    skipped,
+    errors: [],
+  };
+},
 
   async remove(id: string, schoolId: string) {
     const result = await prisma.$executeRaw(Prisma.sql`

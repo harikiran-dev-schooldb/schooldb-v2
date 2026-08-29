@@ -10,3 +10,10 @@ export type ClassSubjectRow = {
   subjectType: string;
   active: boolean;
 };
+
+export type BulkClassSubjectRow = {
+  academicYear: string;
+  className: string;
+  subject: string;
+  active?: boolean;
+};

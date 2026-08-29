@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   BookOpenCheck,
@@ -26,6 +26,7 @@ export default function ClassSubjectsPage() {
   const [academicYearId, setAcademicYearId] = useState("");
   const [classId, setClassId] = useState("");
   const [subjectId, setSubjectId] = useState("");
+
   const [rows, setRows] = useState<ClassSubjectRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -38,12 +39,22 @@ export default function ClassSubjectsPage() {
 
     try {
       setLoading(true);
-      const params = new URLSearchParams({ academicYearId });
-      if (classId) params.set("classId", classId);
 
-      const response = await fetch(`/api/v1/class-subjects?${params}`, {
-        cache: "no-store",
+      const params = new URLSearchParams({
+        academicYearId,
       });
+
+      if (classId) {
+        params.set("classId", classId);
+      }
+
+      const response = await fetch(
+        `/api/v1/class-subjects?${params.toString()}`,
+        {
+          cache: "no-store",
+        },
+      );
+
       const result = await response.json();
 
       if (!response.ok || !result.success) {
@@ -53,8 +64,11 @@ export default function ClassSubjectsPage() {
       setRows(result.data ?? []);
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : "Unable to load class subjects.",
+        error instanceof Error
+          ? error.message
+          : "Unable to load class subjects.",
       );
+
       setRows([]);
     } finally {
       setLoading(false);
@@ -62,7 +76,10 @@ export default function ClassSubjectsPage() {
   }, [academicYearId, classId]);
 
   useEffect(() => {
-    const timeoutId = window.setTimeout(() => void load(), 0);
+    const timeoutId = window.setTimeout(() => {
+      void load();
+    }, 0);
+
     return () => window.clearTimeout(timeoutId);
   }, [load]);
 
@@ -74,11 +91,19 @@ export default function ClassSubjectsPage() {
 
     try {
       setSaving(true);
+
       const response = await fetch("/api/v1/class-subjects", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ academicYearId, classId, subjectId }),
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          academicYearId,
+          classId,
+          subjectId,
+        }),
       });
+
       const result = await response.json();
 
       if (!response.ok || !result.success) {
@@ -86,10 +111,14 @@ export default function ClassSubjectsPage() {
       }
 
       toast.success(result.message ?? "Subject assigned successfully.");
+
       setSubjectId("");
+
       await load();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Unable to assign subject.");
+      toast.error(
+        error instanceof Error ? error.message : "Unable to assign subject.",
+      );
     } finally {
       setSaving(false);
     }
@@ -100,6 +129,7 @@ export default function ClassSubjectsPage() {
       const response = await fetch(`/api/v1/class-subjects/${id}`, {
         method: "DELETE",
       });
+
       const result = await response.json();
 
       if (!response.ok || !result.success) {
@@ -107,38 +137,79 @@ export default function ClassSubjectsPage() {
       }
 
       toast.success("Subject removed from class.");
+
       await load();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Unable to remove subject.");
+      toast.error(
+        error instanceof Error ? error.message : "Unable to remove subject.",
+      );
     }
   }
+
+  const groupedClasses = useMemo(() => {
+    const map = new Map<
+      string,
+      {
+        classId: string;
+        className: string;
+        subjects: ClassSubjectRow[];
+      }
+    >();
+
+    for (const row of rows) {
+      const existing = map.get(row.classId);
+
+      if (existing) {
+        existing.subjects.push(row);
+      } else {
+        map.set(row.classId, {
+          classId: row.classId,
+          className: row.className,
+          subjects: [row],
+        });
+      }
+    }
+
+    return Array.from(map.values());
+  }, [rows]);
+
+  const totalSubjects = rows.length;
 
   return (
     <div className="space-y-8 pb-12">
       <PageHeader
         eyebrow="School Setup"
         title="Class Subjects"
-        description="Define which subjects are offered for each class in an academic year."
+        description="Define which subjects are taught in each class for an academic year."
       />
 
+      {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
-        <Link href={`/${school.slug}/setup`} className="font-semibold text-primary hover:underline">
+        <Link
+          href={`/${school.slug}/setup`}
+          className="font-semibold text-primary hover:underline"
+        >
           School Setup
         </Link>
+
         <span>/</span>
+
         <span>Class Subjects</span>
       </div>
 
+      {/* Assignment controls */}
       <Card className="premium-card overflow-hidden rounded-2xl border-0">
         <CardHeader className="border-b border-border/60 px-6 py-5">
           <div className="flex items-center gap-3">
             <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
               <BookOpenCheck className="size-5" />
             </div>
+
             <div>
               <CardTitle>Assign Subjects</CardTitle>
+
               <p className="mt-1 text-xs text-muted-foreground">
-                Select an academic year and class, then add the subjects taught to that class.
+                Select a class and assign the subjects taught to it.
               </p>
             </div>
           </div>
@@ -146,6 +217,7 @@ export default function ClassSubjectsPage() {
 
         <CardContent className="p-6">
           <div className="grid gap-5 md:grid-cols-3">
+            {/* Academic Year */}
             <Field label="Academic Year">
               <RemoteCombobox
                 url="/api/v1/academic-years/options"
@@ -159,6 +231,7 @@ export default function ClassSubjectsPage() {
               />
             </Field>
 
+            {/* Class */}
             <Field label="Class">
               <RemoteCombobox
                 url="/api/v1/classes/options"
@@ -172,6 +245,7 @@ export default function ClassSubjectsPage() {
               />
             </Field>
 
+            {/* Subject */}
             <Field label="Subject">
               <RemoteCombobox
                 url="/api/v1/subjects/options"
@@ -190,91 +264,152 @@ export default function ClassSubjectsPage() {
               disabled={saving || !academicYearId || !classId || !subjectId}
               className="rounded-xl"
             >
-              {saving ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}
+              {saving ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Plus className="size-4" />
+              )}
+
               {saving ? "Assigning..." : "Assign Subject"}
             </Button>
           </div>
         </CardContent>
       </Card>
 
+      {/* Class → Subjects */}
       <Card className="premium-card overflow-hidden rounded-2xl border-0">
         <CardHeader className="border-b border-border/60 px-6 py-5">
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <CardTitle>Configured Class Subjects</CardTitle>
+              <CardTitle>Class Subject Structure</CardTitle>
+
               <p className="mt-1 text-xs text-muted-foreground">
                 {academicYearId
-                  ? "Subjects currently assigned for the selected academic year."
-                  : "Select an academic year to view assignments."}
+                  ? "Subjects currently assigned to each class."
+                  : "Select an academic year to view the subject structure."}
               </p>
             </div>
-            <Badge variant={rows.length > 0 ? "success" : "secondary"}>
-              {rows.length} {rows.length === 1 ? "assignment" : "assignments"}
-            </Badge>
+
+            <div className="flex items-center gap-2">
+              <Badge variant={totalSubjects > 0 ? "success" : "secondary"}>
+                {totalSubjects} {totalSubjects === 1 ? "subject" : "subjects"}
+              </Badge>
+
+              <Badge variant="secondary">
+                {groupedClasses.length}{" "}
+                {groupedClasses.length === 1 ? "class" : "classes"}
+              </Badge>
+            </div>
           </div>
         </CardHeader>
 
-        <CardContent className="p-0">
+        <CardContent className="p-6">
           {loading ? (
             <div className="flex min-h-48 items-center justify-center">
               <Loader2 className="size-6 animate-spin text-muted-foreground" />
             </div>
-          ) : rows.length === 0 ? (
-            <div className="flex min-h-48 flex-col items-center justify-center px-6 text-center">
-              <div className="flex size-12 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+          ) : groupedClasses.length === 0 ? (
+            <div className="flex min-h-56 flex-col items-center justify-center rounded-2xl border border-dashed border-border/70 bg-muted/20 px-6 text-center">
+              <div className="flex size-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
                 <BookOpenCheck className="size-5" />
               </div>
-              <p className="mt-3 text-sm font-semibold">No subject assignments</p>
-              <p className="mt-1 max-w-md text-xs text-muted-foreground">
-                Select a class and add the subjects offered to it.
+
+              <p className="mt-4 text-sm font-semibold">
+                No class subjects configured
+              </p>
+
+              <p className="mt-1 max-w-md text-xs leading-5 text-muted-foreground">
+                Select an academic year and class above, then assign the
+                subjects taught to that class.
               </p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="border-b border-border/60 bg-muted/30">
-                  <tr>
-                    <th className="px-5 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Class</th>
-                    <th className="px-5 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Subject</th>
-                    <th className="px-5 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Code</th>
-                    <th className="px-5 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Type</th>
-                    <th className="px-5 py-3 text-right text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((row) => (
-                    <tr key={row.id} className="border-b border-border/40 last:border-0 hover:bg-muted/20">
-                      <td className="px-5 py-4 font-semibold">{row.className}</td>
-                      <td className="px-5 py-4 font-semibold">{row.subjectName}</td>
-                      <td className="px-5 py-4 text-muted-foreground">{row.subjectCode ?? "—"}</td>
-                      <td className="px-5 py-4"><Badge variant="secondary">{row.subjectType}</Badge></td>
-                      <td className="px-5 py-4 text-right">
+            <div className="grid gap-5 lg:grid-cols-2 xl:grid-cols-3">
+              {groupedClasses.map((group) => (
+                <div
+                  key={group.classId}
+                  className="overflow-hidden rounded-2xl border border-border/60 bg-card"
+                >
+                  {/* Class header */}
+                  <div className="flex items-center justify-between border-b border-border/60 bg-muted/30 px-5 py-4">
+                    <div>
+                      <p className="text-base font-bold tracking-tight">
+                        {group.className}
+                      </p>
+
+                      <p className="mt-0.5 text-[11px] text-muted-foreground">
+                        Subjects offered
+                      </p>
+                    </div>
+
+                    <Badge variant="secondary">{group.subjects.length}</Badge>
+                  </div>
+
+                  {/* Subjects */}
+                  <div className="divide-y divide-border/40">
+                    {group.subjects.map((row) => (
+                      <div
+                        key={row.id}
+                        className="group flex items-center justify-between gap-3 px-5 py-3.5 transition-colors hover:bg-muted/20"
+                      >
+                        <div className="flex min-w-0 items-center gap-3">
+                          <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                            <BookOpenCheck className="size-4" />
+                          </div>
+
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-semibold">
+                              {row.subjectName}
+                            </p>
+
+                            <div className="mt-0.5 flex items-center gap-2">
+                              {row.subjectCode && (
+                                <span className="text-[10px] text-muted-foreground">
+                                  {row.subjectCode}
+                                </span>
+                              )}
+
+                              <Badge
+                                variant="secondary"
+                                className="px-1.5 py-0 text-[9px]"
+                              >
+                                {row.subjectType}
+                              </Badge>
+                            </div>
+                          </div>
+                        </div>
+
                         <Button
                           type="button"
-                          size="sm"
+                          size="icon"
                           variant="ghost"
                           onClick={() => void removeSubject(row.id)}
-                          className="text-destructive hover:text-destructive"
+                          className="size-8 shrink-0 text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
+                          title="Remove subject"
                         >
                           <Trash2 className="size-4" />
-                          Remove
                         </Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </CardContent>
       </Card>
 
+      {/* Information */}
       <div className="flex items-start gap-3 rounded-2xl border border-primary/15 bg-primary/[0.03] p-5">
         <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-primary" />
+
         <div>
-          <p className="text-sm font-semibold">Why this mapping matters</p>
+          <p className="text-sm font-semibold">Class subject mapping</p>
+
           <p className="mt-1 text-xs leading-5 text-muted-foreground">
-            Teacher allocations, attendance, examinations and timetables can now be validated against the subjects actually offered to each class.
+            These mappings define the subjects available for each class in the
+            selected academic year. Teacher allocations, examinations,
+            attendance and timetables can use this structure for validation.
           </p>
         </div>
       </div>
@@ -292,6 +427,7 @@ function Field({
   return (
     <label className="space-y-2">
       <span className="text-xs font-semibold">{label}</span>
+
       {children}
     </label>
   );
