@@ -81,7 +81,7 @@ export function useSectionTable() {
   }, [page, pageSize, debouncedSearch, reloadVersion]);
 
   useEffect(() => {
-      return subscribeTableRefresh("teachers", reload);
+      return subscribeTableRefresh("sections", reload);
     }, [reload]);
 
   return {

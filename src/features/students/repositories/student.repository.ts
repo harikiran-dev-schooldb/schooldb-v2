@@ -16,89 +16,42 @@ export const studentRepository = {
   ) {
     return prisma.student.findMany({
       where,
-
       include: {
         enrollments: {
+          where: { active: true },
           select: {
-            class: {
-              select: {
-                name: true,
-              },
-            },
-
-            section: {
-              select: {
-                name: true,
-              },
-            },
+            academicYear: { select: { name: true, startDate: true } },
+            class: { select: { name: true } },
+            section: { select: { name: true } },
           },
-
-          orderBy: {
-            academicYear: {
-              startDate: "desc",
-            },
-          },
-
+          orderBy: { academicYear: { startDate: "desc" } },
           take: 1,
         },
       },
-
       skip: options?.skip,
       take: options?.take,
-
-      orderBy:
-        options?.orderBy ?? {
-          createdAt: "desc",
-        },
+      orderBy: options?.orderBy ?? { createdAt: "desc" },
     });
   },
 
-  count(
-    where: Prisma.StudentWhereInput,
-  ) {
-    return prisma.student.count({
-      where,
-    });
+  count(where: Prisma.StudentWhereInput) {
+    return prisma.student.count({ where });
   },
 
-  findByAdmissionNo(
-    schoolId: string,
-    admissionNo: string,
-  ) {
-    return prisma.student.findFirst({
-      where: {
-        schoolId,
-        admissionNo,
-      },
-    });
+  findByAdmissionNo(schoolId: string, admissionNo: string) {
+    return prisma.student.findFirst({ where: { schoolId, admissionNo } });
   },
 
-  findById(
-    id: string,
-    schoolId: string,
-  ) {
-    return prisma.student.findFirst({
-      where: {
-        id,
-        schoolId,
-      },
-    });
+  findById(id: string, schoolId: string) {
+    return prisma.student.findFirst({ where: { id, schoolId } });
   },
 
-  findFirst(
-    where: Prisma.StudentWhereInput,
-  ) {
-    return prisma.student.findFirst({
-      where,
-    });
+  findFirst(where: Prisma.StudentWhereInput) {
+    return prisma.student.findFirst({ where });
   },
 
-  create(
-    data: Prisma.StudentCreateInput,
-  ) {
-    return prisma.student.create({
-      data,
-    });
+  create(data: Prisma.StudentCreateInput) {
+    return prisma.student.create({ data });
   },
 
   update(
@@ -106,14 +59,7 @@ export const studentRepository = {
     schoolId: string,
     data: Prisma.StudentUpdateInput,
   ) {
-    return prisma.student.update({
-      where: {
-        id,
-        schoolId,
-      },
-
-      data,
-    });
+    return prisma.student.update({ where: { id, schoolId }, data });
   },
 
   changeStatus(
@@ -123,11 +69,7 @@ export const studentRepository = {
     remarks?: string,
   ) {
     return prisma.student.update({
-      where: {
-        id,
-        schoolId,
-      },
-
+      where: { id, schoolId },
       data: {
         status,
         statusRemarks: remarks,
@@ -136,37 +78,17 @@ export const studentRepository = {
     });
   },
 
-  options(
-    schoolId: string,
-  ) {
+  options(schoolId: string) {
     return prisma.student.findMany({
-      where: {
-        schoolId,
-        status: "ACTIVE",
-      },
-
-      select: {
-        id: true,
-        admissionNo: true,
-        fullName: true,
-      },
-
-      orderBy: {
-        fullName: "asc",
-      },
+      where: { schoolId, status: "ACTIVE" },
+      select: { id: true, admissionNo: true, fullName: true },
+      orderBy: { fullName: "asc" },
     });
   },
 
-  profile(
-    id: string,
-    schoolId: string,
-  ) {
+  profile(id: string, schoolId: string) {
     return prisma.student.findFirst({
-      where: {
-        id,
-        schoolId,
-      },
-
+      where: { id, schoolId },
       include: {
         enrollments: {
           include: {
@@ -174,12 +96,7 @@ export const studentRepository = {
             class: true,
             section: true,
           },
-
-          orderBy: {
-            academicYear: {
-              startDate: "desc",
-            },
-          },
+          orderBy: { academicYear: { startDate: "desc" } },
         },
       },
     });

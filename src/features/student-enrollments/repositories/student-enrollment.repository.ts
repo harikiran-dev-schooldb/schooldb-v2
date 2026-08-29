@@ -10,51 +10,38 @@ export const studentEnrollmentRepository = {
     },
   ) {
     return prisma.studentEnrollment.findMany({
-      where,
-
+      where: {
+        ...where,
+        active: true,
+      },
       include: {
         student: true,
         academicYear: true,
         class: true,
         section: true,
       },
-
       skip: options?.skip,
       take: options?.take,
-
       orderBy: [
-        {
-          academicYear: {
-            startDate: "desc",
-          },
-        },
-        {
-          class: {
-            displayOrder: "asc",
-          },
-        },
-        {
-          section: {
-            displayOrder: "asc",
-          },
-        },
+        { academicYear: { startDate: "desc" } },
+        { class: { displayOrder: "asc" } },
+        { section: { displayOrder: "asc" } },
       ],
     });
   },
 
   count(where: Prisma.StudentEnrollmentWhereInput) {
     return prisma.studentEnrollment.count({
-      where,
+      where: {
+        ...where,
+        active: true,
+      },
     });
   },
 
   findById(id: string, schoolId: string) {
     return prisma.studentEnrollment.findFirst({
-      where: {
-        id,
-        schoolId,
-      },
-
+      where: { id, schoolId },
       include: {
         student: true,
         academicYear: true,
@@ -67,7 +54,6 @@ export const studentEnrollmentRepository = {
   create(data: Prisma.StudentEnrollmentCreateInput) {
     return prisma.studentEnrollment.create({
       data,
-
       include: {
         student: true,
         academicYear: true,
@@ -83,13 +69,8 @@ export const studentEnrollmentRepository = {
     data: Prisma.StudentEnrollmentUpdateInput,
   ) {
     return prisma.studentEnrollment.update({
-      where: {
-        id,
-        schoolId,
-      },
-
+      where: { id, schoolId },
       data,
-
       include: {
         student: true,
         academicYear: true,
@@ -100,57 +81,39 @@ export const studentEnrollmentRepository = {
   },
 
   findFirst(where: Prisma.StudentEnrollmentWhereInput) {
-    return prisma.studentEnrollment.findFirst({
-      where,
-    });
+    return prisma.studentEnrollment.findFirst({ where });
   },
 
   options(
-  schoolId: string,
-  filters?: {
-    academicYearId?: string;
-    classId?: string;
-    sectionId?: string;
+    schoolId: string,
+    filters?: {
+      academicYearId?: string;
+      classId?: string;
+      sectionId?: string;
+    },
+  ) {
+    return prisma.studentEnrollment.findMany({
+      where: {
+        schoolId,
+        active: true,
+        ...(filters?.academicYearId && {
+          academicYearId: filters.academicYearId,
+        }),
+        ...(filters?.classId && { classId: filters.classId }),
+        ...(filters?.sectionId && { sectionId: filters.sectionId }),
+      },
+      include: {
+        student: true,
+        class: true,
+        section: true,
+        academicYear: true,
+      },
+      orderBy: [
+        { rollNo: "asc" },
+        { student: { fullName: "asc" } },
+      ],
+    });
   },
-) {
-  return prisma.studentEnrollment.findMany({
-    where: {
-      schoolId,
-      active: true,
-
-      ...(filters?.academicYearId && {
-        academicYearId:
-          filters.academicYearId,
-      }),
-
-      ...(filters?.classId && {
-        classId: filters.classId,
-      }),
-
-      ...(filters?.sectionId && {
-        sectionId: filters.sectionId,
-      }),
-    },
-
-    include: {
-      student: true,
-      class: true,
-      section: true,
-      academicYear: true,
-    },
-
-    orderBy: [
-      {
-        rollNo: "asc",
-      },
-      {
-        student: {
-          fullName: "asc",
-        },
-      },
-    ],
-  });
-},
 
   getAttendanceStudents(
     schoolId: string,
@@ -166,18 +129,12 @@ export const studentEnrollmentRepository = {
         sectionId,
         active: true,
       },
-
-      include: {
-        student: true,
-      },
-
-      orderBy: {
-        rollNo: "asc",
-      },
+      include: { student: true },
+      orderBy: { rollNo: "asc" },
     });
   },
 
-    async promoteMany(
+  async promoteMany(
     schoolId: string,
     input: {
       studentIds: string[];
@@ -190,112 +147,50 @@ export const studentEnrollmentRepository = {
     },
   ) {
     return prisma.$transaction(async (tx) => {
-      /*
-       * --------------------------------------------------------------
-       * Find source enrollments
-       * --------------------------------------------------------------
-       */
+      const sourceEnrollments = await tx.studentEnrollment.findMany({
+        where: {
+          schoolId,
+          studentId: { in: input.studentIds },
+          academicYearId: input.sourceAcademicYearId,
+          classId: input.sourceClassId,
+          sectionId: input.sourceSectionId,
+          active: true,
+        },
+        include: {
+          student: true,
+          academicYear: true,
+          class: true,
+          section: true,
+        },
+        orderBy: { rollNo: "asc" },
+      });
 
-      const sourceEnrollments =
-        await tx.studentEnrollment.findMany({
-          where: {
-            schoolId,
+      const existingTarget = await tx.studentEnrollment.findMany({
+        where: {
+          schoolId,
+          academicYearId: input.targetAcademicYearId,
+          studentId: { in: input.studentIds },
+        },
+        select: { studentId: true },
+      });
 
-            studentId: {
-              in: input.studentIds,
-            },
+      const existingStudentIds = new Set(
+        existingTarget.map((item) => item.studentId),
+      );
 
-            academicYearId:
-              input.sourceAcademicYearId,
+      const highestRoll = await tx.studentEnrollment.findFirst({
+        where: {
+          schoolId,
+          academicYearId: input.targetAcademicYearId,
+          classId: input.targetClassId,
+          sectionId: input.targetSectionId,
+          rollNo: { not: null },
+        },
+        orderBy: { rollNo: "desc" },
+        select: { rollNo: true },
+      });
 
-            classId:
-              input.sourceClassId,
-
-            sectionId:
-              input.sourceSectionId,
-
-            active: true,
-          },
-
-          include: {
-            student: true,
-            academicYear: true,
-            class: true,
-            section: true,
-          },
-
-          orderBy: {
-            rollNo: "asc",
-          },
-        });
-
-      /*
-       * --------------------------------------------------------------
-       * Existing target enrollments
-       * --------------------------------------------------------------
-       */
-
-      const existingTarget =
-        await tx.studentEnrollment.findMany({
-          where: {
-            schoolId,
-
-            academicYearId:
-              input.targetAcademicYearId,
-
-            studentId: {
-              in: input.studentIds,
-            },
-          },
-
-          select: {
-            studentId: true,
-          },
-        });
-
-      const existingStudentIds =
-        new Set(
-          existingTarget.map(
-            (item) => item.studentId,
-          ),
-        );
-
-      /*
-       * --------------------------------------------------------------
-       * Find current highest roll number
-       * --------------------------------------------------------------
-       */
-
-      const highestRoll =
-        await tx.studentEnrollment.findFirst({
-          where: {
-            schoolId,
-
-            academicYearId:
-              input.targetAcademicYearId,
-
-            classId:
-              input.targetClassId,
-
-            sectionId:
-              input.targetSectionId,
-
-            rollNo: {
-              not: null,
-            },
-          },
-
-          orderBy: {
-            rollNo: "desc",
-          },
-
-          select: {
-            rollNo: true,
-          },
-        });
-
-      let nextRollNo =
-        (highestRoll?.rollNo ?? 0) + 1;
+      let nextRollNo = (highestRoll?.rollNo ?? 0) + 1;
 
       const created = [];
       const skipped: Array<{
@@ -305,101 +200,58 @@ export const studentEnrollmentRepository = {
         reason: string;
       }> = [];
 
-      /*
-       * --------------------------------------------------------------
-       * Promote students
-       * --------------------------------------------------------------
-       */
+      const promotedSourceIds: string[] = [];
 
       for (const source of sourceEnrollments) {
-        if (
-          existingStudentIds.has(
-            source.studentId,
-          )
-        ) {
+        if (existingStudentIds.has(source.studentId)) {
           skipped.push({
-            studentId:
-              source.studentId,
-
-            admissionNo:
-              source.student.admissionNo,
-
-            fullName:
-              source.student.fullName,
-
+            studentId: source.studentId,
+            admissionNo: source.student.admissionNo,
+            fullName: source.student.fullName,
             reason:
               "Student is already enrolled in the target academic year.",
           });
-
           continue;
         }
 
-        const target =
-          await tx.studentEnrollment.create({
-            data: {
-              school: {
-                connect: {
-                  id: schoolId,
-                },
-              },
-
-              student: {
-                connect: {
-                  id: source.studentId,
-                },
-              },
-
-              academicYear: {
-                connect: {
-                  id: input.targetAcademicYearId,
-                },
-              },
-
-              class: {
-                connect: {
-                  id: input.targetClassId,
-                },
-              },
-
-              section: {
-                connect: {
-                  id: input.targetSectionId,
-                },
-              },
-
-              rollNo: nextRollNo,
-
-              admissionDate:
-                source.admissionDate,
-
-              active: true,
-
-              promotedFrom: {
-                connect: {
-                  id: source.id,
-                },
-              },
+        const target = await tx.studentEnrollment.create({
+          data: {
+            school: { connect: { id: schoolId } },
+            student: { connect: { id: source.studentId } },
+            academicYear: {
+              connect: { id: input.targetAcademicYearId },
             },
-
-            include: {
-              student: true,
-              academicYear: true,
-              class: true,
-              section: true,
-            },
-          });
+            class: { connect: { id: input.targetClassId } },
+            section: { connect: { id: input.targetSectionId } },
+            rollNo: nextRollNo,
+            admissionDate: source.admissionDate,
+            active: true,
+            promotedFrom: { connect: { id: source.id } },
+          },
+          include: {
+            student: true,
+            academicYear: true,
+            class: true,
+            section: true,
+          },
+        });
 
         created.push(target);
-
+        promotedSourceIds.push(source.id);
         nextRollNo += 1;
+        existingStudentIds.add(source.studentId);
+      }
 
-        /*
-         * Prevent duplicate processing inside
-         * the same request.
-         */
-        existingStudentIds.add(
-          source.studentId,
-        );
+      if (promotedSourceIds.length > 0) {
+        await tx.studentEnrollment.updateMany({
+          where: {
+            schoolId,
+            id: { in: promotedSourceIds },
+          },
+          data: {
+            active: false,
+          },
+        });
       }
 
       return {

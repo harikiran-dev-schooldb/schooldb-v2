@@ -130,11 +130,10 @@ export function StudentEnrollmentForm({
       shouldValidate: true,
     });
 
-    // Section belongs to the selected class.
-    // Clear the old section immediately when the class changes.
+    // Clear the previous section without validating it yet.
     form.setValue("sectionId", "", {
       shouldDirty: true,
-      shouldValidate: true,
+      shouldValidate: false,
     });
   }
 
@@ -243,17 +242,18 @@ export function StudentEnrollmentForm({
         required
         error={form.formState.errors.sectionId?.message}
       >
-        <RemoteCombobox
-          url={
-            classId
-              ? `/api/v1/sections/options?classId=${classId}`
-              : "/api/v1/sections/options"
-          }
-          value={sectionId ?? ""}
-          placeholder="Select Section"
-          disabled={!classId}
-          onChange={handleSectionChange}
-        />
+        {classId ? (
+          <RemoteCombobox
+            url={`/api/v1/sections/options?classId=${encodeURIComponent(classId)}`}
+            value={sectionId ?? ""}
+            placeholder="Select Section"
+            onChange={handleSectionChange}
+          />
+        ) : (
+          <div className="flex h-10 w-full items-center rounded-xl border border-border bg-muted/30 px-3 text-sm text-muted-foreground">
+            Select a class first
+          </div>
+        )}
       </FormField>
 
       <FormField label="Roll No" error={form.formState.errors.rollNo?.message}>
