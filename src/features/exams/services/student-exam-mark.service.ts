@@ -4,11 +4,8 @@ import { prisma } from "@/lib/prisma";
 
 type MarkInput = {
   studentEnrollmentId: string;
-
   marksObtained?: number | null;
-
   status?: StudentExamStatus;
-
   remarks?: string | null;
 };
 
@@ -20,6 +17,7 @@ export const studentExamMarkService = {
   async listForSchedule(
     scheduleId: string,
     schoolId: string,
+    sectionId: string,
   ) {
     const schedule = await prisma.examSchedule.findFirst({
       where: {
@@ -29,9 +27,7 @@ export const studentExamMarkService = {
 
       include: {
         class: true,
-
         section: true,
-
         subject: true,
 
         exam: {
@@ -46,18 +42,33 @@ export const studentExamMarkService = {
       throw new Error("Exam schedule not found.");
     }
 
+    /*
+     * If the schedule is specifically assigned to a section,
+     * the requested section must match that section.
+     *
+     * If schedule.sectionId is null, the schedule applies
+     * to all sections of the class.
+     */
+    if (schedule.sectionId && schedule.sectionId !== sectionId) {
+      throw new Error(
+        "Selected section does not match this exam schedule.",
+      );
+    }
+
+    /*
+     * IMPORTANT:
+     *
+     * Marks entry is section-wise even when the exam schedule
+     * is class-wise.
+     *
+     * Therefore always filter students by the requested sectionId.
+     */
     const enrollments = await prisma.studentEnrollment.findMany({
       where: {
         schoolId,
         active: true,
-
         classId: schedule.classId,
-
-        ...(schedule.sectionId
-          ? {
-              sectionId: schedule.sectionId,
-            }
-          : {}),
+        sectionId,
       },
 
       include: {
@@ -84,9 +95,7 @@ export const studentExamMarkService = {
       },
 
       orderBy: {
-        student: {
-          fullName: "asc",
-        },
+        rollNo: "asc"
       },
     });
 
@@ -137,6 +146,8 @@ export const studentExamMarkService = {
             fullName: enrollment.student.fullName,
           },
 
+          rollNo: enrollment.rollNo,
+
           mark: mark
             ? {
                 id: mark.id,
@@ -147,7 +158,7 @@ export const studentExamMarkService = {
             : {
                 id: null,
                 marksObtained: null,
-                status: "PRESENT" as StudentExamStatus,
+                status: StudentExamStatus.PRESENT,
                 remarks: null,
               },
         };
@@ -162,6 +173,7 @@ export const studentExamMarkService = {
   async saveBulk(
     scheduleId: string,
     schoolId: string,
+    sectionId: string,
     marks: MarkInput[],
   ) {
     const schedule = await prisma.examSchedule.findFirst({
@@ -182,6 +194,23 @@ export const studentExamMarkService = {
       throw new Error("Exam schedule not found.");
     }
 
+    if (!sectionId) {
+      throw new Error("Section is required for saving marks.");
+    }
+
+    /*
+     * If the exam schedule is section-specific,
+     * the selected section must match it.
+     *
+     * If schedule.sectionId is null, the schedule
+     * applies to all sections.
+     */
+    if (schedule.sectionId && schedule.sectionId !== sectionId) {
+      throw new Error(
+        "Selected section does not match this exam schedule.",
+      );
+    }
+
     if (!Array.isArray(marks) || marks.length === 0) {
       throw new Error("No student marks provided.");
     }
@@ -196,6 +225,19 @@ export const studentExamMarkService = {
       throw new Error("Duplicate students found in marks data.");
     }
 
+    /*
+     * IMPORTANT:
+     *
+     * Always validate submitted students against:
+     *
+     *   school
+     *   class
+     *   selected section
+     *   active enrollment
+     *
+     * This prevents marks from being saved for students
+     * belonging to another section.
+     */
     const enrollments = await prisma.studentEnrollment.findMany({
       where: {
         id: {
@@ -203,15 +245,9 @@ export const studentExamMarkService = {
         },
 
         schoolId,
-        active:true,
-
+        active: true,
         classId: schedule.classId,
-
-        ...(schedule.sectionId
-          ? {
-              sectionId: schedule.sectionId,
-            }
-          : {}),
+        sectionId,
       },
 
       select: {
@@ -221,7 +257,7 @@ export const studentExamMarkService = {
 
     if (enrollments.length !== enrollmentIds.length) {
       throw new Error(
-        "One or more students do not belong to this exam schedule.",
+        "One or more students do not belong to the selected class and section.",
       );
     }
 
@@ -229,32 +265,37 @@ export const studentExamMarkService = {
 
     const operations = marks.map((input) => {
       const status =
-  input.status ?? StudentExamStatus.PRESENT;
+        input.status ?? StudentExamStatus.PRESENT;
 
-let marksObtained: number | null = null;
+      let marksObtained: number | null = null;
 
-if (status === StudentExamStatus.PRESENT) {
-  if (
-    input.marksObtained !== undefined &&
-    input.marksObtained !== null
-  ) {
-    marksObtained = Number(input.marksObtained);
+      /*
+       * Absent students do not receive marks.
+       */
+      if (status === StudentExamStatus.PRESENT) {
+        if (
+          input.marksObtained !== undefined &&
+          input.marksObtained !== null
+        ) {
+          marksObtained = Number(input.marksObtained);
 
-    if (!Number.isFinite(marksObtained)) {
-      throw new Error("Invalid marks value.");
-    }
+          if (!Number.isFinite(marksObtained)) {
+            throw new Error("Invalid marks value.");
+          }
 
-    if (marksObtained < 0) {
-      throw new Error("Marks cannot be less than zero.");
-    }
+          if (marksObtained < 0) {
+            throw new Error(
+              "Marks cannot be less than zero.",
+            );
+          }
 
-    if (marksObtained > maxMarks) {
-      throw new Error(
-        `Marks cannot be greater than maximum marks (${maxMarks}).`,
-      );
-    }
-  }
-}
+          if (marksObtained > maxMarks) {
+            throw new Error(
+              `Marks cannot be greater than maximum marks (${maxMarks}).`,
+            );
+          }
+        }
+      }
 
       return prisma.studentExamMark.upsert({
         where: {
@@ -266,23 +307,16 @@ if (status === StudentExamStatus.PRESENT) {
 
         create: {
           schoolId,
-
           examScheduleId: scheduleId,
-
           studentEnrollmentId: input.studentEnrollmentId,
-
           marksObtained,
-
           status,
-
           remarks: input.remarks || null,
         },
 
         update: {
           marksObtained,
-
           status,
-
           remarks: input.remarks || null,
         },
       });

@@ -20,7 +20,7 @@ import { RemoteCombobox } from "@/components/common/combobox/RemoteCombobox";
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-
+  academicYearId: string;
   examId: string;
   schoolSlug: string;
 
@@ -42,6 +42,7 @@ export function CreateExamScheduleDialog({
   examId,
   startDate,
   endDate,
+  academicYearId,
   onSuccess,
 }: Props) {
   const [classId, setClassId] = useState("");
@@ -91,6 +92,7 @@ export function CreateExamScheduleDialog({
   function handleClassChange(value: string) {
     setClassId(value);
     setSectionId("");
+    setSubjectId("");
   }
 
   /* ---------------------------------------------------------------------- */
@@ -260,11 +262,18 @@ export function CreateExamScheduleDialog({
             <label className="text-sm font-medium">Subject</label>
 
             <RemoteCombobox
-              url="/api/v1/subjects/options"
+              key={`${academicYearId}-${classId}`}
+              url={
+                academicYearId && classId
+                  ? `/api/v1/class-subjects/options?academicYearId=${encodeURIComponent(
+                      academicYearId,
+                    )}&classId=${encodeURIComponent(classId)}`
+                  : "/api/v1/class-subjects/options"
+              }
               value={subjectId}
               onChange={setSubjectId}
-              disabled={saving}
-              placeholder="Select Subject"
+              disabled={saving || !academicYearId || !classId}
+              placeholder={classId ? "Select Subject" : "Select Class first"}
             />
           </div>
 

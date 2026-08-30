@@ -85,19 +85,21 @@ export function PaymentHistoryFilters({
     Boolean(toDate);
 
   return (
-    <Card className="overflow-hidden border-border/60 shadow-sm">
-      {/* Header */}
+    <Card className="premium-card overflow-hidden rounded-2xl border-0">
+      {/* ================================================================ */}
+      {/* FILTER HEADER                                                    */}
+      {/* ================================================================ */}
 
-      <div className="flex flex-col gap-3 border-b bg-muted/20 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+      <div className="flex flex-col gap-3 border-b border-border/60 bg-muted/20 px-5 py-4 sm:flex-row sm:items-center sm:justify-between md:px-6">
         <div className="flex items-center gap-3">
-          <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10">
             <Filter className="size-4 text-primary" />
           </div>
 
           <div>
-            <h2 className="font-semibold">Search & Filters</h2>
+            <p className="text-sm font-bold tracking-tight">Search & Filters</p>
 
-            <p className="mt-0.5 text-sm text-muted-foreground">
+            <p className="mt-0.5 text-xs text-muted-foreground">
               Find payments by student, receipt, mode, or date.
             </p>
           </div>
@@ -107,40 +109,43 @@ export function PaymentHistoryFilters({
           <Button
             variant="ghost"
             size="sm"
-            className="w-fit rounded-lg text-muted-foreground"
             onClick={onClear}
             disabled={loading}
+            className="w-fit rounded-xl text-xs text-muted-foreground hover:bg-background hover:text-foreground"
           >
-            <RotateCcw className="mr-2 size-4" />
+            <RotateCcw className="mr-2 size-3.5" />
             Clear filters
           </Button>
         )}
       </div>
 
-      <CardContent className="p-5 sm:p-6">
-        <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-6">
-          {/* Search */}
+      {/* ================================================================ */}
+      {/* FILTER CONTROLS                                                  */}
+      {/* ================================================================ */}
 
+      <CardContent className="p-5 md:p-6">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
+          {/* Search */}
           <div className="relative xl:col-span-2">
-            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
 
             <Input
               value={search}
               onChange={(event) => onSearchChange(event.target.value)}
               onKeyDown={(event) => {
                 if (event.key === "Enter") {
+                  event.preventDefault();
                   onSearch();
                 }
               }}
               placeholder="Student, admission no. or receipt..."
-              className="h-11 rounded-xl pl-10"
+              className="h-10 rounded-xl border-border/70 bg-background shadow-none pl-10"
             />
           </div>
 
           {/* Payment Mode */}
-
           <div className="relative">
-            <CreditCard className="pointer-events-none absolute left-3 top-1/2 z-10 size-4 -translate-y-1/2 text-muted-foreground" />
+            <CreditCard className="pointer-events-none absolute left-3.5 top-1/2 z-10 size-4 -translate-y-1/2 text-muted-foreground" />
 
             <Select
               value={paymentMode || "ALL"}
@@ -148,7 +153,7 @@ export function PaymentHistoryFilters({
                 onPaymentModeChange(value === "ALL" ? "" : value)
               }
             >
-              <SelectTrigger className="h-11 rounded-xl pl-10">
+              <SelectTrigger className="h-10 rounded-xl border-border/70 bg-background pl-10 shadow-none">
                 <SelectValue placeholder="Payment Mode" />
               </SelectTrigger>
 
@@ -165,37 +170,36 @@ export function PaymentHistoryFilters({
           </div>
 
           {/* From Date */}
-
           <div className="relative">
-            <CalendarDays className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <CalendarDays className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
 
             <Input
               type="date"
               value={fromDate}
               onChange={(event) => onFromDateChange(event.target.value)}
-              className="h-11 rounded-xl pl-10"
+              className="h-10 rounded-xl border-border/70 bg-background pl-10 shadow-none"
+              aria-label="From date"
             />
           </div>
 
           {/* To Date */}
-
           <div className="relative">
-            <CalendarDays className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <CalendarDays className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
 
             <Input
               type="date"
               value={toDate}
               onChange={(event) => onToDateChange(event.target.value)}
-              className="h-11 rounded-xl pl-10"
+              className="h-10 rounded-xl border-border/70 bg-background pl-10 shadow-none"
+              aria-label="To date"
             />
           </div>
 
-          {/* Search Button */}
-
+          {/* Search */}
           <Button
             onClick={onSearch}
             disabled={loading}
-            className="h-11 rounded-xl"
+            className="h-10 rounded-xl px-5"
           >
             {loading ? (
               <>
@@ -211,19 +215,14 @@ export function PaymentHistoryFilters({
           </Button>
         </div>
 
-        {/* Mobile / additional clear action */}
-
+        {/* Active filter indicator */}
         {hasActiveFilters && (
-          <div className="mt-4 border-t pt-4 sm:hidden">
-            <Button
-              variant="outline"
-              className="w-full rounded-xl"
-              onClick={onClear}
-              disabled={loading}
-            >
-              <RotateCcw className="mr-2 size-4" />
-              Clear All Filters
-            </Button>
+          <div className="mt-5 flex items-center gap-2 border-t border-border/60 pt-4">
+            <span className="size-1.5 rounded-full bg-primary" />
+
+            <p className="text-xs text-muted-foreground">
+              Filters are active. Search results reflect your selected criteria.
+            </p>
           </div>
         )}
       </CardContent>

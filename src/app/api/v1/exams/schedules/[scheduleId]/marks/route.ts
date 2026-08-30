@@ -15,7 +15,7 @@ type Params = Promise<{
 /* -------------------------------------------------------------------------- */
 
 export async function GET(
-  _req: Request,
+  req: Request,
   { params }: { params: Params },
 ) {
   return apiHandler(async () => {
@@ -23,9 +23,20 @@ export async function GET(
 
     const { scheduleId } = await params;
 
+    const { searchParams } = new URL(req.url);
+    const sectionId = searchParams.get("sectionId");
+
+    if (!sectionId) {
+      return ApiResponse.error(
+        "Section is required for marks entry.",
+        400,
+      );
+    }
+
     const data = await studentExamMarkService.listForSchedule(
       scheduleId,
       tenant.schoolId,
+      sectionId,
     );
 
     return ApiResponse.success(data);
@@ -44,6 +55,16 @@ export async function PUT(
     const tenant = await requireTenant();
 
     const { scheduleId } = await params;
+
+    const { searchParams } = new URL(req.url);
+const sectionId = searchParams.get("sectionId");
+
+if (!sectionId) {
+  return ApiResponse.error(
+    "Section is required for saving marks.",
+    400,
+  );
+}
 
     const body = await req.json();
 
@@ -105,28 +126,31 @@ export async function PUT(
     }
 
     const result = await studentExamMarkService.saveBulk(
-      scheduleId,
-      tenant.schoolId,
-      body.marks.map((mark: {
-        studentEnrollmentId: string;
-        marksObtained?: number | string | null;
-        status?: StudentExamStatus;
-        remarks?: string | null;
-      }) => ({
-        studentEnrollmentId: mark.studentEnrollmentId,
+  scheduleId,
+  tenant.schoolId,
+  sectionId,
+  body.marks.map(
+    (mark: {
+      studentEnrollmentId: string;
+      marksObtained?: number | string | null;
+      status?: StudentExamStatus;
+      remarks?: string | null;
+    }) => ({
+      studentEnrollmentId: mark.studentEnrollmentId,
 
-        marksObtained:
-          mark.marksObtained !== undefined &&
-          mark.marksObtained !== null &&
-          mark.marksObtained !== ""
-            ? Number(mark.marksObtained)
-            : null,
+      marksObtained:
+        mark.marksObtained !== undefined &&
+        mark.marksObtained !== null &&
+        mark.marksObtained !== ""
+          ? Number(mark.marksObtained)
+          : null,
 
-        status: mark.status ?? StudentExamStatus.PRESENT,
+      status: mark.status ?? StudentExamStatus.PRESENT,
 
-        remarks: mark.remarks || null,
-      })),
-    );
+      remarks: mark.remarks || null,
+    }),
+  ),
+);
 
     return ApiResponse.success(
       result,

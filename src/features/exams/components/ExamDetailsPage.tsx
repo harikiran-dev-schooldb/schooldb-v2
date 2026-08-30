@@ -794,6 +794,7 @@ export function ExamDetailsPage({ schoolSlug, examId }: Props) {
       {/* -------------------------------------------------------------- */}
 
       <CreateExamScheduleDialog
+        academicYearId={exam.academicYear.id}
         open={scheduleOpen}
         onOpenChange={setScheduleOpen}
         examId={examId}

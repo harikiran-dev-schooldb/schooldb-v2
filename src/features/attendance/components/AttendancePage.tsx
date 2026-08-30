@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -14,6 +15,7 @@ import {
   CheckCircle2,
   Clock3,
   Loader2,
+  Sparkles,
   Sun,
   Sunrise,
   UserCheck,
@@ -43,6 +45,10 @@ type Props = {
   schoolSlug: string;
 };
 
+/* ==========================================================================
+   HELPERS
+   ========================================================================== */
+
 function getTodayWeekDay(): string {
   const days = [
     "SUNDAY",
@@ -70,13 +76,15 @@ function getModeLabel(mode: AttendanceMode) {
   }
 }
 
+/* ==========================================================================
+   PAGE
+   ========================================================================== */
+
 export function AttendancePage({ schoolSlug }: Props) {
   const router = useRouter();
 
   const [academicYearId, setAcademicYearId] = useState("");
-
   const [classId, setClassId] = useState("");
-
   const [sectionId, setSectionId] = useState("");
 
   const [academicYears, setAcademicYears] = useState<AcademicYearOption[]>([]);
@@ -87,11 +95,9 @@ export function AttendancePage({ schoolSlug }: Props) {
 
   const [timetableLoading, setTimetableLoading] = useState(false);
 
-  /*
-   * ------------------------------------------------------------------------
-   * LOAD ACADEMIC YEARS
-   * ------------------------------------------------------------------------
-   */
+  /* ==========================================================================
+     LOAD ACADEMIC YEARS
+     ========================================================================== */
 
   useEffect(() => {
     const controller = new AbortController();
@@ -138,11 +144,19 @@ export function AttendancePage({ schoolSlug }: Props) {
     };
   }, []);
 
+  /* ==========================================================================
+     SELECTED ACADEMIC YEAR
+     ========================================================================== */
+
   const selectedAcademicYear = academicYears.find(
     (year) => year.id === academicYearId,
   );
 
   const attendanceMode = selectedAcademicYear?.attendanceMode ?? "ONCE_DAILY";
+
+  /* ==========================================================================
+     TIMETABLE CONDITION
+     ========================================================================== */
 
   const canLoadTimetable =
     attendanceMode === "EVERY_PERIOD" &&
@@ -150,22 +164,18 @@ export function AttendancePage({ schoolSlug }: Props) {
     Boolean(classId) &&
     Boolean(sectionId);
 
-  /*
-   * ------------------------------------------------------------------------
-   * CLASS CHANGE
-   * ------------------------------------------------------------------------
-   */
+  /* ==========================================================================
+     CLASS CHANGE
+     ========================================================================== */
 
   function changeClass(value: string) {
     setClassId(value);
     setSectionId("");
   }
 
-  /*
-   * ------------------------------------------------------------------------
-   * CREATE SESSION
-   * ------------------------------------------------------------------------
-   */
+  /* ==========================================================================
+     CREATE ATTENDANCE SESSION
+     ========================================================================== */
 
   async function createSession(
     sessionType: "DAILY" | "MORNING" | "AFTERNOON" | "PERIOD",
@@ -224,25 +234,9 @@ export function AttendancePage({ schoolSlug }: Props) {
     }
   }
 
-  /*
-   * ------------------------------------------------------------------------
-   * LOAD TODAY'S TIMETABLE
-   * ------------------------------------------------------------------------
-   *
-   * IMPORTANT:
-   *
-   * We no longer do:
-   *
-   *   setTimetable([])
-   *
-   * when the prerequisites are missing.
-   *
-   * The state is simply left untouched until
-   * a valid timetable request is made.
-   *
-   * The UI only renders the timetable when
-   * canLoadTimetable is true.
-   */
+  /* ==========================================================================
+     LOAD TODAY'S TIMETABLE
+     ========================================================================== */
 
   useEffect(() => {
     if (!canLoadTimetable) {
@@ -277,7 +271,6 @@ export function AttendancePage({ schoolSlug }: Props) {
 
         if (!result.success) {
           toast.error(result.message);
-
           setTimetable([]);
           return;
         }
@@ -307,58 +300,80 @@ export function AttendancePage({ schoolSlug }: Props) {
     };
   }, [canLoadTimetable, academicYearId, classId, sectionId]);
 
-  return (
-    <div className="mx-auto w-full max-w-6xl space-y-6">
-      {/* ============================================================ */}
-      {/* HEADER                                                       */}
-      {/* ============================================================ */}
+  /* ==========================================================================
+     RENDER
+     ========================================================================== */
 
-      <div className="flex flex-col gap-4 border-b pb-5 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3">
-          <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-            <UserCheck className="size-5" />
+  return (
+    <div className="w-full space-y-7 pb-10">
+      {/* ======================================================================
+          PAGE HEADER
+          ====================================================================== */}
+
+      <div className="flex flex-col gap-4 border-b border-slate-200/70 pb-5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 ring-1 ring-indigo-100">
+            <UserCheck className="size-5" strokeWidth={2} />
           </div>
 
-          <div>
-            <h1 className="text-xl font-bold tracking-tight sm:text-2xl">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <Sparkles className="size-3 text-indigo-500" />
+
+              <span className="text-[10px] font-bold tracking-[0.18em] text-indigo-600 uppercase">
+                Attendance
+              </span>
+            </div>
+
+            <h1 className="mt-1 text-xl font-bold tracking-tight text-slate-950 sm:text-2xl">
               Attendance
             </h1>
 
-            <p className="mt-0.5 text-sm text-muted-foreground">
+            <p className="mt-0.5 text-sm text-slate-500">
               Select a class and start today&apos;s attendance.
             </p>
           </div>
         </div>
 
         {selectedAcademicYear && (
-          <div className="flex w-fit items-center gap-2 rounded-lg border bg-card px-3 py-2 text-sm shadow-sm">
-            <CalendarDays className="size-4 text-primary" />
+          <div className="flex w-fit items-center gap-2 rounded-xl border border-indigo-100 bg-white px-3.5 py-2.5 text-sm shadow-sm">
+            <CalendarDays className="size-4 text-indigo-600" />
 
-            <span className="font-medium">{selectedAcademicYear.label}</span>
+            <span className="font-semibold text-slate-700">
+              {selectedAcademicYear.label}
+            </span>
           </div>
         )}
       </div>
 
-      {/* ============================================================ */}
-      {/* SETUP                                                        */}
-      {/* ============================================================ */}
+      {/* ======================================================================
+          ATTENDANCE SETUP
+          ====================================================================== */}
 
-      <Card className="overflow-hidden">
-        <div className="border-b bg-muted/20 px-5 py-4">
+      <Card className="overflow-hidden rounded-2xl border-slate-200/80 bg-white shadow-[0_8px_30px_rgba(15,23,42,0.04)]">
+        {/* Header */}
+
+        <div className="border-b border-slate-200/70 bg-gradient-to-r from-white to-indigo-50/30 px-5 py-4 md:px-6">
           <div className="flex items-center gap-3">
-            <BookOpenCheck className="size-5 text-primary" />
+            <div className="flex size-9 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 ring-1 ring-indigo-100">
+              <BookOpenCheck className="size-4" strokeWidth={2} />
+            </div>
 
             <div>
-              <h2 className="text-sm font-semibold">Attendance Setup</h2>
+              <h2 className="text-sm font-bold text-slate-900">
+                Attendance Setup
+              </h2>
 
-              <p className="text-xs text-muted-foreground">
+              <p className="mt-0.5 text-xs text-slate-500">
                 Choose the academic year, class and section.
               </p>
             </div>
           </div>
         </div>
 
-        <CardContent className="space-y-5 p-5">
+        <CardContent className="space-y-5 p-5 md:p-6">
+          {/* Selectors */}
+
           <div className="grid gap-4 md:grid-cols-3">
             <AcademicYearSelect
               value={academicYearId}
@@ -376,40 +391,43 @@ export function AttendancePage({ schoolSlug }: Props) {
             />
           </div>
 
-          {/* MODE */}
-          <div className="flex flex-col gap-3 rounded-lg border bg-muted/20 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+          {/* Attendance Mode */}
+
+          <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              <p className="text-[10px] font-bold tracking-[0.15em] text-slate-400 uppercase">
                 Attendance Mode
               </p>
 
-              <p className="mt-1 text-sm">{getModeLabel(attendanceMode)}</p>
+              <p className="mt-1 text-sm font-semibold text-slate-800">
+                {getModeLabel(attendanceMode)}
+              </p>
             </div>
 
-            <div className="flex items-center gap-2 text-xs font-medium">
-              <span className="size-2 rounded-full bg-primary" />
+            <div className="flex items-center gap-2 rounded-lg bg-white px-2.5 py-1.5 text-xs font-medium text-slate-600 shadow-sm ring-1 ring-slate-200">
+              <span className="size-2 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.35)]" />
               Configuration active
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* ============================================================ */}
-      {/* ONCE DAILY                                                   */}
-      {/* ============================================================ */}
+      {/* ======================================================================
+          ONCE DAILY
+          ====================================================================== */}
 
       {attendanceMode === "ONCE_DAILY" && (
-        <Card>
-          <CardContent className="flex flex-col gap-5 p-5 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-start gap-3">
-              <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                <CalendarDays className="size-5" />
+        <Card className="rounded-2xl border-slate-200/80 bg-white shadow-[0_8px_30px_rgba(15,23,42,0.04)]">
+          <CardContent className="flex flex-col gap-5 p-5 md:flex-row md:items-center md:justify-between md:p-6">
+            <div className="flex min-w-0 items-start gap-3.5">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 ring-1 ring-indigo-100">
+                <CalendarDays className="size-5" strokeWidth={2} />
               </div>
 
-              <div>
-                <h2 className="font-semibold">Daily Attendance</h2>
+              <div className="min-w-0">
+                <h2 className="font-bold text-slate-900">Daily Attendance</h2>
 
-                <p className="mt-1 text-sm text-muted-foreground">
+                <p className="mt-1 text-sm leading-5 text-slate-500">
                   Create one attendance session for the selected class today.
                 </p>
               </div>
@@ -417,7 +435,7 @@ export function AttendancePage({ schoolSlug }: Props) {
 
             <Button
               size="lg"
-              className="gap-2 sm:min-w-[180px]"
+              className="w-full gap-2 rounded-xl bg-indigo-600 shadow-[0_8px_20px_rgba(79,70,229,0.18)] hover:bg-indigo-700 sm:w-auto sm:min-w-[180px]"
               disabled={loading || !academicYearId || !classId || !sectionId}
               onClick={() => createSession("DAILY")}
             >
@@ -433,12 +451,12 @@ export function AttendancePage({ schoolSlug }: Props) {
         </Card>
       )}
 
-      {/* ============================================================ */}
-      {/* MORNING / AFTERNOON                                          */}
-      {/* ============================================================ */}
+      {/* ======================================================================
+          MORNING / AFTERNOON
+          ====================================================================== */}
 
       {attendanceMode === "MORNING_AFTERNOON" && (
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-5 md:grid-cols-2">
           <AttendanceOption
             icon={<Sunrise className="size-5" />}
             title="Morning Attendance"
@@ -462,113 +480,133 @@ export function AttendancePage({ schoolSlug }: Props) {
         </div>
       )}
 
-      {/* ============================================================ */}
-      {/* EVERY PERIOD                                                 */}
-      {/* ============================================================ */}
+      {/* ======================================================================
+          EVERY PERIOD
+          ====================================================================== */}
 
       {attendanceMode === "EVERY_PERIOD" && (
-        <Card className="overflow-hidden">
-          <div className="border-b bg-muted/20 px-5 py-4">
+        <Card className="overflow-hidden rounded-2xl border-slate-200/80 bg-white shadow-[0_8px_30px_rgba(15,23,42,0.04)]">
+          {/* Header */}
+
+          <div className="border-b border-slate-200/70 bg-gradient-to-r from-white to-indigo-50/30 px-5 py-4 md:px-6">
             <div className="flex items-center gap-3">
-              <Clock3 className="size-5 text-primary" />
+              <div className="flex size-9 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 ring-1 ring-indigo-100">
+                <Clock3 className="size-4" strokeWidth={2} />
+              </div>
 
               <div>
-                <h2 className="text-sm font-semibold">Today&apos;s Periods</h2>
+                <h2 className="text-sm font-bold text-slate-900">
+                  Today&apos;s Periods
+                </h2>
 
-                <p className="text-xs text-muted-foreground">
+                <p className="mt-0.5 text-xs text-slate-500">
                   Select a period to create an attendance session.
                 </p>
               </div>
             </div>
           </div>
 
-          <CardContent className="p-5">
+          <CardContent className="p-5 md:p-6">
+            {/* No class / section */}
+
             {!classId || !sectionId ? (
               <EmptyState
+                icon={<Clock3 className="size-7 text-slate-400" />}
                 title="Select a class and section"
                 description="Today's timetable will appear here."
               />
             ) : timetableLoading ? (
-              <div className="flex min-h-36 items-center justify-center">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Loader2 className="size-5 animate-spin" />
+              /* Loading */
+
+              <div className="flex min-h-40 items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50/50">
+                <div className="flex items-center gap-2 text-sm text-slate-500">
+                  <Loader2 className="size-5 animate-spin text-indigo-500" />
                   Loading today&apos;s timetable...
                 </div>
               </div>
             ) : timetable.length === 0 ? (
+              /* Empty */
+
               <EmptyState
-                icon={
-                  <Clock3 className="mx-auto size-8 text-muted-foreground" />
-                }
+                icon={<Clock3 className="size-7 text-slate-400" />}
                 title="No periods found"
                 description="There are no timetable periods configured for this class and section today."
               />
             ) : (
-              <div className="divide-y rounded-xl border">
-                {timetable.map((item) => (
-                  <div
-                    key={item.id}
-                    className="flex flex-col gap-4 p-4 transition-colors hover:bg-muted/30 sm:flex-row sm:items-center sm:justify-between"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted font-medium">
-                        <Clock3 className="size-4 text-muted-foreground" />
-                      </div>
+              /* Timetable */
 
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <p className="font-semibold">{item.periodName}</p>
-
-                          <span className="rounded-md bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
-                            {item.day}
-                          </span>
+              <div className="overflow-hidden rounded-xl border border-slate-200">
+                <div className="divide-y divide-slate-200">
+                  {timetable.map((item) => (
+                    <div
+                      key={item.id}
+                      className="flex flex-col gap-4 p-4 transition-colors hover:bg-indigo-50/30 sm:flex-row sm:items-center sm:justify-between md:px-5"
+                    >
+                      <div className="flex min-w-0 items-center gap-4">
+                        <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-slate-50 text-slate-500 ring-1 ring-slate-200">
+                          <Clock3 className="size-4" />
                         </div>
 
-                        <p className="mt-1 text-sm text-muted-foreground">
-                          {item.subjectName}
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="font-semibold text-slate-900">
+                              {item.periodName}
+                            </p>
 
-                          <span className="mx-1.5">·</span>
+                            <span className="rounded-md bg-indigo-50 px-2 py-0.5 text-[10px] font-bold text-indigo-600">
+                              {item.day}
+                            </span>
+                          </div>
 
-                          {item.teacherName}
-                        </p>
+                          <p className="mt-1 truncate text-sm text-slate-500">
+                            {item.subjectName}
+
+                            <span className="mx-1.5 text-slate-300">·</span>
+
+                            {item.teacherName}
+                          </p>
+                        </div>
                       </div>
-                    </div>
 
-                    <Button
-                      className="gap-2 sm:min-w-[165px]"
-                      disabled={loading}
-                      onClick={() => createSession("PERIOD", item.id)}
-                    >
-                      {loading ? (
-                        <Loader2 className="size-4 animate-spin" />
-                      ) : (
-                        <UserCheck className="size-4" />
-                      )}
-                      Take Attendance
-                    </Button>
-                  </div>
-                ))}
+                      <Button
+                        className="w-full gap-2 rounded-xl bg-indigo-600 shadow-sm hover:bg-indigo-700 sm:w-auto sm:min-w-[170px]"
+                        disabled={loading}
+                        onClick={() => createSession("PERIOD", item.id)}
+                      >
+                        {loading ? (
+                          <Loader2 className="size-4 animate-spin" />
+                        ) : (
+                          <UserCheck className="size-4" />
+                        )}
+                        Take Attendance
+                      </Button>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </CardContent>
         </Card>
       )}
 
-      {/* ============================================================ */}
-      {/* FOOTNOTE                                                      */}
-      {/* ============================================================ */}
+      {/* ======================================================================
+          FOOTNOTE
+          ====================================================================== */}
 
-      <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
-        <CheckCircle2 className="size-3.5" />
-        Attendance sessions are created for the selected class and section.
+      <div className="flex flex-wrap items-center justify-center gap-2 px-4 text-center text-xs text-slate-400">
+        <CheckCircle2 className="size-3.5 shrink-0 text-emerald-500" />
+
+        <span>
+          Attendance sessions are created for the selected class and section.
+        </span>
       </div>
     </div>
   );
 }
 
-/* ========================================================================== */
-/* ATTENDANCE OPTION                                                          */
-/* ========================================================================== */
+/* ==========================================================================
+   ATTENDANCE OPTION
+   ========================================================================== */
 
 function AttendanceOption({
   icon,
@@ -580,7 +618,7 @@ function AttendanceOption({
   onClick,
   secondary = false,
 }: {
-  icon: React.ReactNode;
+  icon: ReactNode;
   title: string;
   description: string;
   buttonLabel: string;
@@ -590,21 +628,25 @@ function AttendanceOption({
   secondary?: boolean;
 }) {
   return (
-    <Card>
-      <CardContent className="flex h-full flex-col p-5">
-        <div className="flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+    <Card className="rounded-2xl border-slate-200/80 bg-white shadow-[0_8px_30px_rgba(15,23,42,0.04)]">
+      <CardContent className="flex h-full flex-col p-5 md:p-6">
+        <div className="flex size-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 ring-1 ring-indigo-100">
           {icon}
         </div>
 
-        <h2 className="mt-4 font-semibold">{title}</h2>
+        <h2 className="mt-4 font-bold text-slate-900">{title}</h2>
 
-        <p className="mt-1 flex-1 text-sm leading-6 text-muted-foreground">
+        <p className="mt-1 flex-1 text-sm leading-6 text-slate-500">
           {description}
         </p>
 
         <Button
           variant={secondary ? "outline" : "default"}
-          className="mt-5 w-full gap-2"
+          className={
+            secondary
+              ? "mt-5 w-full gap-2 rounded-xl border-indigo-200 bg-white text-indigo-600 hover:bg-indigo-50 hover:text-indigo-700"
+              : "mt-5 w-full gap-2 rounded-xl bg-indigo-600 shadow-sm hover:bg-indigo-700"
+          }
           disabled={disabled}
           onClick={onClick}
         >
@@ -617,26 +659,28 @@ function AttendanceOption({
   );
 }
 
-/* ========================================================================== */
-/* EMPTY STATE                                                                */
-/* ========================================================================== */
+/* ==========================================================================
+   EMPTY STATE
+   ========================================================================== */
 
 function EmptyState({
   icon,
   title,
   description,
 }: {
-  icon?: React.ReactNode;
+  icon?: ReactNode;
   title: string;
   description: string;
 }) {
   return (
-    <div className="flex min-h-36 flex-col items-center justify-center rounded-xl border border-dashed px-6 py-8 text-center">
-      {icon}
+    <div className="flex min-h-40 flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50/50 px-6 py-8 text-center">
+      <div className="flex size-11 items-center justify-center rounded-xl bg-white text-slate-400 shadow-sm ring-1 ring-slate-200">
+        {icon}
+      </div>
 
-      <p className="font-medium">{title}</p>
+      <p className="mt-3 text-sm font-semibold text-slate-700">{title}</p>
 
-      <p className="mt-1 max-w-md text-sm text-muted-foreground">
+      <p className="mt-1 max-w-md text-sm leading-5 text-slate-500">
         {description}
       </p>
     </div>

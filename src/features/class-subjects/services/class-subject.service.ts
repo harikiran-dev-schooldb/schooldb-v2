@@ -391,4 +391,43 @@ export const classSubjectService = {
       throw new Error("Class subject assignment not found.");
     }
   },
+
+  async options(
+  schoolId: string,
+  academicYearId: string,
+  classId: string,
+) {
+  const rows = await prisma.$queryRaw<
+    {
+      id: string;
+      subjectId: string;
+      subjectName: string;
+      subjectCode: string | null;
+    }[]
+  >(Prisma.sql`
+    SELECT
+      cs."id",
+      cs."subjectId",
+      s."name" AS "subjectName",
+      s."code" AS "subjectCode"
+    FROM "ClassSubject" cs
+    INNER JOIN "Subject" s
+      ON s."id" = cs."subjectId"
+    WHERE cs."schoolId" = ${schoolId}
+      AND cs."academicYearId" = ${academicYearId}
+      AND cs."classId" = ${classId}
+      AND cs."active" = true
+      AND s."active" = true
+    ORDER BY
+      s."displayOrder" ASC,
+      s."name" ASC
+  `);
+
+  return rows.map((item) => ({
+    id: item.subjectId,
+    label: item.subjectCode
+      ? `${item.subjectName}`
+      : item.subjectName,
+  }));
+},
 };

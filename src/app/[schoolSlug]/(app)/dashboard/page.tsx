@@ -23,6 +23,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useSchool } from "@/contexts/school-context";
 
+/* ==========================================================================
+   TYPES
+   ========================================================================== */
+
 type ApiEnvelope<T> = {
   success: boolean;
   data: T;
@@ -48,6 +52,7 @@ type AttendanceDashboard = {
     leave: number;
     attendancePercentage: number;
   };
+
   recentSessions: Array<{
     id: string;
     attendanceDate: string;
@@ -59,6 +64,7 @@ type AttendanceDashboard = {
     absent: number;
     completed: boolean;
   }>;
+
   alerts: {
     lowAttendanceCount: number;
     threshold: number;
@@ -76,12 +82,14 @@ type FeeDashboard = {
     waivedCount: number;
     installmentCount: number;
   };
+
   collection: {
     today: number;
     todayPaymentCount: number;
     thisMonth: number;
     thisMonthPaymentCount: number;
   };
+
   recentPayments: Array<{
     id: string;
     receiptNo: string | null;
@@ -122,15 +130,18 @@ type OutstandingRow = {
   dueDate: string;
   outstanding: number;
   status: string;
+
   student: {
     id: string;
     admissionNo: string | null;
     fullName: string;
   };
+
   class: {
     id: string;
     name: string;
   };
+
   section: {
     id: string;
     name: string;
@@ -159,6 +170,10 @@ const EMPTY_DASHBOARD_DATA: DashboardData = {
   outstanding: [],
 };
 
+/* ==========================================================================
+   API
+   ========================================================================== */
+
 async function getJson<T>(url: string, signal: AbortSignal): Promise<T> {
   const response = await fetch(url, {
     cache: "no-store",
@@ -174,13 +189,6 @@ async function getJson<T>(url: string, signal: AbortSignal): Promise<T> {
   return result.data;
 }
 
-/**
- * Fetches all dashboard data.
- *
- * Important:
- * This function does NOT call setState.
- * It only fetches and returns data.
- */
 async function fetchDashboardData(signal: AbortSignal): Promise<DashboardData> {
   const [academicYears, students, teachers, classes, attendance] =
     await Promise.all([
@@ -228,9 +236,7 @@ async function fetchDashboardData(signal: AbortSignal): Promise<DashboardData> {
       ]);
 
     fees = feeDashboard;
-
     lowAttendance = lowAttendanceReport.rows ?? [];
-
     outstanding = outstandingReport.rows ?? [];
   }
 
@@ -240,11 +246,15 @@ async function fetchDashboardData(signal: AbortSignal): Promise<DashboardData> {
     teachers: teachers.total,
     classes: classes.total,
     attendance: attendance ?? null,
-    fees: fees ?? null,
+    fees,
     lowAttendance,
     outstanding,
   };
 }
+
+/* ==========================================================================
+   FORMATTERS
+   ========================================================================== */
 
 function formatCurrency(value: number | string | undefined) {
   return `₹${Number(value ?? 0).toLocaleString("en-IN", {
@@ -267,27 +277,23 @@ function titleCase(value: string) {
     .join(" ");
 }
 
+/* ==========================================================================
+   DASHBOARD
+   ========================================================================== */
+
 export default function DashboardPage() {
   const { school } = useSchool();
 
   const [data, setData] = useState<DashboardData>(EMPTY_DASHBOARD_DATA);
 
   const [loading, setLoading] = useState(true);
-
   const [refreshing, setRefreshing] = useState(false);
-
   const [error, setError] = useState<string | null>(null);
 
-  /*
-   * INITIAL DASHBOARD LOAD
-   *
-   * The effect does not synchronously
-   * call a function that sets state.
-   *
-   * Data is fetched asynchronously and
-   * state is updated only after the
-   * request resolves.
-   */
+  /* ------------------------------------------------------------------------
+     INITIAL LOAD
+     ------------------------------------------------------------------------ */
+
   useEffect(() => {
     const controller = new AbortController();
 
@@ -333,9 +339,10 @@ export default function DashboardPage() {
     };
   }, []);
 
-  /*
-   * MANUAL REFRESH
-   */
+  /* ------------------------------------------------------------------------
+     REFRESH
+     ------------------------------------------------------------------------ */
+
   const loadDashboard = useCallback(async () => {
     const controller = new AbortController();
 
@@ -367,12 +374,12 @@ export default function DashboardPage() {
   }, []);
 
   const attendance = data.attendance;
-
   const fees = data.fees;
 
-  /*
-   * ACTION CENTER
-   */
+  /* ==========================================================================
+     ACTION CENTER
+     ========================================================================== */
+
   const actionItems = useMemo(() => {
     const items: Array<{
       title: string;
@@ -384,12 +391,10 @@ export default function DashboardPage() {
     const academicYearId = data.academicYear?.id;
 
     const lowAttendance = data.lowAttendance ?? [];
-
     const outstanding = data.outstanding ?? [];
 
-    /*
-     * LOW ATTENDANCE
-     */
+    /* LOW ATTENDANCE */
+
     if (lowAttendance.length > 0 && academicYearId) {
       const first = lowAttendance[0];
 
@@ -410,9 +415,8 @@ export default function DashboardPage() {
       });
     }
 
-    /*
-     * OUTSTANDING FEES
-     */
+    /* OUTSTANDING FEES */
+
     if (outstanding.length > 0 && academicYearId) {
       const totalOutstanding = outstanding.reduce(
         (sum, row) => sum + Number(row.outstanding || 0),
@@ -441,9 +445,8 @@ export default function DashboardPage() {
       });
     }
 
-    /*
-     * INCOMPLETE ATTENDANCE
-     */
+    /* INCOMPLETE ATTENDANCE */
+
     const incompleteAttendanceSessions =
       attendance?.recentSessions.filter((session) => !session.completed) ?? [];
 
@@ -461,9 +464,8 @@ export default function DashboardPage() {
       });
     }
 
-    /*
-     * PARTIAL PAYMENTS
-     */
+    /* PARTIAL PAYMENTS */
+
     if ((fees?.summary.partialCount ?? 0) > 0) {
       items.push({
         title: `${fees?.summary.partialCount ?? 0} installments are partially paid`,
@@ -477,9 +479,8 @@ export default function DashboardPage() {
       });
     }
 
-    /*
-     * EVERYTHING OK
-     */
+    /* EVERYTHING OK */
+
     if (items.length === 0) {
       items.push({
         title: "School operations are on track",
@@ -501,6 +502,10 @@ export default function DashboardPage() {
     fees,
     school.slug,
   ]);
+
+  /* ==========================================================================
+     QUICK ACTIONS
+     ========================================================================== */
 
   const quickActions = [
     {
@@ -525,8 +530,16 @@ export default function DashboardPage() {
     },
   ];
 
+  /* ==========================================================================
+     RENDER
+     ========================================================================== */
+
   return (
-    <div className="space-y-8 pb-12">
+    <div className="space-y-7 pb-12">
+      {/* ======================================================================
+          PAGE HEADER
+          ====================================================================== */}
+
       <PageHeader
         title="Dashboard"
         description="A live operational view of your school."
@@ -536,6 +549,7 @@ export default function DashboardPage() {
             size="sm"
             onClick={() => void loadDashboard()}
             disabled={loading || refreshing}
+            className="bg-white shadow-sm"
           >
             <RefreshCw
               className={refreshing ? "size-4 animate-spin" : "size-4"}
@@ -545,19 +559,24 @@ export default function DashboardPage() {
         }
       />
 
-      {/* ERROR */}
+      {/* ======================================================================
+          ERROR
+          ====================================================================== */}
+
       {error && (
-        <Card className="border-destructive/20 bg-destructive/5">
+        <Card className="rounded-2xl border-red-200 bg-red-50/70 shadow-none">
           <CardContent className="flex items-center justify-between gap-4 p-4">
             <div className="flex items-center gap-3">
-              <CircleAlert className="size-5 text-destructive" />
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-red-100">
+                <CircleAlert className="size-4 text-red-600" />
+              </div>
 
               <div>
-                <p className="font-semibold">
+                <p className="font-semibold text-slate-900">
                   Dashboard data could not be loaded
                 </p>
 
-                <p className="text-sm text-muted-foreground">{error}</p>
+                <p className="text-sm text-slate-500">{error}</p>
               </div>
             </div>
 
@@ -566,6 +585,7 @@ export default function DashboardPage() {
               variant="outline"
               onClick={() => void loadDashboard()}
               disabled={refreshing}
+              className="bg-white"
             >
               Try again
             </Button>
@@ -573,57 +593,76 @@ export default function DashboardPage() {
         </Card>
       )}
 
-      {/* HERO */}
-      <section className="premium-hero px-6 py-5 text-white md:px-8 md:py-6">
-        <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-          <div className="max-w-2xl">
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.07] px-3 py-1 text-[10px] font-bold tracking-[0.18em] text-teal-200 uppercase backdrop-blur-md">
-              <Sparkles className="size-3" />
+      {/* ======================================================================
+          PREMIUM LIGHT HERO
+          ====================================================================== */}
 
-              {data.academicYear?.name ?? "No active academic year"}
+      <section className="premium-hero relative overflow-hidden px-6 py-6 md:px-8 md:py-7">
+        <div className="pointer-events-none absolute -right-16 -top-20 size-64 rounded-full bg-indigo-500/10 blur-3xl" />
+
+        <div className="pointer-events-none absolute -bottom-24 right-1/3 size-72 rounded-full bg-violet-500/10 blur-3xl" />
+
+        <div className="relative flex flex-col gap-7 lg:flex-row lg:items-center lg:justify-between">
+          {/* LEFT */}
+
+          <div className="max-w-2xl">
+            <div className="inline-flex items-center gap-2 rounded-full border border-indigo-100 bg-white/80 px-3 py-1.5 shadow-sm backdrop-blur">
+              <Sparkles className="size-3 text-indigo-500" />
+
+              <span className="text-[10px] font-bold tracking-[0.18em] text-indigo-600 uppercase">
+                {data.academicYear?.name ?? "No active academic year"}
+              </span>
             </div>
 
-            <h2 className="mt-3 text-2xl font-bold tracking-[-0.04em] text-white md:text-4xl md:leading-[1.08]">
+            <h2 className="mt-4 text-2xl font-bold tracking-[-0.04em] text-slate-950 md:text-4xl md:leading-[1.08]">
               Run your school
               <br className="hidden md:block" />{" "}
-              <span className="bg-gradient-to-r from-teal-200 via-cyan-200 to-blue-200 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-indigo-600 via-violet-600 to-blue-600 bg-clip-text text-transparent">
                 from one clear view.
               </span>
             </h2>
 
-            <p className="mt-2 max-w-xl text-sm leading-5 text-white/65">
+            <p className="mt-3 max-w-xl text-sm leading-6 text-slate-500">
               Live attendance, student, teacher and fee metrics for the current
               academic year.
             </p>
 
-            <div className="mt-5 flex flex-wrap items-center gap-x-6 gap-y-3">
+            <div className="mt-6 flex flex-wrap items-center gap-x-7 gap-y-4">
+              {/* Attendance */}
+
               <div className="flex items-center gap-2.5">
-                <CalendarCheck className="size-4 text-teal-200" />
+                <div className="flex size-9 items-center justify-center rounded-xl bg-indigo-50 ring-1 ring-indigo-100">
+                  <CalendarCheck className="size-4 text-indigo-600" />
+                </div>
 
                 <div>
-                  <p className="text-base font-bold leading-none text-white">
+                  <p className="text-base font-bold leading-none text-slate-900">
                     {loading
                       ? "—"
                       : `${attendance?.summary.attendancePercentage ?? 0}%`}
                   </p>
 
-                  <p className="mt-1 text-[10px] font-medium text-white/45">
+                  <p className="mt-1 text-[10px] font-medium text-slate-400">
                     Attendance today
                   </p>
                 </div>
               </div>
 
-              <div className="hidden h-7 w-px bg-white/10 sm:block" />
+              <div className="hidden h-8 w-px bg-slate-200 sm:block" />
+
+              {/* Students */}
 
               <div className="flex items-center gap-2.5">
-                <GraduationCap className="size-4 text-blue-200" />
+                <div className="flex size-9 items-center justify-center rounded-xl bg-blue-50 ring-1 ring-blue-100">
+                  <GraduationCap className="size-4 text-blue-600" />
+                </div>
 
                 <div>
-                  <p className="text-base font-bold leading-none text-white">
+                  <p className="text-base font-bold leading-none text-slate-900">
                     {loading ? "—" : data.students.toLocaleString("en-IN")}
                   </p>
 
-                  <p className="mt-1 text-[10px] font-medium text-white/45">
+                  <p className="mt-1 text-[10px] font-medium text-slate-400">
                     Students
                   </p>
                 </div>
@@ -631,32 +670,45 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="flex min-w-[200px] items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.07] p-4 shadow-2xl shadow-black/10 backdrop-blur-xl">
-            <div className="flex size-10 items-center justify-center rounded-xl border border-teal-300/15 bg-gradient-to-br from-teal-300/20 to-cyan-400/5">
-              <WalletCards className="size-4 text-teal-200" />
-            </div>
+          {/* COLLECTION */}
 
-            <div>
-              <p className="text-xl font-bold tracking-tight text-white">
-                {fees ? formatCurrency(fees.collection.thisMonth) : "—"}
-              </p>
+          <div className="min-w-[230px] rounded-2xl border border-indigo-100 bg-white/85 p-4 shadow-[0_15px_35px_rgba(79,70,229,0.08)] backdrop-blur-xl">
+            <div className="flex items-center gap-3">
+              <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-50 to-violet-50 ring-1 ring-indigo-100">
+                <WalletCards className="size-5 text-indigo-600" />
+              </div>
 
-              <p className="mt-1 text-[9px] font-bold tracking-[0.14em] text-white/45 uppercase">
-                This month collection
-              </p>
+              <div>
+                <p className="text-[10px] font-bold tracking-[0.15em] text-slate-400 uppercase">
+                  This month
+                </p>
+
+                <p className="mt-1 text-xl font-bold tracking-tight text-slate-900">
+                  {fees ? formatCurrency(fees.collection.thisMonth) : "—"}
+                </p>
+
+                <p className="mt-1 text-[10px] text-slate-400">
+                  {fees
+                    ? `${fees.collection.thisMonthPaymentCount} payments received`
+                    : "Collection data"}
+                </p>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* KPI */}
+      {/* ======================================================================
+          KPI
+          ====================================================================== */}
+
       <section className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
           title="Students"
           value={loading ? "—" : data.students.toLocaleString("en-IN")}
           icon={GraduationCap}
           description="Active school records"
-          className="premium-card rounded-2xl border-0 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
+          className="premium-card rounded-2xl border-0 bg-white transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
         />
 
         <StatCard
@@ -664,7 +716,7 @@ export default function DashboardPage() {
           value={loading ? "—" : data.teachers.toLocaleString("en-IN")}
           icon={Users}
           description="Teaching staff"
-          className="premium-card rounded-2xl border-0 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
+          className="premium-card rounded-2xl border-0 bg-white transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
         />
 
         <StatCard
@@ -674,7 +726,7 @@ export default function DashboardPage() {
           }
           icon={CalendarCheck}
           description={`${attendance?.summary.present ?? 0} present today`}
-          className="premium-card rounded-2xl border-0 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
+          className="premium-card rounded-2xl border-0 bg-white transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
         />
 
         <StatCard
@@ -686,30 +738,35 @@ export default function DashboardPage() {
               ? `${fees.collection.thisMonthPaymentCount} payments this month`
               : "Current academic year"
           }
-          className="premium-card rounded-2xl border-0 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
+          className="premium-card rounded-2xl border-0 bg-white transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
         />
       </section>
 
-      {/* ATTENDANCE + ACTION CENTER */}
+      {/* ======================================================================
+          ATTENDANCE + ACTION CENTER
+          ====================================================================== */}
+
       <section className="grid gap-6 xl:grid-cols-[1.35fr_0.85fr]">
-        <Card className="premium-card overflow-hidden rounded-2xl border-0">
+        {/* ATTENDANCE */}
+
+        <Card className="premium-card overflow-hidden rounded-2xl border-0 bg-white">
           <CardHeader className="border-b border-border/60 px-6 py-5">
-            <p className="text-[10px] font-bold tracking-[0.18em] text-muted-foreground uppercase">
+            <p className="text-[10px] font-bold tracking-[0.18em] text-indigo-500 uppercase">
               Attendance Overview
             </p>
 
-            <CardTitle className="mt-1.5 text-xl font-bold tracking-tight">
+            <CardTitle className="mt-1.5 text-xl font-bold tracking-tight text-slate-900">
               Recent sessions
             </CardTitle>
 
-            <p className="mt-1 text-sm text-muted-foreground">
+            <p className="mt-1 text-sm text-slate-500">
               Latest attendance activity from the active academic year.
             </p>
           </CardHeader>
 
           <CardContent className="p-6">
             {attendance?.recentSessions.length ? (
-              <div className="space-y-4">
+              <div className="space-y-5">
                 {attendance.recentSessions.slice(0, 6).map((session) => {
                   const percentage =
                     session.totalStudents > 0
@@ -719,27 +776,27 @@ export default function DashboardPage() {
                       : 0;
 
                   return (
-                    <div key={session.id} className="space-y-2">
+                    <div key={session.id} className="space-y-2.5">
                       <div className="flex items-center justify-between gap-4">
                         <div className="min-w-0">
-                          <p className="truncate text-sm font-semibold">
+                          <p className="truncate text-sm font-semibold text-slate-800">
                             {session.className} - {session.sectionName}
                           </p>
 
-                          <p className="text-xs text-muted-foreground">
+                          <p className="mt-0.5 text-xs text-slate-400">
                             {formatDate(session.attendanceDate)} ·{" "}
                             {titleCase(session.sessionType)}
                           </p>
                         </div>
 
-                        <span className="shrink-0 text-sm font-bold">
+                        <span className="shrink-0 rounded-lg bg-indigo-50 px-2.5 py-1 text-xs font-bold text-indigo-600">
                           {percentage}%
                         </span>
                       </div>
 
-                      <div className="h-2 overflow-hidden rounded-full bg-muted">
+                      <div className="h-2 overflow-hidden rounded-full bg-slate-100">
                         <div
-                          className="h-full rounded-full bg-gradient-to-r from-primary to-teal-400 transition-all"
+                          className="h-full rounded-full bg-gradient-to-r from-indigo-500 via-violet-500 to-blue-500 transition-all"
                           style={{
                             width: `${Math.min(100, percentage)}%`,
                           }}
@@ -756,36 +813,36 @@ export default function DashboardPage() {
         </Card>
 
         {/* ACTION CENTER */}
-        <Card className="premium-card overflow-hidden rounded-2xl border-0">
+
+        <Card className="premium-card overflow-hidden rounded-2xl border-0 bg-white">
           <CardHeader className="border-b border-border/60 px-6 py-5">
-            <p className="text-[10px] font-bold tracking-[0.18em] text-muted-foreground uppercase">
+            <p className="text-[10px] font-bold tracking-[0.18em] text-indigo-500 uppercase">
               Action Center
             </p>
 
-            <CardTitle className="mt-1.5 text-xl font-bold tracking-tight">
+            <CardTitle className="mt-1.5 text-xl font-bold tracking-tight text-slate-900">
               Needs your attention
             </CardTitle>
           </CardHeader>
 
-          <CardContent className="space-y-2 p-4">
+          <CardContent className="space-y-1 p-4">
             {actionItems.map((item) => (
               <Link
                 key={item.title}
                 href={item.href}
-                className="group flex items-start gap-3.5 rounded-2xl border border-transparent p-3.5 transition-all hover:border-border/70 hover:bg-background/70 hover:shadow-sm"
+                className="group flex items-start gap-3.5 rounded-2xl border border-transparent p-3.5 transition-all hover:border-slate-200 hover:bg-slate-50/80 hover:shadow-sm"
               >
                 <div
                   className={[
                     "mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-xl",
 
-                    item.tone === "success" &&
-                      "bg-emerald-500/10 text-emerald-600",
+                    item.tone === "success" && "bg-emerald-50 text-emerald-600",
 
-                    item.tone === "info" && "bg-blue-500/10 text-blue-600",
+                    item.tone === "info" && "bg-blue-50 text-blue-600",
 
-                    item.tone === "warning" && "bg-amber-500/10 text-amber-600",
+                    item.tone === "warning" && "bg-amber-50 text-amber-600",
 
-                    item.tone === "danger" && "bg-red-500/10 text-red-600",
+                    item.tone === "danger" && "bg-red-50 text-red-600",
                   ]
                     .filter(Boolean)
                     .join(" ")}
@@ -798,29 +855,36 @@ export default function DashboardPage() {
                 </div>
 
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold">{item.title}</p>
+                  <p className="text-sm font-semibold text-slate-800">
+                    {item.title}
+                  </p>
 
-                  <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                  <p className="mt-1 text-xs leading-5 text-slate-500">
                     {item.description}
                   </p>
                 </div>
 
-                <ArrowRight className="mt-1 size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-1" />
+                <ArrowRight className="mt-1 size-4 shrink-0 text-slate-300 transition-all group-hover:translate-x-1 group-hover:text-indigo-500" />
               </Link>
             ))}
           </CardContent>
         </Card>
       </section>
 
-      {/* QUICK ACTIONS + FEES */}
+      {/* ======================================================================
+          QUICK ACTIONS + FEE OPERATIONS
+          ====================================================================== */}
+
       <section className="grid gap-6 lg:grid-cols-[0.85fr_1.15fr]">
-        <Card className="premium-card rounded-2xl border-0">
+        {/* QUICK ACTIONS */}
+
+        <Card className="premium-card rounded-2xl border-0 bg-white">
           <CardHeader className="px-6 py-5">
-            <p className="text-[10px] font-bold tracking-[0.18em] text-muted-foreground uppercase">
+            <p className="text-[10px] font-bold tracking-[0.18em] text-indigo-500 uppercase">
               Quick Actions
             </p>
 
-            <CardTitle className="mt-1.5 text-xl font-bold tracking-tight">
+            <CardTitle className="mt-1.5 text-xl font-bold tracking-tight text-slate-900">
               Get things done
             </CardTitle>
           </CardHeader>
@@ -833,32 +897,40 @@ export default function DashboardPage() {
                 <Link
                   key={action.label}
                   href={action.href}
-                  className="group rounded-2xl border border-border/60 bg-background/60 p-4 transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md"
+                  className="group rounded-2xl border border-slate-200/80 bg-slate-50/50 p-4 transition-all hover:-translate-y-0.5 hover:border-indigo-200 hover:bg-indigo-50/40 hover:shadow-md"
                 >
-                  <Icon className="size-5 text-primary" />
+                  <div className="flex size-9 items-center justify-center rounded-xl bg-white text-indigo-600 shadow-sm ring-1 ring-indigo-100">
+                    <Icon className="size-4" />
+                  </div>
 
-                  <p className="mt-3 text-sm font-semibold">{action.label}</p>
+                  <p className="mt-3 text-sm font-semibold text-slate-800">
+                    {action.label}
+                  </p>
 
-                  <ArrowRight className="mt-3 size-4 text-muted-foreground transition-transform group-hover:translate-x-1" />
+                  <ArrowRight className="mt-3 size-4 text-slate-300 transition-all group-hover:translate-x-1 group-hover:text-indigo-500" />
                 </Link>
               );
             })}
           </CardContent>
         </Card>
 
-        <Card className="premium-card rounded-2xl border-0">
+        {/* FEE OPERATIONS */}
+
+        <Card className="premium-card rounded-2xl border-0 bg-white">
           <CardHeader className="flex flex-row items-start justify-between gap-4 px-6 py-5">
             <div>
-              <p className="text-[10px] font-bold tracking-[0.18em] text-muted-foreground uppercase">
+              <p className="text-[10px] font-bold tracking-[0.18em] text-indigo-500 uppercase">
                 Fee Operations
               </p>
 
-              <CardTitle className="mt-1.5 text-xl font-bold tracking-tight">
+              <CardTitle className="mt-1.5 text-xl font-bold tracking-tight text-slate-900">
                 Collection snapshot
               </CardTitle>
             </div>
 
-            <CreditCard className="size-5 text-primary" />
+            <div className="flex size-9 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 ring-1 ring-indigo-100">
+              <CreditCard className="size-4" />
+            </div>
           </CardHeader>
 
           <CardContent className="grid gap-4 p-6 pt-0 sm:grid-cols-3">
@@ -887,17 +959,22 @@ export default function DashboardPage() {
         </Card>
       </section>
 
-      {/* REPORT LINK */}
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border/60 bg-muted/20 px-5 py-4">
-        <div>
-          <p className="text-sm font-semibold">Need detailed reports?</p>
+      {/* ======================================================================
+          REPORT LINK
+          ====================================================================== */}
 
-          <p className="text-xs text-muted-foreground">
+      <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-indigo-100 bg-gradient-to-r from-white to-indigo-50/50 px-5 py-4 shadow-sm">
+        <div>
+          <p className="text-sm font-semibold text-slate-800">
+            Need detailed reports?
+          </p>
+
+          <p className="mt-0.5 text-xs text-slate-500">
             Open the reporting area for filtered and exportable school data.
           </p>
         </div>
 
-        <Button asChild variant="outline" size="sm">
+        <Button asChild variant="outline" size="sm" className="bg-white">
           <Link href={`/${school.slug}/reports`}>
             View Reports
             <ArrowRight className="size-4" />
@@ -907,6 +984,10 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+/* ==========================================================================
+   METRIC
+   ========================================================================== */
 
 function Metric({
   label,
@@ -918,22 +999,30 @@ function Metric({
   hint: string;
 }) {
   return (
-    <div className="rounded-2xl border border-border/60 bg-background/60 p-4">
-      <p className="text-xs font-medium text-muted-foreground">{label}</p>
+    <div className="rounded-2xl border border-slate-200/80 bg-slate-50/60 p-4 transition-colors hover:border-indigo-100 hover:bg-indigo-50/30">
+      <p className="text-xs font-medium text-slate-400">{label}</p>
 
-      <p className="mt-2 text-xl font-bold tracking-tight">{value}</p>
+      <p className="mt-2 text-xl font-bold tracking-tight text-slate-900">
+        {value}
+      </p>
 
-      <p className="mt-1 text-[11px] text-muted-foreground">{hint}</p>
+      <p className="mt-1 text-[11px] text-slate-400">{hint}</p>
     </div>
   );
 }
 
+/* ==========================================================================
+   EMPTY STATE
+   ========================================================================== */
+
 function EmptyState({ text }: { text: string }) {
   return (
-    <div className="flex min-h-40 flex-col items-center justify-center rounded-2xl border border-dashed border-border/70 bg-muted/20 p-6 text-center">
-      <Clock3 className="size-5 text-muted-foreground" />
+    <div className="flex min-h-40 flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-6 text-center">
+      <div className="flex size-10 items-center justify-center rounded-xl bg-white text-slate-400 shadow-sm ring-1 ring-slate-100">
+        <Clock3 className="size-5" />
+      </div>
 
-      <p className="mt-3 text-sm text-muted-foreground">{text}</p>
+      <p className="mt-3 text-sm text-slate-500">{text}</p>
     </div>
   );
 }
