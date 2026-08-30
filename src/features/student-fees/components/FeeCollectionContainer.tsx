@@ -165,9 +165,11 @@ export function FeeCollectionContainer({ schoolSlug }: Props) {
   return (
     <>
       {!selectedStudent ? (
-        <StudentFeeSearch onSelectStudent={selectStudent} />
+        <div className="w-full">
+          <StudentFeeSearch onSelectStudent={selectStudent} />
+        </div>
       ) : (
-        <div className="space-y-6">
+        <div className="w-full space-y-6">
           <SelectedStudentCard
             student={selectedStudent}
             installments={installments}
@@ -177,16 +179,20 @@ export function FeeCollectionContainer({ schoolSlug }: Props) {
           {feesLoading ? (
             <FeeTermsCard installments={[]} loading onCollect={handleCollect} />
           ) : feesError ? (
-            <div className="rounded-2xl border border-dashed p-8 text-center">
-              <h3 className="font-semibold">Unable to load fee details</h3>
+            <div className="flex min-h-48 flex-col items-center justify-center rounded-2xl border border-dashed border-red-200 bg-red-50/40 p-8 text-center">
+              <h3 className="font-semibold text-slate-900">
+                Unable to load fee details
+              </h3>
 
-              <p className="mt-2 text-sm text-muted-foreground">{feesError}</p>
+              <p className="mt-2 max-w-lg text-sm text-slate-500">
+                {feesError}
+              </p>
             </div>
           ) : installments.length === 0 ? (
-            <div className="rounded-2xl border border-dashed bg-muted/20 p-8 text-center">
-              <h3 className="font-semibold">No fees assigned</h3>
+            <div className="flex min-h-48 flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-8 text-center">
+              <h3 className="font-semibold text-slate-800">No fees assigned</h3>
 
-              <p className="mt-2 text-sm text-muted-foreground">
+              <p className="mt-2 max-w-lg text-sm text-slate-500">
                 No fee installments have been assigned to this student yet.
               </p>
             </div>

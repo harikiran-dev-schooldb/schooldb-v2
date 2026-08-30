@@ -37,6 +37,7 @@ type Schedule = {
 
 type Student = {
   studentEnrollmentId: string;
+  rollNo: string | number | null;
   student: {
     id: string;
     admissionNo: string;
@@ -149,7 +150,9 @@ export function ExamMarksPage({ schoolSlug, examId }: Props) {
       const responses = await Promise.all(
         applicableSchedules.map(async (schedule) => {
           const response = await fetch(
-            `/api/v1/exams/schedules/${schedule.id}/marks`,
+            `/api/v1/exams/schedules/${schedule.id}/marks?sectionId=${encodeURIComponent(
+              sectionId,
+            )}`,
             { cache: "no-store" },
           );
 
@@ -178,6 +181,7 @@ export function ExamMarksPage({ schoolSlug, examId }: Props) {
           const student: Student = existing ?? {
             studentEnrollmentId: row.studentEnrollmentId,
             student: row.student,
+            rollNo: row.rollNo,
             marks: {},
           };
 
@@ -196,9 +200,14 @@ export function ExamMarksPage({ schoolSlug, examId }: Props) {
       }
 
       setStudents(
-        Array.from(studentMap.values()).sort((a, b) =>
-          (a.student.fullName ?? "").localeCompare(b.student.fullName ?? ""),
-        ),
+        Array.from(studentMap.values()).sort((a, b) => {
+          const aRoll =
+            a.rollNo == null ? Number.MAX_SAFE_INTEGER : Number(a.rollNo);
+          const bRoll =
+            b.rollNo == null ? Number.MAX_SAFE_INTEGER : Number(b.rollNo);
+
+          return aRoll - bRoll;
+        }),
       );
     } catch (error) {
       setStudents([]);
@@ -308,7 +317,9 @@ export function ExamMarksPage({ schoolSlug, examId }: Props) {
       await Promise.all(
         applicableSchedules.map(async (schedule) => {
           const response = await fetch(
-            `/api/v1/exams/schedules/${schedule.id}/marks`,
+            `/api/v1/exams/schedules/${schedule.id}/marks?sectionId=${encodeURIComponent(
+              sectionId,
+            )}`,
             {
               method: "PUT",
               headers: {
@@ -320,13 +331,16 @@ export function ExamMarksPage({ schoolSlug, examId }: Props) {
 
                   return {
                     studentEnrollmentId: student.studentEnrollmentId,
+
                     marksObtained:
                       !mark ||
                       mark.status === "ABSENT" ||
                       mark.marksObtained === ""
                         ? null
                         : Number(mark.marksObtained),
+
                     status: mark?.status ?? "PRESENT",
+
                     remarks: mark?.remarks || null,
                   };
                 }),
@@ -361,7 +375,7 @@ export function ExamMarksPage({ schoolSlug, examId }: Props) {
   }
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="flex min-h-[calc(100vh-64px)] w-full flex-col gap-6 p-4 sm:p-5 lg:p-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-start gap-3">
           <Button
@@ -402,8 +416,8 @@ export function ExamMarksPage({ schoolSlug, examId }: Props) {
         </div>
       </div>
 
-      <Card>
-        <CardContent className="p-5">
+      <Card className="w-full rounded-2xl">
+        <CardContent className="p-4 sm:p-5">
           <div className="flex flex-col gap-4 sm:flex-row">
             <div className="w-full sm:w-64">
               <ClassSelect
@@ -456,33 +470,35 @@ export function ExamMarksPage({ schoolSlug, examId }: Props) {
           </CardContent>
         </Card>
       ) : (
-        <Card>
-          <CardHeader>
+        <Card className="w-full overflow-hidden rounded-2xl">
+          <CardHeader className="border-b">
             <CardTitle>
               {students.length} Students · {applicableSchedules.length} Subjects
             </CardTitle>
           </CardHeader>
 
-          <CardContent>
-            <div className="overflow-x-auto rounded-lg border">
-              <table className="w-full min-w-[900px] text-sm">
+          <CardContent className="p-0">
+            <div className="w-full overflow-x-auto">
+              <table className="w-full min-w-max text-sm">
                 <thead>
                   <tr className="bg-muted/50">
-                    <th className="sticky left-0 z-10 border-b border-r bg-muted/50 p-3 text-left">
+                    <th className="sticky left-0 z-20 w-[64px] border-b border-r bg-muted/50 p-3 text-left">
                       R.No
                     </th>
-                    <th className="sticky left-[64px] z-10 min-w-[220px] border-b border-r bg-muted/50 p-3 text-left">
+
+                    <th className="sticky left-[64px] z-20 min-w-[220px] border-b border-r bg-muted/50 p-3 text-left">
                       Student Name
                     </th>
 
                     {applicableSchedules.map((schedule) => (
                       <th
                         key={schedule.id}
-                        className="min-w-[150px] border-b border-r p-3 text-center last:border-r-0"
+                        className="min-w-[170px] border-b border-r p-3 text-center last:border-r-0"
                       >
                         <div className="font-semibold">
                           {schedule.subject.name}
                         </div>
+
                         <div className="mt-1 text-xs text-muted-foreground">
                           / {Number(schedule.maxMarks)}
                         </div>
@@ -495,13 +511,14 @@ export function ExamMarksPage({ schoolSlug, examId }: Props) {
                   {students.map((student, index) => (
                     <tr key={student.studentEnrollmentId} className="border-b">
                       <td className="sticky left-0 z-10 border-r bg-background p-3 font-semibold">
-                        {index + 1}
+                        {student.rollNo ?? "—"}
                       </td>
 
                       <td className="sticky left-[64px] z-10 border-r bg-background p-3">
                         <div className="font-medium">
                           {student.student.fullName || "—"}
                         </div>
+
                         <div className="text-xs text-muted-foreground">
                           {student.student.admissionNo}
                         </div>
@@ -516,7 +533,7 @@ export function ExamMarksPage({ schoolSlug, examId }: Props) {
 
                         return (
                           <td key={schedule.id} className="border-r p-2">
-                            <div className="flex min-w-[140px] flex-col gap-2">
+                            <div className="flex min-w-[160px] flex-col gap-2">
                               <Input
                                 type="number"
                                 min="0"
@@ -547,6 +564,7 @@ export function ExamMarksPage({ schoolSlug, examId }: Props) {
                                 className="h-8 w-full rounded-md border bg-background px-2 text-xs"
                               >
                                 <option value="PRESENT">Present</option>
+
                                 <option value="ABSENT">Absent</option>
                               </select>
                             </div>

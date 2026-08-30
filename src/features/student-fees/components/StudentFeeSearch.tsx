@@ -87,31 +87,35 @@ export function StudentFeeSearch({ onSelectStudent }: Props) {
     }
   }
 
-  const handleSelectStudent = (student: Student) => {
+  function handleSelectStudent(student: Student) {
     onSelectStudent(student);
 
     setSearch("");
     setStudents([]);
     setHasSearched(false);
-  };
+  }
 
   return (
-    <div className="mx-auto w-full max-w-5xl space-y-6">
-      {/* Search workspace */}
-      <Card className="overflow-hidden rounded-3xl border-border/60 shadow-sm">
+    <div className="w-full space-y-6">
+      {/* ------------------------------------------------------------------ */}
+      {/* SEARCH WORKSPACE                                                   */}
+      {/* ------------------------------------------------------------------ */}
+
+      <Card className="overflow-hidden rounded-2xl border-border/60 shadow-sm">
         <CardContent className="p-0">
+          {/* Header */}
           <div className="border-b border-border/60 bg-muted/20 px-5 py-5 sm:px-6">
             <div className="flex items-start gap-4">
               <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-primary/10">
                 <Search className="size-5 text-primary" />
               </div>
 
-              <div>
+              <div className="min-w-0">
                 <h2 className="text-base font-bold text-foreground">
                   Find a student
                 </h2>
 
-                <p className="mt-1 text-sm text-muted-foreground">
+                <p className="mt-1 text-sm leading-5 text-muted-foreground">
                   Search using admission number or student name to view and
                   collect fee installments.
                 </p>
@@ -119,9 +123,10 @@ export function StudentFeeSearch({ onSelectStudent }: Props) {
             </div>
           </div>
 
+          {/* Search */}
           <div className="p-5 sm:p-6">
-            <div className="flex flex-col gap-3 sm:flex-row">
-              <div className="relative flex-1">
+            <div className="flex flex-col gap-3 lg:flex-row">
+              <div className="relative min-w-0 flex-1">
                 <Search className="absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
 
                 <Input
@@ -144,7 +149,7 @@ export function StudentFeeSearch({ onSelectStudent }: Props) {
                 size="lg"
                 onClick={() => void searchStudents()}
                 disabled={searchLoading || !search.trim()}
-                className="h-11 min-w-32 rounded-xl"
+                className="h-11 rounded-xl px-6 lg:min-w-32"
               >
                 <Search className="mr-2 size-4" />
 
@@ -160,10 +165,13 @@ export function StudentFeeSearch({ onSelectStudent }: Props) {
         </CardContent>
       </Card>
 
-      {/* Loading */}
+      {/* ------------------------------------------------------------------ */}
+      {/* LOADING                                                             */}
+      {/* ------------------------------------------------------------------ */}
+
       {searchLoading && (
-        <Card className="rounded-3xl">
-          <CardContent className="flex flex-col items-center justify-center py-14">
+        <Card className="rounded-2xl border-border/60">
+          <CardContent className="flex min-h-56 flex-col items-center justify-center p-8 text-center">
             <div className="flex size-12 items-center justify-center rounded-2xl bg-primary/10">
               <Search className="size-5 animate-pulse text-primary" />
             </div>
@@ -177,12 +185,15 @@ export function StudentFeeSearch({ onSelectStudent }: Props) {
         </Card>
       )}
 
-      {/* Initial empty state */}
+      {/* ------------------------------------------------------------------ */}
+      {/* INITIAL STATE                                                       */}
+      {/* ------------------------------------------------------------------ */}
+
       {!searchLoading && !hasSearched && (
-        <Card className="rounded-3xl border-dashed border-border/80">
-          <CardContent className="flex min-h-72 flex-col items-center justify-center px-6 py-12 text-center">
-            <div className="flex size-16 items-center justify-center rounded-3xl bg-primary/10">
-              <GraduationCap className="size-8 text-primary" />
+        <Card className="rounded-2xl border-dashed border-border/80">
+          <CardContent className="flex min-h-64 flex-col items-center justify-center px-6 py-12 text-center">
+            <div className="flex size-14 items-center justify-center rounded-2xl bg-primary/10">
+              <GraduationCap className="size-7 text-primary" />
             </div>
 
             <h3 className="mt-5 text-lg font-bold">Ready to collect fees</h3>
@@ -195,9 +206,12 @@ export function StudentFeeSearch({ onSelectStudent }: Props) {
         </Card>
       )}
 
-      {/* Search results */}
+      {/* ------------------------------------------------------------------ */}
+      {/* SEARCH RESULTS                                                      */}
+      {/* ------------------------------------------------------------------ */}
+
       {!searchLoading && hasSearched && students.length > 0 && (
-        <Card className="overflow-hidden rounded-3xl">
+        <Card className="overflow-hidden rounded-2xl border-border/60">
           <div className="flex items-center justify-between border-b border-border/60 px-5 py-4 sm:px-6">
             <div className="flex items-center gap-3">
               <div className="flex size-9 items-center justify-center rounded-xl bg-primary/10">
@@ -223,7 +237,7 @@ export function StudentFeeSearch({ onSelectStudent }: Props) {
               >
                 <div className="flex min-w-0 items-center gap-4">
                   <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-muted transition-colors group-hover:bg-primary/10">
-                    <UserRound className="size-5 text-muted-foreground group-hover:text-primary" />
+                    <UserRound className="size-5 text-muted-foreground transition-colors group-hover:text-primary" />
                   </div>
 
                   <div className="min-w-0">
@@ -257,10 +271,13 @@ export function StudentFeeSearch({ onSelectStudent }: Props) {
         </Card>
       )}
 
-      {/* No results */}
+      {/* ------------------------------------------------------------------ */}
+      {/* NO RESULTS                                                          */}
+      {/* ------------------------------------------------------------------ */}
+
       {!searchLoading && hasSearched && students.length === 0 && (
-        <Card className="rounded-3xl border-dashed">
-          <CardContent className="flex flex-col items-center justify-center py-14 text-center">
+        <Card className="rounded-2xl border-dashed">
+          <CardContent className="flex min-h-56 flex-col items-center justify-center p-8 text-center">
             <div className="flex size-14 items-center justify-center rounded-2xl bg-muted">
               <UserRound className="size-6 text-muted-foreground" />
             </div>

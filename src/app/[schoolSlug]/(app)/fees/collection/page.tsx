@@ -10,16 +10,22 @@ export default async function FeeCollectionPage({ params }: Props) {
   const { schoolSlug } = await params;
 
   return (
-    <div className="space-y-6 p-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Fee Collection</h1>
+    <div className="w-full space-y-7 pb-10">
+      {/* Page Header */}
+      <div className="flex flex-col gap-1">
+        <h1 className="text-2xl font-bold tracking-tight text-slate-950">
+          Fee Collection
+        </h1>
 
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-slate-500">
           Search a student and collect pending fees.
         </p>
       </div>
 
-      <FeeCollectionContainer schoolSlug={schoolSlug} />
+      {/* Fee Collection Workspace */}
+      <section className="premium-card overflow-hidden rounded-2xl">
+        <FeeCollectionContainer schoolSlug={schoolSlug} />
+      </section>
     </div>
   );
 }
