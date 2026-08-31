@@ -69,6 +69,43 @@ export const feePlanRepository = {
     });
   },
 
+  updateStatus(
+  id: string,
+  schoolId: string,
+  active: boolean,
+) {
+  return prisma.feePlan.update({
+    where: {
+      id,
+      schoolId,
+    },
+    data: {
+      active,
+    },
+    include: {
+      academicYear: true,
+
+      classes: {
+        include: {
+          class: true,
+        },
+      },
+
+      items: {
+        include: {
+          feeCategory: true,
+
+          _count: {
+            select: {
+              installments: true,
+            },
+          },
+        },
+      },
+    },
+  });
+},
+
   create(
     schoolId: string,
     input: FeePlanInput,

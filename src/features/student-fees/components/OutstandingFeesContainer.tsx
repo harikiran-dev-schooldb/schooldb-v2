@@ -19,16 +19,24 @@ type Props = {
   schoolSlug: string;
 };
 
+const PAGE_SIZE = 25;
+
 export function OutstandingFeesContainer({ schoolSlug }: Props) {
   const [data, setData] = useState<OutstandingFeesData | null>(null);
+
   const [loading, setLoading] = useState(true);
+
   const [error, setError] = useState<string | null>(null);
+
   const [search, setSearch] = useState("");
 
+  const [page, setPage] = useState(1);
+
   const [selectedRow, setSelectedRow] = useState<OutstandingRow | null>(null);
+
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
 
-  async function loadOutstanding(searchValue = "") {
+  async function loadOutstanding(searchValue = "", pageValue = 1) {
     try {
       setLoading(true);
       setError(null);
@@ -39,10 +47,12 @@ export function OutstandingFeesContainer({ schoolSlug }: Props) {
         params.set("search", searchValue.trim());
       }
 
-      const query = params.toString();
+      params.set("page", String(pageValue));
+
+      params.set("pageSize", String(PAGE_SIZE));
 
       const response = await fetch(
-        `/api/v1/fees/outstanding${query ? `?${query}` : ""}`,
+        `/api/v1/fees/outstanding?${params.toString()}`,
         {
           cache: "no-store",
         },
@@ -56,6 +66,7 @@ export function OutstandingFeesContainer({ schoolSlug }: Props) {
       }
 
       setData(result.data);
+      setPage(pageValue);
     } catch {
       setError("Failed to load outstanding fees.");
     } finally {
@@ -68,9 +79,17 @@ export function OutstandingFeesContainer({ schoolSlug }: Props) {
 
     async function initialLoad() {
       try {
-        const response = await fetch("/api/v1/fees/outstanding", {
-          cache: "no-store",
-        });
+        const params = new URLSearchParams();
+
+        params.set("page", "1");
+        params.set("pageSize", String(PAGE_SIZE));
+
+        const response = await fetch(
+          `/api/v1/fees/outstanding?${params.toString()}`,
+          {
+            cache: "no-store",
+          },
+        );
 
         const result = await response.json();
 
@@ -82,6 +101,7 @@ export function OutstandingFeesContainer({ schoolSlug }: Props) {
         }
 
         setData(result.data);
+        setPage(1);
       } catch {
         if (!cancelled) {
           setError("Failed to load outstanding fees.");
@@ -101,7 +121,23 @@ export function OutstandingFeesContainer({ schoolSlug }: Props) {
   }, []);
 
   function handleSearch() {
-    void loadOutstanding(search);
+    void loadOutstanding(search, 1);
+  }
+
+  function handlePreviousPage() {
+    if (!data?.pagination || page <= 1) {
+      return;
+    }
+
+    void loadOutstanding(search, page - 1);
+  }
+
+  function handleNextPage() {
+    if (!data?.pagination || page >= data.pagination.totalPages) {
+      return;
+    }
+
+    void loadOutstanding(search, page + 1);
   }
 
   function handleCollect(row: OutstandingRow) {
@@ -119,7 +155,11 @@ export function OutstandingFeesContainer({ schoolSlug }: Props) {
 
   function handlePaymentSuccess() {
     setSelectedRow(null);
-    void loadOutstanding(search);
+
+    /*
+     * Reload the current page after payment.
+     */
+    void loadOutstanding(search, page);
   }
 
   if (loading && !data) {
@@ -136,7 +176,10 @@ export function OutstandingFeesContainer({ schoolSlug }: Props) {
         <CardContent className="p-6">
           <div className="text-sm text-destructive">{error}</div>
 
-          <Button className="mt-4" onClick={() => void loadOutstanding(search)}>
+          <Button
+            className="mt-4"
+            onClick={() => void loadOutstanding(search, page)}
+          >
             Try Again
           </Button>
         </CardContent>
@@ -147,6 +190,8 @@ export function OutstandingFeesContainer({ schoolSlug }: Props) {
   if (!data) {
     return null;
   }
+
+  const pagination = data.pagination;
 
   return (
     <div className="space-y-6">
@@ -168,6 +213,36 @@ export function OutstandingFeesContainer({ schoolSlug }: Props) {
       )}
 
       <OutstandingFeesTable rows={data.rows} onCollect={handleCollect} />
+
+      {pagination && pagination.totalPages > 1 && (
+        <div className="flex items-center justify-between border-t pt-4">
+          <div className="text-sm text-muted-foreground">
+            Page {pagination.page} of {pagination.totalPages}
+            {" · "}
+            {pagination.total} outstanding installments
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={loading || pagination.page <= 1}
+              onClick={handlePreviousPage}
+            >
+              Previous
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={loading || pagination.page >= pagination.totalPages}
+              onClick={handleNextPage}
+            >
+              Next
+            </Button>
+          </div>
+        </div>
+      )}
 
       {selectedRow && (
         <RecordFeePaymentDialog

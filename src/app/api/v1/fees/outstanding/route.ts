@@ -1,271 +1,71 @@
 import { apiHandler } from "@/lib/api";
 import { requireTenant } from "@/lib/auth";
 import { ApiResponse } from "@/lib/response";
-import { prisma } from "@/lib/prisma";
+
+import { outstandingFeesService } from "@/features/fees/services/outstanding-fees.service";
 
 export async function GET(req: Request) {
   return apiHandler(async () => {
-    const tenant = await requireTenant();
+    const tenant =
+      await requireTenant();
 
-    const { searchParams } = new URL(req.url);
+    const { searchParams } =
+      new URL(req.url);
 
     const search =
-      searchParams.get("search")?.trim() || undefined;
+      searchParams.get("search")?.trim() ||
+      undefined;
 
     const classId =
-      searchParams.get("classId") || undefined;
+      searchParams.get("classId") ||
+      undefined;
 
     const academicYearId =
-      searchParams.get("academicYearId") || undefined;
+      searchParams.get(
+        "academicYearId",
+      ) || undefined;
 
-    const installments =
-      await prisma.studentFeeInstallment.findMany({
-        where: {
-          status: {
-            in: ["PENDING", "PARTIAL"],
-          },
+    const pageParam =
+      Number(
+        searchParams.get("page") || "1",
+      );
 
-          studentFeeItem: {
-            studentFee: {
-              schoolId: tenant.schoolId,
-              active: true,
+    const pageSizeParam =
+      Number(
+        searchParams.get("pageSize") ||
+          "25",
+      );
 
-              ...(academicYearId
-                ? {
-                    feePlan: {
-                      academicYearId,
-                    },
-                  }
-                : {}),
+    const page =
+      Number.isFinite(pageParam) &&
+      pageParam > 0
+        ? Math.floor(pageParam)
+        : 1;
 
-              studentEnrollment: {
-                ...(classId
-                  ? {
-                      classId,
-                    }
-                  : {}),
+    const pageSize =
+      Number.isFinite(pageSizeParam) &&
+      pageSizeParam > 0
+        ? Math.min(
+            Math.floor(pageSizeParam),
+            100,
+          )
+        : 25;
 
-                student: search
-                  ? {
-                      OR: [
-                        {
-                          fullName: {
-                            contains: search,
-                            mode: "insensitive",
-                          },
-                        },
-                        {
-                          admissionNo: {
-                            contains: search,
-                            mode: "insensitive",
-                          },
-                        },
-                      ],
-                    }
-                  : undefined,
-              },
-            },
-          },
-        },
+    const result =
+      await outstandingFeesService.list({
+        schoolId:
+          tenant.schoolId,
 
-        orderBy: {
-          dueDate: "asc",
-        },
+        search,
+        classId,
+        academicYearId,
 
-        select: {
-          id: true,
-          name: true,
-          amount: true,
-          concession: true,
-          payableAmount: true,
-          paidAmount: true,
-          dueDate: true,
-          status: true,
-
-          studentFeeItem: {
-            select: {
-              feeCategory: {
-                select: {
-                  id: true,
-                  name: true,
-                  code: true,
-                },
-              },
-
-              studentFee: {
-                select: {
-                  id: true,
-
-                  studentEnrollment: {
-                    select: {
-                      id: true,
-                      rollNo: true,
-
-                      student: {
-                        select: {
-                          id: true,
-                          admissionNo: true,
-                          fullName: true,
-                        },
-                      },
-
-                      class: {
-                        select: {
-                          id: true,
-                          name: true,
-                        },
-                      },
-
-                      section: {
-                        select: {
-                          id: true,
-                          name: true,
-                        },
-                      },
-                    },
-                  },
-
-                  feePlan: {
-                    select: {
-                      id: true,
-                      name: true,
-
-                      academicYear: {
-                        select: {
-                          id: true,
-                          name: true,
-                        },
-                      },
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
+        page,
+        pageSize,
       });
 
-    const rows = installments.map(
-      (installment) => {
-        const amount =
-          Number(installment.amount);
-
-        const concession =
-          Number(installment.concession);
-
-        const payableAmount =
-          Number(installment.payableAmount);
-
-        const paidAmount =
-          Number(installment.paidAmount);
-
-        const outstanding =
-          Math.max(
-            0,
-            payableAmount - paidAmount,
-          );
-
-        const enrollment =
-          installment.studentFeeItem
-            .studentFee.studentEnrollment;
-
-        return {
-          id: installment.id,
-
-          installmentName:
-            installment.name,
-
-          dueDate:
-            installment.dueDate,
-
-          status:
-            installment.status,
-
-          amount,
-          concession,
-          payableAmount,
-          paidAmount,
-          outstanding,
-
-          feeCategory:
-            installment.studentFeeItem
-              .feeCategory,
-
-          student: {
-            id:
-              enrollment.student.id,
-
-            admissionNo:
-              enrollment.student.admissionNo,
-
-            fullName:
-              enrollment.student.fullName,
-          },
-
-          class: enrollment.class,
-
-          section:
-            enrollment.section,
-
-          rollNo:
-            enrollment.rollNo,
-
-          studentFeeId:
-            installment.studentFeeItem
-              .studentFee.id,
-
-              studentEnrollmentId:
-  enrollment.id,
-
-feePlan:
-  installment.studentFeeItem
-    .studentFee.feePlan,
-        };
-      },
+    return ApiResponse.success(
+      result,
     );
-
-    const total = rows.reduce(
-      (sum, row) =>
-        sum + row.outstanding,
-      0,
-    );
-
-    const totalPayable =
-      rows.reduce(
-        (sum, row) =>
-          sum + row.payableAmount,
-        0,
-      );
-
-    const totalPaid =
-      rows.reduce(
-        (sum, row) =>
-          sum + row.paidAmount,
-        0,
-      );
-
-    const totalConcession =
-      rows.reduce(
-        (sum, row) =>
-          sum + row.concession,
-        0,
-      );
-
-    return ApiResponse.success({
-      rows,
-
-      summary: {
-        installmentCount:
-          rows.length,
-
-        totalPayable,
-
-        totalConcession,
-
-        totalPaid,
-
-        outstanding: total,
-      },
-    });
   });
 }
