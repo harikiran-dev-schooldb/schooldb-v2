@@ -4,11 +4,13 @@ import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+
 import {
   AcademicYearSelect,
   ClassSelect,
   SectionSelect,
 } from "@/components/common/select";
+
 import {
   BookOpenCheck,
   CalendarDays,
@@ -22,6 +24,7 @@ import {
 } from "lucide-react";
 
 import { Card, CardContent } from "@/components/ui/card";
+
 import { Button } from "@/components/ui/button";
 
 type AttendanceMode = "ONCE_DAILY" | "MORNING_AFTERNOON" | "EVERY_PERIOD";
@@ -84,7 +87,9 @@ export function AttendancePage({ schoolSlug }: Props) {
   const router = useRouter();
 
   const [academicYearId, setAcademicYearId] = useState("");
+
   const [classId, setClassId] = useState("");
+
   const [sectionId, setSectionId] = useState("");
 
   const [academicYears, setAcademicYears] = useState<AcademicYearOption[]>([]);
@@ -174,6 +179,64 @@ export function AttendancePage({ schoolSlug }: Props) {
   }
 
   /* ==========================================================================
+     MARK FULL PRESENT
+     ========================================================================== */
+
+  async function markFullPresent(scope: "SCHOOL" | "CLASS" | "SECTION") {
+    if (!academicYearId) {
+      toast.error("Academic year is required.");
+      return;
+    }
+
+    if ((scope === "CLASS" || scope === "SECTION") && !classId) {
+      toast.error("Class is required.");
+      return;
+    }
+
+    if (scope === "SECTION" && !sectionId) {
+      toast.error("Section is required.");
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      const response = await fetch("/api/v1/attendance/full-present", {
+        method: "POST",
+
+        headers: {
+          "Content-Type": "application/json",
+        },
+
+        body: JSON.stringify({
+          academicYearId,
+
+          attendanceDate: new Date().toISOString().split("T")[0],
+
+          scope,
+
+          classId: scope !== "SCHOOL" ? classId : undefined,
+
+          sectionId: scope === "SECTION" ? sectionId : undefined,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        toast.error(result.message || "Failed to mark full attendance.");
+        return;
+      }
+
+      toast.success("Full attendance marked present.");
+    } catch {
+      toast.error("Failed to mark full attendance.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  /* ==========================================================================
      CREATE ATTENDANCE SESSION
      ========================================================================== */
 
@@ -206,15 +269,22 @@ export function AttendancePage({ schoolSlug }: Props) {
 
       const response = await fetch("/api/v1/attendance/session", {
         method: "POST",
+
         headers: {
           "Content-Type": "application/json",
         },
+
         body: JSON.stringify({
           sessionType,
+
           timetableId,
+
           academicYearId,
+
           classId,
+
           sectionId,
+
           attendanceDate: new Date().toISOString().split("T")[0],
         }),
       });
@@ -240,6 +310,7 @@ export function AttendancePage({ schoolSlug }: Props) {
 
   useEffect(() => {
     if (!canLoadTimetable) {
+      setTimetable([]);
       return;
     }
 
@@ -271,7 +342,9 @@ export function AttendancePage({ schoolSlug }: Props) {
 
         if (!result.success) {
           toast.error(result.message);
+
           setTimetable([]);
+
           return;
         }
 
@@ -281,11 +354,9 @@ export function AttendancePage({ schoolSlug }: Props) {
           return;
         }
 
-        if (!controller.signal.aborted) {
-          toast.error("Failed to load today's timetable.");
+        toast.error("Failed to load today's timetable.");
 
-          setTimetable([]);
-        }
+        setTimetable([]);
       } finally {
         if (!controller.signal.aborted) {
           setTimetableLoading(false);
@@ -330,7 +401,7 @@ export function AttendancePage({ schoolSlug }: Props) {
             </h1>
 
             <p className="mt-0.5 text-sm text-slate-500">
-              Select a class and start today&apos;s attendance.
+              Mark everyone present first, then record only absentees.
             </p>
           </div>
         </div>
@@ -351,8 +422,6 @@ export function AttendancePage({ schoolSlug }: Props) {
           ====================================================================== */}
 
       <Card className="overflow-hidden rounded-2xl border-slate-200/80 bg-white shadow-[0_8px_30px_rgba(15,23,42,0.04)]">
-        {/* Header */}
-
         <div className="border-b border-slate-200/70 bg-gradient-to-r from-white to-indigo-50/30 px-5 py-4 md:px-6">
           <div className="flex items-center gap-3">
             <div className="flex size-9 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 ring-1 ring-indigo-100">
@@ -372,8 +441,6 @@ export function AttendancePage({ schoolSlug }: Props) {
         </div>
 
         <CardContent className="space-y-5 p-5 md:p-6">
-          {/* Selectors */}
-
           <div className="grid gap-4 md:grid-cols-3">
             <AcademicYearSelect
               value={academicYearId}
@@ -391,8 +458,6 @@ export function AttendancePage({ schoolSlug }: Props) {
             />
           </div>
 
-          {/* Attendance Mode */}
-
           <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-[10px] font-bold tracking-[0.15em] text-slate-400 uppercase">
@@ -405,12 +470,126 @@ export function AttendancePage({ schoolSlug }: Props) {
             </div>
 
             <div className="flex items-center gap-2 rounded-lg bg-white px-2.5 py-1.5 text-xs font-medium text-slate-600 shadow-sm ring-1 ring-slate-200">
-              <span className="size-2 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.35)]" />
+              <span className="size-2 rounded-full bg-indigo-500" />
               Configuration active
             </div>
           </div>
         </CardContent>
       </Card>
+
+      {/* ======================================================================
+          STEP 1 — FULL PRESENT
+          ====================================================================== */}
+
+      <Card className="overflow-hidden rounded-2xl border-emerald-200/80 bg-white shadow-[0_8px_30px_rgba(15,23,42,0.04)]">
+        <div className="border-b border-emerald-100 bg-emerald-50/40 px-5 py-4 md:px-6">
+          <div className="flex items-center gap-3">
+            <div className="flex size-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100">
+              <CheckCircle2 className="size-4" />
+            </div>
+
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="rounded-md bg-emerald-100 px-2 py-0.5 text-[10px] font-bold tracking-wide text-emerald-700 uppercase">
+                  Step 1
+                </span>
+
+                <h2 className="text-sm font-bold text-slate-900">
+                  Mark Full Present
+                </h2>
+              </div>
+
+              <p className="mt-1 text-xs text-slate-500">
+                Mark all active students as present before recording absentees.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <CardContent className="p-5 md:p-6">
+          <div className="grid gap-3 sm:grid-cols-3">
+            {/* SCHOOL */}
+
+            <Button
+              variant="outline"
+              className="h-11 gap-2 rounded-xl border-emerald-200 bg-white text-emerald-700 hover:bg-emerald-50"
+              disabled={loading || !academicYearId}
+              onClick={() => markFullPresent("SCHOOL")}
+            >
+              {loading ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <UserCheck className="size-4" />
+              )}
+              Full School Present
+            </Button>
+
+            {/* CLASS */}
+
+            <Button
+              variant="outline"
+              className="h-11 gap-2 rounded-xl border-indigo-200 bg-white text-indigo-700 hover:bg-indigo-50"
+              disabled={loading || !academicYearId || !classId}
+              onClick={() => markFullPresent("CLASS")}
+            >
+              {loading ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <UserCheck className="size-4" />
+              )}
+              Full Class Present
+            </Button>
+
+            {/* SECTION */}
+
+            <Button
+              variant="outline"
+              className="h-11 gap-2 rounded-xl border-violet-200 bg-white text-violet-700 hover:bg-violet-50"
+              disabled={loading || !academicYearId || !classId || !sectionId}
+              onClick={() => markFullPresent("SECTION")}
+            >
+              {loading ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <UserCheck className="size-4" />
+              )}
+              Full Section Present
+            </Button>
+          </div>
+
+          <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+            <div className="flex items-start gap-2">
+              <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-500" />
+
+              <p className="text-xs leading-5 text-slate-500">
+                <span className="font-semibold text-slate-700">
+                  Recommended:
+                </span>{" "}
+                Mark everyone present first. Then open the attendance session
+                and change only students who are absent.
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* ======================================================================
+          STEP 2
+          ====================================================================== */}
+
+      <div className="flex items-center gap-3 px-1">
+        <div className="flex size-7 items-center justify-center rounded-lg bg-indigo-50 text-xs font-bold text-indigo-600 ring-1 ring-indigo-100">
+          2
+        </div>
+
+        <div>
+          <h2 className="text-sm font-bold text-slate-900">Mark Absentees</h2>
+
+          <p className="text-xs text-slate-500">
+            Select the class and section, then open the attendance session.
+          </p>
+        </div>
+      </div>
 
       {/* ======================================================================
           ONCE DAILY
@@ -421,21 +600,22 @@ export function AttendancePage({ schoolSlug }: Props) {
           <CardContent className="flex flex-col gap-5 p-5 md:flex-row md:items-center md:justify-between md:p-6">
             <div className="flex min-w-0 items-start gap-3.5">
               <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 ring-1 ring-indigo-100">
-                <CalendarDays className="size-5" strokeWidth={2} />
+                <CalendarDays className="size-5" />
               </div>
 
               <div className="min-w-0">
                 <h2 className="font-bold text-slate-900">Daily Attendance</h2>
 
                 <p className="mt-1 text-sm leading-5 text-slate-500">
-                  Create one attendance session for the selected class today.
+                  Open today&apos;s session and mark only the students who are
+                  absent.
                 </p>
               </div>
             </div>
 
             <Button
               size="lg"
-              className="w-full gap-2 rounded-xl bg-indigo-600 shadow-[0_8px_20px_rgba(79,70,229,0.18)] hover:bg-indigo-700 sm:w-auto sm:min-w-[180px]"
+              className="w-full gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 sm:w-auto sm:min-w-[180px]"
               disabled={loading || !academicYearId || !classId || !sectionId}
               onClick={() => createSession("DAILY")}
             >
@@ -445,7 +625,7 @@ export function AttendancePage({ schoolSlug }: Props) {
                 <UserCheck className="size-4" />
               )}
 
-              {loading ? "Creating..." : "Take Attendance"}
+              {loading ? "Opening..." : "Mark Absentees"}
             </Button>
           </CardContent>
         </Card>
@@ -460,8 +640,8 @@ export function AttendancePage({ schoolSlug }: Props) {
           <AttendanceOption
             icon={<Sunrise className="size-5" />}
             title="Morning Attendance"
-            description="Mark attendance for the morning session."
-            buttonLabel="Take Morning Attendance"
+            description="Open the morning session and mark only absent students."
+            buttonLabel="Mark Morning Absentees"
             loading={loading}
             disabled={loading || !academicYearId || !classId || !sectionId}
             onClick={() => createSession("MORNING")}
@@ -470,8 +650,8 @@ export function AttendancePage({ schoolSlug }: Props) {
           <AttendanceOption
             icon={<Sun className="size-5" />}
             title="Afternoon Attendance"
-            description="Mark attendance for the afternoon session."
-            buttonLabel="Take Afternoon Attendance"
+            description="Open the afternoon session and mark only absent students."
+            buttonLabel="Mark Afternoon Absentees"
             loading={loading}
             disabled={loading || !academicYearId || !classId || !sectionId}
             onClick={() => createSession("AFTERNOON")}
@@ -486,12 +666,10 @@ export function AttendancePage({ schoolSlug }: Props) {
 
       {attendanceMode === "EVERY_PERIOD" && (
         <Card className="overflow-hidden rounded-2xl border-slate-200/80 bg-white shadow-[0_8px_30px_rgba(15,23,42,0.04)]">
-          {/* Header */}
-
           <div className="border-b border-slate-200/70 bg-gradient-to-r from-white to-indigo-50/30 px-5 py-4 md:px-6">
             <div className="flex items-center gap-3">
               <div className="flex size-9 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 ring-1 ring-indigo-100">
-                <Clock3 className="size-4" strokeWidth={2} />
+                <Clock3 className="size-4" />
               </div>
 
               <div>
@@ -500,15 +678,13 @@ export function AttendancePage({ schoolSlug }: Props) {
                 </h2>
 
                 <p className="mt-0.5 text-xs text-slate-500">
-                  Select a period to create an attendance session.
+                  Open a period and mark only absent students.
                 </p>
               </div>
             </div>
           </div>
 
           <CardContent className="p-5 md:p-6">
-            {/* No class / section */}
-
             {!classId || !sectionId ? (
               <EmptyState
                 icon={<Clock3 className="size-7 text-slate-400" />}
@@ -516,8 +692,6 @@ export function AttendancePage({ schoolSlug }: Props) {
                 description="Today's timetable will appear here."
               />
             ) : timetableLoading ? (
-              /* Loading */
-
               <div className="flex min-h-40 items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50/50">
                 <div className="flex items-center gap-2 text-sm text-slate-500">
                   <Loader2 className="size-5 animate-spin text-indigo-500" />
@@ -525,22 +699,18 @@ export function AttendancePage({ schoolSlug }: Props) {
                 </div>
               </div>
             ) : timetable.length === 0 ? (
-              /* Empty */
-
               <EmptyState
                 icon={<Clock3 className="size-7 text-slate-400" />}
                 title="No periods found"
                 description="There are no timetable periods configured for this class and section today."
               />
             ) : (
-              /* Timetable */
-
               <div className="overflow-hidden rounded-xl border border-slate-200">
                 <div className="divide-y divide-slate-200">
                   {timetable.map((item) => (
                     <div
                       key={item.id}
-                      className="flex flex-col gap-4 p-4 transition-colors hover:bg-indigo-50/30 sm:flex-row sm:items-center sm:justify-between md:px-5"
+                      className="flex flex-col gap-4 p-4 hover:bg-indigo-50/30 sm:flex-row sm:items-center sm:justify-between md:px-5"
                     >
                       <div className="flex min-w-0 items-center gap-4">
                         <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-slate-50 text-slate-500 ring-1 ring-slate-200">
@@ -569,7 +739,7 @@ export function AttendancePage({ schoolSlug }: Props) {
                       </div>
 
                       <Button
-                        className="w-full gap-2 rounded-xl bg-indigo-600 shadow-sm hover:bg-indigo-700 sm:w-auto sm:min-w-[170px]"
+                        className="w-full gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 sm:w-auto sm:min-w-[170px]"
                         disabled={loading}
                         onClick={() => createSession("PERIOD", item.id)}
                       >
@@ -578,7 +748,7 @@ export function AttendancePage({ schoolSlug }: Props) {
                         ) : (
                           <UserCheck className="size-4" />
                         )}
-                        Take Attendance
+                        Mark Absentees
                       </Button>
                     </div>
                   ))}
@@ -596,9 +766,7 @@ export function AttendancePage({ schoolSlug }: Props) {
       <div className="flex flex-wrap items-center justify-center gap-2 px-4 text-center text-xs text-slate-400">
         <CheckCircle2 className="size-3.5 shrink-0 text-emerald-500" />
 
-        <span>
-          Attendance sessions are created for the selected class and section.
-        </span>
+        <span>Start with Full Present, then record only absentees.</span>
       </div>
     </div>
   );
@@ -644,8 +812,8 @@ function AttendanceOption({
           variant={secondary ? "outline" : "default"}
           className={
             secondary
-              ? "mt-5 w-full gap-2 rounded-xl border-indigo-200 bg-white text-indigo-600 hover:bg-indigo-50 hover:text-indigo-700"
-              : "mt-5 w-full gap-2 rounded-xl bg-indigo-600 shadow-sm hover:bg-indigo-700"
+              ? "mt-5 w-full gap-2 rounded-xl border-indigo-200 bg-white text-indigo-600 hover:bg-indigo-50"
+              : "mt-5 w-full gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-700"
           }
           disabled={disabled}
           onClick={onClick}

@@ -1175,4 +1175,117 @@ const todayRecords =
     },
   };
 },
+
+async markFullPresent(
+  schoolId: string,
+  input: {
+    academicYearId: string;
+    attendanceDate: string;
+    scope:
+      | "SCHOOL"
+      | "CLASS"
+      | "SECTION";
+    classId?: string;
+    sectionId?: string;
+  },
+) {
+  if (
+    input.scope === "CLASS" &&
+    !input.classId
+  ) {
+    throw new Error(
+      "Class is required.",
+    );
+  }
+
+  if (
+    input.scope === "SECTION" &&
+    (!input.classId ||
+      !input.sectionId)
+  ) {
+    throw new Error(
+      "Class and section are required.",
+    );
+  }
+
+  const academicYear =
+    await academicYearRepository.findById(
+      input.academicYearId,
+      schoolId,
+    );
+
+  if (!academicYear) {
+    throw new Error(
+      "Academic year not found.",
+    );
+  }
+
+  const filters = {
+    ...(input.scope !== "SCHOOL" &&
+    input.classId
+      ? {
+          classId: input.classId,
+        }
+      : {}),
+
+    ...(input.scope === "SECTION" &&
+    input.sectionId
+      ? {
+          sectionId: input.sectionId,
+        }
+      : {}),
+  };
+
+  /*
+   * Attendance mode is determined by the
+   * academic year configuration.
+   */
+  if (
+    academicYear.attendanceMode ===
+    "ONCE_DAILY"
+  ) {
+    return attendanceRepository.markFullPresent(
+      schoolId,
+      input.academicYearId,
+      new Date(input.attendanceDate),
+      "DAILY",
+      filters,
+    );
+  }
+
+  if (
+    academicYear.attendanceMode ===
+    "MORNING_AFTERNOON"
+  ) {
+    return attendanceRepository.markFullPresent(
+      schoolId,
+      input.academicYearId,
+      new Date(input.attendanceDate),
+      "MORNING",
+      filters,
+    );
+  }
+
+  /*
+   * EVERY_PERIOD requires timetable-based
+   * sessions, so it should not blindly create
+   * a single PERIOD session.
+   */
+  if (
+    academicYear.attendanceMode ===
+    "EVERY_PERIOD"
+  ) {
+    return attendanceRepository.markFullPresent(
+      schoolId,
+      input.academicYearId,
+      new Date(input.attendanceDate),
+      "PERIOD",
+      filters,
+    );
+  }
+
+  throw new Error(
+    "Unsupported attendance mode.",
+  );
+}
 };
