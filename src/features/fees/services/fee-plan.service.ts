@@ -292,66 +292,31 @@ export const feePlanService = {
     );
   },
 
-    async deactivate(
-    schoolId: string,
-    id: string,
-  ) {
-    const plan =
-      await prisma.feePlan.findFirst({
-        where: {
-          id,
-          schoolId,
-        },
-      });
+    async changeStatus(
+  id: string,
+  schoolId: string,
+  active: boolean,
+) {
+  const existing =
+    await feePlanRepository.findById(
+      id,
+      schoolId,
+    );
 
-    if (!plan) {
-      throw new Error(
-        "Fee plan not found.",
-      );
-    }
+  if (!existing) {
+    throw new Error(
+      "Fee plan not found.",
+    );
+  }
 
-    if (!plan.active) {
-      return plan;
-    }
+  if (existing.active === active) {
+    return existing;
+  }
 
-    return prisma.feePlan.update({
-      where: {
-        id,
-      },
-      data: {
-        active: false,
-      },
-    });
-  },
-
-  async changeStatus(
-    id: string,
-    schoolId: string,
-    active: boolean,
-  ) {
-    const existing =
-      await feePlanRepository.findById(
-        id,
-        schoolId,
-      );
-
-    if (!existing) {
-      throw new Error(
-        "Fee plan not found.",
-      );
-    }
-
-    if (existing.active === active) {
-      return existing;
-    }
-
-    return prisma.feePlan.update({
-      where: {
-        id,
-      },
-      data: {
-        active,
-      },
-    });
-  },
+  return feePlanRepository.updateStatus(
+    id,
+    schoolId,
+    active,
+  );
+},
 };

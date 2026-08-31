@@ -50,6 +50,13 @@ export type OutstandingRow = {
   };
 };
 
+export type OutstandingFeesPagination = {
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+};
+
 export type OutstandingFeesData = {
   rows: OutstandingRow[];
 
@@ -60,4 +67,6 @@ export type OutstandingFeesData = {
     totalPaid: number;
     outstanding: number;
   };
+
+  pagination: OutstandingFeesPagination;
 };
