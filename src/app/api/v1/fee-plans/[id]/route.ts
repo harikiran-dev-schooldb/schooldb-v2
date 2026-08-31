@@ -5,6 +5,7 @@ import { validateBody } from "@/lib/validation";
 
 import {
   feePlanSchema,
+  feePlanStatusSchema,
 } from "@/features/fees/schemas/fee-plan.schema";
 
 import {
@@ -54,11 +55,42 @@ export async function PATCH(
 
     const { id } = await params;
 
-    const body =
-      await validateBody(
-        req,
-        feePlanSchema,
+    const rawBody = await req.json();
+
+    /*
+     * Status-only update:
+     * { active: true }
+     * { active: false }
+     */
+    if (
+      Object.keys(rawBody).length === 1 &&
+      typeof rawBody.active === "boolean"
+    ) {
+      const body =
+        feePlanStatusSchema.parse(
+          rawBody,
+        );
+
+      const plan =
+        await feePlanService.changeStatus(
+          id,
+          tenant.schoolId,
+          body.active,
+        );
+
+      return ApiResponse.success(
+        plan,
+        body.active
+          ? "Fee plan activated successfully."
+          : "Fee plan deactivated successfully.",
       );
+    }
+
+    /*
+     * Full fee-plan update.
+     */
+    const body =
+      feePlanSchema.parse(rawBody);
 
     const plan =
       await feePlanService.update(
@@ -72,4 +104,5 @@ export async function PATCH(
       "Fee plan updated successfully.",
     );
   });
+
 }

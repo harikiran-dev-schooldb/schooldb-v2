@@ -41,6 +41,14 @@ export const feePlanSchema = z.object({
     .min(1, "At least one fee item is required."),
 });
 
+export const feePlanStatusSchema = z.object({
+  active: z.boolean(),
+});
+
+export type FeePlanStatusInput = z.infer<
+  typeof feePlanStatusSchema
+>;
+
 // Raw values used by React Hook Form
 export type FeePlanFormValues =
   z.input<typeof feePlanSchema>;
