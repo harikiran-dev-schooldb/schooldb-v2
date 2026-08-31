@@ -969,4 +969,200 @@ getCurrent(schoolId: string) {
     },
   });
 },
+
+async markFullPresent(
+  schoolId: string,
+  academicYearId: string,
+  attendanceDate: Date,
+  sessionType: "DAILY" | "MORNING" | "AFTERNOON" | "PERIOD",
+  filters?: {
+    classId?: string;
+    sectionId?: string;
+  },
+) {
+  const enrollments =
+    await prisma.studentEnrollment.findMany({
+      where: {
+        schoolId,
+        academicYearId,
+        active: true,
+
+        ...(filters?.classId
+          ? {
+              classId: filters.classId,
+            }
+          : {}),
+
+        ...(filters?.sectionId
+          ? {
+              sectionId:
+                filters.sectionId,
+            }
+          : {}),
+      },
+
+      select: {
+        id: true,
+        studentId: true,
+        classId: true,
+        sectionId: true,
+      },
+    });
+
+  if (enrollments.length === 0) {
+    return {
+      sessionCount: 0,
+      attendanceCount: 0,
+    };
+  }
+
+  const groups = new Map<
+    string,
+    {
+      classId: string;
+      sectionId: string;
+    }
+  >();
+
+  for (const enrollment of enrollments) {
+    const key =
+      `${enrollment.classId}:${enrollment.sectionId}`;
+
+    groups.set(key, {
+      classId:
+        enrollment.classId,
+      sectionId:
+        enrollment.sectionId,
+    });
+  }
+
+  return prisma.$transaction(
+    async (tx) => {
+      let sessionCount = 0;
+      let attendanceCount = 0;
+
+      for (const group of groups.values()) {
+        let session =
+          await tx.attendanceSession.findFirst({
+            where: {
+              schoolId,
+              academicYearId,
+              classId:
+                group.classId,
+              sectionId:
+                group.sectionId,
+              sessionType,
+              attendanceDate,
+            },
+          });
+
+        if (!session) {
+          session =
+            await tx.attendanceSession.create({
+              data: {
+                schoolId,
+                academicYearId,
+                classId:
+                  group.classId,
+                sectionId:
+                  group.sectionId,
+                sessionType,
+                attendanceDate,
+              },
+            });
+
+          sessionCount++;
+        }
+
+        /*
+         * Never modify a locked session.
+         */
+        if (session.locked) {
+          continue;
+        }
+
+        const studentIds =
+          enrollments
+            .filter(
+              (enrollment) =>
+                enrollment.classId ===
+                  group.classId &&
+                enrollment.sectionId ===
+                  group.sectionId,
+            )
+            .map(
+              (enrollment) =>
+                enrollment.studentId,
+            );
+
+        /*
+         * Only create attendance records
+         * that do not already exist.
+         *
+         * This is important:
+         *
+         * Mark Full Present must NOT erase
+         * absentees that were already marked.
+         */
+        const existingRecords =
+          await tx.attendance.findMany({
+            where: {
+              sessionId:
+                session.id,
+
+              studentId: {
+                in: studentIds,
+              },
+            },
+
+            select: {
+              studentId: true,
+            },
+          });
+
+        const existingStudentIds =
+          new Set(
+            existingRecords.map(
+              (record) =>
+                record.studentId,
+            ),
+          );
+
+        const newStudentIds =
+          studentIds.filter(
+            (studentId) =>
+              !existingStudentIds.has(
+                studentId,
+              ),
+          );
+
+        if (
+          newStudentIds.length === 0
+        ) {
+          continue;
+        }
+
+        await tx.attendance.createMany({
+          data: newStudentIds.map(
+            (studentId) => ({
+              schoolId,
+              sessionId:
+                session.id,
+              studentId,
+              status: "PRESENT",
+            }),
+          ),
+        });
+
+        attendanceCount +=
+          newStudentIds.length;
+      }
+
+      return {
+        sessionCount,
+        attendanceCount,
+      };
+    },
+  );
+},
 };
