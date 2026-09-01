@@ -508,7 +508,7 @@ export function ExamMarksPage({ schoolSlug, examId }: Props) {
                 </thead>
 
                 <tbody>
-                  {students.map((student, index) => (
+                  {students.map((student) => (
                     <tr key={student.studentEnrollmentId} className="border-b">
                       <td className="sticky left-0 z-10 border-r bg-background p-3 font-semibold">
                         {student.rollNo ?? "—"}

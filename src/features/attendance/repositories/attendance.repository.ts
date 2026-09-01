@@ -3,7 +3,6 @@ import {
   AttendanceStatus,
 } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
-import { WeekDay } from "@/generated/prisma/enums";
 
 const attendanceInclude = {
   student: true,

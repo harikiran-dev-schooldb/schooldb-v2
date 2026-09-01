@@ -1,6 +1,6 @@
 "use client";
 
-import { CreditCard, IndianRupee, ReceiptText } from "lucide-react";
+import { IndianRupee, ReceiptText } from "lucide-react";
 
 import { Card, CardContent } from "@/components/ui/card";
 

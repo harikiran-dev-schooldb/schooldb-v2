@@ -1,7 +1,6 @@
 import { apiHandler } from "@/lib/api";
 import { requireTenant } from "@/lib/auth";
 import { ApiResponse } from "@/lib/response";
-import { validateBody } from "@/lib/validation";
 
 import {
   feePlanSchema,
