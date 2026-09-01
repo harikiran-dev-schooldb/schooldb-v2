@@ -169,6 +169,8 @@ export function AttendancePage({ schoolSlug }: Props) {
     Boolean(classId) &&
     Boolean(sectionId);
 
+  const visibleTimetable = canLoadTimetable ? timetable : [];
+
   /* ==========================================================================
      CLASS CHANGE
      ========================================================================== */
@@ -333,7 +335,6 @@ export function AttendancePage({ schoolSlug }: Props) {
 
   useEffect(() => {
     if (!canLoadTimetable) {
-      setTimetable([]);
       return;
     }
 
@@ -365,9 +366,7 @@ export function AttendancePage({ schoolSlug }: Props) {
 
         if (!result.success) {
           toast.error(result.message);
-
           setTimetable([]);
-
           return;
         }
 
@@ -378,7 +377,6 @@ export function AttendancePage({ schoolSlug }: Props) {
         }
 
         toast.error("Failed to load today's timetable.");
-
         setTimetable([]);
       } finally {
         if (!controller.signal.aborted) {
@@ -387,12 +385,12 @@ export function AttendancePage({ schoolSlug }: Props) {
       }
     };
 
-    void loadTimetable();
+    loadTimetable();
 
     return () => {
       controller.abort();
     };
-  }, [canLoadTimetable, academicYearId, classId, sectionId]);
+  }, [academicYearId, classId, sectionId, canLoadTimetable]);
 
   /* ==========================================================================
      RENDER
@@ -721,7 +719,7 @@ export function AttendancePage({ schoolSlug }: Props) {
                   Loading today&apos;s timetable...
                 </div>
               </div>
-            ) : timetable.length === 0 ? (
+            ) : visibleTimetable.length === 0 ? (
               <EmptyState
                 icon={<Clock3 className="size-7 text-slate-400" />}
                 title="No periods found"
@@ -730,7 +728,7 @@ export function AttendancePage({ schoolSlug }: Props) {
             ) : (
               <div className="overflow-hidden rounded-xl border border-slate-200">
                 <div className="divide-y divide-slate-200">
-                  {timetable.map((item) => (
+                  {visibleTimetable.map((item) => (
                     <div
                       key={item.id}
                       className="flex flex-col gap-4 p-4 hover:bg-indigo-50/30 sm:flex-row sm:items-center sm:justify-between md:px-5"
