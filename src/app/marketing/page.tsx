@@ -3,16 +3,16 @@ import {
   ArrowRight,
   BarChart3,
   BookOpenCheck,
+  CalendarCheck2,
   CheckCircle2,
   ClipboardCheck,
   GraduationCap,
   IndianRupee,
   Layers3,
-  Menu,
   ShieldCheck,
   Sparkles,
   Users,
-  X,
+  UserRoundCheck,
 } from "lucide-react";
 
 export const metadata = {
@@ -25,7 +25,7 @@ const modules = [
   {
     icon: Users,
     title: "Students & Enrolments",
-    text: "Keep student records, admissions and enrolment information organised in one place.",
+    text: "Keep student records, admissions, enrolments and academic information organised in one place.",
   },
   {
     icon: Layers3,
@@ -35,12 +35,12 @@ const modules = [
   {
     icon: ClipboardCheck,
     title: "Attendance",
-    text: "Run day-to-day attendance workflows with a clear view of attendance performance.",
+    text: "Run daily attendance workflows with a clear view of attendance activity.",
   },
   {
     icon: GraduationCap,
     title: "Examinations",
-    text: "Keep examination workflows connected to the school's academic structure.",
+    text: "Keep examination workflows connected to your school's academic structure.",
   },
   {
     icon: IndianRupee,
@@ -63,194 +63,417 @@ const benefits = [
   "Built to grow with your school",
 ];
 
+const stats = [
+  { value: "01", label: "Connected workspace" },
+  { value: "06+", label: "Core school modules" },
+  { value: "100%", label: "School-focused workflow" },
+];
+
 export default function MarketingPage() {
   return (
-    <main className="min-h-screen overflow-hidden bg-white text-slate-950">
-      <header className="fixed inset-x-0 top-0 z-50 border-b border-white/10 bg-slate-950/85 backdrop-blur-xl">
-        <div className="mx-auto flex h-18 max-w-7xl items-center justify-between px-5 sm:px-8">
+    <main className="min-h-screen bg-[#f7f8fc] text-slate-950">
+      {/* ====================================================================
+          NAVIGATION
+          ==================================================================== */}
+      <header className="sticky top-0 z-50 border-b border-slate-200/70 bg-white/90 backdrop-blur-xl">
+        <div className="mx-auto flex h-[72px] max-w-7xl items-center justify-between px-5 sm:px-8">
           <Link href="/marketing" className="flex items-center gap-3">
-            <div className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-lg shadow-indigo-500/25">
-              <GraduationCap className="size-5" />
+            <div className="flex size-10 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-600 to-violet-600 text-white shadow-[0_8px_22px_rgba(79,70,229,0.22)]">
+              <GraduationCap className="size-5" strokeWidth={2.2} />
             </div>
             <div>
-              <div className="text-lg font-bold tracking-tight text-white">SchoolDB</div>
-              <div className="text-[10px] font-medium uppercase tracking-[0.22em] text-slate-400">School Operations</div>
+              <div className="text-[17px] font-bold tracking-tight text-slate-950">
+                SchoolDB
+              </div>
+              <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-indigo-600">
+                School Operations
+              </div>
             </div>
           </Link>
 
-          <nav className="hidden items-center gap-8 text-sm text-slate-300 md:flex">
-            <a href="#features" className="transition hover:text-white">Features</a>
-            <a href="#how-it-works" className="transition hover:text-white">How it works</a>
-            <a href="#why-schooldb" className="transition hover:text-white">Why SchoolDB</a>
+          <nav className="hidden items-center gap-8 text-sm font-medium text-slate-500 md:flex">
+            <a className="transition hover:text-indigo-600" href="#features">
+              Features
+            </a>
+            <a className="transition hover:text-indigo-600" href="#workflow">
+              How it works
+            </a>
+            <a className="transition hover:text-indigo-600" href="#why-schooldb">
+              Why SchoolDB
+            </a>
           </nav>
 
-          <a href="#demo" className="hidden rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-slate-950 shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl sm:inline-flex">
-            Book a demo <ArrowRight className="ml-2 size-4" />
+          <a
+            href="#demo"
+            className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_8px_20px_rgba(79,70,229,0.18)] transition hover:bg-indigo-700 hover:shadow-[0_10px_24px_rgba(79,70,229,0.24)]"
+          >
+            Book a demo
+            <ArrowRight className="size-4" />
           </a>
         </div>
       </header>
 
-      <section className="relative isolate min-h-[760px] overflow-hidden bg-slate-950 pt-28">
-        <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_20%_15%,rgba(99,102,241,.28),transparent_32%),radial-gradient(circle_at_80%_25%,rgba(139,92,246,.22),transparent_30%),linear-gradient(135deg,#020617_0%,#0f172a_55%,#17113b_100%)]" />
-        <div className="absolute -right-32 top-32 -z-10 size-[420px] rounded-full bg-indigo-500/15 blur-3xl" />
-        <div className="absolute -left-40 bottom-0 -z-10 size-[420px] rounded-full bg-violet-500/10 blur-3xl" />
+      {/* ====================================================================
+          HERO
+          ==================================================================== */}
+      <section className="relative overflow-hidden border-b border-slate-200/70 bg-white">
+        <div className="pointer-events-none absolute -right-40 -top-48 size-[620px] rounded-full bg-indigo-100/60 blur-3xl" />
+        <div className="pointer-events-none absolute -left-40 bottom-[-260px] size-[520px] rounded-full bg-violet-100/45 blur-3xl" />
 
-        <div className="mx-auto grid max-w-7xl items-center gap-14 px-5 py-20 sm:px-8 lg:grid-cols-[1.02fr_.98fr] lg:py-28">
+        <div className="relative mx-auto grid max-w-7xl items-center gap-14 px-5 py-16 sm:px-8 sm:py-20 lg:grid-cols-[1fr_0.92fr] lg:py-24">
           <div>
-            <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold tracking-wide text-indigo-200 backdrop-blur">
-              <Sparkles className="size-3.5" /> Built for modern school operations
+            <div className="mb-6 inline-flex items-center gap-2 rounded-xl border border-indigo-100 bg-indigo-50/70 px-3.5 py-2 text-[11px] font-bold uppercase tracking-[0.13em] text-indigo-600">
+              <Sparkles className="size-3.5" />
+              Modern school operations
             </div>
-            <h1 className="max-w-3xl text-5xl font-semibold leading-[1.02] tracking-[-0.045em] text-white sm:text-6xl lg:text-7xl">
+
+            <h1 className="max-w-3xl text-5xl font-bold leading-[1.02] tracking-[-0.045em] text-slate-950 sm:text-6xl lg:text-[68px]">
               Run your school.
-              <span className="block bg-gradient-to-r from-indigo-300 via-violet-300 to-white bg-clip-text text-transparent">Simply.</span>
+              <span className="block bg-gradient-to-r from-indigo-600 via-violet-600 to-indigo-500 bg-clip-text text-transparent">
+                Simply.
+              </span>
             </h1>
-            <p className="mt-7 max-w-2xl text-lg leading-8 text-slate-300 sm:text-xl">
-              One connected platform for students, academics, attendance, examinations, fees and everyday school administration.
+
+            <p className="mt-6 max-w-2xl text-base leading-7 text-slate-600 sm:text-lg sm:leading-8">
+              One connected platform for students, academics, attendance,
+              examinations, fees and everyday school administration.
             </p>
-            <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-              <a href="#demo" className="inline-flex items-center justify-center rounded-2xl bg-white px-6 py-3.5 text-sm font-bold text-slate-950 shadow-2xl shadow-black/20 transition hover:-translate-y-0.5">
-                See SchoolDB in action <ArrowRight className="ml-2 size-4" />
+
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+              <a
+                href="#demo"
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-6 py-3.5 text-sm font-semibold text-white shadow-[0_10px_28px_rgba(79,70,229,0.20)] transition hover:-translate-y-0.5 hover:bg-indigo-700"
+              >
+                See SchoolDB in action
+                <ArrowRight className="size-4" />
               </a>
-              <a href="#features" className="inline-flex items-center justify-center rounded-2xl border border-white/15 bg-white/5 px-6 py-3.5 text-sm font-semibold text-white backdrop-blur transition hover:bg-white/10">
+              <a
+                href="#features"
+                className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-6 py-3.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-indigo-200 hover:bg-indigo-50/40 hover:text-indigo-700"
+              >
                 Explore features
               </a>
             </div>
-            <div className="mt-9 flex flex-wrap gap-x-6 gap-y-3 text-sm text-slate-400">
-              <span className="inline-flex items-center gap-2"><CheckCircle2 className="size-4 text-indigo-300" /> Structured workflows</span>
-              <span className="inline-flex items-center gap-2"><CheckCircle2 className="size-4 text-indigo-300" /> School-specific workspace</span>
-              <span className="inline-flex items-center gap-2"><CheckCircle2 className="size-4 text-indigo-300" /> Management visibility</span>
+
+            <div className="mt-9 flex flex-wrap gap-x-6 gap-y-3">
+              {[
+                "Structured workflows",
+                "School-specific workspace",
+                "Management visibility",
+              ].map((item) => (
+                <div
+                  key={item}
+                  className="flex items-center gap-2 text-xs font-medium text-slate-500"
+                >
+                  <CheckCircle2 className="size-4 text-emerald-500" />
+                  {item}
+                </div>
+              ))}
             </div>
           </div>
 
+          {/* Product preview — intentionally styled like the application */}
           <div className="relative mx-auto w-full max-w-xl">
-            <div className="absolute -inset-6 rounded-[2.5rem] bg-gradient-to-br from-indigo-500/25 to-violet-500/10 blur-2xl" />
-            <div className="relative rounded-[2rem] border border-white/10 bg-white/[0.07] p-3 shadow-2xl shadow-black/40 backdrop-blur-xl">
-              <div className="overflow-hidden rounded-[1.45rem] border border-white/10 bg-slate-900">
-                <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
-                  <div>
-                    <div className="text-xs font-medium text-slate-400">School Overview</div>
-                    <div className="mt-1 text-lg font-semibold text-white">Green Valley School</div>
-                  </div>
-                  <div className="rounded-full bg-emerald-400/10 px-3 py-1 text-[11px] font-semibold text-emerald-300">2026–27</div>
-                </div>
-                <div className="grid grid-cols-2 gap-3 p-5 sm:grid-cols-4">
-                  {[['Students','1,248'],['Teachers','86'],['Classes','42'],['Attendance','94.6%']].map(([label,value]) => (
-                    <div key={label} className="rounded-2xl border border-white/8 bg-white/[0.045] p-3">
-                      <div className="text-[10px] uppercase tracking-wider text-slate-500">{label}</div>
-                      <div className="mt-2 text-xl font-semibold text-white">{value}</div>
+            <div className="absolute -inset-5 rounded-[2rem] bg-gradient-to-br from-indigo-200/60 via-violet-100/40 to-transparent blur-2xl" />
+            <div className="relative overflow-hidden rounded-[1.6rem] border border-slate-200/90 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.12)]">
+              <div className="border-b border-slate-200/70 bg-gradient-to-r from-white to-indigo-50/35 px-5 py-4">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex size-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 ring-1 ring-indigo-100">
+                      <BarChart3 className="size-5" />
                     </div>
-                  ))}
-                </div>
-                <div className="grid gap-3 px-5 pb-5 sm:grid-cols-[1.25fr_.75fr]">
-                  <div className="rounded-2xl border border-white/8 bg-white/[0.045] p-4">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-semibold text-slate-300">Attendance trend</span>
-                      <BarChart3 className="size-4 text-indigo-300" />
-                    </div>
-                    <div className="mt-5 flex h-28 items-end gap-2">
-                      {[42,58,51,72,67,84,76,92,81,96,88,94].map((height, index) => (
-                        <div key={index} className="flex-1 rounded-t-md bg-gradient-to-t from-indigo-600 to-violet-300" style={{height: `${height}%`}} />
-                      ))}
+                    <div>
+                      <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-indigo-600">
+                        School Overview
+                      </div>
+                      <div className="mt-0.5 text-base font-bold text-slate-950">
+                        Green Valley School
+                      </div>
                     </div>
                   </div>
-                  <div className="rounded-2xl border border-white/8 bg-white/[0.045] p-4">
-                    <div className="text-xs font-semibold text-slate-300">Fee collection</div>
-                    <div className="mt-5 text-2xl font-semibold text-white">₹18.4L</div>
-                    <div className="mt-2 text-xs text-emerald-300">+12.8% this month</div>
-                    <div className="mt-5 h-2 overflow-hidden rounded-full bg-white/10"><div className="h-full w-[78%] rounded-full bg-gradient-to-r from-indigo-500 to-violet-400" /></div>
+                  <span className="rounded-md bg-indigo-50 px-2.5 py-1 text-[10px] font-bold text-indigo-600 ring-1 ring-indigo-100">
+                    2026–27
+                  </span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 p-5 sm:grid-cols-4">
+                {[
+                  ["Students", "1,248"],
+                  ["Teachers", "86"],
+                  ["Classes", "42"],
+                  ["Attendance", "94.6%"],
+                ].map(([label, value]) => (
+                  <div
+                    key={label}
+                    className="rounded-xl border border-slate-200/80 bg-white p-3 shadow-[0_5px_18px_rgba(15,23,42,0.035)]"
+                  >
+                    <div className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
+                      {label}
+                    </div>
+                    <div className="mt-2 text-xl font-bold tracking-tight text-slate-950">
+                      {value}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="grid gap-3 px-5 pb-5 sm:grid-cols-[1.25fr_.75fr]">
+                <div className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-[0_5px_18px_rgba(15,23,42,0.035)]">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-700">
+                      Attendance trend
+                    </span>
+                    <CalendarCheck2 className="size-4 text-indigo-500" />
+                  </div>
+                  <div className="mt-5 flex h-28 items-end gap-1.5">
+                    {[42, 58, 51, 72, 67, 84, 76, 92, 81, 96, 88, 94].map(
+                      (height, index) => (
+                        <div
+                          key={index}
+                          className="flex-1 rounded-t-md bg-gradient-to-t from-indigo-600 to-violet-400"
+                          style={{ height: `${height}%` }}
+                        />
+                      ),
+                    )}
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-[0_5px_18px_rgba(15,23,42,0.035)]">
+                  <div className="text-xs font-bold text-slate-700">
+                    Fee collection
+                  </div>
+                  <div className="mt-5 text-2xl font-bold tracking-tight text-slate-950">
+                    ₹18.4L
+                  </div>
+                  <div className="mt-1.5 text-[11px] font-semibold text-emerald-600">
+                    +12.8% this month
+                  </div>
+                  <div className="mt-5 h-2 overflow-hidden rounded-full bg-slate-100">
+                    <div className="h-full w-[78%] rounded-full bg-gradient-to-r from-indigo-600 to-violet-500" />
                   </div>
                 </div>
               </div>
             </div>
-            <div className="absolute -bottom-7 -left-5 hidden rounded-2xl border border-white/10 bg-slate-900/90 px-4 py-3 shadow-xl backdrop-blur sm:block">
-              <div className="text-[10px] uppercase tracking-wider text-slate-500">Today's status</div>
-              <div className="mt-1 flex items-center gap-2 text-sm font-semibold text-white"><span className="size-2 rounded-full bg-emerald-400" /> Operations on track</div>
+
+            <div className="absolute -bottom-6 -left-4 hidden rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-[0_12px_30px_rgba(15,23,42,0.10)] sm:block">
+              <div className="text-[9px] font-bold uppercase tracking-[0.14em] text-slate-400">
+                Today's status
+              </div>
+              <div className="mt-1 flex items-center gap-2 text-xs font-bold text-slate-800">
+                <span className="size-2 rounded-full bg-emerald-500" />
+                Operations on track
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      <section id="features" className="bg-white px-5 py-24 sm:px-8 lg:py-28">
+      {/* ====================================================================
+          STATS
+          ==================================================================== */}
+      <section className="px-5 py-8 sm:px-8">
+        <div className="mx-auto grid max-w-7xl overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_8px_30px_rgba(15,23,42,0.04)] sm:grid-cols-3">
+          {stats.map((stat, index) => (
+            <div
+              key={stat.label}
+              className={`px-6 py-5 ${index > 0 ? "border-t border-slate-200/70 sm:border-l sm:border-t-0" : ""}`}
+            >
+              <div className="text-2xl font-bold tracking-tight text-indigo-600">
+                {stat.value}
+              </div>
+              <div className="mt-1 text-xs font-medium text-slate-500">
+                {stat.label}
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ====================================================================
+          FEATURES
+          ==================================================================== */}
+      <section id="features" className="px-5 py-20 sm:px-8 lg:py-24">
         <div className="mx-auto max-w-7xl">
-          <div className="max-w-2xl">
-            <p className="text-sm font-bold uppercase tracking-[0.2em] text-indigo-600">Everything connected</p>
-            <h2 className="mt-3 text-4xl font-semibold tracking-[-0.035em] text-slate-950 sm:text-5xl">The core of your school, in one place.</h2>
-            <p className="mt-5 text-lg leading-8 text-slate-600">SchoolDB follows the structure of a real school so teams can work from a shared operational foundation.</p>
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+            <div className="max-w-2xl">
+              <div className="mb-3 flex items-center gap-2">
+                <div className="flex size-9 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 ring-1 ring-indigo-100">
+                  <Sparkles className="size-4" />
+                </div>
+                <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-indigo-600">
+                  Everything connected
+                </span>
+              </div>
+              <h2 className="text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">
+                The core of your school, in one place.
+              </h2>
+              <p className="mt-4 text-sm leading-6 text-slate-500 sm:text-base">
+                SchoolDB follows the structure of a real school so teams can
+                work from a shared operational foundation.
+              </p>
+            </div>
           </div>
-          <div className="mt-14 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-            {modules.map(({icon: Icon, title, text}) => (
-              <article key={title} className="group rounded-3xl border border-slate-200 bg-white p-7 shadow-[0_12px_40px_rgba(15,23,42,.045)] transition duration-300 hover:-translate-y-1 hover:border-indigo-200 hover:shadow-[0_20px_50px_rgba(79,70,229,.10)]">
-                <div className="flex size-12 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600 transition group-hover:bg-indigo-600 group-hover:text-white"><Icon className="size-5" /></div>
-                <h3 className="mt-6 text-xl font-semibold text-slate-950">{title}</h3>
-                <p className="mt-3 text-sm leading-6 text-slate-600">{text}</p>
+
+          <div className="mt-10 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {modules.map(({ icon: Icon, title, text }) => (
+              <article
+                key={title}
+                className="group rounded-2xl border border-slate-200/80 bg-white p-5 shadow-[0_8px_30px_rgba(15,23,42,0.04)] transition-all duration-300 hover:-translate-y-0.5 hover:border-indigo-200 hover:shadow-[0_14px_35px_rgba(79,70,229,0.09)]"
+              >
+                <div className="flex size-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 ring-1 ring-indigo-100 transition group-hover:bg-indigo-600 group-hover:text-white group-hover:ring-indigo-600">
+                  <Icon className="size-5" />
+                </div>
+                <h3 className="mt-5 text-sm font-bold text-slate-900">
+                  {title}
+                </h3>
+                <p className="mt-1.5 text-xs leading-5 text-slate-500">
+                  {text}
+                </p>
               </article>
             ))}
           </div>
         </div>
       </section>
 
-      <section id="how-it-works" className="bg-slate-50 px-5 py-24 sm:px-8 lg:py-28">
-        <div className="mx-auto max-w-7xl">
-          <div className="grid gap-16 lg:grid-cols-[.8fr_1.2fr] lg:items-center">
-            <div>
-              <p className="text-sm font-bold uppercase tracking-[0.2em] text-indigo-600">Built around your structure</p>
-              <h2 className="mt-3 text-4xl font-semibold tracking-[-0.035em] sm:text-5xl">Structure first. Operations second.</h2>
-              <p className="mt-5 text-lg leading-8 text-slate-600">Set up the school's academic foundation once, then run daily workflows against it.</p>
+      {/* ====================================================================
+          WORKFLOW
+          ==================================================================== */}
+      <section id="workflow" className="border-y border-slate-200/70 bg-white px-5 py-20 sm:px-8 lg:py-24">
+        <div className="mx-auto grid max-w-7xl gap-12 lg:grid-cols-[0.82fr_1.18fr] lg:items-center">
+          <div>
+            <div className="mb-3 flex items-center gap-2">
+              <div className="flex size-9 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 ring-1 ring-indigo-100">
+                <Layers3 className="size-4" />
+              </div>
+              <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-indigo-600">
+                Built around your structure
+              </span>
             </div>
-            <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-[0_20px_60px_rgba(15,23,42,.07)] sm:p-8">
-              {['Academic Year','Classes & Sections','Students & Enrolments','Attendance · Exams · Fees · Homework'].map((item, index) => (
-                <div key={item} className="flex items-center gap-4">
-                  <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-indigo-50 text-sm font-bold text-indigo-600">0{index + 1}</div>
-                  <div className="flex-1 rounded-2xl border border-slate-100 bg-slate-50 px-5 py-4 text-sm font-semibold text-slate-800">{item}</div>
-                  {index < 3 && <div className="absolute" />}
+            <h2 className="text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">
+              Structure first. Operations second.
+            </h2>
+            <p className="mt-4 max-w-xl text-sm leading-6 text-slate-500 sm:text-base">
+              Set up the school's academic foundation once, then run daily
+              workflows against it.
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-[0_10px_35px_rgba(15,23,42,0.05)] sm:p-6">
+            {[
+              ["01", "Academic Year", "Define the active academic context."],
+              ["02", "Classes & Sections", "Organise the school's academic structure."],
+              ["03", "Students & Enrolments", "Connect students to the right academic context."],
+              ["04", "Daily Operations", "Run attendance, exams, fees and homework."],
+            ].map(([number, title, description], index) => (
+              <div key={number} className="relative flex gap-4 py-3 first:pt-0 last:pb-0">
+                {index < 3 && (
+                  <div className="absolute bottom-[-6px] left-[17px] top-[46px] w-px bg-indigo-100" />
+                )}
+                <div className="relative z-10 flex size-9 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-[10px] font-bold text-indigo-600 ring-1 ring-indigo-100">
+                  {number}
+                </div>
+                <div className="min-w-0 flex-1 rounded-xl border border-slate-200/70 bg-slate-50/70 px-4 py-3">
+                  <div className="text-sm font-bold text-slate-900">{title}</div>
+                  <div className="mt-0.5 text-xs leading-5 text-slate-500">{description}</div>
+                </div>
+              </div>
+            ))}
+            <div className="mt-4 flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-50 to-violet-50 px-4 py-3 text-xs font-bold text-indigo-700 ring-1 ring-indigo-100">
+              <BarChart3 className="size-4" /> Management dashboard & operational visibility
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ====================================================================
+          WHY SCHOOLDB
+          ==================================================================== */}
+      <section id="why-schooldb" className="px-5 py-20 sm:px-8 lg:py-24">
+        <div className="mx-auto max-w-7xl rounded-[1.75rem] border border-indigo-100 bg-gradient-to-br from-white via-indigo-50/45 to-violet-50/55 p-7 shadow-[0_12px_40px_rgba(15,23,42,0.045)] sm:p-10 lg:p-14">
+          <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
+            <div>
+              <div className="flex size-11 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-[0_8px_20px_rgba(79,70,229,0.20)]">
+                <ShieldCheck className="size-5" />
+              </div>
+              <h2 className="mt-6 text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">
+                Less scattered information. More clarity.
+              </h2>
+              <p className="mt-4 max-w-xl text-sm leading-6 text-slate-500 sm:text-base">
+                SchoolDB is designed to make everyday administration more
+                organised without making the school feel like a technology
+                project.
+              </p>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              {benefits.map((benefit) => (
+                <div
+                  key={benefit}
+                  className="flex items-start gap-3 rounded-xl border border-slate-200/80 bg-white/80 p-4 shadow-sm"
+                >
+                  <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-500" />
+                  <span className="text-xs font-semibold leading-5 text-slate-700">
+                    {benefit}
+                  </span>
                 </div>
               ))}
-              <div className="mt-6 rounded-2xl bg-slate-950 px-5 py-4 text-sm font-semibold text-white">↓ Management Dashboard & operational visibility</div>
             </div>
           </div>
         </div>
       </section>
 
-      <section id="why-schooldb" className="bg-white px-5 py-24 sm:px-8 lg:py-28">
-        <div className="mx-auto max-w-7xl">
-          <div className="rounded-[2.5rem] bg-gradient-to-br from-indigo-50 via-white to-violet-50 p-8 sm:p-12 lg:p-16">
-            <div className="grid gap-12 lg:grid-cols-[.9fr_1.1fr] lg:items-center">
-              <div>
-                <div className="flex size-14 items-center justify-center rounded-2xl bg-slate-950 text-white shadow-xl"><ShieldCheck className="size-6" /></div>
-                <h2 className="mt-7 text-4xl font-semibold tracking-[-0.035em] sm:text-5xl">Less scattered information. More clarity.</h2>
-                <p className="mt-5 max-w-xl text-lg leading-8 text-slate-600">SchoolDB is designed to make everyday administration more organised without making the school feel like a technology project.</p>
+      {/* ====================================================================
+          DEMO CTA
+          ==================================================================== */}
+      <section id="demo" className="px-5 pb-20 sm:px-8 lg:pb-24">
+        <div className="mx-auto max-w-7xl overflow-hidden rounded-[1.75rem] border border-slate-200 bg-slate-950 px-7 py-12 shadow-[0_20px_60px_rgba(15,23,42,0.14)] sm:px-10 lg:px-14 lg:py-14">
+          <div className="relative mx-auto max-w-3xl text-center">
+            <div className="pointer-events-none absolute left-1/2 top-1/2 -z-0 size-80 -translate-x-1/2 -translate-y-1/2 rounded-full bg-indigo-600/20 blur-3xl" />
+            <div className="relative z-10">
+              <div className="mx-auto flex size-11 items-center justify-center rounded-xl bg-white/10 text-indigo-200 ring-1 ring-white/10">
+                <UserRoundCheck className="size-5" />
               </div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                {benefits.map((benefit) => (
-                  <div key={benefit} className="flex items-start gap-3 rounded-2xl border border-slate-200/80 bg-white/75 p-4 shadow-sm backdrop-blur">
-                    <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-indigo-600" />
-                    <span className="text-sm font-semibold leading-6 text-slate-800">{benefit}</span>
-                  </div>
-                ))}
+              <div className="mt-5 text-[10px] font-bold uppercase tracking-[0.18em] text-indigo-300">
+                Ready when you are
+              </div>
+              <h2 className="mt-3 text-3xl font-bold tracking-tight text-white sm:text-4xl">
+                See how your school could run with SchoolDB.
+              </h2>
+              <p className="mx-auto mt-4 max-w-2xl text-sm leading-6 text-slate-400 sm:text-base">
+                Book a personalised demonstration and see the platform through
+                the workflows your school actually uses.
+              </p>
+              <div className="mt-7 flex flex-col justify-center gap-3 sm:flex-row">
+                <a
+                  href="mailto:demo@schooldb.example"
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-6 py-3.5 text-sm font-bold text-slate-950 transition hover:-translate-y-0.5 hover:bg-indigo-50"
+                >
+                  Request a demo
+                  <ArrowRight className="size-4" />
+                </a>
+                <Link
+                  href="/login"
+                  className="inline-flex items-center justify-center rounded-xl border border-white/15 bg-white/5 px-6 py-3.5 text-sm font-semibold text-white transition hover:bg-white/10"
+                >
+                  School login
+                </Link>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      <section id="demo" className="relative overflow-hidden bg-slate-950 px-5 py-24 text-white sm:px-8 lg:py-28">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(99,102,241,.25),transparent_45%)]" />
-        <div className="relative mx-auto max-w-4xl text-center">
-          <div className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-white/10 ring-1 ring-white/10"><Sparkles className="size-6 text-indigo-200" /></div>
-          <h2 className="mt-7 text-4xl font-semibold tracking-[-0.04em] sm:text-5xl lg:text-6xl">See how your school could run with SchoolDB.</h2>
-          <p className="mx-auto mt-5 max-w-2xl text-lg leading-8 text-slate-300">Book a personalised demonstration and explore the workflows that matter to your school.</p>
-          <div className="mt-9 flex flex-col justify-center gap-3 sm:flex-row">
-            <a href="mailto:demo@schooldb.in?subject=SchoolDB%20Demo%20Request" className="inline-flex items-center justify-center rounded-2xl bg-white px-7 py-3.5 text-sm font-bold text-slate-950 transition hover:-translate-y-0.5">Request a demo <ArrowRight className="ml-2 size-4" /></a>
-            <Link href="/kotak_vizag/login" className="inline-flex items-center justify-center rounded-2xl border border-white/15 bg-white/5 px-7 py-3.5 text-sm font-semibold text-white transition hover:bg-white/10">Open SchoolDB</Link>
-          </div>
-          <p className="mt-6 text-xs text-slate-500">Demo contact and public URLs can be updated when the marketing domain is finalised.</p>
-        </div>
-      </section>
-
-      <footer className="bg-slate-950 px-5 pb-10 pt-8 sm:px-8">
-        <div className="mx-auto flex max-w-7xl flex-col gap-5 border-t border-white/10 pt-8 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between">
-          <div>© 2026 SchoolDB. Built for schools. Designed for clarity.</div>
-          <div className="flex gap-6"><Link href="/marketing" className="hover:text-white">SchoolDB</Link><Link href="/kotak_vizag/login" className="hover:text-white">Sign in</Link></div>
+      {/* ====================================================================
+          FOOTER
+          ==================================================================== */}
+      <footer className="border-t border-slate-200 bg-white px-5 py-8 sm:px-8">
+        <div className="mx-auto flex max-w-7xl flex-col gap-4 text-xs text-slate-400 sm:flex-row sm:items-center sm:justify-between">
+          <div className="font-semibold text-slate-600">SchoolDB</div>
+          <div>Modern school operations, structured beautifully.</div>
+          <Link className="font-semibold text-indigo-600 hover:text-indigo-700" href="/login">
+            School login <ArrowRight className="ml-1 inline size-3.5" />
+          </Link>
         </div>
       </footer>
     </main>
