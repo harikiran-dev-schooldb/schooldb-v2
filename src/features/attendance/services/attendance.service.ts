@@ -457,8 +457,7 @@ async listSessions(
       late,
       leave,
 
-      completed:
-        session.records.length > 0,
+      completed: session.locked,
     };
   });
 
@@ -1096,8 +1095,7 @@ const todayRecords =
         absent:
           sessionAbsent,
 
-        completed:
-          records.length > 0,
+        completed: session.locked,
       };
     });
 
@@ -1189,6 +1187,12 @@ async markFullPresent(
     sectionId?: string;
   },
 ) {
+  /*
+   * ------------------------------------------------------------------------
+   * Validate scope
+   * ------------------------------------------------------------------------
+   */
+
   if (
     input.scope === "CLASS" &&
     !input.classId
@@ -1208,6 +1212,12 @@ async markFullPresent(
     );
   }
 
+  /*
+   * ------------------------------------------------------------------------
+   * Validate academic year
+   * ------------------------------------------------------------------------
+   */
+
   const academicYear =
     await academicYearRepository.findById(
       input.academicYearId,
@@ -1219,6 +1229,21 @@ async markFullPresent(
       "Academic year not found.",
     );
   }
+
+  /*
+   * ------------------------------------------------------------------------
+   * Build enrollment filters
+   * ------------------------------------------------------------------------
+   *
+   * SCHOOL
+   *   → all active enrollments
+   *
+   * CLASS
+   *   → all active enrollments in selected class
+   *
+   * SECTION
+   *   → all active enrollments in selected class + section
+   */
 
   const filters = {
     ...(input.scope !== "SCHOOL" &&
@@ -1236,10 +1261,19 @@ async markFullPresent(
       : {}),
   };
 
+  const attendanceDate =
+    new Date(input.attendanceDate);
+
   /*
-   * Attendance mode is determined by the
-   * academic year configuration.
+   * ------------------------------------------------------------------------
+   * ONCE DAILY
+   * ------------------------------------------------------------------------
+   *
+   * One DAILY session is created for every
+   * class + section represented in the
+   * selected scope.
    */
+
   if (
     academicYear.attendanceMode ===
     "ONCE_DAILY"
@@ -1247,39 +1281,71 @@ async markFullPresent(
     return attendanceRepository.markFullPresent(
       schoolId,
       input.academicYearId,
-      new Date(input.attendanceDate),
+      attendanceDate,
       "DAILY",
       filters,
     );
   }
 
+  /*
+   * ------------------------------------------------------------------------
+   * MORNING + AFTERNOON
+   * ------------------------------------------------------------------------
+   *
+   * Full Present must populate BOTH sessions.
+   */
+
   if (
     academicYear.attendanceMode ===
     "MORNING_AFTERNOON"
   ) {
-    return attendanceRepository.markFullPresent(
-      schoolId,
-      input.academicYearId,
-      new Date(input.attendanceDate),
-      "MORNING",
-      filters,
-    );
+    const morning =
+      await attendanceRepository.markFullPresent(
+        schoolId,
+        input.academicYearId,
+        attendanceDate,
+        "MORNING",
+        filters,
+      );
+
+    const afternoon =
+      await attendanceRepository.markFullPresent(
+        schoolId,
+        input.academicYearId,
+        attendanceDate,
+        "AFTERNOON",
+        filters,
+      );
+
+    return {
+      sessionCount:
+        morning.sessionCount +
+        afternoon.sessionCount,
+
+      attendanceCount:
+        morning.attendanceCount +
+        afternoon.attendanceCount,
+    };
   }
 
   /*
-   * EVERY_PERIOD requires timetable-based
-   * sessions, so it should not blindly create
-   * a single PERIOD session.
+   * ------------------------------------------------------------------------
+   * EVERY PERIOD
+   * ------------------------------------------------------------------------
+   *
+   * The repository must find today's timetable
+   * periods and create/populate a PERIOD session
+   * for each applicable class + section + period.
    */
+
   if (
     academicYear.attendanceMode ===
     "EVERY_PERIOD"
   ) {
-    return attendanceRepository.markFullPresent(
+    return attendanceRepository.markFullPresentForPeriods(
       schoolId,
       input.academicYearId,
-      new Date(input.attendanceDate),
-      "PERIOD",
+      attendanceDate,
       filters,
     );
   }

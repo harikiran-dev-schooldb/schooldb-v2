@@ -3,6 +3,7 @@ import {
   AttendanceStatus,
 } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
+import { WeekDay } from "@/generated/prisma/enums";
 
 const attendanceInclude = {
   student: true,
@@ -861,10 +862,13 @@ dashboardData(
 
       take: 8,
 
+      
+
       select: {
         id: true,
         attendanceDate: true,
         sessionType: true,
+        locked: true,
 
         class: {
           select: {
@@ -1165,4 +1169,292 @@ async markFullPresent(
     },
   );
 },
+
+async markFullPresentForPeriods(
+  schoolId: string,
+  academicYearId: string,
+  attendanceDate: Date,
+  filters?: {
+    classId?: string;
+    sectionId?: string;
+  },
+) {
+  /*
+   * Prisma WeekDay only supports Monday-Saturday.
+   */
+  const weekDays = [
+    "SUNDAY",
+    "MONDAY",
+    "TUESDAY",
+    "WEDNESDAY",
+    "THURSDAY",
+    "FRIDAY",
+    "SATURDAY",
+  ] as const;
+
+  const day = weekDays[attendanceDate.getDay()];
+
+  /*
+   * Sunday is not part of the Prisma WeekDay enum.
+   */
+  if (day === "SUNDAY") {
+    return {
+      sessionCount: 0,
+      attendanceCount: 0,
+    };
+  }
+
+  /*
+   * Find today's active timetable entries.
+   *
+   * Timetable
+   *   -> teacherAllocation
+   *      -> classId
+   *      -> sectionId
+   *      -> subjectId
+   *      -> teacherId
+   *
+   * We only need timetable entries belonging
+   * to the selected school/year/class/section.
+   */
+  const timetables =
+    await prisma.timetable.findMany({
+      where: {
+        schoolId,
+        academicYearId,
+        day,
+        active: true,
+
+        teacherAllocation: {
+          active: true,
+
+          ...(filters?.classId
+            ? {
+                classId: filters.classId,
+              }
+            : {}),
+
+          ...(filters?.sectionId
+            ? {
+                sectionId: filters.sectionId,
+              }
+            : {}),
+        },
+      },
+
+      select: {
+        id: true,
+        periodId: true,
+
+        teacherAllocation: {
+          select: {
+            classId: true,
+            sectionId: true,
+            subjectId: true,
+            teacherId: true,
+          },
+        },
+      },
+
+      orderBy: {
+        periodId: "asc",
+      },
+    });
+
+  if (timetables.length === 0) {
+    return {
+      sessionCount: 0,
+      attendanceCount: 0,
+    };
+  }
+
+  /*
+   * Find all active students for the selected scope.
+   */
+  const enrollments =
+    await prisma.studentEnrollment.findMany({
+      where: {
+        schoolId,
+        academicYearId,
+        active: true,
+
+        ...(filters?.classId
+          ? {
+              classId: filters.classId,
+            }
+          : {}),
+
+        ...(filters?.sectionId
+          ? {
+              sectionId: filters.sectionId,
+            }
+          : {}),
+      },
+
+      select: {
+        studentId: true,
+        classId: true,
+        sectionId: true,
+      },
+    });
+
+  if (enrollments.length === 0) {
+    return {
+      sessionCount: 0,
+      attendanceCount: 0,
+    };
+  }
+
+  return prisma.$transaction(
+    async (tx) => {
+      let sessionCount = 0;
+      let attendanceCount = 0;
+
+      /*
+       * Each timetable entry represents one period
+       * for one class/section.
+       */
+      for (const timetable of timetables) {
+        const {
+          classId,
+          sectionId,
+          subjectId,
+          teacherId,
+        } = timetable.teacherAllocation;
+
+        /*
+         * Find the students belonging to this
+         * particular class + section.
+         */
+        const studentIds =
+          enrollments
+            .filter(
+              (enrollment) =>
+                enrollment.classId === classId &&
+                enrollment.sectionId === sectionId,
+            )
+            .map(
+              (enrollment) =>
+                enrollment.studentId,
+            );
+
+        if (studentIds.length === 0) {
+          continue;
+        }
+
+        /*
+         * Find existing PERIOD session.
+         */
+        let session =
+          await tx.attendanceSession.findFirst({
+            where: {
+              schoolId,
+              academicYearId,
+              classId,
+              sectionId,
+              periodId: timetable.periodId,
+              sessionType: "PERIOD",
+              attendanceDate,
+            },
+          });
+
+        /*
+         * Create the period session if it doesn't
+         * already exist.
+         */
+        if (!session) {
+          session =
+            await tx.attendanceSession.create({
+              data: {
+                schoolId,
+                academicYearId,
+                classId,
+                sectionId,
+                periodId:
+                  timetable.periodId,
+                subjectId,
+                teacherId,
+                sessionType: "PERIOD",
+                attendanceDate,
+              },
+            });
+
+          sessionCount++;
+        }
+
+        /*
+         * Never modify a locked session.
+         */
+        if (session.locked) {
+          continue;
+        }
+
+        /*
+         * Get attendance records that already exist.
+         */
+        const existingRecords =
+          await tx.attendance.findMany({
+            where: {
+              sessionId: session.id,
+              studentId: {
+                in: studentIds,
+              },
+            },
+
+            select: {
+              studentId: true,
+            },
+          });
+
+        const existingStudentIds =
+          new Set(
+            existingRecords.map(
+              (record) =>
+                record.studentId,
+            ),
+          );
+
+        /*
+         * Only add PRESENT records for students
+         * who don't already have an attendance record.
+         *
+         * IMPORTANT:
+         *
+         * If a student was already marked ABSENT,
+         * LATE or LEAVE, we leave it untouched.
+         */
+        const newStudentIds =
+          studentIds.filter(
+            (studentId) =>
+              !existingStudentIds.has(
+                studentId,
+              ),
+          );
+
+        if (newStudentIds.length === 0) {
+          continue;
+        }
+
+        await tx.attendance.createMany({
+          data: newStudentIds.map(
+            (studentId) => ({
+              schoolId,
+              sessionId: session.id,
+              studentId,
+              status: "PRESENT",
+            }),
+          ),
+        });
+
+        attendanceCount +=
+          newStudentIds.length;
+      }
+
+      return {
+        sessionCount,
+        attendanceCount,
+      };
+    },
+  );
+}
 };

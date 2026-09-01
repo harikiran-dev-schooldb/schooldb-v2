@@ -74,7 +74,7 @@ export const navigation = [
         href: "attendance/dashboard",
       },
       {
-        title: "Attendance",
+        title: "Mark Attendance",
         href: "attendance",
       },
       {
