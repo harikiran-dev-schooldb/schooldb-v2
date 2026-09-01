@@ -1,5 +1,7 @@
-import { redirect } from "next/navigation";
+import MarketingPage from "./marketing/page";
+
+export { metadata } from "./marketing/page";
 
 export default function Home() {
-  redirect("/kotak_vizag/login");
+  return <MarketingPage />;
 }
