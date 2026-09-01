@@ -198,6 +198,20 @@ export function AttendancePage({ schoolSlug }: Props) {
       return;
     }
 
+    /*
+     * For SCHOOL scope, we can determine the attendance
+     * session type from the academic year's attendance mode.
+     *
+     * For EVERY_PERIOD, school-wide full present cannot safely
+     * create period sessions without knowing the timetable period.
+     */
+    if (attendanceMode === "EVERY_PERIOD") {
+      toast.error(
+        "For Every Period attendance, select a class and section, then mark each period.",
+      );
+      return;
+    }
+
     try {
       setLoading(true);
 
@@ -225,10 +239,19 @@ export function AttendancePage({ schoolSlug }: Props) {
 
       if (!response.ok || !result.success) {
         toast.error(result.message || "Failed to mark full attendance.");
+
         return;
       }
 
-      toast.success("Full attendance marked present.");
+      const sessionCount = result.data?.sessionCount ?? 0;
+
+      const attendanceCount = result.data?.attendanceCount ?? 0;
+
+      toast.success(
+        `${attendanceCount} students marked present across ${sessionCount} attendance session${
+          sessionCount === 1 ? "" : "s"
+        }.`,
+      );
     } catch {
       toast.error("Failed to mark full attendance.");
     } finally {

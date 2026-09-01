@@ -6,7 +6,7 @@ import { ApiResponse } from "@/lib/response";
 
 import { attendanceService } from "@/features/attendance/services/attendance.service";
 
-const schema = z.object({
+const fullPresentSchema = z.object({
   academicYearId: z.string().min(1),
 
   attendanceDate: z.string().min(1),
@@ -20,6 +20,7 @@ const schema = z.object({
   classId: z.string().optional(),
 
   sectionId: z.string().optional(),
+
 });
 
 export async function POST(
@@ -30,7 +31,7 @@ export async function POST(
       await requireTenant();
 
     const body =
-      schema.parse(
+      fullPresentSchema.parse(
         await req.json(),
       );
 
