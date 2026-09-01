@@ -78,13 +78,54 @@ export const studentRepository = {
     });
   },
 
-  options(schoolId: string) {
-    return prisma.student.findMany({
-      where: { schoolId, status: "ACTIVE" },
-      select: { id: true, admissionNo: true, fullName: true },
-      orderBy: { fullName: "asc" },
-    });
-  },
+  options(schoolId: string, academicYearId: string) {
+  return prisma.student.findMany({
+    where: {
+      schoolId,
+      status: "ACTIVE",
+
+      enrollments: {
+        some: {
+          academicYearId,
+          active: true,
+        },
+      },
+    },
+
+    select: {
+      id: true,
+      admissionNo: true,
+      fullName: true,
+
+      enrollments: {
+        where: {
+          academicYearId,
+          active: true,
+        },
+
+        select: {
+          class: {
+            select: {
+              name: true,
+            },
+          },
+
+          section: {
+            select: {
+              name: true,
+            },
+          },
+        },
+
+        take: 1,
+      },
+    },
+
+    orderBy: {
+      fullName: "asc",
+    },
+  });
+},
 
   profile(id: string, schoolId: string) {
     return prisma.student.findFirst({

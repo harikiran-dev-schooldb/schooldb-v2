@@ -5,7 +5,6 @@ import {
   CalendarCheck,
   IndianRupee,
   BookOpen,
-  Settings,
   Upload,
   SlidersHorizontal,
 } from "lucide-react";
@@ -183,11 +182,5 @@ export const navigation = [
   title: "Setup",
   href: "setup",
   icon: SlidersHorizontal,
-},
-
-  {
-    title: "Settings",
-    href: "settings",
-    icon: Settings,
-  },
+}
 ];

@@ -324,19 +324,29 @@ export const studentService = {
   /* ---------------------------------------------------------------------- */
 
   async options(
-    schoolId: string,
-  ) {
-    const students =
-      await studentRepository.options(
-        schoolId,
-      );
+  schoolId: string,
+  academicYearId: string,
+) {
+  const students =
+    await studentRepository.options(
+      schoolId,
+      academicYearId,
+    );
 
-    return students.map((student) => ({
+  return students.map((student) => {
+    const enrollment = student.enrollments[0];
+
+    return {
       id: student.id,
 
       label: student.fullName
         ? `${student.admissionNo} — ${student.fullName}`
         : student.admissionNo,
-    }));
-  },
+
+      className: enrollment?.class.name ?? null,
+
+      sectionName: enrollment?.section.name ?? null,
+    };
+  });
+},
 };
