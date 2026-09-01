@@ -19,7 +19,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 
 import { AcademicYearSelect } from "@/components/common/select/AcademicYearSelect";
-import { StudentSelect } from "@/components/common/select/StudentSelect";
+import { SearchableStudentSelect } from "@/components/common/select/SearchableStudentSelect";
 
 type AttendanceStatus = "PRESENT" | "ABSENT" | "LATE" | "LEAVE";
 
@@ -325,7 +325,7 @@ export function StudentAttendanceReport() {
             onChange={handleAcademicYearChange}
           />
 
-          <StudentSelect
+          <SearchableStudentSelect
             value={studentId}
             onChange={setStudentId}
             academicYearId={academicYearId}
