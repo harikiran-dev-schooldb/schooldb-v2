@@ -958,6 +958,181 @@ async lockAttendanceSession(
   };
 },
 
+async lockAllAttendanceSessions(
+  schoolId: string,
+  academicYearId: string,
+  attendanceDate: string,
+) {
+  const academicYear =
+    await academicYearRepository.findById(
+      academicYearId,
+      schoolId,
+    );
+
+  if (!academicYear) {
+    throw new Error(
+      "Academic year not found.",
+    );
+  }
+
+  const date =
+    new Date(attendanceDate);
+
+  const sessions =
+    await attendanceRepository.getSessionsForLocking(
+      schoolId,
+      academicYearId,
+      date,
+    );
+
+  if (sessions.length === 0) {
+    throw new Error(
+      "No attendance sessions found for this date.",
+    );
+  }
+
+  /*
+   * Only unlocked sessions need to be checked.
+   */
+  const unlockedSessions =
+    sessions.filter(
+      (session) => !session.locked,
+    );
+
+  if (unlockedSessions.length === 0) {
+    return {
+      sessionCount: 0,
+      lockedCount: 0,
+      alreadyLockedCount:
+        sessions.length,
+      incompleteCount: 0,
+    };
+  }
+
+  /*
+   * Get unique class + section combinations.
+   */
+  const pairs = Array.from(
+    new Map(
+      unlockedSessions.map(
+        (session) => [
+          `${session.classId}:${session.sectionId}`,
+          {
+            classId:
+              session.classId,
+            sectionId:
+              session.sectionId,
+          },
+        ],
+      ),
+    ).values(),
+  );
+
+  const enrollmentCounts =
+    await attendanceRepository.getEnrollmentCountsForLocking(
+      schoolId,
+      academicYearId,
+      pairs,
+    );
+
+  const enrollmentMap =
+    new Map<
+      string,
+      number
+    >();
+
+  for (const item of enrollmentCounts) {
+    enrollmentMap.set(
+      `${item.classId}:${item.sectionId}`,
+      item._count.studentId,
+    );
+  }
+
+  /*
+   * Find incomplete sessions.
+   */
+  const incompleteSessions =
+    unlockedSessions.filter(
+      (session) => {
+        const key =
+          `${session.classId}:${session.sectionId}`;
+
+        const enrolled =
+          enrollmentMap.get(key) ?? 0;
+
+        return (
+          session._count.records !==
+          enrolled
+        );
+      },
+    );
+
+  if (
+    incompleteSessions.length > 0
+  ) {
+    return {
+      sessionCount: sessions.length,
+
+      lockedCount: 0,
+
+      alreadyLockedCount:
+        sessions.filter(
+          (session) => session.locked,
+        ).length,
+
+      incompleteCount:
+        incompleteSessions.length,
+
+      message:
+        "Some attendance sessions are incomplete and cannot be locked.",
+
+      incompleteSessions:
+        incompleteSessions.map(
+          (session) => ({
+            id: session.id,
+            classId: session.classId,
+            sectionId:
+              session.sectionId,
+            periodId:
+              session.periodId,
+            sessionType:
+              session.sessionType,
+            marked:
+              session._count.records,
+            required:
+              enrollmentMap.get(
+                `${session.classId}:${session.sectionId}`,
+              ) ?? 0,
+          }),
+        ),
+    };
+  }
+
+  /*
+   * All sessions are complete.
+   * Lock them in one transaction.
+   */
+  const result =
+    await attendanceRepository.lockAllSessions(
+      schoolId,
+      academicYearId,
+      date,
+    );
+
+  return {
+    sessionCount: sessions.length,
+
+    lockedCount: result.count,
+
+    alreadyLockedCount:
+      sessions.filter(
+        (session) => session.locked,
+      ).length,
+
+    incompleteCount: 0,
+  };
+},
+
 async dashboard(
   schoolId: string,
 ) {

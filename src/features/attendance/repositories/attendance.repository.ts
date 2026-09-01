@@ -833,6 +833,102 @@ lockSession(
   });
 },
 
+lockAllSessions(
+  schoolId: string,
+  academicYearId: string,
+  attendanceDate: Date,
+) {
+  return prisma.attendanceSession.updateMany({
+    where: {
+      schoolId,
+      academicYearId,
+      attendanceDate,
+      locked: false,
+    },
+    data: {
+      locked: true,
+    },
+  });
+},
+
+async getSessionsForLocking(
+  schoolId: string,
+  academicYearId: string,
+  attendanceDate: Date,
+) {
+  const sessions =
+    await prisma.attendanceSession.findMany({
+      where: {
+        schoolId,
+        academicYearId,
+        attendanceDate,
+      },
+
+      select: {
+        id: true,
+        classId: true,
+        sectionId: true,
+        periodId: true,
+        sessionType: true,
+        locked: true,
+
+        _count: {
+          select: {
+            records: true,
+          },
+        },
+      },
+
+      orderBy: [
+        {
+          classId: "asc",
+        },
+        {
+          sectionId: "asc",
+        },
+        {
+          periodId: "asc",
+        },
+      ],
+    });
+
+  return sessions;
+},
+
+async getEnrollmentCountsForLocking(
+  schoolId: string,
+  academicYearId: string,
+  classSectionPairs: {
+    classId: string;
+    sectionId: string;
+  }[],
+) {
+  if (classSectionPairs.length === 0) {
+    return [];
+  }
+
+  return prisma.studentEnrollment.groupBy({
+    by: ["classId", "sectionId"],
+
+    where: {
+      schoolId,
+      academicYearId,
+      active: true,
+
+      OR: classSectionPairs.map(
+        ({ classId, sectionId }) => ({
+          classId,
+          sectionId,
+        }),
+      ),
+    },
+
+    _count: {
+      studentId: true,
+    },
+  });
+},
+
 dashboardData(
   schoolId: string,
   academicYearId: string,

@@ -35,6 +35,7 @@ export function AttendanceHistory({ schoolSlug }: Props) {
   const [classId, setClassId] = useState("");
   const [sectionId, setSectionId] = useState("");
   const [date, setDate] = useState("");
+  const [locking, setLocking] = useState(false);
 
   const { data, loading } = useAttendanceHistory({
     academicYearId,
@@ -57,6 +58,61 @@ export function AttendanceHistory({ schoolSlug }: Props) {
     setClassId("");
     setSectionId("");
     setDate("");
+  }
+
+  async function lockAllAttendance() {
+    if (!academicYearId) {
+      alert("Please select an academic year.");
+      return;
+    }
+
+    if (!date) {
+      alert("Please select an attendance date.");
+      return;
+    }
+
+    try {
+      setLocking(true);
+
+      const response = await fetch("/api/v1/attendance/lock-all", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          academicYearId,
+          attendanceDate: date,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          result?.message ?? "Failed to lock attendance sessions.",
+        );
+      }
+
+      if (result?.data?.incompleteCount > 0) {
+        alert(
+          `${result.data.incompleteCount} attendance session(s) are incomplete. Please mark all students before locking.`,
+        );
+
+        return;
+      }
+
+      alert(result?.message ?? "All attendance sessions have been locked.");
+
+      window.location.reload();
+    } catch (error) {
+      alert(
+        error instanceof Error
+          ? error.message
+          : "Failed to lock attendance sessions.",
+      );
+    } finally {
+      setLocking(false);
+    }
   }
 
   function getSessionLabel(type: string) {
@@ -106,14 +162,33 @@ export function AttendanceHistory({ schoolSlug }: Props) {
             </div>
           </div>
 
-          {!loading && sessions.length > 0 && (
-            <div className="rounded-xl border bg-muted/40 px-4 py-2 text-sm">
-              <span className="font-semibold">{sessions.length}</span>{" "}
-              <span className="text-muted-foreground">
-                {sessions.length === 1 ? "Session" : "Sessions"}
-              </span>
-            </div>
-          )}
+          <div className="flex items-center gap-2">
+            {date && academicYearId && !loading && sessions.length > 0 && (
+              <Button
+                type="button"
+                onClick={lockAllAttendance}
+                disabled={locking}
+                className="gap-2"
+              >
+                {locking ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <CheckCircle2 className="h-4 w-4" />
+                )}
+
+                {locking ? "Locking..." : "Lock All Attendance"}
+              </Button>
+            )}
+
+            {!loading && sessions.length > 0 && (
+              <div className="rounded-xl border bg-muted/40 px-4 py-2 text-sm">
+                <span className="font-semibold">{sessions.length}</span>{" "}
+                <span className="text-muted-foreground">
+                  {sessions.length === 1 ? "Session" : "Sessions"}
+                </span>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
