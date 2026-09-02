@@ -7,11 +7,29 @@ export class ApiError extends Error {
   }
 }
 
+function withTenantHeader(input: RequestInfo, init?: RequestInit): RequestInit {
+  const headers = new Headers(init?.headers);
+
+  if (typeof window !== "undefined") {
+    const match = window.location.pathname.match(/^\/([^/]+)/);
+    const schoolSlug = match?.[1];
+
+    if (schoolSlug && schoolSlug !== "login" && schoolSlug !== "register") {
+      headers.set("x-school-slug", schoolSlug);
+    }
+  }
+
+  return {
+    ...init,
+    headers,
+  };
+}
+
 async function request<T>(
   input: RequestInfo,
   init?: RequestInit
 ): Promise<T> {
-  const res = await fetch(input, init);
+  const res = await fetch(input, withTenantHeader(input, init));
 
   const result = await res.json();
 
@@ -30,34 +48,22 @@ export const api = {
     return request<T>(url);
   },
 
-  post<T>(
-    url: string,
-    body: unknown
-  ) {
+  post<T>(url: string, body: unknown) {
     return request<T>(url, {
       method: "POST",
-
       headers: {
-        "Content-Type":
-          "application/json",
+        "Content-Type": "application/json",
       },
-
       body: JSON.stringify(body),
     });
   },
 
-  put<T>(
-    url: string,
-    body: unknown
-  ) {
+  put<T>(url: string, body: unknown) {
     return request<T>(url, {
       method: "PUT",
-
       headers: {
-        "Content-Type":
-          "application/json",
+        "Content-Type": "application/json",
       },
-
       body: JSON.stringify(body),
     });
   },
