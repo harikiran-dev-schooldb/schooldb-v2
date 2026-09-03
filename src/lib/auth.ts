@@ -1,13 +1,14 @@
 import { currentUser } from "@clerk/nextjs/server";
 import { headers } from "next/headers";
 
+import { ApiError } from "./errors";
 import { prisma } from "./prisma";
 
 export async function requireTenant(schoolSlug?: string) {
   const clerkUser = await currentUser();
 
   if (!clerkUser) {
-    throw new Error("Unauthorized");
+    throw new ApiError(401, "Unauthorized");
   }
 
   const user = await prisma.user.findUnique({
@@ -17,11 +18,12 @@ export async function requireTenant(schoolSlug?: string) {
   });
 
   if (!user) {
-    throw new Error("User not found");
+    throw new ApiError(403, "User is not provisioned for SchoolDB");
   }
 
   const requestHeaders = await headers();
-  const requestedSchoolSlug = schoolSlug ?? requestHeaders.get("x-school-slug") ?? undefined;
+  const requestedSchoolSlug =
+    schoolSlug ?? requestHeaders.get("x-school-slug") ?? undefined;
 
   const memberships = await prisma.membership.findMany({
     where: {
@@ -41,24 +43,173 @@ export async function requireTenant(schoolSlug?: string) {
   });
 
   if (memberships.length === 0) {
-    throw new Error("No active membership for this school");
+    throw new ApiError(403, "No active membership for this school");
   }
 
   if (!requestedSchoolSlug && memberships.length > 1) {
-    throw new Error("School context is required for users with multiple schools");
+    throw new ApiError(
+      400,
+      "School context is required for users with multiple schools",
+    );
   }
 
   return memberships[0];
 }
 
 export async function requireRole(
-  schoolSlug: string,
   allowedRoles: string[],
+  schoolSlug?: string,
 ) {
   const membership = await requireTenant(schoolSlug);
 
   if (!allowedRoles.includes(membership.role)) {
-    throw new Error("Forbidden");
+    throw new ApiError(403, "You do not have permission to perform this action");
+  }
+
+  return membership;
+}
+
+async function requireCurrentTeacher(schoolId: string) {
+  const clerkUser = await currentUser();
+
+  if (!clerkUser) {
+    throw new ApiError(401, "Unauthorized");
+  }
+
+  const teacher = await prisma.teacher.findFirst({
+    where: {
+      schoolId,
+      clerkId: clerkUser.id,
+      active: true,
+    },
+  });
+
+  if (!teacher) {
+    throw new ApiError(403, "You are not linked to an active teacher account for this school");
+  }
+
+  return teacher;
+}
+
+export async function requireTeacherAllocation(
+  allocationId: string,
+  schoolSlug?: string,
+) {
+  const membership = await requireTenant(schoolSlug);
+
+  if (membership.role !== "TEACHER") {
+    if (!["SUPER_ADMIN", "SCHOOL_ADMIN"].includes(membership.role)) {
+      throw new ApiError(403, "You do not have permission to perform this action");
+    }
+    return membership;
+  }
+
+  const teacher = await requireCurrentTeacher(membership.schoolId);
+  const allocation = await prisma.teacherAllocation.findFirst({
+    where: {
+      id: allocationId,
+      schoolId: membership.schoolId,
+      teacherId: teacher.id,
+      active: true,
+    },
+  });
+
+  if (!allocation) {
+    throw new ApiError(403, "This teaching allocation is not assigned to you");
+  }
+
+  return membership;
+}
+
+export async function requireTeacherTimetable(
+  timetableId: string,
+  schoolSlug?: string,
+) {
+  const membership = await requireTenant(schoolSlug);
+
+  if (membership.role !== "TEACHER") {
+    if (!["SUPER_ADMIN", "SCHOOL_ADMIN"].includes(membership.role)) {
+      throw new ApiError(403, "You do not have permission to perform this action");
+    }
+    return membership;
+  }
+
+  const teacher = await requireCurrentTeacher(membership.schoolId);
+  const timetable = await prisma.timetable.findFirst({
+    where: {
+      id: timetableId,
+      schoolId: membership.schoolId,
+      active: true,
+      teacherAllocation: {
+        teacherId: teacher.id,
+        active: true,
+      },
+    },
+  });
+
+  if (!timetable) {
+    throw new ApiError(403, "This timetable is not assigned to you");
+  }
+
+  return membership;
+}
+
+export async function requireTeacherAttendanceSession(
+  sessionId: string,
+  schoolSlug?: string,
+) {
+  const membership = await requireTenant(schoolSlug);
+
+  if (membership.role !== "TEACHER") {
+    if (!["SUPER_ADMIN", "SCHOOL_ADMIN"].includes(membership.role)) {
+      throw new ApiError(403, "You do not have permission to perform this action");
+    }
+    return membership;
+  }
+
+  const teacher = await requireCurrentTeacher(membership.schoolId);
+  const session = await prisma.attendanceSession.findFirst({
+    where: {
+      id: sessionId,
+      schoolId: membership.schoolId,
+      teacherId: teacher.id,
+    },
+  });
+
+  if (!session) {
+    throw new ApiError(403, "This attendance session is not assigned to you");
+  }
+
+  return membership;
+}
+
+export async function requireTeacherClassSection(
+  classId: string,
+  sectionId?: string,
+  schoolSlug?: string,
+) {
+  const membership = await requireTenant(schoolSlug);
+
+  if (membership.role !== "TEACHER") {
+    if (!["SUPER_ADMIN", "SCHOOL_ADMIN"].includes(membership.role)) {
+      throw new ApiError(403, "You do not have permission to perform this action");
+    }
+    return membership;
+  }
+
+  const teacher = await requireCurrentTeacher(membership.schoolId);
+  const allocation = await prisma.teacherAllocation.findFirst({
+    where: {
+      schoolId: membership.schoolId,
+      teacherId: teacher.id,
+      classId,
+      ...(sectionId ? { sectionId } : {}),
+      active: true,
+    },
+  });
+
+  if (!allocation) {
+    throw new ApiError(403, "This class or section is not assigned to you");
   }
 
   return membership;
