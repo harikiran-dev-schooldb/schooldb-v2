@@ -2,53 +2,28 @@ import { NextRequest } from "next/server";
 
 import { apiHandler } from "@/lib/api";
 import { ApiResponse } from "@/lib/response";
-import { requireTenant } from "@/lib/auth";
-import { validateBody } from "@/lib/validation";
+import { requireRole, requireTenant } from "@/lib/auth";
 
 import { classSchema } from "@/features/classes/schemas/class.schema";
 import { classService } from "@/features/classes/services/class.service";
 
-export async function GET(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+type Props = { params: Promise<{ id: string }> };
+
+export async function GET(_req: NextRequest, { params }: Props) {
   return apiHandler(async () => {
     const tenant = await requireTenant();
-
     const { id } = await params;
-
-    const item = await classService.get(
-      id,
-      tenant.schoolId
-    );
-
+    const item = await classService.get(id, tenant.schoolId);
     return ApiResponse.success(item);
   });
 }
 
-export async function PUT(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function PUT(req: NextRequest, { params }: Props) {
   return apiHandler(async () => {
-    const tenant = await requireTenant();
-
+    const tenant = await requireRole(["SUPER_ADMIN", "SCHOOL_ADMIN"]);
     const { id } = await params;
-
-    const body = await validateBody(
-      req,
-      classSchema
-    );
-
-    const item = await classService.update(
-      id,
-      tenant.schoolId,
-      body
-    );
-
-    return ApiResponse.success(
-      item,
-      "Class updated successfully."
-    );
+    const body = classSchema.parse(await req.json());
+    const item = await classService.update(id, tenant.schoolId, body);
+    return ApiResponse.success(item, "Class updated successfully.");
   });
 }
