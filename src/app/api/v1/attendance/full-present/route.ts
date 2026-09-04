@@ -18,8 +18,14 @@ export async function POST(req: Request) {
   return apiHandler(async () => {
     const tenant = await requireRole(["SUPER_ADMIN", "SCHOOL_ADMIN"]);
     const body = fullPresentSchema.parse(await req.json());
-    const result = await attendanceService.markFullPresent(tenant.schoolId, body);
+    const result = await attendanceService.markFullPresent(
+      tenant.schoolId,
+      body,
+    );
 
-    return ApiResponse.success(result, "Full attendance marked present successfully.");
+    return ApiResponse.success(
+      result,
+      "Full attendance marked present successfully.",
+    );
   });
 }

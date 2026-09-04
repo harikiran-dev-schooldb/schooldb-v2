@@ -19,7 +19,10 @@ export async function POST(request: Request) {
     const body = await request.json();
     const parsed = createExamSchema.safeParse(body);
     if (!parsed.success) {
-      return ApiResponse.error(parsed.error.issues[0]?.message || "Invalid exam data.", 400);
+      return ApiResponse.error(
+        parsed.error.issues[0]?.message || "Invalid exam data.",
+        400,
+      );
     }
     const exam = await examService.create(tenant.schoolId, {
       academicYearId: parsed.data.academicYearId,

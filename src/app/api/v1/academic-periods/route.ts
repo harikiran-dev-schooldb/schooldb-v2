@@ -41,9 +41,12 @@ export async function POST(req: Request) {
     if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
       throw new Error("Invalid academic period dates.");
     }
-    if (endDate < startDate) throw new Error("End date cannot be before start date.");
+    if (endDate < startDate)
+      throw new Error("End date cannot be before start date.");
     if (startDate < academicYear.startDate || endDate > academicYear.endDate) {
-      throw new Error(`Academic period must be within the academic year ${academicYear.name}.`);
+      throw new Error(
+        `Academic period must be within the academic year ${academicYear.name}.`,
+      );
     }
 
     const existing = await prisma.academicPeriod.findFirst({
@@ -53,7 +56,8 @@ export async function POST(req: Request) {
       },
     });
 
-    if (existing) throw new Error("Academic period name or sequence already exists.");
+    if (existing)
+      throw new Error("Academic period name or sequence already exists.");
 
     const period = await prisma.academicPeriod.create({
       data: {
@@ -67,6 +71,10 @@ export async function POST(req: Request) {
       },
     });
 
-    return ApiResponse.success(period, "Academic period created successfully.", 201);
+    return ApiResponse.success(
+      period,
+      "Academic period created successfully.",
+      201,
+    );
   });
 }

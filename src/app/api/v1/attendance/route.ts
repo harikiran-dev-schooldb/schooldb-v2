@@ -39,7 +39,10 @@ export async function POST(req: Request) {
 
     await requireTeacherAttendanceSession(body.sessionId);
 
-    const result = await attendanceService.markAttendance(tenant.schoolId, body);
+    const result = await attendanceService.markAttendance(
+      tenant.schoolId,
+      body,
+    );
 
     return ApiResponse.success(result, "Attendance saved successfully.");
   });

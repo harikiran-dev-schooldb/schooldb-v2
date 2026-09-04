@@ -25,7 +25,10 @@ export async function POST(req: Request) {
     );
 
     if (result.incompleteCount > 0) {
-      return ApiResponse.success(result, "Some attendance sessions are incomplete.");
+      return ApiResponse.success(
+        result,
+        "Some attendance sessions are incomplete.",
+      );
     }
 
     return ApiResponse.success(

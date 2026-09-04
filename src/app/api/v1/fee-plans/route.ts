@@ -16,7 +16,11 @@ export async function GET() {
 
 export async function POST(req: Request) {
   return apiHandler(async () => {
-    const tenant = await requireRole(["SUPER_ADMIN", "SCHOOL_ADMIN", "ACCOUNTANT"]);
+    const tenant = await requireRole([
+      "SUPER_ADMIN",
+      "SCHOOL_ADMIN",
+      "ACCOUNTANT",
+    ]);
     const body = await validateBody(req, feePlanSchema);
     const plan = await feePlanService.create(tenant.schoolId, body);
     return ApiResponse.success(plan, "Fee plan created successfully.", 201);

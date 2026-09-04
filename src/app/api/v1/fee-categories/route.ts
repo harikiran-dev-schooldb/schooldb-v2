@@ -16,9 +16,17 @@ export async function GET() {
 
 export async function POST(req: Request) {
   return apiHandler(async () => {
-    const tenant = await requireRole(["SUPER_ADMIN", "SCHOOL_ADMIN", "ACCOUNTANT"]);
+    const tenant = await requireRole([
+      "SUPER_ADMIN",
+      "SCHOOL_ADMIN",
+      "ACCOUNTANT",
+    ]);
     const body = await validateBody(req, feeCategorySchema);
     const category = await feeCategoryService.create(tenant.schoolId, body);
-    return ApiResponse.success(category, "Fee category created successfully.", 201);
+    return ApiResponse.success(
+      category,
+      "Fee category created successfully.",
+      201,
+    );
   });
 }

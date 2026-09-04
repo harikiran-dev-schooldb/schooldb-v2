@@ -1,9 +1,7 @@
 import { ApiError } from "./errors";
 import { ApiResponse } from "./response";
 
-export async function apiHandler(
-  callback: () => Promise<Response>
-) {
+export async function apiHandler(callback: () => Promise<Response>) {
   try {
     return await callback();
   } catch (error) {

@@ -28,8 +28,15 @@ export async function POST(req: Request) {
   return apiHandler(async () => {
     const tenant = await requireRole(["SUPER_ADMIN", "SCHOOL_ADMIN"]);
     const body = await validateBody(req, teacherAllocationSchema);
-    const allocation = await teacherAllocationService.create(tenant.schoolId, body);
+    const allocation = await teacherAllocationService.create(
+      tenant.schoolId,
+      body,
+    );
 
-    return ApiResponse.success(allocation, "Teacher allocated successfully.", 201);
+    return ApiResponse.success(
+      allocation,
+      "Teacher allocated successfully.",
+      201,
+    );
   });
 }

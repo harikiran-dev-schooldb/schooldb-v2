@@ -56,14 +56,14 @@ export async function requireTenant(schoolSlug?: string) {
   return memberships[0];
 }
 
-export async function requireRole(
-  allowedRoles: string[],
-  schoolSlug?: string,
-) {
+export async function requireRole(allowedRoles: string[], schoolSlug?: string) {
   const membership = await requireTenant(schoolSlug);
 
   if (!allowedRoles.includes(membership.role)) {
-    throw new ApiError(403, "You do not have permission to perform this action");
+    throw new ApiError(
+      403,
+      "You do not have permission to perform this action",
+    );
   }
 
   return membership;
@@ -85,7 +85,10 @@ async function requireCurrentTeacher(schoolId: string) {
   });
 
   if (!teacher) {
-    throw new ApiError(403, "You are not linked to an active teacher account for this school");
+    throw new ApiError(
+      403,
+      "You are not linked to an active teacher account for this school",
+    );
   }
 
   return teacher;
@@ -99,7 +102,10 @@ export async function requireTeacherAllocation(
 
   if (membership.role !== "TEACHER") {
     if (!["SUPER_ADMIN", "SCHOOL_ADMIN"].includes(membership.role)) {
-      throw new ApiError(403, "You do not have permission to perform this action");
+      throw new ApiError(
+        403,
+        "You do not have permission to perform this action",
+      );
     }
     return membership;
   }
@@ -129,7 +135,10 @@ export async function requireTeacherTimetable(
 
   if (membership.role !== "TEACHER") {
     if (!["SUPER_ADMIN", "SCHOOL_ADMIN"].includes(membership.role)) {
-      throw new ApiError(403, "You do not have permission to perform this action");
+      throw new ApiError(
+        403,
+        "You do not have permission to perform this action",
+      );
     }
     return membership;
   }
@@ -162,7 +171,10 @@ export async function requireTeacherAttendanceSession(
 
   if (membership.role !== "TEACHER") {
     if (!["SUPER_ADMIN", "SCHOOL_ADMIN"].includes(membership.role)) {
-      throw new ApiError(403, "You do not have permission to perform this action");
+      throw new ApiError(
+        403,
+        "You do not have permission to perform this action",
+      );
     }
     return membership;
   }
@@ -192,7 +204,10 @@ export async function requireTeacherClassSection(
 
   if (membership.role !== "TEACHER") {
     if (!["SUPER_ADMIN", "SCHOOL_ADMIN"].includes(membership.role)) {
-      throw new ApiError(403, "You do not have permission to perform this action");
+      throw new ApiError(
+        403,
+        "You do not have permission to perform this action",
+      );
     }
     return membership;
   }

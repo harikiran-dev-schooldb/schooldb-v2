@@ -36,6 +36,10 @@ export async function POST(request: Request) {
       body.classId,
       body.subjectId,
     );
-    return ApiResponse.success(result, "Subject assigned to class successfully.", 201);
+    return ApiResponse.success(
+      result,
+      "Subject assigned to class successfully.",
+      201,
+    );
   });
 }
