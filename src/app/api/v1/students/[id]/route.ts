@@ -9,10 +9,14 @@ import { studentService } from "@/features/students/services/student.service";
 
 export async function PUT(
   req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   return apiHandler(async () => {
-    const tenant = await requireRole(["SUPER_ADMIN", "SCHOOL_ADMIN", "RECEPTIONIST"]);
+    const tenant = await requireRole([
+      "SUPER_ADMIN",
+      "SCHOOL_ADMIN",
+      "RECEPTIONIST",
+    ]);
     const body = await req.json();
     const data = createStudentSchema.parse(body);
     const { id } = await params;
@@ -24,7 +28,7 @@ export async function PUT(
 
 export async function GET(
   _req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   return apiHandler(async () => {
     const tenant = await requireTenant();

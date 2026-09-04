@@ -12,7 +12,11 @@ export async function GET(req: Request) {
     const page = Number(searchParams.get("page") ?? 1);
     const pageSize = Number(searchParams.get("pageSize") ?? 25);
     const search = searchParams.get("search") ?? undefined;
-    const classes = await classService.list(tenant.schoolId, { page, pageSize, search });
+    const classes = await classService.list(tenant.schoolId, {
+      page,
+      pageSize,
+      search,
+    });
     return ApiResponse.success(classes);
   });
 }

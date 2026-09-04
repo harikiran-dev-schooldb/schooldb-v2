@@ -22,8 +22,15 @@ export async function PUT(req: Request, { params }: Props) {
     const { id } = await params;
     const tenant = await requireRole(["SUPER_ADMIN", "SCHOOL_ADMIN"]);
     const body = await validateBody(req, teacherAllocationSchema);
-    const allocation = await teacherAllocationService.update(id, tenant.schoolId, body);
+    const allocation = await teacherAllocationService.update(
+      id,
+      tenant.schoolId,
+      body,
+    );
 
-    return ApiResponse.success(allocation, "Teacher allocation updated successfully.");
+    return ApiResponse.success(
+      allocation,
+      "Teacher allocation updated successfully.",
+    );
   });
 }

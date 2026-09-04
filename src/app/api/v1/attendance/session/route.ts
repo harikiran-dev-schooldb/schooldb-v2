@@ -1,8 +1,5 @@
 import { apiHandler } from "@/lib/api";
-import {
-  requireRole,
-  requireTeacherTimetable,
-} from "@/lib/auth";
+import { requireRole, requireTeacherTimetable } from "@/lib/auth";
 import { ApiResponse } from "@/lib/response";
 import { validateBody } from "@/lib/validation";
 
@@ -20,13 +17,18 @@ export async function POST(req: Request) {
 
     if (tenant.role === "TEACHER") {
       if (body.sessionType !== "PERIOD" || !body.timetableId) {
-        throw new Error("Teachers can create attendance sessions only for their assigned timetable periods.");
+        throw new Error(
+          "Teachers can create attendance sessions only for their assigned timetable periods.",
+        );
       }
 
       await requireTeacherTimetable(body.timetableId);
     }
 
-    const session = await attendanceService.createSession(tenant.schoolId, body);
+    const session = await attendanceService.createSession(
+      tenant.schoolId,
+      body,
+    );
 
     return ApiResponse.success(session, "Attendance session created.", 201);
   });

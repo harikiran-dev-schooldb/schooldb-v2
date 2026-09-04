@@ -9,10 +9,19 @@ import { prisma } from "@/lib/prisma";
 
 export async function POST(req: Request) {
   return apiHandler(async () => {
-    const tenant = await requireRole(["SUPER_ADMIN", "SCHOOL_ADMIN", "ACCOUNTANT", "RECEPTIONIST"]);
+    const tenant = await requireRole([
+      "SUPER_ADMIN",
+      "SCHOOL_ADMIN",
+      "ACCOUNTANT",
+      "RECEPTIONIST",
+    ]);
     const body = await validateBody(req, feePaymentSchema);
     const payment = await feePaymentService.create(tenant.schoolId, body);
-    return ApiResponse.success(payment, "Fee payment recorded successfully.", 201);
+    return ApiResponse.success(
+      payment,
+      "Fee payment recorded successfully.",
+      201,
+    );
   });
 }
 
@@ -30,17 +39,55 @@ export async function GET(req: Request) {
       where: {
         schoolId: tenant.schoolId,
         status: "SUCCESS",
-        ...(paymentMode ? { paymentMode: paymentMode as "CASH" | "UPI" | "CARD" | "BANK_TRANSFER" } : {}),
-        ...(fromDate || toDate ? { paymentDate: { ...(fromDate ? { gte: new Date(`${fromDate}T00:00:00.000Z`) } : {}), ...(toDate ? { lte: new Date(`${toDate}T23:59:59.999Z`) } : {}) } } : {}),
+        ...(paymentMode
+          ? {
+              paymentMode: paymentMode as
+                | "CASH"
+                | "UPI"
+                | "CARD"
+                | "BANK_TRANSFER",
+            }
+          : {}),
+        ...(fromDate || toDate
+          ? {
+              paymentDate: {
+                ...(fromDate
+                  ? { gte: new Date(`${fromDate}T00:00:00.000Z`) }
+                  : {}),
+                ...(toDate ? { lte: new Date(`${toDate}T23:59:59.999Z`) } : {}),
+              },
+            }
+          : {}),
         ...(academicYearId ? { studentEnrollment: { academicYearId } } : {}),
-        ...(search ? { OR: [
-          { receiptNo: { contains: search, mode: "insensitive" } },
-          { studentEnrollment: { student: { fullName: { contains: search, mode: "insensitive" } } } },
-          { studentEnrollment: { student: { admissionNo: { contains: search, mode: "insensitive" } } } },
-        ] } : {}),
+        ...(search
+          ? {
+              OR: [
+                { receiptNo: { contains: search, mode: "insensitive" } },
+                {
+                  studentEnrollment: {
+                    student: {
+                      fullName: { contains: search, mode: "insensitive" },
+                    },
+                  },
+                },
+                {
+                  studentEnrollment: {
+                    student: {
+                      admissionNo: { contains: search, mode: "insensitive" },
+                    },
+                  },
+                },
+              ],
+            }
+          : {}),
       },
       orderBy: { paymentDate: "desc" },
-      include: { studentEnrollment: { include: { student: true, class: true, section: true } }, allocations: true },
+      include: {
+        studentEnrollment: {
+          include: { student: true, class: true, section: true },
+        },
+        allocations: true,
+      },
     });
 
     const rows = payments.map((payment) => ({
@@ -64,7 +111,10 @@ export async function GET(req: Request) {
 
     return ApiResponse.success({
       rows,
-      summary: { paymentCount: rows.length, totalAmount: rows.reduce((sum, payment) => sum + payment.amount, 0) },
+      summary: {
+        paymentCount: rows.length,
+        totalAmount: rows.reduce((sum, payment) => sum + payment.amount, 0),
+      },
     });
   });
 }

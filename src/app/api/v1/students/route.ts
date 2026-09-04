@@ -8,7 +8,11 @@ import { StudentStatus } from "@/features/students/constants/student-status";
 
 export async function POST(req: Request) {
   return apiHandler(async () => {
-    const tenant = await requireRole(["SUPER_ADMIN", "SCHOOL_ADMIN", "RECEPTIONIST"]);
+    const tenant = await requireRole([
+      "SUPER_ADMIN",
+      "SCHOOL_ADMIN",
+      "RECEPTIONIST",
+    ]);
 
     const body = await createStudentSchema.parseAsync(await req.json());
 
@@ -35,11 +39,20 @@ export async function GET(req: Request) {
 
     const pageParam = Number(searchParams.get("page") ?? "1");
     const pageSizeParam = Number(searchParams.get("pageSize") ?? "10");
-    const page = Number.isFinite(pageParam) && pageParam > 0 ? Math.floor(pageParam) : 1;
-    const pageSize = Number.isFinite(pageSizeParam) && pageSizeParam > 0 ? Math.min(Math.floor(pageSizeParam), 100) : 10;
+    const page =
+      Number.isFinite(pageParam) && pageParam > 0 ? Math.floor(pageParam) : 1;
+    const pageSize =
+      Number.isFinite(pageSizeParam) && pageSizeParam > 0
+        ? Math.min(Math.floor(pageSizeParam), 100)
+        : 10;
     const search = searchParams.get("search") ?? undefined;
 
-    const students = await studentService.list(tenant.schoolId, { page, pageSize, search, status });
+    const students = await studentService.list(tenant.schoolId, {
+      page,
+      pageSize,
+      search,
+      status,
+    });
     return ApiResponse.success(students);
   });
 }
