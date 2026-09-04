@@ -1,5 +1,5 @@
 import { apiHandler } from "@/lib/api";
-import { requireRole, requireTenant } from "@/lib/auth";
+import { requireRole } from "@/lib/auth";
 import { ApiResponse } from "@/lib/response";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
@@ -14,10 +14,7 @@ type Params = {
   }>;
 };
 
-export async function PATCH(
-  req: Request,
-  { params }: Params,
-) {
+export async function PATCH(req: Request, { params }: Params) {
   return apiHandler(async () => {
     const tenant = await requireRole([
       "SUPER_ADMIN",
@@ -43,10 +40,7 @@ export async function PATCH(
     });
 
     if (!installment) {
-      return ApiResponse.error(
-        "Student fee installment not found.",
-        404,
-      );
+      return ApiResponse.error("Student fee installment not found.", 404);
     }
 
     const amount = Number(installment.amount);
@@ -89,9 +83,6 @@ export async function PATCH(
       },
     });
 
-    return ApiResponse.success(
-      updated,
-      "Concession updated successfully.",
-    );
+    return ApiResponse.success(updated, "Concession updated successfully.");
   });
 }
