@@ -1,6 +1,6 @@
 import { apiHandler } from "@/lib/api";
 import { ApiResponse } from "@/lib/response";
-import { requireTenant } from "@/lib/auth";
+import { requireRole, requireTenant } from "@/lib/auth";
 import { validateBody } from "@/lib/validation";
 
 import { homeworkSchema } from "@/features/homework/schemas/homework.schema";
@@ -13,19 +13,14 @@ type Props = {
 };
 
 export async function GET(
-  req: Request,
-  { params }: Props
+  _req: Request,
+  { params }: Props,
 ) {
   return apiHandler(async () => {
     const tenant = await requireTenant();
-
     const { id } = await params;
 
-    const item =
-      await homeworkService.get(
-        id,
-        tenant.schoolId
-      );
+    const item = await homeworkService.get(id, tenant.schoolId);
 
     return ApiResponse.success(item);
   });
@@ -33,49 +28,40 @@ export async function GET(
 
 export async function PUT(
   req: Request,
-  { params }: Props
+  { params }: Props,
 ) {
   return apiHandler(async () => {
-    const tenant = await requireTenant();
-
+    const tenant = await requireRole(["SUPER_ADMIN", "SCHOOL_ADMIN"]);
     const { id } = await params;
 
-    const body = await validateBody(
-      req,
-      homeworkSchema
-    );
+    const body = await validateBody(req, homeworkSchema);
 
-    const item =
-      await homeworkService.update(
-        id,
-        tenant.schoolId,
-        body
-      );
+    const item = await homeworkService.update(
+      id,
+      tenant.schoolId,
+      body,
+    );
 
     return ApiResponse.success(
       item,
-      "Homework updated successfully."
+      "Homework updated successfully.",
     );
   });
 }
 
 export async function DELETE(
-  req: Request,
-  { params }: Props
+  _req: Request,
+  { params }: Props,
 ) {
   return apiHandler(async () => {
-    const tenant = await requireTenant();
-
+    const tenant = await requireRole(["SUPER_ADMIN", "SCHOOL_ADMIN"]);
     const { id } = await params;
 
-    await homeworkService.delete(
-      id,
-      tenant.schoolId
-    );
+    await homeworkService.delete(id, tenant.schoolId);
 
     return ApiResponse.success(
       null,
-      "Homework deleted successfully."
+      "Homework deleted successfully.",
     );
   });
 }

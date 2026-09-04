@@ -229,3 +229,65 @@ export async function requireTeacherClassSection(
 
   return membership;
 }
+
+export async function requireTeacherExamSchedule(
+  scheduleId: string,
+  sectionId: string,
+  schoolSlug?: string,
+) {
+  const membership = await requireTenant(schoolSlug);
+
+  if (membership.role !== "TEACHER") {
+    if (!["SUPER_ADMIN", "SCHOOL_ADMIN"].includes(membership.role)) {
+      throw new ApiError(
+        403,
+        "You do not have permission to perform this action",
+      );
+    }
+    return membership;
+  }
+
+  const teacher = await requireCurrentTeacher(membership.schoolId);
+  const schedule = await prisma.examSchedule.findFirst({
+    where: {
+      id: scheduleId,
+      schoolId: membership.schoolId,
+    },
+    select: {
+      classId: true,
+      sectionId: true,
+      subjectId: true,
+      exam: {
+        select: {
+          academicYearId: true,
+        },
+      },
+    },
+  });
+
+  if (!schedule) {
+    throw new ApiError(404, "Exam schedule not found");
+  }
+
+  if (schedule.sectionId && schedule.sectionId !== sectionId) {
+    throw new ApiError(403, "This exam schedule is not assigned to you");
+  }
+
+  const allocation = await prisma.teacherAllocation.findFirst({
+    where: {
+      schoolId: membership.schoolId,
+      teacherId: teacher.id,
+      academicYearId: schedule.exam.academicYearId,
+      classId: schedule.classId,
+      subjectId: schedule.subjectId,
+      sectionId,
+      active: true,
+    },
+  });
+
+  if (!allocation) {
+    throw new ApiError(403, "This exam subject is not assigned to you");
+  }
+
+  return membership;
+}

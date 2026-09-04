@@ -1,5 +1,5 @@
 import { apiHandler } from "@/lib/api";
-import { requireTenant } from "@/lib/auth";
+import { requireRole } from "@/lib/auth";
 import { ApiResponse } from "@/lib/response";
 import { prisma } from "@/lib/prisma";
 import { studentFeeService } from "@/features/student-fees/services/student-fee.service";
@@ -23,7 +23,11 @@ function normalize(value: string): string {
 
 export async function POST(request: Request) {
   return apiHandler(async () => {
-    const tenant = await requireTenant();
+    const tenant = await requireRole([
+      "SUPER_ADMIN",
+      "SCHOOL_ADMIN",
+      "ACCOUNTANT",
+    ]);
     const body = (await request.json()) as { assignments?: unknown };
     const assignments = Array.isArray(body.assignments) ? body.assignments : [];
 
@@ -48,20 +52,13 @@ export async function POST(request: Request) {
       const feePlanName = String(row.feePlanName ?? "").trim();
 
       if (!admissionNo || !academicYear || !feePlanName) {
-        errors.push({
-          row: rowNumber,
-          message: "Admission number, academic year and fee plan name are required.",
-        });
+        errors.push({ row: rowNumber, message: "Admission number, academic year and fee plan name are required." });
         continue;
       }
 
       const key = [admissionNo, academicYear, feePlanName].map(normalize).join(":");
-
       if (seen.has(key)) {
-        errors.push({
-          row: rowNumber,
-          message: "Duplicate fee assignment in the import file.",
-        });
+        errors.push({ row: rowNumber, message: "Duplicate fee assignment in the import file." });
         continue;
       }
 
@@ -117,9 +114,7 @@ export async function POST(request: Request) {
         id: true,
         academicYearId: true,
         classId: true,
-        student: {
-          select: { admissionNo: true },
-        },
+        student: { select: { admissionNo: true } },
       },
     });
 
@@ -135,32 +130,19 @@ export async function POST(request: Request) {
 
     for (const row of prepared) {
       const year = yearByName.get(normalize(row.academicYear));
-
       if (!year) {
-        importErrors.push({
-          row: row.rowNumber,
-          message: `Academic year not found: ${row.academicYear}.`,
-        });
+        importErrors.push({ row: row.rowNumber, message: `Academic year not found: ${row.academicYear}.` });
         continue;
       }
 
-      const plan = planByKey.get(
-        `${year.id}:${normalize(row.feePlanName)}`,
-      );
-
+      const plan = planByKey.get(`${year.id}:${normalize(row.feePlanName)}`);
       if (!plan) {
-        importErrors.push({
-          row: row.rowNumber,
-          message: `Fee plan not found for ${row.academicYear}: ${row.feePlanName}.`,
-        });
+        importErrors.push({ row: row.rowNumber, message: `Fee plan not found for ${row.academicYear}: ${row.feePlanName}.` });
         continue;
       }
 
       if (!plan.active) {
-        importErrors.push({
-          row: row.rowNumber,
-          message: `Fee plan is inactive: ${row.feePlanName}.`,
-        });
+        importErrors.push({ row: row.rowNumber, message: `Fee plan is inactive: ${row.feePlanName}.` });
         continue;
       }
 
@@ -169,10 +151,7 @@ export async function POST(request: Request) {
       );
 
       if (!enrollment) {
-        importErrors.push({
-          row: row.rowNumber,
-          message: `Active enrollment not found for admission number ${row.admissionNo} in ${row.academicYear}.`,
-        });
+        importErrors.push({ row: row.rowNumber, message: `Active enrollment not found for admission number ${row.admissionNo} in ${row.academicYear}.` });
         continue;
       }
 
@@ -180,10 +159,7 @@ export async function POST(request: Request) {
         !plan.appliesToAllClasses &&
         !plan.classes.some((item) => item.classId === enrollment.classId)
       ) {
-        importErrors.push({
-          row: row.rowNumber,
-          message: `Fee plan ${row.feePlanName} does not apply to the student's class.`,
-        });
+        importErrors.push({ row: row.rowNumber, message: `Fee plan ${row.feePlanName} does not apply to the student's class.` });
         continue;
       }
 
@@ -197,10 +173,7 @@ export async function POST(request: Request) {
       });
 
       if (existing) {
-        importErrors.push({
-          row: row.rowNumber,
-          message: `Fee plan ${row.feePlanName} is already assigned to admission number ${row.admissionNo}.`,
-        });
+        importErrors.push({ row: row.rowNumber, message: `Fee plan ${row.feePlanName} is already assigned to admission number ${row.admissionNo}.` });
         continue;
       }
 
@@ -213,10 +186,7 @@ export async function POST(request: Request) {
       } catch (error) {
         importErrors.push({
           row: row.rowNumber,
-          message:
-            error instanceof Error
-              ? error.message
-              : "Unable to assign fee plan.",
+          message: error instanceof Error ? error.message : "Unable to assign fee plan.",
         });
       }
     }
