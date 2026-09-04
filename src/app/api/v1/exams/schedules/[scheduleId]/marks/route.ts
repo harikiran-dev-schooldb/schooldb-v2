@@ -1,7 +1,7 @@
 import { StudentExamStatus } from "@/generated/prisma/client";
 
 import { apiHandler } from "@/lib/api";
-import { requireTenant } from "@/lib/auth";
+import { requireTeacherExamSchedule } from "@/lib/auth";
 import { ApiResponse } from "@/lib/response";
 
 import { studentExamMarkService } from "@/features/exams/services/student-exam-mark.service";
@@ -10,19 +10,12 @@ type Params = Promise<{
   scheduleId: string;
 }>;
 
-/* -------------------------------------------------------------------------- */
-/* GET STUDENTS + EXISTING MARKS                                              */
-/* -------------------------------------------------------------------------- */
-
 export async function GET(
   req: Request,
   { params }: { params: Params },
 ) {
   return apiHandler(async () => {
-    const tenant = await requireTenant();
-
     const { scheduleId } = await params;
-
     const { searchParams } = new URL(req.url);
     const sectionId = searchParams.get("sectionId");
 
@@ -32,6 +25,11 @@ export async function GET(
         400,
       );
     }
+
+    const tenant = await requireTeacherExamSchedule(
+      scheduleId,
+      sectionId,
+    );
 
     const data = await studentExamMarkService.listForSchedule(
       scheduleId,
@@ -43,28 +41,26 @@ export async function GET(
   });
 }
 
-/* -------------------------------------------------------------------------- */
-/* BULK SAVE / UPDATE MARKS                                                   */
-/* -------------------------------------------------------------------------- */
-
 export async function PUT(
   req: Request,
   { params }: { params: Params },
 ) {
   return apiHandler(async () => {
-    const tenant = await requireTenant();
-
     const { scheduleId } = await params;
-
     const { searchParams } = new URL(req.url);
-const sectionId = searchParams.get("sectionId");
+    const sectionId = searchParams.get("sectionId");
 
-if (!sectionId) {
-  return ApiResponse.error(
-    "Section is required for saving marks.",
-    400,
-  );
-}
+    if (!sectionId) {
+      return ApiResponse.error(
+        "Section is required for saving marks.",
+        400,
+      );
+    }
+
+    const tenant = await requireTeacherExamSchedule(
+      scheduleId,
+      sectionId,
+    );
 
     const body = await req.json();
 
@@ -126,31 +122,28 @@ if (!sectionId) {
     }
 
     const result = await studentExamMarkService.saveBulk(
-  scheduleId,
-  tenant.schoolId,
-  sectionId,
-  body.marks.map(
-    (mark: {
-      studentEnrollmentId: string;
-      marksObtained?: number | string | null;
-      status?: StudentExamStatus;
-      remarks?: string | null;
-    }) => ({
-      studentEnrollmentId: mark.studentEnrollmentId,
-
-      marksObtained:
-        mark.marksObtained !== undefined &&
-        mark.marksObtained !== null &&
-        mark.marksObtained !== ""
-          ? Number(mark.marksObtained)
-          : null,
-
-      status: mark.status ?? StudentExamStatus.PRESENT,
-
-      remarks: mark.remarks || null,
-    }),
-  ),
-);
+      scheduleId,
+      tenant.schoolId,
+      sectionId,
+      body.marks.map(
+        (mark: {
+          studentEnrollmentId: string;
+          marksObtained?: number | string | null;
+          status?: StudentExamStatus;
+          remarks?: string | null;
+        }) => ({
+          studentEnrollmentId: mark.studentEnrollmentId,
+          marksObtained:
+            mark.marksObtained !== undefined &&
+            mark.marksObtained !== null &&
+            mark.marksObtained !== ""
+              ? Number(mark.marksObtained)
+              : null,
+          status: mark.status ?? StudentExamStatus.PRESENT,
+          remarks: mark.remarks || null,
+        }),
+      ),
+    );
 
     return ApiResponse.success(
       result,
