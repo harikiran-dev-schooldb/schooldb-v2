@@ -1,5 +1,5 @@
 import { apiHandler } from "@/lib/api";
-import { requireTenant } from "@/lib/auth";
+import { requireRole } from "@/lib/auth";
 import { ApiResponse } from "@/lib/response";
 import { prisma } from "@/lib/prisma";
 import { createExamSchema } from "@/features/exams/schemas/exam.schema";
@@ -15,7 +15,7 @@ type ImportRow = {
 
 export async function POST(request: Request) {
   return apiHandler(async () => {
-    const tenant = await requireTenant();
+    const tenant = await requireRole(["SUPER_ADMIN", "SCHOOL_ADMIN"]);
     const body = (await request.json()) as { exams?: unknown };
     const exams = Array.isArray(body.exams) ? body.exams : [];
 
