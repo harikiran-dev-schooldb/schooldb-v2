@@ -1,5 +1,5 @@
 import { apiHandler } from "@/lib/api";
-import { requireTenant } from "@/lib/auth";
+import { requireRole } from "@/lib/auth";
 import { ApiResponse } from "@/lib/response";
 
 import { studentFeeService } from "@/features/student-fees/services/student-fee.service";
@@ -10,20 +10,16 @@ type Props = {
   }>;
 };
 
-export async function POST(
-  req: Request,
-  { params }: Props,
-) {
+export async function POST(req: Request, { params }: Props) {
   return apiHandler(async () => {
-    const tenant = await requireTenant();
+    const tenant = await requireRole(["SUPER_ADMIN", "SCHOOL_ADMIN"]);
 
     const { id: feePlanId } = await params;
 
-    const result =
-      await studentFeeService.applyFeePlanToStudents(
-        tenant.schoolId,
-        feePlanId,
-      );
+    const result = await studentFeeService.applyFeePlanToStudents(
+      tenant.schoolId,
+      feePlanId,
+    );
 
     return ApiResponse.success(
       result,

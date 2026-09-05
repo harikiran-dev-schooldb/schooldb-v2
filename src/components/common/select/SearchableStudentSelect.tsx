@@ -100,7 +100,10 @@ export function SearchableStudentSelect({
     };
   }, [academicYearId]);
 
-  const availableStudents = academicYearId ? students : [];
+  const availableStudents = useMemo(
+    () => (academicYearId ? students : []),
+    [academicYearId, students],
+  );
 
   const selectedStudent = useMemo(
     () => availableStudents.find((student) => student.id === value),

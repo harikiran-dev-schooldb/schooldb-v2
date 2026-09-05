@@ -1,5 +1,5 @@
 import { apiHandler } from "@/lib/api";
-import { requireTenant } from "@/lib/auth";
+import { requireRole } from "@/lib/auth";
 import { ApiResponse } from "@/lib/response";
 import { prisma } from "@/lib/prisma";
 import { WeekDay } from "@/generated/prisma/client";
@@ -44,17 +44,11 @@ function parseBoolean(value: string): boolean {
     return true;
   }
 
-  if (
-    normalized === "false" ||
-    normalized === "no" ||
-    normalized === "0"
-  ) {
+  if (normalized === "false" || normalized === "no" || normalized === "0") {
     return false;
   }
 
-  throw new Error(
-    "Active must be TRUE, FALSE, YES, NO, 1 or 0.",
-  );
+  throw new Error("Active must be TRUE, FALSE, YES, NO, 1 or 0.");
 }
 
 function parseWeekDay(value: string): WeekDay {
@@ -80,24 +74,20 @@ function parseWeekDay(value: string): WeekDay {
 
 export async function POST(request: Request) {
   return apiHandler(async () => {
-    const tenant = await requireTenant();
+    const tenant = await requireRole(["SUPER_ADMIN", "SCHOOL_ADMIN"]);
 
     const body = (await request.json()) as {
       timetables?: unknown;
     };
 
-    const input = Array.isArray(body.timetables)
-      ? body.timetables
-      : [];
+    const input = Array.isArray(body.timetables) ? body.timetables : [];
 
     if (input.length === 0) {
       throw new Error("No timetable rows were provided.");
     }
 
     if (input.length > MAX_ROWS) {
-      throw new Error(
-        `Maximum ${MAX_ROWS} timetable rows per import.`,
-      );
+      throw new Error(`Maximum ${MAX_ROWS} timetable rows per import.`);
     }
 
     const rows = input as ImportRow[];
@@ -131,9 +121,7 @@ export async function POST(request: Request) {
       } catch (error) {
         throw new Error(
           `Row ${rowNumber}: ${
-            error instanceof Error
-              ? error.message
-              : "Invalid day."
+            error instanceof Error ? error.message : "Invalid day."
           }`,
         );
       }
@@ -145,9 +133,7 @@ export async function POST(request: Request) {
       } catch (error) {
         throw new Error(
           `Row ${rowNumber}: ${
-            error instanceof Error
-              ? error.message
-              : "Invalid active value."
+            error instanceof Error ? error.message : "Invalid active value."
           }`,
         );
       }
@@ -274,45 +260,27 @@ export async function POST(request: Request) {
     ]);
 
     const academicYearByName = new Map(
-      academicYears.map((item) => [
-        normalize(item.name),
-        item,
-      ]),
+      academicYears.map((item) => [normalize(item.name), item]),
     );
 
     const classByName = new Map(
-      classes.map((item) => [
-        normalize(item.name),
-        item,
-      ]),
+      classes.map((item) => [normalize(item.name), item]),
     );
 
     const teacherByName = new Map(
-      teachers.map((item) => [
-        normalize(item.fullName),
-        item,
-      ]),
+      teachers.map((item) => [normalize(item.fullName), item]),
     );
 
     const subjectByName = new Map(
-      subjects.map((item) => [
-        normalize(item.name),
-        item,
-      ]),
+      subjects.map((item) => [normalize(item.name), item]),
     );
 
     const periodByName = new Map(
-      periods.map((item) => [
-        normalize(item.name),
-        item,
-      ]),
+      periods.map((item) => [normalize(item.name), item]),
     );
 
     const sectionByClassAndName = new Map(
-      sections.map((item) => [
-        `${item.classId}:${normalize(item.name)}`,
-        item,
-      ]),
+      sections.map((item) => [`${item.classId}:${normalize(item.name)}`, item]),
     );
 
     const allocationByKey = new Map(
@@ -341,10 +309,7 @@ export async function POST(request: Request) {
       const row = prepared[i];
       const rowNumber = i + 2;
 
-      const academicYear =
-        academicYearByName.get(
-          normalize(row.academicYear),
-        );
+      const academicYear = academicYearByName.get(normalize(row.academicYear));
 
       if (!academicYear) {
         throw new Error(
@@ -352,20 +317,15 @@ export async function POST(request: Request) {
         );
       }
 
-      const classRecord = classByName.get(
-        normalize(row.className),
-      );
+      const classRecord = classByName.get(normalize(row.className));
 
       if (!classRecord) {
-        throw new Error(
-          `Row ${rowNumber}: Class not found: ${row.className}.`,
-        );
+        throw new Error(`Row ${rowNumber}: Class not found: ${row.className}.`);
       }
 
-      const section =
-        sectionByClassAndName.get(
-          `${classRecord.id}:${normalize(row.sectionName)}`,
-        );
+      const section = sectionByClassAndName.get(
+        `${classRecord.id}:${normalize(row.sectionName)}`,
+      );
 
       if (!section) {
         throw new Error(
@@ -373,9 +333,7 @@ export async function POST(request: Request) {
         );
       }
 
-      const teacher = teacherByName.get(
-        normalize(row.teacherName),
-      );
+      const teacher = teacherByName.get(normalize(row.teacherName));
 
       if (!teacher) {
         throw new Error(
@@ -383,9 +341,7 @@ export async function POST(request: Request) {
         );
       }
 
-      const subject = subjectByName.get(
-        normalize(row.subjectName),
-      );
+      const subject = subjectByName.get(normalize(row.subjectName));
 
       if (!subject) {
         throw new Error(
@@ -393,9 +349,7 @@ export async function POST(request: Request) {
         );
       }
 
-      const period = periodByName.get(
-        normalize(row.periodName),
-      );
+      const period = periodByName.get(normalize(row.periodName));
 
       if (!period) {
         throw new Error(
@@ -403,16 +357,15 @@ export async function POST(request: Request) {
         );
       }
 
-      const allocation =
-        allocationByKey.get(
-          [
-            academicYear.id,
-            teacher.id,
-            subject.id,
-            classRecord.id,
-            section.id,
-          ].join(":"),
-        );
+      const allocation = allocationByKey.get(
+        [
+          academicYear.id,
+          teacher.id,
+          subject.id,
+          classRecord.id,
+          section.id,
+        ].join(":"),
+      );
 
       if (!allocation) {
         throw new Error(
@@ -420,45 +373,38 @@ export async function POST(request: Request) {
         );
       }
 
-      const existingDuplicate =
-        await prisma.timetable.findFirst({
-          where: {
-            schoolId: tenant.schoolId,
-            academicYearId:
-              academicYear.id,
-            teacherAllocationId:
-              allocation.id,
-            periodId: period.id,
-            day: row.day,
-          },
-          select: {
-            id: true,
-          },
-        });
+      const existingDuplicate = await prisma.timetable.findFirst({
+        where: {
+          schoolId: tenant.schoolId,
+          academicYearId: academicYear.id,
+          teacherAllocationId: allocation.id,
+          periodId: period.id,
+          day: row.day,
+        },
+        select: {
+          id: true,
+        },
+      });
 
       if (existingDuplicate) {
-        throw new Error(
-          `Row ${rowNumber}: Timetable entry already exists.`,
-        );
+        throw new Error(`Row ${rowNumber}: Timetable entry already exists.`);
       }
 
-      const teacherConflict =
-        await prisma.timetable.findFirst({
-          where: {
-            schoolId: tenant.schoolId,
-            academicYearId:
-              academicYear.id,
-            periodId: period.id,
-            day: row.day,
+      const teacherConflict = await prisma.timetable.findFirst({
+        where: {
+          schoolId: tenant.schoolId,
+          academicYearId: academicYear.id,
+          periodId: period.id,
+          day: row.day,
 
-            teacherAllocation: {
-              teacherId: teacher.id,
-            },
+          teacherAllocation: {
+            teacherId: teacher.id,
           },
-          select: {
-            id: true,
-          },
-        });
+        },
+        select: {
+          id: true,
+        },
+      });
 
       if (teacherConflict) {
         throw new Error(
@@ -466,24 +412,22 @@ export async function POST(request: Request) {
         );
       }
 
-      const classConflict =
-        await prisma.timetable.findFirst({
-          where: {
-            schoolId: tenant.schoolId,
-            academicYearId:
-              academicYear.id,
-            periodId: period.id,
-            day: row.day,
+      const classConflict = await prisma.timetable.findFirst({
+        where: {
+          schoolId: tenant.schoolId,
+          academicYearId: academicYear.id,
+          periodId: period.id,
+          day: row.day,
 
-            teacherAllocation: {
-              classId: classRecord.id,
-              sectionId: section.id,
-            },
+          teacherAllocation: {
+            classId: classRecord.id,
+            sectionId: section.id,
           },
-          select: {
-            id: true,
-          },
-        });
+        },
+        select: {
+          id: true,
+        },
+      });
 
       if (classConflict) {
         throw new Error(
@@ -497,36 +441,27 @@ export async function POST(request: Request) {
        */
       for (const previous of resolved) {
         if (
-          previous.academicYearId ===
-            academicYear.id &&
+          previous.academicYearId === academicYear.id &&
           previous.periodId === period.id &&
           previous.day === row.day
         ) {
-          const previousAllocation =
-            allocations.find(
-              (item) =>
-                item.id ===
-                previous.teacherAllocationId,
-            );
+          const previousAllocation = allocations.find(
+            (item) => item.id === previous.teacherAllocationId,
+          );
 
           if (!previousAllocation) {
             continue;
           }
 
-          if (
-            previousAllocation.teacherId ===
-            teacher.id
-          ) {
+          if (previousAllocation.teacherId === teacher.id) {
             throw new Error(
               `Row ${rowNumber}: Teacher ${row.teacherName} is assigned to multiple classes during the same period in this import.`,
             );
           }
 
           if (
-            previousAllocation.classId ===
-              classRecord.id &&
-            previousAllocation.sectionId ===
-              section.id
+            previousAllocation.classId === classRecord.id &&
+            previousAllocation.sectionId === section.id
           ) {
             throw new Error(
               `Row ${rowNumber}: ${row.className} - ${row.sectionName} has multiple subjects during the same period in this import.`,
@@ -537,10 +472,8 @@ export async function POST(request: Request) {
 
       resolved.push({
         schoolId: tenant.schoolId,
-        academicYearId:
-          academicYear.id,
-        teacherAllocationId:
-          allocation.id,
+        academicYearId: academicYear.id,
+        teacherAllocationId: allocation.id,
         periodId: period.id,
         day: row.day,
         active: row.active,
