@@ -1,5 +1,5 @@
 import { apiHandler } from "@/lib/api";
-import { requireTenant } from "@/lib/auth";
+import { requireRole, requireTenant } from "@/lib/auth";
 import { ApiResponse } from "@/lib/response";
 import { validateBody } from "@/lib/validation";
 
@@ -12,44 +12,28 @@ type Props = {
   }>;
 };
 
-export async function GET(
-  req: Request,
-  { params }: Props
-) {
+export async function GET(req: Request, { params }: Props) {
   return apiHandler(async () => {
     const tenant = await requireTenant();
 
     const { id } = await params;
 
-    const period = await periodService.get(
-      id,
-      tenant.schoolId
-    );
+    const period = await periodService.get(id, tenant.schoolId);
 
     return ApiResponse.success(period);
   });
 }
 
-export async function PUT(
-  req: Request,
-  { params }: Props
-) {
+export async function PUT(req: Request, { params }: Props) {
   return apiHandler(async () => {
-    const tenant = await requireTenant();
+    const tenant = await requireRole(["SUPER_ADMIN", "SCHOOL_ADMIN"]);
 
     const { id } = await params;
 
     const body = await validateBody(req, periodSchema);
 
-    const period = await periodService.update(
-      id,
-      tenant.schoolId,
-      body
-    );
+    const period = await periodService.update(id, tenant.schoolId, body);
 
-    return ApiResponse.success(
-      period,
-      "Period updated successfully."
-    );
+    return ApiResponse.success(period, "Period updated successfully.");
   });
 }

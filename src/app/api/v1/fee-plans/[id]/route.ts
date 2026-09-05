@@ -1,5 +1,5 @@
 import { apiHandler } from "@/lib/api";
-import { requireTenant } from "@/lib/auth";
+import { requireRole, requireTenant } from "@/lib/auth";
 import { ApiResponse } from "@/lib/response";
 
 import {
@@ -7,9 +7,7 @@ import {
   feePlanStatusSchema,
 } from "@/features/fees/schemas/fee-plan.schema";
 
-import {
-  feePlanService,
-} from "@/features/fees/services/fee-plan.service";
+import { feePlanService } from "@/features/fees/services/fee-plan.service";
 
 type Params = {
   params: Promise<{
@@ -17,40 +15,25 @@ type Params = {
   }>;
 };
 
-export async function GET(
-  _req: Request,
-  { params }: Params,
-) {
+export async function GET(_req: Request, { params }: Params) {
   return apiHandler(async () => {
-    const tenant =
-      await requireTenant();
+    const tenant = await requireTenant();
 
     const { id } = await params;
 
-    const plan =
-      await feePlanService.findById(
-        id,
-        tenant.schoolId,
-      );
+    const plan = await feePlanService.findById(id, tenant.schoolId);
 
     if (!plan) {
-      return ApiResponse.error(
-        "Fee plan not found.",
-        404,
-      );
+      return ApiResponse.error("Fee plan not found.", 404);
     }
 
     return ApiResponse.success(plan);
   });
 }
 
-export async function PATCH(
-  req: Request,
-  { params }: Params,
-) {
+export async function PATCH(req: Request, { params }: Params) {
   return apiHandler(async () => {
-    const tenant =
-      await requireTenant();
+    const tenant = await requireRole(["SUPER_ADMIN", "SCHOOL_ADMIN"]);
 
     const { id } = await params;
 
@@ -65,17 +48,13 @@ export async function PATCH(
       Object.keys(rawBody).length === 1 &&
       typeof rawBody.active === "boolean"
     ) {
-      const body =
-        feePlanStatusSchema.parse(
-          rawBody,
-        );
+      const body = feePlanStatusSchema.parse(rawBody);
 
-      const plan =
-        await feePlanService.changeStatus(
-          id,
-          tenant.schoolId,
-          body.active,
-        );
+      const plan = await feePlanService.changeStatus(
+        id,
+        tenant.schoolId,
+        body.active,
+      );
 
       return ApiResponse.success(
         plan,
@@ -88,20 +67,10 @@ export async function PATCH(
     /*
      * Full fee-plan update.
      */
-    const body =
-      feePlanSchema.parse(rawBody);
+    const body = feePlanSchema.parse(rawBody);
 
-    const plan =
-      await feePlanService.update(
-        id,
-        tenant.schoolId,
-        body,
-      );
+    const plan = await feePlanService.update(id, tenant.schoolId, body);
 
-    return ApiResponse.success(
-      plan,
-      "Fee plan updated successfully.",
-    );
+    return ApiResponse.success(plan, "Fee plan updated successfully.");
   });
-
 }

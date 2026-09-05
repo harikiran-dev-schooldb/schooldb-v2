@@ -1,5 +1,5 @@
 import { apiHandler } from "@/lib/api";
-import { requireTenant } from "@/lib/auth";
+import { requireRole, requireTenant } from "@/lib/auth";
 import { ApiResponse } from "@/lib/response";
 import { validateBody } from "@/lib/validation";
 
@@ -12,54 +12,28 @@ type Props = {
   }>;
 };
 
-export async function GET(
-  req: Request,
-  { params }: Props
-) {
+export async function GET(req: Request, { params }: Props) {
   return apiHandler(async () => {
-    const tenant =
-      await requireTenant();
+    const tenant = await requireTenant();
 
     const { id } = await params;
 
-    const timetable =
-      await timetableService.get(
-        id,
-        tenant.schoolId
-      );
+    const timetable = await timetableService.get(id, tenant.schoolId);
 
-    return ApiResponse.success(
-      timetable
-    );
+    return ApiResponse.success(timetable);
   });
 }
 
-export async function PUT(
-  req: Request,
-  { params }: Props
-) {
+export async function PUT(req: Request, { params }: Props) {
   return apiHandler(async () => {
-    const tenant =
-      await requireTenant();
+    const tenant = await requireRole(["SUPER_ADMIN", "SCHOOL_ADMIN"]);
 
     const { id } = await params;
 
-    const body =
-      await validateBody(
-        req,
-        timetableSchema
-      );
+    const body = await validateBody(req, timetableSchema);
 
-    const timetable =
-      await timetableService.update(
-        id,
-        tenant.schoolId,
-        body
-      );
+    const timetable = await timetableService.update(id, tenant.schoolId, body);
 
-    return ApiResponse.success(
-      timetable,
-      "Timetable updated successfully."
-    );
+    return ApiResponse.success(timetable, "Timetable updated successfully.");
   });
 }

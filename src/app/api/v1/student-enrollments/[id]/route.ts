@@ -1,5 +1,5 @@
 import { apiHandler } from "@/lib/api";
-import { requireTenant } from "@/lib/auth";
+import { requireRole, requireTenant } from "@/lib/auth";
 import { ApiResponse } from "@/lib/response";
 
 import { studentEnrollmentService } from "@/features/student-enrollments/services/student-enrollment.service";
@@ -11,43 +11,32 @@ type RouteParams = {
   }>;
 };
 
-export async function GET(
-  _request: Request,
-  { params }: RouteParams
-) {
+export async function GET(_request: Request, { params }: RouteParams) {
   return apiHandler(async () => {
     const tenant = await requireTenant();
     const { id } = await params;
 
-    const enrollment =
-      await studentEnrollmentService.get(
-        id,
-        tenant.schoolId
-      );
+    const enrollment = await studentEnrollmentService.get(id, tenant.schoolId);
 
     return ApiResponse.success(enrollment);
   });
 }
 
-export async function PUT(
-  request: Request,
-  { params }: RouteParams
-) {
+export async function PUT(request: Request, { params }: RouteParams) {
   return apiHandler(async () => {
-    const tenant = await requireTenant();
+    const tenant = await requireRole(["SUPER_ADMIN", "SCHOOL_ADMIN"]);
+
     const { id } = await params;
 
     const body = await request.json();
 
-    const input =
-      studentEnrollmentSchema.parse(body);
+    const input = studentEnrollmentSchema.parse(body);
 
-    const enrollment =
-      await studentEnrollmentService.update(
-        id,
-        tenant.schoolId,
-        input
-      );
+    const enrollment = await studentEnrollmentService.update(
+      id,
+      tenant.schoolId,
+      input,
+    );
 
     return ApiResponse.success(enrollment);
   });

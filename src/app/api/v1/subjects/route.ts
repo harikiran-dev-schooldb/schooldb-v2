@@ -1,5 +1,5 @@
 import { apiHandler } from "@/lib/api";
-import { requireTenant } from "@/lib/auth";
+import { requireRole, requireTenant } from "@/lib/auth";
 import { ApiResponse } from "@/lib/response";
 import { validateBody } from "@/lib/validation";
 
@@ -16,14 +16,11 @@ export async function GET(req: Request) {
 
     const tenant = await requireTenant();
 
-    const data = await subjectService.list(
-      tenant.schoolId,
-      {
-        page,
-        pageSize,
-        search,
-      }
-    );
+    const data = await subjectService.list(tenant.schoolId, {
+      page,
+      pageSize,
+      search,
+    });
 
     return ApiResponse.success(data);
   });
@@ -31,22 +28,12 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   return apiHandler(async () => {
-    const body = await validateBody(
-      req,
-      subjectSchema
-    );
+    const body = await validateBody(req, subjectSchema);
 
-    const tenant = await requireTenant();
+    const tenant = await requireRole(["SUPER_ADMIN", "SCHOOL_ADMIN"]);
 
-    const subject = await subjectService.create(
-      tenant.schoolId,
-      body
-    );
+    const subject = await subjectService.create(tenant.schoolId, body);
 
-    return ApiResponse.success(
-      subject,
-      "Subject created successfully.",
-      201
-    );
+    return ApiResponse.success(subject, "Subject created successfully.", 201);
   });
 }

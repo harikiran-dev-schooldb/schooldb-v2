@@ -1,5 +1,5 @@
 import { apiHandler } from "@/lib/api";
-import { requireTenant } from "@/lib/auth";
+import { requireRole, requireTenant } from "@/lib/auth";
 import { ApiResponse } from "@/lib/response";
 import { validateBody } from "@/lib/validation";
 
@@ -28,19 +28,12 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   return apiHandler(async () => {
-    const tenant = await requireTenant();
+    const tenant = await requireRole(["SUPER_ADMIN", "SCHOOL_ADMIN"]);
 
     const body = await validateBody(req, periodSchema);
 
-    const period = await periodService.create(
-      tenant.schoolId,
-      body
-    );
+    const period = await periodService.create(tenant.schoolId, body);
 
-    return ApiResponse.success(
-      period,
-      "Period created successfully.",
-      201
-    );
+    return ApiResponse.success(period, "Period created successfully.", 201);
   });
 }

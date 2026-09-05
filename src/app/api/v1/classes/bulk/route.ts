@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { apiHandler } from "@/lib/api";
-import { requireTenant } from "@/lib/auth";
+import { requireRole } from "@/lib/auth";
 import { ApiResponse } from "@/lib/response";
 import { prisma } from "@/lib/prisma";
 
@@ -19,7 +19,7 @@ const bodySchema = z.object({
 
 export async function POST(req: Request) {
   return apiHandler(async () => {
-    const tenant = await requireTenant();
+    const tenant = await requireRole(["SUPER_ADMIN", "SCHOOL_ADMIN"]);
     const body = bodySchema.parse(await req.json());
 
     const result = await prisma.$transaction(async (tx) => {
@@ -88,6 +88,9 @@ export async function POST(req: Request) {
       return { classesCreated, sectionsCreated, skipped, errors };
     });
 
-    return ApiResponse.success(result, "Bulk class and section import completed.");
+    return ApiResponse.success(
+      result,
+      "Bulk class and section import completed.",
+    );
   });
 }

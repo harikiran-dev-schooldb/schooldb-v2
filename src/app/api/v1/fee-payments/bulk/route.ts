@@ -1,5 +1,5 @@
 import { apiHandler } from "@/lib/api";
-import { requireTenant } from "@/lib/auth";
+import { requireRole } from "@/lib/auth";
 import { ApiResponse } from "@/lib/response";
 
 import {
@@ -18,7 +18,7 @@ const PAYMENT_MODES = new Set([
 
 export async function POST(req: Request) {
   return apiHandler(async () => {
-    const tenant = await requireTenant();
+    const tenant = await requireRole(["SUPER_ADMIN", "SCHOOL_ADMIN"]);
     const body = (await req.json()) as { payments?: BulkFeePaymentRow[] };
     const payments = body.payments ?? [];
 
@@ -27,7 +27,10 @@ export async function POST(req: Request) {
     }
 
     if (payments.length > 1000) {
-      return ApiResponse.error("Maximum 1,000 payment rows can be imported at once.", 400);
+      return ApiResponse.error(
+        "Maximum 1,000 payment rows can be imported at once.",
+        400,
+      );
     }
 
     const invalid = payments.findIndex(
