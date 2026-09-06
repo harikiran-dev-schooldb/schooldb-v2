@@ -1,19 +1,21 @@
-import { currentUser } from "@clerk/nextjs/server";
+import { auth } from "@clerk/nextjs/server";
 import { headers } from "next/headers";
 
 import { ApiError } from "./errors";
 import { prisma } from "./prisma";
+import { requireSchoolSlug } from "./tenant-context";
+import { isOperationalRole } from "./access-control";
 
 export async function requireTenant(schoolSlug?: string) {
-  const clerkUser = await currentUser();
+  const { userId } = await auth();
 
-  if (!clerkUser) {
+  if (!userId) {
     throw new ApiError(401, "Unauthorized");
   }
 
   const user = await prisma.user.findUnique({
     where: {
-      clerkUserId: clerkUser.id,
+      clerkUserId: userId,
     },
   });
 
@@ -22,38 +24,44 @@ export async function requireTenant(schoolSlug?: string) {
   }
 
   const requestHeaders = await headers();
-  const requestedSchoolSlug =
-    schoolSlug ?? requestHeaders.get("x-school-slug") ?? undefined;
+  let requestedSchoolSlug: string;
 
-  const memberships = await prisma.membership.findMany({
+  try {
+    requestedSchoolSlug = requireSchoolSlug(
+      schoolSlug ?? requestHeaders.get("x-school-slug"),
+    );
+  } catch (error) {
+    throw new ApiError(
+      400,
+      error instanceof Error ? error.message : "Invalid school context",
+    );
+  }
+
+  const membership = await prisma.membership.findFirst({
     where: {
       userId: user.id,
       isActive: true,
-      ...(requestedSchoolSlug
-        ? {
-            school: {
-              slug: requestedSchoolSlug,
-            },
-          }
-        : {}),
+      school: {
+        slug: requestedSchoolSlug,
+      },
     },
     include: {
       school: true,
     },
   });
 
-  if (memberships.length === 0) {
+  if (!membership) {
     throw new ApiError(403, "No active membership for this school");
   }
 
-  if (!requestedSchoolSlug && memberships.length > 1) {
+  if (!isOperationalRole(membership.role)) {
     throw new ApiError(
-      400,
-      "School context is required for users with multiple schools",
+      403,
+      "This role does not have access to the school operations workspace",
     );
   }
 
-  return memberships[0];
+  return membership;
 }
 
 export async function requireRole(allowedRoles: string[], schoolSlug?: string) {
@@ -70,16 +78,16 @@ export async function requireRole(allowedRoles: string[], schoolSlug?: string) {
 }
 
 async function requireCurrentTeacher(schoolId: string) {
-  const clerkUser = await currentUser();
+  const { userId } = await auth();
 
-  if (!clerkUser) {
+  if (!userId) {
     throw new ApiError(401, "Unauthorized");
   }
 
   const teacher = await prisma.teacher.findFirst({
     where: {
       schoolId,
-      clerkId: clerkUser.id,
+      clerkId: userId,
       active: true,
     },
   });

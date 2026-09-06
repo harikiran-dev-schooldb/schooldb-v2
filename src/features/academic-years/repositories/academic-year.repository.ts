@@ -79,11 +79,13 @@ export const academicYearRepository = {
 
   update(
     id: string,
+    schoolId: string,
     data: Prisma.AcademicYearUpdateInput
   ) {
     return prisma.academicYear.update({
       where: {
         id,
+        schoolId,
       },
       data,
     });
@@ -115,16 +117,17 @@ export const academicYearRepository = {
       });
 
       return tx.academicYear.update({
-        where: { id },
+        where: { id, schoolId },
         data: { active: true },
       });
     });
   },
 
-  delete(id: string) {
+  delete(id: string, schoolId: string) {
     return prisma.academicYear.delete({
       where: {
         id,
+        schoolId,
       },
     });
   },

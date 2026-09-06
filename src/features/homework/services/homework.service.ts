@@ -5,6 +5,25 @@ import {
 } from "../schemas/homework.schema";
 
 import { homeworkRepository } from "../repositories/homework.repository";
+import { classRepository } from "@/features/classes/repositories/class.repository";
+import { sectionRepository } from "@/features/sections/repositories/section.repository";
+
+async function validateHomeworkTarget(
+  schoolId: string,
+  classId: string,
+  sectionId?: string | null,
+) {
+  const [schoolClass, section] = await Promise.all([
+    classRepository.findById(classId, schoolId),
+    sectionId ? sectionRepository.findById(sectionId, schoolId) : null,
+  ]);
+
+  if (!schoolClass) throw new Error("Class not found.");
+
+  if (sectionId && (!section || section.classId !== classId)) {
+    throw new Error("Selected section does not belong to the selected class.");
+  }
+}
 
 export const homeworkService = {
   async list(
@@ -102,6 +121,8 @@ export const homeworkService = {
     schoolId: string,
     input: HomeworkFormOutput
   ) {
+    await validateHomeworkTarget(schoolId, input.classId, input.sectionId);
+
     /*
      * Homework is assigned today by default.
      */
@@ -191,6 +212,8 @@ export const homeworkService = {
       id,
       schoolId
     );
+
+    await validateHomeworkTarget(schoolId, input.classId, input.sectionId);
 
     const assignedDate =
       input.assignedDate

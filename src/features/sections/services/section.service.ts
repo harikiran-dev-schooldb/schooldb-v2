@@ -212,6 +212,7 @@ export const sectionService = {
 
     return sectionRepository.update(
       id,
+      schoolId,
       {
         name: input.name,
         displayOrder:

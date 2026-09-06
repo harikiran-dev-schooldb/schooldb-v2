@@ -75,6 +75,11 @@ export async function PATCH(req: Request, { params }: Params) {
     const updated = await prisma.studentFeeInstallment.update({
       where: {
         id,
+        studentFeeItem: {
+          studentFee: {
+            schoolId: tenant.schoolId,
+          },
+        },
       },
       data: {
         concession,

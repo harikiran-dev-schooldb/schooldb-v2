@@ -13,6 +13,27 @@ import {
 import { attendanceRepository } from "../repositories/attendance.repository";
 import { calculateAttendance } from "./attendance-calculator";
 import { academicYearRepository } from "@/features/academic-years/repositories/academic-year.repository";
+import { classRepository } from "@/features/classes/repositories/class.repository";
+import { sectionRepository } from "@/features/sections/repositories/section.repository";
+
+async function validateDailySessionTarget(
+  schoolId: string,
+  academicYearId: string,
+  classId: string,
+  sectionId: string,
+) {
+  const [academicYear, schoolClass, section] = await Promise.all([
+    academicYearRepository.findById(academicYearId, schoolId),
+    classRepository.findById(classId, schoolId),
+    sectionRepository.findById(sectionId, schoolId),
+  ]);
+
+  if (!academicYear) throw new Error("Academic year not found.");
+  if (!schoolClass) throw new Error("Class not found.");
+  if (!section || section.classId !== classId) {
+    throw new Error("Selected section does not belong to the selected class.");
+  }
+}
 
 
 
@@ -188,11 +209,18 @@ export const attendanceService = {
     });
   }
 
-  if (
+if (
   input.sessionType === "DAILY" ||
   input.sessionType === "MORNING" ||
   input.sessionType === "AFTERNOON"
 ) {
+  await validateDailySessionTarget(
+    schoolId,
+    input.academicYearId,
+    input.classId,
+    input.sectionId,
+  );
+
   const session =
     await attendanceRepository.findSessionByType(
       schoolId,

@@ -130,7 +130,7 @@ export const academicYearService = {
       );
     }
 
-    return academicYearRepository.update(id, {
+    return academicYearRepository.update(id, schoolId, {
       name: input.name,
       startDate: new Date(input.startDate),
       endDate: new Date(input.endDate),

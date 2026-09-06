@@ -5,6 +5,7 @@ import { syncUser } from "@/lib/sync-user";
 import { getMembership, getSchoolBySlug } from "@/lib/tenant";
 import { SchoolProvider } from "@/contexts/school-context";
 import { AppShell } from "@/components/layout/AppShell";
+import { isOperationalRole } from "@/lib/access-control";
 
 export default async function SchoolAppLayout({
   children,
@@ -36,6 +37,10 @@ export default async function SchoolAppLayout({
   const membership = await getMembership(user.id, school.id);
 
   if (!membership) {
+    redirect("/");
+  }
+
+  if (!isOperationalRole(membership.role)) {
     redirect("/");
   }
 
