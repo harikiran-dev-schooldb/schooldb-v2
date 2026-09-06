@@ -345,6 +345,16 @@ export const homeworkService = {
     );
   },
 
+  async setActive(
+    id: string,
+    schoolId: string,
+    active: boolean,
+  ) {
+    await this.get(id, schoolId);
+
+    return homeworkRepository.update(id, schoolId, { active });
+  },
+
   async options(
     schoolId: string
   ) {

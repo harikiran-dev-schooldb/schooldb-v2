@@ -18,9 +18,14 @@ type CreateActivityInput = {
   metadata?: Prisma.InputJsonValue;
 };
 
+type StudentActivityClient = Pick<Prisma.TransactionClient, "studentActivity">;
+
 export const studentActivityService = {
-  async create(input: CreateActivityInput) {
-    return prisma.studentActivity.create({
+  async create(
+    input: CreateActivityInput,
+    client: StudentActivityClient = prisma,
+  ) {
+    return client.studentActivity.create({
       data: {
         schoolId: input.schoolId,
         studentId: input.studentId,

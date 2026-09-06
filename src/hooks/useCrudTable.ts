@@ -7,6 +7,7 @@ import {
 } from "react";
 
 import { api } from "@/lib/api-client";
+import { subscribeTableRefresh } from "@/lib/table-event";
 
 import { useDebounce } from "./useDebounce";
 
@@ -16,11 +17,13 @@ type Props = {
   endpoint: string;
 
   initialPageSize?: number;
+  refreshKey?: string;
 };
 
 export function useCrudTable<T>({
   endpoint,
   initialPageSize = 25,
+  refreshKey,
 }: Props) {
   const [data, setData] =
     useState<T[]>([]);
@@ -81,6 +84,16 @@ export function useCrudTable<T>({
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    if (!refreshKey) {
+      return;
+    }
+
+    return subscribeTableRefresh(refreshKey, () => {
+      void load();
+    });
+  }, [load, refreshKey]);
 
   return {
     data,

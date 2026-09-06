@@ -4,6 +4,16 @@ import { StudentStatus } from "@/generated/prisma/enums";
 import { ListQuery } from "@/types/query";
 import { studentActivityService } from "./student-activity.service";
 
+type StudentCreateInput = Pick<
+  StudentFormOutput,
+  "admissionNo" | "fullName" | "gender" | "dob" | "phone" | "email" | "status"
+> &
+  Partial<StudentFormOutput>;
+
+function studentUsername(admissionNo: string) {
+  return `STD_${admissionNo.trim()}`;
+}
+
 export const studentService = {
   async list(schoolId: string, query: ListQuery) {
     const page = query.page ?? 1;
@@ -69,42 +79,81 @@ export const studentService = {
   /* Create                                                                 */
   /* ---------------------------------------------------------------------- */
 
-  async create(
-    schoolId: string,
-    input: StudentFormOutput,
-  ) {
-    const exists =
-      await studentRepository.findByAdmissionNo(
-        schoolId,
-        input.admissionNo,
-      );
+  async create(schoolId: string, input: StudentCreateInput) {
+    const exists = await studentRepository.findByAdmissionNo(
+      schoolId,
+      input.admissionNo,
+    );
 
     if (exists) {
-      throw new Error(
-        "Admission number already exists.",
-      );
+      throw new Error("Admission number already exists.");
     }
 
     /* -------------------------------------------------------------- */
     /* Create student                                                  */
     /* -------------------------------------------------------------- */
 
-    const student =
-      await studentRepository.create({
-        admissionNo: input.admissionNo,
-        fullName: input.fullName,
-        gender: input.gender,
-        dob: new Date(input.dob),
-        phone: input.phone,
-        email: input.email,
-        status: StudentStatus.ACTIVE,
+    const normalized: StudentFormOutput = {
+      joinedDate: null,
+      alternatePhone: null,
+      imageUrl: null,
+      studentAadhar: null,
+      apaarId: null,
+      penNo: null,
+      emisNo: null,
+      bloodGroup: null,
+      nationality: null,
+      motherTongue: null,
+      religion: null,
+      category: null,
+      caste: null,
+      subCaste: null,
+      address: null,
+      city: null,
+      district: null,
+      state: null,
+      pincode: null,
+      country: null,
+      fatherName: null,
+      fatherPhone: null,
+      fatherEmail: null,
+      fatherAadhar: null,
+      fatherOccupation: null,
+      fatherQualification: null,
+      fatherIncome: null,
+      motherName: null,
+      motherPhone: null,
+      motherEmail: null,
+      motherAadhar: null,
+      motherOccupation: null,
+      motherQualification: null,
+      motherIncome: null,
+      guardianName: null,
+      guardianPhone: null,
+      guardianRelation: null,
+      doctorName: null,
+      doctorPhone: null,
+      medicalConditions: null,
+      allergies: null,
+      hostelRequired: false,
+      transportRequired: false,
+      remarks: null,
+      ...input,
+    };
+    const { dob, joinedDate, ...studentData } = normalized;
 
-        school: {
-          connect: {
-            id: schoolId,
-          },
+    const student = await studentRepository.create({
+      ...studentData,
+      username: studentUsername(normalized.admissionNo),
+      dob: new Date(`${dob}T00:00:00`),
+      joinedDate: joinedDate ? new Date(`${joinedDate}T00:00:00`) : null,
+
+      school: {
+        connect: {
+          id: schoolId,
         },
-      });
+      },
+    });
 
     /* -------------------------------------------------------------- */
     /* Create activity                                                 */
@@ -120,9 +169,7 @@ export const studentService = {
       title: "Student profile created",
 
       description: `Student ${student.admissionNo}${
-        student.fullName
-          ? ` — ${student.fullName}`
-          : ""
+        student.fullName ? ` — ${student.fullName}` : ""
       } was added to SchoolDB.`,
     });
 
@@ -133,20 +180,11 @@ export const studentService = {
   /* Get                                                                    */
   /* ---------------------------------------------------------------------- */
 
-  async get(
-    id: string,
-    schoolId: string,
-  ) {
-    const student =
-      await studentRepository.findById(
-        id,
-        schoolId,
-      );
+  async get(id: string, schoolId: string) {
+    const student = await studentRepository.findById(id, schoolId);
 
     if (!student) {
-      throw new Error(
-        "Student not found.",
-      );
+      throw new Error("Student not found.");
     }
 
     return student;
@@ -156,58 +194,39 @@ export const studentService = {
   /* Update                                                                 */
   /* ---------------------------------------------------------------------- */
 
-  async update(
-    id: string,
-    schoolId: string,
-    input: StudentFormOutput,
-  ) {
-    const student =
-      await studentRepository.findById(
-        id,
-        schoolId,
-      );
+  async update(id: string, schoolId: string, input: StudentFormOutput) {
+    const student = await studentRepository.findById(id, schoolId);
 
     if (!student) {
-      throw new Error(
-        "Student not found.",
-      );
+      throw new Error("Student not found.");
     }
 
-    const duplicate =
-      await studentRepository.findFirst({
-        schoolId,
+    const duplicate = await studentRepository.findFirst({
+      schoolId,
 
-        admissionNo: input.admissionNo,
+      admissionNo: input.admissionNo,
 
-        NOT: {
-          id,
-        },
-      });
+      NOT: {
+        id,
+      },
+    });
 
     if (duplicate) {
-      throw new Error(
-        "Admission number already exists.",
-      );
+      throw new Error("Admission number already exists.");
     }
 
     /* -------------------------------------------------------------- */
     /* Update student                                                  */
     /* -------------------------------------------------------------- */
 
-    const updated =
-      await studentRepository.update(
-        id,
-        schoolId,
-        {
-          admissionNo: input.admissionNo,
-          fullName: input.fullName,
-          gender: input.gender,
-          dob: new Date(input.dob),
-          phone: input.phone,
-          email: input.email,
-          status: StudentStatus.ACTIVE,
-        },
-      );
+    const { dob, joinedDate, ...studentData } = input;
+
+    const updated = await studentRepository.update(id, schoolId, {
+      ...studentData,
+      username: studentUsername(input.admissionNo),
+      dob: new Date(`${dob}T00:00:00`),
+      joinedDate: joinedDate ? new Date(`${joinedDate}T00:00:00`) : null,
+    });
 
     /* -------------------------------------------------------------- */
     /* Activity                                                        */
@@ -223,8 +242,7 @@ export const studentService = {
       title: "Student profile updated",
 
       description: `Profile information for ${
-        updated.fullName ??
-        updated.admissionNo
+        updated.fullName ?? updated.admissionNo
       } was updated.`,
     });
 
@@ -241,31 +259,22 @@ export const studentService = {
     status: StudentStatus,
     remarks?: string,
   ) {
-    const student =
-      await studentRepository.findById(
-        id,
-        schoolId,
-      );
+    const student = await studentRepository.findById(id, schoolId);
 
     if (!student) {
-      throw new Error(
-        "Student not found.",
-      );
+      throw new Error("Student not found.");
     }
 
     if (student.status === status) {
-      throw new Error(
-        "Student already has this status.",
-      );
+      throw new Error("Student already has this status.");
     }
 
-    const updated =
-      await studentRepository.changeStatus(
-        id,
-        schoolId,
-        status,
-        remarks,
-      );
+    const updated = await studentRepository.changeStatus(
+      id,
+      schoolId,
+      status,
+      remarks,
+    );
 
     /* -------------------------------------------------------------- */
     /* Activity                                                        */
@@ -281,9 +290,7 @@ export const studentService = {
       title: "Student status changed",
 
       description: `Student status changed from ${student.status} to ${status}${
-        remarks
-          ? `. Remark: ${remarks}`
-          : "."
+        remarks ? `. Remark: ${remarks}` : "."
       }`,
 
       metadata: {
@@ -300,20 +307,11 @@ export const studentService = {
   /* Profile                                                                */
   /* ---------------------------------------------------------------------- */
 
-  async profile(
-    id: string,
-    schoolId: string,
-  ) {
-    const student =
-      await studentRepository.profile(
-        id,
-        schoolId,
-      );
+  async profile(id: string, schoolId: string) {
+    const student = await studentRepository.profile(id, schoolId);
 
     if (!student) {
-      throw new Error(
-        "Student not found.",
-      );
+      throw new Error("Student not found.");
     }
 
     return student;
@@ -324,29 +322,29 @@ export const studentService = {
   /* ---------------------------------------------------------------------- */
 
   async options(
-  schoolId: string,
-  academicYearId: string,
-) {
-  const students =
-    await studentRepository.options(
+    schoolId: string,
+    academicYearId: string,
+    excludeEnrollmentId?: string,
+  ) {
+    const students = await studentRepository.options(
       schoolId,
       academicYearId,
+      excludeEnrollmentId,
     );
 
-  return students.map((student) => {
-    const enrollment = student.enrollments[0];
+    return students.map((student) => {
+      const enrollment = student.enrollments[0];
 
-    return {
-      id: student.id,
+      return {
+        id: student.id,
 
-      label: student.fullName
-        ? `${student.admissionNo} — ${student.fullName}`
-        : student.admissionNo,
+        label: student.fullName
+          ? `${student.admissionNo} — ${student.fullName}`
+          : student.admissionNo,
 
-      className: enrollment?.class.name ?? null,
-
-      sectionName: enrollment?.section.name ?? null,
-    };
-  });
-},
+        className: enrollment?.class.name ?? null,
+        sectionName: enrollment?.section.name ?? null,
+      };
+    });
+  },
 };

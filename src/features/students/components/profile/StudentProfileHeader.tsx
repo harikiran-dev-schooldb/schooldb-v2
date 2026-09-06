@@ -3,7 +3,7 @@
 import { Badge } from "@/components/ui/badge";
 
 type StudentProfileHeaderData = {
-  fullName: string;
+  fullName: string | null;
   admissionNo: string;
   status: string;
 };
@@ -22,7 +22,9 @@ export function StudentProfileHeader({ student }: Props) {
       </div>
 
       <div className="space-y-2">
-        <h2 className="text-2xl font-bold">{student.fullName}</h2>
+        <h2 className="text-2xl font-bold">
+          {student.fullName || "Student name not provided"}
+        </h2>
 
         <p className="text-sm text-muted-foreground">
           Admission No: {student.admissionNo}

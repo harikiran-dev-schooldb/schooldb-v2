@@ -10,7 +10,7 @@ import { sectionSchema, SectionFormInput } from "../schemas/section.schema";
 import { Input } from "@/components/ui/input";
 
 import { toast } from "sonner";
-import { useRouter } from "next/navigation";
+import { refreshTable } from "@/lib/table-event";
 
 import { ClassSelect } from "@/components/common/select/ClassSelect";
 import { FormField, SubmitButton } from "@/components/common/forms";
@@ -28,7 +28,6 @@ const defaultValues: SectionFormInput = {
 };
 
 export function SectionForm({ mode, sectionId, onSuccess }: Props) {
-  const router = useRouter();
   const [loading, setLoading] = useState(false);
 
   const form = useForm<SectionFormInput>({
@@ -121,8 +120,8 @@ export function SectionForm({ mode, sectionId, onSuccess }: Props) {
         form.reset(defaultValues);
       }
 
+      refreshTable("sections");
       onSuccess();
-      router.refresh();
     } catch (error) {
       if (error instanceof Error) {
         toast.error(error.message);

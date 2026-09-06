@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { subscribeTableRefresh } from "@/lib/table-event";
 
 type FeePlan = {
   id: string;
@@ -79,6 +80,12 @@ export function useFeePlanTable() {
     return () => {
       cancelled = true;
     };
+  }, [fetchFeePlans]);
+
+  useEffect(() => {
+    return subscribeTableRefresh("fee-plans", () => {
+      void fetchFeePlans();
+    });
   }, [fetchFeePlans]);
 
   const filteredFeePlans = useMemo(() => {

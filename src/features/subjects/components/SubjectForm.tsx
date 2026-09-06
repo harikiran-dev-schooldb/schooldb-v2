@@ -23,6 +23,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 
 import { toast } from "sonner";
+import { refreshTable } from "@/lib/table-event";
 
 type Props = {
   mode: "create" | "edit";
@@ -135,6 +136,7 @@ export function SubjectForm({ mode, subjectId, onSuccess }: Props) {
 
       form.reset(defaultValues);
 
+      refreshTable("subjects");
       onSuccess();
     } catch {
       toast.error("Failed to save subject.");

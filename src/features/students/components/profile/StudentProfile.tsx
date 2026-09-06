@@ -7,6 +7,7 @@ import {
   CreditCard,
   FileText,
   GraduationCap,
+  IdCard,
   LayoutDashboard,
   UserRound,
   Users,
@@ -22,6 +23,7 @@ import { StudentFeeTab } from "./StudentFeeTab";
 import { StudentDocumentsTab } from "./StudentDocumentsTab";
 import { StudentActivityTab } from "./StudentActivityTab";
 import { StudentParentsTab } from "./StudentParents";
+import { StudentDetailsTab } from "./StudentDetailsTab";
 
 type Enrollment = {
   id: string;
@@ -43,16 +45,42 @@ type Enrollment = {
   };
 };
 
-type StudentProfileData = {
+export type StudentProfileData = {
   id: string;
   admissionNo: string;
-  fullName: string;
+  fullName: string | null;
   gender: string;
-  dob: string | null;
+  dob: string;
   joinedDate: string | null;
   phone: string | null;
+  alternatePhone: string | null;
   email: string | null;
+  username: string | null;
+  imageUrl: string | null;
   status: string;
+  statusChangedAt: string | null;
+  statusRemarks: string | null;
+  createdAt: string;
+  updatedAt: string;
+
+  studentAadhar: string | null;
+  apaarId: string | null;
+  penNo: string | null;
+  emisNo: string | null;
+  bloodGroup: string | null;
+  nationality: string | null;
+  motherTongue: string | null;
+  religion: string | null;
+  category: string | null;
+  caste: string | null;
+  subCaste: string | null;
+
+  address: string | null;
+  city: string | null;
+  district: string | null;
+  state: string | null;
+  pincode: string | null;
+  country: string | null;
 
   fatherName: string | null;
   fatherPhone: string | null;
@@ -74,6 +102,14 @@ type StudentProfileData = {
   guardianRelation: string | null;
   guardianPhone: string | null;
 
+  doctorName: string | null;
+  doctorPhone: string | null;
+  medicalConditions: string | null;
+  allergies: string | null;
+  hostelRequired: boolean;
+  transportRequired: boolean;
+  remarks: string | null;
+
   enrollments: Enrollment[];
 };
 
@@ -86,6 +122,11 @@ const tabs = [
     value: "overview",
     label: "Overview",
     icon: LayoutDashboard,
+  },
+  {
+    value: "details",
+    label: "All Details",
+    icon: IdCard,
   },
   {
     value: "enrollment",
@@ -285,6 +326,10 @@ export function StudentProfile({ studentId }: Props) {
 
         <TabsContent value="overview" className="mt-5">
           <StudentOverviewTab student={student} />
+        </TabsContent>
+
+        <TabsContent value="details" className="mt-5">
+          <StudentDetailsTab student={student} />
         </TabsContent>
 
         {/* ========================================================== */}

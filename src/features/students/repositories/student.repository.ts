@@ -1,8 +1,6 @@
-import {
-  Prisma,
-  StudentStatus,
-} from "@/generated/prisma/client";
+import { Prisma, StudentStatus } from "@/generated/prisma/client";
 
+import { availableForAcademicYear } from "@/features/student-enrollments/enrollment-rules";
 import { prisma } from "@/lib/prisma";
 
 export const studentRepository = {
@@ -54,11 +52,7 @@ export const studentRepository = {
     return prisma.student.create({ data });
   },
 
-  update(
-    id: string,
-    schoolId: string,
-    data: Prisma.StudentUpdateInput,
-  ) {
+  update(id: string, schoolId: string, data: Prisma.StudentUpdateInput) {
     return prisma.student.update({ where: { id, schoolId }, data });
   },
 
@@ -78,54 +72,59 @@ export const studentRepository = {
     });
   },
 
-  options(schoolId: string, academicYearId: string) {
-  return prisma.student.findMany({
-    where: {
-      schoolId,
-      status: "ACTIVE",
+  options(
+    schoolId: string,
+    academicYearId: string,
+    excludeEnrollmentId?: string,
+  ) {
+    return prisma.student.findMany({
+      where: {
+        schoolId,
+        status: "ACTIVE",
 
-      enrollments: {
-        some: {
+        enrollments: availableForAcademicYear(
           academicYearId,
-          active: true,
-        },
+          excludeEnrollmentId,
+        ),
       },
-    },
 
-    select: {
-      id: true,
-      admissionNo: true,
-      fullName: true,
+      select: {
+        id: true,
+        admissionNo: true,
+        fullName: true,
 
-      enrollments: {
-        where: {
-          academicYearId,
-          active: true,
-        },
+        enrollments: {
+          where: {
+            active: true,
+          },
 
-        select: {
-          class: {
-            select: {
-              name: true,
+          orderBy: {
+            admissionDate: "desc",
+          },
+
+          select: {
+            class: {
+              select: {
+                name: true,
+              },
+            },
+
+            section: {
+              select: {
+                name: true,
+              },
             },
           },
 
-          section: {
-            select: {
-              name: true,
-            },
-          },
+          take: 1,
         },
-
-        take: 1,
       },
-    },
 
-    orderBy: {
-      fullName: "asc",
-    },
-  });
-},
+      orderBy: {
+        fullName: "asc",
+      },
+    });
+  },
 
   profile(id: string, schoolId: string) {
     return prisma.student.findFirst({

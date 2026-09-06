@@ -11,7 +11,7 @@ export const studentEnrollmentSchema = z.object({
 
   rollNo: z.coerce.number().int().positive().optional(),
 
-  admissionDate: z.string().optional(),
+  admissionDate: z.union([z.iso.date(), z.literal("")]).optional(),
 
   active: z.boolean().default(true),
 });

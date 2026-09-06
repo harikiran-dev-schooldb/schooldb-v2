@@ -1,6 +1,6 @@
 "use client";
 
-import { StudentStatus } from "@/generated/prisma/client";
+import { StudentStatus } from "@/generated/prisma/enums";
 
 import {
   Select,

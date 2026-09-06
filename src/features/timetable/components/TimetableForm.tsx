@@ -30,6 +30,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 
 import { WEEKDAY_OPTIONS } from "../constants/weekdays";
+import { refreshTable } from "@/lib/table-event";
 
 type Props = {
   mode: "create" | "edit";
@@ -161,6 +162,7 @@ export function TimetableForm({ mode, timetableId, onSuccess }: Props) {
 
       toast.success(result.message || "Timetable saved successfully.");
 
+      refreshTable("timetables");
       onSuccess();
     } catch {
       toast.error("Something went wrong while saving the timetable.");

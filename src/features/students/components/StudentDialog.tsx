@@ -22,7 +22,7 @@ export function StudentDialog({ open, onOpenChange, mode, studentId }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto rounded-3xl border-border/70 bg-card p-0 shadow-2xl sm:rounded-3xl">
+      <DialogContent className="max-h-[92vh] max-w-5xl overflow-y-auto rounded-3xl border-border/70 bg-card p-0 shadow-2xl sm:rounded-3xl">
         <DialogHeader className="border-b border-border/60 bg-muted/30 px-6 py-6 sm:px-8">
           <div className="inline-flex w-fit items-center rounded-full bg-primary/10 px-3 py-1 text-[10px] font-bold tracking-[0.18em] text-primary uppercase">
             Student management
@@ -34,8 +34,8 @@ export function StudentDialog({ open, onOpenChange, mode, studentId }: Props) {
 
           <DialogDescription className="max-w-xl text-sm leading-6 text-muted-foreground">
             {isCreate
-              ? "Enter the student's basic information to create a new student record."
-              : "Update the student's information and save your changes."}
+              ? "Create a complete student record with identity, family, address, medical, and service details."
+              : "Review and update the student's complete school record."}
           </DialogDescription>
         </DialogHeader>
 

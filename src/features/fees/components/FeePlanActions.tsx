@@ -6,8 +6,8 @@ import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { ActionMenu } from "@/components/common/actions/ActionMenu";
 
 import { toast } from "sonner";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { refreshTable } from "@/lib/table-event";
 import { FeeInstallmentsDialog } from "./FeeInstallmentsDialog";
 import { FeePlanDialog } from "./FeePlanDialog";
 
@@ -18,7 +18,6 @@ type Props = {
 };
 
 export function FeePlanActions({ feePlanId, active, feePlanName }: Props) {
-  const router = useRouter();
   const [installmentsOpen, setInstallmentsOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
 
@@ -42,7 +41,7 @@ export function FeePlanActions({ feePlanId, active, feePlanName }: Props) {
 
     toast.success(nextActive ? "Fee plan activated." : "Fee plan deactivated.");
 
-    router.refresh();
+    refreshTable("fee-plans");
   }
 
   async function generateInstallments() {
@@ -78,7 +77,7 @@ export function FeePlanActions({ feePlanId, active, feePlanName }: Props) {
       toast.success("Fee installment generation completed.");
     }
 
-    router.refresh();
+    refreshTable("fee-plans");
   }
 
   async function applyToStudents() {
@@ -103,7 +102,7 @@ export function FeePlanActions({ feePlanId, active, feePlanName }: Props) {
       toast.warning(`${data.failed} student fee assignments failed.`);
     }
 
-    router.refresh();
+    refreshTable("fee-plans");
   }
 
   return (

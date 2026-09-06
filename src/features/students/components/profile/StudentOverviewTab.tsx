@@ -12,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 type Student = {
   admissionNo: string;
-  fullName: string;
+  fullName: string | null;
   gender: string;
   dob: string | null;
   phone: string | null;
@@ -37,10 +37,10 @@ function formatDate(value: string | null) {
   }).format(date);
 }
 
-function getInitials(name: string) {
+function getInitials(name: string | null) {
   return (
     name
-      .trim()
+      ?.trim()
       .split(/\s+/)
       .slice(0, 2)
       .map((part) => part.charAt(0).toUpperCase())
@@ -96,7 +96,7 @@ export function StudentOverviewTab({ student }: Props) {
               </p>
 
               <h2 className="mt-1 truncate text-xl font-bold tracking-tight">
-                {student.fullName}
+                {student.fullName || "Student name not provided"}
               </h2>
 
               <div className="mt-3 flex flex-wrap items-center gap-2">

@@ -11,7 +11,7 @@ import { ActionMenu } from "@/components/common/actions/ActionMenu";
 import { AcademicYearDialog } from "./AcademicYearDialog";
 
 import { toast } from "sonner";
-import { useRouter } from "next/navigation";
+import { refreshTable } from "@/lib/table-event";
 
 type Props = {
   academicYearId: string;
@@ -20,8 +20,6 @@ type Props = {
 
 export function AcademicYearActions({ academicYearId, active }: Props) {
   const [open, setOpen] = useState(false);
-
-  const router = useRouter();
 
   async function activate() {
     const res = await fetch(
@@ -40,7 +38,7 @@ export function AcademicYearActions({ academicYearId, active }: Props) {
 
     toast.success("Academic year activated.");
 
-    router.refresh();
+    refreshTable("academic-years");
   }
 
   return (

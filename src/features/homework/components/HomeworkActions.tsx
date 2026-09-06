@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import { CrudActions, CrudActionItem } from "@/components/common/crud";
+import { refreshTable } from "@/lib/table-event";
 
 import { HomeworkDialog } from "./HomeworkDialog";
 
@@ -42,6 +43,7 @@ export function HomeworkActions({ homeworkId, onSuccess = () => {} }: Props) {
 
       toast.success("Homework deleted successfully.");
 
+      refreshTable("homework");
       onSuccess();
     } catch {
       toast.error("Failed to delete homework.");

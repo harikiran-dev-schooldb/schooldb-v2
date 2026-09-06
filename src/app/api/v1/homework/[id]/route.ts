@@ -2,6 +2,7 @@ import { apiHandler } from "@/lib/api";
 import { ApiResponse } from "@/lib/response";
 import { requireRole, requireTenant } from "@/lib/auth";
 import { validateBody } from "@/lib/validation";
+import { z } from "zod";
 
 import { homeworkSchema } from "@/features/homework/schemas/homework.schema";
 import { homeworkService } from "@/features/homework/services/homework.service";
@@ -45,6 +46,31 @@ export async function PUT(
     return ApiResponse.success(
       item,
       "Homework updated successfully.",
+    );
+  });
+}
+
+export async function PATCH(
+  req: Request,
+  { params }: Props,
+) {
+  return apiHandler(async () => {
+    const tenant = await requireRole(["SUPER_ADMIN", "SCHOOL_ADMIN"]);
+    const { id } = await params;
+    const body = await validateBody(
+      req,
+      z.object({ active: z.boolean() }),
+    );
+
+    const item = await homeworkService.setActive(
+      id,
+      tenant.schoolId,
+      body.active,
+    );
+
+    return ApiResponse.success(
+      item,
+      body.active ? "Homework published." : "Homework archived.",
     );
   });
 }

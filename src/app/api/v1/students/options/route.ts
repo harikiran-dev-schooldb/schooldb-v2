@@ -12,6 +12,9 @@ export async function GET(request: Request) {
 
     const academicYearId = searchParams.get("academicYearId");
 
+    const excludeEnrollmentId =
+      searchParams.get("excludeEnrollmentId") ?? undefined;
+
     if (!academicYearId) {
       throw new Error("Academic year is required.");
     }
@@ -19,6 +22,7 @@ export async function GET(request: Request) {
     const students = await studentService.options(
       tenant.schoolId,
       academicYearId,
+      excludeEnrollmentId,
     );
 
     return ApiResponse.success(students);

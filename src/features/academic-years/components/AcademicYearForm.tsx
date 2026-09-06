@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
 import { toast } from "sonner";
+import { refreshTable } from "@/lib/table-event";
 
 import {
   Select,
@@ -105,6 +106,7 @@ export function AcademicYearForm({ mode, academicYearId, onSuccess }: Props) {
         mode === "create" ? "Academic year created." : "Academic year updated.",
       );
 
+      refreshTable("academic-years");
       onSuccess();
     } finally {
       setLoading(false);

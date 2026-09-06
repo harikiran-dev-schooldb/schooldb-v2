@@ -1,20 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
-
 import { useForm, useWatch } from "react-hook-form";
-
 import { zodResolver } from "@hookform/resolvers/zod";
+import { toast } from "sonner";
 
 import {
   studentEnrollmentSchema,
   StudentEnrollmentFormInput,
 } from "../schemas/student-enrollment.schema";
 
-import { toast } from "sonner";
-
 import { Input } from "@/components/ui/input";
-
 import { RemoteCombobox } from "@/components/common/combobox/RemoteCombobox";
 
 import {
@@ -22,6 +18,7 @@ import {
   NumberInput,
   SubmitButton,
 } from "@/components/common/forms";
+
 import { refreshTable } from "@/lib/table-event";
 
 type Props = {
@@ -46,6 +43,9 @@ export function StudentEnrollmentForm({
   onSuccess,
 }: Props) {
   const [loading, setLoading] = useState(false);
+
+  const [studentLabel, setStudentLabel] = useState("");
+  const [academicYearLabel, setAcademicYearLabel] = useState("");
 
   const form = useForm<StudentEnrollmentFormInput>({
     resolver: zodResolver(studentEnrollmentSchema),
@@ -91,6 +91,14 @@ export function StudentEnrollmentForm({
 
         const item = result.data;
 
+        setStudentLabel(
+          item.student?.fullName
+            ? `${item.student.admissionNo} — ${item.student.fullName}`
+            : (item.student?.admissionNo ?? ""),
+        );
+
+        setAcademicYearLabel(item.academicYear?.name ?? "");
+
         form.reset({
           studentId: item.studentId,
           academicYearId: item.academicYearId,
@@ -122,6 +130,11 @@ export function StudentEnrollmentForm({
       shouldDirty: true,
       shouldValidate: true,
     });
+
+    form.setValue("studentId", "", {
+      shouldDirty: true,
+      shouldValidate: false,
+    });
   }
 
   function handleClassChange(value: string) {
@@ -130,7 +143,6 @@ export function StudentEnrollmentForm({
       shouldValidate: true,
     });
 
-    // Clear the previous section without validating it yet.
     form.setValue("sectionId", "", {
       shouldDirty: true,
       shouldValidate: false,
@@ -198,32 +210,53 @@ export function StudentEnrollmentForm({
       onSubmit={form.handleSubmit(onSubmit)}
       className="grid gap-4 md:grid-cols-2"
     >
-      <FormField
-        label="Student"
-        required
-        error={form.formState.errors.studentId?.message}
-      >
-        <RemoteCombobox
-          url="/api/v1/students/options"
-          value={studentId ?? ""}
-          placeholder="Select Student"
-          onChange={handleStudentChange}
-        />
-      </FormField>
-
+      {/* Academic Year */}
       <FormField
         label="Academic Year"
         required
         error={form.formState.errors.academicYearId?.message}
       >
-        <RemoteCombobox
-          url="/api/v1/academic-years/options"
-          value={academicYearId ?? ""}
-          placeholder="Select Academic Year"
-          onChange={handleAcademicYearChange}
-        />
+        {mode === "edit" ? (
+          <div className="flex h-10 w-full items-center rounded-xl border border-border bg-muted/40 px-3 text-sm">
+            {academicYearLabel || "Loading..."}
+          </div>
+        ) : (
+          <RemoteCombobox
+            url="/api/v1/academic-years/options"
+            value={academicYearId ?? ""}
+            placeholder="Select Academic Year"
+            onChange={handleAcademicYearChange}
+          />
+        )}
       </FormField>
 
+      {/* Student */}
+      <FormField
+        label="Student"
+        required
+        error={form.formState.errors.studentId?.message}
+      >
+        {mode === "edit" ? (
+          <div className="flex h-10 w-full items-center rounded-xl border border-border bg-muted/40 px-3 text-sm">
+            {studentLabel || "Loading..."}
+          </div>
+        ) : academicYearId ? (
+          <RemoteCombobox
+            url={`/api/v1/students/options?academicYearId=${encodeURIComponent(
+              academicYearId,
+            )}`}
+            value={studentId ?? ""}
+            placeholder="Select Student"
+            onChange={handleStudentChange}
+          />
+        ) : (
+          <div className="flex h-10 w-full items-center rounded-xl border border-border bg-muted/30 px-3 text-sm text-muted-foreground">
+            Select an academic year first
+          </div>
+        )}
+      </FormField>
+
+      {/* Class */}
       <FormField
         label="Class"
         required
@@ -237,6 +270,7 @@ export function StudentEnrollmentForm({
         />
       </FormField>
 
+      {/* Section */}
       <FormField
         label="Section"
         required
@@ -244,7 +278,9 @@ export function StudentEnrollmentForm({
       >
         {classId ? (
           <RemoteCombobox
-            url={`/api/v1/sections/options?classId=${encodeURIComponent(classId)}`}
+            url={`/api/v1/sections/options?classId=${encodeURIComponent(
+              classId,
+            )}`}
             value={sectionId ?? ""}
             placeholder="Select Section"
             onChange={handleSectionChange}
@@ -256,6 +292,7 @@ export function StudentEnrollmentForm({
         )}
       </FormField>
 
+      {/* Roll No */}
       <FormField label="Roll No" error={form.formState.errors.rollNo?.message}>
         <NumberInput
           placeholder="Roll No"
@@ -265,6 +302,7 @@ export function StudentEnrollmentForm({
         />
       </FormField>
 
+      {/* Admission Date */}
       <FormField
         label="Admission Date"
         error={form.formState.errors.admissionDate?.message}

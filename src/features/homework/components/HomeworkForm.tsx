@@ -3,145 +3,134 @@
 import { useEffect, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import {
-  CalendarDays,
-  FileText,
-  GraduationCap,
-  ToggleRight,
-} from "lucide-react";
+import { CalendarDays, GraduationCap, Loader2, Send } from "lucide-react";
 import { toast } from "sonner";
 
+import { FormField } from "@/components/common/forms";
 import { ClassSelect, SectionSelect } from "@/components/common/select";
-import { FormField, SubmitButton } from "@/components/common/forms";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
+import { refreshTable } from "@/lib/table-event";
 
 import { homeworkSchema, HomeworkFormInput } from "../schemas/homework.schema";
 
 type Props = {
   mode: "create" | "edit";
   homeworkId?: string;
-  onSuccess: () => void;
+  onSuccess?: () => void;
 };
 
-function getToday() {
-  return new Date().toISOString().split("T")[0];
+const noop = () => {};
+
+function inputDate(date: Date) {
+  const offset = date.getTimezoneOffset() * 60_000;
+  return new Date(date.getTime() - offset).toISOString().split("T")[0];
 }
 
-function getTomorrow() {
-  const tomorrow = new Date();
+function createDefaults(): HomeworkFormInput {
+  const today = new Date();
+  const tomorrow = new Date(today);
   tomorrow.setDate(tomorrow.getDate() + 1);
-  return tomorrow.toISOString().split("T")[0];
+
+  return {
+    classId: "",
+    sectionId: "",
+    title: "Today's Homework",
+    description: "",
+    assignedDate: inputDate(today),
+    dueDate: inputDate(tomorrow),
+    active: true,
+  };
 }
 
-const defaultValues: HomeworkFormInput = {
-  classId: "",
-  sectionId: "",
-  title: "Today's Homework",
-  description: "",
-  assignedDate: "",
-  dueDate: "",
-  active: true,
-};
-
-export function HomeworkForm({ mode, homeworkId, onSuccess }: Props) {
-  const [loading, setLoading] = useState(false);
+export function HomeworkForm({
+  mode,
+  homeworkId,
+  onSuccess = noop,
+}: Props) {
+  const [saving, setSaving] = useState(false);
   const [loadingHomework, setLoadingHomework] = useState(
     mode === "edit" && Boolean(homeworkId),
   );
+  const [confirmationOpen, setConfirmationOpen] = useState(false);
 
   const form = useForm<HomeworkFormInput>({
     resolver: zodResolver(homeworkSchema),
-    defaultValues: {
-      ...defaultValues,
-      assignedDate: getToday(),
-      dueDate: getTomorrow(),
-    },
+    defaultValues: createDefaults(),
   });
 
-  const classId = useWatch({
-    control: form.control,
-    name: "classId",
-  });
-
-  const sectionId = useWatch({
-    control: form.control,
-    name: "sectionId",
-  });
-
-  const active = useWatch({
-    control: form.control,
-    name: "active",
-  });
-
-  const title = useWatch({
-    control: form.control,
-    name: "title",
-  });
+  const classId = useWatch({ control: form.control, name: "classId" });
+  const sectionId = useWatch({ control: form.control, name: "sectionId" });
+  const active = useWatch({ control: form.control, name: "active" });
+  const title = useWatch({ control: form.control, name: "title" });
 
   useEffect(() => {
-    if (mode !== "edit" || !homeworkId) {
-      return;
-    }
+    if (mode !== "edit" || !homeworkId) return;
+
+    let cancelled = false;
 
     async function loadHomework() {
       try {
         setLoadingHomework(true);
-
         const response = await fetch(`/api/v1/homework/${homeworkId}`, {
           cache: "no-store",
         });
-
         const result = await response.json();
 
+        if (cancelled) return;
         if (!response.ok || !result.success) {
           toast.error(result.message || "Failed to load homework.");
           return;
         }
 
         const item = result.data;
-
         form.reset({
           classId: item.classId,
           sectionId: item.sectionId ?? "",
           title: item.title,
           description: item.description ?? "",
-          assignedDate: new Date(item.assignedDate).toISOString().split("T")[0],
-          dueDate: item.dueDate
-            ? new Date(item.dueDate).toISOString().split("T")[0]
-            : "",
+          assignedDate: item.assignedDate.substring(0, 10),
+          dueDate: item.dueDate ? item.dueDate.substring(0, 10) : "",
           active: item.active,
         });
       } catch {
-        toast.error("Failed to load homework.");
+        if (!cancelled) toast.error("Failed to load homework.");
       } finally {
-        setLoadingHomework(false);
+        if (!cancelled) setLoadingHomework(false);
       }
     }
 
     void loadHomework();
-  }, [mode, homeworkId, form]);
+    return () => {
+      cancelled = true;
+    };
+  }, [form, homeworkId, mode]);
 
-  async function onSubmit(values: HomeworkFormInput) {
+  async function save(values: HomeworkFormInput) {
     try {
-      setLoading(true);
-
+      setSaving(true);
       const payload = homeworkSchema.parse(values);
-
       const url =
         mode === "create"
           ? "/api/v1/homework"
           : `/api/v1/homework/${homeworkId}`;
-
       const response = await fetch(url, {
         method: mode === "create" ? "POST" : "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-
       const result = await response.json();
 
       if (!response.ok || !result.success) {
@@ -152,87 +141,110 @@ export function HomeworkForm({ mode, homeworkId, onSuccess }: Props) {
       toast.success(
         result.message ||
           (mode === "create"
-            ? "Homework created successfully."
+            ? "Homework published successfully."
             : "Homework updated successfully."),
       );
 
-      if (mode === "create") {
-        form.reset({
-          ...defaultValues,
-          assignedDate: getToday(),
-          dueDate: getTomorrow(),
-        });
-      }
-
+      if (mode === "create") form.reset(createDefaults());
+      refreshTable("homework");
       onSuccess();
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Failed to save homework.",
       );
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
+  }
+
+  async function requestConfirmation() {
+    if (await form.trigger()) setConfirmationOpen(true);
   }
 
   if (loadingHomework) {
     return (
-      <div className="space-y-5">
-        <div className="h-24 animate-pulse rounded-xl bg-muted" />
-
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="h-20 animate-pulse rounded-xl bg-muted" />
-          <div className="h-20 animate-pulse rounded-xl bg-muted" />
-        </div>
-
-        <div className="h-32 animate-pulse rounded-xl bg-muted" />
-
-        <div className="h-24 animate-pulse rounded-xl bg-muted" />
+      <div className="flex min-h-72 items-center justify-center rounded-2xl border bg-card">
+        <Loader2 className="size-6 animate-spin text-primary" />
       </div>
     );
   }
 
   return (
-    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
-      {/* ============================================================ */}
-      {/* ASSIGNMENT SCOPE                                             */}
-      {/* ============================================================ */}
-
-      <div className="rounded-xl border bg-card">
-        <div className="border-b px-4 py-3">
-          <div className="flex items-center gap-3">
-            <div className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
-              <GraduationCap className="size-4" />
-            </div>
-
-            <div>
-              <p className="text-sm font-semibold">Assignment Scope</p>
-
-              <p className="text-xs text-muted-foreground">
-                Select the class and section receiving this homework.
-              </p>
-            </div>
-          </div>
+    <form
+      onSubmit={(event) => {
+        event.preventDefault();
+        void requestConfirmation();
+      }}
+      className="space-y-5 rounded-2xl border bg-card p-5 shadow-sm sm:p-6"
+    >
+      <div className="flex items-start gap-3">
+        <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+          <Send className="size-5" />
         </div>
+        <div>
+          <h2 className="text-lg font-bold">
+            {mode === "create" ? "Create homework" : "Edit homework"}
+          </h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Share clear instructions with a class or a specific section.
+          </p>
+        </div>
+      </div>
 
-        <div className="grid gap-4 p-4 sm:grid-cols-2">
-          <FormField label="Class" required>
-            <ClassSelect
-              value={classId}
-              onChange={(value) => {
-                form.setValue("classId", value, {
-                  shouldDirty: true,
-                  shouldValidate: true,
-                });
+      <FormField
+        label="Title"
+        required
+        error={form.formState.errors.title?.message}
+      >
+        <Input
+          placeholder="What should students complete?"
+          maxLength={200}
+          {...form.register("title")}
+        />
+        <p className="mt-1 text-right text-xs text-muted-foreground">
+          {title?.length ?? 0}/200
+        </p>
+      </FormField>
 
-                form.setValue("sectionId", "", {
-                  shouldDirty: true,
-                  shouldValidate: true,
-                });
-              }}
-            />
-          </FormField>
+      <FormField
+        label="Instructions"
+        error={form.formState.errors.description?.message}
+      >
+        <Textarea
+          rows={5}
+          maxLength={2000}
+          className="resize-y"
+          placeholder="Write the homework instructions…"
+          {...form.register("description")}
+        />
+      </FormField>
 
-          <FormField label="Section">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <FormField
+          label="Class"
+          required
+          error={form.formState.errors.classId?.message}
+        >
+          <ClassSelect
+            value={classId}
+            onChange={(value) => {
+              form.setValue("classId", value, {
+                shouldDirty: true,
+                shouldValidate: true,
+              });
+              form.setValue("sectionId", "", {
+                shouldDirty: true,
+                shouldValidate: false,
+              });
+            }}
+          />
+        </FormField>
+
+        <FormField
+          label="Section (optional)"
+          error={form.formState.errors.sectionId?.message}
+        >
+          {classId ? (
             <SectionSelect
               classId={classId}
               value={sectionId}
@@ -243,122 +255,56 @@ export function HomeworkForm({ mode, homeworkId, onSuccess }: Props) {
                 })
               }
             />
-          </FormField>
-        </div>
-
-        {!classId && (
-          <div className="border-t bg-muted/30 px-4 py-2.5 text-xs text-muted-foreground">
-            Select a class first to load its sections.
-          </div>
-        )}
-      </div>
-
-      {/* ============================================================ */}
-      {/* HOMEWORK DETAILS                                             */}
-      {/* ============================================================ */}
-
-      <div className="rounded-xl border bg-card">
-        <div className="border-b px-4 py-3">
-          <div className="flex items-center gap-3">
-            <div className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
-              <FileText className="size-4" />
+          ) : (
+            <div className="flex h-10 items-center rounded-xl border bg-muted/30 px-3 text-sm text-muted-foreground">
+              Select a class first
             </div>
+          )}
+        </FormField>
 
-            <div>
-              <p className="text-sm font-semibold">Homework Details</p>
-
-              <p className="text-xs text-muted-foreground">
-                Give the assignment a clear title and instructions.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="space-y-4 p-4">
-          <FormField label="Title" required>
+        <FormField
+          label="Assigned date"
+          required
+          error={form.formState.errors.assignedDate?.message}
+        >
+          <div className="relative">
+            <CalendarDays className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="e.g. Complete Chapter 4 exercises"
-              {...form.register("title")}
+              type="date"
+              className="pl-9"
+              {...form.register("assignedDate")}
             />
+          </div>
+        </FormField>
 
-            <div className="mt-1 flex justify-between text-[11px] text-muted-foreground">
-              <span>Use a short, descriptive assignment title.</span>
-
-              <span>{title?.length ?? 0}/100</span>
-            </div>
-          </FormField>
-
-          <FormField label="Instructions">
-            <Textarea
-              placeholder="Write the homework instructions for students..."
-              rows={5}
-              className="resize-y"
-              {...form.register("description")}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") {
-                  event.stopPropagation();
-                }
-              }}
-            />
-          </FormField>
-        </div>
+        <FormField
+          label="Due date (optional)"
+          error={form.formState.errors.dueDate?.message}
+        >
+          <div className="relative">
+            <CalendarDays className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input type="date" className="pl-9" {...form.register("dueDate")} />
+          </div>
+        </FormField>
       </div>
 
-      {/* ============================================================ */}
-      {/* SCHEDULE                                                      */}
-      {/* ============================================================ */}
-
-      <div className="rounded-xl border bg-card">
-        <div className="border-b px-4 py-3">
-          <div className="flex items-center gap-3">
-            <div className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
-              <CalendarDays className="size-4" />
-            </div>
-
-            <div>
-              <p className="text-sm font-semibold">Schedule</p>
-
-              <p className="text-xs text-muted-foreground">
-                Set when the homework starts and when it is due.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="grid gap-4 p-4 sm:grid-cols-2">
-          <FormField label="Assigned Date" required>
-            <Input type="date" {...form.register("assignedDate")} />
-          </FormField>
-
-          <FormField label="Due Date">
-            <Input type="date" {...form.register("dueDate")} />
-          </FormField>
-        </div>
-      </div>
-
-      {/* ============================================================ */}
-      {/* STATUS                                                        */}
-      {/* ============================================================ */}
-
-      <div className="flex items-center justify-between gap-4 rounded-xl border bg-card p-4">
-        <div className="flex items-start gap-3">
-          <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-            <ToggleRight className="size-4" />
-          </div>
-
+      <div className="flex items-center justify-between gap-4 rounded-xl border bg-muted/25 px-4 py-3">
+        <div className="flex items-center gap-3">
+          <GraduationCap className="size-4 text-primary" />
           <div>
-            <p className="text-sm font-semibold">Homework Status</p>
-
-            <p className="mt-0.5 text-xs text-muted-foreground">
+            <p className="text-sm font-semibold">
+              {active ? "Publish to students" : "Keep as draft"}
+            </p>
+            <p className="text-xs text-muted-foreground">
               {active
-                ? "Active — students can see this homework."
-                : "Inactive — this homework is hidden."}
+                ? "Students can see this homework immediately."
+                : "This homework stays hidden until published."}
             </p>
           </div>
         </div>
-
         <Switch
           checked={active}
+          aria-label="Publish homework to students"
           onCheckedChange={(checked) =>
             form.setValue("active", checked, {
               shouldDirty: true,
@@ -368,17 +314,43 @@ export function HomeworkForm({ mode, homeworkId, onSuccess }: Props) {
         />
       </div>
 
-      {/* ============================================================ */}
-      {/* SUBMIT                                                        */}
-      {/* ============================================================ */}
+      <Button type="submit" disabled={saving || !classId}>
+        {saving
+          ? "Saving…"
+          : mode === "edit"
+            ? "Update homework"
+            : active
+              ? "Publish homework"
+              : "Save draft"}
+      </Button>
 
-      <SubmitButton
-        loading={loading}
-        mode={mode}
-        createLabel="Create Homework"
-        updateLabel="Update Homework"
-        className="w-full"
-      />
+      <AlertDialog open={confirmationOpen} onOpenChange={setConfirmationOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {mode === "edit" ? "Update this homework?" : "Publish homework?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {active
+                ? `“${title || "This homework"}” will be visible to the selected class${sectionId ? " and section" : ""}.`
+                : `“${title || "This homework"}” will be saved as a draft and remain hidden from students.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={saving}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={saving}
+              onClick={(event) => {
+                event.preventDefault();
+                setConfirmationOpen(false);
+                void form.handleSubmit(save)();
+              }}
+            >
+              {active ? "Publish" : "Save draft"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </form>
   );
 }

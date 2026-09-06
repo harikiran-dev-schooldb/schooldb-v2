@@ -11,8 +11,7 @@ import { ActionMenu } from "@/components/common/actions/ActionMenu";
 import { FeeCategoryDialog } from "./FeeCategoryDialog";
 
 import { toast } from "sonner";
-
-import { useRouter } from "next/navigation";
+import { refreshTable } from "@/lib/table-event";
 
 type Props = {
   feeCategoryId: string;
@@ -21,8 +20,6 @@ type Props = {
 
 export function FeeCategoryActions({ feeCategoryId, active }: Props) {
   const [open, setOpen] = useState(false);
-
-  const router = useRouter();
 
   async function changeStatus(nextActive: boolean) {
     const response = await fetch(`/api/v1/fee-categories/${feeCategoryId}`, {
@@ -48,7 +45,7 @@ export function FeeCategoryActions({ feeCategoryId, active }: Props) {
       nextActive ? "Fee category activated." : "Fee category deactivated.",
     );
 
-    router.refresh();
+    refreshTable("fee-categories");
   }
 
   return (

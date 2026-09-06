@@ -15,6 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 
 import { toast } from "sonner";
+import { refreshTable } from "@/lib/table-event";
 
 type AcademicYear = {
   id: string;
@@ -478,6 +479,7 @@ export function FeePlanForm({ mode, feePlanId, onSuccess }: Props) {
         mode === "create" ? "Fee plan created." : "Fee plan updated.",
       );
 
+      refreshTable("fee-plans");
       onSuccess();
     } catch {
       toast.error("Failed to save fee plan.");

@@ -16,6 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 
 import { toast } from "sonner";
+import { refreshTable } from "@/lib/table-event";
 
 type Props = {
   mode: "create" | "edit";
@@ -97,6 +98,7 @@ export function FeeCategoryForm({ mode, feeCategoryId, onSuccess }: Props) {
         mode === "create" ? "Fee category created." : "Fee category updated.",
       );
 
+      refreshTable("fee-categories");
       onSuccess();
     } catch {
       toast.error("Failed to save fee category.");

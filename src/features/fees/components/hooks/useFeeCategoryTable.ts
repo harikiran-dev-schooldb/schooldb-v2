@@ -7,6 +7,7 @@ import {
 } from "react";
 
 import { useDebounce } from "@/hooks/useDebounce";
+import { subscribeTableRefresh } from "@/lib/table-event";
 import { FeeCategoryListItem } from "../../types";
 
 
@@ -92,6 +93,10 @@ export function useFeeCategoryTable() {
       active = false;
     };
   }, [debouncedSearch, reloadVersion]);
+
+  useEffect(() => {
+    return subscribeTableRefresh("fee-categories", reload);
+  }, [reload]);
 
   return {
     feeCategories,

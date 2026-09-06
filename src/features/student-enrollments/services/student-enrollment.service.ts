@@ -11,6 +11,7 @@ import {
 } from "../schemas/student-enrollment.schema";
 
 import { studentActivityService } from "@/features/students/services/student-activity.service";
+import { prisma } from "@/lib/prisma";
 
 async function validateEnrollmentRelations(
   schoolId: string,
@@ -177,62 +178,71 @@ export const studentEnrollmentService = {
       input,
     );
 
-    const enrollment =
-      await studentEnrollmentRepository.create({
-        school: {
-          connect: {
-            id: schoolId,
+    const enrollment = await prisma.$transaction(async (tx) => {
+      const created = await studentEnrollmentRepository.create(
+        {
+          school: {
+            connect: {
+              id: schoolId,
+            },
           },
-        },
 
-        student: {
-          connect: {
-            id: input.studentId,
+          student: {
+            connect: {
+              id: input.studentId,
+            },
           },
-        },
 
-        academicYear: {
-          connect: {
-            id: input.academicYearId,
+          academicYear: {
+            connect: {
+              id: input.academicYearId,
+            },
           },
-        },
 
-        class: {
-          connect: {
-            id: input.classId,
+          class: {
+            connect: {
+              id: input.classId,
+            },
           },
-        },
 
-        section: {
-          connect: {
-            id: input.sectionId,
+          section: {
+            connect: {
+              id: input.sectionId,
+            },
           },
+
+          rollNo: input.rollNo,
+
+          admissionDate: input.admissionDate
+            ? new Date(input.admissionDate)
+            : null,
+
+          active: input.active,
         },
+        tx,
+      );
 
-        rollNo: input.rollNo,
+      /* -------------------------------------------------------------- */
+      /* ACTIVITY                                                        */
+      /* -------------------------------------------------------------- */
 
-        admissionDate: input.admissionDate
-          ? new Date(input.admissionDate)
-          : null,
+      await studentActivityService.create(
+        {
+          schoolId,
+          studentId: created.studentId,
+          enrollmentId: created.id,
 
-        active: input.active,
-      });
+          type: "ENROLLMENT_CREATED",
 
-    /* -------------------------------------------------------------- */
-    /* ACTIVITY                                                        */
-    /* -------------------------------------------------------------- */
+          title: "Student enrollment created",
 
-    await studentActivityService.create({
-  schoolId,
-  studentId: enrollment.studentId,
-  enrollmentId: enrollment.id,
+          description: `${created.student.fullName ?? created.student.admissionNo} enrolled in ${created.class.name} — ${created.section.name} for ${created.academicYear.name}.`,
+        },
+        tx,
+      );
 
-  type: "ENROLLMENT_CREATED",
-
-  title: "Student enrollment created",
-
-  description: `${enrollment.student.fullName ?? enrollment.student.admissionNo} enrolled in ${enrollment.class.name} — ${enrollment.section.name} for ${enrollment.academicYear.name}.`,
-});
+      return created;
+    });
 
     return enrollment;
   },
@@ -304,8 +314,8 @@ export const studentEnrollmentService = {
       input,
     );
 
-    const updated =
-      await studentEnrollmentRepository.update(
+    const updated = await prisma.$transaction(async (tx) => {
+      const saved = await studentEnrollmentRepository.update(
         id,
         schoolId,
         {
@@ -341,112 +351,104 @@ export const studentEnrollmentService = {
 
           active: input.active,
         },
+        tx,
       );
 
-    /* -------------------------------------------------------------- */
-    /* DETECT CHANGES                                                 */
-    /* -------------------------------------------------------------- */
+      /* -------------------------------------------------------------- */
+      /* DETECT CHANGES                                                 */
+      /* -------------------------------------------------------------- */
 
-    const changes: Record<
-  string,
-  {
-    from: string | number | boolean | null;
-    to: string | number | boolean | null;
-  }
-> = {};
+      const changes: Record<
+        string,
+        {
+          from: string | number | boolean | null;
+          to: string | number | boolean | null;
+        }
+      > = {};
 
-    if (
-      enrollment.academicYearId !==
-      updated.academicYearId
-    ) {
-      changes.academicYear = {
-        from: enrollment.academicYear.name,
-        to: updated.academicYear.name,
-      };
-    }
+      if (enrollment.academicYearId !== saved.academicYearId) {
+        changes.academicYear = {
+          from: enrollment.academicYear.name,
+          to: saved.academicYear.name,
+        };
+      }
 
-    if (
-      enrollment.classId !==
-      updated.classId
-    ) {
-      changes.class = {
-        from: enrollment.class.name,
-        to: updated.class.name,
-      };
-    }
+      if (enrollment.classId !== saved.classId) {
+        changes.class = {
+          from: enrollment.class.name,
+          to: saved.class.name,
+        };
+      }
 
-    if (
-      enrollment.sectionId !==
-      updated.sectionId
-    ) {
-      changes.section = {
-        from: enrollment.section.name,
-        to: updated.section.name,
-      };
-    }
+      if (enrollment.sectionId !== saved.sectionId) {
+        changes.section = {
+          from: enrollment.section.name,
+          to: saved.section.name,
+        };
+      }
 
-    if (
-      enrollment.rollNo !==
-      updated.rollNo
-    ) {
-      changes.rollNo = {
-        from: enrollment.rollNo,
-        to: updated.rollNo,
-      };
-    }
+      if (enrollment.rollNo !== saved.rollNo) {
+        changes.rollNo = {
+          from: enrollment.rollNo,
+          to: saved.rollNo,
+        };
+      }
 
-    if (
-      enrollment.admissionDate?.getTime() !==
-      updated.admissionDate?.getTime()
-    ) {
-      changes.admissionDate = {
-  from: enrollment.admissionDate?.toISOString() ?? null,
-  to: updated.admissionDate?.toISOString() ?? null,
-};
-    }
+      if (
+        enrollment.admissionDate?.getTime() !==
+        saved.admissionDate?.getTime()
+      ) {
+        changes.admissionDate = {
+          from: enrollment.admissionDate?.toISOString() ?? null,
+          to: saved.admissionDate?.toISOString() ?? null,
+        };
+      }
 
-    if (
-      enrollment.active !==
-      updated.active
-    ) {
-      changes.active = {
-        from: enrollment.active,
-        to: updated.active,
-      };
-    }
+      if (enrollment.active !== saved.active) {
+        changes.active = {
+          from: enrollment.active,
+          to: saved.active,
+        };
+      }
 
-    /* -------------------------------------------------------------- */
-    /* ACTIVITY                                                        */
-    /* -------------------------------------------------------------- */
+      /* -------------------------------------------------------------- */
+      /* ACTIVITY                                                        */
+      /* -------------------------------------------------------------- */
 
-    if (Object.keys(changes).length > 0) {
-      await studentActivityService.create({
-  schoolId,
-  studentId: updated.studentId,
-  enrollmentId: updated.id,
+      if (Object.keys(changes).length > 0) {
+        await studentActivityService.create(
+          {
+            schoolId,
+            studentId: saved.studentId,
+            enrollmentId: saved.id,
 
-  type: "ENROLLMENT_CHANGED",
+            type: "ENROLLMENT_CHANGED",
 
-  title: "Student enrollment updated",
+            title: "Student enrollment updated",
 
-  description: Object.entries(changes)
-  .map(([field, change]) => {
-    const label = field
-      .replace(/([A-Z])/g, " $1")
-      .replace(/^./, (char) => char.toUpperCase());
+            description: Object.entries(changes)
+              .map(([field, change]) => {
+                const label = field
+                  .replace(/([A-Z])/g, " $1")
+                  .replace(/^./, (char) => char.toUpperCase());
 
-    const from = change.from ?? "—";
-    const to = change.to ?? "—";
+                const from = change.from ?? "—";
+                const to = change.to ?? "—";
 
-    return `${label}: ${from} → ${to}`;
-  })
-  .join(" | "),
+                return `${label}: ${from} → ${to}`;
+              })
+              .join(" | "),
 
-  metadata: {
-    changes,
-  },
-});
-    }
+            metadata: {
+              changes,
+            },
+          },
+          tx,
+        );
+      }
+
+      return saved;
+    });
 
     return updated;
   },
@@ -591,55 +593,54 @@ export const studentEnrollmentService = {
      * --------------------------------------------------------------
      */
 
-    const result =
-      await studentEnrollmentRepository.promoteMany(
+    const result = await prisma.$transaction(async (tx) => {
+      const promoted = await studentEnrollmentRepository.promoteMany(
         schoolId,
         input,
+        tx,
       );
 
-    /*
-     * --------------------------------------------------------------
-     * Record activity
-     * --------------------------------------------------------------
-     */
+      /*
+       * --------------------------------------------------------------
+       * Record activity
+       * --------------------------------------------------------------
+       */
 
-    for (const enrollment of result.created) {
-      await studentActivityService.create({
-        schoolId,
+      for (const enrollment of promoted.created) {
+        await studentActivityService.create(
+          {
+            schoolId,
 
-        studentId:
-          enrollment.studentId,
+            studentId: enrollment.studentId,
 
-        enrollmentId:
-          enrollment.id,
+            enrollmentId: enrollment.id,
 
-        type: "ENROLLMENT_CREATED",
+            type: "ENROLLMENT_CREATED",
 
-        title: "Student promoted",
+            title: "Student promoted",
 
-        description:
-          `${enrollment.student.fullName ?? enrollment.student.admissionNo} promoted to ${enrollment.class.name} — ${enrollment.section.name} for ${enrollment.academicYear.name}.`,
+            description: `${enrollment.student.fullName ?? enrollment.student.admissionNo} promoted to ${enrollment.class.name} — ${enrollment.section.name} for ${enrollment.academicYear.name}.`,
 
-        metadata: {
-          promotion: true,
+            metadata: {
+              promotion: true,
 
-          promotedFromId:
-            enrollment.promotedFromId,
+              promotedFromId: enrollment.promotedFromId,
 
-          targetAcademicYearId:
-            enrollment.academicYearId,
+              targetAcademicYearId: enrollment.academicYearId,
 
-          targetClassId:
-            enrollment.classId,
+              targetClassId: enrollment.classId,
 
-          targetSectionId:
-            enrollment.sectionId,
+              targetSectionId: enrollment.sectionId,
 
-          rollNo:
-            enrollment.rollNo,
-        },
-      });
-    }
+              rollNo: enrollment.rollNo,
+            },
+          },
+          tx,
+        );
+      }
+
+      return promoted;
+    });
 
     return {
       created: result.created.length,

@@ -33,9 +33,7 @@ function getDueState(value: string | null | undefined) {
   return "upcoming";
 }
 
-export const homeworkColumns = (
-  reload: () => void,
-): ColumnDef<HomeworkListItem>[] => [
+export const homeworkColumns: ColumnDef<HomeworkListItem>[] = [
   /* ================================================================ */
   /* HOMEWORK                                                         */
   /* ================================================================ */
@@ -194,7 +192,7 @@ export const homeworkColumns = (
 
     cell: ({ row }) => (
       <div className="flex justify-end">
-        <HomeworkActions homeworkId={row.original.id} onSuccess={reload} />
+        <HomeworkActions homeworkId={row.original.id} />
       </div>
     ),
   },

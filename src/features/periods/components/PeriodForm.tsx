@@ -15,6 +15,7 @@ import {
 
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import { refreshTable } from "@/lib/table-event";
 
 import { periodSchema, PeriodFormInput } from "../schemas/period.schema";
 
@@ -129,6 +130,7 @@ export function PeriodForm({ mode, periodId, onSuccess }: Props) {
             : "Period updated successfully."),
       );
 
+      refreshTable("periods");
       onSuccess();
     } catch (error) {
       if (error instanceof Error) {
