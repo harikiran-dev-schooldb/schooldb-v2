@@ -73,11 +73,15 @@ export const sectionRepository = {
 
   update(
     id: string,
+    schoolId: string,
     data: Prisma.SectionUpdateInput
   ) {
     return prisma.section.update({
       where: {
         id,
+        class: {
+          schoolId,
+        },
       },
       data,
     });

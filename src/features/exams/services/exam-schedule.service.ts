@@ -508,6 +508,7 @@ validateExamTime(
     return prisma.examSchedule.update({
       where: {
         id,
+        schoolId,
       },
 
       data: {
@@ -570,6 +571,7 @@ validateExamTime(
     await prisma.examSchedule.delete({
       where: {
         id,
+        schoolId,
       },
     });
 

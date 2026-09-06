@@ -1,5 +1,5 @@
 import { apiHandler } from "@/lib/api";
-import { requireTenant } from "@/lib/auth";
+import { requireRole } from "@/lib/auth";
 import { ApiResponse } from "@/lib/response";
 import { teacherSchema } from "@/features/teachers/schemas/teacher.schema";
 import { teacherService } from "@/features/teachers/services/teacher.service";
@@ -26,7 +26,7 @@ const MAX_ROWS = 500;
 
 export async function POST(req: Request) {
   return apiHandler(async () => {
-    const tenant = await requireTenant();
+    const tenant = await requireRole(["SUPER_ADMIN", "SCHOOL_ADMIN"]);
     const body = (await req.json()) as { teachers?: BulkTeacher[] };
     const teachers = body.teachers ?? [];
 
@@ -58,7 +58,10 @@ export async function POST(req: Request) {
       } catch (error) {
         errors.push({
           row: index + 2,
-          message: error instanceof Error ? error.message : "Unable to create teacher.",
+          message:
+            error instanceof Error
+              ? error.message
+              : "Unable to create teacher.",
         });
       }
     }

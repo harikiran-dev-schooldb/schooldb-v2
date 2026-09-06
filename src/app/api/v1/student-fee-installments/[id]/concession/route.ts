@@ -1,5 +1,5 @@
 import { apiHandler } from "@/lib/api";
-import { requireTenant } from "@/lib/auth";
+import { requireRole } from "@/lib/auth";
 import { ApiResponse } from "@/lib/response";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
@@ -14,37 +14,33 @@ type Params = {
   }>;
 };
 
-export async function PATCH(
-  req: Request,
-  { params }: Params,
-) {
+export async function PATCH(req: Request, { params }: Params) {
   return apiHandler(async () => {
-    const tenant = await requireTenant();
+    const tenant = await requireRole([
+      "SUPER_ADMIN",
+      "SCHOOL_ADMIN",
+      "ACCOUNTANT",
+    ]);
 
     const { id } = await params;
 
     const body = await req.json();
 
-    const { concession } =
-      concessionSchema.parse(body);
+    const { concession } = concessionSchema.parse(body);
 
-    const installment =
-      await prisma.studentFeeInstallment.findFirst({
-        where: {
-          id,
-          studentFeeItem: {
-            studentFee: {
-              schoolId: tenant.schoolId,
-            },
+    const installment = await prisma.studentFeeInstallment.findFirst({
+      where: {
+        id,
+        studentFeeItem: {
+          studentFee: {
+            schoolId: tenant.schoolId,
           },
         },
-      });
+      },
+    });
 
     if (!installment) {
-      return ApiResponse.error(
-        "Student fee installment not found.",
-        404,
-      );
+      return ApiResponse.error("Student fee installment not found.", 404);
     }
 
     const amount = Number(installment.amount);
@@ -56,8 +52,7 @@ export async function PATCH(
       );
     }
 
-    const payableAmount =
-      amount - concession;
+    const payableAmount = amount - concession;
 
     if (paidAmount > payableAmount) {
       throw new Error(
@@ -65,11 +60,7 @@ export async function PATCH(
       );
     }
 
-    let status:
-      | "PENDING"
-      | "PARTIAL"
-      | "PAID"
-      | "WAIVED";
+    let status: "PENDING" | "PARTIAL" | "PAID" | "WAIVED";
 
     if (payableAmount === 0) {
       status = "WAIVED";
@@ -81,22 +72,22 @@ export async function PATCH(
       status = "PENDING";
     }
 
-    const updated =
-      await prisma.studentFeeInstallment.update({
-        where: {
-          id,
+    const updated = await prisma.studentFeeInstallment.update({
+      where: {
+        id,
+        studentFeeItem: {
+          studentFee: {
+            schoolId: tenant.schoolId,
+          },
         },
+      },
+      data: {
+        concession,
+        payableAmount,
+        status,
+      },
+    });
 
-        data: {
-          concession,
-          payableAmount,
-          status,
-        },
-      });
-
-    return ApiResponse.success(
-      updated,
-      "Concession updated successfully.",
-    );
+    return ApiResponse.success(updated, "Concession updated successfully.");
   });
 }

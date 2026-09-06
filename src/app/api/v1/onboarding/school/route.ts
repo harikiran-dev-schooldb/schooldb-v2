@@ -1,6 +1,7 @@
 import { currentUser } from "@clerk/nextjs/server";
 
 import { apiHandler } from "@/lib/api";
+import { ApiError } from "@/lib/errors";
 import { ApiResponse } from "@/lib/response";
 import { schoolOnboardingService } from "@/features/schools/services/school-onboarding.service";
 
@@ -9,7 +10,7 @@ export async function POST(request: Request) {
     const clerkUser = await currentUser();
 
     if (!clerkUser) {
-      throw new Error("Unauthorized.");
+      throw new ApiError(401, "Unauthorized.");
     }
 
     const body = await request.json();
@@ -38,8 +39,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const email =
-      clerkUser.primaryEmailAddress?.emailAddress;
+    const email = clerkUser.primaryEmailAddress?.emailAddress;
 
     if (!email) {
       throw new Error(
@@ -47,18 +47,17 @@ export async function POST(request: Request) {
       );
     }
 
-    const result =
-      await schoolOnboardingService.createSchool(
-        clerkUser.id,
-        email,
-        clerkUser.firstName ?? null,
-        clerkUser.lastName ?? null,
-        clerkUser.imageUrl ?? null,
-        {
-          name,
-          slug,
-        },
-      );
+    const result = await schoolOnboardingService.createSchool(
+      clerkUser.id,
+      email,
+      clerkUser.firstName ?? null,
+      clerkUser.lastName ?? null,
+      clerkUser.imageUrl ?? null,
+      {
+        name,
+        slug,
+      },
+    );
 
     return ApiResponse.success(
       result,

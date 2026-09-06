@@ -101,6 +101,7 @@ export const examRepository = {
     return prisma.exam.update({
       where: {
         id: exam.id,
+        schoolId,
       },
 
       data,
@@ -126,6 +127,7 @@ export const examRepository = {
     await prisma.exam.delete({
       where: {
         id: exam.id,
+        schoolId,
       },
     });
 

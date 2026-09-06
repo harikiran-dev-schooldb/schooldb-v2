@@ -4,6 +4,17 @@ import { timetableRepository } from "../repositories/timetable.repository";
 import { TimetableFormOutput } from "../schemas/timetable.schema";
 
 import { teacherAllocationRepository } from "@/features/teacher-allocations/repositories/teacher-allocation.repository";
+import { periodRepository } from "@/features/periods/repositories/period.repository";
+
+async function requireSchoolPeriod(periodId: string, schoolId: string) {
+  const period = await periodRepository.get(periodId, schoolId);
+
+  if (!period || !period.active) {
+    throw new Error("Period not found or inactive.");
+  }
+
+  return period;
+}
 
 export const timetableService = {
   async list(
@@ -105,6 +116,8 @@ export const timetableService = {
     schoolId: string,
     input: TimetableFormOutput,
   ) {
+    await requireSchoolPeriod(input.periodId, schoolId);
+
     /*
      * --------------------------------------------------------------
      * Verify teacher allocation
@@ -259,6 +272,8 @@ export const timetableService = {
      */
 
     await this.get(id, schoolId);
+
+    await requireSchoolPeriod(input.periodId, schoolId);
 
     /*
      * --------------------------------------------------------------

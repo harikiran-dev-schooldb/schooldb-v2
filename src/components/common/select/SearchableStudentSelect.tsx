@@ -47,7 +47,6 @@ export function SearchableStudentSelect({
 
   useEffect(() => {
     if (!academicYearId) {
-      setStudents([]);
       return;
     }
 
@@ -101,9 +100,14 @@ export function SearchableStudentSelect({
     };
   }, [academicYearId]);
 
+  const availableStudents = useMemo(
+    () => (academicYearId ? students : []),
+    [academicYearId, students],
+  );
+
   const selectedStudent = useMemo(
-    () => students.find((student) => student.id === value),
-    [students, value],
+    () => availableStudents.find((student) => student.id === value),
+    [availableStudents, value],
   );
 
   const isDisabled = disabled || loading || !academicYearId;
@@ -154,7 +158,7 @@ export function SearchableStudentSelect({
             <CommandEmpty>No student found.</CommandEmpty>
 
             <CommandGroup>
-              {students.map((student) => (
+              {availableStudents.map((student) => (
                 <CommandItem
                   key={student.id}
                   value={student.label}
