@@ -7,7 +7,11 @@ import {
   schoolSlugFromPath,
   schoolSlugFromSameOriginReferer,
 } from "../src/lib/tenant-context.ts";
-import { isOperationalRole } from "../src/lib/access-control.ts";
+import {
+  isOperationalRole,
+  isSelfServiceRole,
+  isStudentIdAccessible,
+} from "../src/lib/access-control.ts";
 
 test("extracts only valid school slugs from application paths", () => {
   assert.equal(schoolSlugFromPath("/green-valley/dashboard"), "green-valley");
@@ -56,4 +60,18 @@ test("keeps unscoped parent and student roles out of the operations workspace", 
   assert.equal(isOperationalRole("RECEPTIONIST"), true);
   assert.equal(isOperationalRole("PARENT"), false);
   assert.equal(isOperationalRole("STUDENT"), false);
+});
+
+test("allows only parent and student roles into self-service routes", () => {
+  assert.equal(isSelfServiceRole("PARENT"), true);
+  assert.equal(isSelfServiceRole("STUDENT"), true);
+  assert.equal(isSelfServiceRole("TEACHER"), false);
+  assert.equal(isSelfServiceRole("SCHOOL_ADMIN"), false);
+});
+
+test("student routes reject IDs outside the authenticated account scope", () => {
+  const linkedStudents = [{ id: "student-a" }, { id: "student-b" }];
+
+  assert.equal(isStudentIdAccessible(linkedStudents, "student-a"), true);
+  assert.equal(isStudentIdAccessible(linkedStudents, "student-c"), false);
 });

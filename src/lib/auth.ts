@@ -6,7 +6,7 @@ import { prisma } from "./prisma";
 import { requireSchoolSlug } from "./tenant-context";
 import { isOperationalRole } from "./access-control";
 
-export async function requireTenant(schoolSlug?: string) {
+export async function requireMembership(schoolSlug?: string) {
   const { userId } = await auth();
 
   if (!userId) {
@@ -47,12 +47,19 @@ export async function requireTenant(schoolSlug?: string) {
     },
     include: {
       school: true,
+      user: true,
     },
   });
 
   if (!membership) {
     throw new ApiError(403, "No active membership for this school");
   }
+
+  return membership;
+}
+
+export async function requireTenant(schoolSlug?: string) {
+  const membership = await requireMembership(schoolSlug);
 
   if (!isOperationalRole(membership.role)) {
     throw new ApiError(

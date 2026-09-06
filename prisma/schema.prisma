@@ -72,6 +72,7 @@ model School {
   feePlans           FeePlan[]
   homeworks          Homework[]
   memberships        Membership[]
+  parentStudentLinks ParentStudentLink[]
   periods            Period[]
   students           Student[]
   activities         StudentActivity[]
@@ -85,15 +86,16 @@ model School {
 }
 
 model User {
-  id          String       @id @default(cuid())
-  clerkUserId String       @unique
-  email       String       @unique
-  firstName   String?
-  lastName    String?
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  imageUrl    String?
-  memberships Membership[]
+  id                 String              @id @default(cuid())
+  clerkUserId        String              @unique
+  email              String              @unique
+  firstName          String?
+  lastName           String?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  imageUrl           String?
+  memberships        Membership[]
+  parentStudentLinks ParentStudentLink[]
 }
 
 model Membership {
@@ -174,12 +176,31 @@ model Student {
   school              School              @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   activities          StudentActivity[]
   enrollments         StudentEnrollment[]
+  parentLinks         ParentStudentLink[]
 
   @@unique([schoolId, admissionNo])
   @@index([schoolId])
   @@index([status])
   @@index([schoolId, fullName])
   @@index([schoolId, phone])
+}
+
+model ParentStudentLink {
+  id           String   @id @default(cuid())
+  schoolId     String
+  parentUserId String
+  studentId    String
+  relationship String?
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  school       School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  parentUser   User     @relation(fields: [parentUserId], references: [id], onDelete: Cascade)
+  student      Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, parentUserId, studentId])
+  @@index([schoolId, parentUserId, active])
+  @@index([schoolId, studentId, active])
 }
 
 model Class {

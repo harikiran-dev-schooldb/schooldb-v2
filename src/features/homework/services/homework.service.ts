@@ -26,6 +26,35 @@ async function validateHomeworkTarget(
 }
 
 export const homeworkService = {
+  async studentList(
+    schoolId: string,
+    enrollment: {
+      academicYearId: string;
+      classId: string;
+      sectionId: string;
+    },
+  ) {
+    const result = await homeworkRepository.list(
+      {
+        schoolId,
+        active: true,
+        classId: enrollment.classId,
+        OR: [{ sectionId: enrollment.sectionId }, { sectionId: null }],
+        AND: [
+          {
+            OR: [
+              { academicYearId: enrollment.academicYearId },
+              { academicYearId: null },
+            ],
+          },
+        ],
+      },
+      { take: 100 },
+    );
+
+    return result;
+  },
+
   async list(
     schoolId: string,
     query: {
