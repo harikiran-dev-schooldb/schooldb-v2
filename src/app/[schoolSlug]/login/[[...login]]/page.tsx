@@ -1,4 +1,7 @@
-import { PremiumSignIn } from "@/features/auth/components/PremiumSignIn";
+import { notFound } from "next/navigation";
+
+import { TenantOtpSignIn } from "@/features/auth/components/TenantOtpSignIn";
+import { prisma } from "@/lib/prisma";
 
 type Props = {
   params: Promise<{
@@ -8,6 +11,11 @@ type Props = {
 
 export default async function TenantLoginPage({ params }: Props) {
   const { schoolSlug } = await params;
+  const school = await prisma.school.findUnique({
+    where: { slug: schoolSlug },
+    select: { name: true },
+  });
+  if (!school) notFound();
 
-  return <PremiumSignIn schoolSlug={schoolSlug} />;
+  return <TenantOtpSignIn schoolSlug={schoolSlug} schoolName={school.name} />;
 }

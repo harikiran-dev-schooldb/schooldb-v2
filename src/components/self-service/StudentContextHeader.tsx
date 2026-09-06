@@ -6,6 +6,7 @@ import {
   BookOpenCheck,
   CalendarCheck2,
   CalendarDays,
+  CalendarClock,
   ClipboardList,
   CreditCard,
   LayoutDashboard,
@@ -24,6 +25,7 @@ const links = [
   { href: "/timetable", label: "Timetable", icon: CalendarDays },
   { href: "/homework", label: "Homework", icon: BookOpenCheck },
   { href: "/report-card", label: "Report card", icon: ScrollText },
+  { href: "/leave-requests", label: "Leave requests", icon: CalendarClock },
 ];
 
 export function StudentContextHeader({

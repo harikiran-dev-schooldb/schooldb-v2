@@ -6,6 +6,7 @@ import {
   CreditCard,
   BookOpenCheck,
   CalendarDays,
+  CalendarClock,
   ScrollText,
   Trophy,
 } from "lucide-react";
@@ -56,6 +57,12 @@ const sections = [
     title: "Report card",
     description: "Open a polished academic summary for completed exams.",
     icon: ScrollText,
+  },
+  {
+    href: "leave-requests",
+    title: "Leave requests",
+    description: "Request an absence and track the school’s decision.",
+    icon: CalendarClock,
   },
 ];
 

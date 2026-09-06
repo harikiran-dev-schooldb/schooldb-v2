@@ -53,11 +53,15 @@ model AcademicPeriod {
 }
 
 model School {
-  id                 String              @id @default(cuid())
+  announcements      Announcement[]
+  calendarEvents     SchoolCalendarEvent[]
+  leaveRequests      LeaveRequest[]
+  otpChallenges      OtpChallenge[]
+  id                 String                @id @default(cuid())
   name               String
-  slug               String              @unique
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
+  slug               String                @unique
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
   logo               String?
   academicPeriods    AcademicPeriod[]
   academicYears      AcademicYear[]
@@ -86,6 +90,7 @@ model School {
 }
 
 model User {
+  announcementReads  AnnouncementRead[]
   id                 String              @id @default(cuid())
   clerkUserId        String              @unique
   email              String              @unique
@@ -94,8 +99,84 @@ model User {
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
   imageUrl           String?
+  phone              String?
   memberships        Membership[]
   parentStudentLinks ParentStudentLink[]
+  otpChallenges      OtpChallenge[]
+
+  @@index([phone])
+}
+
+model OtpChallenge {
+  id         String   @id @default(cuid())
+  schoolId   String
+  userId     String
+  phoneHash  String
+  codeHash   String
+  expiresAt  DateTime
+  attempts   Int      @default(0)
+  lastSentAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  school     School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, phoneHash])
+  @@index([expiresAt])
+  @@index([userId])
+}
+
+model Announcement {
+  id          String             @id @default(cuid())
+  schoolId    String
+  school      School             @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  title       String
+  body        String
+  category    String             @default("GENERAL")
+  priority    String             @default("NORMAL")
+  targetType  String             @default("SCHOOL")
+  targetId    String?
+  targetLabel String
+  createdBy   String
+  publishedAt DateTime
+  expiresAt   DateTime?
+  archived    Boolean            @default(false)
+  createdAt   DateTime           @default(now())
+  reads       AnnouncementRead[]
+
+  @@index([schoolId, archived, publishedAt])
+}
+
+model AnnouncementRead {
+  id             String       @id @default(cuid())
+  announcementId String
+  userId         String
+  readAt         DateTime     @default(now())
+  announcement   Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([announcementId, userId])
+  @@index([userId])
+}
+
+model SchoolCalendarEvent {
+  id          String   @id @default(cuid())
+  schoolId    String
+  school      School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  category    String   @default("EVENT")
+  startDate   DateTime @db.Date
+  endDate     DateTime @db.Date
+  targetType  String   @default("SCHOOL")
+  targetId    String?
+  targetLabel String
+  createdBy   String
+  archived    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([schoolId, archived, startDate])
 }
 
 model Membership {
@@ -177,6 +258,7 @@ model Student {
   activities          StudentActivity[]
   enrollments         StudentEnrollment[]
   parentLinks         ParentStudentLink[]
+  leaveRequests       LeaveRequest[]
 
   @@unique([schoolId, admissionNo])
   @@index([schoolId])
@@ -269,6 +351,7 @@ model StudentEnrollment {
   student        Student             @relation(fields: [studentId], references: [id], onDelete: Cascade)
   examMarks      StudentExamMark[]
   studentFees    StudentFee[]
+  leaveRequests  LeaveRequest[]
 
   @@unique([studentId, academicYearId])
   @@unique([academicYearId, classId, sectionId, rollNo])
@@ -279,6 +362,30 @@ model StudentEnrollment {
   @@index([sectionId])
   @@index([schoolId, active])
   @@index([academicYearId, classId, sectionId])
+}
+
+model LeaveRequest {
+  id           String            @id @default(cuid())
+  schoolId     String
+  studentId    String
+  enrollmentId String
+  requestedBy  String
+  startDate    DateTime          @db.Date
+  endDate      DateTime          @db.Date
+  reason       String
+  status       String            @default("PENDING")
+  decisionNote String?
+  decidedBy    String?
+  decidedAt    DateTime?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  school       School            @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student      Student           @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  enrollment   StudentEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId, status, createdAt])
+  @@index([studentId, createdAt])
+  @@index([enrollmentId])
 }
 
 model Subject {

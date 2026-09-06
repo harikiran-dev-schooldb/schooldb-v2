@@ -19,10 +19,17 @@ type Props = {
   classId?: string;
   value?: string;
   disabled?: boolean;
+  allowAll?: boolean;
   onChange: (value: string) => void;
 };
 
-export function SectionSelect({ classId, value, disabled, onChange }: Props) {
+export function SectionSelect({
+  classId,
+  value,
+  disabled,
+  allowAll = true,
+  onChange,
+}: Props) {
   const [sections, setSections] = useState<SectionOption[]>([]);
 
   useEffect(() => {
@@ -57,7 +64,7 @@ export function SectionSelect({ classId, value, disabled, onChange }: Props) {
 
   return (
     <Select
-      value={value || undefined}
+      value={value ?? ""}
       onValueChange={(value) => onChange(value === "ALL" ? "" : value)}
       disabled={disabled || !classId}
     >
@@ -66,7 +73,7 @@ export function SectionSelect({ classId, value, disabled, onChange }: Props) {
       </SelectTrigger>
 
       <SelectContent>
-        <SelectItem value="ALL">All Sections</SelectItem>
+        {allowAll && <SelectItem value="ALL">All Sections</SelectItem>}
 
         {displaySections.map((section) => (
           <SelectItem key={section.id} value={section.id}>

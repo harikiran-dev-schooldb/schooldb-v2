@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Bell, GraduationCap, LogOut, Users } from "lucide-react";
+import { Bell, CalendarDays, GraduationCap, LogOut, Users } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -9,11 +9,13 @@ export function SelfServiceHeader({
   schoolSlug,
   role,
   showStudentPicker,
+  unreadCount,
 }: {
   schoolName: string;
   schoolSlug: string;
   role: string;
   showStudentPicker: boolean;
+  unreadCount: number;
 }) {
   return (
     <header className="sticky top-0 z-40 border-b border-white/70 bg-background/85 shadow-[0_1px_20px_rgba(15,23,42,0.04)] backdrop-blur-xl print:hidden">
@@ -43,17 +45,16 @@ export function SelfServiceHeader({
               </Link>
             </Button>
           )}
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            aria-label="Notifications coming soon"
-            title="Notifications coming soon"
-            className="relative"
-            disabled
-          >
-            <Bell className="size-4" />
-            <span className="absolute right-1 top-1 size-1.5 rounded-full bg-amber-500" />
+          <Button asChild variant="ghost" size="icon-sm">
+            <Link href={`/${schoolSlug}/my/calendar`} aria-label="School calendar">
+              <CalendarDays className="size-4" />
+            </Link>
+          </Button>
+          <Button asChild variant="ghost" size="icon-sm" className="relative">
+            <Link href={`/${schoolSlug}/my/notifications`} aria-label={`Notifications, ${unreadCount} unread`}>
+              <Bell className="size-4" />
+              {unreadCount > 0 && <span className="absolute -right-1 -top-1 min-w-4 rounded-full bg-indigo-600 px-1 text-center text-[10px] font-bold text-white">{unreadCount > 99 ? "99+" : unreadCount}</span>}
+            </Link>
           </Button>
           <Button asChild variant="ghost" size="icon-sm">
             <Link href={`/${schoolSlug}/logout`} aria-label="Sign out">

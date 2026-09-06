@@ -84,7 +84,7 @@ export async function requireRole(allowedRoles: string[], schoolSlug?: string) {
   return membership;
 }
 
-async function requireCurrentTeacher(schoolId: string) {
+export async function requireCurrentTeacher(schoolId: string) {
   const { userId } = await auth();
 
   if (!userId) {

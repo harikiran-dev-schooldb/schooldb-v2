@@ -38,7 +38,7 @@ export function ClassSelect({ value, onChange }: Props) {
   }, []);
 
   return (
-    <Select value={value} onValueChange={onChange}>
+    <Select value={value ?? ""} onValueChange={onChange}>
       <SelectTrigger>
         <SelectValue placeholder="Select Class" />
       </SelectTrigger>

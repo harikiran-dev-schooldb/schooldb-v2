@@ -14,6 +14,7 @@ const PUBLIC_PATH_PATTERNS = [
   /^\/login(?:\/.*)?$/,
   /^\/register(?:\/.*)?$/,
   /^\/[^/]+\/login(?:\/.*)?$/,
+  /^\/api\/v1\/public\/auth\/(?:send-otp|verify-otp)$/,
 ];
 
 export function isPublicPath(pathname: string): boolean {

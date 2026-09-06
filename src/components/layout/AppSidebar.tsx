@@ -68,11 +68,16 @@ function isRouteActive(pathname: string, href: string) {
 
 export function AppSidebar() {
   const pathname = usePathname();
-  const { school } = useSchool();
+  const { school, role } = useSchool();
 
   const collapsed = useSidebarCollapsed();
 
   const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({});
+
+  const visibleNavigation = useMemo(
+    () => navigation.filter((item) => !item.roles || item.roles.includes(role)),
+    [role],
+  );
 
   function toggleSidebar() {
     setSidebarCollapsed(!collapsed);
@@ -88,7 +93,7 @@ export function AppSidebar() {
   const activeParents = useMemo(() => {
     const active = new Set<string>();
 
-    for (const item of navigation) {
+    for (const item of visibleNavigation) {
       if (!item.children?.length) {
         continue;
       }
@@ -105,7 +110,7 @@ export function AppSidebar() {
     }
 
     return active;
-  }, [pathname, school.slug]);
+  }, [pathname, school.slug, visibleNavigation]);
 
   return (
     <aside
@@ -289,7 +294,7 @@ export function AppSidebar() {
           )}
 
           <div className="space-y-1">
-            {navigation.map((item) => {
+            {visibleNavigation.map((item) => {
               const hasChildren = Boolean(item.children?.length);
 
               /* ============================================================

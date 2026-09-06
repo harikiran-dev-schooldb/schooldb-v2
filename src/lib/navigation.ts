@@ -7,7 +7,19 @@ import {
   BookOpen,
   Upload,
   SlidersHorizontal,
+  BellRing,
+  CalendarDays,
+  CalendarClock,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+
+type NavigationItem = {
+  title: string;
+  href?: string;
+  icon: LucideIcon;
+  roles?: string[];
+  children?: Array<{ title: string; href: string }>;
+};
 
 export const navigation = [
   {
@@ -179,8 +191,29 @@ export const navigation = [
   },
 
   {
+    title: "Calendar",
+    href: "calendar",
+    icon: CalendarDays,
+    roles: ["SUPER_ADMIN", "SCHOOL_ADMIN"],
+  },
+
+  {
+    title: "Leave Requests",
+    href: "leave-requests",
+    icon: CalendarClock,
+    roles: ["SUPER_ADMIN", "SCHOOL_ADMIN", "TEACHER"],
+  },
+
+  {
+    title: "Notifications",
+    href: "notifications",
+    icon: BellRing,
+    roles: ["SUPER_ADMIN", "SCHOOL_ADMIN"],
+  },
+
+  {
   title: "Setup",
   href: "setup",
   icon: SlidersHorizontal,
 }
-];
+] satisfies NavigationItem[];
