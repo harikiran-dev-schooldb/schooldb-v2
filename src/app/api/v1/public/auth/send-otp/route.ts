@@ -11,6 +11,7 @@ import {
   resolveOtpAccounts,
 } from "@/features/auth/otp";
 import { prisma } from "@/lib/prisma";
+import { consumeRateLimit, requestIp } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -23,6 +24,12 @@ const WHATSAPP_TIMEOUT_MS = Math.max(
   15_000,
   Number(process.env.META_WA_TIMEOUT_MS) || 35_000,
 );
+const OTP_RATE_LIMIT_WINDOW_MS = Math.max(
+  60_000,
+  Number(process.env.OTP_RATE_LIMIT_WINDOW_MS) || 10 * 60_000,
+);
+const OTP_PHONE_LIMIT = Math.max(1, Number(process.env.OTP_PHONE_LIMIT) || 5);
+const OTP_IP_LIMIT = Math.max(1, Number(process.env.OTP_IP_LIMIT) || 20);
 const globalForWhatsapp = globalThis as { whatsappDispatcher?: Agent };
 const whatsappDispatcher =
   globalForWhatsapp.whatsappDispatcher ??
@@ -59,6 +66,38 @@ export async function POST(request: Request) {
 
     const school = await prisma.school.findUnique({ where: { slug: parsed.data.schoolSlug }, select: { id: true } });
     if (!school) return Response.json({ error: "School not found." }, { status: 404 });
+
+    const ip = requestIp(request);
+    const [phoneRateLimit, ipRateLimit] = await Promise.all([
+      consumeRateLimit(
+        `otp-send-phone:${school.id}`,
+        phone,
+        OTP_PHONE_LIMIT,
+        OTP_RATE_LIMIT_WINDOW_MS,
+      ),
+      ip
+        ? consumeRateLimit(
+            `otp-send-ip:${school.id}`,
+            ip,
+            OTP_IP_LIMIT,
+            OTP_RATE_LIMIT_WINDOW_MS,
+          )
+        : null,
+    ]);
+    const blockedRateLimit = !phoneRateLimit.allowed
+      ? phoneRateLimit
+      : ipRateLimit && !ipRateLimit.allowed
+        ? ipRateLimit
+        : null;
+    if (blockedRateLimit) {
+      return Response.json(
+        { error: "Too many code requests. Please wait and try again." },
+        {
+          status: 429,
+          headers: { "Retry-After": String(blockedRateLimit.retryAfterSeconds) },
+        },
+      );
+    }
 
     const accounts = await resolveOtpAccounts(school.id, phone);
     if (accounts.length === 0) return Response.json(genericSuccess);

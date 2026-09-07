@@ -9,6 +9,7 @@ import {
   CalendarClock,
   ScrollText,
   Trophy,
+  FolderLock,
 } from "lucide-react";
 
 import { SelfServicePage } from "@/components/self-service/SelfServicePage";
@@ -63,6 +64,12 @@ const sections = [
     title: "Leave requests",
     description: "Request an absence and track the school’s decision.",
     icon: CalendarClock,
+  },
+  {
+    href: "documents",
+    title: "Documents",
+    description: "Open secure records shared by the school.",
+    icon: FolderLock,
   },
 ];
 

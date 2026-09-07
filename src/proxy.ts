@@ -13,7 +13,6 @@ export default clerkMiddleware(async (auth, req) => {
   }
 
   const pathname = req.nextUrl.pathname;
-  console.log("pathname:", req.nextUrl.pathname);
   const requestHeaders = new Headers(req.headers);
 
   if (pathname.startsWith("/api/")) {

@@ -55,6 +55,7 @@ model AcademicPeriod {
 model School {
   announcements      Announcement[]
   calendarEvents     SchoolCalendarEvent[]
+  studentDocuments   StudentDocument[]
   leaveRequests      LeaveRequest[]
   otpChallenges      OtpChallenge[]
   id                 String                @id @default(cuid())
@@ -108,24 +109,33 @@ model User {
 }
 
 model OtpChallenge {
-  id               String   @id @default(cuid())
+  id               String    @id @default(cuid())
   schoolId         String
   userId           String
-  candidateUserIds Json     @default("[]")
+  candidateUserIds Json      @default("[]")
   phoneHash        String
   codeHash         String
   expiresAt        DateTime
   verifiedAt       DateTime?
-  attempts         Int      @default(0)
-  lastSentAt       DateTime @default(now())
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-  school           School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  attempts         Int       @default(0)
+  lastSentAt       DateTime  @default(now())
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  school           School    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([schoolId, phoneHash])
   @@index([expiresAt])
   @@index([userId])
+}
+
+model RequestRateLimit {
+  keyHash      String   @id @db.VarChar(64)
+  requestCount Int      @default(1)
+  expiresAt    DateTime
+  updatedAt    DateTime @updatedAt
+
+  @@index([expiresAt])
 }
 
 model Announcement {
@@ -261,6 +271,7 @@ model Student {
   enrollments         StudentEnrollment[]
   parentLinks         ParentStudentLink[]
   leaveRequests       LeaveRequest[]
+  documents           StudentDocument[]
 
   @@unique([schoolId, admissionNo])
   @@index([schoolId])
@@ -268,6 +279,28 @@ model Student {
   @@index([schoolId, fullName])
   @@index([schoolId, phone])
   @@index([schoolId, status, createdAt])
+}
+
+model StudentDocument {
+  id              String              @id @default(cuid())
+  schoolId        String
+  studentId       String
+  type            StudentDocumentType
+  name            String
+  originalName    String
+  mimeType        String
+  sizeBytes       Int
+  storageKey      String              @unique
+  notes           String?
+  visibleToFamily Boolean             @default(false)
+  uploadedBy      String
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  school          School              @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student         Student             @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId, studentId, createdAt])
+  @@index([schoolId, visibleToFamily])
 }
 
 model ParentStudentLink {
@@ -938,6 +971,16 @@ enum StudentActivityType {
   DOCUMENT_UPLOADED
   DOCUMENT_DELETED
   STUDENT_PROMOTED
+}
+
+enum StudentDocumentType {
+  AADHAAR
+  BIRTH_CERTIFICATE
+  PREVIOUS_SCHOOL_RECORD
+  TRANSFER_CERTIFICATE
+  MEDICAL_RECORD
+  STUDENT_PHOTO
+  OTHER
 }
 
 enum StudentFeeInstallmentStatus {

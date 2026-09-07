@@ -361,7 +361,7 @@ export function StudentProfile({ studentId }: Props) {
         {/* ========================================================== */}
 
         <TabsContent value="documents" className="mt-5">
-          <StudentDocumentsTab />
+          <StudentDocumentsTab student={student} />
         </TabsContent>
 
         {/* ========================================================== */}

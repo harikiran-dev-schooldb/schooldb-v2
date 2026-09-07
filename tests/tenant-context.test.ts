@@ -24,6 +24,8 @@ test("keeps the public route allowlist narrow", () => {
   assert.equal(isPublicPath("/"), true);
   assert.equal(isPublicPath("/login/SignIn_clerk_catchall_check_123"), true);
   assert.equal(isPublicPath("/green-valley/login"), true);
+  assert.equal(isPublicPath("/api/health"), true);
+  assert.equal(isPublicPath("/api/health/database"), false);
   assert.equal(isPublicPath("/api/v1/public/auth/send-otp"), true);
   assert.equal(isPublicPath("/api/v1/public/auth/verify-otp"), true);
   assert.equal(isPublicPath("/api/v1/public/auth/not-a-real-route"), false);

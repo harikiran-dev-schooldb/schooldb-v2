@@ -17,17 +17,21 @@ export function AppShell({ children }: Props) {
             SIDEBAR
             ================================================================ */}
 
-        <AppSidebar />
+        <div className="print:hidden">
+          <AppSidebar />
+        </div>
 
         {/* ================================================================
             MAIN APPLICATION AREA
             ================================================================ */}
 
         <div className="flex min-w-0 flex-1 flex-col">
-          <AppHeader />
+          <div className="print:hidden">
+            <AppHeader />
+          </div>
 
           <main className="min-w-0 flex-1">
-            <div className="w-full px-5 py-6 sm:px-6 lg:px-8">{children}</div>
+            <div className="w-full px-5 py-6 print:p-0 sm:px-6 lg:px-8">{children}</div>
           </main>
         </div>
       </div>
