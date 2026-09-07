@@ -40,20 +40,16 @@ export async function POST(req: Request) {
     });
     if (existing.length)
       throw new Error(`Subject already exists: ${existing[0].name}`);
-    await prisma.$transaction(
-      validated.map((item) =>
-        prisma.subject.create({
-          data: {
-            name: item.name.trim(),
-            code: item.code === "" ? null : item.code,
-            type: item.type,
-            displayOrder: item.displayOrder,
-            active: item.active,
-            school: { connect: { id: tenant.schoolId } },
-          },
-        }),
-      ),
-    );
+    await prisma.subject.createMany({
+      data: validated.map((item) => ({
+        schoolId: tenant.schoolId,
+        name: item.name.trim(),
+        code: item.code === "" ? null : item.code,
+        type: item.type,
+        displayOrder: item.displayOrder,
+        active: item.active,
+      })),
+    });
     return ApiResponse.success(
       { created: validated.length, failed: 0, errors: [] },
       "Subjects imported successfully.",

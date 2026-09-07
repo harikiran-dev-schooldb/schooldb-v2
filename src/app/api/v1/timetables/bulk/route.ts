@@ -28,6 +28,19 @@ type PreparedRow = {
   active: boolean;
 };
 
+type ResolvedRow = {
+  rowNumber: number;
+  schoolId: string;
+  academicYearId: string;
+  teacherAllocationId: string;
+  teacherId: string;
+  classId: string;
+  sectionId: string;
+  periodId: string;
+  day: WeekDay;
+  active: boolean;
+};
+
 function normalize(value: string): string {
   return value.trim().toLowerCase();
 }
@@ -296,14 +309,9 @@ export async function POST(request: Request) {
       ]),
     );
 
-    const resolved: Array<{
-      schoolId: string;
-      academicYearId: string;
-      teacherAllocationId: string;
-      periodId: string;
-      day: WeekDay;
-      active: boolean;
-    }> = [];
+    const resolved: ResolvedRow[] = [];
+    const importedTeacherSlots = new Set<string>();
+    const importedClassSlots = new Set<string>();
 
     for (let i = 0; i < prepared.length; i += 1) {
       const row = prepared[i];
@@ -373,147 +381,160 @@ export async function POST(request: Request) {
         );
       }
 
-      const existingDuplicate = await prisma.timetable.findFirst({
-        where: {
-          schoolId: tenant.schoolId,
-          academicYearId: academicYear.id,
-          teacherAllocationId: allocation.id,
-          periodId: period.id,
-          day: row.day,
-        },
-        select: {
-          id: true,
-        },
-      });
+      const teacherSlot = [
+        academicYear.id,
+        teacher.id,
+        period.id,
+        row.day,
+      ].join(":");
+      const classSlot = [
+        academicYear.id,
+        classRecord.id,
+        section.id,
+        period.id,
+        row.day,
+      ].join(":");
 
-      if (existingDuplicate) {
-        throw new Error(`Row ${rowNumber}: Timetable entry already exists.`);
-      }
-
-      const teacherConflict = await prisma.timetable.findFirst({
-        where: {
-          schoolId: tenant.schoolId,
-          academicYearId: academicYear.id,
-          periodId: period.id,
-          day: row.day,
-
-          teacherAllocation: {
-            teacherId: teacher.id,
-          },
-        },
-        select: {
-          id: true,
-        },
-      });
-
-      if (teacherConflict) {
+      if (importedTeacherSlots.has(teacherSlot)) {
         throw new Error(
-          `Row ${rowNumber}: Teacher ${row.teacherName} already has another class during this period.`,
+          `Row ${rowNumber}: Teacher ${row.teacherName} is assigned to multiple classes during the same period in this import.`,
         );
       }
 
-      const classConflict = await prisma.timetable.findFirst({
-        where: {
-          schoolId: tenant.schoolId,
-          academicYearId: academicYear.id,
-          periodId: period.id,
-          day: row.day,
-
-          teacherAllocation: {
-            classId: classRecord.id,
-            sectionId: section.id,
-          },
-        },
-        select: {
-          id: true,
-        },
-      });
-
-      if (classConflict) {
+      if (importedClassSlots.has(classSlot)) {
         throw new Error(
-          `Row ${rowNumber}: ${row.className} - ${row.sectionName} already has another subject during this period.`,
+          `Row ${rowNumber}: ${row.className} - ${row.sectionName} has multiple subjects during the same period in this import.`,
         );
       }
 
-      /*
-       * Check conflicts against earlier rows
-       * in the same CSV import.
-       */
-      for (const previous of resolved) {
-        if (
-          previous.academicYearId === academicYear.id &&
-          previous.periodId === period.id &&
-          previous.day === row.day
-        ) {
-          const previousAllocation = allocations.find(
-            (item) => item.id === previous.teacherAllocationId,
-          );
-
-          if (!previousAllocation) {
-            continue;
-          }
-
-          if (previousAllocation.teacherId === teacher.id) {
-            throw new Error(
-              `Row ${rowNumber}: Teacher ${row.teacherName} is assigned to multiple classes during the same period in this import.`,
-            );
-          }
-
-          if (
-            previousAllocation.classId === classRecord.id &&
-            previousAllocation.sectionId === section.id
-          ) {
-            throw new Error(
-              `Row ${rowNumber}: ${row.className} - ${row.sectionName} has multiple subjects during the same period in this import.`,
-            );
-          }
-        }
-      }
+      importedTeacherSlots.add(teacherSlot);
+      importedClassSlots.add(classSlot);
 
       resolved.push({
+        rowNumber,
         schoolId: tenant.schoolId,
         academicYearId: academicYear.id,
         teacherAllocationId: allocation.id,
+        teacherId: teacher.id,
+        classId: classRecord.id,
+        sectionId: section.id,
         periodId: period.id,
         day: row.day,
         active: row.active,
       });
     }
 
-    await prisma.$transaction(
-      resolved.map((row) =>
-        prisma.timetable.create({
-          data: {
-            school: {
-              connect: {
-                id: row.schoolId,
-              },
-            },
-
-            academicYear: {
-              connect: {
-                id: row.academicYearId,
-              },
-            },
-
-            teacherAllocation: {
-              connect: {
-                id: row.teacherAllocationId,
-              },
-            },
-
-            period: {
-              connect: {
-                id: row.periodId,
-              },
-            },
-
+    const slotFilters = [
+      ...new Map(
+        resolved.map((row) => [
+          `${row.academicYearId}:${row.periodId}:${row.day}`,
+          {
+            academicYearId: row.academicYearId,
+            periodId: row.periodId,
             day: row.day,
-            active: row.active,
           },
-        }),
+        ]),
+      ).values(),
+    ];
+
+    const existing = await prisma.timetable.findMany({
+      where: {
+        schoolId: tenant.schoolId,
+        OR: slotFilters,
+      },
+      select: {
+        academicYearId: true,
+        teacherAllocationId: true,
+        periodId: true,
+        day: true,
+        teacherAllocation: {
+          select: {
+            teacherId: true,
+            classId: true,
+            sectionId: true,
+          },
+        },
+      },
+    });
+
+    const existingExact = new Set(
+      existing.map((item) =>
+        [
+          item.academicYearId,
+          item.teacherAllocationId,
+          item.periodId,
+          item.day,
+        ].join(":"),
       ),
     );
+    const existingTeacherSlots = new Set(
+      existing.map((item) =>
+        [
+          item.academicYearId,
+          item.teacherAllocation.teacherId,
+          item.periodId,
+          item.day,
+        ].join(":"),
+      ),
+    );
+    const existingClassSlots = new Set(
+      existing.map((item) =>
+        [
+          item.academicYearId,
+          item.teacherAllocation.classId,
+          item.teacherAllocation.sectionId,
+          item.periodId,
+          item.day,
+        ].join(":"),
+      ),
+    );
+
+    for (const row of resolved) {
+      const exactKey = [
+        row.academicYearId,
+        row.teacherAllocationId,
+        row.periodId,
+        row.day,
+      ].join(":");
+      const teacherKey = [
+        row.academicYearId,
+        row.teacherId,
+        row.periodId,
+        row.day,
+      ].join(":");
+      const classKey = [
+        row.academicYearId,
+        row.classId,
+        row.sectionId,
+        row.periodId,
+        row.day,
+      ].join(":");
+
+      if (existingExact.has(exactKey)) {
+        throw new Error(`Row ${row.rowNumber}: Timetable entry already exists.`);
+      }
+      if (existingTeacherSlots.has(teacherKey)) {
+        throw new Error(
+          `Row ${row.rowNumber}: Teacher already has another class during this period.`,
+        );
+      }
+      if (existingClassSlots.has(classKey)) {
+        throw new Error(
+          `Row ${row.rowNumber}: Class and section already have another subject during this period.`,
+        );
+      }
+    }
+
+    await prisma.timetable.createMany({
+      data: resolved.map((row) => ({
+        schoolId: row.schoolId,
+        academicYearId: row.academicYearId,
+        teacherAllocationId: row.teacherAllocationId,
+        periodId: row.periodId,
+        day: row.day,
+        active: row.active,
+      })),
+    });
 
     return ApiResponse.success(
       {

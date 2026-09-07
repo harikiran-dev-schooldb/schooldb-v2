@@ -163,20 +163,6 @@ export async function POST(request: Request) {
         continue;
       }
 
-      const existing = await prisma.studentFee.findFirst({
-        where: {
-          schoolId: tenant.schoolId,
-          studentEnrollmentId: enrollment.id,
-          feePlanId: plan.id,
-        },
-        select: { id: true },
-      });
-
-      if (existing) {
-        importErrors.push({ row: row.rowNumber, message: `Fee plan ${row.feePlanName} is already assigned to admission number ${row.admissionNo}.` });
-        continue;
-      }
-
       try {
         await studentFeeService.assign(tenant.schoolId, {
           studentEnrollmentId: enrollment.id,

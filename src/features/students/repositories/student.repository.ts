@@ -14,7 +14,14 @@ export const studentRepository = {
   ) {
     return prisma.student.findMany({
       where,
-      include: {
+      select: {
+        id: true,
+        admissionNo: true,
+        fullName: true,
+        gender: true,
+        phone: true,
+        fatherName: true,
+        status: true,
         enrollments: {
           where: { active: true },
           select: {

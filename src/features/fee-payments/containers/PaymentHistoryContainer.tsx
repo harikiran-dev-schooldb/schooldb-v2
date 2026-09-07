@@ -28,6 +28,12 @@ type PaymentData = {
     paymentCount: number;
     totalAmount: number;
   };
+  pagination: {
+    page: number;
+    pageSize: number;
+    total: number;
+    totalPages: number;
+  };
 };
 
 type Props = {
@@ -70,6 +76,7 @@ export function PaymentHistoryContainer({ params }: Props) {
   );
 
   const [voidDialogOpen, setVoidDialogOpen] = useState(false);
+  const [page, setPage] = useState(1);
 
   /* ------------------------------------------------------------------------ */
   /* Resolve School Slug                                                      */
@@ -99,8 +106,11 @@ export function PaymentHistoryContainer({ params }: Props) {
 
   async function fetchPayments(
     currentFilters: PaymentFilters,
+    currentPage: number,
   ): Promise<PaymentData> {
     const queryParams = new URLSearchParams();
+    queryParams.set("page", String(currentPage));
+    queryParams.set("pageSize", "25");
 
     if (currentFilters.search.trim()) {
       queryParams.set("search", currentFilters.search.trim());
@@ -140,14 +150,18 @@ export function PaymentHistoryContainer({ params }: Props) {
   /* Load Payments                                                            */
   /* ------------------------------------------------------------------------ */
 
-  async function loadPayments(currentFilters: PaymentFilters = filters) {
+  async function loadPayments(
+    currentFilters: PaymentFilters = filters,
+    currentPage: number = page,
+  ) {
     try {
       setLoading(true);
       setError(null);
 
-      const paymentData = await fetchPayments(currentFilters);
+      const paymentData = await fetchPayments(currentFilters, currentPage);
 
       setData(paymentData);
+      setPage(currentPage);
     } catch (error) {
       setError(
         error instanceof Error
@@ -171,7 +185,7 @@ export function PaymentHistoryContainer({ params }: Props) {
         setLoading(true);
         setError(null);
 
-        const paymentData = await fetchPayments(EMPTY_FILTERS);
+        const paymentData = await fetchPayments(EMPTY_FILTERS, 1);
 
         if (!cancelled) {
           setData(paymentData);
@@ -210,13 +224,13 @@ export function PaymentHistoryContainer({ params }: Props) {
   }
 
   function handleSearch() {
-    void loadPayments(filters);
+    void loadPayments(filters, 1);
   }
 
   function clearFilters() {
     setFilters(EMPTY_FILTERS);
 
-    void loadPayments(EMPTY_FILTERS);
+    void loadPayments(EMPTY_FILTERS, 1);
   }
 
   /* ------------------------------------------------------------------------ */
@@ -387,6 +401,18 @@ export function PaymentHistoryContainer({ params }: Props) {
         schoolSlug={schoolSlug}
         onVoid={handleVoid}
       />
+
+      {data && data.pagination.totalPages > 1 && (
+        <div className="flex flex-col gap-3 rounded-2xl border border-border/60 bg-card px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-muted-foreground">
+            Page <span className="font-semibold text-foreground">{data.pagination.page}</span> of {data.pagination.totalPages} · {data.pagination.total.toLocaleString("en-IN")} payments
+          </p>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" className="rounded-lg" disabled={loading || page <= 1} onClick={() => void loadPayments(filters, page - 1)}>Previous</Button>
+            <Button variant="outline" size="sm" className="rounded-lg" disabled={loading || page >= data.pagination.totalPages} onClick={() => void loadPayments(filters, page + 1)}>Next</Button>
+          </div>
+        </div>
+      )}
 
       {/* Void Payment Dialog */}
 

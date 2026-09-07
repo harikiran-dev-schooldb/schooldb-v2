@@ -1,12 +1,13 @@
 import { auth } from "@clerk/nextjs/server";
 import { headers } from "next/headers";
+import { cache } from "react";
 
 import { ApiError } from "./errors";
 import { prisma } from "./prisma";
 import { requireSchoolSlug } from "./tenant-context";
 import { isOperationalRole } from "./access-control";
 
-export async function requireMembership(schoolSlug?: string) {
+export const requireMembership = cache(async function requireMembership(schoolSlug?: string) {
   const { userId } = await auth();
 
   if (!userId) {
@@ -56,7 +57,7 @@ export async function requireMembership(schoolSlug?: string) {
   }
 
   return membership;
-}
+});
 
 export async function requireTenant(schoolSlug?: string) {
   const membership = await requireMembership(schoolSlug);

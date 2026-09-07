@@ -39,36 +39,34 @@ type StudentPhoneMatch = {
   ownMatch: boolean;
 };
 
-export async function resolveOtpUser(
-  schoolId: string,
-  phone: string,
-  accountType: "FAMILY" | "STAFF",
-) {
-  if (accountType === "STAFF") {
-    const staffUsers = await prisma.user.findMany({
-      where: {
-        phone,
-        memberships: {
-          some: {
-            schoolId,
-            isActive: true,
-            role: {
-              in: [
-                "SUPER_ADMIN",
-                "SCHOOL_ADMIN",
-                "TEACHER",
-                "ACCOUNTANT",
-                "RECEPTIONIST",
-              ],
-            },
-          },
-        },
-      },
-      select: { id: true, clerkUserId: true },
-      take: 2,
-    });
-    return staffUsers.length === 1 ? staffUsers[0] : null;
-  }
+const STAFF_ROLES = [
+  "SUPER_ADMIN",
+  "SCHOOL_ADMIN",
+  "TEACHER",
+  "ACCOUNTANT",
+  "RECEPTIONIST",
+] as const;
+
+export type OtpAccount = {
+  id: string;
+  clerkUserId: string;
+  role: string;
+  name: string;
+  detail: string;
+};
+
+type UserIdRow = { id: string };
+
+export async function resolveOtpAccounts(schoolId: string, phone: string) {
+  const staffUserIds = await prisma.$queryRaw<UserIdRow[]>(Prisma.sql`
+    SELECT DISTINCT u.id
+    FROM "User" u
+    INNER JOIN "Membership" m ON m."userId" = u.id
+    WHERE m."schoolId" = ${schoolId}
+      AND m."isActive" = true
+      AND m.role::text IN (${Prisma.join(STAFF_ROLES)})
+      AND RIGHT(regexp_replace(COALESCE(u.phone, ''), '[^0-9]', '', 'g'), 10) = ${phone}
+  `);
 
   const matches = await prisma.$queryRaw<StudentPhoneMatch[]>(Prisma.sql`
     SELECT
@@ -86,30 +84,71 @@ export async function resolveOtpUser(
       )
   `);
 
-  if (matches.length === 0) return null;
-
   const directClerkIds = [...new Set(matches.filter((match) => match.ownMatch && match.clerkId).map((match) => match.clerkId!))];
-  if (directClerkIds.length > 0) {
-    const directUsers = await prisma.user.findMany({
+  const directUsers = directClerkIds.length > 0
+    ? await prisma.user.findMany({
       where: {
         clerkUserId: { in: directClerkIds },
-        memberships: { some: { schoolId, isActive: true, role: { in: ["STUDENT", "PARENT"] } } },
+        memberships: { some: { schoolId, isActive: true, role: "STUDENT" } },
       },
-      select: { id: true, clerkUserId: true },
-      take: 2,
-    });
-    if (directUsers.length === 1) return directUsers[0];
-  }
+      select: { id: true },
+    })
+    : [];
 
-  const parentLinks = await prisma.parentStudentLink.findMany({
+  const parentLinks = matches.length > 0 ? await prisma.parentStudentLink.findMany({
     where: {
       schoolId,
       studentId: { in: matches.map((match) => match.studentId) },
       active: true,
       parentUser: { memberships: { some: { schoolId, isActive: true, role: "PARENT" } } },
     },
-    select: { parentUser: { select: { id: true, clerkUserId: true } } },
+    select: { parentUserId: true },
+  }) : [];
+
+  const candidateIds = [...new Set([
+    ...staffUserIds.map((user) => user.id),
+    ...directUsers.map((user) => user.id),
+    ...parentLinks.map((link) => link.parentUserId),
+  ])];
+
+  if (candidateIds.length === 0) return [];
+
+  const users = await prisma.user.findMany({
+    where: { id: { in: candidateIds } },
+    select: {
+      id: true,
+      clerkUserId: true,
+      firstName: true,
+      lastName: true,
+      memberships: {
+        where: { schoolId, isActive: true },
+        select: { role: true },
+        take: 1,
+      },
+    },
   });
-  const uniqueParents = new Map(parentLinks.map((link) => [link.parentUser.id, link.parentUser]));
-  return uniqueParents.size === 1 ? [...uniqueParents.values()][0] : null;
+
+  const studentProfiles = directClerkIds.length > 0
+    ? await prisma.student.findMany({
+        where: { schoolId, status: "ACTIVE", clerkId: { in: directClerkIds } },
+        select: { clerkId: true, fullName: true, admissionNo: true },
+      })
+    : [];
+  const studentsByClerkId = new Map(
+    studentProfiles.filter((student) => student.clerkId).map((student) => [student.clerkId!, student]),
+  );
+
+  return users.flatMap<OtpAccount>((user) => {
+    const membership = user.memberships[0];
+    if (!membership) return [];
+    const student = membership.role === "STUDENT" ? studentsByClerkId.get(user.clerkUserId) : undefined;
+    const userName = [user.firstName, user.lastName].filter(Boolean).join(" ").trim();
+    return [{
+      id: user.id,
+      clerkUserId: user.clerkUserId,
+      role: membership.role,
+      name: student?.fullName || userName || "SchoolDB user",
+      detail: student ? `Admission ${student.admissionNo}` : membership.role.replaceAll("_", " ").toLowerCase(),
+    }];
+  });
 }

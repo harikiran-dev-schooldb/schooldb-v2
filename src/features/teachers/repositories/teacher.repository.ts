@@ -13,6 +13,18 @@ export const teacherRepository = {
       where,
       skip: options?.skip,
       take: options?.take,
+      select: {
+        id: true,
+        employeeId: true,
+        fullName: true,
+        gender: true,
+        phone: true,
+        email: true,
+        designation: true,
+        qualification: true,
+        joiningDate: true,
+        active: true,
+      },
 
       orderBy: [
         {

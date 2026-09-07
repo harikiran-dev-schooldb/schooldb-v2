@@ -108,18 +108,20 @@ model User {
 }
 
 model OtpChallenge {
-  id         String   @id @default(cuid())
-  schoolId   String
-  userId     String
-  phoneHash  String
-  codeHash   String
-  expiresAt  DateTime
-  attempts   Int      @default(0)
-  lastSentAt DateTime @default(now())
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  school     School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id               String   @id @default(cuid())
+  schoolId         String
+  userId           String
+  candidateUserIds Json     @default("[]")
+  phoneHash        String
+  codeHash         String
+  expiresAt        DateTime
+  verifiedAt       DateTime?
+  attempts         Int      @default(0)
+  lastSentAt       DateTime @default(now())
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  school           School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([schoolId, phoneHash])
   @@index([expiresAt])
@@ -265,6 +267,7 @@ model Student {
   @@index([status])
   @@index([schoolId, fullName])
   @@index([schoolId, phone])
+  @@index([schoolId, status, createdAt])
 }
 
 model ParentStudentLink {
@@ -325,6 +328,7 @@ model Section {
   allocations        TeacherAllocation[]
 
   @@unique([classId, name])
+  @@index([classId, active, displayOrder])
 }
 
 model StudentEnrollment {
@@ -361,6 +365,7 @@ model StudentEnrollment {
   @@index([classId])
   @@index([sectionId])
   @@index([schoolId, active])
+  @@index([schoolId, academicYearId, active])
   @@index([academicYearId, classId, sectionId])
 }
 
@@ -442,6 +447,7 @@ model Teacher {
 
   @@unique([schoolId, employeeId])
   @@index([schoolId])
+  @@index([schoolId, active, fullName])
 }
 
 model TeacherAllocation {
@@ -466,6 +472,7 @@ model TeacherAllocation {
 
   @@unique([schoolId, academicYearId, teacherId, subjectId, classId, sectionId])
   @@index([schoolId])
+  @@index([schoolId, active, academicYearId])
 }
 
 model Period {
@@ -506,6 +513,7 @@ model Timetable {
   @@index([academicYearId])
   @@index([teacherAllocationId])
   @@index([periodId])
+  @@index([schoolId, academicYearId, day, periodId])
 }
 
 model AttendanceSession {
@@ -584,6 +592,7 @@ model Homework {
   @@index([sectionId])
   @@index([schoolId, academicYearId])
   @@index([schoolId, dueDate])
+  @@index([schoolId, active, assignedDate])
 }
 
 model FeeCategory {
@@ -790,6 +799,7 @@ model FeePayment {
   @@index([schoolId, studentEnrollmentId])
   @@index([paymentDate])
   @@index([status])
+  @@index([schoolId, status, paymentDate])
 }
 
 model FeePaymentAllocation {
@@ -892,6 +902,7 @@ model StudentActivity {
   @@index([studentId])
   @@index([enrollmentId])
   @@index([createdAt])
+  @@index([studentId, createdAt])
 }
 
 model ClassSubject {

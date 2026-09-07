@@ -126,15 +126,22 @@ export async function POST(request: Request) {
       prepared.push({ ...row, examName, academicYear, className, sectionName, subjectName, examDate, maxMarks, passMarks });
     }
 
-    const [academicYears, exams, classes, subjects] = await Promise.all([
+    const [academicYears, exams, classes, sections, subjects] = await Promise.all([
       prisma.academicYear.findMany({ where: { schoolId: tenant.schoolId }, select: { id: true, name: true } }),
       prisma.exam.findMany({ where: { schoolId: tenant.schoolId }, select: { id: true, name: true, academicYearId: true, startDate: true, endDate: true } }),
       prisma.class.findMany({ where: { schoolId: tenant.schoolId }, select: { id: true, name: true } }),
+      prisma.section.findMany({
+        where: { class: { schoolId: tenant.schoolId } },
+        select: { id: true, classId: true, name: true },
+      }),
       prisma.subject.findMany({ where: { schoolId: tenant.schoolId }, select: { id: true, name: true } }),
     ]);
 
     const yearByName = new Map(academicYears.map((year) => [normalize(year.name), year]));
     const classByName = new Map(classes.map((item) => [normalize(item.name), item]));
+    const sectionByClassAndName = new Map(
+      sections.map((item) => [`${item.classId}:${normalize(item.name)}`, item]),
+    );
     const subjectByName = new Map(subjects.map((item) => [normalize(item.name), item]));
     const examByKey = new Map(exams.map((exam) => [`${exam.academicYearId}:${normalize(exam.name)}`, exam]));
     const resolved: ResolvedRow[] = [];
@@ -154,9 +161,10 @@ export async function POST(request: Request) {
 
       let sectionId: string | null = null;
       if (row.sectionName) {
-        const section = await prisma.section.findFirst({ where: { classId: classRecord.id, name: row.sectionName }, select: { id: true, classId: true } });
+        const section = sectionByClassAndName.get(
+          `${classRecord.id}:${normalize(row.sectionName)}`,
+        );
         if (!section) throw new Error(`Row ${rowNumber}: Section ${row.sectionName} not found in ${row.className}.`);
-        if (section.classId !== classRecord.id) throw new Error(`Row ${rowNumber}: Section does not belong to the selected class.`);
         sectionId = section.id;
       }
 
@@ -172,7 +180,7 @@ export async function POST(request: Request) {
     });
     if (existing.length > 0) throw new Error("One or more exam schedules already exist for the selected exam, class, section and subject.");
 
-    await prisma.$transaction(resolved.map((row) => prisma.examSchedule.create({ data: row })));
+    await prisma.examSchedule.createMany({ data: resolved });
 
     return ApiResponse.success({ created: resolved.length, failed: 0, errors: [] }, "Exam schedules imported successfully.");
   });

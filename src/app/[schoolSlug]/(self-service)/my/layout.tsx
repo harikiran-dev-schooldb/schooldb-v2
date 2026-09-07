@@ -1,8 +1,11 @@
 import type { ReactNode } from "react";
+import { redirect } from "next/navigation";
 
 import { SelfServiceHeader } from "@/components/self-service/SelfServiceHeader";
 import { listAccessibleStudents } from "@/lib/student-access";
 import { unreadNotificationCount } from "@/features/notifications/service";
+import { requireMembership } from "@/lib/auth";
+import { isOperationalRole, isSelfServiceRole } from "@/lib/access-control";
 
 export default async function SelfServiceLayout({
   children,
@@ -12,6 +15,10 @@ export default async function SelfServiceLayout({
   params: Promise<{ schoolSlug: string }>;
 }) {
   const { schoolSlug } = await params;
+  const routeMembership = await requireMembership(schoolSlug);
+  if (isOperationalRole(routeMembership.role)) redirect(`/${schoolSlug}/dashboard`);
+  if (!isSelfServiceRole(routeMembership.role)) redirect("/");
+
   const { membership, students } = await listAccessibleStudents(schoolSlug);
   const unreadCount = await unreadNotificationCount(schoolSlug);
 

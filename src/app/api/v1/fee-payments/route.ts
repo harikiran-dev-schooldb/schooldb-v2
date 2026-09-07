@@ -5,6 +5,7 @@ import { validateBody } from "@/lib/validation";
 
 import { feePaymentSchema } from "@/features/fee-payments/schemas/fee-payment.schema";
 import { feePaymentService } from "@/features/fee-payments/services/fee-payment.service";
+import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 
 export async function POST(req: Request) {
@@ -34,61 +35,90 @@ export async function GET(req: Request) {
     const academicYearId = searchParams.get("academicYearId") || undefined;
     const fromDate = searchParams.get("fromDate") || undefined;
     const toDate = searchParams.get("toDate") || undefined;
+    const page = Math.max(1, Number(searchParams.get("page")) || 1);
+    const pageSize = Math.min(100, Math.max(10, Number(searchParams.get("pageSize")) || 25));
 
-    const payments = await prisma.feePayment.findMany({
-      where: {
-        schoolId: tenant.schoolId,
-        status: "SUCCESS",
-        ...(paymentMode
-          ? {
-              paymentMode: paymentMode as
-                | "CASH"
-                | "UPI"
-                | "CARD"
-                | "BANK_TRANSFER",
-            }
-          : {}),
-        ...(fromDate || toDate
-          ? {
-              paymentDate: {
-                ...(fromDate
-                  ? { gte: new Date(`${fromDate}T00:00:00.000Z`) }
-                  : {}),
-                ...(toDate ? { lte: new Date(`${toDate}T23:59:59.999Z`) } : {}),
+    const where: Prisma.FeePaymentWhereInput = {
+      schoolId: tenant.schoolId,
+      status: "SUCCESS",
+      ...(paymentMode
+        ? {
+            paymentMode: paymentMode as
+              | "CASH"
+              | "UPI"
+              | "CARD"
+              | "BANK_TRANSFER",
+          }
+        : {}),
+      ...(fromDate || toDate
+        ? {
+            paymentDate: {
+              ...(fromDate
+                ? { gte: new Date(`${fromDate}T00:00:00.000Z`) }
+                : {}),
+              ...(toDate ? { lte: new Date(`${toDate}T23:59:59.999Z`) } : {}),
+            },
+          }
+        : {}),
+      ...(academicYearId ? { studentEnrollment: { academicYearId } } : {}),
+      ...(search
+        ? {
+            OR: [
+              { receiptNo: { contains: search, mode: "insensitive" } },
+              {
+                studentEnrollment: {
+                  student: {
+                    fullName: { contains: search, mode: "insensitive" },
+                  },
+                },
               },
-            }
-          : {}),
-        ...(academicYearId ? { studentEnrollment: { academicYearId } } : {}),
-        ...(search
-          ? {
-              OR: [
-                { receiptNo: { contains: search, mode: "insensitive" } },
-                {
-                  studentEnrollment: {
-                    student: {
-                      fullName: { contains: search, mode: "insensitive" },
-                    },
+              {
+                studentEnrollment: {
+                  student: {
+                    admissionNo: { contains: search, mode: "insensitive" },
                   },
                 },
-                {
-                  studentEnrollment: {
-                    student: {
-                      admissionNo: { contains: search, mode: "insensitive" },
-                    },
-                  },
-                },
-              ],
-            }
-          : {}),
-      },
-      orderBy: { paymentDate: "desc" },
-      include: {
+              },
+            ],
+          }
+        : {}),
+    };
+
+    const [payments, aggregate] = await Promise.all([
+      prisma.feePayment.findMany({
+        where,
+        orderBy: [{ paymentDate: "desc" }, { id: "desc" }],
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        select: {
+        id: true,
+        receiptNo: true,
+        paymentDate: true,
+        amount: true,
+        paymentMode: true,
+        referenceNo: true,
+        remarks: true,
+        status: true,
         studentEnrollment: {
-          include: { student: true, class: true, section: true },
+          select: {
+            student: {
+              select: { id: true, fullName: true, admissionNo: true },
+            },
+            class: { select: { name: true } },
+            section: { select: { name: true } },
+          },
         },
-        allocations: true,
-      },
-    });
+        _count: {
+          select: { allocations: true },
+        },
+        },
+      }),
+      prisma.feePayment.aggregate({
+        where,
+        _count: { _all: true },
+        _sum: { amount: true },
+      }),
+    ]);
 
     const rows = payments.map((payment) => ({
       id: payment.id,
@@ -106,14 +136,20 @@ export async function GET(req: Request) {
         class: payment.studentEnrollment.class.name,
         section: payment.studentEnrollment.section.name,
       },
-      allocationCount: payment.allocations.length,
+      allocationCount: payment._count.allocations,
     }));
 
     return ApiResponse.success({
       rows,
       summary: {
-        paymentCount: rows.length,
-        totalAmount: rows.reduce((sum, payment) => sum + payment.amount, 0),
+        paymentCount: aggregate._count._all,
+        totalAmount: Number(aggregate._sum.amount ?? 0),
+      },
+      pagination: {
+        page,
+        pageSize,
+        total: aggregate._count._all,
+        totalPages: Math.max(1, Math.ceil(aggregate._count._all / pageSize)),
       },
     });
   });

@@ -28,7 +28,8 @@ const FEATURES = [
 ];
 
 type Props = { schoolSlug: string; schoolName: string };
-type LoginMode = "FAMILY" | "STAFF" | "PASSWORD";
+type LoginMode = "OTP" | "PASSWORD";
+type AccountChoice = { id: string; role: string; name: string };
 
 function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Something went wrong. Please try again.";
@@ -44,7 +45,9 @@ export function TenantOtpSignIn({ schoolSlug, schoolName }: Props) {
   const [resendTimer, setResendTimer] = useState(0);
   const [isSending, setIsSending] = useState(false);
   const [currentFeature, setCurrentFeature] = useState(0);
-  const [loginMode, setLoginMode] = useState<LoginMode>("FAMILY");
+  const [loginMode, setLoginMode] = useState<LoginMode>("OTP");
+  const [accountChoices, setAccountChoices] = useState<AccountChoice[]>([]);
+  const [challengeId, setChallengeId] = useState("");
   const otpInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -77,7 +80,7 @@ export function TenantOtpSignIn({ schoolSlug, schoolName }: Props) {
       const response = await fetch("/api/v1/public/auth/send-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: phoneNumber, schoolSlug, accountType: loginMode }),
+        body: JSON.stringify({ phone: phoneNumber, schoolSlug }),
       });
       const data = (await response.json()) as { error?: string; message?: string };
       if (!response.ok) throw new Error(data.error || "Failed to send OTP.");
@@ -92,6 +95,16 @@ export function TenantOtpSignIn({ schoolSlug, schoolName }: Props) {
     }
   };
 
+  const completeSignIn = async (token: string) => {
+    const ticketResult = await signIn.ticket({ ticket: token });
+    if (ticketResult.error) throw ticketResult.error;
+    if (signIn.status !== "complete") throw new Error("Authentication could not be completed.");
+    const finalizeResult = await signIn.finalize({
+      navigate: ({ decorateUrl }) => router.replace(decorateUrl(`/${schoolSlug}`)),
+    });
+    if (finalizeResult.error) throw finalizeResult.error;
+  };
+
   const handleSignIn = async () => {
     if (isSending || signInStatus === "fetching") return;
     if (!/^\d{6}$/.test(otpCode)) {
@@ -103,17 +116,43 @@ export function TenantOtpSignIn({ schoolSlug, schoolName }: Props) {
       const response = await fetch("/api/v1/public/auth/verify-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: phoneNumber, otp: otpCode, schoolSlug }),
+        body: JSON.stringify({ action: "VERIFY", phone: phoneNumber, otp: otpCode, schoolSlug }),
+      });
+      const data = (await response.json()) as {
+        error?: string;
+        token?: string;
+        requiresAccountSelection?: boolean;
+        challengeId?: string;
+        accounts?: AccountChoice[];
+      };
+      if (!response.ok) throw new Error(data.error || "OTP verification failed.");
+      if (data.requiresAccountSelection && data.challengeId && data.accounts?.length) {
+        setChallengeId(data.challengeId);
+        setAccountChoices(data.accounts);
+        toast.success("Mobile number verified. Choose the account to open.");
+        return;
+      }
+      if (!data.token) throw new Error("Authentication could not be completed.");
+      await completeSignIn(data.token);
+    } catch (error) {
+      toast.error(errorMessage(error));
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  const handleAccountSelect = async (accountId: string) => {
+    if (isSending || signInStatus === "fetching" || !challengeId) return;
+    setIsSending(true);
+    try {
+      const response = await fetch("/api/v1/public/auth/verify-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "SELECT", challengeId, accountId, schoolSlug }),
       });
       const data = (await response.json()) as { error?: string; token?: string };
-      if (!response.ok || !data.token) throw new Error(data.error || "OTP verification failed.");
-      const ticketResult = await signIn.ticket({ ticket: data.token });
-      if (ticketResult.error) throw ticketResult.error;
-      if (signIn.status !== "complete") throw new Error("Authentication could not be completed.");
-      const finalizeResult = await signIn.finalize({
-        navigate: ({ decorateUrl }) => router.replace(decorateUrl(`/${schoolSlug}`)),
-      });
-      if (finalizeResult.error) throw finalizeResult.error;
+      if (!response.ok || !data.token) throw new Error(data.error || "Account selection failed.");
+      await completeSignIn(data.token);
     } catch (error) {
       toast.error(errorMessage(error));
     } finally {
@@ -124,14 +163,25 @@ export function TenantOtpSignIn({ schoolSlug, schoolName }: Props) {
   const feature = FEATURES[currentFeature];
   const FeatureIcon = feature.icon;
   const passwordMode = loginMode === "PASSWORD";
-  const staffOtpMode = loginMode === "STAFF";
 
   const switchLoginMode = (mode: LoginMode) => {
     setLoginMode(mode);
     setPendingVerification(false);
     setOtpCode("");
     setResendTimer(0);
+    setAccountChoices([]);
+    setChallengeId("");
   };
+
+  const resetPhone = () => {
+    setPendingVerification(false);
+    setOtpCode("");
+    setResendTimer(0);
+    setAccountChoices([]);
+    setChallengeId("");
+  };
+
+  const formatRole = (role: string) => role.replaceAll("_", " ").toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase());
 
   return (
     <main className="flex min-h-screen w-full bg-white font-sans">
@@ -143,17 +193,10 @@ export function TenantOtpSignIn({ schoolSlug, schoolName }: Props) {
           </div>
 
           <div className="mb-8">
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-indigo-600">{passwordMode || staffOtpMode ? "School workspace" : "Welcome back"}</p>
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-indigo-600">{passwordMode ? "School workspace" : "Welcome back"}</p>
             <h1 className="mt-3 text-3xl font-bold tracking-[-0.04em] text-slate-950 sm:text-4xl">{passwordMode ? "Staff sign in" : "Login with WhatsApp"}</h1>
-            <p className="mt-3 text-sm leading-6 text-slate-500">{passwordMode ? "Use your existing administrator or teacher credentials." : staffOtpMode ? "Use the mobile number registered to your staff account." : "Use the mobile number registered with the student. No password needed."}</p>
+            <p className="mt-3 text-sm leading-6 text-slate-500">{passwordMode ? "Use your existing administrator or teacher credentials." : "Use your registered mobile number. If it belongs to more than one account, you can choose the account after verification."}</p>
           </div>
-
-          {!passwordMode && (
-            <div className="mb-6 grid grid-cols-2 rounded-2xl border border-slate-200 bg-slate-50 p-1.5" role="tablist" aria-label="Choose account type">
-              <button type="button" role="tab" aria-selected={loginMode === "FAMILY"} onClick={() => switchLoginMode("FAMILY")} className={`flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-xs font-bold transition ${loginMode === "FAMILY" ? "bg-white text-indigo-700 shadow-sm ring-1 ring-slate-200" : "text-slate-500 hover:text-slate-800"}`}><Users className="size-4" />Student / Parent</button>
-              <button type="button" role="tab" aria-selected={loginMode === "STAFF"} onClick={() => switchLoginMode("STAFF")} className={`flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-xs font-bold transition ${loginMode === "STAFF" ? "bg-white text-indigo-700 shadow-sm ring-1 ring-slate-200" : "text-slate-500 hover:text-slate-800"}`}><UserRoundCog className="size-4" />Staff</button>
-            </div>
-          )}
 
           {passwordMode ? (
             <SignIn
@@ -164,18 +207,35 @@ export function TenantOtpSignIn({ schoolSlug, schoolName }: Props) {
                 elements: { rootBox: "w-full", card: "w-full bg-transparent shadow-none border-0 p-0", headerTitle: "hidden", headerSubtitle: "hidden", formButtonPrimary: "bg-indigo-600 hover:bg-indigo-700", footerActionLink: "text-indigo-600" },
               }}
             />
+          ) : accountChoices.length > 0 ? (
+            <div className="space-y-4">
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+                <p className="text-sm font-bold text-emerald-900">Mobile number verified</p>
+                <p className="mt-1 text-xs leading-5 text-emerald-700">Choose which SchoolDB account you want to open.</p>
+              </div>
+              <div className="grid gap-3" aria-label="Choose an account">
+                {accountChoices.map((account) => (
+                  <button key={account.id} type="button" disabled={isSending} onClick={() => void handleAccountSelect(account.id)} className="group flex w-full items-center gap-4 rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-indigo-300 hover:shadow-lg disabled:cursor-wait disabled:opacity-60">
+                    <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600"><UserRoundCog className="size-5" /></span>
+                    <span className="min-w-0 flex-1"><span className="block truncate text-sm font-bold text-slate-950">{account.name}</span><span className="mt-1 block text-xs font-semibold text-slate-500">{formatRole(account.role)}</span></span>
+                    {isSending ? <LoaderCircle className="size-5 animate-spin text-indigo-500" /> : <ChevronRight className="size-5 text-slate-300 transition-transform group-hover:translate-x-1 group-hover:text-indigo-500" />}
+                  </button>
+                ))}
+              </div>
+              <button type="button" onClick={resetPhone} className="text-xs font-semibold text-slate-500 hover:text-indigo-600">Use a different mobile number</button>
+            </div>
           ) : (
             <form onSubmit={(event) => { event.preventDefault(); void (pendingVerification ? handleSignIn() : handleSendOTP()); }} className="space-y-6">
               <OTPLogin phoneNumber={phoneNumber} otpCode={otpCode} setPhoneNumber={setPhoneNumber} setOtpCode={setOtpCode} pendingVerification={pendingVerification} otpInputRef={otpInputRef} isSending={isSending} resendTimer={resendTimer} handleSendOTP={handleSendOTP} />
-              {pendingVerification && <button type="button" onClick={() => { setPendingVerification(false); setOtpCode(""); setResendTimer(0); }} className="text-xs font-semibold text-slate-500 hover:text-indigo-600">Use a different mobile number</button>}
+              {pendingVerification && <button type="button" onClick={resetPhone} className="text-xs font-semibold text-slate-500 hover:text-indigo-600">Use a different mobile number</button>}
               <button type="submit" disabled={isSending || (pendingVerification && otpCode.length !== 6)} className="group flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 px-5 text-sm font-bold text-white shadow-[0_14px_32px_rgba(15,23,42,0.2)] transition hover:-translate-y-0.5 hover:bg-indigo-600 hover:shadow-[0_18px_38px_rgba(79,70,229,0.25)] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0">
-                {isSending ? <LoaderCircle className="size-5 animate-spin" /> : <>{pendingVerification ? "Verify & login" : "Send WhatsApp OTP"}<ChevronRight className="size-4 opacity-60 transition-transform group-hover:translate-x-1" /></>}
+                {isSending ? <LoaderCircle className="size-5 animate-spin" /> : <>{pendingVerification ? "Verify mobile number" : "Send WhatsApp OTP"}<ChevronRight className="size-4 opacity-60 transition-transform group-hover:translate-x-1" /></>}
               </button>
             </form>
           )}
 
-          <button type="button" onClick={() => switchLoginMode(passwordMode ? "STAFF" : "PASSWORD")} className="mt-7 flex w-full items-center justify-center gap-2 border-t border-slate-100 pt-6 text-sm font-semibold text-slate-500 transition hover:text-indigo-600">
-            <LockKeyhole className="size-4" />{passwordMode ? "Use staff WhatsApp OTP instead" : "Use staff email or password instead"}
+          <button type="button" onClick={() => switchLoginMode(passwordMode ? "OTP" : "PASSWORD")} className="mt-7 flex w-full items-center justify-center gap-2 border-t border-slate-100 pt-6 text-sm font-semibold text-slate-500 transition hover:text-indigo-600">
+            <LockKeyhole className="size-4" />{passwordMode ? "Use WhatsApp OTP instead" : "Use staff email or password instead"}
           </button>
           <div className="mt-7 flex items-center justify-between text-[11px] text-slate-400"><span>Powered by SchoolDB</span><span className="flex items-center gap-1.5"><ShieldCheck className="size-3.5 text-emerald-500" />Secure connection</span></div>
         </div>

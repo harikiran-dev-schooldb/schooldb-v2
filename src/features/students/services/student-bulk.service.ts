@@ -1,51 +1,121 @@
-import { studentService } from "./student.service";
-import {
-  bulkStudentsSchema,
-  type BulkStudentRow,
-} from "../schemas/bulk-student.schema";
+import { prisma } from "@/lib/prisma";
+
+import { bulkStudentsSchema } from "../schemas/bulk-student.schema";
+
+type ImportResult = {
+  row: number;
+  status: "created" | "failed";
+  admissionNo: string;
+  message?: string;
+};
 
 export const studentBulkService = {
   async import(schoolId: string, input: unknown) {
     const parsed = bulkStudentsSchema.parse(input);
-
-    const results: Array<{
+    const results: ImportResult[] = [];
+    const seen = new Set<string>();
+    const candidates: Array<{
       row: number;
-      status: "created" | "failed";
-      admissionNo: string;
-      message?: string;
+      student: (typeof parsed.students)[number];
     }> = [];
 
-    for (const [index, row] of parsed.students.entries()) {
-      const student = row as BulkStudentRow;
+    for (const [index, student] of parsed.students.entries()) {
+      const row = index + 2;
 
-      try {
-        await studentService.create(schoolId, student);
-
+      if (seen.has(student.admissionNo)) {
         results.push({
-          row: index + 2,
-          status: "created",
-          admissionNo: student.admissionNo,
-        });
-      } catch (error) {
-        results.push({
-          row: index + 2,
+          row,
           status: "failed",
           admissionNo: student.admissionNo,
-          message:
-            error instanceof Error
-              ? error.message
-              : "Unable to create student.",
+          message: "Duplicate admission number in the import file.",
         });
+        continue;
       }
+
+      seen.add(student.admissionNo);
+      candidates.push({ row, student });
     }
 
-    const created = results.filter((item) => item.status === "created").length;
-    const failed = results.length - created;
+    const existing = await prisma.student.findMany({
+      where: {
+        schoolId,
+        admissionNo: {
+          in: candidates.map(({ student }) => student.admissionNo),
+        },
+      },
+      select: { admissionNo: true },
+    });
+    const existingAdmissionNos = new Set(
+      existing.map((student) => student.admissionNo),
+    );
+    const eligible = candidates.filter(({ row, student }) => {
+      if (!existingAdmissionNos.has(student.admissionNo)) return true;
+
+      results.push({
+        row,
+        status: "failed",
+        admissionNo: student.admissionNo,
+        message: "Admission number already exists.",
+      });
+      return false;
+    });
+
+    const createdStudents = await prisma.$transaction(async (tx) => {
+      const created = await tx.student.createManyAndReturn({
+        data: eligible.map(({ student }) => ({
+          schoolId,
+          admissionNo: student.admissionNo,
+          fullName: student.fullName,
+          gender: student.gender,
+          dob: new Date(`${student.dob}T00:00:00`),
+          phone: student.phone,
+          email: student.email || null,
+          username: `STD_${student.admissionNo}`,
+          status: student.status,
+        })),
+        skipDuplicates: true,
+        select: { id: true, admissionNo: true, fullName: true },
+      });
+
+      if (created.length > 0) {
+        await tx.studentActivity.createMany({
+          data: created.map((student) => ({
+            schoolId,
+            studentId: student.id,
+            type: "STUDENT_CREATED",
+            title: "Student profile created",
+            description: `Student ${student.admissionNo} — ${student.fullName} was added to SchoolDB.`,
+          })),
+        });
+      }
+
+      return created;
+    });
+
+    const createdAdmissionNos = new Set(
+      createdStudents.map((student) => student.admissionNo),
+    );
+
+    for (const { row, student } of eligible) {
+      const wasCreated = createdAdmissionNos.has(student.admissionNo);
+      results.push({
+        row,
+        status: wasCreated ? "created" : "failed",
+        admissionNo: student.admissionNo,
+        ...(wasCreated
+          ? {}
+          : { message: "Admission number was created by another request." }),
+      });
+    }
+
+    const ordered = results.toSorted((a, b) => a.row - b.row);
+    const created = ordered.filter((item) => item.status === "created").length;
+    const failed = ordered.length - created;
 
     return {
       created,
       failed,
-      errors: results
+      errors: ordered
         .filter((item) => item.status === "failed")
         .map((item) => ({
           row: item.row,

@@ -65,19 +65,15 @@ export async function POST(request: Request) {
       throw new Error(`Exam already exists: ${existing[0].name}`);
     }
 
-    await prisma.$transaction(
-      validated.map((item) =>
-        prisma.exam.create({
-          data: {
-            schoolId: tenant.schoolId,
-            academicYearId: item.academicYearId,
-            name: item.name.trim(),
-            startDate: new Date(item.startDate),
-            endDate: new Date(item.endDate),
-          },
-        }),
-      ),
-    );
+    await prisma.exam.createMany({
+      data: validated.map((item) => ({
+        schoolId: tenant.schoolId,
+        academicYearId: item.academicYearId,
+        name: item.name.trim(),
+        startDate: new Date(item.startDate),
+        endDate: new Date(item.endDate),
+      })),
+    });
 
     return ApiResponse.success(
       { created: validated.length, failed: 0, errors: [] },

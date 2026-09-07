@@ -59,16 +59,27 @@ export async function GET(req: Request) {
           voidedAt: "desc",
         },
 
-        include: {
+        select: {
+          id: true,
+          receiptNo: true,
+          paymentDate: true,
+          voidedAt: true,
+          voidReason: true,
+          amount: true,
+          paymentMode: true,
+          referenceNo: true,
           studentEnrollment: {
-            include: {
-              student: true,
-              class: true,
-              section: true,
+            select: {
+              student: {
+                select: { id: true, fullName: true, admissionNo: true },
+              },
+              class: { select: { name: true } },
+              section: { select: { name: true } },
             },
           },
-
-          allocations: true,
+          _count: {
+            select: { allocations: true },
+          },
         },
       });
 
@@ -106,7 +117,7 @@ export async function GET(req: Request) {
       },
 
       allocationCount:
-        payment.allocations.length,
+        payment._count.allocations,
     }));
 
     const totalVoidedAmount =

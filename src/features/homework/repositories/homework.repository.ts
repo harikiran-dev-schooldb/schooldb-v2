@@ -3,11 +3,11 @@ import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 
 const homeworkInclude = {
-  academicYear: true,
-  teacher: true,
-  subject: true,
-  class: true,
-  section: true,
+  academicYear: { select: { id: true, name: true } },
+  teacher: { select: { id: true, fullName: true } },
+  subject: { select: { id: true, name: true } },
+  class: { select: { id: true, name: true } },
+  section: { select: { id: true, name: true } },
 } satisfies Prisma.HomeworkInclude;
 
 export const homeworkRepository = {

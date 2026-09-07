@@ -16,6 +16,12 @@ type ReceiptData = {
     paymentCount: number;
     totalAmount: number;
   };
+  pagination: {
+    page: number;
+    pageSize: number;
+    total: number;
+    totalPages: number;
+  };
 };
 
 type Props = {
@@ -54,13 +60,16 @@ export function FeeReceiptsContainer({ schoolSlug }: Props) {
   const [toDate, setToDate] = useState("");
 
   const [academicYearId, setAcademicYearId] = useState("");
+  const [page, setPage] = useState(1);
 
   /* ---------------------------------------------------------------------- */
   /* Fetch Payments - No React State                                       */
   /* ---------------------------------------------------------------------- */
 
-  async function fetchPayments(filters: ReceiptFilters): Promise<ReceiptData> {
+  async function fetchPayments(filters: ReceiptFilters, currentPage: number): Promise<ReceiptData> {
     const query = new URLSearchParams();
+    query.set("page", String(currentPage));
+    query.set("pageSize", "25");
 
     if (filters.search.trim()) {
       query.set("search", filters.search.trim());
@@ -112,14 +121,16 @@ export function FeeReceiptsContainer({ schoolSlug }: Props) {
       fromDate,
       toDate,
     },
+    currentPage: number = page,
   ) {
     try {
       setLoading(true);
       setError(null);
 
-      const receiptData = await fetchPayments(currentFilters);
+      const receiptData = await fetchPayments(currentFilters, currentPage);
 
       setData(receiptData);
+      setPage(currentPage);
     } catch (error) {
       setError(
         error instanceof Error ? error.message : "Failed to load receipts.",
@@ -138,7 +149,7 @@ export function FeeReceiptsContainer({ schoolSlug }: Props) {
 
     async function loadInitialPayments() {
       try {
-        const receiptData = await fetchPayments(EMPTY_FILTERS);
+        const receiptData = await fetchPayments(EMPTY_FILTERS, 1);
 
         if (!cancelled) {
           setData(receiptData);
@@ -175,7 +186,7 @@ export function FeeReceiptsContainer({ schoolSlug }: Props) {
     setFromDate("");
     setToDate("");
 
-    void loadPayments(EMPTY_FILTERS);
+    void loadPayments(EMPTY_FILTERS, 1);
   }
 
   /* ---------------------------------------------------------------------- */
@@ -232,7 +243,7 @@ export function FeeReceiptsContainer({ schoolSlug }: Props) {
         onFromDateChange={setFromDate}
         toDate={toDate}
         onToDateChange={setToDate}
-        onApply={() => void loadPayments()}
+        onApply={() => void loadPayments(undefined, 1)}
         onClear={clearFilters}
         loading={loading}
       />
@@ -240,6 +251,18 @@ export function FeeReceiptsContainer({ schoolSlug }: Props) {
       {error && <p className="text-sm text-destructive">{error}</p>}
 
       <FeeReceiptsTable schoolSlug={schoolSlug} rows={data.rows} />
+
+      {data.pagination.totalPages > 1 && (
+        <div className="flex flex-col gap-3 rounded-2xl border border-border/60 bg-card px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-muted-foreground">
+            Page <span className="font-semibold text-foreground">{data.pagination.page}</span> of {data.pagination.totalPages} · {data.pagination.total.toLocaleString("en-IN")} receipts
+          </p>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" className="rounded-lg" disabled={loading || page <= 1} onClick={() => void loadPayments(undefined, page - 1)}>Previous</Button>
+            <Button variant="outline" size="sm" className="rounded-lg" disabled={loading || page >= data.pagination.totalPages} onClick={() => void loadPayments(undefined, page + 1)}>Next</Button>
+          </div>
+        </div>
+      )}
     </>
   );
 }
