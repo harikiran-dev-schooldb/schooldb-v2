@@ -199,6 +199,7 @@ export const examService = {
       name?: string;
       startDate?: Date;
       endDate?: Date;
+      status?: "DRAFT" | "PUBLISHED" | "COMPLETED" | "CANCELLED";
     },
   ) {
     /*
@@ -287,6 +288,8 @@ export const examService = {
         startDate,
 
         endDate,
+
+        ...(data.status !== undefined ? { status: data.status } : {}),
       },
 
       include: {

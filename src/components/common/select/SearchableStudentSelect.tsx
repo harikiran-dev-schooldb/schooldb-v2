@@ -60,6 +60,7 @@ export function SearchableStudentSelect({
 
         const params = new URLSearchParams();
         params.set("academicYearId", selectedAcademicYearId);
+        params.set("mode", "enrolled");
 
         const res = await fetch(
           `/api/v1/students/options?${params.toString()}`,

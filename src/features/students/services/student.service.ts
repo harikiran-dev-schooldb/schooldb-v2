@@ -137,13 +137,16 @@ export const studentService = {
       allergies: null,
       hostelRequired: false,
       transportRequired: false,
+      whatsappOptIn: false,
       remarks: null,
       ...input,
     };
-    const { dob, joinedDate, ...studentData } = normalized;
+    const { dob, joinedDate, whatsappOptIn, ...studentData } = normalized;
 
     const student = await studentRepository.create({
       ...studentData,
+      whatsappOptIn,
+      whatsappOptInAt: whatsappOptIn ? new Date() : null,
       username: studentUsername(normalized.admissionNo),
       dob: new Date(`${dob}T00:00:00`),
       joinedDate: joinedDate ? new Date(`${joinedDate}T00:00:00`) : null,
@@ -219,10 +222,17 @@ export const studentService = {
     /* Update student                                                  */
     /* -------------------------------------------------------------- */
 
-    const { dob, joinedDate, ...studentData } = input;
+    const { dob, joinedDate, whatsappOptIn, ...studentData } = input;
 
     const updated = await studentRepository.update(id, schoolId, {
       ...studentData,
+      whatsappOptIn,
+      whatsappOptInAt:
+        whatsappOptIn && !student.whatsappOptIn
+          ? new Date()
+          : whatsappOptIn
+            ? student.whatsappOptInAt
+            : null,
       username: studentUsername(input.admissionNo),
       dob: new Date(`${dob}T00:00:00`),
       joinedDate: joinedDate ? new Date(`${joinedDate}T00:00:00`) : null,
@@ -325,11 +335,13 @@ export const studentService = {
     schoolId: string,
     academicYearId: string,
     excludeEnrollmentId?: string,
+    mode: "AVAILABLE" | "ENROLLED" = "AVAILABLE",
   ) {
     const students = await studentRepository.options(
       schoolId,
       academicYearId,
       excludeEnrollmentId,
+      mode,
     );
 
     return students.map((student) => {

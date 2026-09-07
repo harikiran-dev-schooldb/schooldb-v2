@@ -36,6 +36,7 @@ import {
 
 import { EditExamScheduleDialog } from "@/features/exams/components/EditExamScheduleDialog";
 import { CreateExamScheduleDialog } from "./CreateExamScheduleDialog";
+import { ExamStatusControl } from "./ExamStatusControl";
 
 type Exam = {
   id: string;
@@ -333,6 +334,12 @@ export function ExamDetailsPage({ schoolSlug, examId }: Props) {
           </div>
 
           <div className="flex flex-wrap gap-2">
+            <ExamStatusControl
+              examId={examId}
+              examName={exam.name}
+              status={exam.status}
+              onUpdated={loadData}
+            />
             <Button
               variant="outline"
               className="rounded-xl"

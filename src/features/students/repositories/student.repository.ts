@@ -83,16 +83,20 @@ export const studentRepository = {
     schoolId: string,
     academicYearId: string,
     excludeEnrollmentId?: string,
+    mode: "AVAILABLE" | "ENROLLED" = "AVAILABLE",
   ) {
     return prisma.student.findMany({
       where: {
         schoolId,
         status: "ACTIVE",
 
-        enrollments: availableForAcademicYear(
-          academicYearId,
-          excludeEnrollmentId,
-        ),
+        enrollments:
+          mode === "ENROLLED"
+            ? { some: { academicYearId, active: true } }
+            : availableForAcademicYear(
+                academicYearId,
+                excludeEnrollmentId,
+              ),
       },
 
       select: {
@@ -103,6 +107,7 @@ export const studentRepository = {
         enrollments: {
           where: {
             active: true,
+            ...(mode === "ENROLLED" ? { academicYearId } : {}),
           },
 
           orderBy: {

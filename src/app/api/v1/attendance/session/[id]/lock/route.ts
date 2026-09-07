@@ -1,8 +1,10 @@
 import { apiHandler } from "@/lib/api";
 import { requireRole } from "@/lib/auth";
 import { ApiResponse } from "@/lib/response";
+import { after } from "next/server";
 
 import { attendanceService } from "@/features/attendance/services/attendance.service";
+import { processAutomatedCampaign, queueAttendanceSessionAlert } from "@/features/whatsapp/automation";
 
 type Props = {
   params: Promise<{
@@ -20,6 +22,8 @@ export async function POST(req: Request, { params }: Props) {
       tenant.schoolId,
       id,
     );
+    const campaign = await queueAttendanceSessionAlert(tenant.schoolId, id);
+    if (campaign) after(() => processAutomatedCampaign(campaign.id));
 
     return ApiResponse.success(
       result,

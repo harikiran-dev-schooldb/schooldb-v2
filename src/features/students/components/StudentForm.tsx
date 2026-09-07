@@ -91,6 +91,7 @@ const defaultValues: StudentFormInput = {
   allergies: "",
   hostelRequired: false,
   transportRequired: false,
+  whatsappOptIn: false,
   remarks: "",
 };
 
@@ -267,6 +268,7 @@ export function StudentForm({ mode, studentId, onSuccess }: Props) {
           category: student.category ?? null,
           hostelRequired: Boolean(student.hostelRequired),
           transportRequired: Boolean(student.transportRequired),
+          whatsappOptIn: Boolean(student.whatsappOptIn),
         });
       } catch {
         if (!cancelled) toast.error("Failed to load student.");
@@ -431,7 +433,19 @@ export function StudentForm({ mode, studentId, onSuccess }: Props) {
       </FormSection>
 
       <FormSection title="Guardian details (optional)" description="This entire section can be left blank when a separate guardian is not required.">
-        <div className="grid gap-5 md:grid-cols-2">{renderFields(guardianFields)}</div>
+        <div className="grid gap-5 md:grid-cols-2">
+          {renderFields(guardianFields)}
+          <Controller
+            control={form.control}
+            name="whatsappOptIn"
+            render={({ field }) => (
+              <div className="flex items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50/60 p-4 md:col-span-2">
+                <div><p className="text-sm font-semibold text-emerald-950">WhatsApp alerts approved</p><p className="mt-1 text-xs text-emerald-800/80">The family has agreed to receive attendance, homework, fee and result alerts on the registered number.</p></div>
+                <Switch checked={field.value} onCheckedChange={field.onChange} aria-label="Family approved WhatsApp alerts" />
+              </div>
+            )}
+          />
+        </div>
       </FormSection>
 
       <FormSection title="Health & school services (optional)" description="This entire section can be left blank when there are no medical or service requirements.">

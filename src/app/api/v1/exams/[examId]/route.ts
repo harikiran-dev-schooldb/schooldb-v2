@@ -4,6 +4,8 @@ import { ApiResponse } from "@/lib/response";
 
 import { examService } from "@/features/exams/services/exam.service";
 import { updateExamSchema } from "@/features/exams/schemas/exam.schema";
+import { after } from "next/server";
+import { processAutomatedCampaign, queueResultsPublishedAlert } from "@/features/whatsapp/automation";
 
 type RouteContext = {
   params: Promise<{
@@ -85,6 +87,10 @@ export async function PATCH(
             parsed.data.endDate,
           ),
         }),
+
+        ...(parsed.data.status !== undefined && {
+          status: parsed.data.status,
+        }),
       },
     );
 
@@ -93,6 +99,11 @@ export async function PATCH(
         "Exam not found.",
         404,
       );
+    }
+
+    if (parsed.data.status === "COMPLETED") {
+      const campaign = await queueResultsPublishedAlert(tenant.schoolId, exam.id);
+      if (campaign) after(() => processAutomatedCampaign(campaign.id));
     }
 
     return ApiResponse.success(

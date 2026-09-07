@@ -15,6 +15,9 @@ export async function GET(request: Request) {
     const excludeEnrollmentId =
       searchParams.get("excludeEnrollmentId") ?? undefined;
 
+    const mode =
+      searchParams.get("mode") === "enrolled" ? "ENROLLED" : "AVAILABLE";
+
     if (!academicYearId) {
       throw new Error("Academic year is required.");
     }
@@ -23,6 +26,7 @@ export async function GET(request: Request) {
       tenant.schoolId,
       academicYearId,
       excludeEnrollmentId,
+      mode,
     );
 
     return ApiResponse.success(students);

@@ -56,6 +56,8 @@ model School {
   announcements      Announcement[]
   calendarEvents     SchoolCalendarEvent[]
   studentDocuments   StudentDocument[]
+  whatsappCampaigns  WhatsappCampaign[]
+  whatsappRecipients WhatsappRecipient[]
   leaveRequests      LeaveRequest[]
   otpChallenges      OtpChallenge[]
   id                 String                @id @default(cuid())
@@ -262,6 +264,8 @@ model Student {
   studentAadhar       String?
   subCaste            String?
   transportRequired   Boolean             @default(false)
+  whatsappOptIn       Boolean             @default(false)
+  whatsappOptInAt     DateTime?
   username            String?
   statusChangedAt     DateTime?
   statusRemarks       String?
@@ -272,6 +276,7 @@ model Student {
   parentLinks         ParentStudentLink[]
   leaveRequests       LeaveRequest[]
   documents           StudentDocument[]
+  whatsappRecipients  WhatsappRecipient[]
 
   @@unique([schoolId, admissionNo])
   @@index([schoolId])
@@ -279,6 +284,69 @@ model Student {
   @@index([schoolId, fullName])
   @@index([schoolId, phone])
   @@index([schoolId, status, createdAt])
+}
+
+model WhatsappCampaign {
+  id             String                 @id @default(cuid())
+  schoolId       String
+  title          String
+  message        String
+  templateName   String
+  targetType     String
+  targetId       String?
+  targetLabel    String
+  status         WhatsappCampaignStatus @default(QUEUED)
+  recipientCount Int                    @default(0)
+  sentCount      Int                    @default(0)
+  deliveredCount Int                    @default(0)
+  readCount      Int                    @default(0)
+  failedCount    Int                    @default(0)
+  createdBy      String
+  scheduledAt    DateTime               @default(now())
+  completedAt    DateTime?
+  automatic      Boolean                @default(false)
+  automationKey  String?
+  sourceType     String?
+  sourceId       String?
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+  school         School                 @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  recipients     WhatsappRecipient[]
+
+  @@unique([schoolId, automationKey])
+  @@index([schoolId, createdAt])
+  @@index([schoolId, status, scheduledAt])
+  @@index([schoolId, automatic, status, scheduledAt])
+}
+
+model WhatsappRecipient {
+  id                String                  @id @default(cuid())
+  schoolId          String
+  campaignId        String
+  studentId         String?
+  recipientName     String
+  phone             String
+  status            WhatsappRecipientStatus @default(QUEUED)
+  attempts          Int                     @default(0)
+  providerMessageId String?
+  errorMessage      String?
+  lastAttemptAt     DateTime?
+  sentAt            DateTime?
+  deliveredAt       DateTime?
+  readAt            DateTime?
+  failedAt          DateTime?
+  providerStatusAt  DateTime?
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
+  campaign          WhatsappCampaign        @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  school            School                  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student           Student?                @relation(fields: [studentId], references: [id], onDelete: SetNull)
+
+  @@unique([campaignId, phone])
+  @@unique([providerMessageId])
+  @@index([schoolId, status, createdAt])
+  @@index([campaignId, status])
+  @@index([studentId])
 }
 
 model StudentDocument {
@@ -981,6 +1049,25 @@ enum StudentDocumentType {
   MEDICAL_RECORD
   STUDENT_PHOTO
   OTHER
+}
+
+enum WhatsappCampaignStatus {
+  QUEUED
+  SENDING
+  COMPLETED
+  PARTIAL
+  FAILED
+  CANCELLED
+}
+
+enum WhatsappRecipientStatus {
+  QUEUED
+  SENDING
+  SENT
+  DELIVERED
+  READ
+  FAILED
+  CANCELLED
 }
 
 enum StudentFeeInstallmentStatus {

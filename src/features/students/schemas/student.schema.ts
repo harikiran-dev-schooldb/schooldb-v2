@@ -128,6 +128,7 @@ export const createStudentSchema = z.object({
   allergies: optionalNullableText(1000),
   hostelRequired: z.boolean().optional().default(false),
   transportRequired: z.boolean().optional().default(false),
+  whatsappOptIn: z.boolean().optional().default(false),
   remarks: optionalNullableText(2000),
 });
 

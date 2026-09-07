@@ -10,6 +10,7 @@ import {
   BellRing,
   CalendarDays,
   CalendarClock,
+  MessageCircleMore,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -212,8 +213,15 @@ export const navigation = [
   },
 
   {
-  title: "Setup",
-  href: "setup",
-  icon: SlidersHorizontal,
-}
+    title: "WhatsApp",
+    href: "whatsapp",
+    icon: MessageCircleMore,
+    roles: ["SUPER_ADMIN", "SCHOOL_ADMIN"],
+  },
+
+  {
+    title: "Setup",
+    href: "setup",
+    icon: SlidersHorizontal,
+  },
 ] satisfies NavigationItem[];

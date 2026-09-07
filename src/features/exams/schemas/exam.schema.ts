@@ -40,6 +40,10 @@ export const updateExamSchema = z
       .max(100, "Exam name is too long.")
       .optional(),
 
+    status: z
+      .enum(["DRAFT", "PUBLISHED", "COMPLETED", "CANCELLED"])
+      .optional(),
+
     startDate: z
       .string()
       .min(1, "Start date is required.")

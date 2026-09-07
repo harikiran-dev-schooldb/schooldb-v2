@@ -1034,6 +1034,7 @@ async lockAllAttendanceSessions(
       alreadyLockedCount:
         sessions.length,
       incompleteCount: 0,
+      lockedSessionIds: [],
     };
   }
 
@@ -1111,6 +1112,8 @@ async lockAllAttendanceSessions(
       incompleteCount:
         incompleteSessions.length,
 
+      lockedSessionIds: [],
+
       message:
         "Some attendance sessions are incomplete and cannot be locked.",
 
@@ -1158,6 +1161,9 @@ async lockAllAttendanceSessions(
       ).length,
 
     incompleteCount: 0,
+
+    lockedSessionIds:
+      unlockedSessions.map((session) => session.id),
   };
 },
 

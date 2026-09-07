@@ -15,6 +15,8 @@ const PUBLIC_PATH_PATTERNS = [
   /^\/register(?:\/.*)?$/,
   /^\/[^/]+\/login(?:\/.*)?$/,
   /^\/api\/health$/,
+  /^\/api\/cron\/whatsapp$/,
+  /^\/api\/v1\/public\/whatsapp\/webhook$/,
   /^\/api\/v1\/public\/auth\/(?:send-otp|verify-otp)$/,
 ];
 

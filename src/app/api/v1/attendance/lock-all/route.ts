@@ -1,8 +1,10 @@
 import { apiHandler } from "@/lib/api";
 import { requireRole } from "@/lib/auth";
 import { ApiResponse } from "@/lib/response";
+import { after } from "next/server";
 
 import { attendanceService } from "@/features/attendance/services/attendance.service";
+import { processAutomatedCampaign, queueAttendanceSessionAlert } from "@/features/whatsapp/automation";
 
 export async function POST(req: Request) {
   return apiHandler(async () => {
@@ -23,6 +25,15 @@ export async function POST(req: Request) {
       academicYearId,
       attendanceDate,
     );
+
+    const campaigns = await Promise.all(
+      (result.lockedSessionIds ?? []).map((sessionId) =>
+        queueAttendanceSessionAlert(tenant.schoolId, sessionId),
+      ),
+    );
+    for (const campaign of campaigns) {
+      if (campaign) after(() => processAutomatedCampaign(campaign.id));
+    }
 
     if (result.incompleteCount > 0) {
       return ApiResponse.success(
