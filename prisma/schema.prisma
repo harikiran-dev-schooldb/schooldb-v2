@@ -98,6 +98,23 @@ model School {
   libraryBooks         LibraryBook[]
   libraryCopies        LibraryBookCopy[]
   libraryLoans         LibraryLoan[]
+  idCardSetting        SchoolIdCardSetting?
+}
+
+model SchoolIdCardSetting {
+  id           String            @id @default(cuid())
+  schoolId     String            @unique
+  orientation  IdCardOrientation @default(PORTRAIT)
+  widthMm      Decimal           @default(54.00) @db.Decimal(6, 2)
+  heightMm     Decimal           @default(85.60) @db.Decimal(6, 2)
+  showBack     Boolean           @default(true)
+  backImageUrl String?
+  backContent  String?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  school       School            @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId])
 }
 
 model User {
@@ -1388,4 +1405,9 @@ enum LibraryCopyStatus {
 enum LibraryBorrowerType {
   STUDENT
   TEACHER
+}
+
+enum IdCardOrientation {
+  PORTRAIT
+  LANDSCAPE
 }

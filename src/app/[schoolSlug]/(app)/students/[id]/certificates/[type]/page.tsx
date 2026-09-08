@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 
 import { PrintDocumentButton } from "@/features/students/components/profile/PrintDocumentButton";
+import { StudentIdCard } from "@/features/students/components/id-cards/StudentIdCard";
 import { requireTenant } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
@@ -27,11 +28,26 @@ export default async function StudentCertificatePage({ params }: Props) {
       imageUrl: true,
       fatherName: true,
       motherName: true,
+      guardianName: true,
+      guardianPhone: true,
+      fatherPhone: true,
+      motherPhone: true,
+      alternatePhone: true,
+      phone: true,
       address: true,
+      bloodGroup: true,
       status: true,
       statusChangedAt: true,
       statusRemarks: true,
-      school: { select: { name: true } },
+      school: {
+        select: {
+          name: true,
+          logo: true,
+          idCardSetting: {
+            select: { orientation: true, widthMm: true, heightMm: true, showBack: true, backImageUrl: true, backContent: true },
+          },
+        },
+      },
       enrollments: {
         orderBy: [{ active: "desc" }, { updatedAt: "desc" }],
         take: 1,
@@ -55,40 +71,39 @@ export default async function StudentCertificatePage({ params }: Props) {
     return (
       <div className="min-h-screen bg-slate-100 p-6 print:bg-white print:p-0">
         <div className="mx-auto mb-5 flex max-w-2xl justify-end"><PrintDocumentButton /></div>
-        <main className="mx-auto grid max-w-2xl gap-6 sm:grid-cols-2 print:grid-cols-2">
-          <section className="overflow-hidden rounded-3xl border bg-white shadow-xl print:shadow-none">
-            <div className="bg-gradient-to-br from-indigo-600 to-violet-700 px-6 py-5 text-center text-white">
-              <p className="text-lg font-black tracking-tight">{student.school.name}</p>
-              <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.3em] text-white/75">Student identity card</p>
-            </div>
-            <div className="p-6 text-center">
-              <div
-                className="mx-auto flex size-24 items-center justify-center overflow-hidden rounded-2xl border-4 border-indigo-100 bg-slate-100 bg-cover bg-center text-3xl font-black text-indigo-600"
-                style={student.imageUrl ? { backgroundImage: `url(${JSON.stringify(student.imageUrl)})` } : undefined}
-                role={student.imageUrl ? "img" : undefined}
-                aria-label={student.imageUrl ? studentName : undefined}
-              >
-                {!student.imageUrl && studentName.charAt(0)}
-              </div>
-              <h1 className="mt-4 text-xl font-black">{studentName}</h1>
-              <p className="mt-1 text-sm font-semibold text-indigo-600">{className}</p>
-              <dl className="mt-5 grid grid-cols-2 gap-3 rounded-2xl bg-slate-50 p-4 text-left text-xs">
-                <div><dt className="text-slate-500">Admission no.</dt><dd className="mt-1 font-bold">{student.admissionNo}</dd></div>
-                <div><dt className="text-slate-500">Roll no.</dt><dd className="mt-1 font-bold">{enrollment?.rollNo ?? "—"}</dd></div>
-                <div><dt className="text-slate-500">Date of birth</dt><dd className="mt-1 font-bold">{dateLabel(student.dob)}</dd></div>
-                <div><dt className="text-slate-500">Academic year</dt><dd className="mt-1 font-bold">{enrollment?.academicYear.name ?? "—"}</dd></div>
-              </dl>
-            </div>
-          </section>
-          <section className="flex min-h-[460px] flex-col rounded-3xl border bg-white p-6 shadow-xl print:shadow-none">
-            <h2 className="text-center text-sm font-black uppercase tracking-wider text-indigo-600">Student information</h2>
-            <dl className="mt-6 space-y-4 text-sm">
-              <div><dt className="text-xs text-slate-500">Parent / guardian</dt><dd className="mt-1 font-semibold">{student.fatherName || student.motherName || "—"}</dd></div>
-              <div><dt className="text-xs text-slate-500">Address</dt><dd className="mt-1 font-semibold leading-6">{student.address || "—"}</dd></div>
-              <div><dt className="text-xs text-slate-500">Valid academic year</dt><dd className="mt-1 font-semibold">{enrollment?.academicYear.name ?? "—"}</dd></div>
-            </dl>
-            <div className="mt-auto border-t pt-5 text-center"><div className="mx-auto mb-2 h-px w-32 bg-slate-400" /><p className="text-xs font-semibold">Authorised signature</p><p className="mt-5 text-[10px] text-slate-400">If found, please return this card to the school office.</p></div>
-          </section>
+        <main className="id-card-print mx-auto max-w-2xl">
+          <StudentIdCard
+            school={student.school}
+            setting={student.school.idCardSetting ? {
+              orientation: student.school.idCardSetting.orientation,
+              widthMm: Number(student.school.idCardSetting.widthMm),
+              heightMm: Number(student.school.idCardSetting.heightMm),
+              showBack: student.school.idCardSetting.showBack,
+              backImageUrl: student.school.idCardSetting.backImageUrl,
+              backContent: student.school.idCardSetting.backContent,
+            } : undefined}
+            student={{
+              admissionNo: student.admissionNo,
+              fullName: student.fullName,
+              imageUrl: student.imageUrl,
+              fatherName: student.fatherName,
+              motherName: student.motherName,
+              guardianName: student.guardianName,
+              guardianPhone: student.guardianPhone,
+              fatherPhone: student.fatherPhone,
+              motherPhone: student.motherPhone,
+              alternatePhone: student.alternatePhone,
+              phone: student.phone,
+              address: student.address,
+              bloodGroup: student.bloodGroup,
+              enrollment: enrollment ? {
+                academicYear: enrollment.academicYear.name,
+                className: enrollment.class.name,
+                sectionName: enrollment.section.name,
+                rollNo: enrollment.rollNo,
+              } : null,
+            }}
+          />
         </main>
       </div>
     );

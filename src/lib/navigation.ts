@@ -1,243 +1,131 @@
-import {
-  LayoutDashboard,
-  GraduationCap,
-  Users,
-  CalendarCheck,
-  IndianRupee,
-  BookOpen,
-  Upload,
-  SlidersHorizontal,
-  BellRing,
-  CalendarDays,
-  CalendarClock,
-  MessageCircleMore,
-  BusFront,
-  LibraryBig,
-} from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import {
+  BookOpenCheck,
+  BriefcaseBusiness,
+  CalendarCheck,
+  CalendarRange,
+  GraduationCap,
+  IndianRupee,
+  LayoutDashboard,
+  Megaphone,
+  Settings2,
+  UsersRound,
+} from "lucide-react";
+
+type NavigationChild = {
+  title: string;
+  href: string;
+  exact?: boolean;
+  roles?: string[];
+};
 
 type NavigationItem = {
   title: string;
   href?: string;
   icon: LucideIcon;
   roles?: string[];
-  children?: Array<{ title: string; href: string }>;
+  children?: NavigationChild[];
 };
 
-export const navigation = [
+const ADMIN_ROLES = ["SUPER_ADMIN", "SCHOOL_ADMIN"];
+
+export const navigation: NavigationItem[] = [
   {
     title: "Dashboard",
     href: "dashboard",
     icon: LayoutDashboard,
   },
-
   {
-    title: "Users",
-    icon: Users,
+    title: "People",
+    icon: UsersRound,
     children: [
-      {
-        title: "Students",
-        href: "students",
-      },
-      {
-        title: "Teachers",
-        href: "teachers",
-      },
-    ],
-  },
-  {
-    title: "Academic",
-    icon: GraduationCap,
-    children: [
-      {
-        title: "Academic Year",
-        href: "academic-year",
-      },
-      {
-        title: "Classes",
-        href: "classes",
-      },
-      {
-        title: "Sections",
-        href: "sections",
-      },
-      {
-        title: "Subjects",
-        href: "subjects",
-      },
-      {
-        title: "Class Subjects",
-        href: "setup/class-subjects",
-      },
-      {
-        title: "Enrollments",
-        href: "enrollments",
-      },
-      {
-        title: "Teacher Allocations",
-        href: "teacher-allocations",
-      },
+      { title: "Students", href: "students" },
+      { title: "Enrollments", href: "enrollments" },
+      { title: "Student ID Cards", href: "id-cards" },
+      { title: "Teachers", href: "teachers" },
     ],
   },
   {
     title: "Attendance",
     icon: CalendarCheck,
     children: [
-      {
-        title: "Dashboard",
-        href: "attendance/dashboard",
-      },
-      {
-        title: "Mark Attendance",
-        href: "attendance",
-      },
-      {
-        title: "History",
-        href: "attendance/history",
-      },
-      {
-        title: "Class Report",
-        href: "attendance/reports/class",
-      },
-      {
-        title: "Student Report",
-        href: "attendance/reports/student",
-      },
-      {
-        title: "Low Attendance Report",
-        href: "attendance/reports/low",
-      },
+      { title: "Mark Attendance", href: "attendance", exact: true },
+      { title: "Attendance Overview", href: "attendance/dashboard" },
+      { title: "Session History", href: "attendance/history" },
+      { title: "Class Report", href: "attendance/reports/class" },
+      { title: "Student Report", href: "attendance/reports/student" },
+      { title: "Low Attendance", href: "attendance/reports/low" },
     ],
   },
-
+  {
+    title: "Learning",
+    icon: BookOpenCheck,
+    children: [
+      { title: "Homework", href: "homework" },
+      { title: "Exams & Results", href: "exams" },
+    ],
+  },
   {
     title: "Fees",
     icon: IndianRupee,
     children: [
-      {
-        title: "Fee Dashboard",
-        href: "fees/dashboard",
-      },
-      {
-        title: "Collect",
-        href: "fees/collection",
-      },
-      {
-        title: "Payments",
-        href: "fees/payments",
-      },
-      {
-        title: "Fee Due",
-        href: "fees/outstanding",
-      },
-      {
-        title: "Reciepts",
-        href: "fees/receipts",
-      },
-      {
-        title: "Fee Plans",
-        href: "fees/plans",
-      },
-      {
-        title: "Fee Categories",
-        href: "fees/categories",
-      },
+      { title: "Fee Overview", href: "fees/dashboard" },
+      { title: "Collect Fees", href: "fees/collection" },
+      { title: "Outstanding Fees", href: "fees/outstanding" },
+      { title: "Payment History", href: "fees/payments" },
+      { title: "Receipts", href: "fees/receipts" },
+      { title: "Fee Plans", href: "fees/plans" },
+      { title: "Fee Categories", href: "fees/categories" },
     ],
   },
-
   {
     title: "Timetable",
-    icon: CalendarCheck,
+    icon: CalendarRange,
     children: [
-      {
-        title: "Periods",
-        href: "periods",
-      },
-      {
-        title: "Timetable",
-        href: "timetable",
-      },
-      {
-        title: "Daily Timetable",
-        href: "timetable/daily",
-      },
-      {
-        title: "Class Timetable",
-        href: "timetable/class",
-      },
-      {
-        title: "Teacher Timetable",
-        href: "timetable/teacher",
-      },
+      { title: "Build Timetable", href: "timetable", exact: true },
+      { title: "Daily View", href: "timetable/daily" },
+      { title: "Class View", href: "timetable/class" },
+      { title: "Teacher View", href: "timetable/teacher" },
+      { title: "School Periods", href: "periods" },
     ],
   },
-
   {
-    title: "Academic Work",
-    icon: BookOpen,
+    title: "Academic Setup",
+    icon: GraduationCap,
     children: [
-      {
-        title: "Homework",
-        href: "homework",
-      },
-      {
-        title: "Exams",
-        href: "exams",
-      },
+      { title: "Academic Years", href: "academic-year" },
+      { title: "Classes", href: "classes" },
+      { title: "Sections", href: "sections" },
+      { title: "Subjects", href: "subjects" },
+      { title: "Class Subjects", href: "setup/class-subjects" },
+      { title: "Teacher Allocations", href: "teacher-allocations" },
     ],
   },
-
   {
-    title: "Bulk Operations",
-    href: "bulk-operations",
-    icon: Upload,
+    title: "School Operations",
+    icon: BriefcaseBusiness,
+    children: [
+      { title: "Library", href: "library", roles: ADMIN_ROLES },
+      { title: "Transport", href: "transport", roles: ADMIN_ROLES },
+      { title: "School Calendar", href: "calendar", roles: ADMIN_ROLES },
+      { title: "Leave Requests", href: "leave-requests", roles: [...ADMIN_ROLES, "TEACHER"] },
+    ],
   },
-
   {
-    title: "Library",
-    href: "library",
-    icon: LibraryBig,
-    roles: ["SUPER_ADMIN", "SCHOOL_ADMIN"],
+    title: "Communication",
+    icon: Megaphone,
+    roles: ADMIN_ROLES,
+    children: [
+      { title: "Notifications", href: "notifications" },
+      { title: "WhatsApp Messages", href: "whatsapp" },
+    ],
   },
-
   {
-    title: "Transport",
-    href: "transport",
-    icon: BusFront,
-    roles: ["SUPER_ADMIN", "SCHOOL_ADMIN"],
+    title: "Administration",
+    icon: Settings2,
+    children: [
+      { title: "Bulk Operations", href: "bulk-operations" },
+      { title: "School Setup", href: "setup", exact: true },
+    ],
   },
-
-  {
-    title: "Calendar",
-    href: "calendar",
-    icon: CalendarDays,
-    roles: ["SUPER_ADMIN", "SCHOOL_ADMIN"],
-  },
-
-  {
-    title: "Leave Requests",
-    href: "leave-requests",
-    icon: CalendarClock,
-    roles: ["SUPER_ADMIN", "SCHOOL_ADMIN", "TEACHER"],
-  },
-
-  {
-    title: "Notifications",
-    href: "notifications",
-    icon: BellRing,
-    roles: ["SUPER_ADMIN", "SCHOOL_ADMIN"],
-  },
-
-  {
-    title: "WhatsApp",
-    href: "whatsapp",
-    icon: MessageCircleMore,
-    roles: ["SUPER_ADMIN", "SCHOOL_ADMIN"],
-  },
-
-  {
-    title: "Setup",
-    href: "setup",
-    icon: SlidersHorizontal,
-  },
-] satisfies NavigationItem[];
+];

@@ -58,8 +58,8 @@ function setSidebarCollapsed(collapsed: boolean) {
    ROUTE HELPERS
    ========================================================================== */
 
-function isRouteActive(pathname: string, href: string) {
-  return pathname === href || pathname.startsWith(`${href}/`);
+function isRouteActive(pathname: string, href: string, exact = false) {
+  return pathname === href || (!exact && pathname.startsWith(`${href}/`));
 }
 
 /* ==========================================================================
@@ -74,10 +74,13 @@ export function AppSidebar() {
 
   const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({});
 
-  const visibleNavigation = useMemo(
-    () => navigation.filter((item) => !item.roles || item.roles.includes(role)),
-    [role],
-  );
+  const visibleNavigation = useMemo(() => navigation.flatMap((item) => {
+    if (item.roles && !item.roles.includes(role)) return [];
+    if (!item.children) return [item];
+
+    const children = item.children.filter((child) => !child.roles || child.roles.includes(role));
+    return children.length ? [{ ...item, children }] : [];
+  }), [role]);
 
   function toggleSidebar() {
     setSidebarCollapsed(!collapsed);
@@ -101,7 +104,7 @@ export function AppSidebar() {
       const hasActiveChild = item.children.some((child) => {
         const href = `/${school.slug}/${child.href}`;
 
-        return isRouteActive(pathname, href);
+        return isRouteActive(pathname, href, child.exact);
       });
 
       if (hasActiveChild) {
@@ -305,7 +308,7 @@ export function AppSidebar() {
                 const childIsActive = item.children!.some((child) => {
                   const href = `/${school.slug}/${child.href}`;
 
-                  return isRouteActive(pathname, href);
+                  return isRouteActive(pathname, href, child.exact);
                 });
 
                 const isOpen =
@@ -429,7 +432,7 @@ export function AppSidebar() {
                             {item.children!.map((child) => {
                               const href = `/${school.slug}/${child.href}`;
 
-                              const active = isRouteActive(pathname, href);
+                              const active = isRouteActive(pathname, href, child.exact);
 
                               return (
                                 <Link

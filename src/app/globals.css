@@ -331,6 +331,13 @@
    PRINT
    ========================================================================== */
 
+.id-card-side {
+  width: var(--id-card-width, 54mm);
+  height: var(--id-card-height, 85.6mm);
+  aspect-ratio: var(--id-card-ratio, 54 / 85.6);
+  border-radius: 3mm;
+}
+
 @media print {
   @page {
     size: A4 portrait;
@@ -356,8 +363,36 @@
   }
 
   .report-card-print,
-  .report-card-print * {
+  .report-card-print *,
+  .id-card-print,
+  .id-card-print * {
     visibility: visible !important;
+  }
+
+  .id-card-print {
+    position: absolute !important;
+    inset: 0 auto auto 0 !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+  }
+
+  .id-card-pair {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+    gap: 6mm !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  .id-card-side {
+    width: var(--id-card-width) !important;
+    height: var(--id-card-height) !important;
+    border-radius: 3mm !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
   }
 
   .report-card-print {
