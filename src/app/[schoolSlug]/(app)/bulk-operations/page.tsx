@@ -1,7 +1,9 @@
 import Link from "next/link";
 import {
   ArrowRight,
+  BookOpen,
   BookOpenCheck,
+  Bus,
   CalendarDays,
   ClipboardList,
   GraduationCap,
@@ -127,6 +129,22 @@ const operations = [
       "Import class and teacher timetable assignments with teacher and class conflict validation.",
     href: "bulk-operations/timetable",
     icon: CalendarDays,
+    status: "Ready",
+  },
+  {
+    title: "Library",
+    description:
+      "Import book categories, catalog details and physical copy counts.",
+    href: "bulk-operations/library",
+    icon: BookOpen,
+    status: "Ready",
+  },
+  {
+    title: "Transport",
+    description:
+      "Import vehicles, routes, stops and optional student assignments together.",
+    href: "bulk-operations/transport",
+    icon: Bus,
     status: "Ready",
   },
 ];

@@ -228,11 +228,9 @@ export const studentService = {
       ...studentData,
       whatsappOptIn,
       whatsappOptInAt:
-        whatsappOptIn && !student.whatsappOptIn
-          ? new Date()
-          : whatsappOptIn
-            ? student.whatsappOptInAt
-            : null,
+        whatsappOptIn
+          ? student.whatsappOptInAt ?? new Date()
+          : null,
       username: studentUsername(input.admissionNo),
       dob: new Date(`${dob}T00:00:00`),
       joinedDate: joinedDate ? new Date(`${joinedDate}T00:00:00`) : null,

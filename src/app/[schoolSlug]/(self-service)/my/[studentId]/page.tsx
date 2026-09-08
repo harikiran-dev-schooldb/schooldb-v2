@@ -10,6 +10,8 @@ import {
   ScrollText,
   Trophy,
   FolderLock,
+  BusFront,
+  LibraryBig,
 } from "lucide-react";
 
 import { SelfServicePage } from "@/components/self-service/SelfServicePage";
@@ -64,6 +66,18 @@ const sections = [
     title: "Leave requests",
     description: "Request an absence and track the school’s decision.",
     icon: CalendarClock,
+  },
+  {
+    href: "transport",
+    title: "Transport",
+    description: "See the assigned route, boarding stop and pickup timing.",
+    icon: BusFront,
+  },
+  {
+    href: "library",
+    title: "My Library",
+    description: "Track borrowed books, return dates and renewals.",
+    icon: LibraryBig,
   },
   {
     href: "documents",

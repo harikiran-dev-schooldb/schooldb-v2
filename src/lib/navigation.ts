@@ -11,6 +11,8 @@ import {
   CalendarDays,
   CalendarClock,
   MessageCircleMore,
+  BusFront,
+  LibraryBig,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -189,6 +191,20 @@ export const navigation = [
     title: "Bulk Operations",
     href: "bulk-operations",
     icon: Upload,
+  },
+
+  {
+    title: "Library",
+    href: "library",
+    icon: LibraryBig,
+    roles: ["SUPER_ADMIN", "SCHOOL_ADMIN"],
+  },
+
+  {
+    title: "Transport",
+    href: "transport",
+    icon: BusFront,
+    roles: ["SUPER_ADMIN", "SCHOOL_ADMIN"],
   },
 
   {

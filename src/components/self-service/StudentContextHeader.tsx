@@ -12,6 +12,8 @@ import {
   LayoutDashboard,
   ScrollText,
   Trophy,
+  BusFront,
+  LibraryBig,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -24,6 +26,8 @@ const links = [
   { href: "/results", label: "Results", icon: Trophy },
   { href: "/timetable", label: "Timetable", icon: CalendarDays },
   { href: "/homework", label: "Homework", icon: BookOpenCheck },
+  { href: "/transport", label: "Transport", icon: BusFront },
+  { href: "/library", label: "Library", icon: LibraryBig },
   { href: "/report-card", label: "Report card", icon: ScrollText },
   { href: "/leave-requests", label: "Leave requests", icon: CalendarClock },
 ];

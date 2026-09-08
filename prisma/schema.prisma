@@ -53,43 +53,51 @@ model AcademicPeriod {
 }
 
 model School {
-  announcements      Announcement[]
-  calendarEvents     SchoolCalendarEvent[]
-  studentDocuments   StudentDocument[]
-  whatsappCampaigns  WhatsappCampaign[]
-  whatsappRecipients WhatsappRecipient[]
-  leaveRequests      LeaveRequest[]
-  otpChallenges      OtpChallenge[]
-  id                 String                @id @default(cuid())
-  name               String
-  slug               String                @unique
-  createdAt          DateTime              @default(now())
-  updatedAt          DateTime              @updatedAt
-  logo               String?
-  academicPeriods    AcademicPeriod[]
-  academicYears      AcademicYear[]
-  attendance         Attendance[]
-  attendanceSessions AttendanceSession[]
-  classes            Class[]
-  classSubjects      ClassSubject[]
-  exams              Exam[]
-  examSchedules      ExamSchedule[]
-  feeCategories      FeeCategory[]
-  feePayments        FeePayment[]
-  feePlans           FeePlan[]
-  homeworks          Homework[]
-  memberships        Membership[]
-  parentStudentLinks ParentStudentLink[]
-  periods            Period[]
-  students           Student[]
-  activities         StudentActivity[]
-  studentEnrollments StudentEnrollment[]
-  studentExamMarks   StudentExamMark[]
-  studentFees        StudentFee[]
-  subjects           Subject[]
-  teachers           Teacher[]
-  teacherAllocations TeacherAllocation[]
-  timetables         Timetable[]
+  announcements        Announcement[]
+  calendarEvents       SchoolCalendarEvent[]
+  studentDocuments     StudentDocument[]
+  whatsappCampaigns    WhatsappCampaign[]
+  whatsappRecipients   WhatsappRecipient[]
+  leaveRequests        LeaveRequest[]
+  otpChallenges        OtpChallenge[]
+  id                   String                       @id @default(cuid())
+  name                 String
+  slug                 String                       @unique
+  createdAt            DateTime                     @default(now())
+  updatedAt            DateTime                     @updatedAt
+  logo                 String?
+  academicPeriods      AcademicPeriod[]
+  academicYears        AcademicYear[]
+  attendance           Attendance[]
+  attendanceSessions   AttendanceSession[]
+  classes              Class[]
+  classSubjects        ClassSubject[]
+  exams                Exam[]
+  examSchedules        ExamSchedule[]
+  feeCategories        FeeCategory[]
+  feePayments          FeePayment[]
+  feePlans             FeePlan[]
+  homeworks            Homework[]
+  memberships          Membership[]
+  parentStudentLinks   ParentStudentLink[]
+  periods              Period[]
+  students             Student[]
+  activities           StudentActivity[]
+  studentEnrollments   StudentEnrollment[]
+  studentExamMarks     StudentExamMark[]
+  studentFees          StudentFee[]
+  subjects             Subject[]
+  teachers             Teacher[]
+  teacherAllocations   TeacherAllocation[]
+  timetables           Timetable[]
+  transportVehicles    TransportVehicle[]
+  transportRoutes      TransportRoute[]
+  transportStops       TransportStop[]
+  transportAssignments StudentTransportAssignment[]
+  libraryCategories    LibraryCategory[]
+  libraryBooks         LibraryBook[]
+  libraryCopies        LibraryBookCopy[]
+  libraryLoans         LibraryLoan[]
 }
 
 model User {
@@ -433,30 +441,32 @@ model Section {
 }
 
 model StudentEnrollment {
-  id             String              @id @default(cuid())
-  schoolId       String
-  studentId      String
-  academicYearId String
-  classId        String
-  sectionId      String
-  rollNo         Int?
-  admissionDate  DateTime?
-  active         Boolean             @default(true)
-  createdAt      DateTime            @default(now())
-  updatedAt      DateTime            @updatedAt
-  promotedFromId String?
-  feePayments    FeePayment[]
-  activities     StudentActivity[]
-  academicYear   AcademicYear        @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
-  class          Class               @relation(fields: [classId], references: [id], onDelete: Cascade)
-  promotedFrom   StudentEnrollment?  @relation("PromotionHistory", fields: [promotedFromId], references: [id])
-  promotedTo     StudentEnrollment[] @relation("PromotionHistory")
-  school         School              @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  section        Section             @relation(fields: [sectionId], references: [id], onDelete: Cascade)
-  student        Student             @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  examMarks      StudentExamMark[]
-  studentFees    StudentFee[]
-  leaveRequests  LeaveRequest[]
+  id                   String                       @id @default(cuid())
+  schoolId             String
+  studentId            String
+  academicYearId       String
+  classId              String
+  sectionId            String
+  rollNo               Int?
+  admissionDate        DateTime?
+  active               Boolean                      @default(true)
+  createdAt            DateTime                     @default(now())
+  updatedAt            DateTime                     @updatedAt
+  promotedFromId       String?
+  feePayments          FeePayment[]
+  activities           StudentActivity[]
+  academicYear         AcademicYear                 @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+  class                Class                        @relation(fields: [classId], references: [id], onDelete: Cascade)
+  promotedFrom         StudentEnrollment?           @relation("PromotionHistory", fields: [promotedFromId], references: [id])
+  promotedTo           StudentEnrollment[]          @relation("PromotionHistory")
+  school               School                       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  section              Section                      @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  student              Student                      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  examMarks            StudentExamMark[]
+  studentFees          StudentFee[]
+  leaveRequests        LeaveRequest[]
+  transportAssignments StudentTransportAssignment[]
+  libraryLoans         LibraryLoan[]
 
   @@unique([studentId, academicYearId])
   @@unique([academicYearId, classId, sectionId, rollNo])
@@ -468,6 +478,175 @@ model StudentEnrollment {
   @@index([schoolId, active])
   @@index([schoolId, academicYearId, active])
   @@index([academicYearId, classId, sectionId])
+}
+
+model TransportVehicle {
+  id             String           @id @default(cuid())
+  schoolId       String
+  registrationNo String
+  name           String?
+  type           String           @default("BUS")
+  capacity       Int
+  driverName     String
+  driverPhone    String
+  attendantName  String?
+  attendantPhone String?
+  active         Boolean          @default(true)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  school         School           @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  routes         TransportRoute[]
+
+  @@unique([schoolId, registrationNo])
+  @@index([schoolId, active])
+}
+
+model TransportRoute {
+  id          String                       @id @default(cuid())
+  schoolId    String
+  vehicleId   String?
+  code        String
+  name        String
+  pickupStart String?
+  dropStart   String?
+  active      Boolean                      @default(true)
+  createdAt   DateTime                     @default(now())
+  updatedAt   DateTime                     @updatedAt
+  school      School                       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  vehicle     TransportVehicle?            @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+  stops       TransportStop[]
+  assignments StudentTransportAssignment[]
+
+  @@unique([schoolId, code])
+  @@index([schoolId, active])
+  @@index([vehicleId])
+}
+
+model TransportStop {
+  id          String                       @id @default(cuid())
+  schoolId    String
+  routeId     String
+  name        String
+  sequence    Int
+  pickupTime  String?
+  dropTime    String?
+  monthlyFee  Decimal?                     @db.Decimal(12, 2)
+  active      Boolean                      @default(true)
+  createdAt   DateTime                     @default(now())
+  updatedAt   DateTime                     @updatedAt
+  school      School                       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  route       TransportRoute               @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  assignments StudentTransportAssignment[]
+
+  @@unique([routeId, sequence])
+  @@unique([routeId, name])
+  @@index([schoolId, active])
+  @@index([routeId, active, sequence])
+}
+
+model StudentTransportAssignment {
+  id                  String            @id @default(cuid())
+  schoolId            String
+  studentEnrollmentId String
+  routeId             String
+  stopId              String
+  pickupEnabled       Boolean           @default(true)
+  dropEnabled         Boolean           @default(true)
+  startDate           DateTime          @db.Date
+  endDate             DateTime?         @db.Date
+  active              Boolean           @default(true)
+  notes               String?
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+  school              School            @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  studentEnrollment   StudentEnrollment @relation(fields: [studentEnrollmentId], references: [id], onDelete: Cascade)
+  route               TransportRoute    @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  stop                TransportStop     @relation(fields: [stopId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId, active])
+  @@index([studentEnrollmentId, active])
+  @@index([routeId, active])
+  @@index([stopId])
+}
+
+model LibraryCategory {
+  id        String        @id @default(cuid())
+  schoolId  String
+  name      String
+  active    Boolean       @default(true)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  school    School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  books     LibraryBook[]
+
+  @@unique([schoolId, name])
+  @@index([schoolId, active])
+}
+
+model LibraryBook {
+  id          String            @id @default(cuid())
+  schoolId    String
+  categoryId  String?
+  accessionNo String
+  isbn        String?
+  title       String
+  author      String
+  publisher   String?
+  edition     String?
+  shelf       String?
+  active      Boolean           @default(true)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  school      School            @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  category    LibraryCategory?  @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  copies      LibraryBookCopy[]
+
+  @@unique([schoolId, accessionNo])
+  @@index([schoolId, active, title])
+  @@index([categoryId])
+}
+
+model LibraryBookCopy {
+  id        String            @id @default(cuid())
+  schoolId  String
+  bookId    String
+  barcode   String
+  status    LibraryCopyStatus @default(AVAILABLE)
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+  school    School            @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  book      LibraryBook       @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  loans     LibraryLoan[]
+
+  @@unique([schoolId, barcode])
+  @@index([bookId, status])
+  @@index([schoolId, status])
+}
+
+model LibraryLoan {
+  id                  String              @id @default(cuid())
+  schoolId            String
+  copyId              String
+  borrowerType        LibraryBorrowerType
+  studentEnrollmentId String?
+  teacherId           String?
+  issuedAt            DateTime            @db.Date
+  dueAt               DateTime            @db.Date
+  returnedAt          DateTime?           @db.Date
+  renewedCount        Int                 @default(0)
+  fineAmount          Decimal             @default(0) @db.Decimal(12, 2)
+  notes               String?
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+  school              School              @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  copy                LibraryBookCopy     @relation(fields: [copyId], references: [id])
+  studentEnrollment   StudentEnrollment?  @relation(fields: [studentEnrollmentId], references: [id], onDelete: Cascade)
+  teacher             Teacher?            @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId, returnedAt, dueAt])
+  @@index([copyId, returnedAt])
+  @@index([studentEnrollmentId, returnedAt])
+  @@index([teacherId, returnedAt])
 }
 
 model LeaveRequest {
@@ -545,6 +724,7 @@ model Teacher {
   homeworks          Homework[]
   school             School              @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   allocations        TeacherAllocation[]
+  libraryLoans       LibraryLoan[]
 
   @@unique([schoolId, employeeId])
   @@index([schoolId])
@@ -1196,4 +1376,16 @@ enum StudentExamStatus {
   PRESENT
   ABSENT
   EXEMPTED
+}
+
+enum LibraryCopyStatus {
+  AVAILABLE
+  ISSUED
+  LOST
+  DAMAGED
+}
+
+enum LibraryBorrowerType {
+  STUDENT
+  TEACHER
 }
