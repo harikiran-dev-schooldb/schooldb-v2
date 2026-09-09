@@ -70,6 +70,9 @@ export const studentEnrollmentService = {
     const where = {
       schoolId,
 
+      ...(query.classId && { classId: query.classId }),
+      ...(query.sectionId && { sectionId: query.sectionId }),
+
       ...(query.search && {
         OR: [
           {

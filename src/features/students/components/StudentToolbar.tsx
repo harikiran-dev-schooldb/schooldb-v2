@@ -3,6 +3,7 @@
 import { Filter } from "lucide-react";
 
 import { CrudToolbar } from "@/components/common/crud";
+import { ClassSelect, SectionSelect } from "@/components/common/select";
 import {
   Select,
   SelectContent,
@@ -20,6 +21,10 @@ type Props = {
 
   status: StudentStatus;
   onStatusChange: (value: StudentStatus) => void;
+  classId: string;
+  onClassChange: (value: string) => void;
+  sectionId: string;
+  onSectionChange: (value: string) => void;
 };
 
 export function StudentToolbar({
@@ -27,6 +32,10 @@ export function StudentToolbar({
   onSearch,
   status,
   onStatusChange,
+  classId,
+  onClassChange,
+  sectionId,
+  onSectionChange,
 }: Props) {
   return (
     <CrudToolbar
@@ -34,11 +43,27 @@ export function StudentToolbar({
       onSearch={onSearch}
       placeholder="Search by name or admission number..."
     >
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <div className="hidden items-center gap-2 px-1 text-[10px] font-bold tracking-[0.16em] text-muted-foreground uppercase lg:flex">
           <Filter className="size-3.5 text-primary" />
           Filter
         </div>
+
+        <ClassSelect
+          value={classId}
+          onChange={onClassChange}
+          allowAll
+          placeholder="All Classes"
+          triggerClassName="h-10 w-full min-w-36 rounded-xl border-border/70 bg-background/80 sm:w-40"
+        />
+
+        <SectionSelect
+          classId={classId}
+          value={sectionId}
+          onChange={onSectionChange}
+          placeholder="All Sections"
+          triggerClassName="h-10 w-full min-w-36 rounded-xl border-border/70 bg-background/80 sm:w-40"
+        />
 
         <Select
           value={status}

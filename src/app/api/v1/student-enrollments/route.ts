@@ -19,11 +19,15 @@ export async function GET(request: Request) {
     );
 
     const search = searchParams.get("search") || undefined;
+    const classId = searchParams.get("classId") || undefined;
+    const sectionId = searchParams.get("sectionId") || undefined;
 
     const result = await studentEnrollmentService.list(tenant.schoolId, {
       page,
       pageSize,
       search,
+      classId,
+      sectionId,
     });
 
     return ApiResponse.success(result);

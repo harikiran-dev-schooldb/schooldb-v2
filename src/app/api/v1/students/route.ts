@@ -50,12 +50,16 @@ export async function GET(req: Request) {
         ? Math.min(Math.floor(pageSizeParam), 100)
         : 10;
     const search = searchParams.get("search") ?? undefined;
+    const classId = searchParams.get("classId") || undefined;
+    const sectionId = searchParams.get("sectionId") || undefined;
 
     const students = await studentService.list(tenant.schoolId, {
       page,
       pageSize,
       search,
       status,
+      classId,
+      sectionId,
     });
     return ApiResponse.success(students);
   });

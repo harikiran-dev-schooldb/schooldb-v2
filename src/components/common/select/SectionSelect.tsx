@@ -20,6 +20,8 @@ type Props = {
   value?: string;
   disabled?: boolean;
   allowAll?: boolean;
+  placeholder?: string;
+  triggerClassName?: string;
   onChange: (value: string) => void;
 };
 
@@ -28,6 +30,8 @@ export function SectionSelect({
   value,
   disabled,
   allowAll = true,
+  placeholder = "Select Section",
+  triggerClassName,
   onChange,
 }: Props) {
   const [sections, setSections] = useState<SectionOption[]>([]);
@@ -68,8 +72,8 @@ export function SectionSelect({
       onValueChange={(value) => onChange(value === "ALL" ? "" : value)}
       disabled={disabled || !classId}
     >
-      <SelectTrigger>
-        <SelectValue placeholder="Select Section" />
+      <SelectTrigger className={triggerClassName}>
+        <SelectValue placeholder={placeholder} />
       </SelectTrigger>
 
       <SelectContent>

@@ -5,11 +5,16 @@ import { Search, SlidersHorizontal } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { ClassSelect, SectionSelect } from "@/components/common/select";
 
 type Props = {
   value: string;
   loading?: boolean;
   onChange: (value: string) => void;
+  classId: string;
+  sectionId: string;
+  onClassChange: (value: string) => void;
+  onSectionChange: (value: string) => void;
   onSearch: () => void;
 };
 
@@ -17,6 +22,10 @@ export function OutstandingFeesSearch({
   value,
   loading = false,
   onChange,
+  classId,
+  sectionId,
+  onClassChange,
+  onSectionChange,
   onSearch,
 }: Props) {
   return (
@@ -35,7 +44,7 @@ export function OutstandingFeesSearch({
               </h2>
 
               <p className="mt-0.5 text-xs text-muted-foreground">
-                Search students by name or admission number.
+                Search students or narrow the list by class and section.
               </p>
             </div>
           </div>
@@ -43,7 +52,7 @@ export function OutstandingFeesSearch({
 
         {/* Search */}
         <div className="p-5 sm:p-6">
-          <div className="flex flex-col gap-3 sm:flex-row">
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(260px,1fr)_180px_180px_auto]">
             <div className="relative min-w-0 flex-1">
               <Search className="absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
 
@@ -60,6 +69,22 @@ export function OutstandingFeesSearch({
                 className="h-11 rounded-xl border-border/70 bg-background pl-11 shadow-none transition-all focus-visible:ring-2 focus-visible:ring-primary/20"
               />
             </div>
+
+            <ClassSelect
+              value={classId}
+              onChange={onClassChange}
+              allowAll
+              placeholder="All Classes"
+              triggerClassName="h-11 rounded-xl"
+            />
+
+            <SectionSelect
+              classId={classId}
+              value={sectionId}
+              onChange={onSectionChange}
+              placeholder="All Sections"
+              triggerClassName="h-11 rounded-xl"
+            />
 
             <Button
               onClick={onSearch}

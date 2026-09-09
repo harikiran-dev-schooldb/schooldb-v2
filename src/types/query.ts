@@ -12,6 +12,8 @@ export interface ListQuery {
 
   filters?: Record<string, unknown>;
   status?: StudentStatus;
+  classId?: string;
+  sectionId?: string;
 }
 
 export interface PaginatedResult<T> {

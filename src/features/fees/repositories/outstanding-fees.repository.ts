@@ -5,6 +5,7 @@ type OutstandingFeesFilters = {
   schoolId: string;
   search?: string;
   classId?: string;
+  sectionId?: string;
   academicYearId?: string;
 };
 
@@ -12,6 +13,7 @@ const whereClause = ({
   schoolId,
   search,
   classId,
+  sectionId,
   academicYearId,
 }: OutstandingFeesFilters): Prisma.StudentFeeInstallmentWhereInput => ({
   status: {
@@ -35,6 +37,12 @@ const whereClause = ({
         ...(classId
           ? {
               classId,
+            }
+          : {}),
+
+        ...(sectionId
+          ? {
+              sectionId,
             }
           : {}),
 

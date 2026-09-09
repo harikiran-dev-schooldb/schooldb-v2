@@ -29,6 +29,8 @@ export function OutstandingFeesContainer({ schoolSlug }: Props) {
   const [error, setError] = useState<string | null>(null);
 
   const [search, setSearch] = useState("");
+  const [classId, setClassId] = useState("");
+  const [sectionId, setSectionId] = useState("");
 
   const [page, setPage] = useState(1);
 
@@ -36,7 +38,12 @@ export function OutstandingFeesContainer({ schoolSlug }: Props) {
 
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
 
-  async function loadOutstanding(searchValue = "", pageValue = 1) {
+  async function loadOutstanding(
+    searchValue = "",
+    pageValue = 1,
+    classValue = classId,
+    sectionValue = sectionId,
+  ) {
     try {
       setLoading(true);
       setError(null);
@@ -46,6 +53,8 @@ export function OutstandingFeesContainer({ schoolSlug }: Props) {
       if (searchValue.trim()) {
         params.set("search", searchValue.trim());
       }
+      if (classValue) params.set("classId", classValue);
+      if (sectionValue) params.set("sectionId", sectionValue);
 
       params.set("page", String(pageValue));
 
@@ -201,6 +210,13 @@ export function OutstandingFeesContainer({ schoolSlug }: Props) {
         value={search}
         loading={loading}
         onChange={setSearch}
+        classId={classId}
+        sectionId={sectionId}
+        onClassChange={(value) => {
+          setClassId(value);
+          setSectionId("");
+        }}
+        onSectionChange={setSectionId}
         onSearch={handleSearch}
       />
 

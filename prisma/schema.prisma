@@ -550,6 +550,7 @@ model StudentEnrollment {
   @@index([classId])
   @@index([sectionId])
   @@index([schoolId, active])
+  @@index([schoolId, active, classId, sectionId])
   @@index([schoolId, academicYearId, active])
   @@index([academicYearId, classId, sectionId])
 }

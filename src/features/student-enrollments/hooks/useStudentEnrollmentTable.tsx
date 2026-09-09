@@ -25,6 +25,8 @@ export function useStudentEnrollmentTable() {
   const [pageSize] = useState(25);
 
   const [search, setSearch] = useState("");
+  const [classId, setClassId] = useState("");
+  const [sectionId, setSectionId] = useState("");
 
   const [totalPages, setTotalPages] = useState(1);
 
@@ -36,6 +38,17 @@ export function useStudentEnrollmentTable() {
     setReloadVersion((v) => v + 1);
   }, []);
 
+  const handleClassChange = (value: string) => {
+    setClassId(value);
+    setSectionId("");
+    setPage(1);
+  };
+
+  const handleSectionChange = (value: string) => {
+    setSectionId(value);
+    setPage(1);
+  };
+
   useEffect(() => {
     let active = true;
 
@@ -43,8 +56,16 @@ export function useStudentEnrollmentTable() {
       setLoading(true);
 
       try {
+        const params = new URLSearchParams({
+          page: String(page),
+          pageSize: String(pageSize),
+          search: debouncedSearch,
+        });
+        if (classId) params.set("classId", classId);
+        if (sectionId) params.set("sectionId", sectionId);
+
         const res = await fetch(
-          `/api/v1/student-enrollments?page=${page}&pageSize=${pageSize}&search=${encodeURIComponent(debouncedSearch)}`,
+          `/api/v1/student-enrollments?${params.toString()}`,
         );
 
         const result = await res.json();
@@ -67,7 +88,7 @@ export function useStudentEnrollmentTable() {
     return () => {
       active = false;
     };
-  }, [page, pageSize, debouncedSearch, reloadVersion]);
+  }, [page, pageSize, debouncedSearch, classId, sectionId, reloadVersion]);
 
   useEffect(() => {
     return subscribeTableRefresh("enrollments", reload);
@@ -84,6 +105,11 @@ export function useStudentEnrollmentTable() {
 
     search,
     setSearch,
+
+    classId,
+    setClassId: handleClassChange,
+    sectionId,
+    setSectionId: handleSectionChange,
 
     reload,
   };

@@ -20,6 +20,10 @@ export function StudentEnrollmentTable() {
 
     search,
     setSearch,
+    classId,
+    setClassId,
+    sectionId,
+    setSectionId,
   } = useStudentEnrollmentTable();
 
   return (
@@ -31,7 +35,14 @@ export function StudentEnrollmentTable() {
       totalPages={totalPages}
       onPageChange={setPage}
       toolbar={
-        <StudentEnrollmentToolbar search={search} onSearch={setSearch} />
+        <StudentEnrollmentToolbar
+          search={search}
+          onSearch={setSearch}
+          classId={classId}
+          onClassChange={setClassId}
+          sectionId={sectionId}
+          onSectionChange={setSectionId}
+        />
       }
     />
   );

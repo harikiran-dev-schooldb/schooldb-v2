@@ -25,6 +25,16 @@ export const studentService = {
 
       status: query.status ?? StudentStatus.ACTIVE,
 
+      ...((query.classId || query.sectionId) && {
+        enrollments: {
+          some: {
+            active: true,
+            ...(query.classId && { classId: query.classId }),
+            ...(query.sectionId && { sectionId: query.sectionId }),
+          },
+        },
+      }),
+
       ...(query.search && {
         OR: [
           {

@@ -20,6 +20,10 @@ export async function GET(req: Request) {
       searchParams.get("classId") ||
       undefined;
 
+    const sectionId =
+      searchParams.get("sectionId") ||
+      undefined;
+
     const academicYearId =
       searchParams.get(
         "academicYearId",
@@ -58,6 +62,7 @@ export async function GET(req: Request) {
 
         search,
         classId,
+        sectionId,
         academicYearId,
 
         page,

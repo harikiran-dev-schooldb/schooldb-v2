@@ -16,6 +16,10 @@ export function StudentTable() {
     setSearch,
     status,
     setStatus,
+    classId,
+    setClassId,
+    sectionId,
+    setSectionId,
   } = useStudentTable();
 
   return (
@@ -32,6 +36,10 @@ export function StudentTable() {
           onSearch={setSearch}
           status={status}
           onStatusChange={setStatus}
+          classId={classId}
+          onClassChange={setClassId}
+          sectionId={sectionId}
+          onSectionChange={setSectionId}
         />
       }
     />

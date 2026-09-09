@@ -12,8 +12,10 @@ export async function GET(request: Request) {
   const q = url.searchParams.get("q")?.trim() || "";
   const status = url.searchParams.get("status");
   const type = url.searchParams.get("type");
+  const classId = url.searchParams.get("classId") || "";
+  const sectionId = url.searchParams.get("sectionId") || "";
   const issues = await prisma.certificateIssue.findMany({
-    where: { schoolId: membership.schoolId, ...(["ISSUED", "CANCELLED"].includes(status || "") ? { status: status as "ISSUED" | "CANCELLED" } : {}), ...(["BONAFIDE", "STUDY", "TRANSFER"].includes(type || "") ? { type: type as "BONAFIDE" | "STUDY" | "TRANSFER" } : {}), ...(q ? { OR: [{ certificateNo: { contains: q, mode: "insensitive" } }, { student: { fullName: { contains: q, mode: "insensitive" } } }, { student: { admissionNo: { contains: q, mode: "insensitive" } } }] } : {}) },
+    where: { schoolId: membership.schoolId, ...(["ISSUED", "CANCELLED"].includes(status || "") ? { status: status as "ISSUED" | "CANCELLED" } : {}), ...(["BONAFIDE", "STUDY", "TRANSFER"].includes(type || "") ? { type: type as "BONAFIDE" | "STUDY" | "TRANSFER" } : {}), ...((classId || sectionId) ? { student: { enrollments: { some: { active: true, ...(classId ? { classId } : {}), ...(sectionId ? { sectionId } : {}) } } } } : {}), ...(q ? { OR: [{ certificateNo: { contains: q, mode: "insensitive" } }, { student: { fullName: { contains: q, mode: "insensitive" } } }, { student: { admissionNo: { contains: q, mode: "insensitive" } } }] } : {}) },
     orderBy: { issuedAt: "desc" },
     take: 5000,
     select: { certificateNo: true, type: true, status: true, purpose: true, issuedAt: true, issuedByName: true, printCount: true, cancelledAt: true, cancelledByName: true, cancellationNote: true, student: { select: { admissionNo: true, fullName: true } } },

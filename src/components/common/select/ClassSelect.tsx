@@ -17,10 +17,21 @@ type ClassOption = {
 
 type Props = {
   value?: string;
+  disabled?: boolean;
+  allowAll?: boolean;
+  placeholder?: string;
+  triggerClassName?: string;
   onChange: (value: string) => void;
 };
 
-export function ClassSelect({ value, onChange }: Props) {
+export function ClassSelect({
+  value,
+  disabled,
+  allowAll = false,
+  placeholder = "Select Class",
+  triggerClassName,
+  onChange,
+}: Props) {
   const [classes, setClasses] = useState<ClassOption[]>([]);
 
   useEffect(() => {
@@ -38,12 +49,20 @@ export function ClassSelect({ value, onChange }: Props) {
   }, []);
 
   return (
-    <Select value={value ?? ""} onValueChange={onChange}>
-      <SelectTrigger>
-        <SelectValue placeholder="Select Class" />
+    <Select
+      value={value ?? ""}
+      disabled={disabled}
+      onValueChange={(nextValue) =>
+        onChange(nextValue === "ALL" ? "" : nextValue)
+      }
+    >
+      <SelectTrigger className={triggerClassName}>
+        <SelectValue placeholder={placeholder} />
       </SelectTrigger>
 
       <SelectContent>
+        {allowAll && <SelectItem value="ALL">All Classes</SelectItem>}
+
         {classes.map((item) => (
           <SelectItem key={item.id} value={item.id}>
             {item.label}

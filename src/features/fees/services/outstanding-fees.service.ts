@@ -5,6 +5,7 @@ type OutstandingFeesInput = {
   schoolId: string;
   search?: string;
   classId?: string;
+  sectionId?: string;
   academicYearId?: string;
   page: number;
   pageSize: number;
@@ -16,6 +17,7 @@ export const outstandingFeesService = {
       schoolId,
       search,
       classId,
+      sectionId,
       academicYearId,
       page,
       pageSize,
@@ -25,6 +27,7 @@ export const outstandingFeesService = {
       schoolId,
       search,
       classId,
+      sectionId,
       academicYearId,
     };
 
