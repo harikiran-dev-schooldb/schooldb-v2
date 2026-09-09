@@ -22,7 +22,10 @@ export async function PUT(
     const { id } = await params;
 
     const student = await studentService.update(id, tenant.schoolId, data);
-    return ApiResponse.success(student, "Student updated successfully.");
+    return ApiResponse.success(
+      student,
+      `Student updated successfully. ${student.loginAccess.message}`,
+    );
   });
 }
 

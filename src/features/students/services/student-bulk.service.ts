@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { safelyProvisionStudentLogin } from "@/features/auth/account-provisioning";
 
 import { bulkStudentsSchema } from "../schemas/bulk-student.schema";
 
@@ -96,6 +97,14 @@ export const studentBulkService = {
       createdStudents.map((student) => student.admissionNo),
     );
 
+    const loginResults = [];
+    for (let index = 0; index < createdStudents.length; index += 5) {
+      const batch = createdStudents.slice(index, index + 5);
+      loginResults.push(...await Promise.all(
+        batch.map((student) => safelyProvisionStudentLogin(student.id, schoolId)),
+      ));
+    }
+
     for (const { row, student } of eligible) {
       const wasCreated = createdAdmissionNos.has(student.admissionNo);
       results.push({
@@ -115,6 +124,8 @@ export const studentBulkService = {
     return {
       created,
       failed,
+      loginProvisioned: loginResults.filter((result) => result.status === "PROVISIONED").length,
+      loginPending: loginResults.filter((result) => result.status === "FAILED").length,
       errors: ordered
         .filter((item) => item.status === "failed")
         .map((item) => ({

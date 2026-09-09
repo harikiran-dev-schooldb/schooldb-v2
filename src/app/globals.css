@@ -364,9 +364,21 @@
 
   .report-card-print,
   .report-card-print *,
+  .certificate-print,
+  .certificate-print *,
   .id-card-print,
   .id-card-print * {
     visibility: visible !important;
+  }
+
+  .certificate-print {
+    position: absolute !important;
+    inset: 0 auto auto 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    background: #ffffff !important;
+    box-shadow: none !important;
   }
 
   .id-card-print {

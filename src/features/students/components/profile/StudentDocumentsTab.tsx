@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Award, Download, FileBadge, FileCheck2, FileText, GraduationCap, IdCard, Loader2, Plus, ShieldCheck, Trash2, UploadCloud } from "lucide-react";
 import { toast } from "sonner";
@@ -174,7 +175,18 @@ export function StudentDocumentsTab({ student }: { student: StudentProfileData }
       </Card>
 
       <div><div className="mb-3"><h3 className="font-bold">Generate certificates</h3><p className="text-sm text-muted-foreground">Open a print-ready document using the latest student and enrollment details.</p></div><div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {certificates.map((certificate) => { const disabled = certificate.type === "transfer" && student.status !== "TC_ISSUED"; const Icon = certificate.icon; return <a key={certificate.type} href={disabled ? undefined : `/${schoolSlug}/students/${student.id}/certificates/${certificate.type}`} target={disabled ? undefined : "_blank"} rel="noreferrer" aria-disabled={disabled} className={`rounded-2xl border bg-card p-5 transition ${disabled ? "cursor-not-allowed opacity-50" : "hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-lg"}`}><div className="flex size-11 items-center justify-center rounded-xl bg-primary/10 text-primary"><Icon className="size-5" /></div><p className="mt-4 font-semibold">{certificate.label}</p><p className="mt-1 text-xs leading-5 text-muted-foreground">{certificate.detail}</p></a>; })}
+        {certificates.map((certificate) => {
+          const disabled = certificate.type === "transfer" && student.status !== "TC_ISSUED";
+          const Icon = certificate.icon;
+          const content = <><div className="flex size-11 items-center justify-center rounded-xl bg-primary/10 text-primary"><Icon className="size-5" /></div><p className="mt-4 font-semibold">{certificate.label}</p><p className="mt-1 text-xs leading-5 text-muted-foreground">{certificate.detail}</p></>;
+          const className = `rounded-2xl border bg-card p-5 transition ${disabled ? "cursor-not-allowed opacity-50" : "hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-lg"}`;
+
+          return disabled ? (
+            <div key={certificate.type} aria-disabled="true" className={className}>{content}</div>
+          ) : (
+            <Link key={certificate.type} href={`/${schoolSlug}/students/${student.id}/certificates/${certificate.type}`} className={className}>{content}</Link>
+          );
+        })}
       </div></div>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}><DialogContent><DialogHeader><DialogTitle>Upload student document</DialogTitle><DialogDescription>PDF, JPG, PNG, or WebP up to 5 MB. Files remain private unless family access is enabled.</DialogDescription></DialogHeader><form onSubmit={uploadDocument} className="space-y-4">

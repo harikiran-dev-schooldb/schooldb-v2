@@ -26,6 +26,10 @@ export async function POST(req: Request) {
     const tenant = await requireRole(["SUPER_ADMIN", "SCHOOL_ADMIN"]);
     const body = teacherSchema.parse(await req.json());
     const teacher = await teacherService.create(tenant.schoolId, body);
-    return ApiResponse.success(teacher, "Teacher created successfully.", 201);
+    return ApiResponse.success(
+      teacher,
+      `Teacher created successfully. ${teacher.loginAccess.message}`,
+      201,
+    );
   });
 }

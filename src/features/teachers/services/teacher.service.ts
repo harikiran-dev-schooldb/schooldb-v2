@@ -4,6 +4,11 @@ import {
 } from "../schemas/teacher.schema";
 
 import { ListQuery } from "@/types/query";
+import { safelyProvisionTeacherLogin } from "@/features/auth/account-provisioning";
+
+function teacherUsername(employeeId: string) {
+  return `TCH_${employeeId.trim()}`;
+}
 
 export const teacherService = {
   async list(
@@ -84,8 +89,10 @@ export const teacherService = {
       );
     }
 
-    return teacherRepository.create({
+    const teacher = await teacherRepository.create({
       employeeId: input.employeeId,
+
+      username: teacherUsername(input.employeeId),
 
       fullName: input.fullName,
 
@@ -127,6 +134,9 @@ export const teacherService = {
         },
       },
     });
+
+    const loginAccess = await safelyProvisionTeacherLogin(teacher.id, schoolId);
+    return { ...teacher, loginAccess };
   },
 
   async get(
@@ -180,11 +190,13 @@ export const teacherService = {
       );
     }
 
-    return teacherRepository.update(
+    const updated = await teacherRepository.update(
       id,
       schoolId,
       {
         employeeId: input.employeeId,
+
+        username: teacherUsername(input.employeeId),
 
         fullName: input.fullName,
 
@@ -219,8 +231,11 @@ export const teacherService = {
             : input.designation,
 
         active: input.active,
-      }
+      },
     );
+
+    const loginAccess = await safelyProvisionTeacherLogin(updated.id, schoolId);
+    return { ...updated, loginAccess };
   },
 
   async options(

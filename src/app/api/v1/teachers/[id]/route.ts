@@ -22,6 +22,9 @@ export async function PUT(req: Request, { params }: Props) {
     const { id } = await params;
     const body = teacherSchema.parse(await req.json());
     const teacher = await teacherService.update(id, tenant.schoolId, body);
-    return ApiResponse.success(teacher, "Teacher updated successfully.");
+    return ApiResponse.success(
+      teacher,
+      `Teacher updated successfully. ${teacher.loginAccess.message}`,
+    );
   });
 }

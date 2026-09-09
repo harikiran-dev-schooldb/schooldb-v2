@@ -99,6 +99,8 @@ model School {
   libraryCopies        LibraryBookCopy[]
   libraryLoans         LibraryLoan[]
   idCardSetting        SchoolIdCardSetting?
+  certificateSetting   SchoolCertificateSetting?
+  certificateIssues    CertificateIssue[]
 }
 
 model SchoolIdCardSetting {
@@ -113,6 +115,22 @@ model SchoolIdCardSetting {
   createdAt    DateTime          @default(now())
   updatedAt    DateTime          @updatedAt
   school       School            @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId])
+}
+
+model SchoolCertificateSetting {
+  id              String   @id @default(cuid())
+  schoolId        String   @unique
+  headerSubtitle  String   @default("SchoolDB · Official record")
+  bonafideContent String   @db.Text
+  studyContent    String   @db.Text
+  transferContent String   @db.Text
+  footerNote      String?
+  signatoryLabel  String   @default("Principal / Head of School")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  school          School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
   @@index([schoolId])
 }
@@ -302,6 +320,7 @@ model Student {
   leaveRequests       LeaveRequest[]
   documents           StudentDocument[]
   whatsappRecipients  WhatsappRecipient[]
+  certificateIssues   CertificateIssue[]
 
   @@unique([schoolId, admissionNo])
   @@index([schoolId])
@@ -309,6 +328,44 @@ model Student {
   @@index([schoolId, fullName])
   @@index([schoolId, phone])
   @@index([schoolId, status, createdAt])
+}
+
+enum CertificateIssueType {
+  BONAFIDE
+  STUDY
+  TRANSFER
+}
+
+enum CertificateIssueStatus {
+  ISSUED
+  CANCELLED
+}
+
+model CertificateIssue {
+  id               String                 @id @default(cuid())
+  schoolId         String
+  studentId        String
+  type             CertificateIssueType
+  status           CertificateIssueStatus @default(ISSUED)
+  certificateNo    String                 @unique
+  purpose          String?
+  issuedByUserId   String
+  issuedByName     String
+  issuedAt         DateTime               @default(now())
+  printCount       Int                    @default(0)
+  lastPrintedAt    DateTime?
+  cancelledAt      DateTime?
+  cancelledByName  String?
+  cancellationNote String?
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+  school           School                 @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student          Student                @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId, issuedAt])
+  @@index([schoolId, status, issuedAt])
+  @@index([schoolId, studentId, issuedAt])
+  @@index([schoolId, type, issuedAt])
 }
 
 model WhatsappCampaign {

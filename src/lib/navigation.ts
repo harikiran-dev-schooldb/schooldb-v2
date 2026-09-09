@@ -42,6 +42,7 @@ export const navigation: NavigationItem[] = [
       { title: "Students", href: "students" },
       { title: "Enrollments", href: "enrollments" },
       { title: "Student ID Cards", href: "id-cards" },
+      { title: "Certificate Register", href: "certificates", roles: ADMIN_ROLES },
       { title: "Teachers", href: "teachers" },
     ],
   },

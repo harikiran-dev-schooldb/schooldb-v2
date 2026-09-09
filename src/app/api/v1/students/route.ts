@@ -18,7 +18,11 @@ export async function POST(req: Request) {
 
     const student = await studentService.create(tenant.schoolId, body);
 
-    return ApiResponse.success(student, "Student created successfully.", 201);
+    return ApiResponse.success(
+      student,
+      `Student created successfully. ${student.loginAccess.message}`,
+      201,
+    );
   });
 }
 

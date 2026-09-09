@@ -6,6 +6,7 @@ import {
   BookOpenCheck,
   CalendarDays,
   CheckCircle2,
+  FileBadge2,
   Layers3,
   School,
 } from "lucide-react";
@@ -16,6 +17,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useSchool } from "@/contexts/school-context";
 
 const setupItems = [
+  {
+    title: "Certificate Settings",
+    description:
+      "Customize certificate wording, footer information and the authorised signatory.",
+    href: "certificate-settings",
+    icon: FileBadge2,
+  },
   {
     title: "Academic Year",
     description:
@@ -93,7 +101,7 @@ export default function SchoolSetupPage() {
           </p>
         </div>
 
-        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
           {setupItems.map((item) => {
             const Icon = item.icon;
 
@@ -138,11 +146,12 @@ export default function SchoolSetupPage() {
         </CardHeader>
 
         <CardContent className="p-6">
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
             <InfoItem number="01" title="Academic Year" description="Academic calendar and attendance configuration." />
             <InfoItem number="02" title="Classes" description="Academic classes offered by the school." />
             <InfoItem number="03" title="Sections" description="Sections organized under each class." />
             <InfoItem number="04" title="Class Subjects" description="Subjects offered to each class for an academic year." />
+            <InfoItem number="05" title="Certificates" description="Official wording, footer and authorised signatory." />
           </div>
         </CardContent>
       </Card>

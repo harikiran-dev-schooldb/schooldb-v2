@@ -3,6 +3,7 @@ import { StudentFormOutput } from "../schemas/student.schema";
 import { StudentStatus } from "@/generated/prisma/enums";
 import { ListQuery } from "@/types/query";
 import { studentActivityService } from "./student-activity.service";
+import { safelyProvisionStudentLogin } from "@/features/auth/account-provisioning";
 
 type StudentCreateInput = Pick<
   StudentFormOutput,
@@ -176,7 +177,8 @@ export const studentService = {
       } was added to SchoolDB.`,
     });
 
-    return student;
+    const loginAccess = await safelyProvisionStudentLogin(student.id, schoolId);
+    return { ...student, loginAccess };
   },
 
   /* ---------------------------------------------------------------------- */
@@ -254,7 +256,8 @@ export const studentService = {
       } was updated.`,
     });
 
-    return updated;
+    const loginAccess = await safelyProvisionStudentLogin(updated.id, schoolId);
+    return { ...updated, loginAccess };
   },
 
   /* ---------------------------------------------------------------------- */
@@ -308,7 +311,8 @@ export const studentService = {
       },
     });
 
-    return updated;
+    const loginAccess = await safelyProvisionStudentLogin(updated.id, schoolId);
+    return { ...updated, loginAccess };
   },
 
   /* ---------------------------------------------------------------------- */
