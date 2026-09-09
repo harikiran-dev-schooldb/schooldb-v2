@@ -2,6 +2,7 @@ import { createHash, randomBytes } from "node:crypto";
 
 import { clerkClient } from "@clerk/nextjs/server";
 
+import type { Role } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 
 import { normalizeIndianMobile } from "./otp";
@@ -17,11 +18,13 @@ export type LoginProvisionResult = {
 type ManagedAccountInput = {
   schoolId: string;
   schoolSlug: string;
-  role: ManagedRole;
+  role: Role;
   externalId: string;
   displayName: string;
   phone: string;
   existingClerkUserId?: string | null;
+  designation?: string | null;
+  allowRoleUpdate?: boolean;
 };
 
 function identityHash(value: string) {
@@ -37,7 +40,13 @@ function splitName(value: string) {
 }
 
 function internalEmail(externalId: string) {
-  return `account_${identityHash(externalId)}@schooldb.invalid`;
+  return `account_${identityHash(externalId)}@schooldb.example.com`;
+}
+
+function clerkErrorMessage(error: unknown) {
+  if (!error || typeof error !== "object" || !("errors" in error)) return null;
+  const errors = (error as { errors?: Array<{ longMessage?: string; message?: string }> }).errors;
+  return errors?.[0]?.longMessage || errors?.[0]?.message || null;
 }
 
 async function ensureManagedAccount(input: ManagedAccountInput) {
@@ -66,6 +75,7 @@ async function ensureManagedAccount(input: ManagedAccountInput) {
         managedBy: "SchoolDB",
         schoolSlug: input.schoolSlug,
         role: input.role,
+        designation: input.designation ?? undefined,
       },
     });
   } else {
@@ -77,6 +87,7 @@ async function ensureManagedAccount(input: ManagedAccountInput) {
         managedBy: "SchoolDB",
         schoolSlug: input.schoolSlug,
         role: input.role,
+        designation: input.designation ?? undefined,
       },
     });
   }
@@ -103,7 +114,7 @@ async function ensureManagedAccount(input: ManagedAccountInput) {
       where: { userId_schoolId: { userId: user.id, schoolId: input.schoolId } },
       select: { role: true },
     });
-    if (existingMembership && existingMembership.role !== input.role) {
+    if (existingMembership && existingMembership.role !== input.role && !input.allowRoleUpdate) {
       throw new Error(`The linked account already has the ${existingMembership.role} role in this school.`);
     }
 
@@ -114,12 +125,43 @@ async function ensureManagedAccount(input: ManagedAccountInput) {
         schoolId: input.schoolId,
         role: input.role,
         isActive: true,
+        designation: input.designation,
       },
-      update: { isActive: true },
+      update: {
+        isActive: true,
+        ...(input.allowRoleUpdate ? { role: input.role } : {}),
+        ...(input.designation !== undefined ? { designation: input.designation } : {}),
+      },
     });
 
     return user;
   });
+}
+
+export async function provisionStaffLogin(input: {
+  schoolId: string;
+  schoolSlug: string;
+  displayName: string;
+  phone: string;
+  role: "SCHOOL_ADMIN" | "ACCOUNTANT" | "RECEPTIONIST";
+  designation: string;
+  existingClerkUserId?: string;
+}) {
+  const phone = normalizeIndianMobile(input.phone);
+  if (!phone) throw new Error("Enter a valid Indian mobile number.");
+
+  try {
+    return await ensureManagedAccount({
+      ...input,
+      phone,
+      externalId: `schooldb:${input.schoolId}:staff:${phone}`,
+      allowRoleUpdate: true,
+    });
+  } catch (error) {
+    const message = clerkErrorMessage(error);
+    if (message) throw new Error(message);
+    throw error;
+  }
 }
 
 async function deactivateLinkedMembership(schoolId: string, clerkUserId: string | null) {
