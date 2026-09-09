@@ -2,6 +2,7 @@ import { apiHandler } from "@/lib/api";
 import { requireRole } from "@/lib/auth";
 import { ApiResponse } from "@/lib/response";
 import { prisma } from "@/lib/prisma";
+import { recordAuditLog } from "@/lib/audit";
 
 const MAX_ROWS = 1000;
 const VALID_STATUSES = new Set(["PRESENT", "ABSENT", "EXEMPTED"]);
@@ -288,6 +289,14 @@ export async function POST(request: Request) {
     await prisma.$transaction(
       resolved.map((row) => prisma.studentExamMark.create({ data: row })),
     );
+    await recordAuditLog({
+      actor: tenant,
+      module: "ACADEMICS",
+      action: "IMPORT",
+      entityType: "EXAM_MARK",
+      summary: `Imported ${resolved.length} exam mark${resolved.length === 1 ? "" : "s"}.`,
+      metadata: { recordCount: resolved.length },
+    });
     return ApiResponse.success(
       { created: resolved.length, failed: 0, errors: [] },
       "Exam marks imported successfully.",

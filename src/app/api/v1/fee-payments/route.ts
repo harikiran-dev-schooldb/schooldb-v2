@@ -7,6 +7,7 @@ import { feePaymentSchema } from "@/features/fee-payments/schemas/fee-payment.sc
 import { feePaymentService } from "@/features/fee-payments/services/fee-payment.service";
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
+import { recordAuditLog } from "@/lib/audit";
 
 export async function POST(req: Request) {
   return apiHandler(async () => {
@@ -18,6 +19,15 @@ export async function POST(req: Request) {
     ]);
     const body = await validateBody(req, feePaymentSchema);
     const payment = await feePaymentService.create(tenant.schoolId, body);
+    await recordAuditLog({
+      actor: tenant,
+      module: "FEES",
+      action: "COLLECT",
+      entityType: "FEE_PAYMENT",
+      entityId: payment.id,
+      summary: `Collected ₹${Number(payment.amount).toLocaleString("en-IN")} for ${payment.studentEnrollment.student.fullName || payment.studentEnrollment.student.admissionNo}; receipt ${payment.receiptNo}.`,
+      metadata: { receiptNo: payment.receiptNo, amount: Number(payment.amount), paymentMode: payment.paymentMode },
+    });
     return ApiResponse.success(
       payment,
       "Fee payment recorded successfully.",

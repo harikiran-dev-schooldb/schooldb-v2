@@ -4,7 +4,11 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { requireRole } from "@/lib/auth";
-import { createWhatsappCampaign, processWhatsappCampaignBatch } from "./service";
+import {
+  createWhatsappCampaign,
+  processWhatsappCampaignBatch,
+} from "./service";
+import { recordAuditLog } from "@/lib/audit";
 
 export type WhatsappActionState = { error: string; success: string };
 
@@ -16,13 +20,28 @@ const campaignSchema = z.object({
   scheduledAt: z.string(),
 });
 
-export async function queueWhatsappCampaign(schoolSlug: string, _state: WhatsappActionState, form: FormData): Promise<WhatsappActionState> {
-  const membership = await requireRole(["SUPER_ADMIN", "SCHOOL_ADMIN"], schoolSlug);
+export async function queueWhatsappCampaign(
+  schoolSlug: string,
+  _state: WhatsappActionState,
+  form: FormData,
+): Promise<WhatsappActionState> {
+  const membership = await requireRole(
+    ["SUPER_ADMIN", "SCHOOL_ADMIN"],
+    schoolSlug,
+  );
   const parsed = campaignSchema.safeParse(Object.fromEntries(form));
-  if (!parsed.success) return { error: "Complete the message and choose a valid audience.", success: "" };
-  const templateName = process.env.META_WA_ANNOUNCEMENT_TEMPLATE || "school_announcement";
-  const scheduledAt = parsed.data.scheduledAt ? new Date(parsed.data.scheduledAt) : new Date();
-  if (Number.isNaN(scheduledAt.getTime())) return { error: "Choose a valid sending time.", success: "" };
+  if (!parsed.success)
+    return {
+      error: "Complete the message and choose a valid audience.",
+      success: "",
+    };
+  const templateName =
+    process.env.META_WA_ANNOUNCEMENT_TEMPLATE || "school_announcement";
+  const scheduledAt = parsed.data.scheduledAt
+    ? new Date(parsed.data.scheduledAt)
+    : new Date();
+  if (Number.isNaN(scheduledAt.getTime()))
+    return { error: "Choose a valid sending time.", success: "" };
   try {
     const campaign = await createWhatsappCampaign({
       schoolId: membership.schoolId,
@@ -31,15 +50,50 @@ export async function queueWhatsappCampaign(schoolSlug: string, _state: Whatsapp
       scheduledAt,
       templateName,
     });
+    await recordAuditLog({
+      actor: membership,
+      module: "COMMUNICATION",
+      action: "CREATE",
+      entityType: "WHATSAPP_CAMPAIGN",
+      entityId: campaign.id,
+      summary: `Queued WhatsApp campaign “${parsed.data.title}” for ${campaign.recipientCount} recipient${campaign.recipientCount === 1 ? "" : "s"}.`,
+      metadata: {
+        recipientCount: campaign.recipientCount,
+        targetType: parsed.data.targetType,
+      },
+    });
     revalidatePath(`/${schoolSlug}/whatsapp`);
-    return { error: "", success: `Campaign queued for ${campaign.recipientCount} mobile number${campaign.recipientCount === 1 ? "" : "s"}.` };
+    return {
+      error: "",
+      success: `Campaign queued for ${campaign.recipientCount} mobile number${campaign.recipientCount === 1 ? "" : "s"}.`,
+    };
   } catch (error) {
-    return { error: error instanceof Error ? error.message : "Unable to queue this campaign.", success: "" };
+    return {
+      error:
+        error instanceof Error
+          ? error.message
+          : "Unable to queue this campaign.",
+      success: "",
+    };
   }
 }
 
-export async function processWhatsappCampaign(schoolSlug: string, campaignId: string) {
-  const membership = await requireRole(["SUPER_ADMIN", "SCHOOL_ADMIN"], schoolSlug);
+export async function processWhatsappCampaign(
+  schoolSlug: string,
+  campaignId: string,
+) {
+  const membership = await requireRole(
+    ["SUPER_ADMIN", "SCHOOL_ADMIN"],
+    schoolSlug,
+  );
   await processWhatsappCampaignBatch(membership.schoolId, campaignId);
+  await recordAuditLog({
+    actor: membership,
+    module: "COMMUNICATION",
+    action: "SEND",
+    entityType: "WHATSAPP_CAMPAIGN",
+    entityId: campaignId,
+    summary: "Processed the next WhatsApp campaign batch.",
+  });
   revalidatePath(`/${schoolSlug}/whatsapp`);
 }

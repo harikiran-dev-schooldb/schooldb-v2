@@ -4,6 +4,7 @@ import {
   BriefcaseBusiness,
   CalendarCheck,
   CalendarRange,
+  ChartNoAxesCombined,
   GraduationCap,
   IndianRupee,
   LayoutDashboard,
@@ -36,13 +37,28 @@ export const navigation: NavigationItem[] = [
     icon: LayoutDashboard,
   },
   {
+    title: "Reports & Analytics",
+    href: "reports",
+    icon: ChartNoAxesCombined,
+    roles: ADMIN_ROLES,
+  },
+  {
     title: "People",
     icon: UsersRound,
     children: [
       { title: "Students", href: "students" },
+      {
+        title: "Online Admissions",
+        href: "admissions",
+        roles: [...ADMIN_ROLES, "RECEPTIONIST"],
+      },
       { title: "Enrollments", href: "enrollments" },
       { title: "Student ID Cards", href: "id-cards" },
-      { title: "Certificate Register", href: "certificates", roles: ADMIN_ROLES },
+      {
+        title: "Certificate Register",
+        href: "certificates",
+        roles: ADMIN_ROLES,
+      },
       { title: "Teachers", href: "teachers" },
       { title: "User Accounts", href: "users", roles: ADMIN_ROLES },
     ],
@@ -110,7 +126,11 @@ export const navigation: NavigationItem[] = [
       { title: "Library", href: "library", roles: ADMIN_ROLES },
       { title: "Transport", href: "transport", roles: ADMIN_ROLES },
       { title: "School Calendar", href: "calendar", roles: ADMIN_ROLES },
-      { title: "Leave Requests", href: "leave-requests", roles: [...ADMIN_ROLES, "TEACHER"] },
+      {
+        title: "Leave Requests",
+        href: "leave-requests",
+        roles: [...ADMIN_ROLES, "TEACHER"],
+      },
     ],
   },
   {
@@ -127,6 +147,11 @@ export const navigation: NavigationItem[] = [
     icon: Settings2,
     children: [
       { title: "Bulk Operations", href: "bulk-operations" },
+      {
+        title: "Activity & Audit Logs",
+        href: "audit-logs",
+        roles: ADMIN_ROLES,
+      },
       { title: "School Setup", href: "setup", exact: true },
     ],
   },

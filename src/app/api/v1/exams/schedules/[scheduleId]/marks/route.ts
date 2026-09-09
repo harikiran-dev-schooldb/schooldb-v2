@@ -5,6 +5,7 @@ import { requireTeacherExamSchedule } from "@/lib/auth";
 import { ApiResponse } from "@/lib/response";
 
 import { studentExamMarkService } from "@/features/exams/services/student-exam-mark.service";
+import { recordAuditLog } from "@/lib/audit";
 
 type Params = Promise<{
   scheduleId: string;
@@ -144,6 +145,16 @@ export async function PUT(
         }),
       ),
     );
+
+    await recordAuditLog({
+      actor: tenant,
+      module: "ACADEMICS",
+      action: "UPDATE",
+      entityType: "EXAM_MARK",
+      entityId: scheduleId,
+      summary: `Saved ${body.marks.length} student exam mark${body.marks.length === 1 ? "" : "s"}.`,
+      metadata: { recordCount: body.marks.length, sectionId },
+    });
 
     return ApiResponse.success(
       result,

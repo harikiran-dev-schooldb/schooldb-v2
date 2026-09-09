@@ -8,25 +8,26 @@ datasource db {
 }
 
 model AcademicYear {
-  id                 String              @id @default(cuid())
-  name               String
-  startDate          DateTime
-  endDate            DateTime
-  active             Boolean             @default(false)
-  schoolId           String
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
-  attendanceMode     AttendanceMode      @default(ONCE_DAILY)
-  academicPeriods    AcademicPeriod[]
-  school             School              @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  attendanceSessions AttendanceSession[]
-  classSubjects      ClassSubject[]
-  exams              Exam[]
-  feePlans           FeePlan[]
-  homeworks          Homework[]
-  enrollments        StudentEnrollment[]
-  allocations        TeacherAllocation[]
-  timetables         Timetable[]
+  admissionApplications AdmissionApplication[]
+  id                    String                 @id @default(cuid())
+  name                  String
+  startDate             DateTime
+  endDate               DateTime
+  active                Boolean                @default(false)
+  schoolId              String
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+  attendanceMode        AttendanceMode         @default(ONCE_DAILY)
+  academicPeriods       AcademicPeriod[]
+  school                School                 @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  attendanceSessions    AttendanceSession[]
+  classSubjects         ClassSubject[]
+  exams                 Exam[]
+  feePlans              FeePlan[]
+  homeworks             Homework[]
+  enrollments           StudentEnrollment[]
+  allocations           TeacherAllocation[]
+  timetables            Timetable[]
 
   @@unique([schoolId, name])
 }
@@ -53,54 +54,58 @@ model AcademicPeriod {
 }
 
 model School {
-  announcements        Announcement[]
-  calendarEvents       SchoolCalendarEvent[]
-  studentDocuments     StudentDocument[]
-  whatsappCampaigns    WhatsappCampaign[]
-  whatsappRecipients   WhatsappRecipient[]
-  leaveRequests        LeaveRequest[]
-  otpChallenges        OtpChallenge[]
-  id                   String                       @id @default(cuid())
-  name                 String
-  slug                 String                       @unique
-  createdAt            DateTime                     @default(now())
-  updatedAt            DateTime                     @updatedAt
-  logo                 String?
-  academicPeriods      AcademicPeriod[]
-  academicYears        AcademicYear[]
-  attendance           Attendance[]
-  attendanceSessions   AttendanceSession[]
-  classes              Class[]
-  classSubjects        ClassSubject[]
-  exams                Exam[]
-  examSchedules        ExamSchedule[]
-  feeCategories        FeeCategory[]
-  feePayments          FeePayment[]
-  feePlans             FeePlan[]
-  homeworks            Homework[]
-  memberships          Membership[]
-  parentStudentLinks   ParentStudentLink[]
-  periods              Period[]
-  students             Student[]
-  activities           StudentActivity[]
-  studentEnrollments   StudentEnrollment[]
-  studentExamMarks     StudentExamMark[]
-  studentFees          StudentFee[]
-  subjects             Subject[]
-  teachers             Teacher[]
-  teacherAllocations   TeacherAllocation[]
-  timetables           Timetable[]
-  transportVehicles    TransportVehicle[]
-  transportRoutes      TransportRoute[]
-  transportStops       TransportStop[]
-  transportAssignments StudentTransportAssignment[]
-  libraryCategories    LibraryCategory[]
-  libraryBooks         LibraryBook[]
-  libraryCopies        LibraryBookCopy[]
-  libraryLoans         LibraryLoan[]
-  idCardSetting        SchoolIdCardSetting?
-  certificateSetting   SchoolCertificateSetting?
-  certificateIssues    CertificateIssue[]
+  admissionApplications AdmissionApplication[]
+  admissionDocuments    AdmissionDocument[]
+  admissionSetting      SchoolAdmissionSetting?
+  auditLogs             AuditLog[]
+  announcements         Announcement[]
+  calendarEvents        SchoolCalendarEvent[]
+  studentDocuments      StudentDocument[]
+  whatsappCampaigns     WhatsappCampaign[]
+  whatsappRecipients    WhatsappRecipient[]
+  leaveRequests         LeaveRequest[]
+  otpChallenges         OtpChallenge[]
+  id                    String                       @id @default(cuid())
+  name                  String
+  slug                  String                       @unique
+  createdAt             DateTime                     @default(now())
+  updatedAt             DateTime                     @updatedAt
+  logo                  String?
+  academicPeriods       AcademicPeriod[]
+  academicYears         AcademicYear[]
+  attendance            Attendance[]
+  attendanceSessions    AttendanceSession[]
+  classes               Class[]
+  classSubjects         ClassSubject[]
+  exams                 Exam[]
+  examSchedules         ExamSchedule[]
+  feeCategories         FeeCategory[]
+  feePayments           FeePayment[]
+  feePlans              FeePlan[]
+  homeworks             Homework[]
+  memberships           Membership[]
+  parentStudentLinks    ParentStudentLink[]
+  periods               Period[]
+  students              Student[]
+  activities            StudentActivity[]
+  studentEnrollments    StudentEnrollment[]
+  studentExamMarks      StudentExamMark[]
+  studentFees           StudentFee[]
+  subjects              Subject[]
+  teachers              Teacher[]
+  teacherAllocations    TeacherAllocation[]
+  timetables            Timetable[]
+  transportVehicles     TransportVehicle[]
+  transportRoutes       TransportRoute[]
+  transportStops        TransportStop[]
+  transportAssignments  StudentTransportAssignment[]
+  libraryCategories     LibraryCategory[]
+  libraryBooks          LibraryBook[]
+  libraryCopies         LibraryBookCopy[]
+  libraryLoans          LibraryLoan[]
+  idCardSetting         SchoolIdCardSetting?
+  certificateSetting    SchoolCertificateSetting?
+  certificateIssues     CertificateIssue[]
 }
 
 model SchoolIdCardSetting {
@@ -136,6 +141,7 @@ model SchoolCertificateSetting {
 }
 
 model User {
+  auditLogs          AuditLog[]
   announcementReads  AnnouncementRead[]
   id                 String              @id @default(cuid())
   clerkUserId        String              @unique
@@ -252,77 +258,100 @@ model Membership {
   @@index([schoolId, isActive, role])
 }
 
+model AuditLog {
+  id          String   @id @default(cuid())
+  schoolId    String
+  actorUserId String?
+  actorName   String
+  actorRole   String
+  module      String
+  action      String
+  entityType  String
+  entityId    String?
+  summary     String
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  school      School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  actor       User?    @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([schoolId, createdAt(sort: Desc)])
+  @@index([schoolId, module, createdAt(sort: Desc)])
+  @@index([schoolId, action, createdAt(sort: Desc)])
+  @@index([schoolId, actorUserId, createdAt(sort: Desc)])
+}
+
 model Student {
-  id                  String              @id @default(cuid())
-  admissionNo         String
-  gender              Gender
-  dob                 DateTime
-  email               String?
-  schoolId            String
-  createdAt           DateTime            @default(now())
-  updatedAt           DateTime            @updatedAt
-  address             String?
-  allergies           String?
-  alternatePhone      String?
-  apaarId             String?
-  bloodGroup          String?
-  caste               String?
-  category            Category?
-  city                String?
-  clerkId             String?
-  country             String?
-  district            String?
-  doctorName          String?
-  doctorPhone         String?
-  emisNo              String?
-  fatherAadhar        String?
-  fatherEmail         String?
-  fatherIncome        Decimal?
-  fatherName          String?
-  fatherOccupation    String?
-  fatherPhone         String?
-  fatherQualification String?
-  fullName            String?
-  guardianName        String?
-  guardianPhone       String?
-  guardianRelation    String?
-  hostelRequired      Boolean             @default(false)
-  imageUrl            String?
-  joinedDate          DateTime?
-  medicalConditions   String?
-  motherAadhar        String?
-  motherEmail         String?
-  motherIncome        Decimal?
-  motherName          String?
-  motherOccupation    String?
-  motherPhone         String?
-  motherQualification String?
-  motherTongue        String?
-  nationality         String?
-  penNo               String?
-  phone               String?
-  pincode             String?
-  religion            Religion?
-  remarks             String?
-  state               String?
-  status              StudentStatus       @default(ACTIVE)
-  studentAadhar       String?
-  subCaste            String?
-  transportRequired   Boolean             @default(false)
-  whatsappOptIn       Boolean             @default(false)
-  whatsappOptInAt     DateTime?
-  username            String?
-  statusChangedAt     DateTime?
-  statusRemarks       String?
-  attendance          Attendance[]
-  school              School              @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  activities          StudentActivity[]
-  enrollments         StudentEnrollment[]
-  parentLinks         ParentStudentLink[]
-  leaveRequests       LeaveRequest[]
-  documents           StudentDocument[]
-  whatsappRecipients  WhatsappRecipient[]
-  certificateIssues   CertificateIssue[]
+  admissionApplications AdmissionApplication[]
+  id                    String                 @id @default(cuid())
+  admissionNo           String
+  gender                Gender
+  dob                   DateTime
+  email                 String?
+  schoolId              String
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+  address               String?
+  allergies             String?
+  alternatePhone        String?
+  apaarId               String?
+  bloodGroup            String?
+  caste                 String?
+  category              Category?
+  city                  String?
+  clerkId               String?
+  country               String?
+  district              String?
+  doctorName            String?
+  doctorPhone           String?
+  emisNo                String?
+  fatherAadhar          String?
+  fatherEmail           String?
+  fatherIncome          Decimal?
+  fatherName            String?
+  fatherOccupation      String?
+  fatherPhone           String?
+  fatherQualification   String?
+  fullName              String?
+  guardianName          String?
+  guardianPhone         String?
+  guardianRelation      String?
+  hostelRequired        Boolean                @default(false)
+  imageUrl              String?
+  joinedDate            DateTime?
+  medicalConditions     String?
+  motherAadhar          String?
+  motherEmail           String?
+  motherIncome          Decimal?
+  motherName            String?
+  motherOccupation      String?
+  motherPhone           String?
+  motherQualification   String?
+  motherTongue          String?
+  nationality           String?
+  penNo                 String?
+  phone                 String?
+  pincode               String?
+  religion              Religion?
+  remarks               String?
+  state                 String?
+  status                StudentStatus          @default(ACTIVE)
+  studentAadhar         String?
+  subCaste              String?
+  transportRequired     Boolean                @default(false)
+  whatsappOptIn         Boolean                @default(false)
+  whatsappOptInAt       DateTime?
+  username              String?
+  statusChangedAt       DateTime?
+  statusRemarks         String?
+  attendance            Attendance[]
+  school                School                 @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  activities            StudentActivity[]
+  enrollments           StudentEnrollment[]
+  parentLinks           ParentStudentLink[]
+  leaveRequests         LeaveRequest[]
+  documents             StudentDocument[]
+  whatsappRecipients    WhatsappRecipient[]
+  certificateIssues     CertificateIssue[]
 
   @@unique([schoolId, admissionNo])
   @@index([schoolId])
@@ -474,46 +503,145 @@ model ParentStudentLink {
 }
 
 model Class {
-  id                 String              @id @default(cuid())
-  name               String
-  code               String?
-  schoolId           String
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
-  active             Boolean             @default(true)
-  description        String?
-  displayOrder       Int                 @default(0)
-  attendanceSessions AttendanceSession[]
-  school             School              @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  classSubjects      ClassSubject[]
-  examSchedules      ExamSchedule[]
-  feePlans           FeePlanClass[]
-  homeworks          Homework[]
-  sections           Section[]
-  enrollments        StudentEnrollment[]
-  allocations        TeacherAllocation[]
+  admissionApplications AdmissionApplication[]
+  id                    String                 @id @default(cuid())
+  name                  String
+  code                  String?
+  schoolId              String
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+  active                Boolean                @default(true)
+  description           String?
+  displayOrder          Int                    @default(0)
+  attendanceSessions    AttendanceSession[]
+  school                School                 @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  classSubjects         ClassSubject[]
+  examSchedules         ExamSchedule[]
+  feePlans              FeePlanClass[]
+  homeworks             Homework[]
+  sections              Section[]
+  enrollments           StudentEnrollment[]
+  allocations           TeacherAllocation[]
 
   @@unique([schoolId, name])
   @@index([schoolId])
 }
 
 model Section {
-  id                 String              @id @default(cuid())
-  name               String
-  classId            String
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
-  active             Boolean             @default(true)
-  displayOrder       Int                 @default(0)
-  attendanceSessions AttendanceSession[]
-  examSchedules      ExamSchedule[]
-  homeworks          Homework[]
-  class              Class               @relation(fields: [classId], references: [id], onDelete: Cascade)
-  enrollments        StudentEnrollment[]
-  allocations        TeacherAllocation[]
+  admissionApplications AdmissionApplication[]
+  id                    String                 @id @default(cuid())
+  name                  String
+  classId               String
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+  active                Boolean                @default(true)
+  displayOrder          Int                    @default(0)
+  attendanceSessions    AttendanceSession[]
+  examSchedules         ExamSchedule[]
+  homeworks             Homework[]
+  class                 Class                  @relation(fields: [classId], references: [id], onDelete: Cascade)
+  enrollments           StudentEnrollment[]
+  allocations           TeacherAllocation[]
 
   @@unique([classId, name])
   @@index([classId, active, displayOrder])
+}
+
+model AdmissionApplication {
+  id                 String                     @id @default(cuid())
+  applicationNo      String
+  schoolId           String
+  academicYearId     String
+  applyingClassId    String
+  preferredSectionId String?
+  studentId          String?
+  studentName        String
+  gender             Gender
+  dob                DateTime                   @db.Date
+  studentAadhar      String?
+  apaarId            String?
+  previousSchool     String?
+  fatherName         String?
+  fatherPhone        String?
+  motherName         String?
+  motherPhone        String?
+  guardianName       String?
+  guardianPhone      String?
+  guardianRelation   String?
+  email              String?
+  address            String?
+  city               String?
+  district           String?
+  state              String?
+  pincode            String?
+  medicalConditions  String?
+  transportRequired  Boolean                    @default(false)
+  whatsappOptIn      Boolean                    @default(false)
+  status             AdmissionApplicationStatus @default(SUBMITTED)
+  notes              String?
+  submittedAt        DateTime                   @default(now())
+  reviewedAt         DateTime?
+  convertedAt        DateTime?
+  createdAt          DateTime                   @default(now())
+  updatedAt          DateTime                   @updatedAt
+  school             School                     @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  academicYear       AcademicYear               @relation(fields: [academicYearId], references: [id], onDelete: Restrict)
+  applyingClass      Class                      @relation(fields: [applyingClassId], references: [id], onDelete: Restrict)
+  preferredSection   Section?                   @relation(fields: [preferredSectionId], references: [id], onDelete: SetNull)
+  student            Student?                   @relation(fields: [studentId], references: [id], onDelete: SetNull)
+  history            AdmissionStatusHistory[]
+  documents          AdmissionDocument[]
+
+  @@unique([schoolId, applicationNo])
+  @@index([schoolId, status, submittedAt(sort: Desc)])
+  @@index([schoolId, academicYearId, applyingClassId, status])
+  @@index([schoolId, fatherPhone])
+  @@index([schoolId, motherPhone])
+  @@index([schoolId, guardianPhone])
+  @@index([schoolId, studentAadhar])
+}
+
+model AdmissionDocument {
+  id            String                @id @default(cuid())
+  schoolId      String
+  applicationId String
+  type          AdmissionDocumentType
+  originalName  String
+  mimeType      String
+  sizeBytes     Int
+  storageKey    String                @unique
+  createdAt     DateTime              @default(now())
+  school        School                @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  application   AdmissionApplication  @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId, applicationId, createdAt])
+}
+
+model SchoolAdmissionSetting {
+  id                 String   @id @default(cuid())
+  schoolId           String   @unique
+  automaticNumbering Boolean  @default(false)
+  admissionPrefix    String   @default("")
+  nextNumber         Int      @default(1)
+  numberPadding      Int      @default(4)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  school             School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId])
+}
+
+model AdmissionStatusHistory {
+  id            String                      @id @default(cuid())
+  applicationId String
+  fromStatus    AdmissionApplicationStatus?
+  toStatus      AdmissionApplicationStatus
+  note          String?
+  changedBy     String
+  createdAt     DateTime                    @default(now())
+  application   AdmissionApplication        @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([applicationId, createdAt(sort: Desc)])
 }
 
 model StudentEnrollment {
@@ -1400,6 +1528,25 @@ enum StudentStatus {
   DROPPED
   NOT_COMING
   INACTIVE
+}
+
+enum AdmissionApplicationStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  APPROVED
+  WAITLISTED
+  REJECTED
+  CONVERTED
+}
+
+enum AdmissionDocumentType {
+  PHOTO
+  BIRTH_CERTIFICATE
+  AADHAAR
+  PREVIOUS_REPORT_CARD
+  TRANSFER_CERTIFICATE
+  OTHER
 }
 
 enum Gender {

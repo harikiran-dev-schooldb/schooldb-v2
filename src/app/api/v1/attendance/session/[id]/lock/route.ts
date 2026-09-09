@@ -5,6 +5,7 @@ import { after } from "next/server";
 
 import { attendanceService } from "@/features/attendance/services/attendance.service";
 import { processAutomatedCampaign, queueAttendanceSessionAlert } from "@/features/whatsapp/automation";
+import { recordAuditLog } from "@/lib/audit";
 
 type Props = {
   params: Promise<{
@@ -24,6 +25,15 @@ export async function POST(req: Request, { params }: Props) {
     );
     const campaign = await queueAttendanceSessionAlert(tenant.schoolId, id);
     if (campaign) after(() => processAutomatedCampaign(campaign.id));
+    await recordAuditLog({
+      actor: tenant,
+      module: "ATTENDANCE",
+      action: "LOCK",
+      entityType: "ATTENDANCE_SESSION",
+      entityId: id,
+      summary: "Locked an attendance session and finalized its records.",
+      metadata: { whatsappCampaignQueued: Boolean(campaign) },
+    });
 
     return ApiResponse.success(
       result,

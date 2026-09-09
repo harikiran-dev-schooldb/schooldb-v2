@@ -6,6 +6,7 @@ import { examService } from "@/features/exams/services/exam.service";
 import { updateExamSchema } from "@/features/exams/schemas/exam.schema";
 import { after } from "next/server";
 import { processAutomatedCampaign, queueResultsPublishedAlert } from "@/features/whatsapp/automation";
+import { recordAuditLog } from "@/lib/audit";
 
 type RouteContext = {
   params: Promise<{
@@ -106,6 +107,15 @@ export async function PATCH(
       if (campaign) after(() => processAutomatedCampaign(campaign.id));
     }
 
+    await recordAuditLog({
+      actor: tenant,
+      module: "ACADEMICS",
+      action: parsed.data.status === "COMPLETED" ? "PUBLISH" : "UPDATE",
+      entityType: "EXAM",
+      entityId: exam.id,
+      summary: `${parsed.data.status === "COMPLETED" ? "Published results for" : "Updated"} exam: ${exam.name}.`,
+    });
+
     return ApiResponse.success(
       exam,
       "Exam updated successfully.",
@@ -137,6 +147,15 @@ export async function DELETE(
         404,
       );
     }
+
+    await recordAuditLog({
+      actor: tenant,
+      module: "ACADEMICS",
+      action: "DELETE",
+      entityType: "EXAM",
+      entityId: examId,
+      summary: `Deleted exam: ${exam.name}.`,
+    });
 
     return ApiResponse.success(
       exam,

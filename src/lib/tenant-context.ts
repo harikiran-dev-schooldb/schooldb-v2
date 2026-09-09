@@ -14,10 +14,12 @@ const PUBLIC_PATH_PATTERNS = [
   /^\/login(?:\/.*)?$/,
   /^\/register(?:\/.*)?$/,
   /^\/[^/]+\/login(?:\/.*)?$/,
+  /^\/[^/]+\/apply(?:\/.*)?$/,
   /^\/api\/health$/,
   /^\/api\/cron\/whatsapp$/,
   /^\/api\/v1\/public\/whatsapp\/webhook$/,
   /^\/api\/v1\/public\/auth\/(?:send-otp|verify-otp)$/,
+  /^\/api\/v1\/public\/admissions\/[^/]+(?:\/(?:track|documents))?$/,
 ];
 
 export function isPublicPath(pathname: string): boolean {
@@ -25,10 +27,7 @@ export function isPublicPath(pathname: string): boolean {
 }
 
 export function isSchoolSlug(value: string): boolean {
-  return (
-    SCHOOL_SLUG_PATTERN.test(value) &&
-    !RESERVED_PATH_SEGMENTS.has(value)
-  );
+  return SCHOOL_SLUG_PATTERN.test(value) && !RESERVED_PATH_SEGMENTS.has(value);
 }
 
 export function schoolSlugFromPath(pathname: string): string | null {

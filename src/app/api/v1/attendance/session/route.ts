@@ -5,6 +5,7 @@ import { validateBody } from "@/lib/validation";
 
 import { attendanceSessionSchema } from "@/features/attendance/schemas/attendance-session.schema";
 import { attendanceService } from "@/features/attendance/services/attendance.service";
+import { recordAuditLog } from "@/lib/audit";
 
 export async function POST(req: Request) {
   return apiHandler(async () => {
@@ -29,6 +30,15 @@ export async function POST(req: Request) {
       tenant.schoolId,
       body,
     );
+
+    await recordAuditLog({
+      actor: tenant,
+      module: "ATTENDANCE",
+      action: "CREATE",
+      entityType: "ATTENDANCE_SESSION",
+      entityId: session.id,
+      summary: "Created or opened an attendance session for a class section.",
+    });
 
     return ApiResponse.success(session, "Attendance session created.", 201);
   });

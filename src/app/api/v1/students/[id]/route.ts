@@ -6,6 +6,7 @@ import { requireRole, requireTenant } from "@/lib/auth";
 
 import { createStudentSchema } from "@/features/students/schemas/student.schema";
 import { studentService } from "@/features/students/services/student.service";
+import { recordAuditLog } from "@/lib/audit";
 
 export async function PUT(
   req: NextRequest,
@@ -22,6 +23,14 @@ export async function PUT(
     const { id } = await params;
 
     const student = await studentService.update(id, tenant.schoolId, data);
+    await recordAuditLog({
+      actor: tenant,
+      module: "STUDENTS",
+      action: "UPDATE",
+      entityType: "STUDENT",
+      entityId: student.id,
+      summary: `Updated student ${student.fullName || student.admissionNo} (${student.admissionNo}).`,
+    });
     return ApiResponse.success(
       student,
       `Student updated successfully. ${student.loginAccess.message}`,

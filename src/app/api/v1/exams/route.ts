@@ -4,6 +4,7 @@ import { ApiResponse } from "@/lib/response";
 
 import { examService } from "@/features/exams/services/exam.service";
 import { createExamSchema } from "@/features/exams/schemas/exam.schema";
+import { recordAuditLog } from "@/lib/audit";
 
 export async function GET() {
   return apiHandler(async () => {
@@ -29,6 +30,14 @@ export async function POST(request: Request) {
       name: parsed.data.name,
       startDate: new Date(parsed.data.startDate),
       endDate: new Date(parsed.data.endDate),
+    });
+    await recordAuditLog({
+      actor: tenant,
+      module: "ACADEMICS",
+      action: "CREATE",
+      entityType: "EXAM",
+      entityId: exam.id,
+      summary: `Created exam: ${exam.name}.`,
     });
     return ApiResponse.success(exam, "Exam created successfully.", 201);
   });

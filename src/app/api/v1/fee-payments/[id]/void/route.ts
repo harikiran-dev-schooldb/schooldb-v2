@@ -4,6 +4,7 @@ import { ApiResponse } from "@/lib/response";
 import { z } from "zod";
 
 import { feePaymentService } from "@/features/fee-payments/services/fee-payment.service";
+import { recordAuditLog } from "@/lib/audit";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -25,7 +26,16 @@ export async function POST(req: Request, { params }: Params) {
     const { id } = await params;
     const body = await req.json();
     const { reason } = voidPaymentSchema.parse(body);
-    await feePaymentService.void(tenant.schoolId, id, reason);
+    const payment = await feePaymentService.void(tenant.schoolId, id, reason);
+    await recordAuditLog({
+      actor: tenant,
+      module: "FEES",
+      action: "VOID",
+      entityType: "FEE_PAYMENT",
+      entityId: id,
+      summary: `Voided fee payment${payment.receiptNo ? ` ${payment.receiptNo}` : ""}.`,
+      metadata: { reason },
+    });
     return ApiResponse.success(null, "Payment voided successfully.");
   });
 }

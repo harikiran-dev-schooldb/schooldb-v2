@@ -8,6 +8,7 @@ import { after } from "next/server";
 import { homeworkSchema } from "@/features/homework/schemas/homework.schema";
 import { homeworkService } from "@/features/homework/services/homework.service";
 import { processAutomatedCampaign, queueHomeworkPublishedAlert } from "@/features/whatsapp/automation";
+import { recordAuditLog } from "@/lib/audit";
 
 type Props = {
   params: Promise<{
@@ -49,6 +50,15 @@ export async function PUT(
       if (campaign) after(() => processAutomatedCampaign(campaign.id));
     }
 
+    await recordAuditLog({
+      actor: tenant,
+      module: "HOMEWORK",
+      action: "UPDATE",
+      entityType: "HOMEWORK",
+      entityId: item.id,
+      summary: `Updated homework: ${item.title}.`,
+    });
+
     return ApiResponse.success(
       item,
       "Homework updated successfully.",
@@ -78,6 +88,15 @@ export async function PATCH(
       if (campaign) after(() => processAutomatedCampaign(campaign.id));
     }
 
+    await recordAuditLog({
+      actor: tenant,
+      module: "HOMEWORK",
+      action: body.active ? "PUBLISH" : "ARCHIVE",
+      entityType: "HOMEWORK",
+      entityId: item.id,
+      summary: `${body.active ? "Published" : "Archived"} homework: ${item.title}.`,
+    });
+
     return ApiResponse.success(
       item,
       body.active ? "Homework published." : "Homework archived.",
@@ -93,7 +112,16 @@ export async function DELETE(
     const tenant = await requireRole(["SUPER_ADMIN", "SCHOOL_ADMIN"]);
     const { id } = await params;
 
+    const item = await homeworkService.get(id, tenant.schoolId);
     await homeworkService.delete(id, tenant.schoolId);
+    await recordAuditLog({
+      actor: tenant,
+      module: "HOMEWORK",
+      action: "DELETE",
+      entityType: "HOMEWORK",
+      entityId: id,
+      summary: `Deleted homework: ${item.title}.`,
+    });
 
     return ApiResponse.success(
       null,

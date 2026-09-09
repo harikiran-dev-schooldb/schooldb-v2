@@ -6,6 +6,7 @@ import { requireRole } from "@/lib/auth";
 
 import { changeStudentStatusSchema } from "@/features/students/schemas/change-status.schema";
 import { studentService } from "@/features/students/services/student.service";
+import { recordAuditLog } from "@/lib/audit";
 
 export async function PATCH(
   req: NextRequest,
@@ -26,6 +27,16 @@ export async function PATCH(
       data.status,
       data.remarks,
     );
+
+    await recordAuditLog({
+      actor: tenant,
+      module: "STUDENTS",
+      action: "UPDATE",
+      entityType: "STUDENT",
+      entityId: student.id,
+      summary: `Changed ${student.fullName || student.admissionNo} to ${data.status.toLowerCase().replaceAll("_", " ")}.`,
+      metadata: { status: data.status, hasRemarks: Boolean(data.remarks) },
+    });
 
     return ApiResponse.success(student, "Student status updated successfully.");
   });

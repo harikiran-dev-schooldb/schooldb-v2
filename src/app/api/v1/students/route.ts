@@ -5,6 +5,7 @@ import { ApiResponse } from "@/lib/response";
 import { createStudentSchema } from "@/features/students/schemas/student.schema";
 import { studentService } from "@/features/students/services/student.service";
 import { StudentStatus } from "@/features/students/constants/student-status";
+import { recordAuditLog } from "@/lib/audit";
 
 export async function POST(req: Request) {
   return apiHandler(async () => {
@@ -17,6 +18,15 @@ export async function POST(req: Request) {
     const body = await createStudentSchema.parseAsync(await req.json());
 
     const student = await studentService.create(tenant.schoolId, body);
+
+    await recordAuditLog({
+      actor: tenant,
+      module: "STUDENTS",
+      action: "CREATE",
+      entityType: "STUDENT",
+      entityId: student.id,
+      summary: `Created student ${student.fullName || student.admissionNo} (${student.admissionNo}).`,
+    });
 
     return ApiResponse.success(
       student,

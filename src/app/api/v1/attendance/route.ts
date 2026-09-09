@@ -9,6 +9,7 @@ import { validateBody } from "@/lib/validation";
 
 import { attendanceSchema } from "@/features/attendance/schemas/attendance.schema";
 import { attendanceService } from "@/features/attendance/services/attendance.service";
+import { recordAuditLog } from "@/lib/audit";
 
 export async function GET(req: Request) {
   return apiHandler(async () => {
@@ -43,6 +44,15 @@ export async function POST(req: Request) {
       tenant.schoolId,
       body,
     );
+
+    await recordAuditLog({
+      actor: tenant,
+      module: "ATTENDANCE",
+      action: "UPDATE",
+      entityType: "ATTENDANCE_SESSION",
+      entityId: body.sessionId,
+      summary: "Saved student attendance for a session.",
+    });
 
     return ApiResponse.success(result, "Attendance saved successfully.");
   });
