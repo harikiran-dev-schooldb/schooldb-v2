@@ -26,7 +26,12 @@ export async function POST(req: Request, { params }: Params) {
     const { id } = await params;
     const body = await req.json();
     const { reason } = voidPaymentSchema.parse(body);
-    const payment = await feePaymentService.void(tenant.schoolId, id, reason);
+    const payment = await feePaymentService.void(
+      tenant.schoolId,
+      id,
+      reason,
+      tenant.userId,
+    );
     await recordAuditLog({
       actor: tenant,
       module: "FEES",

@@ -1,5 +1,6 @@
 import { apiHandler } from "@/lib/api";
-import { requireTenant } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
+import { PERMISSIONS } from "@/lib/access-control";
 import { ApiResponse } from "@/lib/response";
 
 import { outstandingFeesService } from "@/features/fees/services/outstanding-fees.service";
@@ -7,7 +8,7 @@ import { outstandingFeesService } from "@/features/fees/services/outstanding-fee
 export async function GET(req: Request) {
   return apiHandler(async () => {
     const tenant =
-      await requireTenant();
+      await requirePermission(PERMISSIONS.FEE_READ);
 
     const { searchParams } =
       new URL(req.url);

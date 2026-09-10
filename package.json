@@ -2,12 +2,15 @@
   "name": "schooldb",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next dev",
     "build": "prisma generate && next build",
     "start": "next start",
     "lint": "eslint",
+    "typecheck": "tsc --noEmit",
     "test": "node --experimental-strip-types --test tests/*.test.ts",
+    "validate": "prisma validate",
     "load:test": "node scripts/load-test.mjs"
   },
   "dependencies": {
@@ -53,5 +56,10 @@
     "prisma": "7.10.0",
     "tailwindcss": "^4",
     "typescript": "^5"
+  },
+  "overrides": {
+    "deepmerge-ts": "8.0.2",
+    "mysql2": "3.24.4",
+    "uuid": "11.1.1"
   }
 }

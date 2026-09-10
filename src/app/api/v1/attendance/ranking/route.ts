@@ -1,11 +1,12 @@
 import { attendanceService } from "@/features/attendance/services/attendance.service";
 import { apiHandler } from "@/lib/api";
-import { requireTenant } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
+import { PERMISSIONS } from "@/lib/access-control";
 import { ApiResponse } from "@/lib/response";
 
 export async function GET(request: Request) {
   return apiHandler(async () => {
-    const tenant = await requireTenant();
+    const tenant = await requirePermission(PERMISSIONS.ATTENDANCE_READ);
     const searchParams = new URL(request.url).searchParams;
     const academicYearId = searchParams.get("academicYearId")?.trim();
     const classId = searchParams.get("classId")?.trim();

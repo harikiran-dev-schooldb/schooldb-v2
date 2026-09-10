@@ -1,12 +1,13 @@
 import { apiHandler } from "@/lib/api";
-import { requireTenant } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
+import { PERMISSIONS } from "@/lib/access-control";
 import { ApiResponse } from "@/lib/response";
 
 import { attendanceService } from "@/features/attendance/services/attendance.service";
 
 export async function GET(req: Request) {
   return apiHandler(async () => {
-    const tenant = await requireTenant();
+    const tenant = await requirePermission(PERMISSIONS.ATTENDANCE_READ);
 
     const { searchParams } = new URL(req.url);
 

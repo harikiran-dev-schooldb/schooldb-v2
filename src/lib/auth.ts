@@ -5,7 +5,7 @@ import { cache } from "react";
 import { ApiError } from "./errors";
 import { prisma } from "./prisma";
 import { requireSchoolSlug } from "./tenant-context";
-import { isOperationalRole } from "./access-control";
+import { hasPermission, isOperationalRole, type Permission } from "./access-control";
 
 export const requireMembership = cache(async function requireMembership(schoolSlug?: string) {
   const { userId } = await auth();
@@ -82,6 +82,17 @@ export async function requireRole(allowedRoles: string[], schoolSlug?: string) {
     );
   }
 
+  return membership;
+}
+
+export async function requirePermission(
+  permission: Permission,
+  schoolSlug?: string,
+) {
+  const membership = await requireTenant(schoolSlug);
+  if (!hasPermission(membership.role, permission)) {
+    throw new ApiError(403, "You do not have permission to access this resource");
+  }
   return membership;
 }
 

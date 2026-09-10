@@ -16,11 +16,13 @@ export const feePaymentService = {
     schoolId: string,
     paymentId: string,
     reason: string,
+    voidedBy: string,
   ) {
     return feePaymentRepository.void(
       schoolId,
       paymentId,
       reason,
+      voidedBy,
     );
   },
 };

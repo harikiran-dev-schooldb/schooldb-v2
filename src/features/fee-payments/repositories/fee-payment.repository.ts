@@ -1,4 +1,7 @@
-import { prisma } from "@/lib/prisma";
+import { randomBytes } from "node:crypto";
+
+import { Prisma } from "@/generated/prisma/client";
+import { runSerializableTransaction } from "@/lib/prisma-transaction";
 import type { FeePaymentInput } from "../schemas/fee-payment.schema";
 
 export const feePaymentRepository = {
@@ -6,7 +9,7 @@ export const feePaymentRepository = {
     schoolId: string,
     input: FeePaymentInput,
   ) {
-    return prisma.$transaction(async (tx) => {
+    return runSerializableTransaction(async (tx) => {
       const enrollment =
         await tx.studentEnrollment.findFirst({
           where: {
@@ -82,22 +85,13 @@ export const feePaymentRepository = {
               );
             }
 
-            const payable =
-              Number(
-                installment.payableAmount,
-              );
-
-            const paid =
-              Number(
-                installment.paidAmount,
-              );
-
-            const balance =
-              payable - paid;
+            const payable = new Prisma.Decimal(installment.payableAmount);
+            const paid = new Prisma.Decimal(installment.paidAmount);
+            const amount = new Prisma.Decimal(allocation.amount);
+            const balance = payable.minus(paid);
 
             if (
-              allocation.amount >
-              balance
+              amount.greaterThan(balance)
             ) {
               throw new Error(
                 `Payment amount exceeds the balance for ${installment.name}.`,
@@ -129,12 +123,7 @@ export const feePaymentRepository = {
        * Later we can replace this with a proper
        * school-wise sequential receipt counter.
        */
-      const receiptNo =
-        `FEE-${Date.now()}-${Math.floor(
-          Math.random() * 1000,
-        )
-          .toString()
-          .padStart(3, "0")}`;
+      const receiptNo = `FEE-${Date.now()}-${randomBytes(6).toString("hex").toUpperCase()}`;
 
       const payment =
         await tx.feePayment.create({
@@ -211,20 +200,14 @@ export const feePaymentRepository = {
           continue;
         }
 
-        const newPaidAmount =
-          Number(
-            installment.paidAmount,
-          ) +
-          allocation.amount;
+        const newPaidAmount = new Prisma.Decimal(installment.paidAmount).plus(
+          allocation.amount,
+        );
 
-        const payableAmount =
-          Number(
-            installment.payableAmount,
-          );
+        const payableAmount = new Prisma.Decimal(installment.payableAmount);
 
         const status =
-          newPaidAmount >=
-          payableAmount
+          newPaidAmount.greaterThanOrEqualTo(payableAmount)
             ? "PAID"
             : "PARTIAL";
 
@@ -252,8 +235,9 @@ export const feePaymentRepository = {
   schoolId: string,
   paymentId: string,
   reason: string,
+  voidedBy: string,
 ) {
-  return prisma.$transaction(async (tx) => {
+  return runSerializableTransaction(async (tx) => {
     const payment =
       await tx.feePayment.findFirst({
         where: {
@@ -290,20 +274,17 @@ export const feePaymentRepository = {
       const installment =
         allocation.studentFeeInstallment;
 
-      const newPaidAmount = Math.max(
+      const newPaidAmount = Prisma.Decimal.max(
         0,
-        Number(installment.paidAmount) -
-          Number(allocation.amount),
+        new Prisma.Decimal(installment.paidAmount).minus(allocation.amount),
       );
 
-      const payableAmount = Number(
-        installment.payableAmount,
-      );
+      const payableAmount = new Prisma.Decimal(installment.payableAmount);
 
       const status =
-        newPaidAmount <= 0
+        newPaidAmount.lessThanOrEqualTo(0)
           ? "PENDING"
-          : newPaidAmount < payableAmount
+          : newPaidAmount.lessThan(payableAmount)
             ? "PARTIAL"
             : "PAID";
 
@@ -326,6 +307,7 @@ export const feePaymentRepository = {
         status: "VOID",
         voidReason: reason,
         voidedAt: new Date(),
+        voidedBy,
       },
     });
   });

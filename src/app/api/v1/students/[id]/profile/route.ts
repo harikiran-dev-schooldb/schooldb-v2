@@ -1,6 +1,7 @@
 import { apiHandler } from "@/lib/api";
 import { ApiResponse } from "@/lib/response";
-import { requireTenant } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
+import { PERMISSIONS } from "@/lib/access-control";
 
 import { studentService } from "@/features/students/services/student.service";
 
@@ -17,7 +18,7 @@ export async function GET(
   return apiHandler(async () => {
     const { id } = await params;
 
-    const tenant = await requireTenant();
+    const tenant = await requirePermission(PERMISSIONS.STUDENT_PRIVATE_READ);
 
     const student = await studentService.profile(
       id,

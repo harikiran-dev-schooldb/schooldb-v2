@@ -1,13 +1,14 @@
-import { FeeReceipt } from "@/features/student-fees/components/FeeReceipt";
+import { permanentRedirect } from "next/navigation";
 
 type Props = {
   params: Promise<{
+    schoolSlug: string;
     paymentId: string;
   }>;
 };
 
 export default async function FeeReceiptPage({ params }: Props) {
-  const { paymentId } = await params;
+  const { schoolSlug, paymentId } = await params;
 
-  return <FeeReceipt paymentId={paymentId} />;
+  permanentRedirect(`/${schoolSlug}/fees/receipts/${paymentId}`);
 }

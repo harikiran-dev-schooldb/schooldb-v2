@@ -1,5 +1,6 @@
 import { apiHandler } from "@/lib/api";
-import { requireRole, requireTenant } from "@/lib/auth";
+import { requirePermission, requireRole } from "@/lib/auth";
+import { PERMISSIONS } from "@/lib/access-control";
 import { ApiResponse } from "@/lib/response";
 
 import { createStudentSchema } from "@/features/students/schemas/student.schema";
@@ -38,7 +39,7 @@ export async function POST(req: Request) {
 
 export async function GET(req: Request) {
   return apiHandler(async () => {
-    const tenant = await requireTenant();
+    const tenant = await requirePermission(PERMISSIONS.STUDENT_DIRECTORY_READ);
     const { searchParams } = new URL(req.url);
     const statusParam = searchParams.get("status");
 

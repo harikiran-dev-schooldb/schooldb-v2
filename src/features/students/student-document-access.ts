@@ -1,4 +1,4 @@
-import { isOperationalRole } from "@/lib/access-control";
+import { hasPermission, isOperationalRole, PERMISSIONS } from "@/lib/access-control";
 import { requireMembership } from "@/lib/auth";
 import { ApiError } from "@/lib/errors";
 import { prisma } from "@/lib/prisma";
@@ -8,6 +8,9 @@ export async function requireStudentDocumentAccess(studentId: string) {
   const membership = await requireMembership();
 
   if (isOperationalRole(membership.role)) {
+    if (!hasPermission(membership.role, PERMISSIONS.STUDENT_PRIVATE_READ)) {
+      throw new ApiError(403, "You do not have permission to access private student documents");
+    }
     const student = await prisma.student.findFirst({
       where: { id: studentId, schoolId: membership.schoolId },
       select: { id: true },

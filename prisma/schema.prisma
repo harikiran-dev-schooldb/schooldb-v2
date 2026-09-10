@@ -8,7 +8,6 @@ datasource db {
 }
 
 model AcademicYear {
-  admissionApplications AdmissionApplication[]
   id                    String                 @id @default(cuid())
   name                  String
   startDate             DateTime
@@ -20,6 +19,7 @@ model AcademicYear {
   attendanceMode        AttendanceMode         @default(ONCE_DAILY)
   academicPeriods       AcademicPeriod[]
   school                School                 @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  admissionApplications AdmissionApplication[]
   attendanceSessions    AttendanceSession[]
   classSubjects         ClassSubject[]
   exams                 Exam[]
@@ -54,17 +54,6 @@ model AcademicPeriod {
 }
 
 model School {
-  admissionApplications AdmissionApplication[]
-  admissionDocuments    AdmissionDocument[]
-  admissionSetting      SchoolAdmissionSetting?
-  auditLogs             AuditLog[]
-  announcements         Announcement[]
-  calendarEvents        SchoolCalendarEvent[]
-  studentDocuments      StudentDocument[]
-  whatsappCampaigns     WhatsappCampaign[]
-  whatsappRecipients    WhatsappRecipient[]
-  leaveRequests         LeaveRequest[]
-  otpChallenges         OtpChallenge[]
   id                    String                       @id @default(cuid())
   name                  String
   slug                  String                       @unique
@@ -73,8 +62,13 @@ model School {
   logo                  String?
   academicPeriods       AcademicPeriod[]
   academicYears         AcademicYear[]
+  admissionApplications AdmissionApplication[]
+  admissionDocuments    AdmissionDocument[]
+  announcements         Announcement[]
   attendance            Attendance[]
   attendanceSessions    AttendanceSession[]
+  auditLogs             AuditLog[]
+  certificateIssues     CertificateIssue[]
   classes               Class[]
   classSubjects         ClassSubject[]
   exams                 Exam[]
@@ -83,29 +77,35 @@ model School {
   feePayments           FeePayment[]
   feePlans              FeePlan[]
   homeworks             Homework[]
+  leaveRequests         LeaveRequest[]
+  libraryBooks          LibraryBook[]
+  libraryCopies         LibraryBookCopy[]
+  libraryCategories     LibraryCategory[]
+  libraryLoans          LibraryLoan[]
   memberships           Membership[]
+  otpChallenges         OtpChallenge[]
   parentStudentLinks    ParentStudentLink[]
   periods               Period[]
+  admissionSetting      SchoolAdmissionSetting?
+  calendarEvents        SchoolCalendarEvent[]
+  certificateSetting    SchoolCertificateSetting?
+  idCardSetting         SchoolIdCardSetting?
   students              Student[]
   activities            StudentActivity[]
+  studentDocuments      StudentDocument[]
   studentEnrollments    StudentEnrollment[]
   studentExamMarks      StudentExamMark[]
   studentFees           StudentFee[]
+  transportAssignments  StudentTransportAssignment[]
   subjects              Subject[]
   teachers              Teacher[]
   teacherAllocations    TeacherAllocation[]
   timetables            Timetable[]
-  transportVehicles     TransportVehicle[]
   transportRoutes       TransportRoute[]
   transportStops        TransportStop[]
-  transportAssignments  StudentTransportAssignment[]
-  libraryCategories     LibraryCategory[]
-  libraryBooks          LibraryBook[]
-  libraryCopies         LibraryBookCopy[]
-  libraryLoans          LibraryLoan[]
-  idCardSetting         SchoolIdCardSetting?
-  certificateSetting    SchoolCertificateSetting?
-  certificateIssues     CertificateIssue[]
+  transportVehicles     TransportVehicle[]
+  whatsappCampaigns     WhatsappCampaign[]
+  whatsappRecipients    WhatsappRecipient[]
 }
 
 model SchoolIdCardSetting {
@@ -115,10 +115,10 @@ model SchoolIdCardSetting {
   widthMm      Decimal           @default(54.00) @db.Decimal(6, 2)
   heightMm     Decimal           @default(85.60) @db.Decimal(6, 2)
   showBack     Boolean           @default(true)
-  backImageUrl String?
-  backContent  String?
   createdAt    DateTime          @default(now())
   updatedAt    DateTime          @updatedAt
+  backContent  String?
+  backImageUrl String?
   school       School            @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
   @@index([schoolId])
@@ -128,9 +128,9 @@ model SchoolCertificateSetting {
   id              String   @id @default(cuid())
   schoolId        String   @unique
   headerSubtitle  String   @default("SchoolDB · Official record")
-  bonafideContent String   @db.Text
-  studyContent    String   @db.Text
-  transferContent String   @db.Text
+  bonafideContent String
+  studyContent    String
+  transferContent String
   footerNote      String?
   signatoryLabel  String   @default("Principal / Head of School")
   createdAt       DateTime @default(now())
@@ -141,8 +141,6 @@ model SchoolCertificateSetting {
 }
 
 model User {
-  auditLogs          AuditLog[]
-  announcementReads  AnnouncementRead[]
   id                 String              @id @default(cuid())
   clerkUserId        String              @unique
   email              String              @unique
@@ -152,9 +150,11 @@ model User {
   updatedAt          DateTime            @updatedAt
   imageUrl           String?
   phone              String?
+  announcementReads  AnnouncementRead[]
+  auditLogs          AuditLog[]
   memberships        Membership[]
-  parentStudentLinks ParentStudentLink[]
   otpChallenges      OtpChallenge[]
+  parentStudentLinks ParentStudentLink[]
 
   @@index([phone])
 }
@@ -163,15 +163,15 @@ model OtpChallenge {
   id               String    @id @default(cuid())
   schoolId         String
   userId           String
-  candidateUserIds Json      @default("[]")
   phoneHash        String
   codeHash         String
   expiresAt        DateTime
-  verifiedAt       DateTime?
   attempts         Int       @default(0)
   lastSentAt       DateTime  @default(now())
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
+  candidateUserIds Json      @default("[]")
+  verifiedAt       DateTime?
   school           School    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -192,7 +192,6 @@ model RequestRateLimit {
 model Announcement {
   id          String             @id @default(cuid())
   schoolId    String
-  school      School             @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   title       String
   body        String
   category    String             @default("GENERAL")
@@ -205,6 +204,7 @@ model Announcement {
   expiresAt   DateTime?
   archived    Boolean            @default(false)
   createdAt   DateTime           @default(now())
+  school      School             @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   reads       AnnouncementRead[]
 
   @@index([schoolId, archived, publishedAt])
@@ -225,7 +225,6 @@ model AnnouncementRead {
 model SchoolCalendarEvent {
   id          String   @id @default(cuid())
   schoolId    String
-  school      School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   title       String
   description String?
   category    String   @default("EVENT")
@@ -238,6 +237,7 @@ model SchoolCalendarEvent {
   archived    Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  school      School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
   @@index([schoolId, archived, startDate])
 }
@@ -247,10 +247,10 @@ model Membership {
   userId      String
   schoolId    String
   role        Role
-  designation String?
   createdAt   DateTime @default(now())
   isActive    Boolean  @default(true)
   updatedAt   DateTime @default(now()) @updatedAt
+  designation String?
   school      School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -271,8 +271,8 @@ model AuditLog {
   summary     String
   metadata    Json?
   createdAt   DateTime @default(now())
+  actor       User?    @relation(fields: [actorUserId], references: [id])
   school      School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  actor       User?    @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
 
   @@index([schoolId, createdAt(sort: Desc)])
   @@index([schoolId, module, createdAt(sort: Desc)])
@@ -281,7 +281,6 @@ model AuditLog {
 }
 
 model Student {
-  admissionApplications AdmissionApplication[]
   id                    String                 @id @default(cuid())
   admissionNo           String
   gender                Gender
@@ -338,20 +337,21 @@ model Student {
   studentAadhar         String?
   subCaste              String?
   transportRequired     Boolean                @default(false)
-  whatsappOptIn         Boolean                @default(false)
-  whatsappOptInAt       DateTime?
   username              String?
   statusChangedAt       DateTime?
   statusRemarks         String?
+  whatsappOptIn         Boolean                @default(false)
+  whatsappOptInAt       DateTime?
+  admissionApplications AdmissionApplication[]
   attendance            Attendance[]
+  certificateIssues     CertificateIssue[]
+  leaveRequests         LeaveRequest[]
+  parentLinks           ParentStudentLink[]
   school                School                 @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   activities            StudentActivity[]
-  enrollments           StudentEnrollment[]
-  parentLinks           ParentStudentLink[]
-  leaveRequests         LeaveRequest[]
   documents             StudentDocument[]
+  enrollments           StudentEnrollment[]
   whatsappRecipients    WhatsappRecipient[]
-  certificateIssues     CertificateIssue[]
 
   @@unique([schoolId, admissionNo])
   @@index([schoolId])
@@ -359,17 +359,6 @@ model Student {
   @@index([schoolId, fullName])
   @@index([schoolId, phone])
   @@index([schoolId, status, createdAt])
-}
-
-enum CertificateIssueType {
-  BONAFIDE
-  STUDY
-  TRANSFER
-}
-
-enum CertificateIssueStatus {
-  ISSUED
-  CANCELLED
 }
 
 model CertificateIssue {
@@ -411,18 +400,18 @@ model WhatsappCampaign {
   status         WhatsappCampaignStatus @default(QUEUED)
   recipientCount Int                    @default(0)
   sentCount      Int                    @default(0)
-  deliveredCount Int                    @default(0)
-  readCount      Int                    @default(0)
   failedCount    Int                    @default(0)
   createdBy      String
   scheduledAt    DateTime               @default(now())
   completedAt    DateTime?
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
   automatic      Boolean                @default(false)
   automationKey  String?
   sourceType     String?
   sourceId       String?
-  createdAt      DateTime               @default(now())
-  updatedAt      DateTime               @updatedAt
+  deliveredCount Int                    @default(0)
+  readCount      Int                    @default(0)
   school         School                 @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   recipients     WhatsappRecipient[]
 
@@ -441,22 +430,21 @@ model WhatsappRecipient {
   phone             String
   status            WhatsappRecipientStatus @default(QUEUED)
   attempts          Int                     @default(0)
-  providerMessageId String?
+  providerMessageId String?                 @unique
   errorMessage      String?
   lastAttemptAt     DateTime?
   sentAt            DateTime?
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
   deliveredAt       DateTime?
   readAt            DateTime?
   failedAt          DateTime?
   providerStatusAt  DateTime?
-  createdAt         DateTime                @default(now())
-  updatedAt         DateTime                @updatedAt
   campaign          WhatsappCampaign        @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   school            School                  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  student           Student?                @relation(fields: [studentId], references: [id], onDelete: SetNull)
+  student           Student?                @relation(fields: [studentId], references: [id])
 
   @@unique([campaignId, phone])
-  @@unique([providerMessageId])
   @@index([schoolId, status, createdAt])
   @@index([campaignId, status])
   @@index([studentId])
@@ -493,8 +481,8 @@ model ParentStudentLink {
   active       Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
-  school       School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   parentUser   User     @relation(fields: [parentUserId], references: [id], onDelete: Cascade)
+  school       School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   student      Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   @@unique([schoolId, parentUserId, studentId])
@@ -503,7 +491,6 @@ model ParentStudentLink {
 }
 
 model Class {
-  admissionApplications AdmissionApplication[]
   id                    String                 @id @default(cuid())
   name                  String
   code                  String?
@@ -513,6 +500,7 @@ model Class {
   active                Boolean                @default(true)
   description           String?
   displayOrder          Int                    @default(0)
+  admissionApplications AdmissionApplication[]
   attendanceSessions    AttendanceSession[]
   school                School                 @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   classSubjects         ClassSubject[]
@@ -528,7 +516,6 @@ model Class {
 }
 
 model Section {
-  admissionApplications AdmissionApplication[]
   id                    String                 @id @default(cuid())
   name                  String
   classId               String
@@ -536,6 +523,7 @@ model Section {
   updatedAt             DateTime               @updatedAt
   active                Boolean                @default(true)
   displayOrder          Int                    @default(0)
+  admissionApplications AdmissionApplication[]
   attendanceSessions    AttendanceSession[]
   examSchedules         ExamSchedule[]
   homeworks             Homework[]
@@ -584,21 +572,21 @@ model AdmissionApplication {
   convertedAt        DateTime?
   createdAt          DateTime                   @default(now())
   updatedAt          DateTime                   @updatedAt
+  academicYear       AcademicYear               @relation(fields: [academicYearId], references: [id])
+  applyingClass      Class                      @relation(fields: [applyingClassId], references: [id])
+  preferredSection   Section?                   @relation(fields: [preferredSectionId], references: [id])
   school             School                     @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  academicYear       AcademicYear               @relation(fields: [academicYearId], references: [id], onDelete: Restrict)
-  applyingClass      Class                      @relation(fields: [applyingClassId], references: [id], onDelete: Restrict)
-  preferredSection   Section?                   @relation(fields: [preferredSectionId], references: [id], onDelete: SetNull)
-  student            Student?                   @relation(fields: [studentId], references: [id], onDelete: SetNull)
-  history            AdmissionStatusHistory[]
+  student            Student?                   @relation(fields: [studentId], references: [id])
   documents          AdmissionDocument[]
+  history            AdmissionStatusHistory[]
 
   @@unique([schoolId, applicationNo])
   @@index([schoolId, status, submittedAt(sort: Desc)])
-  @@index([schoolId, academicYearId, applyingClassId, status])
   @@index([schoolId, fatherPhone])
   @@index([schoolId, motherPhone])
   @@index([schoolId, guardianPhone])
   @@index([schoolId, studentAadhar])
+  @@index([schoolId, academicYearId, applyingClassId, status], map: "AdmissionApplication_schoolId_academicYearId_applyingClassId_st")
 }
 
 model AdmissionDocument {
@@ -611,8 +599,8 @@ model AdmissionDocument {
   sizeBytes     Int
   storageKey    String                @unique
   createdAt     DateTime              @default(now())
-  school        School                @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   application   AdmissionApplication  @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  school        School                @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
   @@index([schoolId, applicationId, createdAt])
 }
@@ -658,6 +646,8 @@ model StudentEnrollment {
   updatedAt            DateTime                     @updatedAt
   promotedFromId       String?
   feePayments          FeePayment[]
+  leaveRequests        LeaveRequest[]
+  libraryLoans         LibraryLoan[]
   activities           StudentActivity[]
   academicYear         AcademicYear                 @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
   class                Class                        @relation(fields: [classId], references: [id], onDelete: Cascade)
@@ -668,9 +658,7 @@ model StudentEnrollment {
   student              Student                      @relation(fields: [studentId], references: [id], onDelete: Cascade)
   examMarks            StudentExamMark[]
   studentFees          StudentFee[]
-  leaveRequests        LeaveRequest[]
   transportAssignments StudentTransportAssignment[]
-  libraryLoans         LibraryLoan[]
 
   @@unique([studentId, academicYearId])
   @@unique([academicYearId, classId, sectionId, rollNo])
@@ -699,8 +687,8 @@ model TransportVehicle {
   active         Boolean          @default(true)
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
-  school         School           @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   routes         TransportRoute[]
+  school         School           @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
   @@unique([schoolId, registrationNo])
   @@index([schoolId, active])
@@ -717,10 +705,10 @@ model TransportRoute {
   active      Boolean                      @default(true)
   createdAt   DateTime                     @default(now())
   updatedAt   DateTime                     @updatedAt
-  school      School                       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  vehicle     TransportVehicle?            @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
-  stops       TransportStop[]
   assignments StudentTransportAssignment[]
+  school      School                       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  vehicle     TransportVehicle?            @relation(fields: [vehicleId], references: [id])
+  stops       TransportStop[]
 
   @@unique([schoolId, code])
   @@index([schoolId, active])
@@ -739,9 +727,9 @@ model TransportStop {
   active      Boolean                      @default(true)
   createdAt   DateTime                     @default(now())
   updatedAt   DateTime                     @updatedAt
-  school      School                       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  route       TransportRoute               @relation(fields: [routeId], references: [id], onDelete: Cascade)
   assignments StudentTransportAssignment[]
+  route       TransportRoute               @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  school      School                       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
   @@unique([routeId, sequence])
   @@unique([routeId, name])
@@ -763,10 +751,10 @@ model StudentTransportAssignment {
   notes               String?
   createdAt           DateTime          @default(now())
   updatedAt           DateTime          @updatedAt
-  school              School            @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  studentEnrollment   StudentEnrollment @relation(fields: [studentEnrollmentId], references: [id], onDelete: Cascade)
   route               TransportRoute    @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  school              School            @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   stop                TransportStop     @relation(fields: [stopId], references: [id], onDelete: Cascade)
+  studentEnrollment   StudentEnrollment @relation(fields: [studentEnrollmentId], references: [id], onDelete: Cascade)
 
   @@index([schoolId, active])
   @@index([studentEnrollmentId, active])
@@ -781,8 +769,8 @@ model LibraryCategory {
   active    Boolean       @default(true)
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
-  school    School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   books     LibraryBook[]
+  school    School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
   @@unique([schoolId, name])
   @@index([schoolId, active])
@@ -802,8 +790,8 @@ model LibraryBook {
   active      Boolean           @default(true)
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
+  category    LibraryCategory?  @relation(fields: [categoryId], references: [id])
   school      School            @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  category    LibraryCategory?  @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   copies      LibraryBookCopy[]
 
   @@unique([schoolId, accessionNo])
@@ -819,8 +807,8 @@ model LibraryBookCopy {
   status    LibraryCopyStatus @default(AVAILABLE)
   createdAt DateTime          @default(now())
   updatedAt DateTime          @updatedAt
-  school    School            @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   book      LibraryBook       @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  school    School            @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   loans     LibraryLoan[]
 
   @@unique([schoolId, barcode])
@@ -843,8 +831,8 @@ model LibraryLoan {
   notes               String?
   createdAt           DateTime            @default(now())
   updatedAt           DateTime            @updatedAt
-  school              School              @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   copy                LibraryBookCopy     @relation(fields: [copyId], references: [id])
+  school              School              @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   studentEnrollment   StudentEnrollment?  @relation(fields: [studentEnrollmentId], references: [id], onDelete: Cascade)
   teacher             Teacher?            @relation(fields: [teacherId], references: [id], onDelete: Cascade)
 
@@ -869,9 +857,9 @@ model LeaveRequest {
   decidedAt    DateTime?
   createdAt    DateTime          @default(now())
   updatedAt    DateTime          @updatedAt
+  enrollment   StudentEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
   school       School            @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   student      Student           @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  enrollment   StudentEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
 
   @@index([schoolId, status, createdAt])
   @@index([studentId, createdAt])
@@ -927,9 +915,9 @@ model Teacher {
   updatedAt          DateTime            @updatedAt
   attendanceSessions AttendanceSession[]
   homeworks          Homework[]
+  libraryLoans       LibraryLoan[]
   school             School              @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   allocations        TeacherAllocation[]
-  libraryLoans       LibraryLoan[]
 
   @@unique([schoolId, employeeId])
   @@index([schoolId])
@@ -1411,6 +1399,17 @@ model ClassSubject {
   @@index([subjectId])
 }
 
+enum CertificateIssueType {
+  BONAFIDE
+  STUDY
+  TRANSFER
+}
+
+enum CertificateIssueStatus {
+  ISSUED
+  CANCELLED
+}
+
 enum StudentActivityType {
   STUDENT_CREATED
   PROFILE_UPDATED
@@ -1449,10 +1448,10 @@ enum WhatsappRecipientStatus {
   QUEUED
   SENDING
   SENT
-  DELIVERED
-  READ
   FAILED
   CANCELLED
+  DELIVERED
+  READ
 }
 
 enum StudentFeeInstallmentStatus {

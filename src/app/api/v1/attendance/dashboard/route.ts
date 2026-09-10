@@ -1,5 +1,6 @@
 import { apiHandler } from "@/lib/api";
-import { requireTenant } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
+import { PERMISSIONS } from "@/lib/access-control";
 import { ApiResponse } from "@/lib/response";
 
 import { attendanceService } from "@/features/attendance/services/attendance.service";
@@ -7,7 +8,7 @@ import { attendanceService } from "@/features/attendance/services/attendance.ser
 export async function GET() {
   return apiHandler(async () => {
     const tenant =
-      await requireTenant();
+      await requirePermission(PERMISSIONS.ATTENDANCE_READ);
 
     const result =
       await attendanceService.dashboard(
