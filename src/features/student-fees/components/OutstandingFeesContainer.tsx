@@ -14,14 +14,19 @@ import type {
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { ManualFeeReminderButton } from "@/features/fees/components/ManualFeeReminderButton";
 
 type Props = {
   schoolSlug: string;
+  canSendReminders?: boolean;
 };
 
 const PAGE_SIZE = 25;
 
-export function OutstandingFeesContainer({ schoolSlug }: Props) {
+export function OutstandingFeesContainer({
+  schoolSlug,
+  canSendReminders = false,
+}: Props) {
   const [data, setData] = useState<OutstandingFeesData | null>(null);
 
   const [loading, setLoading] = useState(true);
@@ -219,6 +224,28 @@ export function OutstandingFeesContainer({ schoolSlug }: Props) {
         onSectionChange={setSectionId}
         onSearch={handleSearch}
       />
+
+      {canSendReminders && (
+        <div className="flex flex-col gap-3 rounded-2xl border border-primary/15 bg-gradient-to-r from-primary/[0.07] via-card to-card p-5 shadow-[0_8px_30px_rgba(15,23,42,0.04)] sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-sm font-bold text-foreground">
+              WhatsApp fee reminders
+            </h2>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Send overdue reminders using the filters selected above. Weekly
+              automatic reminders continue separately.
+            </p>
+          </div>
+          <ManualFeeReminderButton
+            schoolSlug={schoolSlug}
+            filters={{
+              search: search.trim() || undefined,
+              classId: classId || undefined,
+              sectionId: sectionId || undefined,
+            }}
+          />
+        </div>
+      )}
 
       {error && (
         <Card>

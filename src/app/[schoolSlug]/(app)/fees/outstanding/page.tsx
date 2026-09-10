@@ -1,4 +1,5 @@
 import { OutstandingFeesContainer } from "@/features/student-fees/components/OutstandingFeesContainer";
+import { requireTenant } from "@/lib/auth";
 
 type Props = {
   params: Promise<{
@@ -8,6 +9,12 @@ type Props = {
 
 export default async function OutstandingFeesPage({ params }: Props) {
   const { schoolSlug } = await params;
+  const membership = await requireTenant(schoolSlug);
+  const canSendReminders = [
+    "SUPER_ADMIN",
+    "SCHOOL_ADMIN",
+    "ACCOUNTANT",
+  ].includes(membership.role);
 
   return (
     <div className="space-y-6 p-6">
@@ -19,7 +26,10 @@ export default async function OutstandingFeesPage({ params }: Props) {
         </p>
       </div>
 
-      <OutstandingFeesContainer schoolSlug={schoolSlug} />
+      <OutstandingFeesContainer
+        schoolSlug={schoolSlug}
+        canSendReminders={canSendReminders}
+      />
     </div>
   );
 }
