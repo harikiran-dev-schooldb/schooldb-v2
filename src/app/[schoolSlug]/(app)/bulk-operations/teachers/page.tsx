@@ -17,6 +17,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useSchool } from "@/contexts/school-context";
+import { postImportInBatches } from "@/lib/batched-import";
 
 type TeacherRow = {
   employeeId: string;
@@ -245,30 +246,21 @@ export default function BulkTeachersPage() {
     setResult(null);
 
     try {
-      const response = await fetch("/api/v1/teachers/bulk", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          teachers: rows.map((row) => ({
+      const data = await postImportInBatches<
+        unknown,
+        { created: number; failed: number; errors: RowError[] }
+      >({
+        endpoint: "/api/v1/teachers/bulk",
+        bodyKey: "teachers",
+        rows: rows.map((row) => ({
             ...row,
             active: row.active === "true",
           })),
-        }),
+        failureMessage: "Bulk teacher import failed.",
       });
-
-      const payload = (await response.json()) as {
-        success?: boolean;
-        message?: string;
-        data?: { created: number; failed: number; errors: RowError[] };
-      };
-
-      if (!response.ok || !payload.success || !payload.data) {
-        throw new Error(payload.message ?? "Bulk teacher import failed.");
-      }
-
-      setResult(payload.data);
-      if (payload.data.errors.length) {
-        setErrors(payload.data.errors);
+      setResult(data);
+      if (data.errors.length) {
+        setErrors(data.errors);
       }
     } catch (error) {
       setFileError(

@@ -73,6 +73,7 @@ export const navigation: NavigationItem[] = [
       { title: "Class Report", href: "attendance/reports/class" },
       { title: "Student Report", href: "attendance/reports/student" },
       { title: "Low Attendance", href: "attendance/reports/low" },
+      { title: "Attendance Ranking", href: "attendance/ranking" },
     ],
   },
   {
@@ -81,6 +82,7 @@ export const navigation: NavigationItem[] = [
     children: [
       { title: "Homework", href: "homework" },
       { title: "Exams & Results", href: "exams" },
+      { title: "Toppers", href: "toppers" },
     ],
   },
   {

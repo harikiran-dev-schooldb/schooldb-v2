@@ -348,12 +348,16 @@ export const studentService = {
     academicYearId: string,
     excludeEnrollmentId?: string,
     mode: "AVAILABLE" | "ENROLLED" = "AVAILABLE",
+    classId?: string,
+    sectionId?: string,
   ) {
     const students = await studentRepository.options(
       schoolId,
       academicYearId,
       excludeEnrollmentId,
       mode,
+      classId,
+      sectionId,
     );
 
     return students.map((student) => {
@@ -362,12 +366,21 @@ export const studentService = {
       return {
         id: student.id,
 
+        admissionNo: student.admissionNo,
+
+        fullName: student.fullName || "Unnamed Student",
+
+        imageUrl: student.imageUrl,
+
         label: student.fullName
           ? `${student.admissionNo} — ${student.fullName}`
           : student.admissionNo,
 
         className: enrollment?.class.name ?? null,
         sectionName: enrollment?.section.name ?? null,
+        classId: enrollment?.class.id ?? null,
+        sectionId: enrollment?.section.id ?? null,
+        rollNo: enrollment?.rollNo ?? null,
       };
     });
   },

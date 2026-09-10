@@ -12,6 +12,7 @@ import { PageHeader } from "@/components/common/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { postImportInBatches } from "@/lib/batched-import";
 
 type ExamRow = {
   academicYearId: string;
@@ -188,19 +189,16 @@ export default function BulkExamsPage() {
     setFileError(null);
     setResult(null);
     try {
-      const response = await fetch("/api/v1/exams/bulk", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ exams: rows }),
+      const data = await postImportInBatches<
+        (typeof rows)[number],
+        { created: number; failed: number }
+      >({
+        endpoint: "/api/v1/exams/bulk",
+        bodyKey: "exams",
+        rows,
+        failureMessage: "Bulk exam import failed.",
       });
-      const payload = (await response.json()) as {
-        success?: boolean;
-        message?: string;
-        data?: { created: number; failed: number };
-      };
-      if (!response.ok || !payload.success || !payload.data)
-        throw new Error(payload.message ?? "Bulk exam import failed.");
-      setResult(payload.data);
+      setResult(data);
     } catch (e) {
       setFileError(e instanceof Error ? e.message : "Bulk exam import failed.");
     } finally {

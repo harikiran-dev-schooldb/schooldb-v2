@@ -17,6 +17,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useSchool } from "@/contexts/school-context";
+import {
+  postImportInBatches,
+  type ImportProgress,
+} from "@/lib/batched-import";
 
 export type CsvRow = Record<string, string>;
 
@@ -101,6 +105,7 @@ export function BulkCsvImport({
   const [message, setMessage] = useState<string | null>(null);
   const [result, setResult] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
+  const [progress, setProgress] = useState<ImportProgress | null>(null);
 
   const duplicates = useMemo(() => {
     const seen = new Set<string>();
@@ -120,6 +125,7 @@ export function BulkCsvImport({
     setErrors([]);
     setMessage(null);
     setResult(null);
+    setProgress(null);
     if (inputRef.current) inputRef.current.value = "";
   }
 
@@ -154,8 +160,6 @@ export function BulkCsvImport({
       if (actualHeaders.join("|") !== headers.join("|")) {
         throw new Error(`Invalid columns. Download and use the latest template.`);
       }
-      if (lines.length - 1 > 500) throw new Error("A maximum of 500 rows can be imported at once.");
-
       const validRows: CsvRow[] = [];
       const rowErrors: RowError[] = [];
       lines.slice(1).forEach((line, index) => {
@@ -188,20 +192,14 @@ export function BulkCsvImport({
     setMessage(null);
     setResult(null);
     try {
-      const response = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ [bodyKey]: rows }),
+      const data = await postImportInBatches<CsvRow, Record<string, unknown>>({
+        endpoint,
+        bodyKey,
+        rows,
+        onProgress: setProgress,
+        failureMessage: `${entityLabel} import failed.`,
       });
-      const payload = (await response.json()) as {
-        success?: boolean;
-        message?: string;
-        data?: Record<string, unknown>;
-      };
-      if (!response.ok || !payload.success || !payload.data) {
-        throw new Error(payload.message ?? `${entityLabel} import failed.`);
-      }
-      setResult(formatResult(payload.data, entityLabel));
+      setResult(formatResult(data, entityLabel));
     } catch (error) {
       setMessage(error instanceof Error ? error.message : `${entityLabel} import failed.`);
     } finally {
@@ -241,7 +239,7 @@ export function BulkCsvImport({
             </div>
             <div>
               <CardTitle>{importTitle}</CardTitle>
-              <p className="mt-1 text-xs text-muted-foreground">Up to 500 rows per CSV. Download the template for the exact columns.</p>
+              <p className="mt-1 text-xs text-muted-foreground">Upload the complete CSV. SchoolDB processes it safely in batches of 500 rows.</p>
             </div>
           </div>
         </CardHeader>
@@ -336,6 +334,18 @@ export function BulkCsvImport({
                 <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4">
                   <p className="text-sm font-bold">Import complete</p>
                   <p className="mt-1 text-xs text-muted-foreground">{result}</p>
+                </div>
+              ) : null}
+
+              {importing && progress ? (
+                <div className="space-y-2 rounded-2xl border border-primary/20 bg-primary/5 p-4">
+                  <div className="flex justify-between text-xs font-semibold">
+                    <span>Batch {Math.min(progress.completedBatches + 1, progress.totalBatches)} of {progress.totalBatches}</span>
+                    <span>{progress.completedRows} / {progress.totalRows} rows</span>
+                  </div>
+                  <div className="h-2 overflow-hidden rounded-full bg-primary/10">
+                    <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${(progress.completedRows / progress.totalRows) * 100}%` }} />
+                  </div>
                 </div>
               ) : null}
 

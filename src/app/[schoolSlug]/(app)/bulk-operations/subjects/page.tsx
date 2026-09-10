@@ -16,6 +16,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useSchool } from "@/contexts/school-context";
+import { postImportInBatches } from "@/lib/batched-import";
 
 type Row = {
   name: string;
@@ -167,27 +168,22 @@ export default function BulkSubjectsPage() {
     setImporting(true);
     setMessage(null);
     try {
-      const response = await fetch("/api/v1/subjects/bulk", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          subjects: rows.map((row) => ({
+      const data = await postImportInBatches<
+        unknown,
+        { created: number }
+      >({
+        endpoint: "/api/v1/subjects/bulk",
+        bodyKey: "subjects",
+        rows: rows.map((row) => ({
             name: row.name,
             code: row.code,
             type: row.type,
             displayOrder: Number(row.displayOrder),
             active: row.active === "true",
           })),
-        }),
+        failureMessage: "Bulk subject import failed.",
       });
-      const payload = (await response.json()) as {
-        success?: boolean;
-        message?: string;
-        data?: { created: number };
-      };
-      if (!response.ok || !payload.success || !payload.data)
-        throw new Error(payload.message ?? "Bulk subject import failed.");
-      setResult(payload.data.created);
+      setResult(data.created);
     } catch (error) {
       setMessage(
         error instanceof Error ? error.message : "Bulk subject import failed.",

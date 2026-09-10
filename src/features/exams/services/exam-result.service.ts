@@ -7,6 +7,10 @@ type GetExamResultsOptions = {
   sectionId?: string | null;
 };
 
+type GetExamToppersOptions = GetExamResultsOptions & {
+  limit: number;
+};
+
 type SubjectResultStatus =
   | "PENDING"
   | "PASS"
@@ -17,6 +21,222 @@ type SubjectResultStatus =
 type OverallStatus = "PENDING" | "PASS" | "FAIL";
 
 export const examResultService = {
+  async getToppers({
+    examId,
+    schoolId,
+    classId,
+    sectionId,
+    limit,
+  }: GetExamToppersOptions) {
+    if (!classId) {
+      throw new Error("Select a class to view toppers.");
+    }
+
+    const safeLimit = Math.min(100, Math.max(1, Math.trunc(limit)));
+
+    const exam = await prisma.exam.findFirst({
+      where: { id: examId, schoolId },
+      select: {
+        id: true,
+        name: true,
+        status: true,
+        academicYearId: true,
+        academicYear: { select: { id: true, name: true } },
+      },
+    });
+
+    if (!exam) {
+      throw new Error("Exam not found.");
+    }
+
+    const schedules = await prisma.examSchedule.findMany({
+      where: {
+        examId,
+        schoolId,
+        classId,
+        ...(sectionId
+          ? { OR: [{ sectionId }, { sectionId: null }] }
+          : {}),
+      },
+      select: {
+        id: true,
+        sectionId: true,
+        maxMarks: true,
+        passMarks: true,
+      },
+    });
+
+    if (schedules.length === 0) {
+      return {
+        exam,
+        scope: null,
+        requestedLimit: safeLimit,
+        eligibleStudents: 0,
+        pendingStudents: 0,
+        toppers: [],
+      };
+    }
+
+    const [classRecord, sectionRecord, enrollments] = await Promise.all([
+      prisma.class.findFirst({
+        where: { id: classId, schoolId },
+        select: { id: true, name: true },
+      }),
+      sectionId
+        ? prisma.section.findFirst({
+            where: { id: sectionId, classId, class: { schoolId } },
+            select: { id: true, name: true },
+          })
+        : Promise.resolve(null),
+      prisma.studentEnrollment.findMany({
+        where: {
+          schoolId,
+          academicYearId: exam.academicYearId,
+          classId,
+          active: true,
+          ...(sectionId ? { sectionId } : {}),
+        },
+        select: {
+          id: true,
+          sectionId: true,
+          rollNo: true,
+          section: { select: { id: true, name: true } },
+          student: {
+            select: {
+              id: true,
+              admissionNo: true,
+              fullName: true,
+              imageUrl: true,
+            },
+          },
+          examMarks: {
+            where: { examScheduleId: { in: schedules.map(({ id }) => id) } },
+            select: {
+              examScheduleId: true,
+              marksObtained: true,
+              status: true,
+            },
+          },
+        },
+      }),
+    ]);
+
+    if (!classRecord || (sectionId && !sectionRecord)) {
+      throw new Error("The selected class or section was not found.");
+    }
+
+    const calculated = enrollments.map((enrollment) => {
+      const applicableSchedules = schedules.filter(
+        (schedule) =>
+          schedule.sectionId === null || schedule.sectionId === enrollment.sectionId,
+      );
+      const marksBySchedule = new Map(
+        enrollment.examMarks.map((mark) => [mark.examScheduleId, mark]),
+      );
+
+      let totalObtained = 0;
+      let totalMaxMarks = 0;
+      let pending = false;
+      let failedSubjects = 0;
+
+      for (const schedule of applicableSchedules) {
+        const mark = marksBySchedule.get(schedule.id);
+
+        if (!mark) {
+          pending = true;
+          continue;
+        }
+
+        if (mark.status === "EXEMPTED") {
+          continue;
+        }
+
+        totalMaxMarks += Number(schedule.maxMarks);
+
+        if (mark.status === "ABSENT") {
+          failedSubjects += 1;
+          continue;
+        }
+
+        const obtained = Number(mark.marksObtained ?? 0);
+        totalObtained += obtained;
+
+        if (schedule.passMarks !== null && obtained < Number(schedule.passMarks)) {
+          failedSubjects += 1;
+        }
+      }
+
+      const percentage =
+        totalMaxMarks > 0
+          ? Number(((totalObtained / totalMaxMarks) * 100).toFixed(2))
+          : 0;
+
+      return {
+        studentId: enrollment.student.id,
+        admissionNo: enrollment.student.admissionNo,
+        fullName: enrollment.student.fullName || "Unnamed Student",
+        imageUrl: enrollment.student.imageUrl,
+        rollNo: enrollment.rollNo,
+        section: enrollment.section,
+        subjects: applicableSchedules.length,
+        totalObtained,
+        totalMaxMarks,
+        percentage,
+        status: failedSubjects === 0 ? ("PASS" as const) : ("FAIL" as const),
+        pending,
+      };
+    });
+
+    const completed = calculated
+      .filter((student) => !student.pending && student.subjects > 0)
+      .sort((a, b) => {
+        if (b.percentage !== a.percentage) return b.percentage - a.percentage;
+        if (b.totalObtained !== a.totalObtained) {
+          return b.totalObtained - a.totalObtained;
+        }
+        return a.fullName.localeCompare(b.fullName);
+      });
+
+    let previousPercentage: number | null = null;
+    let previousMarks: number | null = null;
+    let currentRank = 0;
+
+    const ranked = completed.map((student, index) => {
+      if (
+        student.percentage !== previousPercentage ||
+        student.totalObtained !== previousMarks
+      ) {
+        currentRank = index + 1;
+        previousPercentage = student.percentage;
+        previousMarks = student.totalObtained;
+      }
+
+      return {
+        studentId: student.studentId,
+        admissionNo: student.admissionNo,
+        fullName: student.fullName,
+        imageUrl: student.imageUrl,
+        rollNo: student.rollNo,
+        section: student.section,
+        subjects: student.subjects,
+        totalObtained: student.totalObtained,
+        totalMaxMarks: student.totalMaxMarks,
+        percentage: student.percentage,
+        status: student.status,
+        rank: currentRank,
+      };
+    });
+
+    return {
+      exam,
+      scope: { class: classRecord, section: sectionRecord },
+      requestedLimit: safeLimit,
+      eligibleStudents: completed.length,
+      pendingStudents: calculated.length - completed.length,
+      toppers: ranked.filter((student) => student.rank <= safeLimit),
+    };
+  },
+
   async getResults({
     examId,
     schoolId,

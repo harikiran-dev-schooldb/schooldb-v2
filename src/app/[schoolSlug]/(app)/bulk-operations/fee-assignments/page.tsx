@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useSchool } from "@/contexts/school-context";
+import { postImportInBatches } from "@/lib/batched-import";
 
 type AssignmentRow = {
   admissionNo: string;
@@ -173,23 +174,16 @@ export default function BulkFeeAssignmentsPage() {
     setResult(null);
 
     try {
-      const response = await fetch("/api/v1/student-fees/bulk", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ assignments: rows }),
+      const data = await postImportInBatches<
+        (typeof rows)[number],
+        { created: number; failed: number; errors: RowError[] }
+      >({
+        endpoint: "/api/v1/student-fees/bulk",
+        bodyKey: "assignments",
+        rows,
+        failureMessage: "Bulk fee assignment failed.",
       });
-
-      const payload = (await response.json()) as {
-        success?: boolean;
-        message?: string;
-        data?: { created: number; failed: number; errors: RowError[] };
-      };
-
-      if (!response.ok || !payload.success || !payload.data) {
-        throw new Error(payload.message ?? "Bulk fee assignment failed.");
-      }
-
-      setResult(payload.data);
+      setResult(data);
     } catch (error) {
       setFileError(
         error instanceof Error ? error.message : "Bulk fee assignment failed.",

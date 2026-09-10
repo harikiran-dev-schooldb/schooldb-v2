@@ -17,6 +17,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useSchool } from "@/contexts/school-context";
+import {
+  postImportInBatches,
+  type ImportProgress,
+} from "@/lib/batched-import";
 
 type StudentRow = {
   admissionNo: string;
@@ -195,6 +199,7 @@ export default function BulkStudentsPage() {
   const [errors, setErrors] = useState<RowError[]>([]);
   const [fileError, setFileError] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
+  const [progress, setProgress] = useState<ImportProgress | null>(null);
   const [result, setResult] = useState<{
     created: number;
     failed: number;
@@ -243,27 +248,18 @@ export default function BulkStudentsPage() {
     setResult(null);
 
     try {
-      const response = await fetch("/api/v1/students/bulk", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ students: rows }),
+      const data = await postImportInBatches<
+        StudentRow,
+        { created: number; failed: number; errors: RowError[] }
+      >({
+        endpoint: "/api/v1/students/bulk",
+        bodyKey: "students",
+        rows,
+        onProgress: setProgress,
+        failureMessage: "Bulk student import failed.",
       });
 
-      const payload = (await response.json()) as {
-        success?: boolean;
-        message?: string;
-        data?: {
-          created: number;
-          failed: number;
-          errors: RowError[];
-        };
-      };
-
-      if (!response.ok || !payload.success || !payload.data) {
-        throw new Error(payload.message ?? "Bulk import failed.");
-      }
-
-      setResult(payload.data);
+      setResult(data);
     } catch (error) {
       setFileError(
         error instanceof Error ? error.message : "Bulk import failed.",
@@ -280,6 +276,7 @@ export default function BulkStudentsPage() {
     setErrors([]);
     setFileError(null);
     setResult(null);
+    setProgress(null);
     if (inputRef.current) inputRef.current.value = "";
   }
 
@@ -319,8 +316,8 @@ export default function BulkStudentsPage() {
             <div>
               <CardTitle>Student import</CardTitle>
               <p className="mt-1 text-xs text-muted-foreground">
-                CSV columns: admissionNo, fullName, gender, dob, phone, email,
-                status
+                Upload the complete CSV; SchoolDB processes 500 rows per batch.
+                Columns: admissionNo, fullName, gender, dob, phone, email, status
               </p>
             </div>
           </div>
@@ -474,6 +471,18 @@ export default function BulkStudentsPage() {
                   <p className="mt-1 text-xs text-muted-foreground">
                     {result.created} students created · {result.failed} failed
                   </p>
+                </div>
+              )}
+
+              {importing && progress && (
+                <div className="space-y-2 rounded-2xl border border-primary/20 bg-primary/5 p-4">
+                  <div className="flex justify-between text-xs font-semibold">
+                    <span>Batch {Math.min(progress.completedBatches + 1, progress.totalBatches)} of {progress.totalBatches}</span>
+                    <span>{progress.completedRows} / {progress.totalRows} rows</span>
+                  </div>
+                  <div className="h-2 overflow-hidden rounded-full bg-primary/10">
+                    <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${(progress.completedRows / progress.totalRows) * 100}%` }} />
+                  </div>
                 </div>
               )}
 

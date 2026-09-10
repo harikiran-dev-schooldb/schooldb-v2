@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useSchool } from "@/contexts/school-context";
+import { postImportInBatches } from "@/lib/batched-import";
 
 type PaymentMode =
   | "CASH"
@@ -377,31 +378,16 @@ export default function BulkFeesPage() {
     setFileError(null);
 
     try {
-      const response = await fetch("/api/v1/fee-payments/bulk", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          payments: rows,
-        }),
+      const data = await postImportInBatches<
+        (typeof rows)[number],
+        { created: number; failed: number; errors: RowError[] }
+      >({
+        endpoint: "/api/v1/fee-payments/bulk",
+        bodyKey: "payments",
+        rows,
+        failureMessage: "Bulk fee payment import failed.",
       });
-
-      const payload = (await response.json()) as {
-        success?: boolean;
-        message?: string;
-        data?: {
-          created: number;
-          failed: number;
-          errors: RowError[];
-        };
-      };
-
-      if (!response.ok || !payload.success || !payload.data) {
-        throw new Error(payload.message ?? "Bulk fee payment import failed.");
-      }
-
-      setResult(payload.data);
+      setResult(data);
     } catch (error) {
       setFileError(
         error instanceof Error

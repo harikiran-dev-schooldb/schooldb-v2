@@ -155,7 +155,7 @@ export async function createWhatsappCampaign(input: CreateCampaignInput) {
 type AutomatedAlertInput = {
   schoolId: string;
   automationKey: string;
-  sourceType: "ATTENDANCE" | "HOMEWORK" | "RESULT" | "FEE_DUE";
+  sourceType: "ATTENDANCE" | "HOMEWORK" | "RESULT" | "FEE_DUE" | "PROMOTION";
   sourceId: string;
   title: string;
   message: string;
@@ -172,6 +172,7 @@ function automatedTemplateName(sourceType: AutomatedAlertInput["sourceType"]) {
     HOMEWORK: process.env.META_WA_HOMEWORK_TEMPLATE,
     RESULT: process.env.META_WA_RESULT_TEMPLATE,
     FEE_DUE: process.env.META_WA_FEE_REMINDER_TEMPLATE,
+    PROMOTION: process.env.META_WA_PROMOTION_TEMPLATE,
   };
   return templates[sourceType] || process.env.META_WA_ANNOUNCEMENT_TEMPLATE;
 }

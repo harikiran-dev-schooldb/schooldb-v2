@@ -15,6 +15,9 @@ export async function GET(request: Request) {
     const excludeEnrollmentId =
       searchParams.get("excludeEnrollmentId") ?? undefined;
 
+    const classId = searchParams.get("classId") ?? undefined;
+    const sectionId = searchParams.get("sectionId") ?? undefined;
+
     const mode =
       searchParams.get("mode") === "enrolled" ? "ENROLLED" : "AVAILABLE";
 
@@ -27,6 +30,8 @@ export async function GET(request: Request) {
       academicYearId,
       excludeEnrollmentId,
       mode,
+      classId,
+      sectionId,
     );
 
     return ApiResponse.success(students);

@@ -468,7 +468,7 @@ async classAttendanceReport(
   schoolId: string,
   academicYearId: string,
   classId: string,
-  sectionId: string,
+  sectionId?: string,
   fromDate?: Date,
   toDate?: Date
 ) {
@@ -478,7 +478,7 @@ async classAttendanceReport(
         schoolId,
         academicYearId,
         classId,
-        sectionId,
+        ...(sectionId ? { sectionId } : {}),
         active: true,
       },
 
@@ -486,11 +486,19 @@ async classAttendanceReport(
         studentId: true,
         rollNo: true,
 
+        section: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+
         student: {
           select: {
             id: true,
             admissionNo: true,
             fullName: true,
+            imageUrl: true,
           },
         },
       },
@@ -530,7 +538,7 @@ async classAttendanceReport(
         session: {
           academicYearId,
           classId,
-          sectionId,
+          ...(sectionId ? { sectionId } : {}),
 
           ...(fromDate || toDate
             ? {
@@ -1551,5 +1559,113 @@ async markFullPresentForPeriods(
       };
     },
   );
-}
+},
+
+async markStudentsAbsent(
+  schoolId: string,
+  academicYearId: string,
+  attendanceDate: Date,
+  studentIds: string[],
+  sessionTypes: ("DAILY" | "MORNING" | "AFTERNOON" | "PERIOD")[],
+  filters?: {
+    classId?: string;
+    sectionId?: string;
+  },
+) {
+  const uniqueStudentIds = [...new Set(studentIds)];
+
+  const enrollments = await prisma.studentEnrollment.findMany({
+    where: {
+      schoolId,
+      academicYearId,
+      active: true,
+      studentId: { in: uniqueStudentIds },
+      ...(filters?.classId ? { classId: filters.classId } : {}),
+      ...(filters?.sectionId ? { sectionId: filters.sectionId } : {}),
+    },
+    select: {
+      studentId: true,
+      classId: true,
+      sectionId: true,
+    },
+  });
+
+  if (enrollments.length !== uniqueStudentIds.length) {
+    throw new Error(
+      "One or more selected students are outside the selected attendance scope.",
+    );
+  }
+
+  const classSections = [
+    ...new Map(
+      enrollments.map((enrollment) => [
+        `${enrollment.classId}:${enrollment.sectionId}`,
+        { classId: enrollment.classId, sectionId: enrollment.sectionId },
+      ]),
+    ).values(),
+  ];
+
+  const sessions = await prisma.attendanceSession.findMany({
+    where: {
+      schoolId,
+      academicYearId,
+      attendanceDate,
+      sessionType: { in: sessionTypes },
+      OR: classSections,
+    },
+    select: {
+      id: true,
+      classId: true,
+      sectionId: true,
+      locked: true,
+    },
+  });
+
+  if (sessions.length === 0) {
+    throw new Error("No attendance sessions are available for the selected students.");
+  }
+
+  if (sessions.some((session) => session.locked)) {
+    throw new Error(
+      "A selected attendance session is locked. Unlock it before changing absentees.",
+    );
+  }
+
+  return prisma.$transaction(async (tx) => {
+    let attendanceCount = 0;
+    const affectedStudents = new Set<string>();
+
+    for (const session of sessions) {
+      const studentsInSession = enrollments
+        .filter(
+          (enrollment) =>
+            enrollment.classId === session.classId &&
+            enrollment.sectionId === session.sectionId,
+        )
+        .map((enrollment) => enrollment.studentId);
+
+      if (studentsInSession.length === 0) continue;
+
+      const updated = await tx.attendance.updateMany({
+        where: {
+          schoolId,
+          sessionId: session.id,
+          studentId: { in: studentsInSession },
+        },
+        data: { status: "ABSENT" },
+      });
+
+      attendanceCount += updated.count;
+      if (updated.count > 0) {
+        studentsInSession.forEach((studentId) => affectedStudents.add(studentId));
+      }
+    }
+
+    return {
+      studentCount: affectedStudents.size,
+      attendanceCount,
+      sessionCount: sessions.length,
+    };
+  });
+},
 };

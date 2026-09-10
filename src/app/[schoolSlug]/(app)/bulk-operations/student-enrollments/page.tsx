@@ -16,6 +16,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useSchool } from "@/contexts/school-context";
+import { postImportInBatches } from "@/lib/batched-import";
 
 type Row = {
   admissionNo: string;
@@ -165,19 +166,16 @@ export default function BulkStudentEnrollmentsPage() {
     setImporting(true);
     setMessage(null);
     try {
-      const response = await fetch("/api/v1/student-enrollments/bulk", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ enrollments: rows }),
+      const data = await postImportInBatches<
+        (typeof rows)[number],
+        { created: number }
+      >({
+        endpoint: "/api/v1/student-enrollments/bulk",
+        bodyKey: "enrollments",
+        rows,
+        failureMessage: "Bulk student enrollment failed.",
       });
-      const payload = (await response.json()) as {
-        success?: boolean;
-        message?: string;
-        data?: { created: number };
-      };
-      if (!response.ok || !payload.success || !payload.data)
-        throw new Error(payload.message ?? "Bulk student enrollment failed.");
-      setResult(payload.data.created);
+      setResult(data.created);
     } catch (e) {
       setMessage(
         e instanceof Error ? e.message : "Bulk student enrollment failed.",

@@ -6,6 +6,7 @@ import { useParams } from "next/navigation";
 import { Award, Download, FileBadge, FileCheck2, FileText, GraduationCap, IdCard, Loader2, Plus, ShieldCheck, Trash2, UploadCloud } from "lucide-react";
 import { toast } from "sonner";
 
+import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -62,6 +63,7 @@ export function StudentDocumentsTab({ student }: { student: StudentProfileData }
   const [dialogOpen, setDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [documentToDelete, setDocumentToDelete] = useState<StudentDocument | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [fileName, setFileName] = useState("");
   const [type, setType] = useState("AADHAAR");
@@ -127,13 +129,13 @@ export function StudentDocumentsTab({ student }: { student: StudentProfileData }
   }
 
   async function deleteDocument(document: StudentDocument) {
-    if (!window.confirm(`Delete ${document.name}? This cannot be undone.`)) return;
     try {
       setDeletingId(document.id);
       const response = await fetch(`/api/v1/students/${student.id}/documents/${document.id}`, { method: "DELETE" });
       const result = await response.json();
       if (!response.ok || !result.success) throw new Error(result.message || "Delete failed");
       setDocuments((current) => current.filter((item) => item.id !== document.id));
+      setDocumentToDelete(null);
       toast.success("Document deleted");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Delete failed");
@@ -166,7 +168,7 @@ export function StudentDocumentsTab({ student }: { student: StudentProfileData }
               {documents.map((document) => (
                 <div key={document.id} className="group rounded-2xl border bg-card p-4 transition hover:border-primary/25 hover:shadow-md">
                   <div className="flex gap-3"><div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><FileText className="size-5" /></div><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><p className="truncate font-semibold">{document.name}</p>{document.visibleToFamily && <Badge variant="success">Family visible</Badge>}</div><p className="mt-1 text-xs text-muted-foreground">{documentTypeLabel(document.type)} · {bytesLabel(document.sizeBytes)} · {new Date(document.createdAt).toLocaleDateString("en-IN")}</p>{document.notes && <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">{document.notes}</p>}</div></div>
-                  <div className="mt-4 flex flex-wrap items-center gap-3 border-t pt-3"><label className="mr-auto flex items-center gap-2 text-xs font-medium text-muted-foreground"><Switch checked={document.visibleToFamily} disabled={updatingId === document.id} onCheckedChange={(checked) => void updateFamilyVisibility(document, checked)} /> Family access</label><Button asChild size="sm" variant="outline"><a href={`/api/v1/students/${student.id}/documents/${document.id}/download`} target="_blank" rel="noreferrer"><Download className="size-3.5" /> Open</a></Button><Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" disabled={deletingId === document.id} onClick={() => void deleteDocument(document)}>{deletingId === document.id ? <Loader2 className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />} Delete</Button></div>
+                  <div className="mt-4 flex flex-wrap items-center gap-3 border-t pt-3"><label className="mr-auto flex items-center gap-2 text-xs font-medium text-muted-foreground"><Switch checked={document.visibleToFamily} disabled={updatingId === document.id} onCheckedChange={(checked) => void updateFamilyVisibility(document, checked)} /> Family access</label><Button asChild size="sm" variant="outline"><a href={`/api/v1/students/${student.id}/documents/${document.id}/download`} target="_blank" rel="noreferrer"><Download className="size-3.5" /> Open</a></Button><Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" disabled={deletingId === document.id} onClick={() => setDocumentToDelete(document)}>{deletingId === document.id ? <Loader2 className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />} Delete</Button></div>
                 </div>
               ))}
             </div>
@@ -197,6 +199,27 @@ export function StudentDocumentsTab({ student }: { student: StudentProfileData }
         <div className="flex items-center justify-between rounded-xl border bg-muted/30 p-4"><div><Label htmlFor="family-visible">Student/parent access</Label><p className="mt-1 text-xs text-muted-foreground">Allow linked family accounts to open this document.</p></div><Switch id="family-visible" checked={visibleToFamily} onCheckedChange={setVisibleToFamily} /></div>
         <DialogFooter><Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button><Button type="submit" disabled={saving}>{saving ? <Loader2 className="size-4 animate-spin" /> : <UploadCloud className="size-4" />} {saving ? "Uploading..." : "Upload securely"}</Button></DialogFooter>
       </form></DialogContent></Dialog>
+
+      <ConfirmDialog
+        open={Boolean(documentToDelete)}
+        onOpenChange={(open) => {
+          if (!open && deletingId === null) setDocumentToDelete(null);
+        }}
+        tone="destructive"
+        eyebrow="Secure document"
+        title="Delete this student document?"
+        description={documentToDelete?.name ?? "Selected student document"}
+        details={documentToDelete ? [
+          { label: "Document type", value: documentTypeLabel(documentToDelete.type) },
+          { label: "File size", value: bytesLabel(documentToDelete.sizeBytes) },
+        ] : []}
+        consequence="The file will be permanently removed from the student's record and cannot be recovered."
+        confirmLabel="Delete document"
+        pending={deletingId !== null}
+        onConfirm={() => {
+          if (documentToDelete) void deleteDocument(documentToDelete);
+        }}
+      />
     </div>
   );
 }

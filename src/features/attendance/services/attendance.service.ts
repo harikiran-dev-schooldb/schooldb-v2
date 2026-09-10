@@ -12,6 +12,7 @@ import {
 
 import { attendanceRepository } from "../repositories/attendance.repository";
 import { calculateAttendance } from "./attendance-calculator";
+import { rankAttendanceStudents } from "./attendance-ranking";
 import { academicYearRepository } from "@/features/academic-years/repositories/academic-year.repository";
 import { classRepository } from "@/features/classes/repositories/class.repository";
 import { sectionRepository } from "@/features/sections/repositories/section.repository";
@@ -548,7 +549,7 @@ async classAttendanceReport(
   schoolId: string,
   academicYearId: string,
   classId: string,
-  sectionId: string,
+  sectionId?: string,
   fromDate?: string,
   toDate?: string
 ) {
@@ -636,7 +637,13 @@ async classAttendanceReport(
           enrollment.student.admissionNo,
 
         fullName:
-          enrollment.student.fullName,
+          enrollment.student.fullName || "Unnamed Student",
+
+        imageUrl:
+          enrollment.student.imageUrl,
+
+        section:
+          enrollment.section,
 
         total:
           summary.total,
@@ -726,6 +733,66 @@ async classAttendanceReport(
     },
 
     students,
+  };
+},
+
+async attendanceToppers(
+  schoolId: string,
+  academicYearId: string,
+  classId: string,
+  options: {
+    sectionId?: string;
+    fromDate?: string;
+    toDate?: string;
+    limit: number;
+  },
+) {
+  const [schoolClass, section, report] = await Promise.all([
+    classRepository.findById(classId, schoolId),
+    options.sectionId
+      ? sectionRepository.findById(options.sectionId, schoolId)
+      : Promise.resolve(null),
+    this.classAttendanceReport(
+      schoolId,
+      academicYearId,
+      classId,
+      options.sectionId,
+      options.fromDate,
+      options.toDate,
+    ),
+  ]);
+
+  if (!schoolClass) {
+    throw new Error("Class not found.");
+  }
+
+  if (options.sectionId && (!section || section.classId !== classId)) {
+    throw new Error("Selected section does not belong to the selected class.");
+  }
+
+  const { eligible, toppers } = rankAttendanceStudents(
+    report.students,
+    options.limit,
+  );
+
+  return {
+    scope: {
+      class: {
+        id: schoolClass.id,
+        name: schoolClass.name,
+      },
+      section: section
+        ? {
+            id: section.id,
+            name: section.name,
+          }
+        : null,
+    },
+    requestedLimit: options.limit,
+    eligibleStudents: eligible.length,
+    studentsWithoutAttendance: report.students.length - eligible.length,
+    classAttendancePercentage: report.summary.attendancePercentage,
+    toppers,
   };
 },
 
@@ -1561,6 +1628,94 @@ async markFullPresent(
 
   throw new Error(
     "Unsupported attendance mode.",
+  );
+},
+
+async markBulkAbsentees(
+  schoolId: string,
+  input: {
+    academicYearId: string;
+    attendanceDate: string;
+    scope: "SCHOOL" | "CLASS" | "SECTION";
+    classId?: string;
+    sectionId?: string;
+    studentIds: string[];
+    sessionChoice?: "MORNING" | "AFTERNOON" | "BOTH";
+  },
+) {
+  if (input.scope !== "SCHOOL" && !input.classId) {
+    throw new Error("Class is required.");
+  }
+
+  if (input.scope === "SECTION" && !input.sectionId) {
+    throw new Error("Section is required.");
+  }
+
+  const academicYear = await academicYearRepository.findById(
+    input.academicYearId,
+    schoolId,
+  );
+
+  if (!academicYear) {
+    throw new Error("Academic year not found.");
+  }
+
+  const attendanceDate = new Date(input.attendanceDate);
+  const filters = {
+    ...(input.scope !== "SCHOOL" && input.classId
+      ? { classId: input.classId }
+      : {}),
+    ...(input.scope === "SECTION" && input.sectionId
+      ? { sectionId: input.sectionId }
+      : {}),
+  };
+
+  let sessionTypes: ("DAILY" | "MORNING" | "AFTERNOON" | "PERIOD")[];
+
+  if (academicYear.attendanceMode === "ONCE_DAILY") {
+    await attendanceRepository.markFullPresent(
+      schoolId,
+      input.academicYearId,
+      attendanceDate,
+      "DAILY",
+      filters,
+    );
+    sessionTypes = ["DAILY"];
+  } else if (academicYear.attendanceMode === "MORNING_AFTERNOON") {
+    const choices =
+      input.sessionChoice === "MORNING"
+        ? (["MORNING"] as const)
+        : input.sessionChoice === "AFTERNOON"
+          ? (["AFTERNOON"] as const)
+          : (["MORNING", "AFTERNOON"] as const);
+
+    for (const sessionType of choices) {
+      await attendanceRepository.markFullPresent(
+        schoolId,
+        input.academicYearId,
+        attendanceDate,
+        sessionType,
+        filters,
+      );
+    }
+    sessionTypes = [...choices];
+  } else {
+    await attendanceRepository.markFullPresentForPeriods(
+      schoolId,
+      input.academicYearId,
+      attendanceDate,
+      filters,
+    );
+    sessionTypes = ["PERIOD"];
+  }
+
+  return attendanceRepository.markStudentsAbsent(
+    schoolId,
+    input.academicYearId,
+    attendanceDate,
+    input.studentIds,
+    sessionTypes,
+    filters,
   );
 }
 };

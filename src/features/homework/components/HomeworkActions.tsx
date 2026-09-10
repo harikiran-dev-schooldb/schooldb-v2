@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
 
+import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { CrudActions, CrudActionItem } from "@/components/common/crud";
 import { refreshTable } from "@/lib/table-event";
 
@@ -16,6 +17,8 @@ type Props = {
 
 export function HomeworkActions({ homeworkId, onSuccess = () => {} }: Props) {
   const [open, setOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const router = useRouter();
   const params = useParams();
@@ -23,13 +26,8 @@ export function HomeworkActions({ homeworkId, onSuccess = () => {} }: Props) {
   const schoolSlug = params.schoolSlug as string;
 
   async function handleDelete() {
-    const confirmed = window.confirm(
-      "Are you sure you want to delete this homework?",
-    );
-
-    if (!confirmed) return;
-
     try {
+      setDeleting(true);
       const response = await fetch(`/api/v1/homework/${homeworkId}`, {
         method: "DELETE",
       });
@@ -42,11 +40,14 @@ export function HomeworkActions({ homeworkId, onSuccess = () => {} }: Props) {
       }
 
       toast.success("Homework deleted successfully.");
+      setDeleteOpen(false);
 
       refreshTable("homework");
       onSuccess();
     } catch {
       toast.error("Failed to delete homework.");
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -60,7 +61,7 @@ export function HomeworkActions({ homeworkId, onSuccess = () => {} }: Props) {
 
         <CrudActionItem type="edit" onClick={() => setOpen(true)} />
 
-        <CrudActionItem type="delete" onClick={handleDelete} />
+        <CrudActionItem type="delete" onClick={() => setDeleteOpen(true)} />
       </CrudActions>
 
       <HomeworkDialog
@@ -69,6 +70,21 @@ export function HomeworkActions({ homeworkId, onSuccess = () => {} }: Props) {
         mode="edit"
         homeworkId={homeworkId}
         onSuccess={onSuccess}
+      />
+
+      <ConfirmDialog
+        open={deleteOpen}
+        onOpenChange={(nextOpen) => {
+          if (!deleting) setDeleteOpen(nextOpen);
+        }}
+        tone="destructive"
+        eyebrow="Delete homework"
+        title="Remove this homework?"
+        description="Students and parents will no longer be able to view this homework."
+        consequence="This action permanently deletes the homework and cannot be undone."
+        confirmLabel="Delete homework"
+        pending={deleting}
+        onConfirm={() => void handleDelete()}
       />
     </>
   );

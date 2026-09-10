@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useSchool } from "@/contexts/school-context";
+import { postImportInBatches } from "@/lib/batched-import";
 
 type TimetableRow = {
   academicYear: string;
@@ -207,24 +208,19 @@ export default function BulkTimetablePage() {
     setFileError(null);
     setResult(null);
     try {
-      const response = await fetch("/api/v1/timetables/bulk", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          timetables: rows.map((r) => ({
+      const data = await postImportInBatches<
+        unknown,
+        { created: number; failed: number; errors: RowError[] }
+      >({
+        endpoint: "/api/v1/timetables/bulk",
+        bodyKey: "timetables",
+        rows: rows.map((r) => ({
             ...r,
             active: !["false", "0", "no"].includes(r.active.toLowerCase()),
           })),
-        }),
+        failureMessage: "Bulk timetable import failed.",
       });
-      const payload = (await response.json()) as {
-        success?: boolean;
-        message?: string;
-        data?: { created: number; failed: number; errors: RowError[] };
-      };
-      if (!response.ok || !payload.success || !payload.data)
-        throw new Error(payload.message ?? "Bulk timetable import failed.");
-      setResult(payload.data);
+      setResult(data);
     } catch (error) {
       setFileError(
         error instanceof Error

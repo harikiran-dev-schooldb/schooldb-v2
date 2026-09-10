@@ -1,5 +1,6 @@
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
+import type { PromotionInput } from "../services/student-enrollment.service";
 
 export const studentEnrollmentRepository = {
   list(
@@ -140,15 +141,7 @@ export const studentEnrollmentRepository = {
 
   async promoteMany(
     schoolId: string,
-    input: {
-      studentIds: string[];
-      sourceAcademicYearId: string;
-      sourceClassId: string;
-      sourceSectionId: string;
-      targetAcademicYearId: string;
-      targetClassId: string;
-      targetSectionId: string;
-    },
+    input: PromotionInput,
     tx: Prisma.TransactionClient,
   ) {
     const sourceEnrollments = await tx.studentEnrollment.findMany({

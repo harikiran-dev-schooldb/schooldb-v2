@@ -17,6 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useSchool } from "@/contexts/school-context";
+import { postImportInBatches } from "@/lib/batched-import";
 
 type ClassRow = {
   name: string;
@@ -178,31 +179,21 @@ export default function BulkClassesPage() {
     setResult(null);
     setFileError(null);
     try {
-      const response = await fetch("/api/v1/classes/bulk", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          rows: rows.map((row) => ({
+      const data = await postImportInBatches<
+        unknown,
+        { classesCreated: number; sectionsCreated: number; skipped: number; errors: RowError[] }
+      >({
+        endpoint: "/api/v1/classes/bulk",
+        bodyKey: "rows",
+        rows: rows.map((row) => ({
             ...row,
             displayOrder: Number(row.displayOrder),
             sectionDisplayOrder: Number(row.sectionDisplayOrder),
           })),
-        }),
+        failureMessage: "Bulk class import failed.",
       });
-      const payload = (await response.json()) as {
-        success?: boolean;
-        message?: string;
-        data?: {
-          classesCreated: number;
-          sectionsCreated: number;
-          skipped: number;
-          errors: RowError[];
-        };
-      };
-      if (!response.ok || !payload.success || !payload.data)
-        throw new Error(payload.message ?? "Bulk class import failed.");
-      setResult(payload.data);
-      if (payload.data.errors.length) setErrors(payload.data.errors);
+      setResult(data);
+      if (data.errors.length) setErrors(data.errors);
     } catch (error) {
       setFileError(
         error instanceof Error ? error.message : "Bulk class import failed.",

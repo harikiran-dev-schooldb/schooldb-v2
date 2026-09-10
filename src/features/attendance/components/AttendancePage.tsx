@@ -26,6 +26,7 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 
 import { Button } from "@/components/ui/button";
+import { BulkAbsenteeMarker } from "./BulkAbsenteeMarker";
 
 type AttendanceMode = "ONCE_DAILY" | "MORNING_AFTERNOON" | "EVERY_PERIOD";
 
@@ -593,6 +594,14 @@ export function AttendancePage({ schoolSlug }: Props) {
           </div>
         </CardContent>
       </Card>
+
+      <BulkAbsenteeMarker
+        key={`${academicYearId}:${classId}:${sectionId}`}
+        academicYearId={academicYearId}
+        classId={classId}
+        sectionId={sectionId}
+        attendanceMode={attendanceMode}
+      />
 
       {/* ======================================================================
           STEP 2

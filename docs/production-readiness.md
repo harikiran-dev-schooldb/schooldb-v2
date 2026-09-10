@@ -20,7 +20,7 @@ The default fixed window permits five send attempts per mobile number and 20 per
 
 ## Automatic WhatsApp alerts
 
-Set `META_WA_AUTOMATION_ENABLED=true` only after the Meta credentials and WhatsApp templates have been configured. Attendance, homework, result and fee alerts use their matching `META_WA_*_TEMPLATE` setting. Add a specific template setting only after Meta marks that template approved; while it is absent, SchoolDB safely falls back to `META_WA_ANNOUNCEMENT_TEMPLATE`. Automatic alerts are sent only to active students whose **WhatsApp alerts approved** switch is enabled on the student form. Existing students remain opted out until the school records consent.
+Set `META_WA_AUTOMATION_ENABLED=true` only after the Meta credentials and WhatsApp templates have been configured. Attendance, homework, result, fee and promotion alerts use their matching `META_WA_*_TEMPLATE` setting. Add a specific template setting only after Meta marks that template approved; while it is absent, SchoolDB safely falls back to `META_WA_ANNOUNCEMENT_TEMPLATE`. Automatic alerts are sent only to active students whose **WhatsApp alerts approved** switch is enabled on the student form. Existing students remain opted out until the school records consent.
 
 Attendance alerts are queued when attendance is locked, homework alerts when active homework is published, and result alerts when an exam is marked completed. The daily fee reminder runs at 9:00 AM India time through the Vercel cron in `vercel.json`. Configure a strong `CRON_SECRET` in production; Vercel sends it to the protected cron route as a bearer token.
 
