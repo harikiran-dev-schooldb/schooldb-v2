@@ -1,6 +1,7 @@
 import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
+import { del, get, put } from "@vercel/blob";
 
 const MIME_EXTENSIONS: Record<string, string> = {
   "application/pdf": ".pdf",
@@ -20,6 +21,29 @@ function storageRoot() {
 }
 
 type PrivateDocumentCollection = "student-documents" | "admission-documents";
+
+function hasBlobCredentials() {
+  return Boolean(
+    process.env.BLOB_READ_WRITE_TOKEN ||
+      (process.env.VERCEL_OIDC_TOKEN && process.env.BLOB_STORE_ID),
+  );
+}
+
+function isBlobStorageKey(storageKey: string) {
+  try {
+    return new URL(storageKey).protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+export function getPrivateStorageStatus() {
+  const blobConfigured = hasBlobCredentials();
+  return {
+    provider: blobConfigured ? "Vercel Blob" : "Local disk",
+    blobConfigured,
+  };
+}
 
 function storagePath(
   storageKey: string,
@@ -51,6 +75,27 @@ async function savePrivateDocument(
   }
 
   const storageKey = `${randomUUID()}${extension}`;
+
+  if (hasBlobCredentials()) {
+    const blob = await put(
+      `${collection}/${storageKey}`,
+      Buffer.from(await file.arrayBuffer()),
+      {
+        access: "private",
+        addRandomSuffix: false,
+        contentType: file.type,
+        maximumSizeInBytes: MAX_STUDENT_DOCUMENT_BYTES,
+      },
+    );
+    return blob.url;
+  }
+
+  if (process.env.NODE_ENV === "production") {
+    throw new Error(
+      "Private cloud storage is not configured. Connect a Vercel Blob store before uploading documents.",
+    );
+  }
+
   const destination = storagePath(storageKey, collection);
   await mkdir(path.dirname(destination), { recursive: true });
   await writeFile(destination, Buffer.from(await file.arrayBuffer()), {
@@ -59,11 +104,31 @@ async function savePrivateDocument(
   return storageKey;
 }
 
+async function readPrivateDocument(
+  storageKey: string,
+  collection: PrivateDocumentCollection,
+) {
+  if (isBlobStorageKey(storageKey)) {
+    const result = await get(storageKey, { access: "private" });
+    if (!result || result.statusCode !== 200 || !result.stream) {
+      throw new Error("Stored document was not found.");
+    }
+    return Buffer.from(
+      await new Response(result.stream as BodyInit).arrayBuffer(),
+    );
+  }
+  return readFile(storagePath(storageKey, collection));
+}
+
 export function readStudentDocument(storageKey: string) {
-  return readFile(storagePath(storageKey));
+  return readPrivateDocument(storageKey, "student-documents");
 }
 
 export async function deleteStudentDocumentFile(storageKey: string) {
+  if (isBlobStorageKey(storageKey)) {
+    await del(storageKey);
+    return;
+  }
   try {
     await unlink(storagePath(storageKey));
   } catch (error) {
@@ -76,10 +141,14 @@ export function saveAdmissionDocument(file: File) {
 }
 
 export function readAdmissionDocument(storageKey: string) {
-  return readFile(storagePath(storageKey, "admission-documents"));
+  return readPrivateDocument(storageKey, "admission-documents");
 }
 
 export async function deleteAdmissionDocumentFile(storageKey: string) {
+  if (isBlobStorageKey(storageKey)) {
+    await del(storageKey);
+    return;
+  }
   try {
     await unlink(storagePath(storageKey, "admission-documents"));
   } catch (error) {

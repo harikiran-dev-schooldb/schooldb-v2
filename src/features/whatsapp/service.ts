@@ -438,6 +438,7 @@ export async function processWhatsappCampaignBatch(
             where: { id: recipient.id },
             data: {
               status: "FAILED",
+              failedAt: new Date(),
               errorMessage: (error instanceof Error
                 ? error.message
                 : "Delivery failed"

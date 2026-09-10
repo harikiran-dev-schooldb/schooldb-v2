@@ -152,6 +152,7 @@ export const navigation: NavigationItem[] = [
         href: "audit-logs",
         roles: ADMIN_ROLES,
       },
+      { title: "System Health", href: "system", roles: ADMIN_ROLES },
       { title: "School Setup", href: "setup", exact: true },
     ],
   },

@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   Check,
@@ -50,6 +51,7 @@ const emptyForm: SectionForm = {
 
 export default function SetupSectionsPage() {
   const { school } = useSchool();
+  const router = useRouter();
 
   const [classes, setClasses] = useState<Option[]>([]);
   const [sections, setSections] = useState<Section[]>([]);
@@ -313,7 +315,7 @@ export default function SetupSectionsPage() {
       return;
     }
 
-    window.location.href = `/${school.slug}/setup`;
+    router.push(`/${school.slug}/setup`);
   }
 
   /* ------------------------------------------------------------------ */
@@ -616,9 +618,7 @@ export default function SetupSectionsPage() {
         <div className="flex flex-wrap gap-2">
           <Button
             variant="outline"
-            onClick={() =>
-              (window.location.href = `/${school.slug}/setup/classes`)
-            }
+            onClick={() => router.push(`/${school.slug}/setup/classes`)}
           >
             <ArrowLeft className="size-4" />
             Classes

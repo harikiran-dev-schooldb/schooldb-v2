@@ -605,7 +605,7 @@ export function AppSidebar() {
               <span className="size-1.5 rounded-full bg-emerald-500" />
 
               <span className="text-[10px] font-medium text-emerald-700/70">
-                All systems operational
+                Local workspace online
               </span>
             </div>
           </div>

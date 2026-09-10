@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { requireRole } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 import {
   createWhatsappCampaign,
   processWhatsappCampaignBatch,
@@ -94,6 +95,64 @@ export async function processWhatsappCampaign(
     entityType: "WHATSAPP_CAMPAIGN",
     entityId: campaignId,
     summary: "Processed the next WhatsApp campaign batch.",
+  });
+  revalidatePath(`/${schoolSlug}/whatsapp`);
+}
+
+export async function retryFailedWhatsappCampaign(
+  schoolSlug: string,
+  campaignId: string,
+) {
+  const membership = await requireRole(
+    ["SUPER_ADMIN", "SCHOOL_ADMIN"],
+    schoolSlug,
+  );
+  const campaign = await prisma.whatsappCampaign.findFirst({
+    where: {
+      id: campaignId,
+      schoolId: membership.schoolId,
+      failedCount: { gt: 0 },
+    },
+    select: { id: true, title: true },
+  });
+  if (!campaign) {
+    throw new Error("No failed messages were found for this campaign.");
+  }
+
+  const reset = await prisma.$transaction(async (tx) => {
+    const recipients = await tx.whatsappRecipient.updateMany({
+      where: {
+        campaignId,
+        schoolId: membership.schoolId,
+        status: "FAILED",
+      },
+      data: {
+        status: "QUEUED",
+        attempts: 0,
+        errorMessage: null,
+        failedAt: null,
+      },
+    });
+    await tx.whatsappCampaign.update({
+      where: { id: campaignId },
+      data: { status: "QUEUED", failedCount: 0, completedAt: null },
+    });
+    return recipients.count;
+  });
+
+  if (reset === 0) {
+    throw new Error("No failed messages were available to retry.");
+  }
+
+  await processWhatsappCampaignBatch(membership.schoolId, campaignId);
+  await recordAuditLog({
+    actor: membership,
+    module: "COMMUNICATION",
+    action: "SEND",
+    entityType: "WHATSAPP_CAMPAIGN",
+    entityId: campaignId,
+    summary: `Retried ${reset} failed WhatsApp message${reset === 1 ? "" : "s"} from “${campaign.title}”.`,
+    metadata: { retriedRecipients: reset },
   });
   revalidatePath(`/${schoolSlug}/whatsapp`);
 }
