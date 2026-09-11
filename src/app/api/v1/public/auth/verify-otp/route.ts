@@ -74,7 +74,24 @@ async function createSessionToken(account: ActiveAccount, schoolSlug: string) {
   const membership = account.memberships[0];
   if (!membership) return null;
   const client = await clerkClient();
-  const clerkUser = await client.users.getUser(account.clerkUserId);
+  let clerkUser;
+  try {
+    clerkUser = await client.users.getUser(account.clerkUserId);
+  } catch (error) {
+    // A database row can outlive its Clerk identity (for example, after a
+    // user is deleted or when production is pointed at a different Clerk
+    // instance). Treat that account as unavailable instead of returning a
+    // misleading generic verification failure.
+    if (
+      error &&
+      typeof error === "object" &&
+      "status" in error &&
+      error.status === 404
+    ) {
+      return null;
+    }
+    throw error;
+  }
   await client.users.updateUserMetadata(account.clerkUserId, {
     publicMetadata: {
       ...clerkUser.publicMetadata,
@@ -111,7 +128,13 @@ async function consumeChallenge(
 
   try {
     const token = await createToken();
-    if (!token) throw new Error("The active account has no membership");
+    if (!token) {
+      await prisma.otpChallenge.updateMany({
+        where: { id: challengeId, consumedAt: claimedAt },
+        data: { consumedAt: null },
+      });
+      return null;
+    }
     await prisma.otpChallenge.deleteMany({
       where: { id: challengeId, consumedAt: claimedAt },
     });
@@ -196,8 +219,11 @@ export async function POST(request: Request) {
       return token
         ? Response.json({ success: true, token })
         : Response.json(
-            { error: "Account selection expired. Request a new code." },
-            { status: 401 },
+            {
+              error:
+                "This account is no longer available. Contact the school administrator.",
+            },
+            { status: 403 },
           );
     }
 
