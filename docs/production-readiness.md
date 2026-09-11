@@ -43,7 +43,10 @@ The default pass criteria are no more than 1% failed requests and p95 latency no
 ## Before launch
 
 - Deploy to production hosting and a managed PostgreSQL service in the same region.
-- Apply migrations with `npx prisma migrate deploy` during deployment.
+- Apply migrations with `npm run db:migrate:deploy` during deployment. Vercel production
+  deployments run this automatically through the `vercel-build` script before building.
+- Set `DIRECT_DATABASE_URL` in Vercel to the direct, non-pooler Neon connection. Keep
+  `DATABASE_URL` pointed at the pooled connection for application traffic.
 - Configure production environment secrets; never copy the local `.env` file.
 - Add an uptime alert for `/api/health` and alerts for HTTP 5xx rates and slow responses.
 - Move bulk messages, reports, and large imports to a durable background queue before enabling them at high volume.
