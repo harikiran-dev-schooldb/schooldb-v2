@@ -9,6 +9,7 @@ This checklist reflects features present in the application, not deployment conf
 - [x] WhatsApp OTP sign-in
 - [x] Staff account provisioning
 - [x] Activity and audit logs
+- [x] Public business identity, contact, pricing, privacy, terms, and refund disclosures
 
 ## Student lifecycle
 

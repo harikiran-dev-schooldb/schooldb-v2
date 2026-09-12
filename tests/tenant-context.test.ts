@@ -17,11 +17,22 @@ test("extracts only valid school slugs from application paths", () => {
   assert.equal(schoolSlugFromPath("/green-valley/dashboard"), "green-valley");
   assert.equal(schoolSlugFromPath("/api/v1/students"), null);
   assert.equal(schoolSlugFromPath("/onboarding"), null);
+  assert.equal(schoolSlugFromPath("/privacy-policy"), null);
   assert.equal(schoolSlugFromPath("/Green-Valley/dashboard"), null);
 });
 
 test("keeps the public route allowlist narrow", () => {
   assert.equal(isPublicPath("/"), true);
+  for (const path of [
+    "/about",
+    "/contact",
+    "/privacy-policy",
+    "/refund-policy",
+    "/terms",
+  ]) {
+    assert.equal(isPublicPath(path), true);
+    assert.equal(schoolSlugFromPath(path), null);
+  }
   assert.equal(isPublicPath("/login/SignIn_clerk_catchall_check_123"), true);
   assert.equal(isPublicPath("/green-valley/login"), true);
   assert.equal(isPublicPath("/green-valley/apply"), true);
