@@ -72,7 +72,7 @@ flowchart LR
 | **Staff & access** | Teachers, principals, administrators, reception staff, Clerk identities and role-aware access |
 | **Academics** | Academic years, classes, sections, subjects, class subjects, enrollments and teacher allocations |
 | **Attendance** | Daily marking, history, dashboard, class reports, student reports and low-attendance tracking |
-| **Fees** | Plans, categories, collection, payments, outstanding balances, receipts and class/section filters |
+| **Fees & finance** | Plans, categories, collection, payments, outstanding balances, receipts, expenses and class/section filters |
 | **Timetable** | Periods, daily schedules, class timetables and teacher timetables |
 | **Academic work** | Homework, exams, marks, results and report cards |
 | **Communication** | In-app notifications, WhatsApp campaigns, delivery status, scheduling and audience targeting |
@@ -171,6 +171,7 @@ Authorization is enforced on the server. Hiding a navigation item is a convenien
 | Validation | Zod |
 | Tables | TanStack Table |
 | Messaging | Meta WhatsApp Cloud API |
+| Payments | Cashfree hosted checkout and signed webhooks |
 | Testing | Node.js test runner and TypeScript strip-types |
 
 ## Project structure
@@ -200,6 +201,7 @@ schooldb/
 - PostgreSQL
 - A Clerk application
 - A Meta WhatsApp Business account for OTP and message delivery
+- A Cashfree Payments account for online fee collection
 
 ### 1. Clone and install
 
@@ -233,6 +235,18 @@ npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000). A tenant is accessed through its school slug, for example `/kotak-vsp`.
+
+## Cashfree online fee payments
+
+Add the Cashfree credentials to `.env` and keep `CASHFREE_ENV=sandbox` while testing. Parents and students can select outstanding installments from their Fees page. Admins and Super Admins can also generate a QR from Fee Collection for a student to scan. The payable amount is always recalculated on the server.
+
+Configure this webhook in Cashfree:
+
+```text
+https://YOUR-DOMAIN/api/v1/public/payments/cashfree/webhook
+```
+
+For production, set `NEXT_PUBLIC_BASE_URL` to the public HTTPS origin, whitelist that domain in Cashfree, complete a sandbox payment and webhook test, and only then change `CASHFREE_ENV=production`. Localhost return-page testing works without a public URL, but webhook delivery requires a public HTTPS tunnel or deployed preview.
 
 ## Environment configuration
 

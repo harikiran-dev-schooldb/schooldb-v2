@@ -73,8 +73,10 @@ model School {
   classSubjects         ClassSubject[]
   exams                 Exam[]
   examSchedules         ExamSchedule[]
+  expenses              Expense[]
   feeCategories         FeeCategory[]
   feePayments           FeePayment[]
+  cashfreePaymentOrders CashfreePaymentOrder[]
   feePlans              FeePlan[]
   homeworks             Homework[]
   leaveRequests         LeaveRequest[]
@@ -634,32 +636,33 @@ model AdmissionStatusHistory {
 }
 
 model StudentEnrollment {
-  id                   String                       @id @default(cuid())
-  schoolId             String
-  studentId            String
-  academicYearId       String
-  classId              String
-  sectionId            String
-  rollNo               Int?
-  admissionDate        DateTime?
-  active               Boolean                      @default(true)
-  createdAt            DateTime                     @default(now())
-  updatedAt            DateTime                     @updatedAt
-  promotedFromId       String?
-  feePayments          FeePayment[]
-  leaveRequests        LeaveRequest[]
-  libraryLoans         LibraryLoan[]
-  activities           StudentActivity[]
-  academicYear         AcademicYear                 @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
-  class                Class                        @relation(fields: [classId], references: [id], onDelete: Cascade)
-  promotedFrom         StudentEnrollment?           @relation("PromotionHistory", fields: [promotedFromId], references: [id])
-  promotedTo           StudentEnrollment[]          @relation("PromotionHistory")
-  school               School                       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  section              Section                      @relation(fields: [sectionId], references: [id], onDelete: Cascade)
-  student              Student                      @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  examMarks            StudentExamMark[]
-  studentFees          StudentFee[]
-  transportAssignments StudentTransportAssignment[]
+  id                    String                       @id @default(cuid())
+  schoolId              String
+  studentId             String
+  academicYearId        String
+  classId               String
+  sectionId             String
+  rollNo                Int?
+  admissionDate         DateTime?
+  active                Boolean                      @default(true)
+  createdAt             DateTime                     @default(now())
+  updatedAt             DateTime                     @updatedAt
+  promotedFromId        String?
+  feePayments           FeePayment[]
+  cashfreePaymentOrders CashfreePaymentOrder[]
+  leaveRequests         LeaveRequest[]
+  libraryLoans          LibraryLoan[]
+  activities            StudentActivity[]
+  academicYear          AcademicYear                 @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+  class                 Class                        @relation(fields: [classId], references: [id], onDelete: Cascade)
+  promotedFrom          StudentEnrollment?           @relation("PromotionHistory", fields: [promotedFromId], references: [id])
+  promotedTo            StudentEnrollment[]          @relation("PromotionHistory")
+  school                School                       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  section               Section                      @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  student               Student                      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  examMarks             StudentExamMark[]
+  studentFees           StudentFee[]
+  transportAssignments  StudentTransportAssignment[]
 
   @@unique([studentId, academicYearId])
   @@unique([academicYearId, classId, sectionId, rollNo])
@@ -1225,24 +1228,25 @@ model StudentFeeItem {
 }
 
 model StudentFeeInstallment {
-  id                 String                      @id @default(cuid())
-  studentFeeItemId   String
-  feeInstallmentId   String?
-  name               String
-  amount             Decimal                     @db.Decimal(12, 2)
-  concession         Decimal                     @default(0) @db.Decimal(12, 2)
-  payableAmount      Decimal                     @db.Decimal(12, 2)
-  paidAmount         Decimal                     @default(0) @db.Decimal(12, 2)
-  dueDate            DateTime                    @db.Date
-  status             StudentFeeInstallmentStatus @default(PENDING)
-  sequence           Int
-  periodStart        DateTime?                   @db.Date
-  periodEnd          DateTime?                   @db.Date
-  createdAt          DateTime                    @default(now())
-  updatedAt          DateTime                    @updatedAt
-  paymentAllocations FeePaymentAllocation[]
-  feeInstallment     FeeInstallment?             @relation(fields: [feeInstallmentId], references: [id])
-  studentFeeItem     StudentFeeItem              @relation(fields: [studentFeeItemId], references: [id], onDelete: Cascade)
+  id                  String                      @id @default(cuid())
+  studentFeeItemId    String
+  feeInstallmentId    String?
+  name                String
+  amount              Decimal                     @db.Decimal(12, 2)
+  concession          Decimal                     @default(0) @db.Decimal(12, 2)
+  payableAmount       Decimal                     @db.Decimal(12, 2)
+  paidAmount          Decimal                     @default(0) @db.Decimal(12, 2)
+  dueDate             DateTime                    @db.Date
+  status              StudentFeeInstallmentStatus @default(PENDING)
+  sequence            Int
+  periodStart         DateTime?                   @db.Date
+  periodEnd           DateTime?                   @db.Date
+  createdAt           DateTime                    @default(now())
+  updatedAt           DateTime                    @updatedAt
+  paymentAllocations  FeePaymentAllocation[]
+  cashfreeAllocations CashfreePaymentAllocation[]
+  feeInstallment      FeeInstallment?             @relation(fields: [feeInstallmentId], references: [id])
+  studentFeeItem      StudentFeeItem              @relation(fields: [studentFeeItemId], references: [id], onDelete: Cascade)
 
   @@index([studentFeeItemId])
   @@index([feeInstallmentId])
@@ -1269,6 +1273,7 @@ model FeePayment {
   school              School                 @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   studentEnrollment   StudentEnrollment      @relation(fields: [studentEnrollmentId], references: [id])
   allocations         FeePaymentAllocation[]
+  cashfreeOrder       CashfreePaymentOrder?
 
   @@unique([schoolId, receiptNo])
   @@index([schoolId, studentEnrollmentId])
@@ -1288,6 +1293,70 @@ model FeePaymentAllocation {
 
   @@unique([paymentId, studentFeeInstallmentId])
   @@index([studentFeeInstallmentId])
+}
+
+model CashfreePaymentOrder {
+  id                  String                      @id @default(cuid())
+  schoolId            String
+  studentEnrollmentId String
+  providerOrderId     String                      @unique
+  providerPaymentId   String?                     @unique
+  idempotencyKey      String                      @unique
+  publicTokenHash     String?                     @unique
+  amount              Decimal                     @db.Decimal(12, 2)
+  status              CashfreePaymentOrderStatus  @default(CREATED)
+  initiatedBy         CashfreePaymentInitiator    @default(SELF_SERVICE)
+  paymentSessionId    String?
+  requestedByUserId   String
+  feePaymentId        String?                     @unique
+  failureReason       String?                     @db.VarChar(500)
+  paidAt              DateTime?
+  createdAt           DateTime                    @default(now())
+  updatedAt           DateTime                    @updatedAt
+  school              School                      @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  studentEnrollment   StudentEnrollment           @relation(fields: [studentEnrollmentId], references: [id])
+  feePayment          FeePayment?                 @relation(fields: [feePaymentId], references: [id])
+  allocations         CashfreePaymentAllocation[]
+
+  @@index([schoolId, status, createdAt(sort: Desc)])
+  @@index([studentEnrollmentId, status, createdAt(sort: Desc)])
+}
+
+model CashfreePaymentAllocation {
+  id                      String                @id @default(cuid())
+  orderId                 String
+  studentFeeInstallmentId String
+  amount                  Decimal               @db.Decimal(12, 2)
+  createdAt               DateTime              @default(now())
+  order                   CashfreePaymentOrder  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  studentFeeInstallment   StudentFeeInstallment @relation(fields: [studentFeeInstallmentId], references: [id])
+
+  @@unique([orderId, studentFeeInstallmentId])
+  @@index([studentFeeInstallmentId])
+}
+
+model Expense {
+  id          String         @id @default(cuid())
+  schoolId    String
+  category    String         @db.VarChar(80)
+  description String         @db.VarChar(240)
+  vendor      String?        @db.VarChar(160)
+  amount      Decimal        @db.Decimal(12, 2)
+  expenseDate DateTime       @db.Date
+  paymentMode FeePaymentMode
+  referenceNo String?        @db.VarChar(120)
+  remarks     String?        @db.VarChar(1000)
+  status      ExpenseStatus  @default(POSTED)
+  recordedBy  String
+  voidedAt    DateTime?
+  voidedBy    String?
+  voidReason  String?        @db.VarChar(500)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  school      School         @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId, status, expenseDate(sort: Desc)])
+  @@index([schoolId, category, expenseDate(sort: Desc)])
 }
 
 model Exam {
@@ -1475,6 +1544,25 @@ enum FeePaymentStatus {
   SUCCESS
   CANCELLED
   REFUNDED
+  VOID
+}
+
+enum CashfreePaymentOrderStatus {
+  CREATED
+  ACTIVE
+  PAID
+  FAILED
+  EXPIRED
+  REVIEW_REQUIRED
+}
+
+enum CashfreePaymentInitiator {
+  SELF_SERVICE
+  STAFF_QR
+}
+
+enum ExpenseStatus {
+  POSTED
   VOID
 }
 

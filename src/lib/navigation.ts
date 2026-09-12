@@ -94,6 +94,11 @@ export const navigation: NavigationItem[] = [
       { title: "Outstanding Fees", href: "fees/outstanding" },
       { title: "Payment History", href: "fees/payments" },
       { title: "Receipts", href: "fees/receipts" },
+      {
+        title: "Expenses",
+        href: "expenses",
+        roles: [...ADMIN_ROLES, "ACCOUNTANT"],
+      },
       { title: "Fee Plans", href: "fees/plans" },
       { title: "Fee Categories", href: "fees/categories" },
     ],

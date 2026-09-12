@@ -5,6 +5,7 @@ const RESERVED_PATH_SEGMENTS = new Set([
   "login",
   "marketing",
   "onboarding",
+  "pay",
   "register",
 ]);
 
@@ -13,11 +14,14 @@ const PUBLIC_PATH_PATTERNS = [
   /^\/marketing(?:\/.*)?$/,
   /^\/login(?:\/.*)?$/,
   /^\/register(?:\/.*)?$/,
+  /^\/pay\/cashfree\/[^/]+\/[^/]+(?:\/complete)?$/,
   /^\/[^/]+\/login(?:\/.*)?$/,
   /^\/[^/]+\/apply(?:\/.*)?$/,
   /^\/api\/health$/,
   /^\/api\/cron\/whatsapp$/,
   /^\/api\/v1\/public\/whatsapp\/webhook$/,
+  /^\/api\/v1\/public\/payments\/cashfree\/webhook$/,
+  /^\/api\/v1\/public\/payments\/cashfree\/orders\/[^/]+\/verify$/,
   /^\/api\/v1\/public\/auth\/(?:send-otp|verify-otp)$/,
   /^\/api\/v1\/public\/admissions\/[^/]+(?:\/(?:track|documents))?$/,
 ];

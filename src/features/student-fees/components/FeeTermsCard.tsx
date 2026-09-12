@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle2, Clock3, IndianRupee, WalletCards } from "lucide-react";
+import { CheckCircle2, Clock3, IndianRupee, QrCode, WalletCards } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,7 @@ type Props = {
   installments: Installment[];
   loading: boolean;
   onCollect: (installment: Installment) => void;
+  onGenerateQr?: (installment: Installment) => void;
 };
 
 function money(value: number) {
@@ -38,7 +39,7 @@ function getStatusClass(status: Installment["status"]) {
   }
 }
 
-export function FeeTermsCard({ installments, loading, onCollect }: Props) {
+export function FeeTermsCard({ installments, loading, onCollect, onGenerateQr }: Props) {
   const paidCount = installments.filter(
     (installment) => installment.status === "PAID",
   ).length;
@@ -140,13 +141,25 @@ export function FeeTermsCard({ installments, loading, onCollect }: Props) {
                     </div>
 
                     {installment.outstanding > 0 ? (
-                      <Button
-                        className="min-w-28 rounded-xl"
-                        onClick={() => onCollect(installment)}
-                      >
-                        <IndianRupee className="size-4" />
-                        Collect
-                      </Button>
+                      <div className="flex flex-col gap-2 sm:flex-row">
+                        {onGenerateQr ? (
+                          <Button
+                            variant="outline"
+                            className="min-w-28 rounded-xl border-indigo-200 text-indigo-700 hover:bg-indigo-50 hover:text-indigo-800"
+                            onClick={() => onGenerateQr(installment)}
+                          >
+                            <QrCode className="size-4" />
+                            Show QR
+                          </Button>
+                        ) : null}
+                        <Button
+                          className="min-w-28 rounded-xl"
+                          onClick={() => onCollect(installment)}
+                        >
+                          <IndianRupee className="size-4" />
+                          Collect
+                        </Button>
+                      </div>
                     ) : (
                       <div className="flex min-w-28 items-center justify-center gap-2 rounded-xl bg-muted px-4 py-2.5 text-sm font-medium text-muted-foreground">
                         <CheckCircle2 className="size-4" />

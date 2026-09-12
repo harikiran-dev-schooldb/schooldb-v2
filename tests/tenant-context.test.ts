@@ -30,6 +30,24 @@ test("keeps the public route allowlist narrow", () => {
   assert.equal(isPublicPath("/api/cron/whatsapp"), true);
   assert.equal(isPublicPath("/api/cron/not-a-real-route"), false);
   assert.equal(isPublicPath("/api/v1/public/whatsapp/webhook"), true);
+  assert.equal(
+    isPublicPath("/api/v1/public/payments/cashfree/webhook"),
+    true,
+  );
+  assert.equal(
+    isPublicPath("/api/v1/public/payments/cashfree/not-a-real-route"),
+    false,
+  );
+  assert.equal(
+    isPublicPath("/api/v1/public/payments/cashfree/orders/SDB-1/verify"),
+    true,
+  );
+  assert.equal(isPublicPath("/pay/cashfree/SDB-1/secure-token"), true);
+  assert.equal(
+    isPublicPath("/pay/cashfree/SDB-1/secure-token/complete"),
+    true,
+  );
+  assert.equal(isPublicPath("/pay/cashfree/SDB-1"), false);
   assert.equal(isPublicPath("/api/v1/public/whatsapp/not-a-real-route"), false);
   assert.equal(isPublicPath("/api/v1/public/auth/send-otp"), true);
   assert.equal(isPublicPath("/api/v1/public/auth/verify-otp"), true);
@@ -50,6 +68,7 @@ test("keeps the public route allowlist narrow", () => {
   assert.equal(isPublicPath("/onboarding"), false);
   assert.equal(isPublicPath("/api/v1/students"), false);
   assert.equal(isPublicPath("/green-valley/dashboard"), false);
+  assert.equal(schoolSlugFromPath("/pay/cashfree/SDB-1/token"), null);
 });
 
 test("accepts a tenant referer only when it is same-origin", () => {

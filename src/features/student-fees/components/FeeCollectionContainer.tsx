@@ -8,6 +8,7 @@ import {
   type Installment,
 } from "@/features/student-fees/components/FeeTermsCard";
 import { RecordFeePaymentDialog } from "@/features/student-fees/components/RecordFeePaymentDialog";
+import { StaffCashfreeQrDialog } from "@/features/online-payments/components/StaffCashfreeQrDialog";
 import { StudentFeeSearch } from "./StudentFeeSearch";
 
 type Student = {
@@ -46,9 +47,10 @@ type FeeDetailsResponse = {
 
 type Props = {
   schoolSlug: string;
+  allowCashfreeQr?: boolean;
 };
 
-export function FeeCollectionContainer({ schoolSlug }: Props) {
+export function FeeCollectionContainer({ schoolSlug, allowCashfreeQr = false }: Props) {
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
 
   const [installments, setInstallments] = useState<Installment[]>([]);
@@ -63,6 +65,7 @@ export function FeeCollectionContainer({ schoolSlug }: Props) {
     useState<Installment | null>(null);
 
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
+  const [qrInstallment, setQrInstallment] = useState<Installment | null>(null);
 
   const [feesError, setFeesError] = useState<string | null>(null);
 
@@ -145,6 +148,7 @@ export function FeeCollectionContainer({ schoolSlug }: Props) {
     setSelectedInstallment(null);
 
     setPaymentDialogOpen(false);
+    setQrInstallment(null);
     setFeesError(null);
   }
 
@@ -201,6 +205,7 @@ export function FeeCollectionContainer({ schoolSlug }: Props) {
               installments={installments}
               loading={false}
               onCollect={handleCollect}
+              onGenerateQr={allowCashfreeQr ? setQrInstallment : undefined}
             />
           )}
         </div>
@@ -234,6 +239,28 @@ export function FeeCollectionContainer({ schoolSlug }: Props) {
           }}
         />
       )}
+
+      {selectedStudent && qrInstallment ? (
+        <StaffCashfreeQrDialog
+          open
+          onOpenChange={(open) => {
+            if (!open) setQrInstallment(null);
+          }}
+          schoolSlug={schoolSlug}
+          student={selectedStudent}
+          installments={installments
+            .filter((installment) => installment.outstanding > 0)
+            .map((installment) => ({
+              id: installment.id,
+              name: installment.name,
+              outstanding: installment.outstanding,
+            }))}
+          initialInstallmentId={qrInstallment.id}
+          onSuccess={() => {
+            void selectStudent(selectedStudent);
+          }}
+        />
+      ) : null}
     </>
   );
 }

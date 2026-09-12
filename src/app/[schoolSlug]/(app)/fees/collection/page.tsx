@@ -1,4 +1,6 @@
 import { FeeCollectionContainer } from "@/features/student-fees/components/FeeCollectionContainer";
+import { PERMISSIONS } from "@/lib/access-control";
+import { requirePermission } from "@/lib/auth";
 
 type Props = {
   params: Promise<{
@@ -8,6 +10,10 @@ type Props = {
 
 export default async function FeeCollectionPage({ params }: Props) {
   const { schoolSlug } = await params;
+  const membership = await requirePermission(PERMISSIONS.FEE_READ, schoolSlug);
+  const allowCashfreeQr = ["SUPER_ADMIN", "SCHOOL_ADMIN"].includes(
+    membership.role,
+  );
 
   return (
     <div className="w-full space-y-7 pb-10">
@@ -24,7 +30,10 @@ export default async function FeeCollectionPage({ params }: Props) {
 
       {/* Fee Collection Workspace */}
       <section className="premium-card overflow-hidden rounded-2xl">
-        <FeeCollectionContainer schoolSlug={schoolSlug} />
+        <FeeCollectionContainer
+          schoolSlug={schoolSlug}
+          allowCashfreeQr={allowCashfreeQr}
+        />
       </section>
     </div>
   );

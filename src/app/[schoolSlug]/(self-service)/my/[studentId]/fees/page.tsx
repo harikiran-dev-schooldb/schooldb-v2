@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/table";
 import { studentFeeLedgerService } from "@/features/student-fees/services/student-fee-ledger.service";
 import { studentFeeService } from "@/features/student-fees/services/student-fee.service";
+import { OnlineFeeCheckout } from "@/features/online-payments/components/OnlineFeeCheckout";
 import { formatCurrency, formatDate } from "@/lib/self-service-format";
 import { requireStudentAccess } from "@/lib/student-access";
 
@@ -44,6 +45,17 @@ export default async function StudentFeesPage({
     }),
     { payable: 0, paid: 0, outstanding: 0 },
   );
+  const outstandingInstallments = ledgers.flatMap((ledger) =>
+    ledger.installments
+      .filter((installment) => installment.outstanding > 0)
+      .map((installment) => ({
+        id: installment.id,
+        name: installment.name,
+        category: installment.feeCategory.name,
+        dueDate: new Date(installment.dueDate).toISOString(),
+        outstanding: installment.outstanding,
+      })),
+  );
 
   return (
     <SelfServicePage title="Fees" description="Fee plans, installments, and successful payments.">
@@ -56,6 +68,14 @@ export default async function StudentFeesPage({
           <SelfServiceStatCard key={label} label={label} value={value} />
         ))}
       </div>
+
+      {outstandingInstallments.length ? (
+        <OnlineFeeCheckout
+          schoolSlug={schoolSlug}
+          studentId={studentId}
+          installments={outstandingInstallments}
+        />
+      ) : null}
 
       {ledgers.length ? (
         ledgers.map((ledger) => (
