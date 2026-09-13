@@ -1,10 +1,14 @@
 package com.schooldb.mobile.teacher
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -20,19 +24,23 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.Assignment
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Groups
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.School
-import androidx.compose.material3.Button
+import androidx.compose.material.icons.outlined.GridView
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.School
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -44,6 +52,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -54,22 +63,50 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.material.icons.automirrored.outlined.Assignment
+import androidx.compose.material.icons.automirrored.outlined.FactCheck
+
+
+private val SchoolDbIndigo = Color(0xFF4F46E5)
+private val SchoolDbIndigoSoft = Color(0xFFEEF2FF)
+private val SchoolDbSlate900 = Color(0xFF0F172A)
+private val SchoolDbSlate800 = Color(0xFF1E293B)
+private val SchoolDbSlate500 = Color(0xFF64748B)
+private val SchoolDbSlate400 = Color(0xFF94A3B8)
+private val SchoolDbSlate300 = Color(0xFFCBD5E1)
+private val SchoolDbSlate200 = Color(0xFFE2E8F0)
+private val SchoolDbSlate100 = Color(0xFFF1F5F9)
+private val SchoolDbBackground = Color(0xFFF8FAFC)
+private val SchoolDbDanger = Color(0xFFDC2626)
+private val SchoolDbDangerBadge = Color(0xFFEF4444)
+
+private enum class TeacherTab {
+    HOME,
+    ATTENDANCE,
+    HOMEWORK,
+    NOTICES,
+    MORE,
+}
 
 @Composable
-fun TeacherDashboardScreen(viewModel: TeacherViewModel = viewModel()) {
+fun TeacherDashboardScreen(
+    viewModel: TeacherViewModel = viewModel(),
+) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
 
@@ -92,8 +129,15 @@ fun TeacherDashboardScreen(viewModel: TeacherViewModel = viewModel()) {
         return
     }
 
-    if (state.context?.role == "TEACHER" && state.dashboard != null) {
-        TeacherShell(state, snackbar, viewModel)
+    if (
+        state.context?.role == "TEACHER" &&
+        state.dashboard != null
+    ) {
+        TeacherShell(
+            state = state,
+            snackbar = snackbar,
+            teacherViewModel = viewModel,
+        )
     } else {
         TeacherHome(
             state = state,
@@ -106,8 +150,6 @@ fun TeacherDashboardScreen(viewModel: TeacherViewModel = viewModel()) {
     }
 }
 
-private enum class TeacherTab { HOME, ATTENDANCE, HOMEWORK, NOTICES }
-
 @Composable
 private fun TeacherShell(
     state: TeacherUiState,
@@ -115,70 +157,517 @@ private fun TeacherShell(
     teacherViewModel: TeacherViewModel,
     noticeViewModel: NoticeViewModel = viewModel(),
 ) {
-    var tab by rememberSaveable { mutableStateOf(TeacherTab.HOME) }
+    var tab by rememberSaveable {
+        mutableStateOf(TeacherTab.HOME)
+    }
+
     val noticeState by noticeViewModel.uiState.collectAsStateWithLifecycle()
 
     Scaffold(
+        containerColor = SchoolDbBackground,
         bottomBar = {
-            NavigationBar {
-                NavigationBarItem(
-                    selected = tab == TeacherTab.HOME,
-                    onClick = { tab = TeacherTab.HOME },
-                    icon = { Icon(Icons.Default.Home, contentDescription = null) },
-                    label = { Text("Home") },
-                )
-                NavigationBarItem(
-                    selected = tab == TeacherTab.ATTENDANCE,
-                    onClick = { tab = TeacherTab.ATTENDANCE },
-                    icon = { Icon(Icons.Default.Groups, contentDescription = null) },
-                    label = { Text("Attendance") },
-                )
-                NavigationBarItem(
-                    selected = tab == TeacherTab.HOMEWORK,
-                    onClick = { tab = TeacherTab.HOMEWORK },
-                    icon = { Icon(Icons.AutoMirrored.Filled.Assignment, contentDescription = null) },
-                    label = { Text("Homework") },
-                )
-                NavigationBarItem(
-                    selected = tab == TeacherTab.NOTICES,
-                    onClick = { tab = TeacherTab.NOTICES },
-                    icon = {
-                        BadgedBox(
-                            badge = {
-                                if (noticeState.unreadCount > 0) {
-                                    Badge { Text(noticeState.unreadCount.coerceAtMost(99).toString()) }
-                                }
-                            },
-                        ) { Icon(Icons.Default.Notifications, contentDescription = null) }
-                    },
-                    label = { Text("Notices") },
-                )
-            }
+            SchoolDbBottomBar(
+                selectedTab = tab,
+                unreadNotices = noticeState.unreadCount,
+                onTabSelected = {
+                    tab = it
+                },
+            )
         },
     ) { padding ->
-        Box(Modifier.fillMaxSize().padding(padding)) {
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding),
+        ) {
             when (tab) {
-                TeacherTab.HOME -> TeacherHome(
-                    state = state,
-                    snackbar = snackbar,
-                    onRefresh = teacherViewModel::refresh,
-                    onOpenAttendance = teacherViewModel::openAttendance,
-                    onOpenDailyAttendance = teacherViewModel::openDailyAttendance,
-                    onSignOut = teacherViewModel::signOut,
-                )
-                TeacherTab.ATTENDANCE -> AttendanceHub(
-                    dashboard = state.dashboard!!,
-                    loading = state.loading,
-                    onRefresh = teacherViewModel::refresh,
-                    onOpenAttendance = teacherViewModel::openAttendance,
-                    onOpenDailyAttendance = teacherViewModel::openDailyAttendance,
-                )
-                TeacherTab.HOMEWORK -> HomeworkScreen(onBack = { tab = TeacherTab.HOME })
-                TeacherTab.NOTICES -> NoticeScreen(noticeState, noticeViewModel)
+                TeacherTab.HOME -> {
+                    TeacherHome(
+                        state = state,
+                        snackbar = snackbar,
+                        onRefresh = teacherViewModel::refresh,
+                        onOpenAttendance = teacherViewModel::openAttendance,
+                        onOpenDailyAttendance = teacherViewModel::openDailyAttendance,
+                        onSignOut = teacherViewModel::signOut,
+                    )
+                }
+
+                TeacherTab.ATTENDANCE -> {
+                    AttendanceHub(
+                        dashboard = state.dashboard!!,
+                        loading = state.loading,
+                        onRefresh = teacherViewModel::refresh,
+                        onOpenAttendance = teacherViewModel::openAttendance,
+                        onOpenDailyAttendance = teacherViewModel::openDailyAttendance,
+                    )
+                }
+
+                TeacherTab.HOMEWORK -> {
+                    HomeworkScreen(
+                        onBack = {
+                            tab = TeacherTab.HOME
+                        },
+                    )
+                }
+
+                TeacherTab.NOTICES -> {
+                    NoticeScreen(
+                        noticeState,
+                        noticeViewModel,
+                    )
+                }
+
+                TeacherTab.MORE -> {
+                    TeacherMoreScreen(
+                        onSignOut = teacherViewModel::signOut,
+                    )
+                }
             }
         }
     }
 }
+
+/* ==========================================================================
+   PREMIUM BOTTOM NAVIGATION
+   ========================================================================== */
+
+@Composable
+private fun SchoolDbBottomBar(
+    selectedTab: TeacherTab,
+    unreadNotices: Int,
+    onTabSelected: (TeacherTab) -> Unit,
+) {
+    val navigationColors = NavigationBarItemDefaults.colors(
+        selectedIconColor = SchoolDbIndigo,
+        selectedTextColor = SchoolDbIndigo,
+        indicatorColor = SchoolDbIndigoSoft,
+        unselectedIconColor = SchoolDbSlate400,
+        unselectedTextColor = SchoolDbSlate500,
+    )
+
+    NavigationBar(
+        containerColor = Color.White,
+        tonalElevation = 0.dp,
+        modifier = Modifier.shadow(
+            elevation = 8.dp,
+            ambientColor = Color(0x120F172A),
+            spotColor = Color(0x120F172A),
+        ),
+    ) {
+
+        NavigationBarItem(
+            selected = selectedTab == TeacherTab.HOME,
+            onClick = {
+                onTabSelected(TeacherTab.HOME)
+            },
+            icon = {
+                Icon(
+                    imageVector = Icons.Outlined.Home,
+                    contentDescription = "Home",
+                    modifier = Modifier.size(23.dp),
+                )
+            },
+            label = {
+                Text(
+                    text = "Home",
+                    fontSize = 11.sp,
+                    fontWeight =
+                        if (selectedTab == TeacherTab.HOME) {
+                            FontWeight.SemiBold
+                        } else {
+                            FontWeight.Medium
+                        },
+                )
+            },
+            colors = navigationColors,
+        )
+
+        NavigationBarItem(
+            selected = selectedTab == TeacherTab.ATTENDANCE,
+            onClick = {
+                onTabSelected(TeacherTab.ATTENDANCE)
+            },
+            icon = {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Outlined.FactCheck,
+                    contentDescription = "Attendance",
+                    modifier = Modifier.size(23.dp),
+                )
+            },
+            label = {
+                Text(
+                    text = "Attendance",
+                    fontSize = 11.sp,
+                    fontWeight =
+                        if (selectedTab == TeacherTab.ATTENDANCE) {
+                            FontWeight.SemiBold
+                        } else {
+                            FontWeight.Medium
+                        },
+                )
+            },
+            colors = navigationColors,
+        )
+
+        NavigationBarItem(
+            selected = selectedTab == TeacherTab.HOMEWORK,
+            onClick = {
+                onTabSelected(TeacherTab.HOMEWORK)
+            },
+            icon = {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Outlined.Assignment,
+                    contentDescription = "Homework",
+                    modifier = Modifier.size(23.dp),
+                )
+            },
+            label = {
+                Text(
+                    text = "Homework",
+                    fontSize = 11.sp,
+                    fontWeight =
+                        if (selectedTab == TeacherTab.HOMEWORK) {
+                            FontWeight.SemiBold
+                        } else {
+                            FontWeight.Medium
+                        },
+                )
+            },
+            colors = navigationColors,
+        )
+
+        NavigationBarItem(
+            selected = selectedTab == TeacherTab.NOTICES,
+            onClick = {
+                onTabSelected(TeacherTab.NOTICES)
+            },
+            icon = {
+                BadgedBox(
+                    badge = {
+                        if (unreadNotices > 0) {
+                            Badge(
+                                containerColor = SchoolDbDangerBadge,
+                                contentColor = Color.White,
+                            ) {
+                                Text(
+                                    text = unreadNotices
+                                        .coerceAtMost(99)
+                                        .toString(),
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.Bold,
+                                )
+                            }
+                        }
+                    },
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Notifications,
+                        contentDescription = "Notices",
+                        modifier = Modifier.size(23.dp),
+                    )
+                }
+            },
+            label = {
+                Text(
+                    text = "Notices",
+                    fontSize = 11.sp,
+                    fontWeight =
+                        if (selectedTab == TeacherTab.NOTICES) {
+                            FontWeight.SemiBold
+                        } else {
+                            FontWeight.Medium
+                        },
+                )
+            },
+            colors = navigationColors,
+        )
+
+        NavigationBarItem(
+            selected = selectedTab == TeacherTab.MORE,
+            onClick = {
+                onTabSelected(TeacherTab.MORE)
+            },
+            icon = {
+                Icon(
+                    imageVector = Icons.Outlined.GridView,
+                    contentDescription = "More",
+                    modifier = Modifier.size(23.dp),
+                )
+            },
+            label = {
+                Text(
+                    text = "More",
+                    fontSize = 11.sp,
+                    fontWeight =
+                        if (selectedTab == TeacherTab.MORE) {
+                            FontWeight.SemiBold
+                        } else {
+                            FontWeight.Medium
+                        },
+                )
+            },
+            colors = navigationColors,
+        )
+    }
+}
+
+
+/* ==========================================================================
+   MORE
+   ========================================================================== */
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun TeacherMoreScreen(
+    onSignOut: () -> Unit,
+) {
+    Scaffold(
+        containerColor = SchoolDbBackground,
+        topBar = {
+            TopAppBar(
+                title = {
+                    Column {
+                        Text(
+                            text = "More",
+                            fontWeight = FontWeight.Bold,
+                            color = SchoolDbSlate900,
+                        )
+
+                        Text(
+                            text = "Teaching tools & account",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = SchoolDbSlate400,
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = SchoolDbBackground,
+                ),
+            )
+        },
+    ) { padding ->
+
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding),
+            contentPadding = PaddingValues(
+                horizontal = 18.dp,
+                vertical = 12.dp,
+            ),
+            verticalArrangement = Arrangement.spacedBy(18.dp),
+        ) {
+
+            item {
+                MoreSectionTitle("TEACHING")
+            }
+
+            item {
+                MoreMenuCard {
+                    MoreMenuItem(
+                        icon = Icons.Outlined.Schedule,
+                        title = "My Timetable",
+                        subtitle = "View your teaching schedule",
+                        onClick = {},
+                    )
+
+                    SchoolDbMenuDivider()
+
+                    MoreMenuItem(
+                        icon = Icons.Outlined.School,
+                        title = "My Students",
+                        subtitle = "Students from your classes",
+                        onClick = {},
+                    )
+
+                    SchoolDbMenuDivider()
+
+                    MoreMenuItem(
+                        icon = Icons.AutoMirrored.Outlined.FactCheck,
+                        title = "Results & Marks",
+                        subtitle = "Enter and review student marks",
+                        onClick = {},
+                    )
+                }
+            }
+
+            item {
+                MoreSectionTitle("ACCOUNT")
+            }
+
+            item {
+                MoreMenuCard {
+                    MoreMenuItem(
+                        icon = Icons.Outlined.Person,
+                        title = "My Profile",
+                        subtitle = "Personal and teacher information",
+                        onClick = {},
+                    )
+
+                    SchoolDbMenuDivider()
+
+                    MoreMenuItem(
+                        icon = Icons.Outlined.Settings,
+                        title = "Settings",
+                        subtitle = "App preferences",
+                        onClick = {},
+                    )
+                }
+            }
+
+            item {
+                TextButton(
+                    onClick = onSignOut,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.Logout,
+                        contentDescription = null,
+                        tint = SchoolDbDanger,
+                    )
+
+                    Spacer(
+                        modifier = Modifier.width(10.dp),
+                    )
+
+                    Text(
+                        text = "Sign out",
+                        color = SchoolDbDanger,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                }
+            }
+
+            item {
+                Spacer(
+                    modifier = Modifier.height(8.dp),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun MoreSectionTitle(
+    title: String,
+) {
+    Text(
+        text = title,
+        fontSize = 10.sp,
+        fontWeight = FontWeight.Bold,
+        letterSpacing = 1.6.sp,
+        color = SchoolDbSlate400,
+        modifier = Modifier.padding(
+            horizontal = 4.dp,
+        ),
+    )
+}
+
+@Composable
+private fun MoreMenuCard(
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.White,
+        ),
+        border = BorderStroke(
+            width = 1.dp,
+            color = SchoolDbSlate200,
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 1.dp,
+        ),
+    ) {
+        Column(
+            content = content,
+        )
+    }
+}
+
+@Composable
+private fun MoreMenuItem(
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(
+                onClick = onClick,
+            )
+            .padding(
+                horizontal = 16.dp,
+                vertical = 15.dp,
+            ),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+
+        Box(
+            modifier = Modifier
+                .size(42.dp)
+                .background(
+                    color = SchoolDbIndigoSoft,
+                    shape = RoundedCornerShape(12.dp),
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = SchoolDbIndigo,
+                modifier = Modifier.size(20.dp),
+            )
+        }
+
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(
+                    start = 14.dp,
+                ),
+        ) {
+            Text(
+                text = title,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = SchoolDbSlate800,
+            )
+
+            Spacer(
+                modifier = Modifier.height(2.dp),
+            )
+
+            Text(
+                text = subtitle,
+                fontSize = 12.sp,
+                color = SchoolDbSlate400,
+            )
+        }
+
+        Text(
+            text = "›",
+            fontSize = 24.sp,
+            color = SchoolDbSlate300,
+        )
+    }
+}
+
+@Composable
+private fun SchoolDbMenuDivider() {
+    HorizontalDivider(
+        color = SchoolDbSlate100,
+    )
+}
+
+/* ==========================================================================
+   ATTENDANCE HUB
+   ========================================================================== */
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -195,79 +684,145 @@ private fun AttendanceHub(
             TopAppBar(
                 title = {
                     Column {
-                        Text("Attendance", fontWeight = FontWeight.Bold)
                         Text(
-                            "${dashboard.day.lowercase().replaceFirstChar(Char::uppercase)} · ${dashboard.date}",
+                            text = "Attendance",
+                            fontWeight = FontWeight.Bold,
+                        )
+
+                        Text(
+                            text =
+                                "${dashboard.day.lowercase().replaceFirstChar(Char::uppercase)} · ${dashboard.date}",
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                 },
                 actions = {
-                    IconButton(onClick = onRefresh, enabled = !loading) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                    IconButton(
+                        onClick = onRefresh,
+                        enabled = !loading,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = "Refresh",
+                        )
                     }
                 },
             )
         },
     ) { padding ->
+
         LazyColumn(
-            modifier = Modifier.fillMaxSize().padding(padding),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(18.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding),
+            contentPadding = PaddingValues(18.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             when (dashboard.attendanceMode) {
+
                 "ONCE_DAILY" -> {
                     item {
                         Text(
-                            "Daily attendance",
+                            text = "Daily attendance",
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold,
                         )
                     }
+
                     if (dashboard.dailyTargets.isEmpty()) {
-                        item { AttendanceInfoCard("No class or section is assigned to your teacher account.") }
+                        item {
+                            AttendanceInfoCard(
+                                "No class or section is assigned to your teacher account.",
+                            )
+                        }
                     } else {
-                        items(dashboard.dailyTargets, key = { "attendance-${it.classId}-${it.sectionId}" }) { target ->
-                            DailyAttendanceCard(target, onOpenDailyAttendance)
+                        items(
+                            items = dashboard.dailyTargets,
+                            key = {
+                                "attendance-${it.classId}-${it.sectionId}"
+                            },
+                        ) { target ->
+                            DailyAttendanceCard(
+                                target = target,
+                                onOpenAttendance = onOpenDailyAttendance,
+                            )
                         }
                     }
                 }
+
                 "EVERY_PERIOD" -> {
                     item {
                         Text(
-                            "Period attendance",
+                            text = "Period attendance",
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold,
                         )
                     }
+
                     if (dashboard.periods.isEmpty()) {
-                        item { AttendanceInfoCard("There are no timetable periods assigned today.") }
+                        item {
+                            AttendanceInfoCard(
+                                "There are no timetable periods assigned today.",
+                            )
+                        }
                     } else {
-                        items(dashboard.periods, key = { "attendance-${it.timetableId}" }) { period ->
-                            PeriodCard(period, onOpenAttendance)
+                        items(
+                            items = dashboard.periods,
+                            key = {
+                                "attendance-${it.timetableId}"
+                            },
+                        ) { period ->
+                            PeriodCard(
+                                period = period,
+                                onOpenAttendance = onOpenAttendance,
+                            )
                         }
                     }
                 }
-                "MORNING_AFTERNOON" -> item {
-                    AttendanceInfoCard("Morning and afternoon attendance will appear here when sessions are assigned.")
+
+                "MORNING_AFTERNOON" -> {
+                    item {
+                        AttendanceInfoCard(
+                            "Morning and afternoon attendance will appear here when sessions are assigned.",
+                        )
+                    }
                 }
-                else -> item { AttendanceInfoCard("No active attendance mode is configured.") }
+
+                else -> {
+                    item {
+                        AttendanceInfoCard(
+                            "No active attendance mode is configured.",
+                        )
+                    }
+                }
             }
         }
     }
 }
 
 @Composable
-private fun AttendanceInfoCard(message: String) {
-    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+private fun AttendanceInfoCard(
+    message: String,
+) {
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface,
+        ),
+    ) {
         Text(
-            message,
-            modifier = Modifier.fillMaxWidth().padding(20.dp),
+            text = message,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp),
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }
+
+/* ==========================================================================
+   TEACHER HOME
+   ========================================================================== */
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -281,100 +836,212 @@ private fun TeacherHome(
 ) {
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
-        snackbarHost = { SnackbarHost(snackbar) },
+        snackbarHost = {
+            SnackbarHost(
+                hostState = snackbar,
+            )
+        },
         topBar = {
             TopAppBar(
                 title = {
                     Column {
-                        Text("SchoolDB", fontWeight = FontWeight.Bold)
+                        Text(
+                            text = "SchoolDB",
+                            fontWeight = FontWeight.Bold,
+                        )
+
                         state.dashboard?.let {
                             Text(
-                                it.schoolName,
+                                text = it.schoolName,
                                 style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
-                        if (state.dashboard == null) state.context?.let {
-                            Text(
-                                it.schoolName,
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
+
+                        if (state.dashboard == null) {
+                            state.context?.let {
+                                Text(
+                                    text = it.schoolName,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
                         }
                     }
                 },
                 actions = {
-                    IconButton(onClick = onRefresh, enabled = !state.loading) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                    IconButton(
+                        onClick = onRefresh,
+                        enabled = !state.loading,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = "Refresh",
+                        )
                     }
-                    IconButton(onClick = onSignOut) {
-                        Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = "Sign out")
+
+                    IconButton(
+                        onClick = onSignOut,
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.Logout,
+                            contentDescription = "Sign out",
+                        )
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface),
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                ),
             )
         },
     ) { padding ->
+
         when {
-            state.loading && state.context == null -> LoadingPage(Modifier.padding(padding))
-            state.error != null -> ErrorPage(state.error, onRefresh, Modifier.padding(padding))
-            state.context != null && state.context.role != "TEACHER" -> RoleHome(state.context, Modifier.padding(padding))
-            state.dashboard == null -> ErrorPage("Your teacher profile could not be loaded.", onRefresh, Modifier.padding(padding))
-            else -> DashboardContent(
-                dashboard = state.dashboard,
-                loading = state.loading,
-                onOpenAttendance = onOpenAttendance,
-                onOpenDailyAttendance = onOpenDailyAttendance,
-                modifier = Modifier.padding(padding),
-            )
+            state.loading && state.context == null -> {
+                LoadingPage(
+                    modifier = Modifier.padding(padding),
+                )
+            }
+
+            state.error != null -> {
+                ErrorPage(
+                    message = state.error,
+                    onRetry = onRefresh,
+                    modifier = Modifier.padding(padding),
+                )
+            }
+
+            state.context != null &&
+                state.context.role != "TEACHER" -> {
+                RoleHome(
+                    context = state.context,
+                    modifier = Modifier.padding(padding),
+                )
+            }
+
+            state.dashboard == null -> {
+                ErrorPage(
+                    message = "Your teacher profile could not be loaded.",
+                    onRetry = onRefresh,
+                    modifier = Modifier.padding(padding),
+                )
+            }
+
+            else -> {
+                DashboardContent(
+                    dashboard = state.dashboard,
+                    loading = state.loading,
+                    onOpenAttendance = onOpenAttendance,
+                    onOpenDailyAttendance = onOpenDailyAttendance,
+                    modifier = Modifier.padding(padding),
+                )
+            }
         }
     }
 }
 
+/* ==========================================================================
+   NON-TEACHER PLACEHOLDER
+   ========================================================================== */
+
 @Composable
-private fun RoleHome(context: MobileContext, modifier: Modifier = Modifier) {
+private fun RoleHome(
+    context: MobileContext,
+    modifier: Modifier = Modifier,
+) {
     LazyColumn(
         modifier = modifier.fillMaxSize(),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(18.dp),
+        contentPadding = PaddingValues(18.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
+
         item {
             Card(
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                ),
                 shape = RoundedCornerShape(22.dp),
             ) {
-                Column(Modifier.fillMaxWidth().padding(22.dp)) {
-                    Text("Welcome back,", color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f))
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(22.dp),
+                ) {
                     Text(
-                        context.userName,
+                        text = "Welcome back,",
+                        color = MaterialTheme.colorScheme.onPrimary.copy(
+                            alpha = 0.8f,
+                        ),
+                    )
+
+                    Text(
+                        text = context.userName,
                         color = MaterialTheme.colorScheme.onPrimary,
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold,
                     )
-                    Spacer(Modifier.height(12.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Person, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimary)
-                        Spacer(Modifier.width(8.dp))
-                        Text(context.role.displayRole, color = MaterialTheme.colorScheme.onPrimary)
+
+                    Spacer(
+                        modifier = Modifier.height(12.dp),
+                    )
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Person,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onPrimary,
+                        )
+
+                        Spacer(
+                            modifier = Modifier.width(8.dp),
+                        )
+
+                        Text(
+                            text = context.role.displayRole,
+                            color = MaterialTheme.colorScheme.onPrimary,
+                        )
                     }
                 }
             }
         }
+
         item {
             Card(
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                ),
                 shape = RoundedCornerShape(18.dp),
             ) {
-                Column(Modifier.fillMaxWidth().padding(20.dp)) {
-                    Text("Mobile access is ready", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    Spacer(Modifier.height(8.dp))
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(20.dp),
+                ) {
                     Text(
-                        "This first mobile workspace is built for teachers to view classes and record attendance.",
+                        text = "Mobile access is ready",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                    )
+
+                    Spacer(
+                        modifier = Modifier.height(8.dp),
+                    )
+
+                    Text(
+                        text =
+                            "This first mobile workspace is built for teachers to view classes and record attendance.",
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    Spacer(Modifier.height(12.dp))
+
+                    Spacer(
+                        modifier = Modifier.height(12.dp),
+                    )
+
                     Text(
-                        "To test attendance, sign in with a phone number linked to an active Teacher account in ${context.schoolName}.",
+                        text =
+                            "To test attendance, sign in with a phone number linked to an active Teacher account in ${context.schoolName}.",
                         color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.SemiBold,
                     )
@@ -385,7 +1052,16 @@ private fun RoleHome(context: MobileContext, modifier: Modifier = Modifier) {
 }
 
 private val String.displayRole: String
-    get() = lowercase().split("_").joinToString(" ") { word -> word.replaceFirstChar(Char::uppercase) }
+    get() =
+        lowercase()
+            .split("_")
+            .joinToString(" ") { word ->
+                word.replaceFirstChar(Char::uppercase)
+            }
+
+/* ==========================================================================
+   DASHBOARD
+   ========================================================================== */
 
 @Composable
 private fun DashboardContent(
@@ -395,112 +1071,234 @@ private fun DashboardContent(
     onOpenDailyAttendance: (DailyAttendanceTarget) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val dailyMode = dashboard.attendanceMode == "ONCE_DAILY"
-    val itemCount = if (dailyMode) dashboard.dailyTargets.size else dashboard.periods.size
-    val completed = if (dailyMode) {
-        dashboard.dailyTargets.count { it.attendanceCount > 0 || it.attendanceLocked }
-    } else {
-        dashboard.periods.count { it.attendanceCount > 0 || it.attendanceLocked }
-    }
+    val dailyMode =
+        dashboard.attendanceMode == "ONCE_DAILY"
+
+    val itemCount =
+        if (dailyMode) {
+            dashboard.dailyTargets.size
+        } else {
+            dashboard.periods.size
+        }
+
+    val completed =
+        if (dailyMode) {
+            dashboard.dailyTargets.count {
+                it.attendanceCount > 0 ||
+                    it.attendanceLocked
+            }
+        } else {
+            dashboard.periods.count {
+                it.attendanceCount > 0 ||
+                    it.attendanceLocked
+            }
+        }
+
     LazyColumn(
         modifier = modifier.fillMaxSize(),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(18.dp),
+        contentPadding = PaddingValues(18.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
+
         item {
             Card(
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                ),
                 shape = RoundedCornerShape(22.dp),
             ) {
-                Column(Modifier.fillMaxWidth().padding(22.dp)) {
-                    Text("Good day,", color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f))
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(22.dp),
+                ) {
                     Text(
-                        dashboard.teacherName,
+                        text = "Good day,",
+                        color = MaterialTheme.colorScheme.onPrimary.copy(
+                            alpha = 0.8f,
+                        ),
+                    )
+
+                    Text(
+                        text = dashboard.teacherName,
                         color = MaterialTheme.colorScheme.onPrimary,
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold,
                     )
-                    Spacer(Modifier.height(14.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(22.dp)) {
-                        SummaryLabel(Icons.Default.Schedule, "$itemCount", "Classes")
-                        SummaryLabel(Icons.Default.CheckCircle, "$completed", "Marked")
-                    }
-                }
-            }
-        }
-        if (dailyMode) {
-            item {
-                Column(Modifier.padding(top = 2.dp)) {
-                    Text("Daily attendance", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                    Text("Mark attendance once for the whole day", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-            if (dashboard.dailyTargets.isEmpty()) {
-                item {
-                    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
-                        Text(
-                            "No class or section is assigned to your teacher account.",
-                            modifier = Modifier.fillMaxWidth().padding(20.dp),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+
+                    Spacer(
+                        modifier = Modifier.height(14.dp),
+                    )
+
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(22.dp),
+                    ) {
+                        SummaryLabel(
+                            icon = Icons.Default.Schedule,
+                            value = "$itemCount",
+                            label = "Classes",
+                        )
+
+                        SummaryLabel(
+                            icon = Icons.Default.CheckCircle,
+                            value = "$completed",
+                            label = "Marked",
                         )
                     }
                 }
+            }
+        }
+
+        if (dailyMode) {
+            item {
+                Column(
+                    modifier = Modifier.padding(
+                        top = 2.dp,
+                    ),
+                ) {
+                    Text(
+                        text = "Daily attendance",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                    )
+
+                    Text(
+                        text = "Mark attendance once for the whole day",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+
+            if (dashboard.dailyTargets.isEmpty()) {
+                item {
+                    AttendanceInfoCard(
+                        "No class or section is assigned to your teacher account.",
+                    )
+                }
             } else {
-                items(dashboard.dailyTargets, key = { "daily-${it.classId}-${it.sectionId}" }) { target ->
-                    DailyAttendanceCard(target, onOpenDailyAttendance)
+                items(
+                    items = dashboard.dailyTargets,
+                    key = {
+                        "daily-${it.classId}-${it.sectionId}"
+                    },
+                ) { target ->
+                    DailyAttendanceCard(
+                        target = target,
+                        onOpenAttendance = onOpenDailyAttendance,
+                    )
                 }
             }
         }
+
         item {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.Bottom,
             ) {
+
                 Column {
-                    Text("Today’s classes", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                     Text(
-                        "${dashboard.day.lowercase().replaceFirstChar(Char::uppercase)} · ${dashboard.date}",
+                        text = "Today’s classes",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                    )
+
+                    Text(
+                        text =
+                            "${dashboard.day.lowercase().replaceFirstChar(Char::uppercase)} · ${dashboard.date}",
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                if (loading) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+
+                if (loading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        strokeWidth = 2.dp,
+                    )
+                }
             }
         }
+
         if (dashboard.periods.isEmpty()) {
-            item { EmptySchedule() }
+            item {
+                EmptySchedule()
+            }
         } else {
-            items(dashboard.periods, key = { it.timetableId }) { period ->
-                PeriodCard(period, onOpenAttendance)
+            items(
+                items = dashboard.periods,
+                key = {
+                    it.timetableId
+                },
+            ) { period ->
+                PeriodCard(
+                    period = period,
+                    onOpenAttendance = onOpenAttendance,
+                )
             }
         }
+
         item {
-            Column(Modifier.padding(top = 6.dp)) {
-                Text("Upcoming classes", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Column(
+                modifier = Modifier.padding(
+                    top = 6.dp,
+                ),
+            ) {
+                Text(
+                    text = "Upcoming classes",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                )
+
                 dashboard.upcoming?.let { upcoming ->
                     Text(
-                        "${upcoming.day.lowercase().replaceFirstChar(Char::uppercase)} · ${upcoming.date}",
+                        text =
+                            "${upcoming.day.lowercase().replaceFirstChar(Char::uppercase)} · ${upcoming.date}",
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
         }
+
         dashboard.upcoming?.let { upcoming ->
-            items(upcoming.periods, key = { "upcoming-${it.timetableId}" }) { period ->
-                UpcomingPeriodCard(period)
+            items(
+                items = upcoming.periods,
+                key = {
+                    "upcoming-${it.timetableId}"
+                },
+            ) { period ->
+                UpcomingPeriodCard(
+                    period = period,
+                )
             }
         } ?: item {
-            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                ),
+            ) {
                 Text(
-                    "No upcoming classes are assigned to your timetable.",
-                    modifier = Modifier.fillMaxWidth().padding(20.dp),
+                    text =
+                        "No upcoming classes are assigned to your timetable.",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(20.dp),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }
-        item { Spacer(Modifier.height(12.dp)) }
+
+        item {
+            Spacer(
+                modifier = Modifier.height(12.dp),
+            )
+        }
     }
 }
+
+/* ==========================================================================
+   DAILY ATTENDANCE CARD
+   ========================================================================== */
 
 @Composable
 private fun DailyAttendanceCard(
@@ -510,110 +1308,260 @@ private fun DailyAttendanceCard(
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface,
+        ),
     ) {
-        Column(Modifier.fillMaxWidth().padding(18.dp)) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(18.dp),
+        ) {
+
             Text(
-                "${target.className} · Section ${target.sectionName}",
+                text =
+                    "${target.className} · Section ${target.sectionName}",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
             )
-            Spacer(Modifier.height(12.dp))
+
+            Spacer(
+                modifier = Modifier.height(12.dp),
+            )
+
             if (target.attendanceLocked) {
-                Text("Attendance locked", color = MaterialTheme.colorScheme.secondary, fontWeight = FontWeight.SemiBold)
+                Text(
+                    text = "Attendance locked",
+                    color = MaterialTheme.colorScheme.secondary,
+                    fontWeight = FontWeight.SemiBold,
+                )
             } else {
-                Button(onClick = { onOpenAttendance(target) }, modifier = Modifier.fillMaxWidth()) {
-                    Icon(Icons.Default.Groups, contentDescription = null, modifier = Modifier.size(19.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text(if (target.attendanceCount > 0) "Edit daily attendance" else "Take daily attendance")
+                Button(
+                    onClick = {
+                        onOpenAttendance(target)
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Groups,
+                        contentDescription = null,
+                        modifier = Modifier.size(19.dp),
+                    )
+
+                    Spacer(
+                        modifier = Modifier.width(8.dp),
+                    )
+
+                    Text(
+                        text =
+                            if (target.attendanceCount > 0) {
+                                "Edit daily attendance"
+                            } else {
+                                "Take daily attendance"
+                            },
+                    )
                 }
             }
         }
     }
 }
 
+/* ==========================================================================
+   PERIOD CARDS
+   ========================================================================== */
+
 @Composable
-private fun UpcomingPeriodCard(period: TeachingPeriod) {
+private fun UpcomingPeriodCard(
+    period: TeachingPeriod,
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface,
+        ),
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(18.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(18.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Column(Modifier.weight(1f)) {
-                Text(period.subjectName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+
+            Column(
+                modifier = Modifier.weight(1f),
+            ) {
                 Text(
-                    "${period.className} · Section ${period.sectionName}",
+                    text = period.subjectName,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                )
+
+                Text(
+                    text =
+                        "${period.className} · Section ${period.sectionName}",
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                Spacer(Modifier.height(5.dp))
+
+                Spacer(
+                    modifier = Modifier.height(5.dp),
+                )
+
                 Text(
-                    "${period.startTime} – ${period.endTime}",
+                    text =
+                        "${period.startTime} – ${period.endTime}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            Text(period.periodName, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelLarge)
+
+            Text(
+                text = period.periodName,
+                color = MaterialTheme.colorScheme.primary,
+                style = MaterialTheme.typography.labelLarge,
+            )
         }
     }
 }
 
 @Composable
-private fun SummaryLabel(icon: androidx.compose.ui.graphics.vector.ImageVector, value: String, label: String) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(22.dp))
-        Column(Modifier.padding(start = 9.dp)) {
-            Text(value, color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.Bold)
-            Text(label, color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.75f), fontSize = 12.sp)
+private fun SummaryLabel(
+    icon: ImageVector,
+    value: String,
+    label: String,
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onPrimary,
+            modifier = Modifier.size(22.dp),
+        )
+
+        Column(
+            modifier = Modifier.padding(
+                start = 9.dp,
+            ),
+        ) {
+            Text(
+                text = value,
+                color = MaterialTheme.colorScheme.onPrimary,
+                fontWeight = FontWeight.Bold,
+            )
+
+            Text(
+                text = label,
+                color = MaterialTheme.colorScheme.onPrimary.copy(
+                    alpha = 0.75f,
+                ),
+                fontSize = 12.sp,
+            )
         }
     }
 }
 
 @Composable
-private fun PeriodCard(period: TeachingPeriod, onOpenAttendance: (TeachingPeriod) -> Unit) {
+private fun PeriodCard(
+    period: TeachingPeriod,
+    onOpenAttendance: (TeachingPeriod) -> Unit,
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface,
+        ),
     ) {
-        Column(Modifier.padding(18.dp)) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Column(Modifier.weight(1f)) {
-                    Text(period.subjectName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        Column(
+            modifier = Modifier.padding(18.dp),
+        ) {
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+
+                Column(
+                    modifier = Modifier.weight(1f),
+                ) {
                     Text(
-                        "${period.className} · Section ${period.sectionName}",
+                        text = period.subjectName,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                    )
+
+                    Text(
+                        text =
+                            "${period.className} · Section ${period.sectionName}",
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
+
                 Text(
-                    period.periodName,
+                    text = period.periodName,
                     color = MaterialTheme.colorScheme.primary,
                     style = MaterialTheme.typography.labelLarge,
                 )
             }
-            Spacer(Modifier.height(10.dp))
+
+            Spacer(
+                modifier = Modifier.height(10.dp),
+            )
+
             Text(
-                "${period.startTime} – ${period.endTime}",
+                text =
+                    "${period.startTime} – ${period.endTime}",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Spacer(Modifier.height(14.dp))
+
+            Spacer(
+                modifier = Modifier.height(14.dp),
+            )
+
             if (period.attendanceLocked) {
-                Text("Attendance locked", color = MaterialTheme.colorScheme.secondary, fontWeight = FontWeight.SemiBold)
+                Text(
+                    text = "Attendance locked",
+                    color = MaterialTheme.colorScheme.secondary,
+                    fontWeight = FontWeight.SemiBold,
+                )
             } else {
-                Button(onClick = { onOpenAttendance(period) }, modifier = Modifier.fillMaxWidth()) {
-                    Icon(Icons.Default.Groups, contentDescription = null, modifier = Modifier.size(19.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text(if (period.attendanceCount > 0) "Edit attendance" else "Take attendance")
+                Button(
+                    onClick = {
+                        onOpenAttendance(period)
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Groups,
+                        contentDescription = null,
+                        modifier = Modifier.size(19.dp),
+                    )
+
+                    Spacer(
+                        modifier = Modifier.width(8.dp),
+                    )
+
+                    Text(
+                        text =
+                            if (period.attendanceCount > 0) {
+                                "Edit attendance"
+                            } else {
+                                "Take attendance"
+                            },
+                    )
                 }
             }
         }
     }
 }
+
+/* ==========================================================================
+   ATTENDANCE SCREEN
+   ========================================================================== */
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -627,120 +1575,266 @@ private fun AttendanceScreen(
 ) {
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
-        snackbarHost = { SnackbarHost(snackbar) },
+        snackbarHost = {
+            SnackbarHost(
+                hostState = snackbar,
+            )
+        },
         topBar = {
             TopAppBar(
                 title = {
                     Column {
-                        Text(sheet.title, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text(
-                            sheet.subtitle,
+                            text = sheet.title,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+
+                        Text(
+                            text = sheet.subtitle,
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                 },
                 navigationIcon = {
-                    IconButton(onClick = onBack, enabled = !saving) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    IconButton(
+                        onClick = onBack,
+                        enabled = !saving,
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                        )
                     }
                 },
             )
         },
         bottomBar = {
-            Box(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface).padding(16.dp)) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        MaterialTheme.colorScheme.surface,
+                    )
+                    .padding(16.dp),
+            ) {
                 Button(
                     onClick = onSave,
-                    enabled = !saving && sheet.students.isNotEmpty(),
-                    modifier = Modifier.fillMaxWidth().height(50.dp),
+                    enabled =
+                        !saving &&
+                            sheet.students.isNotEmpty(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(50.dp),
                 ) {
                     if (saving) {
                         CircularProgressIndicator(
-                            Modifier.size(20.dp),
+                            modifier = Modifier.size(20.dp),
                             color = MaterialTheme.colorScheme.onPrimary,
                             strokeWidth = 2.dp,
                         )
                     } else {
-                        Text("Save attendance", fontWeight = FontWeight.SemiBold)
+                        Text(
+                            text = "Save attendance",
+                            fontWeight = FontWeight.SemiBold,
+                        )
                     }
                 }
             }
         },
     ) { padding ->
+
         LazyColumn(
-            modifier = Modifier.fillMaxSize().padding(padding),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding),
+            contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            item { AttendanceSummary(sheet.students) }
-            items(sheet.students, key = { it.studentId }) { student ->
-                StudentAttendanceCard(student, onStatusChange)
+
+            item {
+                AttendanceSummary(
+                    students = sheet.students,
+                )
+            }
+
+            items(
+                items = sheet.students,
+                key = {
+                    it.studentId
+                },
+            ) { student ->
+                StudentAttendanceCard(
+                    student = student,
+                    onStatusChange = onStatusChange,
+                )
             }
         }
     }
 }
 
+/* ==========================================================================
+   ATTENDANCE SUMMARY
+   ========================================================================== */
+
 @Composable
-private fun AttendanceSummary(students: List<StudentAttendance>) {
-    val present = students.count { it.status == AttendanceStatus.PRESENT }
-    val absent = students.count { it.status == AttendanceStatus.ABSENT }
-    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
+private fun AttendanceSummary(
+    students: List<StudentAttendance>,
+) {
+    val present =
+        students.count {
+            it.status == AttendanceStatus.PRESENT
+        }
+
+    val absent =
+        students.count {
+            it.status == AttendanceStatus.ABSENT
+        }
+
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer,
+        ),
+    ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
             horizontalArrangement = Arrangement.SpaceAround,
         ) {
-            CountLabel(students.size, "Students")
-            CountLabel(present, "Present")
-            CountLabel(absent, "Absent")
+            CountLabel(
+                count = students.size,
+                label = "Students",
+            )
+
+            CountLabel(
+                count = present,
+                label = "Present",
+            )
+
+            CountLabel(
+                count = absent,
+                label = "Absent",
+            )
         }
     }
 }
 
 @Composable
-private fun CountLabel(count: Int, label: String) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text("$count", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-        Text(label, style = MaterialTheme.typography.labelMedium)
+private fun CountLabel(
+    count: Int,
+    label: String,
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(
+            text = "$count",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+        )
+
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+        )
     }
 }
+
+/* ==========================================================================
+   STUDENT ATTENDANCE CARD
+   ========================================================================== */
 
 @Composable
 private fun StudentAttendanceCard(
     student: StudentAttendance,
     onStatusChange: (String, AttendanceStatus) -> Unit,
 ) {
-    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
-        Column(Modifier.fillMaxWidth().padding(15.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface,
+        ),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(15.dp),
+        ) {
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 Box(
-                    modifier = Modifier.size(38.dp).background(MaterialTheme.colorScheme.primaryContainer, CircleShape),
+                    modifier = Modifier
+                        .size(38.dp)
+                        .background(
+                            MaterialTheme.colorScheme.primaryContainer,
+                            CircleShape,
+                        ),
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
-                        if (student.rollNo > 0) student.rollNo.toString() else student.fullName.take(1),
+                        text =
+                            if (student.rollNo > 0) {
+                                student.rollNo.toString()
+                            } else {
+                                student.fullName.take(1)
+                            },
                         color = MaterialTheme.colorScheme.onPrimaryContainer,
                         fontWeight = FontWeight.Bold,
                     )
                 }
-                Column(Modifier.padding(start = 12.dp).weight(1f)) {
-                    Text(student.fullName, fontWeight = FontWeight.SemiBold)
+
+                Column(
+                    modifier = Modifier
+                        .padding(
+                            start = 12.dp,
+                        )
+                        .weight(1f),
+                ) {
                     Text(
-                        student.admissionNo,
+                        text = student.fullName,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+
+                    Text(
+                        text = student.admissionNo,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         style = MaterialTheme.typography.bodySmall,
                     )
                 }
             }
-            HorizontalDivider(Modifier.padding(vertical = 10.dp))
+
+            HorizontalDivider(
+                modifier = Modifier.padding(
+                    vertical = 10.dp,
+                ),
+            )
+
             Row(
-                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(
+                        rememberScrollState(),
+                    ),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 AttendanceStatus.entries.forEach { status ->
                     FilterChip(
-                        selected = student.status == status,
-                        onClick = { onStatusChange(student.studentId, status) },
-                        label = { Text(status.label) },
+                        selected =
+                            student.status == status,
+                        onClick = {
+                            onStatusChange(
+                                student.studentId,
+                                status,
+                            )
+                        },
+                        label = {
+                            Text(
+                                text = status.label,
+                            )
+                        },
                     )
                 }
             }
@@ -749,44 +1843,106 @@ private fun StudentAttendanceCard(
 }
 
 private val AttendanceStatus.label: String
-    get() = when (this) {
-        AttendanceStatus.PRESENT -> "Present"
-        AttendanceStatus.ABSENT -> "Absent"
-        AttendanceStatus.LATE -> "Late"
-        AttendanceStatus.LEAVE -> "Leave"
-    }
+    get() =
+        when (this) {
+            AttendanceStatus.PRESENT -> "Present"
+            AttendanceStatus.ABSENT -> "Absent"
+            AttendanceStatus.LATE -> "Late"
+            AttendanceStatus.LEAVE -> "Leave"
+        }
+
+/* ==========================================================================
+   EMPTY / LOADING / ERROR
+   ========================================================================== */
 
 @Composable
 private fun EmptySchedule() {
-    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface,
+        ),
+    ) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(28.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(28.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Icon(Icons.Default.School, contentDescription = null, modifier = Modifier.size(42.dp), tint = MaterialTheme.colorScheme.primary)
-            Spacer(Modifier.height(12.dp))
-            Text("No classes today", fontWeight = FontWeight.Bold)
-            Text("Your assigned timetable periods will appear here.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Icon(
+                imageVector = Icons.Default.School,
+                contentDescription = null,
+                modifier = Modifier.size(42.dp),
+                tint = MaterialTheme.colorScheme.primary,
+            )
+
+            Spacer(
+                modifier = Modifier.height(12.dp),
+            )
+
+            Text(
+                text = "No classes today",
+                fontWeight = FontWeight.Bold,
+            )
+
+            Text(
+                text =
+                    "Your assigned timetable periods will appear here.",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }
 
 @Composable
-private fun LoadingPage(modifier: Modifier = Modifier) {
-    Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+private fun LoadingPage(
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center,
+    ) {
+        CircularProgressIndicator()
+    }
 }
 
 @Composable
-private fun ErrorPage(message: String, onRetry: () -> Unit, modifier: Modifier = Modifier) {
+private fun ErrorPage(
+    message: String,
+    onRetry: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Column(
-        modifier = modifier.fillMaxSize().padding(24.dp),
+        modifier = modifier
+            .fillMaxSize()
+            .padding(24.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text("Couldn’t load your dashboard", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(8.dp))
-        Text(message, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Spacer(Modifier.height(18.dp))
-        Button(onClick = onRetry) { Text("Try again") }
+        Text(
+            text = "Couldn’t load your dashboard",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+        )
+
+        Spacer(
+            modifier = Modifier.height(8.dp),
+        )
+
+        Text(
+            text = message,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+
+        Spacer(
+            modifier = Modifier.height(18.dp),
+        )
+
+        Button(
+            onClick = onRetry,
+        ) {
+            Text(
+                text = "Try again",
+            )
+        }
     }
 }
