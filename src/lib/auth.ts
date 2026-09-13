@@ -211,11 +211,40 @@ export async function requireTeacherAttendanceSession(
     where: {
       id: sessionId,
       schoolId: membership.schoolId,
-      teacherId: teacher.id,
+    },
+    select: {
+      teacherId: true,
+      academicYearId: true,
+      classId: true,
+      sectionId: true,
+      sessionType: true,
     },
   });
 
   if (!session) {
+    throw new ApiError(403, "This attendance session is not assigned to you");
+  }
+
+  if (session.sessionType === "PERIOD") {
+    if (session.teacherId !== teacher.id) {
+      throw new ApiError(403, "This attendance session is not assigned to you");
+    }
+    return membership;
+  }
+
+  const allocation = await prisma.teacherAllocation.findFirst({
+    where: {
+      schoolId: membership.schoolId,
+      academicYearId: session.academicYearId,
+      teacherId: teacher.id,
+      classId: session.classId,
+      sectionId: session.sectionId,
+      active: true,
+    },
+    select: { id: true },
+  });
+
+  if (!allocation) {
     throw new ApiError(403, "This attendance session is not assigned to you");
   }
 

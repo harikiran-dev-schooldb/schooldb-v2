@@ -1,5 +1,9 @@
 import { apiHandler } from "@/lib/api";
-import { requireRole, requireTeacherTimetable } from "@/lib/auth";
+import {
+  requireRole,
+  requireTeacherClassSection,
+  requireTeacherTimetable,
+} from "@/lib/auth";
 import { ApiResponse } from "@/lib/response";
 import { validateBody } from "@/lib/validation";
 
@@ -17,13 +21,14 @@ export async function POST(req: Request) {
     const body = await validateBody(req, attendanceSessionSchema);
 
     if (tenant.role === "TEACHER") {
-      if (body.sessionType !== "PERIOD" || !body.timetableId) {
-        throw new Error(
-          "Teachers can create attendance sessions only for their assigned timetable periods.",
-        );
+      if (body.sessionType === "PERIOD") {
+        if (!body.timetableId) {
+          throw new Error("Timetable is required for period attendance.");
+        }
+        await requireTeacherTimetable(body.timetableId);
+      } else {
+        await requireTeacherClassSection(body.classId, body.sectionId);
       }
-
-      await requireTeacherTimetable(body.timetableId);
     }
 
     const session = await attendanceService.createSession(
