@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -134,27 +135,37 @@ fun TeacherStudentsScreen(
             )
         },
     ) { padding ->
-        LazyColumn(
+        if (groups.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .padding(18.dp),
+            ) {
+                EmptyStudentsCard(
+                    title = "No assigned classes",
+                    message = "No active class or section allocation is available for this teacher.",
+                )
+            }
+            return@Scaffold
+        }
+
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding),
-            contentPadding = PaddingValues(
-                horizontal = 18.dp,
-                vertical = 12.dp,
-            ),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            if (groups.isEmpty()) {
-                item {
-                    EmptyStudentsCard(
-                        title = "No assigned classes",
-                        message = "No active class or section allocation is available for this teacher.",
-                    )
-                }
-                return@LazyColumn
-            }
-
-            item {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(
+                        start = 18.dp,
+                        end = 18.dp,
+                        top = 12.dp,
+                        bottom = 10.dp,
+                    ),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
                 Text(
                     text = "ASSIGNED CLASSES",
                     fontSize = 10.sp,
@@ -162,9 +173,7 @@ fun TeacherStudentsScreen(
                     letterSpacing = 1.3.sp,
                     color = StudentsIndigo,
                 )
-            }
 
-            item {
                 LazyRow(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -232,9 +241,7 @@ fun TeacherStudentsScreen(
                         }
                     }
                 }
-            }
 
-            item {
                 selected?.let { group ->
                     Card(
                         modifier = Modifier.fillMaxWidth(),
@@ -275,9 +282,7 @@ fun TeacherStudentsScreen(
                         }
                     }
                 }
-            }
 
-            item {
                 OutlinedTextField(
                     value = query,
                     onValueChange = { query = it },
@@ -297,7 +302,12 @@ fun TeacherStudentsScreen(
             }
 
             if (filteredStudents.isEmpty()) {
-                item {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .padding(horizontal = 18.dp),
+                ) {
                     EmptyStudentsCard(
                         title = if (query.isBlank()) {
                             "No students"
@@ -312,18 +322,25 @@ fun TeacherStudentsScreen(
                     )
                 }
             } else {
-                items(
-                    items = filteredStudents,
-                    key = { it.enrollmentId },
-                ) { student ->
-                    StudentRow(student)
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    contentPadding = PaddingValues(
+                        start = 18.dp,
+                        end = 18.dp,
+                        top = 2.dp,
+                        bottom = 88.dp,
+                    ),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    items(
+                        items = filteredStudents,
+                        key = { it.enrollmentId },
+                    ) { student ->
+                        StudentRow(student)
+                    }
                 }
-            }
-
-            item {
-                Spacer(
-                    modifier = Modifier.height(72.dp),
-                )
             }
         }
     }
