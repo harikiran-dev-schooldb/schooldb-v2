@@ -1,6 +1,7 @@
 const SCHOOL_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 const RESERVED_PATH_SEGMENTS = new Set([
+  "account-deletion",
   "about",
   "api",
   "contact",
@@ -16,7 +17,7 @@ const RESERVED_PATH_SEGMENTS = new Set([
 
 const PUBLIC_PATH_PATTERNS = [
   /^\/$/,
-  /^\/(?:about|contact|privacy-policy|refund-policy|terms)\/?$/,
+  /^\/(?:account-deletion|about|contact|privacy-policy|refund-policy|terms)\/?$/,
   /^\/marketing(?:\/.*)?$/,
   /^\/login(?:\/.*)?$/,
   /^\/register(?:\/.*)?$/,

@@ -24,6 +24,7 @@ test("extracts only valid school slugs from application paths", () => {
 test("keeps the public route allowlist narrow", () => {
   assert.equal(isPublicPath("/"), true);
   for (const path of [
+    "/account-deletion",
     "/about",
     "/contact",
     "/privacy-policy",
