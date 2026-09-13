@@ -10,6 +10,7 @@ const policyLinks = [
   ["Privacy", "/privacy-policy"],
   ["Terms", "/terms"],
   ["Refunds", "/refund-policy"],
+  ["Account deletion", "/account-deletion"],
 ] as const;
 
 export function PublicSiteShell({ children }: { children: ReactNode }) {
