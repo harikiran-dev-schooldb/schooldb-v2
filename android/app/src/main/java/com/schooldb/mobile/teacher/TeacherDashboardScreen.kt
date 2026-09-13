@@ -80,6 +80,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.material.icons.automirrored.outlined.Assignment
 import androidx.compose.material.icons.automirrored.outlined.FactCheck
+import com.schooldb.mobile.preferences.AppPreferences
+import com.schooldb.mobile.preferences.StartTabPreference
 
 
 private val SchoolDbIndigo = Color(0xFF4F46E5)
@@ -157,17 +159,21 @@ private fun TeacherShell(
     teacherViewModel: TeacherViewModel,
     noticeViewModel: NoticeViewModel = viewModel(),
 ) {
+    val dashboard = state.dashboard ?: return
+    val preferences by AppPreferences.state.collectAsStateWithLifecycle()
     var tab by rememberSaveable {
-    mutableStateOf(TeacherTab.HOME)
-}
-
+        mutableStateOf(
+            if (preferences.startTab == StartTabPreference.ATTENDANCE) {
+                TeacherTab.ATTENDANCE
+            } else {
+                TeacherTab.HOME
+            },
+        )
+    }
 
     var moreScreen by rememberSaveable {
         mutableStateOf("MENU")
     }
-var showTimetable by rememberSaveable {
-    mutableStateOf(false)
-}
 
     val noticeState by noticeViewModel.uiState.collectAsStateWithLifecycle()
 
@@ -176,12 +182,10 @@ var showTimetable by rememberSaveable {
         bottomBar = {
             SchoolDbBottomBar(
                 selectedTab = tab,
-                unreadNotices = noticeState.unreadCount,
+                unreadNotices = if (preferences.showNoticeBadges) noticeState.unreadCount else 0,
                 onTabSelected = {
                     tab = it
                     moreScreen = "MENU"
-                        showTimetable = false
-
                 },
             )
         },
@@ -206,7 +210,7 @@ var showTimetable by rememberSaveable {
 
                 TeacherTab.ATTENDANCE -> {
                     AttendanceHub(
-                        dashboard = state.dashboard!!,
+                        dashboard = dashboard,
                         loading = state.loading,
                         onRefresh = teacherViewModel::refresh,
                         onOpenAttendance = teacherViewModel::openAttendance,
@@ -233,15 +237,34 @@ var showTimetable by rememberSaveable {
                     when (moreScreen) {
                         "TIMETABLE" -> {
                             TeacherTimetableScreen(
-                                dashboard = state.dashboard!!,
+                                dashboard = dashboard,
                                 onBack = { moreScreen = "MENU" },
                             )
                         }
 
                         "STUDENTS" -> {
                             TeacherStudentsScreen(
-                                dashboard = state.dashboard!!,
+                                dashboard = dashboard,
                                 onBack = { moreScreen = "MENU" },
+                            )
+                        }
+
+                        "RESULTS" -> {
+                            ResultsScreen(
+                                onBack = { moreScreen = "MENU" },
+                            )
+                        }
+
+                        "PROFILE" -> {
+                            ProfileScreen(
+                                onBack = { moreScreen = "MENU" },
+                            )
+                        }
+
+                        "SETTINGS" -> {
+                            SettingsScreen(
+                                onBack = { moreScreen = "MENU" },
+                                onSignOut = teacherViewModel::signOut,
                             )
                         }
 
@@ -249,6 +272,9 @@ var showTimetable by rememberSaveable {
                             TeacherMoreScreen(
                                 onOpenTimetable = { moreScreen = "TIMETABLE" },
                                 onOpenStudents = { moreScreen = "STUDENTS" },
+                                onOpenResults = { moreScreen = "RESULTS" },
+                                onOpenProfile = { moreScreen = "PROFILE" },
+                                onOpenSettings = { moreScreen = "SETTINGS" },
                                 onSignOut = teacherViewModel::signOut,
                             )
                         }
@@ -453,6 +479,9 @@ private fun SchoolDbBottomBar(
 private fun TeacherMoreScreen(
     onOpenTimetable: () -> Unit,
     onOpenStudents: () -> Unit,
+    onOpenResults: () -> Unit,
+    onOpenProfile: () -> Unit,
+    onOpenSettings: () -> Unit,
     onSignOut: () -> Unit,
 ) {
     Scaffold(
@@ -520,7 +549,7 @@ private fun TeacherMoreScreen(
                         icon = Icons.AutoMirrored.Outlined.FactCheck,
                         title = "Results & Marks",
                         subtitle = "Enter and review student marks",
-                        onClick = {},
+                        onClick = onOpenResults,
                     )
                 }
             }
@@ -535,7 +564,7 @@ private fun TeacherMoreScreen(
                         icon = Icons.Outlined.Person,
                         title = "My Profile",
                         subtitle = "Personal and teacher information",
-                        onClick = {},
+                        onClick = onOpenProfile,
                     )
 
                     SchoolDbMenuDivider()
@@ -544,7 +573,7 @@ private fun TeacherMoreScreen(
                         icon = Icons.Outlined.Settings,
                         title = "Settings",
                         subtitle = "App preferences",
-                        onClick = {},
+                        onClick = onOpenSettings,
                     )
                 }
             }

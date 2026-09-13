@@ -182,9 +182,10 @@ fun TeacherStudentsScreen(
                         items = groups,
                         key = { "${it.classId}:${it.sectionId}" },
                     ) { group ->
-                        val active =
-                            group.classId == selected?.classId &&
-                                group.sectionId == selected?.sectionId
+                        val active = selected?.let {
+                            group.classId == it.classId &&
+                                group.sectionId == it.sectionId
+                        } ?: false
 
                         Card(
                             onClick = {
