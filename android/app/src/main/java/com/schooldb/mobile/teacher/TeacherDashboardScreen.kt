@@ -158,8 +158,12 @@ private fun TeacherShell(
     noticeViewModel: NoticeViewModel = viewModel(),
 ) {
     var tab by rememberSaveable {
-        mutableStateOf(TeacherTab.HOME)
-    }
+    mutableStateOf(TeacherTab.HOME)
+}
+
+var showTimetable by rememberSaveable {
+    mutableStateOf(false)
+}
 
     val noticeState by noticeViewModel.uiState.collectAsStateWithLifecycle()
 
@@ -171,6 +175,8 @@ private fun TeacherShell(
                 unreadNotices = noticeState.unreadCount,
                 onTabSelected = {
                     tab = it
+                        showTimetable = false
+
                 },
             )
         },
@@ -219,10 +225,22 @@ private fun TeacherShell(
                 }
 
                 TeacherTab.MORE -> {
-                    TeacherMoreScreen(
-                        onSignOut = teacherViewModel::signOut,
-                    )
-                }
+    if (showTimetable) {
+        TeacherTimetableScreen(
+            dashboard = state.dashboard!!,
+            onBack = {
+                showTimetable = false
+            },
+        )
+    } else {
+        TeacherMoreScreen(
+            onOpenTimetable = {
+                showTimetable = true
+            },
+            onSignOut = teacherViewModel::signOut,
+        )
+    }
+}
             }
         }
     }
@@ -420,6 +438,7 @@ private fun SchoolDbBottomBar(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun TeacherMoreScreen(
+    onOpenTimetable: () -> Unit,
     onSignOut: () -> Unit,
 ) {
     Scaffold(
@@ -469,7 +488,7 @@ private fun TeacherMoreScreen(
                         icon = Icons.Outlined.Schedule,
                         title = "My Timetable",
                         subtitle = "View your teaching schedule",
-                        onClick = {},
+                        onClick = onOpenTimetable,
                     )
 
                     SchoolDbMenuDivider()
@@ -543,6 +562,176 @@ private fun TeacherMoreScreen(
                 Spacer(
                     modifier = Modifier.height(8.dp),
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun TeacherTimetableScreen(
+    dashboard: TeacherDashboard,
+    onBack: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(SchoolDbBackground)
+            .padding(18.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            IconButton(
+                onClick = onBack,
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "Back",
+                    tint = SchoolDbSlate900,
+                )
+            }
+
+            Column {
+                Text(
+                    text = "My Timetable",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = SchoolDbSlate900,
+                )
+
+                Text(
+                    text = dashboard.schoolName,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = SchoolDbSlate500,
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        Text(
+            text = "TODAY",
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Bold,
+            color = SchoolDbIndigo,
+            letterSpacing = 1.sp,
+        )
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        Text(
+            text = "${dashboard.day} · ${dashboard.date}",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = SchoolDbSlate900,
+        )
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        if (dashboard.periods.isEmpty()) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(18.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = Color.White,
+                ),
+            ) {
+                Text(
+                    text = "No classes assigned for today.",
+                    modifier = Modifier.padding(20.dp),
+                    color = SchoolDbSlate500,
+                )
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                items(
+                    items = dashboard.periods,
+                    key = { it.timetableId },
+                ) { period ->
+
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(18.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color.White,
+                        ),
+                        border = BorderStroke(
+                            width = 1.dp,
+                            color = SchoolDbSlate200,
+                        ),
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(44.dp)
+                                    .background(
+                                        SchoolDbIndigoSoft,
+                                        RoundedCornerShape(12.dp),
+                                    ),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.Schedule,
+                                    contentDescription = null,
+                                    tint = SchoolDbIndigo,
+                                )
+                            }
+
+                            Column(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .padding(start = 14.dp),
+                            ) {
+                                Text(
+                                    text = period.subjectName,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = SchoolDbSlate900,
+                                )
+
+                                Spacer(modifier = Modifier.height(3.dp))
+
+                                Text(
+                                    text = "${period.className} · ${period.sectionName}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = SchoolDbSlate500,
+                                )
+
+                                Spacer(modifier = Modifier.height(3.dp))
+
+                                Text(
+                                    text = "${period.startTime} - ${period.endTime}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = SchoolDbSlate500,
+                                )
+                            }
+
+                            Text(
+                                text = period.periodName,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = SchoolDbIndigo,
+                                modifier = Modifier
+                                    .background(
+                                        SchoolDbIndigoSoft,
+                                        RoundedCornerShape(8.dp),
+                                    )
+                                    .padding(
+                                        horizontal = 8.dp,
+                                        vertical = 5.dp,
+                                    ),
+                            )
+                        }
+                    }
+                }
             }
         }
     }
