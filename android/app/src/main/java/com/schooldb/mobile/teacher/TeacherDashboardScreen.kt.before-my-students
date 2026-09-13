@@ -161,10 +161,6 @@ private fun TeacherShell(
     mutableStateOf(TeacherTab.HOME)
 }
 
-
-    var moreScreen by rememberSaveable {
-        mutableStateOf("MENU")
-    }
 var showTimetable by rememberSaveable {
     mutableStateOf(false)
 }
@@ -179,7 +175,6 @@ var showTimetable by rememberSaveable {
                 unreadNotices = noticeState.unreadCount,
                 onTabSelected = {
                     tab = it
-                    moreScreen = "MENU"
                         showTimetable = false
 
                 },
@@ -230,30 +225,22 @@ var showTimetable by rememberSaveable {
                 }
 
                 TeacherTab.MORE -> {
-                    when (moreScreen) {
-                        "TIMETABLE" -> {
-                            TeacherTimetableScreen(
-                                dashboard = state.dashboard!!,
-                                onBack = { moreScreen = "MENU" },
-                            )
-                        }
-
-                        "STUDENTS" -> {
-                            TeacherStudentsScreen(
-                                dashboard = state.dashboard!!,
-                                onBack = { moreScreen = "MENU" },
-                            )
-                        }
-
-                        else -> {
-                            TeacherMoreScreen(
-                                onOpenTimetable = { moreScreen = "TIMETABLE" },
-                                onOpenStudents = { moreScreen = "STUDENTS" },
-                                onSignOut = teacherViewModel::signOut,
-                            )
-                        }
-                    }
-                }
+    if (showTimetable) {
+        TeacherTimetableScreen(
+            dashboard = state.dashboard!!,
+            onBack = {
+                showTimetable = false
+            },
+        )
+    } else {
+        TeacherMoreScreen(
+            onOpenTimetable = {
+                showTimetable = true
+            },
+            onSignOut = teacherViewModel::signOut,
+        )
+    }
+}
             }
         }
     }
@@ -452,7 +439,6 @@ private fun SchoolDbBottomBar(
 @Composable
 private fun TeacherMoreScreen(
     onOpenTimetable: () -> Unit,
-    onOpenStudents: () -> Unit,
     onSignOut: () -> Unit,
 ) {
     Scaffold(
@@ -511,7 +497,7 @@ private fun TeacherMoreScreen(
                         icon = Icons.Outlined.School,
                         title = "My Students",
                         subtitle = "Students from your classes",
-                        onClick = onOpenStudents,
+                        onClick = {},
                     )
 
                     SchoolDbMenuDivider()
