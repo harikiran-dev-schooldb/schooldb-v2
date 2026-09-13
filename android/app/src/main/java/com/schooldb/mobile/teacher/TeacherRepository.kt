@@ -48,6 +48,42 @@ class TeacherRepository(
                 )
             }
         }
+
+        val studentGroupsJson = data.optJSONArray("studentGroups") ?: JSONArray()
+        val studentGroups = buildList {
+            repeat(studentGroupsJson.length()) { groupIndex ->
+                val group = studentGroupsJson.getJSONObject(groupIndex)
+                val studentsJson = group.optJSONArray("students") ?: JSONArray()
+                val students = buildList {
+                    repeat(studentsJson.length()) { studentIndex ->
+                        val item = studentsJson.getJSONObject(studentIndex)
+                        add(
+                            TeacherStudent(
+                                studentId = item.getString("studentId"),
+                                enrollmentId = item.getString("enrollmentId"),
+                                admissionNo = item.optString("admissionNo"),
+                                fullName = item.optString("fullName", "Student"),
+                                rollNo = if (item.isNull("rollNo")) null else item.optInt("rollNo"),
+                                imageUrl = item.optString("imageUrl").takeIf { it.isNotBlank() },
+                                status = item.optString("status", "ACTIVE"),
+                            ),
+                        )
+                    }
+                }
+
+                add(
+                    TeacherStudentGroup(
+                        academicYearId = group.getString("academicYearId"),
+                        classId = group.getString("classId"),
+                        sectionId = group.getString("sectionId"),
+                        className = group.getString("className"),
+                        sectionName = group.getString("sectionName"),
+                        students = students,
+                    ),
+                )
+            }
+        }
+
         return TeacherDashboard(
             teacherName = data.optString("teacherName", "Teacher"),
             schoolName = data.optString("schoolName", "SchoolDB"),
@@ -57,6 +93,7 @@ class TeacherRepository(
             attendanceMode = data.optString("attendanceMode").takeIf { it.isNotBlank() },
             periods = periods,
             dailyTargets = dailyTargets,
+            studentGroups = studentGroups,
             upcoming = upcoming,
         )
     }

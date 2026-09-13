@@ -24,7 +24,6 @@ import androidx.compose.material.icons.outlined.People
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -32,11 +31,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -65,102 +62,34 @@ fun TeacherStudentsScreen(
     dashboard: TeacherDashboard,
     onBack: () -> Unit,
 ) {
-    val repository = remember { TeacherStudentsRepository() }
-
-    val classOptions = remember(dashboard) {
-        buildList {
-            dashboard.dailyTargets.forEach {
-                add(
-                    TeacherClassOption(
-                        academicYearId = it.academicYearId,
-                        classId = it.classId,
-                        sectionId = it.sectionId,
-                        className = it.className,
-                        sectionName = it.sectionName,
-                    ),
-                )
-            }
-
-            dashboard.periods.forEach {
-                add(
-                    TeacherClassOption(
-                        academicYearId = it.academicYearId,
-                        classId = it.classId,
-                        sectionId = it.sectionId,
-                        className = it.className,
-                        sectionName = it.sectionName,
-                    ),
-                )
-            }
-
-            dashboard.upcoming?.periods?.forEach {
-                add(
-                    TeacherClassOption(
-                        academicYearId = it.academicYearId,
-                        classId = it.classId,
-                        sectionId = it.sectionId,
-                        className = it.className,
-                        sectionName = it.sectionName,
-                    ),
-                )
-            }
-        }
-            .distinctBy { "${it.academicYearId}:${it.classId}:${it.sectionId}" }
-            .sortedWith(
-                compareBy<TeacherClassOption>(
-                    { it.className },
-                    { it.sectionName },
-                ),
-            )
+    val groups = remember(dashboard.studentGroups) {
+        dashboard.studentGroups.sortedWith(
+            compareBy<TeacherStudentGroup>(
+                { it.className },
+                { it.sectionName },
+            ),
+        )
     }
 
     var selectedKey by rememberSaveable {
         mutableStateOf(
-            classOptions.firstOrNull()?.let {
+            groups.firstOrNull()?.let {
                 "${it.classId}:${it.sectionId}"
             },
         )
     }
 
-    val selected = classOptions.firstOrNull {
+    val selected = groups.firstOrNull {
         "${it.classId}:${it.sectionId}" == selectedKey
-    } ?: classOptions.firstOrNull()
+    } ?: groups.firstOrNull()
 
-    var query by rememberSaveable { mutableStateOf("") }
-    var students by remember { mutableStateOf<List<TeacherStudent>>(emptyList()) }
-    var loading by remember { mutableStateOf(false) }
-    var error by remember { mutableStateOf<String?>(null) }
-    var reloadToken by remember { mutableStateOf(0) }
-
-    LaunchedEffect(
-        selected?.academicYearId,
-        selected?.classId,
-        selected?.sectionId,
-        reloadToken,
-    ) {
-        if (selected == null) {
-            students = emptyList()
-            return@LaunchedEffect
-        }
-
-        loading = true
-        error = null
-
-        runCatching {
-            repository.students(selected)
-        }.onSuccess {
-            students = it
-        }.onFailure {
-            students = emptyList()
-            error = it.message ?: "Unable to load students."
-        }
-
-        loading = false
+    var query by rememberSaveable {
+        mutableStateOf("")
     }
 
+    val students = selected?.students.orEmpty()
     val filteredStudents = remember(students, query) {
         val value = query.trim()
-
         if (value.isBlank()) {
             students
         } else {
@@ -183,7 +112,6 @@ fun TeacherStudentsScreen(
                             fontWeight = FontWeight.Bold,
                             color = StudentsSlate900,
                         )
-
                         Text(
                             text = dashboard.schoolName,
                             style = MaterialTheme.typography.labelMedium,
@@ -216,14 +144,13 @@ fun TeacherStudentsScreen(
             ),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            if (classOptions.isEmpty()) {
+            if (groups.isEmpty()) {
                 item {
                     EmptyStudentsCard(
                         title = "No assigned classes",
-                        message = "No active class or section allocation is available.",
+                        message = "No active class or section allocation is available for this teacher.",
                     )
                 }
-
                 return@LazyColumn
             }
 
@@ -244,27 +171,33 @@ fun TeacherStudentsScreen(
                     contentPadding = PaddingValues(end = 8.dp),
                 ) {
                     items(
-                        items = classOptions,
+                        items = groups,
                         key = { "${it.classId}:${it.sectionId}" },
-                    ) { option ->
+                    ) { group ->
                         val active =
-                            option.classId == selected?.classId &&
-                                option.sectionId == selected?.sectionId
+                            group.classId == selected?.classId &&
+                                group.sectionId == selected?.sectionId
 
                         Card(
                             onClick = {
-                                selectedKey = "${option.classId}:${option.sectionId}"
+                                selectedKey = "${group.classId}:${group.sectionId}"
                                 query = ""
                             },
                             shape = RoundedCornerShape(14.dp),
                             colors = CardDefaults.cardColors(
-                                containerColor =
-                                    if (active) StudentsIndigoSoft else Color.White,
+                                containerColor = if (active) {
+                                    StudentsIndigoSoft
+                                } else {
+                                    Color.White
+                                },
                             ),
                             border = BorderStroke(
                                 width = 1.dp,
-                                color =
-                                    if (active) StudentsIndigo else StudentsSlate200,
+                                color = if (active) {
+                                    StudentsIndigo
+                                } else {
+                                    StudentsSlate200
+                                },
                             ),
                         ) {
                             Row(
@@ -278,16 +211,21 @@ fun TeacherStudentsScreen(
                                     imageVector = Icons.Outlined.People,
                                     contentDescription = null,
                                     modifier = Modifier.size(18.dp),
-                                    tint =
-                                        if (active) StudentsIndigo else StudentsSlate500,
+                                    tint = if (active) {
+                                        StudentsIndigo
+                                    } else {
+                                        StudentsSlate500
+                                    },
                                 )
-
                                 Text(
-                                    text = "${option.className} · ${option.sectionName}",
+                                    text = "${group.className} · ${group.sectionName}",
                                     modifier = Modifier.padding(start = 7.dp),
                                     fontSize = 13.sp,
-                                    fontWeight =
-                                        if (active) FontWeight.SemiBold else FontWeight.Medium,
+                                    fontWeight = if (active) {
+                                        FontWeight.SemiBold
+                                    } else {
+                                        FontWeight.Medium
+                                    },
                                     color = StudentsSlate900,
                                 )
                             }
@@ -297,7 +235,7 @@ fun TeacherStudentsScreen(
             }
 
             item {
-                selected?.let { option ->
+                selected?.let { group ->
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(16.dp),
@@ -320,22 +258,16 @@ fun TeacherStudentsScreen(
                                 contentDescription = null,
                                 tint = StudentsIndigo,
                             )
-
                             Column(
                                 modifier = Modifier.padding(start = 10.dp),
                             ) {
                                 Text(
-                                    text = "${option.className} · Section ${option.sectionName}",
+                                    text = "${group.className} · Section ${group.sectionName}",
                                     fontWeight = FontWeight.Bold,
                                     color = StudentsSlate900,
                                 )
-
                                 Text(
-                                    text = if (loading) {
-                                        "Loading students..."
-                                    } else {
-                                        "${students.size} student${if (students.size == 1) "" else "s"}"
-                                    },
+                                    text = "${students.size} student${if (students.size == 1) "" else "s"}",
                                     fontSize = 12.sp,
                                     color = StudentsSlate500,
                                 )
@@ -364,65 +296,27 @@ fun TeacherStudentsScreen(
                 )
             }
 
-            when {
-                loading -> {
-                    item {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 32.dp),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            CircularProgressIndicator(
-                                color = StudentsIndigo,
-                            )
-                        }
-                    }
+            if (filteredStudents.isEmpty()) {
+                item {
+                    EmptyStudentsCard(
+                        title = if (query.isBlank()) {
+                            "No students"
+                        } else {
+                            "No matching students"
+                        },
+                        message = if (query.isBlank()) {
+                            "There are no active students in this class and section."
+                        } else {
+                            "Try another name, admission number or roll number."
+                        },
+                    )
                 }
-
-                error != null -> {
-                    item {
-                        EmptyStudentsCard(
-                            title = "Could not load students",
-                            message = error ?: "Please try again.",
-                        )
-                    }
-
-                    item {
-                        TextButton(
-                            onClick = {
-                                reloadToken += 1
-                            },
-                        ) {
-                            Text("Retry")
-                        }
-                    }
-                }
-
-                filteredStudents.isEmpty() -> {
-                    item {
-                        EmptyStudentsCard(
-                            title = if (query.isBlank()) {
-                                "No students"
-                            } else {
-                                "No matching students"
-                            },
-                            message = if (query.isBlank()) {
-                                "There are no active students in this class and section."
-                            } else {
-                                "Try another name, admission number or roll number."
-                            },
-                        )
-                    }
-                }
-
-                else -> {
-                    items(
-                        items = filteredStudents,
-                        key = { it.enrollmentId },
-                    ) { student ->
-                        StudentRow(student)
-                    }
+            } else {
+                items(
+                    items = filteredStudents,
+                    key = { it.enrollmentId },
+                ) { student ->
+                    StudentRow(student)
                 }
             }
 
@@ -466,12 +360,11 @@ private fun StudentRow(
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
-                    text =
-                        student.fullName
-                            .trim()
-                            .firstOrNull()
-                            ?.uppercase()
-                            ?: "S",
+                    text = student.fullName
+                        .trim()
+                        .firstOrNull()
+                        ?.uppercase()
+                        ?: "S",
                     fontWeight = FontWeight.Bold,
                     color = StudentsIndigo,
                 )
@@ -489,11 +382,9 @@ private fun StudentRow(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-
                 Spacer(
                     modifier = Modifier.height(3.dp),
                 )
-
                 Text(
                     text = "Admission No. ${student.admissionNo}",
                     fontSize = 12.sp,
@@ -505,19 +396,16 @@ private fun StudentRow(
                 horizontalAlignment = Alignment.End,
             ) {
                 Text(
-                    text =
-                        student.rollNo?.let {
-                            "Roll $it"
-                        } ?: "No roll no.",
+                    text = student.rollNo?.let {
+                        "Roll $it"
+                    } ?: "No roll no.",
                     fontSize = 11.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = StudentsSlate600,
                 )
-
                 Spacer(
                     modifier = Modifier.height(4.dp),
                 )
-
                 Text(
                     text = student.status,
                     fontSize = 10.sp,
@@ -566,21 +454,17 @@ private fun EmptyStudentsCard(
                 tint = StudentsSlate300,
                 modifier = Modifier.size(36.dp),
             )
-
             Spacer(
                 modifier = Modifier.height(10.dp),
             )
-
             Text(
                 text = title,
                 fontWeight = FontWeight.SemiBold,
                 color = StudentsSlate900,
             )
-
             Spacer(
                 modifier = Modifier.height(4.dp),
             )
-
             Text(
                 text = message,
                 style = MaterialTheme.typography.bodySmall,

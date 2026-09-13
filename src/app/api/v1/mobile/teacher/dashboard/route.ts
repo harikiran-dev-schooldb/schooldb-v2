@@ -75,6 +75,7 @@ export async function GET() {
         attendanceMode: null,
         periods: [],
         dailyTargets: [],
+        studentGroups: [],
         upcoming: null,
       });
     }
@@ -96,7 +97,7 @@ export async function GET() {
       },
     });
 
-    const [timetable, sessions] = await Promise.all([
+    const [timetable, sessions, enrollments] = await Promise.all([
       prisma.timetable.findMany({
         where: {
           schoolId: membership.schoolId,
@@ -159,6 +160,41 @@ export async function GET() {
           _count: { select: { records: true } },
         },
       }),
+      allocations.length > 0
+        ? prisma.studentEnrollment.findMany({
+            where: {
+              schoolId: membership.schoolId,
+              academicYearId: academicYear.id,
+              active: true,
+              student: { status: "ACTIVE" },
+              OR: allocations.map((item) => ({
+                classId: item.classId,
+                sectionId: item.sectionId,
+              })),
+            },
+            orderBy: [
+              { class: { displayOrder: "asc" } },
+              { section: { displayOrder: "asc" } },
+              { rollNo: "asc" },
+              { student: { fullName: "asc" } },
+            ],
+            select: {
+              id: true,
+              classId: true,
+              sectionId: true,
+              studentId: true,
+              rollNo: true,
+              student: {
+                select: {
+                  admissionNo: true,
+                  fullName: true,
+                  imageUrl: true,
+                  status: true,
+                },
+              },
+            },
+          })
+        : Promise.resolve([]),
     ]);
 
     const toPeriod = (entry: (typeof timetable)[number], includeAttendance: boolean) => {
@@ -192,6 +228,31 @@ export async function GET() {
       candidate.day !== null && timetable.some((entry) => entry.day === candidate.day),
     );
 
+    const studentGroups = allocations.map((allocation) => ({
+      academicYearId: academicYear.id,
+      classId: allocation.classId,
+      sectionId: allocation.sectionId,
+      className: allocation.class.name,
+      sectionName: allocation.section.name,
+      students: enrollments
+        .filter(
+          (enrollment) =>
+            enrollment.classId === allocation.classId &&
+            enrollment.sectionId === allocation.sectionId,
+        )
+        .map((enrollment) => ({
+          enrollmentId: enrollment.id,
+          studentId: enrollment.studentId,
+          admissionNo: enrollment.student.admissionNo,
+          fullName:
+            enrollment.student.fullName?.trim() ||
+            enrollment.student.admissionNo,
+          rollNo: enrollment.rollNo,
+          imageUrl: enrollment.student.imageUrl,
+          status: enrollment.student.status,
+        })),
+    }));
+
     return ApiResponse.success({
       teacherName: teacher.fullName,
       schoolName: membership.school.name,
@@ -220,6 +281,7 @@ export async function GET() {
               attendanceLocked: session?.locked ?? false,
             };
           }),
+      studentGroups,
       upcoming: nextTeachingDate
         ? {
             date: nextTeachingDate.date,

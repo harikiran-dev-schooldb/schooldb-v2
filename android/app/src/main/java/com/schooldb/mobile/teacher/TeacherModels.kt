@@ -16,6 +16,7 @@ data class TeacherDashboard(
     val attendanceMode: String?,
     val periods: List<TeachingPeriod>,
     val dailyTargets: List<DailyAttendanceTarget>,
+    val studentGroups: List<TeacherStudentGroup>,
     val upcoming: UpcomingClasses?,
 )
 

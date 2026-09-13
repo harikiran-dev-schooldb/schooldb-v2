@@ -10,10 +10,11 @@ data class TeacherStudent(
     val status: String,
 )
 
-data class TeacherClassOption(
+data class TeacherStudentGroup(
     val academicYearId: String,
     val classId: String,
     val sectionId: String,
     val className: String,
     val sectionName: String,
+    val students: List<TeacherStudent>,
 )
