@@ -29,7 +29,7 @@ function studentSelect(schoolId: string) {
   } as const;
 }
 
-export const listAccessibleStudents = cache(async (schoolSlug: string) => {
+export const listAccessibleStudents = cache(async (schoolSlug?: string) => {
   const membership = await requireMembership(schoolSlug);
 
   if (!isSelfServiceRole(membership.role)) {

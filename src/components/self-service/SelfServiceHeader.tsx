@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Bell, CalendarDays, GraduationCap, LogOut, Users } from "lucide-react";
+import { Bell, CalendarDays, GraduationCap, LogOut, Repeat2, Users } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -41,10 +41,16 @@ export function SelfServiceHeader({
             <Button asChild variant="ghost" size="sm">
               <Link href={`/${schoolSlug}/my`}>
                 <Users className="size-4" />
-                Students
+                Switch student
               </Link>
             </Button>
           )}
+          <Button asChild variant="ghost" size="sm" className="hidden md:inline-flex">
+            <Link href={`/${schoolSlug}/switch-account`}>
+              <Repeat2 className="size-4" />
+              Switch account
+            </Link>
+          </Button>
           <Button asChild variant="ghost" size="icon-sm">
             <Link href={`/${schoolSlug}/my/calendar`} aria-label="School calendar">
               <CalendarDays className="size-4" />

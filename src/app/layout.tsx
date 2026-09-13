@@ -21,6 +21,7 @@ export default function RootLayout({
     <ClerkProvider>
       <html
         lang="en"
+        data-scroll-behavior="smooth"
         suppressHydrationWarning
         className="font-sans antialiased"
       >

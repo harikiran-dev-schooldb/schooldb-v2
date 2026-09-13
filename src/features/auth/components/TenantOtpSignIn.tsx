@@ -178,7 +178,7 @@ export function TenantOtpSignIn({ schoolSlug, schoolName }: Props) {
       ) {
         setChallengeId(data.challengeId);
         setAccountChoices(data.accounts);
-        toast.success("Mobile number verified. Choose the account to open.");
+        toast.success("Mobile number verified. Choose an account or role.");
         return;
       }
       if (!data.token)
@@ -306,10 +306,10 @@ export function TenantOtpSignIn({ schoolSlug, schoolName }: Props) {
                   Mobile number verified
                 </p>
                 <p className="mt-1 text-xs leading-5 text-emerald-700">
-                  Choose which SchoolDB account you want to open.
+                  Choose the person and role you want to continue as.
                 </p>
               </div>
-              <div className="grid gap-3" aria-label="Choose an account">
+              <div className="grid gap-3" aria-label="Choose an account or role">
                 {accountChoices.map((account) => (
                   <button
                     key={account.id}

@@ -82,6 +82,7 @@ import androidx.compose.material.icons.automirrored.outlined.Assignment
 import androidx.compose.material.icons.automirrored.outlined.FactCheck
 import com.schooldb.mobile.preferences.AppPreferences
 import com.schooldb.mobile.preferences.StartTabPreference
+import com.schooldb.mobile.family.FamilyDashboardScreen
 
 
 private val SchoolDbIndigo = Color(0xFF4F46E5)
@@ -107,6 +108,8 @@ private enum class TeacherTab {
 
 @Composable
 fun TeacherDashboardScreen(
+    refreshKey: Int = 0,
+    onSwitchAccount: (() -> Unit)? = null,
     viewModel: TeacherViewModel = viewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -117,6 +120,18 @@ fun TeacherDashboardScreen(
             snackbar.showSnackbar(it)
             viewModel.clearMessage()
         }
+    }
+
+    LaunchedEffect(refreshKey) {
+        if (refreshKey > 0) viewModel.refresh()
+    }
+
+    if (state.context?.role in setOf("PARENT", "STUDENT")) {
+        FamilyDashboardScreen(
+            refreshKey = refreshKey,
+            onSwitchAccount = onSwitchAccount ?: viewModel::signOut,
+        )
+        return
     }
 
     state.attendanceSheet?.let { sheet ->
@@ -139,6 +154,7 @@ fun TeacherDashboardScreen(
             state = state,
             snackbar = snackbar,
             teacherViewModel = viewModel,
+            onSwitchAccount = onSwitchAccount ?: viewModel::signOut,
         )
     } else {
         TeacherHome(
@@ -157,6 +173,7 @@ private fun TeacherShell(
     state: TeacherUiState,
     snackbar: SnackbarHostState,
     teacherViewModel: TeacherViewModel,
+    onSwitchAccount: () -> Unit,
     noticeViewModel: NoticeViewModel = viewModel(),
 ) {
     val dashboard = state.dashboard ?: return
@@ -275,7 +292,7 @@ private fun TeacherShell(
                                 onOpenResults = { moreScreen = "RESULTS" },
                                 onOpenProfile = { moreScreen = "PROFILE" },
                                 onOpenSettings = { moreScreen = "SETTINGS" },
-                                onSignOut = teacherViewModel::signOut,
+                                onSignOut = onSwitchAccount,
                             )
                         }
                     }
@@ -594,7 +611,7 @@ private fun TeacherMoreScreen(
                     )
 
                     Text(
-                        text = "Sign out",
+                        text = "Switch account or role",
                         color = SchoolDbDanger,
                         fontWeight = FontWeight.SemiBold,
                     )

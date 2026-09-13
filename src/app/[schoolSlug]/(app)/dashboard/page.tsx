@@ -22,6 +22,7 @@ import { StatCard } from "@/components/common/StatCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useSchool } from "@/contexts/school-context";
+import { hasPermission, PERMISSIONS } from "@/lib/access-control";
 
 /* ==========================================================================
    TYPES
@@ -189,7 +190,10 @@ async function getJson<T>(url: string, signal: AbortSignal): Promise<T> {
   return result.data;
 }
 
-async function fetchDashboardData(signal: AbortSignal): Promise<DashboardData> {
+async function fetchDashboardData(
+  signal: AbortSignal,
+  access: { attendance: boolean; fees: boolean; staff: boolean },
+): Promise<DashboardData> {
   const [academicYears, students, teachers, classes, attendance] =
     await Promise.all([
       getJson<{
@@ -199,11 +203,15 @@ async function fetchDashboardData(signal: AbortSignal): Promise<DashboardData> {
 
       getJson<PaginatedResult>("/api/v1/students?page=1&pageSize=1", signal),
 
-      getJson<PaginatedResult>("/api/v1/teachers?page=1&pageSize=1", signal),
+      access.staff
+        ? getJson<PaginatedResult>("/api/v1/teachers?page=1&pageSize=1", signal)
+        : Promise.resolve(null),
 
       getJson<PaginatedResult>("/api/v1/classes?page=1&pageSize=1", signal),
 
-      getJson<AttendanceDashboard>("/api/v1/attendance/dashboard", signal),
+      access.attendance
+        ? getJson<AttendanceDashboard>("/api/v1/attendance/dashboard", signal)
+        : Promise.resolve(null),
     ]);
 
   const currentAcademicYear =
@@ -218,32 +226,38 @@ async function fetchDashboardData(signal: AbortSignal): Promise<DashboardData> {
 
     const [feeDashboard, lowAttendanceReport, outstandingReport] =
       await Promise.all([
-        getJson<FeeDashboard>(
-          `/api/v1/fees/dashboard?academicYearId=${academicYearId}`,
-          signal,
-        ),
+        access.fees
+          ? getJson<FeeDashboard>(
+              `/api/v1/fees/dashboard?academicYearId=${academicYearId}`,
+              signal,
+            )
+          : Promise.resolve(null),
 
-        getJson<{
-          rows: LowAttendanceRow[];
-        }>(
-          `/api/v1/attendance/reports/low?academicYearId=${academicYearId}&threshold=75`,
-          signal,
-        ),
+        access.attendance
+          ? getJson<{
+              rows: LowAttendanceRow[];
+            }>(
+              `/api/v1/attendance/reports/low?academicYearId=${academicYearId}&threshold=75`,
+              signal,
+            )
+          : Promise.resolve(null),
 
-        getJson<{
-          rows: OutstandingRow[];
-        }>(`/api/v1/fees/outstanding?academicYearId=${academicYearId}`, signal),
+        access.fees
+          ? getJson<{
+              rows: OutstandingRow[];
+            }>(`/api/v1/fees/outstanding?academicYearId=${academicYearId}`, signal)
+          : Promise.resolve(null),
       ]);
 
     fees = feeDashboard;
-    lowAttendance = lowAttendanceReport.rows ?? [];
-    outstanding = outstandingReport.rows ?? [];
+    lowAttendance = lowAttendanceReport?.rows ?? [];
+    outstanding = outstandingReport?.rows ?? [];
   }
 
   return {
     academicYear: currentAcademicYear,
     students: students.total,
-    teachers: teachers.total,
+    teachers: teachers?.total ?? 0,
     classes: classes.total,
     attendance: attendance ?? null,
     fees,
@@ -282,7 +296,11 @@ function titleCase(value: string) {
    ========================================================================== */
 
 export default function DashboardPage() {
-  const { school } = useSchool();
+  const { school, role } = useSchool();
+  const canReadAttendance = hasPermission(role, PERMISSIONS.ATTENDANCE_READ);
+  const canReadFees = hasPermission(role, PERMISSIONS.FEE_READ);
+  const canReadStaff = hasPermission(role, PERMISSIONS.STAFF_READ);
+  const isAdministrator = ["SUPER_ADMIN", "SCHOOL_ADMIN"].includes(role);
 
   const [data, setData] = useState<DashboardData>(EMPTY_DASHBOARD_DATA);
 
@@ -301,7 +319,11 @@ export default function DashboardPage() {
       try {
         setError(null);
 
-        const dashboardData = await fetchDashboardData(controller.signal);
+        const dashboardData = await fetchDashboardData(controller.signal, {
+          attendance: canReadAttendance,
+          fees: canReadFees,
+          staff: canReadStaff,
+        });
 
         if (controller.signal.aborted) {
           return;
@@ -337,7 +359,7 @@ export default function DashboardPage() {
     return () => {
       controller.abort();
     };
-  }, []);
+  }, [canReadAttendance, canReadFees, canReadStaff]);
 
   /* ------------------------------------------------------------------------
      REFRESH
@@ -350,7 +372,11 @@ export default function DashboardPage() {
     setError(null);
 
     try {
-      const dashboardData = await fetchDashboardData(controller.signal);
+      const dashboardData = await fetchDashboardData(controller.signal, {
+        attendance: canReadAttendance,
+        fees: canReadFees,
+        staff: canReadStaff,
+      });
 
       if (!controller.signal.aborted) {
         setData(dashboardData);
@@ -371,7 +397,7 @@ export default function DashboardPage() {
     } finally {
       setRefreshing(false);
     }
-  }, []);
+  }, [canReadAttendance, canReadFees, canReadStaff]);
 
   const attendance = data.attendance;
   const fees = data.fees;
@@ -485,7 +511,9 @@ export default function DashboardPage() {
       items.push({
         title: "School operations are on track",
 
-        description: "No critical attendance or fee alerts were detected.",
+        description: canReadFees
+          ? "No critical attendance or fee alerts were detected."
+          : "No critical attendance alerts were detected.",
 
         href: `/${school.slug}/dashboard`,
 
@@ -496,6 +524,7 @@ export default function DashboardPage() {
     return items.slice(0, 4);
   }, [
     attendance,
+    canReadFees,
     data.academicYear?.id,
     data.lowAttendance,
     data.outstanding,
@@ -512,23 +541,27 @@ export default function DashboardPage() {
       label: "Add Student",
       href: `/${school.slug}/students`,
       icon: GraduationCap,
+      visible: ["SUPER_ADMIN", "SCHOOL_ADMIN", "RECEPTIONIST"].includes(role),
     },
     {
       label: "Mark Attendance",
       href: `/${school.slug}/attendance`,
       icon: CalendarCheck,
+      visible: canReadAttendance,
     },
     {
       label: "Fee Dashboard",
       href: `/${school.slug}/fees/dashboard`,
       icon: WalletCards,
+      visible: canReadFees,
     },
     {
       label: "Reports",
       href: `/${school.slug}` + `/attendance/reports/student`,
       icon: Clock3,
+      visible: canReadAttendance,
     },
-  ];
+  ].filter((action) => action.visible);
 
   /* ==========================================================================
      RENDER
@@ -623,8 +656,9 @@ export default function DashboardPage() {
             </h2>
 
             <p className="mt-3 max-w-xl text-sm leading-6 text-slate-500">
-              Live attendance, student, teacher and fee metrics for the current
-              academic year.
+              {canReadFees
+                ? "Live attendance, student, teacher and fee metrics for the current academic year."
+                : "Live student, teacher and attendance metrics for the current academic year."}
             </p>
 
             <div className="mt-6 flex flex-wrap items-center gap-x-7 gap-y-4">
@@ -672,29 +706,31 @@ export default function DashboardPage() {
 
           {/* COLLECTION */}
 
-          <div className="min-w-[230px] rounded-2xl border border-indigo-100 bg-white/85 p-4 shadow-[0_15px_35px_rgba(79,70,229,0.08)] backdrop-blur-xl">
-            <div className="flex items-center gap-3">
-              <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-50 to-violet-50 ring-1 ring-indigo-100">
-                <WalletCards className="size-5 text-indigo-600" />
-              </div>
+          {canReadFees && (
+            <div className="min-w-[230px] rounded-2xl border border-indigo-100 bg-white/85 p-4 shadow-[0_15px_35px_rgba(79,70,229,0.08)] backdrop-blur-xl">
+              <div className="flex items-center gap-3">
+                <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-50 to-violet-50 ring-1 ring-indigo-100">
+                  <WalletCards className="size-5 text-indigo-600" />
+                </div>
 
-              <div>
-                <p className="text-[10px] font-bold tracking-[0.15em] text-slate-400 uppercase">
-                  This month
-                </p>
+                <div>
+                  <p className="text-[10px] font-bold tracking-[0.15em] text-slate-400 uppercase">
+                    This month
+                  </p>
 
-                <p className="mt-1 text-xl font-bold tracking-tight text-slate-900">
-                  {fees ? formatCurrency(fees.collection.thisMonth) : "—"}
-                </p>
+                  <p className="mt-1 text-xl font-bold tracking-tight text-slate-900">
+                    {fees ? formatCurrency(fees.collection.thisMonth) : "—"}
+                  </p>
 
-                <p className="mt-1 text-[10px] text-slate-400">
-                  {fees
-                    ? `${fees.collection.thisMonthPaymentCount} payments received`
-                    : "Collection data"}
-                </p>
+                  <p className="mt-1 text-[10px] text-slate-400">
+                    {fees
+                      ? `${fees.collection.thisMonthPaymentCount} payments received`
+                      : "Collection data"}
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
       </section>
 
@@ -711,15 +747,17 @@ export default function DashboardPage() {
           className="premium-card rounded-2xl border-0 bg-white transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
         />
 
-        <StatCard
-          title="Teachers"
-          value={loading ? "—" : data.teachers.toLocaleString("en-IN")}
-          icon={Users}
-          description="Teaching staff"
-          className="premium-card rounded-2xl border-0 bg-white transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
-        />
+        {canReadStaff && (
+          <StatCard
+            title="Teachers"
+            value={loading ? "—" : data.teachers.toLocaleString("en-IN")}
+            icon={Users}
+            description="Teaching staff"
+            className="premium-card rounded-2xl border-0 bg-white transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
+          />
+        )}
 
-        <StatCard
+        {canReadAttendance && <StatCard
           title="Attendance"
           value={
             loading ? "—" : `${attendance?.summary.attendancePercentage ?? 0}%`
@@ -727,9 +765,9 @@ export default function DashboardPage() {
           icon={CalendarCheck}
           description={`${attendance?.summary.present ?? 0} present today`}
           className="premium-card rounded-2xl border-0 bg-white transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
-        />
+        />}
 
-        <StatCard
+        {canReadFees && <StatCard
           title="Fee Collection"
           value={fees ? formatCurrency(fees.collection.thisMonth) : "—"}
           icon={IndianRupee}
@@ -739,17 +777,17 @@ export default function DashboardPage() {
               : "Current academic year"
           }
           className="premium-card rounded-2xl border-0 bg-white transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
-        />
+        />}
       </section>
 
       {/* ======================================================================
           ATTENDANCE + ACTION CENTER
           ====================================================================== */}
 
-      <section className="grid gap-6 xl:grid-cols-[1.35fr_0.85fr]">
+      <section className={`grid gap-6 ${canReadAttendance ? "xl:grid-cols-[1.35fr_0.85fr]" : ""}`}>
         {/* ATTENDANCE */}
 
-        <Card className="premium-card overflow-hidden rounded-2xl border-0 bg-white">
+        {canReadAttendance && <Card className="premium-card overflow-hidden rounded-2xl border-0 bg-white">
           <CardHeader className="border-b border-border/60 px-6 py-5">
             <p className="text-[10px] font-bold tracking-[0.18em] text-indigo-500 uppercase">
               Attendance Overview
@@ -810,7 +848,7 @@ export default function DashboardPage() {
               <EmptyState text="No attendance sessions are available yet." />
             )}
           </CardContent>
-        </Card>
+        </Card>}
 
         {/* ACTION CENTER */}
 
@@ -875,7 +913,7 @@ export default function DashboardPage() {
           QUICK ACTIONS + FEE OPERATIONS
           ====================================================================== */}
 
-      <section className="grid gap-6 lg:grid-cols-[0.85fr_1.15fr]">
+      <section className={`grid gap-6 ${canReadFees ? "lg:grid-cols-[0.85fr_1.15fr]" : ""}`}>
         {/* QUICK ACTIONS */}
 
         <Card className="premium-card rounded-2xl border-0 bg-white">
@@ -916,7 +954,7 @@ export default function DashboardPage() {
 
         {/* FEE OPERATIONS */}
 
-        <Card className="premium-card rounded-2xl border-0 bg-white">
+        {canReadFees && <Card className="premium-card rounded-2xl border-0 bg-white">
           <CardHeader className="flex flex-row items-start justify-between gap-4 px-6 py-5">
             <div>
               <p className="text-[10px] font-bold tracking-[0.18em] text-indigo-500 uppercase">
@@ -956,14 +994,14 @@ export default function DashboardPage() {
               hint={fees ? `${fees.summary.installmentCount} total` : "—"}
             />
           </CardContent>
-        </Card>
+        </Card>}
       </section>
 
       {/* ======================================================================
           REPORT LINK
           ====================================================================== */}
 
-      <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-indigo-100 bg-gradient-to-r from-white to-indigo-50/50 px-5 py-4 shadow-sm">
+      {isAdministrator && <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-indigo-100 bg-gradient-to-r from-white to-indigo-50/50 px-5 py-4 shadow-sm">
         <div>
           <p className="text-sm font-semibold text-slate-800">
             Need detailed reports?
@@ -980,7 +1018,7 @@ export default function DashboardPage() {
             <ArrowRight className="size-4" />
           </Link>
         </Button>
-      </div>
+      </div>}
     </div>
   );
 }

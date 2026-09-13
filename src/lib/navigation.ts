@@ -29,6 +29,8 @@ type NavigationItem = {
 };
 
 const ADMIN_ROLES = ["SUPER_ADMIN", "SCHOOL_ADMIN"];
+const ATTENDANCE_ROLES = [...ADMIN_ROLES, "TEACHER"];
+const FEE_ROLES = [...ADMIN_ROLES, "ACCOUNTANT"];
 
 export const navigation: NavigationItem[] = [
   {
@@ -66,6 +68,7 @@ export const navigation: NavigationItem[] = [
   {
     title: "Attendance",
     icon: CalendarCheck,
+    roles: ATTENDANCE_ROLES,
     children: [
       { title: "Mark Attendance", href: "attendance", exact: true },
       { title: "Attendance Overview", href: "attendance/dashboard" },
@@ -88,6 +91,7 @@ export const navigation: NavigationItem[] = [
   {
     title: "Fees",
     icon: IndianRupee,
+    roles: FEE_ROLES,
     children: [
       { title: "Fee Overview", href: "fees/dashboard" },
       { title: "Collect Fees", href: "fees/collection" },

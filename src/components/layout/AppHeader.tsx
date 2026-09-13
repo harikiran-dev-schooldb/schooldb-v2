@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, ChevronDown, LogOut, Search, User } from "lucide-react";
+import { Bell, ChevronDown, LogOut, Repeat2, Search, User } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 
 import { useSchool } from "@/contexts/school-context";
@@ -134,6 +134,14 @@ export function AppHeader() {
               </DropdownMenuItem>
 
               <DropdownMenuSeparator />
+
+              <DropdownMenuItem
+                className="cursor-pointer rounded-xl py-2.5"
+                onClick={() => router.push(`/${schoolSlug}/switch-account`)}
+              >
+                <Repeat2 className="mr-2 size-4" />
+                Switch account or role
+              </DropdownMenuItem>
 
               {/* Logout */}
               <DropdownMenuItem

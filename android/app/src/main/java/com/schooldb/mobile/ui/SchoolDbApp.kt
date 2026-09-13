@@ -56,6 +56,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.schooldb.mobile.auth.AuthStep
 import com.schooldb.mobile.auth.AuthViewModel
+import com.schooldb.mobile.auth.AccountSwitchScreen
 import com.schooldb.mobile.auth.SchoolAccount
 import com.schooldb.mobile.teacher.TeacherDashboardScreen
 
@@ -63,6 +64,8 @@ import com.schooldb.mobile.teacher.TeacherDashboardScreen
 fun SchoolDbApp(authViewModel: AuthViewModel = viewModel()) {
     val state by authViewModel.uiState.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
+    var showAccountSwitcher by rememberSaveable { mutableStateOf(false) }
+    var portalRefreshKey by rememberSaveable { mutableStateOf(0) }
 
     LaunchedEffect(state.message) {
         state.message?.let {
@@ -97,7 +100,20 @@ fun SchoolDbApp(authViewModel: AuthViewModel = viewModel()) {
                     onSelect = authViewModel::selectAccount,
                     onBack = authViewModel::backToSignIn,
                 )
-                AuthStep.SignedIn -> TeacherDashboardScreen()
+                AuthStep.SignedIn -> if (showAccountSwitcher) {
+                    AccountSwitchScreen(
+                        onBack = { showAccountSwitcher = false },
+                        onComplete = {
+                            portalRefreshKey += 1
+                            showAccountSwitcher = false
+                        },
+                    )
+                } else {
+                    TeacherDashboardScreen(
+                        refreshKey = portalRefreshKey,
+                        onSwitchAccount = { showAccountSwitcher = true },
+                    )
+                }
             }
         }
     }
@@ -178,8 +194,8 @@ private fun AccountScreen(
     onBack: () -> Unit,
 ) {
     AuthPage(
-        title = "Choose an account",
-        subtitle = "This mobile number is linked to more than one SchoolDB account.",
+        title = "Choose account or role",
+        subtitle = "This mobile number has more than one SchoolDB profile. Choose who you want to continue as.",
         onBack = onBack,
     ) {
         accounts.forEach { account ->
