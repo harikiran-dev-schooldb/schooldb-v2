@@ -178,6 +178,28 @@ const categoryOptions = [
   ["RTE", "RTE"],
 ] as const;
 
+function toStudentFormValues(student: Record<string, unknown>): StudentFormInput {
+  return Object.fromEntries(
+    Object.entries(defaultValues).map(([key, defaultValue]) => {
+      const value = student[key];
+
+      if (key === "religion" || key === "category") {
+        return [key, value ?? null];
+      }
+
+      if (typeof defaultValue === "boolean") {
+        return [key, Boolean(value)];
+      }
+
+      if (key === "dob" || key === "joinedDate") {
+        return [key, value ? String(value).substring(0, 10) : ""];
+      }
+
+      return [key, value == null ? "" : String(value)];
+    }),
+  ) as StudentFormInput;
+}
+
 function FormSection({
   title,
   description,
@@ -254,22 +276,7 @@ export function StudentForm({ mode, studentId, onSuccess }: Props) {
           return;
         }
 
-        const student = result.data;
-        form.reset({
-          ...defaultValues,
-          ...student,
-          dob: student.dob ? student.dob.substring(0, 10) : "",
-          joinedDate: student.joinedDate
-            ? student.joinedDate.substring(0, 10)
-            : "",
-          fatherIncome: student.fatherIncome?.toString() ?? "",
-          motherIncome: student.motherIncome?.toString() ?? "",
-          religion: student.religion ?? null,
-          category: student.category ?? null,
-          hostelRequired: Boolean(student.hostelRequired),
-          transportRequired: Boolean(student.transportRequired),
-          whatsappOptIn: Boolean(student.whatsappOptIn),
-        });
+        form.reset(toStudentFormValues(result.data));
       } catch {
         if (!cancelled) toast.error("Failed to load student.");
       } finally {
@@ -283,17 +290,16 @@ export function StudentForm({ mode, studentId, onSuccess }: Props) {
     };
   }, [mode, studentId, form]);
 
-  async function onSubmit(values: StudentFormOutput) {
+  async function onSubmit() {
     try {
       setLoading(true);
-      const payload = createStudentSchema.parse(values);
       const isCreate = mode === "create";
       const res = await fetch(
         isCreate ? "/api/v1/students" : `/api/v1/students/${studentId}`,
         {
           method: isCreate ? "POST" : "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
+          body: JSON.stringify(form.getValues()),
         },
       );
       const result = await res.json();
@@ -312,8 +318,12 @@ export function StudentForm({ mode, studentId, onSuccess }: Props) {
       refreshTable("students");
       if (isCreate) form.reset(defaultValues);
       onSuccess();
-    } catch {
-      toast.error("Please review the form and try again.");
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Please review the form and try again.",
+      );
     } finally {
       setLoading(false);
     }
@@ -331,13 +341,13 @@ export function StudentForm({ mode, studentId, onSuccess }: Props) {
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
       <FormSection
         title="Student identity"
-        description="Core identity, admission and account information."
+        description="Core identity, admission and account information. Fields marked with * are mandatory."
       >
         <div className="grid gap-5 md:grid-cols-2">
           <FormField label="Admission No" required error={errorFor("admissionNo")}>
             <Input className="h-11 bg-background" placeholder="e.g. ADM-2026-001" {...form.register("admissionNo")} />
           </FormField>
-          <FormField label="Student Name" error={errorFor("fullName")}>
+          <FormField label="Student Name" required error={errorFor("fullName")}>
             <Input className="h-11 bg-background" placeholder="Enter full name" {...form.register("fullName")} />
           </FormField>
           <FormField label="Gender" required error={errorFor("gender")}>

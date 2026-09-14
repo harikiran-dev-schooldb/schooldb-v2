@@ -21,36 +21,132 @@ import {
   postImportInBatches,
   type ImportProgress,
 } from "@/lib/batched-import";
+import { bulkStudentRowSchema } from "@/features/students/schemas/bulk-student.schema";
 
-type StudentRow = {
-  admissionNo: string;
-  fullName: string;
-  gender: string;
-  dob: string;
-  phone: string;
-  email: string;
-  status: string;
-};
+const HEADERS = [
+  "admissionNo",
+  "fullName",
+  "gender",
+  "dob",
+  "status",
+  "academicYear",
+  "className",
+  "sectionName",
+  "rollNo",
+  "joinedDate",
+  "phone",
+  "alternatePhone",
+  "email",
+  "imageUrl",
+  "studentAadhar",
+  "apaarId",
+  "penNo",
+  "emisNo",
+  "bloodGroup",
+  "nationality",
+  "motherTongue",
+  "religion",
+  "category",
+  "caste",
+  "subCaste",
+  "address",
+  "city",
+  "district",
+  "state",
+  "pincode",
+  "country",
+  "fatherName",
+  "fatherPhone",
+  "fatherEmail",
+  "fatherAadhar",
+  "fatherOccupation",
+  "fatherQualification",
+  "fatherIncome",
+  "motherName",
+  "motherPhone",
+  "motherEmail",
+  "motherAadhar",
+  "motherOccupation",
+  "motherQualification",
+  "motherIncome",
+  "guardianName",
+  "guardianPhone",
+  "guardianRelation",
+  "doctorName",
+  "doctorPhone",
+  "medicalConditions",
+  "allergies",
+  "hostelRequired",
+  "transportRequired",
+  "whatsappOptIn",
+  "remarks",
+] as const;
+
+type StudentHeader = (typeof HEADERS)[number];
+type StudentRow = Record<StudentHeader, string>;
 
 type RowError = {
   row: number;
   message: string;
 };
 
-const HEADERS: Array<keyof StudentRow> = [
+const REQUIRED_FIELDS: StudentHeader[] = [
   "admissionNo",
   "fullName",
   "gender",
   "dob",
-  "phone",
-  "email",
   "status",
 ];
 
+function csvValue(value: string) {
+  return /[",\n]/.test(value) ? `"${value.replaceAll('"', '""')}"` : value;
+}
+
+function templateRow(values: Partial<StudentRow>) {
+  return HEADERS.map((header) => csvValue(values[header] ?? "")).join(",");
+}
+
 const TEMPLATE = [
   HEADERS.join(","),
-  "1001,Rahul Kumar,MALE,2012-06-15,9876543210,rahul@example.com,ACTIVE",
-  "1002,Anjali Rao,FEMALE,2013-02-20,9876543211,anjali@example.com,ACTIVE",
+  templateRow({
+    admissionNo: "1001",
+    fullName: "Rahul Kumar",
+    gender: "MALE",
+    dob: "2012-06-15",
+    joinedDate: "2025-06-01",
+    phone: "9876543210",
+    email: "rahul@example.com",
+    status: "ACTIVE",
+    academicYear: "2026-27",
+    className: "Class 1",
+    sectionName: "A",
+    rollNo: "1",
+    bloodGroup: "O+",
+    nationality: "Indian",
+    fatherName: "Suresh Kumar",
+    fatherPhone: "9876543200",
+    hostelRequired: "FALSE",
+    transportRequired: "TRUE",
+    whatsappOptIn: "TRUE",
+  }),
+  templateRow({
+    admissionNo: "1002",
+    fullName: "Anjali Rao",
+    gender: "FEMALE",
+    dob: "2013-02-20",
+    phone: "9876543211",
+    status: "ACTIVE",
+    academicYear: "2026-27",
+    className: "Class 1",
+    sectionName: "A",
+    rollNo: "2",
+    category: "GENERAL",
+    motherName: "Lakshmi Rao",
+    motherPhone: "9876543201",
+    hostelRequired: "FALSE",
+    transportRequired: "FALSE",
+    whatsappOptIn: "FALSE",
+  }),
 ].join("\n");
 
 function parseCsvLine(line: string) {
@@ -132,7 +228,7 @@ function parseCsv(text: string) {
       HEADERS.map((header, columnIndex) => [header, values[columnIndex] ?? ""]),
     ) as StudentRow;
 
-    const missing = HEADERS.filter((header) => !row[header]);
+    const missing = REQUIRED_FIELDS.filter((header) => !row[header]);
 
     if (missing.length) {
       errors.push({
@@ -162,14 +258,28 @@ function parseCsv(text: string) {
 
     row.dob = normalizedDob;
 
-    if (
-      !/^(ACTIVE|INACTIVE|TC_ISSUED|DROPPED|ALUMNI|NOT_COMING)$/i.test(
-        row.status,
-      )
-    ) {
+    if (row.joinedDate) {
+      const normalizedJoinedDate = normalizeDob(row.joinedDate);
+
+      if (!normalizedJoinedDate) {
+        errors.push({
+          row: index + 2,
+          message: "Joined date must use YYYY-MM-DD or DD/MM/YY format.",
+        });
+        return;
+      }
+
+      row.joinedDate = normalizedJoinedDate;
+    }
+
+    const validated = bulkStudentRowSchema.safeParse(row);
+
+    if (!validated.success) {
       errors.push({
         row: index + 2,
-        message: "Invalid student status.",
+        message: validated.error.issues
+          .map((issue) => `${issue.path.join(".")}: ${issue.message}`)
+          .join("; "),
       });
       return;
     }
@@ -202,6 +312,7 @@ export default function BulkStudentsPage() {
   const [progress, setProgress] = useState<ImportProgress | null>(null);
   const [result, setResult] = useState<{
     created: number;
+    enrolled: number;
     failed: number;
     errors: RowError[];
   } | null>(null);
@@ -250,7 +361,12 @@ export default function BulkStudentsPage() {
     try {
       const data = await postImportInBatches<
         StudentRow,
-        { created: number; failed: number; errors: RowError[] }
+        {
+          created: number;
+          enrolled: number;
+          failed: number;
+          errors: RowError[];
+        }
       >({
         endpoint: "/api/v1/students/bulk",
         bodyKey: "students",
@@ -317,7 +433,9 @@ export default function BulkStudentsPage() {
               <CardTitle>Student import</CardTitle>
               <p className="mt-1 text-xs text-muted-foreground">
                 Upload the complete CSV; SchoolDB processes 500 rows per batch.
-                Columns: admissionNo, fullName, gender, dob, phone, email, status
+                The template can create the student and enrollment together.
+                Academic year, class, and section must all be filled when a row
+                includes enrollment details; roll number is optional.
               </p>
             </div>
           </div>
@@ -469,7 +587,8 @@ export default function BulkStudentsPage() {
                 <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4">
                   <p className="text-sm font-bold">Import complete</p>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {result.created} students created · {result.failed} failed
+                    {result.created} students created · {result.enrolled}{" "}
+                    enrolled · {result.failed} failed
                   </p>
                 </div>
               )}

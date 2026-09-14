@@ -22,16 +22,8 @@ const operations = [
   {
     title: "Students",
     description:
-      "Add student records in bulk with validation and duplicate checks.",
+      "Create student records and optional academic-year enrollments from one validated file.",
     href: "bulk-operations/students",
-    icon: GraduationCap,
-    status: "Ready",
-  },
-  {
-    title: "Student Enrollment",
-    description:
-      "Enroll existing students into an academic year, class, section and roll number.",
-    href: "bulk-operations/student-enrollments",
     icon: GraduationCap,
     status: "Ready",
   },

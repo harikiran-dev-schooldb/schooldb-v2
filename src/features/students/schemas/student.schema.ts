@@ -36,7 +36,10 @@ const optionalDate = z
 
 export const createStudentSchema = z.object({
   admissionNo: z.string().trim().min(1, "Admission number is required."),
-  fullName: nullableText(),
+  fullName: z
+    .string()
+    .trim()
+    .min(3, "Student name must be at least 3 characters."),
   gender: z.enum(["MALE", "FEMALE", "OTHER"]),
   dob: z
     .string()
