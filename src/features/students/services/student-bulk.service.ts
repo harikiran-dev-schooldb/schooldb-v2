@@ -25,7 +25,7 @@ type EnrollmentPlan = {
 
 type ImportResult = {
   row: number;
-  status: "created" | "failed";
+  status: "created" | "skipped" | "failed";
   admissionNo: string;
   message?: string;
 };
@@ -86,9 +86,9 @@ export const studentBulkService = {
 
       results.push({
         row,
-        status: "failed",
+        status: "skipped",
         admissionNo: student.admissionNo,
-        message: "Admission number already exists.",
+        message: "Admission number already exists; row skipped.",
       });
       return false;
     });
@@ -249,14 +249,17 @@ export const studentBulkService = {
       const ordered = results.toSorted((a, b) => a.row - b.row);
       return {
         created: 0,
-        failed: ordered.length,
+        skipped: ordered.filter((item) => item.status === "skipped").length,
+        failed: ordered.filter((item) => item.status === "failed").length,
         enrolled: 0,
         loginProvisioned: 0,
         loginPending: 0,
-        errors: ordered.map((item) => ({
-          row: item.row,
-          message: `${item.admissionNo}: ${item.message}`,
-        })),
+        errors: ordered
+          .filter((item) => item.status === "failed")
+          .map((item) => ({
+            row: item.row,
+            message: `${item.admissionNo}: ${item.message}`,
+          })),
       };
     }
 
@@ -354,20 +357,22 @@ export const studentBulkService = {
       const wasCreated = createdAdmissionNos.has(student.admissionNo);
       results.push({
         row,
-        status: wasCreated ? "created" : "failed",
+        status: wasCreated ? "created" : "skipped",
         admissionNo: student.admissionNo,
         ...(wasCreated
           ? {}
-          : { message: "Admission number was created by another request." }),
+          : { message: "Admission number already exists; row skipped." }),
       });
     }
 
     const ordered = results.toSorted((a, b) => a.row - b.row);
     const created = ordered.filter((item) => item.status === "created").length;
-    const failed = ordered.length - created;
+    const skipped = ordered.filter((item) => item.status === "skipped").length;
+    const failed = ordered.filter((item) => item.status === "failed").length;
 
     return {
       created,
+      skipped,
       failed,
       enrolled: transactionResult.enrolled,
       loginProvisioned: loginResults.filter((result) => result.status === "PROVISIONED").length,

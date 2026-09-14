@@ -101,6 +101,8 @@ const REQUIRED_FIELDS: StudentHeader[] = [
   "status",
 ];
 
+const STUDENT_IMPORT_BATCH_SIZE = 25;
+
 function csvValue(value: string) {
   return /[",\n]/.test(value) ? `"${value.replaceAll('"', '""')}"` : value;
 }
@@ -291,7 +293,10 @@ export default function BulkStudentsPage() {
   const [result, setResult] = useState<{
     created: number;
     enrolled: number;
+    skipped: number;
     failed: number;
+    loginProvisioned: number;
+    loginPending: number;
     errors: RowError[];
   } | null>(null);
 
@@ -342,13 +347,17 @@ export default function BulkStudentsPage() {
         {
           created: number;
           enrolled: number;
+          skipped: number;
           failed: number;
+          loginProvisioned: number;
+          loginPending: number;
           errors: RowError[];
         }
       >({
         endpoint: "/api/v1/students/bulk",
         bodyKey: "students",
         rows,
+        batchSize: STUDENT_IMPORT_BATCH_SIZE,
         onProgress: setProgress,
         failureMessage: "Bulk student import failed.",
       });
@@ -410,7 +419,8 @@ export default function BulkStudentsPage() {
             <div>
               <CardTitle>Student import</CardTitle>
               <p className="mt-1 text-xs text-muted-foreground">
-                Upload the complete CSV; SchoolDB processes 500 rows per batch.
+                Upload the complete CSV; SchoolDB processes 25 rows per batch
+                so student and family login setup can finish reliably.
                 The template can create the student and enrollment together.
                 Academic year, class, and section must all be filled when a row
                 includes enrollment details; roll number is optional.
@@ -566,7 +576,13 @@ export default function BulkStudentsPage() {
                   <p className="text-sm font-bold">Import complete</p>
                   <p className="mt-1 text-xs text-muted-foreground">
                     {result.created} students created · {result.enrolled}{" "}
-                    enrolled · {result.failed} failed
+                    enrolled · {result.skipped} existing rows skipped · {result.failed} failed
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Login access ready for {result.loginProvisioned} students
+                    {result.loginPending > 0
+                      ? ` · ${result.loginPending} login setups pending`
+                      : ""}
                   </p>
                 </div>
               )}

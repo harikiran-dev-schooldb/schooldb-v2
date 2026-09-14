@@ -2,6 +2,8 @@ import { PrismaClient } from "@/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 
+import { normalizePostgresConnectionString } from "./postgres-connection-string";
+
 function positiveInteger(value: string | undefined, fallback: number) {
   const parsed = Number(value);
   return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
@@ -15,7 +17,7 @@ const globalForPrisma = globalThis as {
 const postgresPool =
   globalForPrisma.postgresPool ??
   new Pool({
-    connectionString: process.env.DATABASE_URL,
+    connectionString: normalizePostgresConnectionString(process.env.DATABASE_URL),
     max: positiveInteger(
       process.env.DATABASE_POOL_MAX,
       process.env.VERCEL ? 5 : 10,

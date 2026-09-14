@@ -5,6 +5,7 @@ import { clerkClient } from "@clerk/nextjs/server";
 import type { Role } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 
+import { clerkErrorDetails, clerkErrorMessage } from "./clerk-error";
 import { normalizeIndianMobile } from "./otp";
 
 type ManagedRole = "STUDENT" | "PARENT" | "TEACHER";
@@ -43,12 +44,6 @@ function internalEmail(externalId: string) {
   return `account_${identityHash(externalId)}@schooldb.example.com`;
 }
 
-function clerkErrorMessage(error: unknown) {
-  if (!error || typeof error !== "object" || !("errors" in error)) return null;
-  const errors = (error as { errors?: Array<{ longMessage?: string; message?: string }> }).errors;
-  return errors?.[0]?.longMessage || errors?.[0]?.message || null;
-}
-
 async function ensureManagedAccount(input: ManagedAccountInput) {
   const client = await clerkClient();
   const name = splitName(input.displayName);
@@ -68,7 +63,9 @@ async function ensureManagedAccount(input: ManagedAccountInput) {
     clerkUser = await client.users.createUser({
       externalId: input.externalId,
       emailAddress: [internalEmail(input.externalId)],
+      emailAddressIdentificationStatus: ["reserved"],
       password: `${randomBytes(24).toString("base64url")}Aa1!`,
+      skipLegalChecks: true,
       firstName: name.firstName,
       lastName: name.lastName ?? undefined,
       publicMetadata: {
@@ -342,7 +339,11 @@ export async function safelyProvisionStudentLogin(studentId: string, schoolId: s
   try {
     return await provisionStudentLogin(studentId, schoolId);
   } catch (error) {
-    console.error("STUDENT LOGIN PROVISIONING ERROR", { studentId, schoolId, error });
+    console.error("STUDENT LOGIN PROVISIONING ERROR", {
+      studentId,
+      schoolId,
+      ...clerkErrorDetails(error),
+    });
     return { status: "FAILED", accounts: [], message: "Student was saved, but login setup needs to be retried." } satisfies LoginProvisionResult;
   }
 }
@@ -351,7 +352,11 @@ export async function safelyProvisionTeacherLogin(teacherId: string, schoolId: s
   try {
     return await provisionTeacherLogin(teacherId, schoolId);
   } catch (error) {
-    console.error("TEACHER LOGIN PROVISIONING ERROR", { teacherId, schoolId, error });
+    console.error("TEACHER LOGIN PROVISIONING ERROR", {
+      teacherId,
+      schoolId,
+      ...clerkErrorDetails(error),
+    });
     return { status: "FAILED", accounts: [], message: "Teacher was saved, but login setup needs to be retried." } satisfies LoginProvisionResult;
   }
 }
