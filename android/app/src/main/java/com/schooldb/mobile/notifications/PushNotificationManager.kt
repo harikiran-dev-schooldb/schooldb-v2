@@ -8,6 +8,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
@@ -29,6 +30,7 @@ object PushNotificationManager {
     private const val PREFERENCES = "schooldb_push"
     private const val PERMISSION_ASKED = "permission_asked"
     private const val INSTALLATION_ID = "installation_id"
+    private const val TAG = "SchoolDbPush"
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var appContext: Context? = null
 
@@ -61,7 +63,16 @@ object PushNotificationManager {
 
     fun registerCurrentDevice() {
         if (!isConfigured()) return
+        val savedInstallationId = appContext
+            ?.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
+            ?.getString(INSTALLATION_ID, null)
+        if (!savedInstallationId.isNullOrBlank()) {
+            registerInstallation(savedInstallationId)
+        }
         FirebaseMessaging.getInstance().register()
+            .addOnFailureListener { error ->
+                Log.e(TAG, "Firebase device registration failed", error)
+            }
     }
 
     fun registerInstallation(installationId: String) {
@@ -78,6 +89,10 @@ object PushNotificationManager {
                         .put("installationId", installationId)
                         .put("appVersion", BuildConfig.VERSION_NAME),
                 )
+            }.onSuccess {
+                Log.i(TAG, "SchoolDB device registration succeeded")
+            }.onFailure { error ->
+                Log.e(TAG, "SchoolDB device registration failed", error)
             }
         }
     }

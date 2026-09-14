@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { apiHandler } from "@/lib/api";
-import { requireTenant } from "@/lib/auth";
+import { requireMembership } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ApiResponse } from "@/lib/response";
 import { validateBody } from "@/lib/validation";
@@ -13,7 +13,7 @@ const deviceSchema = z.object({
 
 export async function POST(request: Request) {
   return apiHandler(async () => {
-    const membership = await requireTenant();
+    const membership = await requireMembership();
     const input = await validateBody(request, deviceSchema);
     const device = await prisma.pushDevice.upsert({
       where: { installationId: input.installationId },
@@ -38,7 +38,7 @@ export async function POST(request: Request) {
 
 export async function DELETE(request: Request) {
   return apiHandler(async () => {
-    const membership = await requireTenant();
+    const membership = await requireMembership();
     const input = await validateBody(request, deviceSchema.pick({ installationId: true }));
     await prisma.pushDevice.updateMany({
       where: { installationId: input.installationId, userId: membership.userId },

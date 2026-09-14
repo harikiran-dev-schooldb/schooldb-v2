@@ -129,6 +129,14 @@ export async function sendAnnouncementPush(announcement: PushAnnouncement) {
         data: { enabled: false },
       });
     }
+    console.info("Announcement push delivery completed", {
+      announcementId: announcement.id,
+      audienceUsers: userIds.length,
+      eligibleDevices: devices.length,
+      sent,
+      failed,
+      invalidDevices: invalidDeviceIds.length,
+    });
     return { sent, failed, skipped: false };
   } catch (error) {
     console.error("Unable to deliver announcement push notifications", error);
