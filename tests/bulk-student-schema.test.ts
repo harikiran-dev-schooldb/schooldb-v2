@@ -18,11 +18,28 @@ test("accepts a valid bulk student row", () => {
 });
 
 test("rejects impossible dates before starting a bulk insert", () => {
-  for (const dob of ["2011-02-30", "2011-13-01", "03/10/2011"]) {
+  for (const dob of ["2011-02-30", "2011-13-01", "30-02-2011"]) {
     assert.equal(
       bulkStudentRowSchema.safeParse({ ...validStudent, dob }).success,
       false,
     );
+  }
+});
+
+test("normalizes common DOB formats used in bulk files", () => {
+  const expected = "2011-10-03";
+
+  for (const dob of [
+    "2011-10-03",
+    "03-10-2011",
+    "03-10-11",
+    "03/10/2011",
+    "03/10/11",
+    "3/10/2011",
+  ]) {
+    const result = bulkStudentRowSchema.safeParse({ ...validStudent, dob });
+    assert.equal(result.success, true, dob);
+    if (result.success) assert.equal(result.data.dob, expected, dob);
   }
 });
 

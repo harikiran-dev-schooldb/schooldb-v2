@@ -21,7 +21,10 @@ import {
   postImportInBatches,
   type ImportProgress,
 } from "@/lib/batched-import";
-import { bulkStudentRowSchema } from "@/features/students/schemas/bulk-student.schema";
+import {
+  bulkStudentRowSchema,
+  normalizeBulkStudentDate,
+} from "@/features/students/schemas/bulk-student.schema";
 
 const HEADERS = [
   "admissionNo",
@@ -176,33 +179,6 @@ function parseCsvLine(line: string) {
   return values;
 }
 
-function normalizeDob(value: string) {
-  const trimmed = value.trim();
-
-  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
-    return trimmed;
-  }
-
-  const shortDate = /^(\d{2})\/(\d{2})\/(\d{2})$/.exec(trimmed);
-
-  if (shortDate) {
-    const [, day, month, year] = shortDate;
-    const fullYear = Number(year) >= 50 ? `19${year}` : `20${year}`;
-    const date = new Date(`${fullYear}-${month}-${day}T00:00:00`);
-
-    if (
-      !Number.isNaN(date.getTime()) &&
-      date.getFullYear() === Number(fullYear) &&
-      date.getMonth() + 1 === Number(month) &&
-      date.getDate() === Number(day)
-    ) {
-      return `${fullYear}-${month}-${day}`;
-    }
-  }
-
-  return null;
-}
-
 function parseCsv(text: string) {
   const lines = text
     .replace(/^\uFEFF/, "")
@@ -246,12 +222,13 @@ function parseCsv(text: string) {
       return;
     }
 
-    const normalizedDob = normalizeDob(row.dob);
+    const normalizedDob = normalizeBulkStudentDate(row.dob);
 
     if (!normalizedDob) {
       errors.push({
         row: index + 2,
-        message: "DOB must use YYYY-MM-DD or DD/MM/YY format.",
+        message:
+          "DOB must use YYYY-MM-DD, DD-MM-YYYY, or DD/MM/YYYY; 2-digit years are also accepted.",
       });
       return;
     }
@@ -259,12 +236,13 @@ function parseCsv(text: string) {
     row.dob = normalizedDob;
 
     if (row.joinedDate) {
-      const normalizedJoinedDate = normalizeDob(row.joinedDate);
+      const normalizedJoinedDate = normalizeBulkStudentDate(row.joinedDate);
 
       if (!normalizedJoinedDate) {
         errors.push({
           row: index + 2,
-          message: "Joined date must use YYYY-MM-DD or DD/MM/YY format.",
+          message:
+            "Joined date must use YYYY-MM-DD, DD-MM-YYYY, or DD/MM/YYYY; 2-digit years are also accepted.",
         });
         return;
       }

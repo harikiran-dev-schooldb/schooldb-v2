@@ -1,17 +1,55 @@
 import { z } from "zod";
 
-const isoDate = z
-  .string()
-  .regex(/^\d{4}-\d{2}-\d{2}$/, "Date must use YYYY-MM-DD.")
-  .refine((value) => {
-    const [year, month, day] = value.split("-").map(Number);
-    const date = new Date(Date.UTC(year, month - 1, day));
-    return (
-      date.getUTCFullYear() === year &&
-      date.getUTCMonth() === month - 1 &&
-      date.getUTCDate() === day
-    );
-  }, "Enter a valid date.");
+function validDate(year: number, month: number, day: number) {
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return (
+    date.getUTCFullYear() === year &&
+    date.getUTCMonth() === month - 1 &&
+    date.getUTCDate() === day
+  );
+}
+
+export function normalizeBulkStudentDate(value: string) {
+  const trimmed = value.trim();
+  const iso = /^(\d{4})-(\d{2})-(\d{2})$/.exec(trimmed);
+
+  if (iso) {
+    const [, year, month, day] = iso;
+    return validDate(Number(year), Number(month), Number(day))
+      ? `${year}-${month}-${day}`
+      : null;
+  }
+
+  const dayFirst = /^(\d{1,2})[/-](\d{1,2})[/-](\d{2}|\d{4})$/.exec(
+    trimmed,
+  );
+  if (!dayFirst) return null;
+
+  const [, rawDay, rawMonth, rawYear] = dayFirst;
+  const year =
+    rawYear.length === 2
+      ? Number(rawYear) >= 50
+        ? 1900 + Number(rawYear)
+        : 2000 + Number(rawYear)
+      : Number(rawYear);
+  const month = Number(rawMonth);
+  const day = Number(rawDay);
+
+  if (!validDate(year, month, day)) return null;
+
+  return `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
+const flexibleDate = z.string().trim().transform((value, context) => {
+  const normalized = normalizeBulkStudentDate(value);
+  if (normalized) return normalized;
+
+  context.addIssue({
+    code: "custom",
+    message: "Use YYYY-MM-DD, DD-MM-YYYY, or DD/MM/YYYY; 2-digit years are also accepted.",
+  });
+  return z.NEVER;
+});
 
 const optionalText = (max = 255) =>
   z
@@ -34,11 +72,17 @@ const optionalEmail = z
 const optionalDate = z
   .string()
   .trim()
-  .refine(
-    (value) => value === "" || isoDate.safeParse(value).success,
-    "Date must use YYYY-MM-DD.",
-  )
-  .transform((value) => value || null)
+  .transform((value, context) => {
+    if (value === "") return null;
+    const normalized = normalizeBulkStudentDate(value);
+    if (normalized) return normalized;
+
+    context.addIssue({
+      code: "custom",
+      message: "Use YYYY-MM-DD, DD-MM-YYYY, or DD/MM/YYYY; 2-digit years are also accepted.",
+    });
+    return z.NEVER;
+  })
   .default(null);
 
 const optionalIncome = z
@@ -94,7 +138,7 @@ export const bulkStudentRowSchema = z
       .trim()
       .transform((value) => value.toUpperCase())
       .pipe(z.enum(["MALE", "FEMALE", "OTHER"])),
-    dob: isoDate,
+    dob: flexibleDate,
     status: z
       .string()
       .trim()
