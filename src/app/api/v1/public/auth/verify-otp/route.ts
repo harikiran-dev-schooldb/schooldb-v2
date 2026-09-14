@@ -82,22 +82,22 @@ async function createSessionToken(account: ActiveAccount, schoolSlug: string) {
       schoolSlug,
     });
   } catch (error) {
-    console.log("Clerk lookup", {
+    const status =
+      error && typeof error === "object" && "status" in error
+        ? error.status
+        : undefined;
+
+    console.error("Clerk getUser failed", {
       clerkUserId: account.clerkUserId,
       schoolSlug,
+      status,
+      message: error instanceof Error ? error.message : String(error),
     });
-    // A database row can outlive its Clerk identity (for example, after a
-    // user is deleted or when production is pointed at a different Clerk
-    // instance). Treat that account as unavailable instead of returning a
-    // misleading generic verification failure.
-    if (
-      error &&
-      typeof error === "object" &&
-      "status" in error &&
-      error.status === 404
-    ) {
+
+    if (status === 404) {
       return null;
     }
+
     throw error;
   }
   await client.users.updateUserMetadata(account.clerkUserId, {
