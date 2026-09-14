@@ -18,10 +18,15 @@ if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(FileInputStream(keystorePropertiesFile))
 }
 
-val clerkPublishableKey = providers.gradleProperty("CLERK_PUBLISHABLE_KEY")
+val clerkDevelopmentPublishableKey = providers.gradleProperty("CLERK_PUBLISHABLE_KEY")
     .orElse(providers.environmentVariable("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY"))
     .orElse("")
     .get()
+
+val clerkProductionPublishableKey = keystoreProperties
+    .getProperty("clerkProductionPublishableKey")
+    ?: providers.environmentVariable("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY").orNull
+    ?: ""
 
 android {
     namespace = "com.schooldb.mobile"
@@ -31,15 +36,15 @@ android {
         applicationId = "com.schooldb.mobile"
         minSdk = 26
         targetSdk = 36
-        versionCode = 3
-        versionName = "0.2.0"
+        versionCode = 4
+        versionName = "0.2.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         buildConfigField(
             "String",
             "CLERK_PUBLISHABLE_KEY",
-            "\"$clerkPublishableKey\""
+            "\"$clerkDevelopmentPublishableKey\""
         )
         buildConfigField("boolean", "FIREBASE_CONFIGURED", firebaseConfigFile.exists().toString())
     }
@@ -67,6 +72,11 @@ android {
                 "String",
                 "API_BASE_URL",
                 "\"https://www.schooldb.co.in/\""
+            )
+            buildConfigField(
+                "String",
+                "CLERK_PUBLISHABLE_KEY",
+                "\"$clerkProductionPublishableKey\""
             )
 
             signingConfig = signingConfigs.getByName("release")
