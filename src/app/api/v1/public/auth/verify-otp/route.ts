@@ -77,7 +77,15 @@ async function createSessionToken(account: ActiveAccount, schoolSlug: string) {
   let clerkUser;
   try {
     clerkUser = await client.users.getUser(account.clerkUserId);
+    console.log("Clerk lookup", {
+      clerkUserId: account.clerkUserId,
+      schoolSlug,
+    });
   } catch (error) {
+    console.log("Clerk lookup", {
+      clerkUserId: account.clerkUserId,
+      schoolSlug,
+    });
     // A database row can outlive its Clerk identity (for example, after a
     // user is deleted or when production is pointed at a different Clerk
     // instance). Treat that account as unavailable instead of returning a
@@ -272,12 +280,7 @@ export async function POST(request: Request) {
           });
         return { ok: false as const, exhausted: true };
       }
-      if (
-        !otpMatches(
-          challenge.codeHash,
-          otpHash(school.id, phone, otp),
-        )
-      ) {
+      if (!otpMatches(challenge.codeHash, otpHash(school.id, phone, otp))) {
         const attempts = challenge.attempts + 1;
         if (attempts >= OTP_MAX_ATTEMPTS)
           await tx.otpChallenge.delete({ where: { id: challenge.id } });
