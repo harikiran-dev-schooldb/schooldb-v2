@@ -33,3 +33,22 @@ SCHOOLDB_API_BASE_URL=https://your-schooldb.example.com/
 Production builds reject cleartext HTTP traffic. Use an HTTPS URL for deployed environments.
 
 The app redeems the short-lived ticket returned by the SchoolDB OTP endpoint through Clerk's native Android SDK. The SDK then owns session persistence and refresh.
+
+## Push notifications
+
+Push notifications use Firebase Cloud Messaging installation IDs (FIDs). Add the Android app
+`com.schooldb.mobile` to the Firebase project and download its
+`google-services.json` file into `android/app/`. The file is ignored by Git.
+
+Configure these server environment variables from the same Firebase project's
+service account:
+
+```properties
+FIREBASE_PROJECT_ID=
+FIREBASE_CLIENT_EMAIL=
+FIREBASE_PRIVATE_KEY=-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n
+```
+
+Without `google-services.json`, Android builds normally but push registration is
+disabled. Without the three server variables, announcements are still published
+but push delivery is skipped.

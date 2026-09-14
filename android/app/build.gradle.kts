@@ -6,16 +6,17 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
+val firebaseConfigFile = file("google-services.json")
+if (firebaseConfigFile.exists()) {
+    apply(plugin = "com.google.gms.google-services")
+}
+
 val keystoreProperties = Properties()
 val keystorePropertiesFile = rootProject.file("keystore.properties")
 
 if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(FileInputStream(keystorePropertiesFile))
 }
-
-val configuredBaseUrl = providers.gradleProperty("SCHOOLDB_API_BASE_URL")
-    .orElse("http://10.0.2.2:3000/")
-    .get()
 
 val clerkPublishableKey = providers.gradleProperty("CLERK_PUBLISHABLE_KEY")
     .orElse(providers.environmentVariable("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY"))
@@ -30,22 +31,17 @@ android {
         applicationId = "com.schooldb.mobile"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
+        versionCode = 2
         versionName = "0.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         buildConfigField(
             "String",
-            "API_BASE_URL",
-            "\"${configuredBaseUrl.trimEnd('/')}/\""
-        )
-
-        buildConfigField(
-            "String",
             "CLERK_PUBLISHABLE_KEY",
             "\"$clerkPublishableKey\""
         )
+        buildConfigField("boolean", "FIREBASE_CONFIGURED", firebaseConfigFile.exists().toString())
     }
 
     signingConfigs {
@@ -58,7 +54,21 @@ android {
     }
 
     buildTypes {
+        getByName("debug") {
+            buildConfigField(
+                "String",
+                "API_BASE_URL",
+                "\"http://10.0.2.2:3000/\""
+            )
+        }
+
         getByName("release") {
+            buildConfigField(
+                "String",
+                "API_BASE_URL",
+                "\"https://www.schooldb.co.in/\""
+            )
+
             signingConfig = signingConfigs.getByName("release")
         }
     }
@@ -80,18 +90,22 @@ android {
 
 dependencies {
     val composeBom = platform("androidx.compose:compose-bom:2026.08.00")
+    val firebaseBom = platform("com.google.firebase:firebase-bom:34.19.0")
 
     implementation(composeBom)
+    implementation(firebaseBom)
     androidTestImplementation(composeBom)
 
     implementation("androidx.activity:activity-compose:1.12.4")
+    implementation("androidx.core:core-ktx:1.18.0")
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.10.0")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.10.0")
-    implementation("com.clerk:clerk-android-api:1.0.39")
+    implementation("com.clerk:clerk-android-api:1.1.3")
+    implementation("com.google.firebase:firebase-messaging")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")

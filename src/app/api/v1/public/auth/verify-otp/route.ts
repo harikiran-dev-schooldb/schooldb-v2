@@ -102,7 +102,7 @@ async function createSessionToken(account: ActiveAccount, schoolSlug: string) {
   return (
     await client.signInTokens.createSignInToken({
       userId: account.clerkUserId,
-      expiresInSeconds: 60,
+      expiresInSeconds: 300,
     })
   ).token;
 }
@@ -213,9 +213,10 @@ export async function POST(request: Request) {
           { status: 403 },
         );
       }
-      const token = await consumeChallenge(challenge.id, school.id, () =>
-        createSessionToken(account, parsed.data.schoolSlug),
-      );
+      // Keep a verified multi-account challenge usable until its short expiry.
+      // A Clerk ticket is single-use, so Android can request one fresh ticket if
+      // redemption is interrupted instead of forcing the user through OTP again.
+      const token = await createSessionToken(account, parsed.data.schoolSlug);
       return token
         ? Response.json({ success: true, token })
         : Response.json(

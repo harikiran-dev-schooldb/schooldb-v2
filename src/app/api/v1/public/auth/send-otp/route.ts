@@ -10,6 +10,7 @@ import {
   phoneHash,
   resolveOtpAccounts,
 } from "@/features/auth/otp";
+import { playReviewOtpFor } from "@/features/auth/play-review-login";
 import { prisma } from "@/lib/prisma";
 import { consumeRateLimit, requestIp } from "@/lib/rate-limit";
 
@@ -58,14 +59,15 @@ export async function POST(request: Request) {
     const phone = normalizeIndianMobile(parsed.data.phone);
     if (!phone) return Response.json({ error: "Enter a valid 10-digit Indian mobile number." }, { status: 400 });
 
-    const phoneNumberId = process.env.META_PHONE_NUMBER_ID;
-    const accessToken = process.env.META_WA_TOKEN;
-    if (!phoneNumberId || !accessToken) {
-      return Response.json({ error: "WhatsApp login is not configured yet." }, { status: 503 });
-    }
-
     const school = await prisma.school.findUnique({ where: { slug: parsed.data.schoolSlug }, select: { id: true } });
     if (!school) return Response.json({ error: "School not found." }, { status: 404 });
+
+    const reviewOtp = playReviewOtpFor(parsed.data.schoolSlug, phone);
+    const phoneNumberId = process.env.META_PHONE_NUMBER_ID;
+    const accessToken = process.env.META_WA_TOKEN;
+    if (!reviewOtp && (!phoneNumberId || !accessToken)) {
+      return Response.json({ error: "WhatsApp login is not configured yet." }, { status: 503 });
+    }
 
     const ip = requestIp(request);
     const [phoneRateLimit, ipRateLimit] = await Promise.all([
@@ -111,13 +113,17 @@ export async function POST(request: Request) {
       return Response.json({ error: "Please wait before requesting another code." }, { status: 429 });
     }
 
-    const code = generateOtp();
+    const code = reviewOtp ?? generateOtp();
     const codeHash = otpHash(school.id, phone, code);
     await prisma.otpChallenge.upsert({
       where: { schoolId_phoneHash: { schoolId: school.id, phoneHash: hashedPhone } },
       update: { userId: accounts[0].id, candidateUserIds: accounts.map((account) => account.id), codeHash, expiresAt: new Date(Date.now() + OTP_EXPIRY_MS), verifiedAt: null, attempts: 0, lastSentAt: new Date() },
       create: { schoolId: school.id, userId: accounts[0].id, candidateUserIds: accounts.map((account) => account.id), phoneHash: hashedPhone, codeHash, expiresAt: new Date(Date.now() + OTP_EXPIRY_MS) },
     });
+
+    // Google Play reviewers use the submitted fixed code for this isolated
+    // test tenant, so no WhatsApp message is sent for that single account.
+    if (reviewOtp) return Response.json(genericSuccess);
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), WHATSAPP_TIMEOUT_MS);

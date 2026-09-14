@@ -1,5 +1,10 @@
 package com.schooldb.mobile.ui
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -45,6 +50,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -59,6 +65,7 @@ import com.schooldb.mobile.auth.AuthViewModel
 import com.schooldb.mobile.auth.AccountSwitchScreen
 import com.schooldb.mobile.auth.SchoolAccount
 import com.schooldb.mobile.teacher.TeacherDashboardScreen
+import com.schooldb.mobile.notifications.PushNotificationManager
 
 @Composable
 fun SchoolDbApp(authViewModel: AuthViewModel = viewModel()) {
@@ -66,6 +73,29 @@ fun SchoolDbApp(authViewModel: AuthViewModel = viewModel()) {
     val snackbar = remember { SnackbarHostState() }
     var showAccountSwitcher by rememberSaveable { mutableStateOf(false) }
     var portalRefreshKey by rememberSaveable { mutableStateOf(0) }
+    val context = LocalContext.current
+    val notificationPermission = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        if (granted) PushNotificationManager.registerCurrentDevice()
+    }
+
+    LaunchedEffect(state.step, portalRefreshKey) {
+        if (state.step == AuthStep.SignedIn && PushNotificationManager.isConfigured()) {
+            if (PushNotificationManager.shouldRequestPermission(context)) {
+                PushNotificationManager.markPermissionRequested(context)
+                notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+            } else if (
+                Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+                androidx.core.content.ContextCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.POST_NOTIFICATIONS,
+                ) == PackageManager.PERMISSION_GRANTED
+            ) {
+                PushNotificationManager.registerCurrentDevice()
+            }
+        }
+    }
 
     LaunchedEffect(state.message) {
         state.message?.let {

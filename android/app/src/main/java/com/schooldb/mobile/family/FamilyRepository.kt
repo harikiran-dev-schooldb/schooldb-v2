@@ -2,6 +2,7 @@ package com.schooldb.mobile.family
 
 import com.schooldb.mobile.network.AuthenticatedApiClient
 import org.json.JSONArray
+import org.json.JSONObject
 
 class FamilyRepository(
     private val api: AuthenticatedApiClient = AuthenticatedApiClient(),
@@ -59,4 +60,237 @@ class FamilyRepository(
             students = students,
         )
     }
+
+    suspend fun details(studentId: String): FamilyStudentDetails {
+        val data = api.get("api/v1/mobile/family/student/$studentId/details")
+        val attendanceJson = data.optJSONObject("attendance")
+        val attendance = attendanceJson?.let {
+            val summary = it.getJSONObject("summary")
+            val recordsJson = it.optJSONArray("records") ?: JSONArray()
+            FamilyAttendanceDetails(
+                total = summary.optInt("total"),
+                present = summary.optInt("present"),
+                absent = summary.optInt("absent"),
+                late = summary.optInt("late"),
+                leave = summary.optInt("leave"),
+                percentage = summary.optDouble("attendancePercentage"),
+                records = buildList {
+                    repeat(recordsJson.length()) { index ->
+                        val item = recordsJson.getJSONObject(index)
+                        add(
+                            FamilyAttendanceRecord(
+                                id = item.getString("id"),
+                                date = item.optString("date"),
+                                sessionType = item.optString("sessionType", "DAILY"),
+                                subjectName = item.optString("subjectName").takeIf(String::isNotBlank),
+                                status = item.optString("status", "PRESENT"),
+                                remarks = item.optString("remarks").takeIf(String::isNotBlank),
+                            ),
+                        )
+                    }
+                },
+            )
+        }
+
+        val homeworkJson = data.optJSONArray("homework") ?: JSONArray()
+        val homework = buildList {
+            repeat(homeworkJson.length()) { index ->
+                val item = homeworkJson.getJSONObject(index)
+                add(
+                    FamilyHomeworkDetails(
+                        id = item.getString("id"),
+                        title = item.optString("title", "Homework"),
+                        description = item.optString("description").takeIf(String::isNotBlank),
+                        subjectName = item.optString("subjectName", "General"),
+                        assignedDate = item.optString("assignedDate"),
+                        dueDate = item.optString("dueDate").takeIf(String::isNotBlank),
+                    ),
+                )
+            }
+        }
+
+        val feesJson = data.getJSONObject("fees")
+        val feeSummary = feesJson.getJSONObject("summary")
+        val installmentsJson = feesJson.optJSONArray("installments") ?: JSONArray()
+        val paymentsJson = feesJson.optJSONArray("payments") ?: JSONArray()
+        val fees = FamilyFeeDetails(
+            payable = feeSummary.optDouble("payable"),
+            paid = feeSummary.optDouble("paid"),
+            outstanding = feeSummary.optDouble("outstanding"),
+            installments = buildList {
+                repeat(installmentsJson.length()) { index ->
+                    val item = installmentsJson.getJSONObject(index)
+                    add(
+                        FamilyFeeInstallment(
+                            id = item.getString("id"),
+                            planName = item.optString("planName"),
+                            categoryName = item.optString("categoryName"),
+                            name = item.optString("name", "Installment"),
+                            dueDate = item.optString("dueDate"),
+                            payableAmount = item.optDouble("payableAmount"),
+                            paidAmount = item.optDouble("paidAmount"),
+                            outstanding = item.optDouble("outstanding"),
+                            status = item.optString("status", "PENDING"),
+                        ),
+                    )
+                }
+            },
+            payments = buildList {
+                repeat(paymentsJson.length()) { index ->
+                    val item = paymentsJson.getJSONObject(index)
+                    add(
+                        FamilyFeePayment(
+                            id = item.getString("id"),
+                            receiptNo = item.optString("receiptNo").takeIf(String::isNotBlank),
+                            paymentDate = item.optString("paymentDate"),
+                            amount = item.optDouble("amount"),
+                            paymentMode = item.optString("paymentMode"),
+                        ),
+                    )
+                }
+            },
+        )
+
+        val resultsJson = data.optJSONArray("results") ?: JSONArray()
+        val results = buildList {
+            repeat(resultsJson.length()) { index ->
+                val item = resultsJson.getJSONObject(index)
+                add(
+                    FamilyResult(
+                        id = item.getString("id"),
+                        name = item.optString("name", "Exam"),
+                        startDate = item.optString("startDate"),
+                        endDate = item.optString("endDate"),
+                        obtained = item.optDouble("obtained"),
+                        maximum = item.optDouble("maximum"),
+                        percentage = item.optDouble("percentage"),
+                        status = item.optString("status", "PENDING"),
+                    ),
+                )
+            }
+        }
+
+        val timetableJson = data.optJSONArray("timetable") ?: JSONArray()
+        val timetable = buildList {
+            repeat(timetableJson.length()) { index ->
+                val item = timetableJson.getJSONObject(index)
+                add(
+                    FamilyTimetableEntry(
+                        id = item.getString("id"),
+                        day = item.optString("day"),
+                        periodName = item.optString("periodName", "Period"),
+                        displayOrder = item.optInt("displayOrder"),
+                        startTime = item.optString("startTime"),
+                        endTime = item.optString("endTime"),
+                        subjectName = item.optString("subjectName", "Subject"),
+                        teacherName = item.optString("teacherName", "Teacher"),
+                    ),
+                )
+            }
+        }
+
+        val leaveJson = data.optJSONArray("leaveRequests") ?: JSONArray()
+        val leaveRequests = buildList {
+            repeat(leaveJson.length()) { index ->
+                val item = leaveJson.getJSONObject(index)
+                add(
+                    FamilyLeaveRequest(
+                        id = item.getString("id"),
+                        startDate = item.optString("startDate"),
+                        endDate = item.optString("endDate"),
+                        reason = item.optString("reason"),
+                        status = item.optString("status", "PENDING"),
+                        decisionNote = item.optString("decisionNote").takeIf(String::isNotBlank),
+                        createdAt = item.optString("createdAt"),
+                    ),
+                )
+            }
+        }
+
+        val calendarJson = data.optJSONArray("calendarEvents") ?: JSONArray()
+        val calendarEvents = buildList {
+            repeat(calendarJson.length()) { index ->
+                val item = calendarJson.getJSONObject(index)
+                add(
+                    FamilyCalendarEvent(
+                        id = item.getString("id"),
+                        title = item.optString("title", "School event"),
+                        description = item.optString("description").takeIf(String::isNotBlank),
+                        category = item.optString("category", "EVENT"),
+                        startDate = item.optString("startDate"),
+                        endDate = item.optString("endDate"),
+                        targetLabel = item.optString("targetLabel", "School"),
+                    ),
+                )
+            }
+        }
+
+        val transport = data.optJSONObject("transport")?.let { item ->
+            val stopJson = item.getJSONObject("stop")
+            val vehicleJson = item.optJSONObject("vehicle")
+            val stopsJson = item.optJSONArray("stops") ?: JSONArray()
+            FamilyTransportAssignment(
+                pickupEnabled = item.optBoolean("pickupEnabled"),
+                dropEnabled = item.optBoolean("dropEnabled"),
+                startDate = item.optString("startDate"),
+                notes = item.optString("notes").takeIf(String::isNotBlank),
+                routeCode = item.optString("routeCode"),
+                routeName = item.optString("routeName", "School route"),
+                routePickupStart = item.optString("routePickupStart").takeIf(String::isNotBlank),
+                routeDropStart = item.optString("routeDropStart").takeIf(String::isNotBlank),
+                stop = transportStop(stopJson),
+                vehicle = vehicleJson?.let {
+                    FamilyTransportVehicle(
+                        registrationNo = it.optString("registrationNo"),
+                        name = it.optString("name").takeIf(String::isNotBlank),
+                        type = it.optString("type", "BUS"),
+                        driverName = it.optString("driverName"),
+                        driverPhone = it.optString("driverPhone"),
+                        attendantName = it.optString("attendantName").takeIf(String::isNotBlank),
+                        attendantPhone = it.optString("attendantPhone").takeIf(String::isNotBlank),
+                    )
+                },
+                stops = buildList {
+                    repeat(stopsJson.length()) { index -> add(transportStop(stopsJson.getJSONObject(index))) }
+                },
+            )
+        }
+
+        return FamilyStudentDetails(
+            attendance,
+            homework,
+            fees,
+            results,
+            timetable,
+            leaveRequests,
+            calendarEvents,
+            transport,
+        )
+    }
+
+    suspend fun submitLeave(studentId: String, startDate: String, endDate: String, reason: String) {
+        api.post(
+            "api/v1/mobile/family/student/$studentId/details",
+            JSONObject()
+                .put("startDate", startDate)
+                .put("endDate", endDate)
+                .put("reason", reason),
+        )
+    }
+
+    suspend fun cancelLeave(studentId: String, requestId: String) {
+        api.put(
+            "api/v1/mobile/family/student/$studentId/details",
+            JSONObject().put("requestId", requestId),
+        )
+    }
+
+    private fun transportStop(json: JSONObject) = FamilyTransportStop(
+        id = json.getString("id"),
+        name = json.optString("name", "Stop"),
+        sequence = if (json.has("sequence") && !json.isNull("sequence")) json.optInt("sequence") else null,
+        pickupTime = json.optString("pickupTime").takeIf(String::isNotBlank),
+        dropTime = json.optString("dropTime").takeIf(String::isNotBlank),
+        monthlyFee = if (json.has("monthlyFee") && !json.isNull("monthlyFee")) json.optDouble("monthlyFee") else null,
+    )
 }

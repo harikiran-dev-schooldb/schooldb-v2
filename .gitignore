@@ -3,6 +3,7 @@
 android/keystore.properties
 android/app/*.jks
 android/app/*.keystore
+android/app/google-services.json
 
 # dependencies
 /node_modules

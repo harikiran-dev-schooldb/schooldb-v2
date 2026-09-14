@@ -69,7 +69,7 @@ export async function POST(request: Request) {
     });
     const signInToken = await client.signInTokens.createSignInToken({
       userId: account.clerkUserId,
-      expiresInSeconds: 60,
+      expiresInSeconds: 300,
     });
 
     return ApiResponse.success({ current: false, token: signInToken.token });

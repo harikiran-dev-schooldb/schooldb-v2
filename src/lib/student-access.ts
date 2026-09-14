@@ -90,7 +90,7 @@ export const listAccessibleStudents = cache(async (schoolSlug?: string) => {
 });
 
 export const requireStudentAccess = cache(
-  async (schoolSlug: string, studentId: string) => {
+  async (schoolSlug: string | undefined, studentId: string) => {
     const context = await listAccessibleStudents(schoolSlug);
     if (!isStudentIdAccessible(context.students, studentId)) {
       throw new ApiError(403, "You do not have access to this student");

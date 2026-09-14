@@ -19,6 +19,8 @@ class AuthenticatedApiClient(
 
     suspend fun put(path: String, body: JSONObject): JSONObject = request("PUT", path, body)
 
+    suspend fun delete(path: String, body: JSONObject): JSONObject = request("DELETE", path, body)
+
     private suspend fun request(method: String, path: String, body: JSONObject? = null): JSONObject {
         val token = sessionToken()
         val connection = URL(baseUrl + path.trimStart('/')).openConnection() as HttpURLConnection

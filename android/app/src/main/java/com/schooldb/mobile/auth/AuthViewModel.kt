@@ -3,6 +3,7 @@ package com.schooldb.mobile.auth
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.clerk.api.Clerk
+import com.clerk.api.session.Session
 import com.schooldb.mobile.BuildConfig
 import java.io.IOException
 import kotlinx.coroutines.Dispatchers
@@ -23,8 +24,8 @@ class AuthViewModel(
     init {
         if (BuildConfig.CLERK_PUBLISHABLE_KEY.isNotBlank()) {
             viewModelScope.launch {
-                combine(Clerk.isInitialized, Clerk.userFlow) { initialized, user ->
-                    initialized to (user != null)
+                combine(Clerk.isInitialized, Clerk.sessionFlow) { initialized, session ->
+                    initialized to (session?.status == Session.SessionStatus.ACTIVE)
                 }.collect { (initialized, signedIn) ->
                     if (signedIn) {
                         _uiState.value = AuthUiState(AuthStep.SignedIn)
@@ -66,8 +67,20 @@ class AuthViewModel(
     fun selectAccount(accountId: String) {
         val current = _uiState.value.step as? AuthStep.ChooseAccount ?: return
         runRequest {
-            when (val result = repository.selectAccount(current.schoolSlug, current.challengeId, accountId)) {
-                is VerifyResult.SignedIn -> finishSignIn(result.token)
+            val firstResult = repository.selectAccount(current.schoolSlug, current.challengeId, accountId)
+            when (firstResult) {
+                is VerifyResult.SignedIn -> {
+                    try {
+                        finishSignIn(firstResult.token)
+                    } catch (_: AuthException) {
+                        // Clerk tickets are one-time credentials. If redemption is interrupted,
+                        // ask the verified challenge for one new Clerk-generated ticket and retry.
+                        when (val retry = repository.selectAccount(current.schoolSlug, current.challengeId, accountId)) {
+                            is VerifyResult.SignedIn -> finishSignIn(retry.token)
+                            is VerifyResult.ChooseAccount -> showMessage("Please choose an account.")
+                        }
+                    }
+                }
                 is VerifyResult.ChooseAccount -> showMessage("Please choose an account.")
             }
         }
