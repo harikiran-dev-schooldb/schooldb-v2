@@ -68,7 +68,11 @@ import com.schooldb.mobile.teacher.TeacherDashboardScreen
 import com.schooldb.mobile.notifications.PushNotificationManager
 
 @Composable
-fun SchoolDbApp(authViewModel: AuthViewModel = viewModel()) {
+fun SchoolDbApp(
+    openNotificationId: String? = null,
+    onNotificationOpened: () -> Unit = {},
+    authViewModel: AuthViewModel = viewModel(),
+) {
     val state by authViewModel.uiState.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
     var showAccountSwitcher by rememberSaveable { mutableStateOf(false) }
@@ -142,6 +146,8 @@ fun SchoolDbApp(authViewModel: AuthViewModel = viewModel()) {
                     TeacherDashboardScreen(
                         refreshKey = portalRefreshKey,
                         onSwitchAccount = { showAccountSwitcher = true },
+                        openNotificationId = openNotificationId,
+                        onNotificationOpened = onNotificationOpened,
                     )
                 }
             }

@@ -110,6 +110,8 @@ private enum class TeacherTab {
 fun TeacherDashboardScreen(
     refreshKey: Int = 0,
     onSwitchAccount: (() -> Unit)? = null,
+    openNotificationId: String? = null,
+    onNotificationOpened: () -> Unit = {},
     viewModel: TeacherViewModel = viewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -130,6 +132,8 @@ fun TeacherDashboardScreen(
         FamilyDashboardScreen(
             refreshKey = refreshKey,
             onSwitchAccount = onSwitchAccount ?: viewModel::signOut,
+            openNotificationId = openNotificationId,
+            onNotificationOpened = onNotificationOpened,
         )
         return
     }
@@ -155,6 +159,8 @@ fun TeacherDashboardScreen(
             snackbar = snackbar,
             teacherViewModel = viewModel,
             onSwitchAccount = onSwitchAccount ?: viewModel::signOut,
+            openNotificationId = openNotificationId,
+            onNotificationOpened = onNotificationOpened,
         )
     } else {
         TeacherHome(
@@ -174,6 +180,8 @@ private fun TeacherShell(
     snackbar: SnackbarHostState,
     teacherViewModel: TeacherViewModel,
     onSwitchAccount: () -> Unit,
+    openNotificationId: String?,
+    onNotificationOpened: () -> Unit,
     noticeViewModel: NoticeViewModel = viewModel(),
 ) {
     val dashboard = state.dashboard ?: return
@@ -193,6 +201,14 @@ private fun TeacherShell(
     }
 
     val noticeState by noticeViewModel.uiState.collectAsStateWithLifecycle()
+
+    LaunchedEffect(openNotificationId) {
+        if (!openNotificationId.isNullOrBlank()) {
+            tab = TeacherTab.NOTICES
+            noticeViewModel.refresh()
+            onNotificationOpened()
+        }
+    }
 
     Scaffold(
         containerColor = SchoolDbBackground,

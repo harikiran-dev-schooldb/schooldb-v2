@@ -34,8 +34,10 @@ class FamilyViewModel(
                     selectedStudentId = selectedId,
                     loading = false,
                     detailsLoading = selectedId != null,
+                    notificationsLoading = true,
                 )
                 if (selectedId != null) loadDetails(selectedId)
+                loadNotifications()
             } catch (error: Exception) {
                 val message = when (error) {
                     is ApiException -> error.message ?: "SchoolDB request failed."
@@ -64,6 +66,27 @@ class FamilyViewModel(
         val studentId = _uiState.value.selectedStudentId ?: return
         _uiState.value = _uiState.value.copy(detailsLoading = true, detailsError = null)
         viewModelScope.launch { loadDetails(studentId) }
+    }
+
+    fun refreshNotifications() {
+        _uiState.value = _uiState.value.copy(
+            notificationsLoading = true,
+            notificationsError = null,
+        )
+        viewModelScope.launch { loadNotifications() }
+    }
+
+    fun markNotificationRead(id: String) {
+        val item = _uiState.value.notifications.firstOrNull { it.id == id } ?: return
+        if (item.read) return
+        val updated = item.copy(read = true)
+        _uiState.value = _uiState.value.copy(
+            notifications = _uiState.value.notifications.map { if (it.id == id) updated else it },
+            unreadNotificationCount = (_uiState.value.unreadNotificationCount - 1).coerceAtLeast(0),
+        )
+        viewModelScope.launch {
+            runCatching { withContext(Dispatchers.IO) { repository.markNotificationRead(id) } }
+        }
     }
 
     fun submitLeave(startDate: String, endDate: String, reason: String) {
@@ -136,6 +159,25 @@ class FamilyViewModel(
                     detailsError = message,
                 )
             }
+        }
+    }
+
+    private suspend fun loadNotifications() {
+        try {
+            val (unreadCount, notifications) = withContext(Dispatchers.IO) {
+                repository.notifications()
+            }
+            _uiState.value = _uiState.value.copy(
+                notifications = notifications,
+                unreadNotificationCount = unreadCount,
+                notificationsLoading = false,
+                notificationsError = null,
+            )
+        } catch (error: Exception) {
+            _uiState.value = _uiState.value.copy(
+                notificationsLoading = false,
+                notificationsError = requestError(error, "Unable to load notifications."),
+            )
         }
     }
 

@@ -285,6 +285,36 @@ class FamilyRepository(
         )
     }
 
+    suspend fun notifications(): Pair<Int, List<FamilyNotification>> {
+        val data = api.get("api/v1/mobile/family/notifications")
+        val rows = data.optJSONArray("items") ?: JSONArray()
+        val items = buildList {
+            repeat(rows.length()) { index ->
+                val item = rows.getJSONObject(index)
+                add(
+                    FamilyNotification(
+                        id = item.getString("id"),
+                        title = item.optString("title", "School update"),
+                        body = item.optString("body"),
+                        category = item.optString("category", "GENERAL"),
+                        priority = item.optString("priority", "NORMAL"),
+                        targetLabel = item.optString("targetLabel", "School"),
+                        publishedAt = item.optString("publishedAt"),
+                        read = item.optBoolean("read"),
+                    ),
+                )
+            }
+        }
+        return data.optInt("unreadCount") to items
+    }
+
+    suspend fun markNotificationRead(id: String) {
+        api.post(
+            "api/v1/mobile/family/notifications",
+            JSONObject().put("id", id),
+        )
+    }
+
     private fun transportStop(json: JSONObject) = FamilyTransportStop(
         id = json.getString("id"),
         name = json.optString("name", "Stop"),

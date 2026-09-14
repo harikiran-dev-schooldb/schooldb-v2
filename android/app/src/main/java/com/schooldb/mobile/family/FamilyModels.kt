@@ -32,6 +32,17 @@ data class FamilyDashboard(
     val students: List<FamilyStudent>,
 )
 
+data class FamilyNotification(
+    val id: String,
+    val title: String,
+    val body: String,
+    val category: String,
+    val priority: String,
+    val targetLabel: String,
+    val publishedAt: String,
+    val read: Boolean,
+)
+
 data class FamilyAttendanceRecord(
     val id: String,
     val date: String,
@@ -184,4 +195,8 @@ data class FamilyUiState(
     val detailsError: String? = null,
     val leaveSaving: Boolean = false,
     val leaveMessage: String? = null,
+    val notifications: List<FamilyNotification> = emptyList(),
+    val unreadNotificationCount: Int = 0,
+    val notificationsLoading: Boolean = false,
+    val notificationsError: String? = null,
 )

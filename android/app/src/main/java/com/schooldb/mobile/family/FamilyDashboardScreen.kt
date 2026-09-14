@@ -3,6 +3,7 @@ package com.schooldb.mobile.family
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
@@ -22,6 +23,7 @@ import androidx.compose.material.icons.outlined.DirectionsBus
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.MoreHoriz
+import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Payments
 import androidx.compose.material.icons.outlined.Phone
 import androidx.compose.material.icons.outlined.Route
@@ -72,6 +74,8 @@ private enum class FamilyTab(val label: String, val icon: ImageVector) {
 fun FamilyDashboardScreen(
     onSwitchAccount: () -> Unit,
     refreshKey: Int = 0,
+    openNotificationId: String? = null,
+    onNotificationOpened: () -> Unit = {},
     viewModel: FamilyViewModel = viewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -81,6 +85,14 @@ fun FamilyDashboardScreen(
     var moreScreen by rememberSaveable { mutableStateOf("MENU") }
 
     LaunchedEffect(refreshKey) { if (refreshKey > 0) viewModel.refresh() }
+    LaunchedEffect(openNotificationId) {
+        if (!openNotificationId.isNullOrBlank()) {
+            tab = FamilyTab.MORE
+            moreScreen = "NOTIFICATIONS"
+            viewModel.refreshNotifications()
+            onNotificationOpened()
+        }
+    }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -97,6 +109,25 @@ fun FamilyDashboardScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = {
+                        tab = FamilyTab.MORE
+                        moreScreen = "NOTIFICATIONS"
+                    }) {
+                        BadgedBox(
+                            badge = {
+                                if (state.unreadNotificationCount > 0) {
+                                    Badge {
+                                        Text(
+                                            state.unreadNotificationCount.coerceAtMost(99).toString(),
+                                            fontSize = 9.sp,
+                                        )
+                                    }
+                                }
+                            },
+                        ) {
+                            Icon(Icons.Outlined.Notifications, contentDescription = "Notifications")
+                        }
+                    }
                     IconButton(onClick = onSwitchAccount) {
                         Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = "Switch account or role")
                     }
@@ -172,6 +203,14 @@ fun FamilyDashboardScreen(
                         onBack = { moreScreen = "MENU" },
                         modifier = Modifier.padding(padding),
                     )
+                } else if (moreScreen == "NOTIFICATIONS") {
+                    NotificationsTab(
+                        state = state,
+                        onOpen = viewModel::markNotificationRead,
+                        onRefresh = viewModel::refreshNotifications,
+                        onBack = { moreScreen = "MENU" },
+                        modifier = Modifier.padding(padding),
+                    )
                 } else {
                     MoreTab(
                         dashboard,
@@ -183,6 +222,7 @@ fun FamilyDashboardScreen(
                         onOpenLeave = { moreScreen = "LEAVE" },
                         onOpenCalendar = { moreScreen = "CALENDAR" },
                         onOpenTransport = { moreScreen = "TRANSPORT" },
+                        onOpenNotifications = { moreScreen = "NOTIFICATIONS" },
                         onSwitchAccount = onSwitchAccount,
                         modifier = Modifier.padding(padding),
                     )
@@ -299,9 +339,38 @@ private fun MoreTab(
     onOpenLeave: () -> Unit,
     onOpenCalendar: () -> Unit,
     onOpenTransport: () -> Unit,
+    onOpenNotifications: () -> Unit,
     onSwitchAccount: () -> Unit,
     modifier: Modifier,
 ) = DetailList(modifier, dashboard, student, "More", state, onSelect, onRefresh) { details ->
+    item {
+        Card(
+            onClick = onOpenNotifications,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 6.dp),
+            shape = RoundedCornerShape(18.dp),
+        ) {
+            Row(Modifier.fillMaxWidth().padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
+                BadgedBox(
+                    badge = {
+                        if (state.unreadNotificationCount > 0) {
+                            Badge { Text(state.unreadNotificationCount.coerceAtMost(99).toString()) }
+                        }
+                    },
+                ) {
+                    Icon(Icons.Outlined.Notifications, contentDescription = null, tint = FamilyIndigo)
+                }
+                Column(Modifier.padding(start = 14.dp).weight(1f)) {
+                    Text("Notifications", fontWeight = FontWeight.Bold)
+                    Text(
+                        if (state.unreadNotificationCount > 0) "${state.unreadNotificationCount} unread school updates"
+                        else "Announcements and school updates",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 12.sp,
+                    )
+                }
+            }
+        }
+    }
     item {
         Card(
             onClick = onOpenTimetable,
@@ -374,6 +443,125 @@ private fun MoreTab(
                     Text("Choose another profile without a new OTP", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun NotificationsTab(
+    state: FamilyUiState,
+    onOpen: (String) -> Unit,
+    onRefresh: () -> Unit,
+    onBack: () -> Unit,
+    modifier: Modifier,
+) {
+    LazyColumn(
+        modifier = modifier.fillMaxSize(),
+        contentPadding = PaddingValues(bottom = 28.dp),
+    ) {
+        item {
+            Row(
+                Modifier.fillMaxWidth().padding(start = 8.dp, end = 12.dp, top = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                TextButton(onClick = onBack) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
+                    Spacer(Modifier.width(6.dp))
+                    Text("Back to More")
+                }
+                Spacer(Modifier.weight(1f))
+                IconButton(onClick = onRefresh) {
+                    Icon(Icons.Default.Refresh, contentDescription = "Refresh notifications")
+                }
+            }
+        }
+        item {
+            Column(Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) {
+                Text("Notifications", fontWeight = FontWeight.Bold, fontSize = 24.sp)
+                Text(
+                    if (state.unreadNotificationCount > 0) "${state.unreadNotificationCount} unread school updates"
+                    else "You are all caught up",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = 13.sp,
+                )
+            }
+        }
+        when {
+            state.notificationsLoading && state.notifications.isEmpty() -> item { LoadingBlock() }
+            state.notificationsError != null && state.notifications.isEmpty() -> item {
+                InlineError(state.notificationsError, onRefresh)
+            }
+            state.notifications.isEmpty() -> item {
+                EmptyMessage("School announcements and updates will appear here.")
+            }
+            else -> items(state.notifications, key = { it.id }) { notification ->
+                NotificationCard(notification, onOpen)
+            }
+        }
+    }
+}
+
+@Composable
+private fun NotificationCard(
+    notification: FamilyNotification,
+    onOpen: (String) -> Unit,
+) {
+    val urgent = notification.priority == "URGENT"
+    Card(
+        onClick = { onOpen(notification.id) },
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 6.dp),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = when {
+                urgent && !notification.read -> FamilyRed.copy(alpha = .09f)
+                !notification.read -> FamilyIndigo.copy(alpha = .09f)
+                else -> MaterialTheme.colorScheme.surface
+            },
+        ),
+        border = if (!notification.read) BorderStroke(
+            1.dp,
+            if (urgent) FamilyRed.copy(alpha = .35f) else FamilyIndigo.copy(alpha = .3f),
+        ) else null,
+    ) {
+        Column(Modifier.padding(16.dp)) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                if (!notification.read) {
+                    Box(
+                        Modifier.size(9.dp).background(
+                            if (urgent) FamilyRed else FamilyIndigo,
+                            CircleShape,
+                        ),
+                    )
+                    Spacer(Modifier.width(9.dp))
+                }
+                Text(
+                    notification.title,
+                    Modifier.weight(1f),
+                    fontWeight = if (notification.read) FontWeight.SemiBold else FontWeight.Bold,
+                    fontSize = 16.sp,
+                )
+                if (urgent) {
+                    Badge(containerColor = FamilyRed) { Text("URGENT", color = Color.White) }
+                }
+            }
+            Text(
+                notification.body,
+                Modifier.padding(top = 9.dp),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontSize = 13.sp,
+                lineHeight = 19.sp,
+            )
+            Text(
+                listOf(
+                    notification.category.replace('_', ' ').lowercase().replaceFirstChar(Char::uppercase),
+                    notification.targetLabel,
+                    date(notification.publishedAt),
+                ).filter(String::isNotBlank).joinToString(" · "),
+                Modifier.padding(top = 12.dp),
+                color = if (notification.read) MaterialTheme.colorScheme.onSurfaceVariant else FamilyIndigo,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.SemiBold,
+            )
         }
     }
 }
