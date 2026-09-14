@@ -85,7 +85,6 @@ async function main() {
   let failed = 0;
 
   let studentAccounts = 0;
-  let parentAccounts = 0;
 
   const failures: Array<{
     admissionNo: string;
@@ -147,7 +146,6 @@ async function main() {
   console.log(`Failed: ${failed}`);
   console.log("");
   console.log(`Student account assignments: ${studentAccounts}`);
-  console.log(`Parent account assignments: ${parentAccounts}`);
 
   if (failures.length > 0) {
     console.log("");
