@@ -1627,6 +1627,10 @@ enum WeekDay {
 enum SubjectType {
   SCHOLASTIC
   CO_SCHOLASTIC
+  CO_CURRICULAR
+  CORE
+  ACTIVITY
+  LANGUAGE
 }
 
 enum StudentStatus {
