@@ -389,10 +389,19 @@ export default function BulkFeesPage() {
         endpoint: "/api/v1/fee-payments/bulk",
         bodyKey: "payments",
         rows,
+
+        // Fee payments are heavier than normal bulk imports.
+        // Keep each API request to 100 payments.
         batchSize: 100,
+
         failureMessage: "Bulk fee payment import failed.",
       });
+
       setResult(data);
+
+      if (data.errors.length > 0) {
+        setErrors(data.errors);
+      }
     } catch (error) {
       setFileError(
         error instanceof Error
