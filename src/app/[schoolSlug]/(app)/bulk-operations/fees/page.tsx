@@ -380,11 +380,16 @@ export default function BulkFeesPage() {
     try {
       const data = await postImportInBatches<
         (typeof rows)[number],
-        { created: number; failed: number; errors: RowError[] }
+        {
+          created: number;
+          failed: number;
+          errors: RowError[];
+        }
       >({
         endpoint: "/api/v1/fee-payments/bulk",
         bodyKey: "payments",
         rows,
+        batchSize: 100,
         failureMessage: "Bulk fee payment import failed.",
       });
       setResult(data);
