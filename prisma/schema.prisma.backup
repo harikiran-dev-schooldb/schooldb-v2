@@ -68,7 +68,6 @@ model School {
   attendance            Attendance[]
   attendanceSessions    AttendanceSession[]
   auditLogs             AuditLog[]
-  cashfreePaymentOrders CashfreePaymentOrder[]
   certificateIssues     CertificateIssue[]
   classes               Class[]
   classSubjects         ClassSubject[]
@@ -77,6 +76,7 @@ model School {
   expenses              Expense[]
   feeCategories         FeeCategory[]
   feePayments           FeePayment[]
+  cashfreePaymentOrders CashfreePaymentOrder[]
   feePlans              FeePlan[]
   homeworks             Homework[]
   leaveRequests         LeaveRequest[]
@@ -668,8 +668,8 @@ model StudentEnrollment {
   createdAt             DateTime                     @default(now())
   updatedAt             DateTime                     @updatedAt
   promotedFromId        String?
-  cashfreePaymentOrders CashfreePaymentOrder[]
   feePayments           FeePayment[]
+  cashfreePaymentOrders CashfreePaymentOrder[]
   leaveRequests         LeaveRequest[]
   libraryLoans          LibraryLoan[]
   activities            StudentActivity[]
@@ -1263,8 +1263,8 @@ model StudentFeeInstallment {
   periodEnd           DateTime?                   @db.Date
   createdAt           DateTime                    @default(now())
   updatedAt           DateTime                    @updatedAt
-  cashfreeAllocations CashfreePaymentAllocation[]
   paymentAllocations  FeePaymentAllocation[]
+  cashfreeAllocations CashfreePaymentAllocation[]
   feeInstallment      FeeInstallment?             @relation(fields: [feeInstallmentId], references: [id])
   studentFeeItem      StudentFeeItem              @relation(fields: [studentFeeItemId], references: [id], onDelete: Cascade)
 
@@ -1290,10 +1290,10 @@ model FeePayment {
   voidReason          String?
   voidedAt            DateTime?
   voidedBy            String?
-  cashfreeOrder       CashfreePaymentOrder?
   school              School                 @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   studentEnrollment   StudentEnrollment      @relation(fields: [studentEnrollmentId], references: [id])
   allocations         FeePaymentAllocation[]
+  cashfreeOrder       CashfreePaymentOrder?
 
   @@unique([schoolId, receiptNo])
   @@index([schoolId, studentEnrollmentId])
@@ -1322,8 +1322,10 @@ model CashfreePaymentOrder {
   providerOrderId     String                      @unique
   providerPaymentId   String?                     @unique
   idempotencyKey      String                      @unique
+  publicTokenHash     String?                     @unique
   amount              Decimal                     @db.Decimal(12, 2)
   status              CashfreePaymentOrderStatus  @default(CREATED)
+  initiatedBy         CashfreePaymentInitiator    @default(SELF_SERVICE)
   paymentSessionId    String?
   requestedByUserId   String
   feePaymentId        String?                     @unique
@@ -1331,12 +1333,10 @@ model CashfreePaymentOrder {
   paidAt              DateTime?
   createdAt           DateTime                    @default(now())
   updatedAt           DateTime                    @updatedAt
-  publicTokenHash     String?                     @unique
-  initiatedBy         CashfreePaymentInitiator    @default(SELF_SERVICE)
-  allocations         CashfreePaymentAllocation[]
-  feePayment          FeePayment?                 @relation(fields: [feePaymentId], references: [id])
   school              School                      @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   studentEnrollment   StudentEnrollment           @relation(fields: [studentEnrollmentId], references: [id])
+  feePayment          FeePayment?                 @relation(fields: [feePaymentId], references: [id])
+  allocations         CashfreePaymentAllocation[]
 
   @@index([schoolId, status, createdAt(sort: Desc)])
   @@index([studentEnrollmentId, status, createdAt(sort: Desc)])
@@ -1627,10 +1627,6 @@ enum WeekDay {
 enum SubjectType {
   SCHOLASTIC
   CO_SCHOLASTIC
-  CO_CURRICULAR
-  CORE
-  ACTIVITY
-  LANGUAGE
 }
 
 enum StudentStatus {
