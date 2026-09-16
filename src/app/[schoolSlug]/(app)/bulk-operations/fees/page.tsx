@@ -28,6 +28,7 @@ type PaymentMode =
 
 type PaymentRow = {
   admissionNo: string;
+  installmentName: string;
   paymentDate: string;
   amount: number;
   paymentMode: PaymentMode;
@@ -42,6 +43,7 @@ type RowError = {
 
 const HEADERS = [
   "admissionNo",
+  "installmentName",
   "paymentDate",
   "amount",
   "paymentMode",
@@ -49,7 +51,7 @@ const HEADERS = [
   "remarks",
 ] as const;
 
-const PAYMENT_MODES = new Set([
+const PAYMENT_MODES = new Set<PaymentMode>([
   "CASH",
   "UPI",
   "CARD",
@@ -60,8 +62,9 @@ const PAYMENT_MODES = new Set([
 
 const TEMPLATE = [
   HEADERS.join(","),
-  "1001,2026-08-25,2500,UPI,UPI12345,August fee",
-  "1002,2026-08-25,3000,CASH,,Monthly fee",
+  "14570,Term 1,2026-06-10,12300,CASH,,Term 1 fee",
+  "14570,Term 2,2026-09-10,12300,CASH,,Term 2 fee",
+  "14933,Term 1,2026-06-12,12300,UPI,UTR123456,Term 1 fee",
 ].join("\r\n");
 
 /**
@@ -124,17 +127,8 @@ function parsePaymentDate(value: string): string | null {
   let month: number;
   let day: number;
 
-  /*
-   * YYYY-MM-DD
-   */
   const isoMatch = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(input);
 
-  /*
-   * DD/MM/YYYY
-   * DD-MM-YYYY
-   * DD/MM/YY
-   * DD-MM-YY
-   */
   const dmyMatch = /^(\d{1,2})[/-](\d{1,2})[/-](\d{2}|\d{4})$/.exec(input);
 
   if (isoMatch) {
@@ -153,9 +147,6 @@ function parsePaymentDate(value: string): string | null {
     return null;
   }
 
-  /*
-   * Validate actual calendar date.
-   */
   const date = new Date(Date.UTC(year, month - 1, day));
 
   if (
@@ -166,9 +157,6 @@ function parsePaymentDate(value: string): string | null {
     return null;
   }
 
-  /*
-   * Always return ISO date.
-   */
   return [
     year.toString().padStart(4, "0"),
     month.toString().padStart(2, "0"),
@@ -200,74 +188,63 @@ function parseCsv(text: string) {
 
   lines.slice(1).forEach((line, index) => {
     const values = parseLine(line);
-
     const rowNumber = index + 2;
 
     const admissionNo = cleanValue(values[0] ?? "");
-
-    const rawPaymentDate = cleanValue(values[1] ?? "");
-
+    const installmentName = cleanValue(values[1] ?? "");
+    const rawPaymentDate = cleanValue(values[2] ?? "");
     const paymentDate = parsePaymentDate(rawPaymentDate);
+    const amount = Number(cleanValue(values[3] ?? ""));
+    const paymentMode = cleanValue(values[4] ?? "").toUpperCase();
+    const referenceNo = cleanValue(values[5] ?? "");
+    const remarks = cleanValue(values[6] ?? "");
 
-    const amount = Number(cleanValue(values[2] ?? ""));
-
-    const paymentMode = cleanValue(values[3] ?? "").toUpperCase();
-
-    const referenceNo = cleanValue(values[4] ?? "");
-
-    const remarks = cleanValue(values[5] ?? "");
-
-    /*
-     * Admission number
-     */
     if (!admissionNo) {
       errors.push({
         row: rowNumber,
         message: "Admission number is required.",
       });
-
       return;
     }
 
-    /*
-     * Payment date
-     */
+    if (!installmentName) {
+      errors.push({
+        row: rowNumber,
+        message:
+          'Installment name is required, for example "Term 1" or "Term 2".',
+      });
+      return;
+    }
+
     if (!paymentDate) {
       errors.push({
         row: rowNumber,
-        message: "Payment date must use YYYY-MM-DD format.",
+        message:
+          "Payment date must use YYYY-MM-DD, DD/MM/YYYY, or DD-MM-YYYY format.",
       });
-
       return;
     }
 
-    /*
-     * Amount
-     */
     if (!Number.isFinite(amount) || amount <= 0) {
       errors.push({
         row: rowNumber,
         message: "Amount must be greater than zero.",
       });
-
       return;
     }
 
-    /*
-     * Payment mode
-     */
-    if (!PAYMENT_MODES.has(paymentMode)) {
+    if (!PAYMENT_MODES.has(paymentMode as PaymentMode)) {
       errors.push({
         row: rowNumber,
         message:
           "Payment mode must be CASH, UPI, CARD, BANK_TRANSFER, CHEQUE, or ONLINE.",
       });
-
       return;
     }
 
     rows.push({
       admissionNo,
+      installmentName,
       paymentDate,
       amount: Math.round(amount * 100) / 100,
       paymentMode: paymentMode as PaymentMode,
@@ -292,16 +269,13 @@ function downloadTemplate() {
   });
 
   const url = URL.createObjectURL(blob);
-
   const anchor = document.createElement("a");
 
   anchor.href = url;
   anchor.download = "schooldb-fee-payments-template.csv";
 
   document.body.appendChild(anchor);
-
   anchor.click();
-
   anchor.remove();
 
   URL.revokeObjectURL(url);
@@ -313,15 +287,10 @@ export default function BulkFeesPage() {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const [fileName, setFileName] = useState("");
-
   const [rows, setRows] = useState<PaymentRow[]>([]);
-
   const [errors, setErrors] = useState<RowError[]>([]);
-
   const [totalRows, setTotalRows] = useState(0);
-
   const [fileError, setFileError] = useState<string | null>(null);
-
   const [importing, setImporting] = useState(false);
 
   const [result, setResult] = useState<{
@@ -347,19 +316,15 @@ export default function BulkFeesPage() {
       setFileError(
         "Upload a CSV file using the SchoolDB fee payment template.",
       );
-
       return;
     }
 
     try {
       const text = await file.text();
-
       const parsed = parseCsv(text);
 
       setTotalRows(parsed.totalRows);
-
       setRows(parsed.rows);
-
       setErrors(parsed.errors);
     } catch (error) {
       setFileError(
@@ -379,7 +344,7 @@ export default function BulkFeesPage() {
 
     try {
       const data = await postImportInBatches<
-        (typeof rows)[number],
+        PaymentRow,
         {
           created: number;
           failed: number;
@@ -390,8 +355,7 @@ export default function BulkFeesPage() {
         bodyKey: "payments",
         rows,
 
-        // Fee payments are heavier than normal bulk imports.
-        // Keep each API request to 100 payments.
+        // Fee payment writes are transaction-heavy.
         batchSize: 100,
 
         failureMessage: "Bulk fee payment import failed.",
@@ -431,7 +395,7 @@ export default function BulkFeesPage() {
       <PageHeader
         eyebrow="Bulk Operations"
         title="Bulk Fee Payments"
-        description="Import fee collections from a CSV and automatically allocate each payment to the student's oldest outstanding installments."
+        description="Import fee collections from CSV and allocate each payment directly to the specified fee installment or term."
         action={
           <Button variant="outline" onClick={downloadTemplate}>
             <Download className="size-4" />
@@ -449,7 +413,6 @@ export default function BulkFeesPage() {
         </Link>
 
         <span>/</span>
-
         <span>Fees</span>
       </div>
 
@@ -464,8 +427,8 @@ export default function BulkFeesPage() {
               <CardTitle>Fee payment import</CardTitle>
 
               <p className="mt-1 text-xs text-muted-foreground">
-                CSV: admissionNo, paymentDate, amount, paymentMode, referenceNo,
-                remarks
+                CSV: admissionNo, installmentName, paymentDate, amount,
+                paymentMode, referenceNo, remarks
               </p>
             </div>
           </div>
@@ -499,8 +462,8 @@ export default function BulkFeesPage() {
               <p className="mt-4 text-base font-bold">Upload fee payment CSV</p>
 
               <p className="mt-1 max-w-xl text-sm text-muted-foreground">
-                Each payment is automatically allocated from the oldest
-                outstanding installment forward.
+                Specify the exact installment for every payment, such as Term 1,
+                Term 2, Term 3, or Term 4.
               </p>
             </button>
           )}
@@ -533,6 +496,7 @@ export default function BulkFeesPage() {
                     {totalRows} rows · {rows.length} valid · Total ₹
                     {totalAmount.toLocaleString("en-IN", {
                       minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
                     })}
                   </p>
                 </div>
@@ -584,7 +548,7 @@ export default function BulkFeesPage() {
                           {HEADERS.map((header) => (
                             <th
                               key={header}
-                              className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-muted-foreground"
+                              className="whitespace-nowrap px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-muted-foreground"
                             >
                               {header}
                             </th>
@@ -595,7 +559,7 @@ export default function BulkFeesPage() {
                       <tbody>
                         {rows.slice(0, 100).map((row, index) => (
                           <tr
-                            key={`${row.admissionNo}-${row.paymentDate}-${index}`}
+                            key={`${row.admissionNo}-${row.installmentName}-${row.paymentDate}-${index}`}
                             className="border-b border-border/40 last:border-0 hover:bg-muted/20"
                           >
                             <td className="px-4 py-3 text-xs text-muted-foreground">
@@ -604,12 +568,19 @@ export default function BulkFeesPage() {
 
                             <td className="px-4 py-3">{row.admissionNo}</td>
 
-                            <td className="px-4 py-3">{row.paymentDate}</td>
+                            <td className="whitespace-nowrap px-4 py-3 font-medium">
+                              {row.installmentName}
+                            </td>
 
-                            <td className="px-4 py-3 font-semibold">
+                            <td className="whitespace-nowrap px-4 py-3">
+                              {row.paymentDate}
+                            </td>
+
+                            <td className="whitespace-nowrap px-4 py-3 font-semibold">
                               ₹
                               {row.amount.toLocaleString("en-IN", {
                                 minimumFractionDigits: 2,
+                                maximumFractionDigits: 2,
                               })}
                             </td>
 
@@ -625,6 +596,13 @@ export default function BulkFeesPage() {
                       </tbody>
                     </table>
                   </div>
+
+                  {rows.length > 100 && (
+                    <div className="border-t border-border/60 bg-muted/20 px-4 py-3 text-xs text-muted-foreground">
+                      Showing first 100 of {rows.length} valid rows. All{" "}
+                      {rows.length} rows will be imported.
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -634,12 +612,12 @@ export default function BulkFeesPage() {
 
                   <p className="mt-1 text-sm text-muted-foreground">
                     {result.created} payments created · {result.failed} rows
-                    failed.
+                    failed or were rejected.
                   </p>
 
                   {result.errors.length > 0 && (
-                    <div className="mt-3 space-y-1 text-xs text-destructive">
-                      {result.errors.map((error) => (
+                    <div className="mt-3 max-h-48 space-y-1 overflow-auto text-xs text-destructive">
+                      {result.errors.slice(0, 100).map((error) => (
                         <p key={`${error.row}-${error.message}`}>
                           Row {error.row}: {error.message}
                         </p>

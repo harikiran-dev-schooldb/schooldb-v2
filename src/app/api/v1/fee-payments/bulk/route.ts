@@ -28,6 +28,12 @@ export async function POST(req: Request) {
 
     const payments = Array.isArray(body.payments) ? body.payments : [];
 
+    /*
+     * -----------------------------------------------------
+     * Batch validation
+     * -----------------------------------------------------
+     */
+
     if (!payments.length) {
       return ApiResponse.error("At least one payment row is required.", 400);
     }
@@ -39,9 +45,29 @@ export async function POST(req: Request) {
       );
     }
 
+    /*
+     * -----------------------------------------------------
+     * Validate every payment row
+     * -----------------------------------------------------
+     *
+     * Required:
+     *
+     * admissionNo
+     * installmentName
+     * paymentDate
+     * amount
+     * paymentMode
+     *
+     * Optional:
+     *
+     * referenceNo
+     * remarks
+     */
+
     const invalid = payments.findIndex(
       (payment) =>
         !payment.admissionNo?.trim() ||
+        !payment.installmentName?.trim() ||
         !payment.paymentDate?.trim() ||
         !Number.isFinite(payment.amount) ||
         payment.amount <= 0 ||
@@ -52,12 +78,24 @@ export async function POST(req: Request) {
       return ApiResponse.error(
         `Row ${
           invalid + 2
-        }: admissionNo, paymentDate, amount, and a valid paymentMode are required.`,
+        }: admissionNo, installmentName, paymentDate, amount, and a valid paymentMode are required.`,
         400,
       );
     }
 
+    /*
+     * -----------------------------------------------------
+     * Import payments
+     * -----------------------------------------------------
+     */
+
     const result = await importBulkFeePayments(tenant.schoolId, payments);
+
+    /*
+     * -----------------------------------------------------
+     * Response
+     * -----------------------------------------------------
+     */
 
     return ApiResponse.success(
       result,

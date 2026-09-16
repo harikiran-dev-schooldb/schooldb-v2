@@ -2,9 +2,23 @@ import { prisma } from "@/lib/prisma";
 
 export type BulkFeePaymentRow = {
   admissionNo: string;
+
+  /**
+   * Exact StudentFeeInstallment.name.
+   *
+   * Examples:
+   * Term 1
+   * Term 2
+   * Quarter 1
+   * June
+   */
+  installmentName: string;
+
   paymentDate: string;
   amount: number;
+
   paymentMode: "CASH" | "UPI" | "CARD" | "BANK_TRANSFER" | "CHEQUE" | "ONLINE";
+
   referenceNo?: string;
   remarks?: string;
 };
@@ -24,7 +38,7 @@ function money(value: number) {
 }
 
 /**
- * Generate a reasonably unique receipt number for bulk imports.
+ * Generate a unique receipt number for bulk imports.
  */
 function createReceiptNo(index: number) {
   return [
@@ -34,6 +48,17 @@ function createReceiptNo(index: number) {
     crypto.randomUUID().slice(0, 8).toUpperCase(),
     index + 1,
   ].join("-");
+}
+
+/**
+ * Normalize text for reliable installment-name comparison.
+ *
+ * Examples:
+ * " Term 1 " -> "term 1"
+ * "TERM 1"   -> "term 1"
+ */
+function normalizeText(value: string) {
+  return value.trim().replace(/\s+/g, " ").toLowerCase();
 }
 
 export async function importBulkFeePayments(
@@ -47,29 +72,28 @@ export async function importBulkFeePayments(
   }
 
   const errors: BulkFeePaymentError[] = [];
+
   let created = 0;
 
   /*
-   * Process each payment independently.
+   * Each CSV payment is processed independently.
    *
-   * Important:
-   * We intentionally DO NOT wrap the entire batch in one transaction.
+   * One payment = one transaction.
    *
-   * Each individual payment gets its own transaction so:
-   *
-   * - one payment remains atomic
-   * - one bad row does not roll back other payments
-   * - we avoid a long-running 500-row transaction
-   * - Prisma's interactive transaction timeout is much less likely
+   * This prevents:
+   * - one bad row rolling back the whole batch
+   * - long-running 100-row interactive transactions
+   * - transaction timeout problems
    */
   for (let index = 0; index < rows.length; index += 1) {
     const row = rows[index];
+
     const rowNumber = index + 2;
 
     try {
       /*
        * -----------------------------------------------------
-       * Basic validation before opening transaction
+       * Basic validation
        * -----------------------------------------------------
        */
 
@@ -77,6 +101,12 @@ export async function importBulkFeePayments(
 
       if (!admissionNo) {
         throw new Error("Admission number is required.");
+      }
+
+      const installmentName = row.installmentName?.trim();
+
+      if (!installmentName) {
+        throw new Error("Installment name is required.");
       }
 
       if (!Number.isFinite(row.amount) || row.amount <= 0) {
@@ -97,15 +127,18 @@ export async function importBulkFeePayments(
 
       /*
        * -----------------------------------------------------
-       * ONE payment = ONE transaction
+       * ONE PAYMENT = ONE TRANSACTION
        * -----------------------------------------------------
        */
 
       await prisma.$transaction(
         async (tx) => {
           /*
-           * Find active enrollment.
+           * -------------------------------------------------
+           * Find student's active enrollment
+           * -------------------------------------------------
            */
+
           const enrollment = await tx.studentEnrollment.findFirst({
             where: {
               schoolId,
@@ -129,8 +162,22 @@ export async function importBulkFeePayments(
           }
 
           /*
-           * Get outstanding installments in oldest-first order.
+           * -------------------------------------------------
+           * Find installments belonging to this student
+           * -------------------------------------------------
+           *
+           * We intentionally load the installment names and
+           * perform normalized matching below.
+           *
+           * This makes:
+           *
+           * Term 1
+           * TERM 1
+           * term 1
+           *
+           * equivalent for CSV imports.
            */
+
           const installments = await tx.studentFeeInstallment.findMany({
             where: {
               studentFeeItem: {
@@ -140,109 +187,177 @@ export async function importBulkFeePayments(
                   active: true,
                 },
               },
-
-              status: {
-                in: ["PENDING", "PARTIAL"],
-              },
             },
 
             select: {
               id: true,
+              name: true,
               payableAmount: true,
               paidAmount: true,
-              dueDate: true,
+              status: true,
               sequence: true,
-            },
 
-            orderBy: [
-              {
-                dueDate: "asc",
+              studentFeeItem: {
+                select: {
+                  id: true,
+
+                  studentFee: {
+                    select: {
+                      id: true,
+                    },
+                  },
+                },
               },
-              {
-                sequence: "asc",
-              },
-            ],
+            },
           });
 
-          if (!installments.length) {
+          /*
+           * Find exact requested installment.
+           */
+          const requestedName = normalizeText(installmentName);
+
+          const matchingInstallments = installments.filter(
+            (installment) => normalizeText(installment.name) === requestedName,
+          );
+
+          /*
+           * Nothing matched.
+           */
+          if (matchingInstallments.length === 0) {
+            const availableNames = [
+              ...new Set(
+                installments
+                  .map((installment) => installment.name)
+                  .filter(Boolean),
+              ),
+            ];
+
             throw new Error(
-              "No outstanding fee installments found for this student.",
+              availableNames.length
+                ? `Installment "${installmentName}" not found. Available: ${availableNames.join(
+                    ", ",
+                  )}.`
+                : `Installment "${installmentName}" not found for this student.`,
+            );
+          }
+
+          /*
+           * Important safety check.
+           *
+           * A student could theoretically have multiple fee plans
+           * containing an installment called "Term 1".
+           *
+           * We must NOT guess which one should receive the payment.
+           */
+          if (matchingInstallments.length > 1) {
+            throw new Error(
+              `Multiple installments named "${installmentName}" were found for admission number ${admissionNo}. The payment cannot be allocated safely.`,
+            );
+          }
+
+          const installment = matchingInstallments[0];
+
+          /*
+           * -------------------------------------------------
+           * Calculate current installment balance
+           * -------------------------------------------------
+           */
+
+          const payableAmount = money(Number(installment.payableAmount));
+
+          const currentPaidAmount = money(Number(installment.paidAmount));
+
+          const outstanding = money(
+            Math.max(0, payableAmount - currentPaidAmount),
+          );
+
+          /*
+           * -------------------------------------------------
+           * Duplicate / already-paid protection
+           * -------------------------------------------------
+           *
+           * This is the critical behavior for re-uploading
+           * the same CSV.
+           *
+           * If Term 1 is already paid, we reject Term 1.
+           *
+           * We DO NOT automatically move the money to Term 2.
+           */
+
+          if (installment.status === "PAID" || outstanding <= 0.005) {
+            throw new Error(`${installment.name} is already fully paid.`);
+          }
+
+          /*
+           * Do not allow the CSV payment to exceed the
+           * requested installment's remaining balance.
+           */
+
+          if (amount > outstanding + 0.005) {
+            throw new Error(
+              `${installment.name} has only ₹${outstanding.toFixed(
+                2,
+              )} outstanding, but the CSV payment is ₹${amount.toFixed(2)}.`,
             );
           }
 
           /*
            * -------------------------------------------------
-           * Calculate allocation plan in memory
+           * Optional duplicate reference-number protection
            * -------------------------------------------------
+           *
+           * UPI / bank / online payments usually have a
+           * transaction/reference number.
+           *
+           * If the same reference number already exists for
+           * this school, reject it.
+           *
+           * CASH payments usually have no reference number,
+           * so installment balance protection still applies.
            */
 
-          let remaining = amount;
+          if (referenceNo) {
+            const existingReference = await tx.feePayment.findFirst({
+              where: {
+                schoolId,
+                referenceNo,
+                status: "SUCCESS",
+              },
 
-          const allocations: Array<{
-            studentFeeInstallmentId: string;
-            amount: number;
-
-            /*
-             * Store resulting values so we do NOT need
-             * another findUnique query later.
-             */
-            newPaidAmount: number;
-            payableAmount: number;
-          }> = [];
-
-          for (const installment of installments) {
-            if (remaining <= 0.005) {
-              break;
-            }
-
-            const payableAmount = money(Number(installment.payableAmount));
-
-            const currentPaidAmount = money(Number(installment.paidAmount));
-
-            const balance = money(
-              Math.max(0, payableAmount - currentPaidAmount),
-            );
-
-            if (balance <= 0) {
-              continue;
-            }
-
-            const allocationAmount = money(Math.min(remaining, balance));
-
-            allocations.push({
-              studentFeeInstallmentId: installment.id,
-
-              amount: allocationAmount,
-
-              newPaidAmount: money(currentPaidAmount + allocationAmount),
-
-              payableAmount,
+              select: {
+                id: true,
+                receiptNo: true,
+              },
             });
 
-            remaining = money(remaining - allocationAmount);
+            if (existingReference) {
+              throw new Error(
+                `Reference number "${referenceNo}" has already been used in receipt ${existingReference.receiptNo}.`,
+              );
+            }
           }
 
           /*
-           * Payment cannot exceed outstanding balance.
+           * -------------------------------------------------
+           * Calculate new installment state
+           * -------------------------------------------------
            */
-          if (remaining > 0.005) {
-            throw new Error(
-              `Payment exceeds the student's outstanding fee balance by ₹${remaining.toFixed(
-                2,
-              )}.`,
-            );
-          }
 
-          if (!allocations.length) {
-            throw new Error(
-              "No outstanding fee installments found for this student.",
-            );
-          }
+          const newPaidAmount = money(currentPaidAmount + amount);
+
+          const newStatus =
+            newPaidAmount >= payableAmount - 0.005 ? "PAID" : "PARTIAL";
 
           /*
            * -------------------------------------------------
-           * Create payment + allocation records
+           * Create FeePayment + exact allocation
            * -------------------------------------------------
+           *
+           * IMPORTANT:
+           *
+           * There is exactly ONE allocation.
+           *
+           * The payment cannot spill into another term.
            */
 
           const receiptNo = createReceiptNo(index);
@@ -268,47 +383,32 @@ export async function importBulkFeePayments(
               status: "SUCCESS",
 
               allocations: {
-                create: allocations.map((allocation) => ({
-                  studentFeeInstallmentId: allocation.studentFeeInstallmentId,
-
-                  amount: allocation.amount,
-                })),
+                create: {
+                  studentFeeInstallmentId: installment.id,
+                  amount,
+                },
               },
             },
           });
 
           /*
            * -------------------------------------------------
-           * Update affected installments
+           * Update ONLY the requested installment
            * -------------------------------------------------
-           *
-           * No findUnique calls are necessary here.
-           * We already calculated the new values above.
            */
 
-          for (const allocation of allocations) {
-            await tx.studentFeeInstallment.update({
-              where: {
-                id: allocation.studentFeeInstallmentId,
-              },
+          await tx.studentFeeInstallment.update({
+            where: {
+              id: installment.id,
+            },
 
-              data: {
-                paidAmount: allocation.newPaidAmount,
-
-                status:
-                  allocation.newPaidAmount >= allocation.payableAmount - 0.005
-                    ? "PAID"
-                    : "PARTIAL",
-              },
-            });
-          }
+            data: {
+              paidAmount: newPaidAmount,
+              status: newStatus,
+            },
+          });
         },
 
-        /*
-         * Individual transactions should normally complete
-         * very quickly. 15 seconds gives Neon some headroom
-         * without creating one giant long-running transaction.
-         */
         {
           maxWait: 10_000,
           timeout: 15_000,
