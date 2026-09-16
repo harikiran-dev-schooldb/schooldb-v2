@@ -83,6 +83,10 @@ export function ReportsFilters({ schoolSlug, initial }: Props) {
               setAcademicYearId(value);
               setClassId("");
               setSectionId("");
+
+              router.push(
+                `/${schoolSlug}/reports?academicYearId=${encodeURIComponent(value)}`,
+              );
             }}
           />
         </label>
