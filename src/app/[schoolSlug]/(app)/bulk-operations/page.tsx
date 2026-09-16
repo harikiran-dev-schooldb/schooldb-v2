@@ -76,6 +76,14 @@ const operations = [
     status: "Ready",
   },
   {
+    title: "Attendance",
+    description:
+      "Import historical absentee attendance by admission number and date with enrollment and lock validation.",
+    href: "bulk-operations/attendance",
+    icon: CalendarDays,
+    status: "Ready",
+  },
+  {
     title: "Exams",
     description:
       "Create exam master records for an academic year with validated dates.",
