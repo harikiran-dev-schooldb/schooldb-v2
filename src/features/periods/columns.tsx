@@ -53,10 +53,6 @@ export const periodColumns: ColumnDef<PeriodListItem>[] = [
 
         <div>
           <p className="font-semibold">{row.original.name}</p>
-
-          <p className="text-xs text-muted-foreground">
-            Period {row.original.displayOrder}
-          </p>
         </div>
       </div>
     ),
@@ -72,10 +68,6 @@ export const periodColumns: ColumnDef<PeriodListItem>[] = [
           {formatTime(row.original.startTime)}
           {" – "}
           {formatTime(row.original.endTime)}
-        </p>
-
-        <p className="mt-0.5 text-xs text-muted-foreground">
-          {row.original.startTime} – {row.original.endTime}
         </p>
       </div>
     ),
