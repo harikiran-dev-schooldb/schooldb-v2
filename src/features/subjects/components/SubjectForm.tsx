@@ -79,7 +79,7 @@ export function SubjectForm({ mode, subjectId, onSuccess }: Props) {
         form.reset({
           name: result.data.name ?? "",
           code: result.data.code ?? "",
-          type: result.data.type ?? "SCHOLASTIC",
+          type: result.data.type ?? "",
           displayOrder: result.data.displayOrder ?? 0,
           active: result.data.active ?? true,
         });
@@ -202,9 +202,16 @@ export function SubjectForm({ mode, subjectId, onSuccess }: Props) {
           </SelectTrigger>
 
           <SelectContent className="rounded-xl">
+            <SelectItem value="" disabled>
+              Select Subject Type
+            </SelectItem>
             <SelectItem value="SCHOLASTIC">Scholastic</SelectItem>
 
             <SelectItem value="CO_SCHOLASTIC">Co-Scholastic</SelectItem>
+            <SelectItem value="CO_CURRICULAR">Co-Curricular</SelectItem>
+            <SelectItem value="CORE">Core</SelectItem>
+            <SelectItem value="ACTIVITY">Activity</SelectItem>
+            <SelectItem value="LANGUAGE">Language</SelectItem>
           </SelectContent>
         </Select>
       </FormField>
