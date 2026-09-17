@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import {
   Download,
   FileSpreadsheet,
@@ -17,8 +17,6 @@ import { postImportInBatches } from "@/lib/batched-import";
 type MarkRow = {
   examName: string;
   academicYear: string;
-  className: string;
-  sectionName: string;
   subjectName: string;
   admissionNo: string;
   marks: string;
@@ -31,8 +29,6 @@ type RowError = { row: number; message: string };
 const HEADERS = [
   "examName",
   "academicYear",
-  "className",
-  "sectionName",
   "subjectName",
   "admissionNo",
   "marks",
@@ -42,10 +38,15 @@ const HEADERS = [
 
 const TEMPLATE = [
   HEADERS.join(","),
-  "Quarterly Exam 1,2026-27,Class 1,A,Mathematics,ADM001,85,PRESENT,",
-  "Quarterly Exam 1,2026-27,Class 1,A,Mathematics,ADM002,72,PRESENT,Good",
-  "Quarterly Exam 1,2026-27,Class 1,A,Mathematics,ADM003,,ABSENT,",
+  "Quarterly Exam 1,2026-27,Mathematics,ADM001,85,PRESENT,",
+  "Quarterly Exam 1,2026-27,English II,ADM001,72,PRESENT,Good",
+  "Quarterly Exam 1,2026-27,Science,ADM001,,ABSENT,",
+  "Quarterly Exam 1,2026-27,Mathematics,ADM002,78,PRESENT,",
 ].join("\n");
+
+function normalize(value: string) {
+  return value.trim().toLowerCase();
+}
 
 function parseLine(line: string): string[] {
   const values: string[] = [];
@@ -83,6 +84,7 @@ function parseCsv(text: string) {
 
   const rows: MarkRow[] = [];
   const errors: RowError[] = [];
+  const seen = new Map<string, number>();
 
   lines.slice(1).forEach((line, index) => {
     const values = parseLine(line);
@@ -97,14 +99,13 @@ function parseCsv(text: string) {
     if (
       !row.examName ||
       !row.academicYear ||
-      !row.className ||
       !row.subjectName ||
       !row.admissionNo
     ) {
       errors.push({
         row: rowNumber,
         message:
-          "Exam, academic year, class, subject and admission number are required.",
+          "Exam, academic year, subject and admission number are required.",
       });
       return;
     }
@@ -125,10 +126,10 @@ function parseCsv(text: string) {
       return;
     }
 
-    if (marks && !Number.isFinite(Number(marks))) {
+    if (marks && (!Number.isFinite(Number(marks)) || Number(marks) < 0)) {
       errors.push({
         row: rowNumber,
-        message: "Marks must be a valid number.",
+        message: "Marks must be a valid non-negative number.",
       });
       return;
     }
@@ -141,10 +142,26 @@ function parseCsv(text: string) {
       return;
     }
 
-    rows.push({
-      ...row,
-      status,
-    });
+    const duplicateKey = [
+      row.academicYear,
+      row.examName,
+      row.admissionNo,
+      row.subjectName,
+    ]
+      .map(normalize)
+      .join(":");
+    const firstRow = seen.get(duplicateKey);
+
+    if (firstRow !== undefined) {
+      errors.push({
+        row: rowNumber,
+        message: `Duplicate result. Admission No. ${row.admissionNo} already has ${row.subjectName} for ${row.examName} ${row.academicYear} in Row ${firstRow}.`,
+      });
+      return;
+    }
+
+    seen.set(duplicateKey, rowNumber);
+    rows.push({ ...row, status });
   });
 
   return {
@@ -158,7 +175,6 @@ function downloadTemplate() {
   const blob = new Blob([TEMPLATE], {
     type: "text/csv;charset=utf-8",
   });
-
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;
@@ -179,27 +195,6 @@ export default function BulkMarksPage() {
     created: number;
     failed: number;
   } | null>(null);
-
-  const duplicateCount = useMemo(() => {
-    const counts = new Map<string, number>();
-
-    rows.forEach((row) => {
-      const key = [
-        row.examName,
-        row.academicYear,
-        row.className,
-        row.sectionName,
-        row.subjectName,
-        row.admissionNo,
-      ]
-        .map((value) => value.trim().toLowerCase())
-        .join(":");
-
-      counts.set(key, (counts.get(key) ?? 0) + 1);
-    });
-
-    return [...counts.values()].filter((count) => count > 1).length;
-  }, [rows]);
 
   async function handleFile(file: File) {
     setFileName(file.name);
@@ -227,7 +222,7 @@ export default function BulkMarksPage() {
   }
 
   async function importMarks() {
-    if (!rows.length || errors.length || duplicateCount) return;
+    if (!rows.length || errors.length) return;
 
     setImporting(true);
     setFileError(null);
@@ -260,10 +255,7 @@ export default function BulkMarksPage() {
     setTotalRows(0);
     setFileError(null);
     setResult(null);
-
-    if (inputRef.current) {
-      inputRef.current.value = "";
-    }
+    if (inputRef.current) inputRef.current.value = "";
   }
 
   return (
@@ -271,7 +263,7 @@ export default function BulkMarksPage() {
       <PageHeader
         eyebrow="Bulk Operations"
         title="Bulk Marks"
-        description="Import student examination marks against existing exam schedules."
+        description="Import multiple subjects for students in one CSV file."
         action={
           <Button variant="outline" onClick={downloadTemplate}>
             <Download className="size-4" />
@@ -281,8 +273,9 @@ export default function BulkMarksPage() {
       />
 
       <p className="text-xs text-muted-foreground">
-        Students must already be enrolled and an exam schedule must already
-        exist for the selected class, section and subject.
+        Class and section are resolved automatically from each student&apos;s
+        enrollment for the selected academic year. Exam schedules must already
+        exist for the student&apos;s class/section and subject.
       </p>
 
       <Card className="premium-card overflow-hidden rounded-2xl border-0">
@@ -294,8 +287,8 @@ export default function BulkMarksPage() {
             <div>
               <CardTitle>Marks import</CardTitle>
               <p className="mt-1 text-xs text-muted-foreground">
-                CSV columns: examName, academicYear, className, sectionName,
-                subjectName, admissionNo, marks, status, remarks
+                CSV columns: examName, academicYear, subjectName, admissionNo,
+                marks, status, remarks
               </p>
             </div>
           </div>
@@ -324,7 +317,7 @@ export default function BulkMarksPage() {
               </div>
               <p className="mt-4 text-base font-bold">Upload marks CSV</p>
               <p className="mt-1 text-sm text-muted-foreground">
-                Validation happens before database changes.
+                Multiple subjects are supported. Validation happens before database changes.
               </p>
             </button>
           )}
@@ -334,13 +327,9 @@ export default function BulkMarksPage() {
               <XCircle className="mt-0.5 size-5 shrink-0 text-destructive" />
               <div className="flex-1">
                 <p className="text-sm font-semibold">Import cannot continue</p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {fileError}
-                </p>
+                <p className="mt-1 text-sm text-muted-foreground">{fileError}</p>
               </div>
-              <Button size="sm" variant="outline" onClick={reset}>
-                Reset
-              </Button>
+              <Button size="sm" variant="outline" onClick={reset}>Reset</Button>
             </div>
           )}
 
@@ -354,31 +343,18 @@ export default function BulkMarksPage() {
                   </p>
                 </div>
                 <div className="flex gap-2">
-                  <Badge variant={rows.length ? "success" : "destructive"}>
-                    {rows.length} valid
-                  </Badge>
-                  {duplicateCount > 0 && (
-                    <Badge variant="destructive">
-                      {duplicateCount} duplicates
-                    </Badge>
-                  )}
-                  {errors.length > 0 && (
-                    <Badge variant="destructive">{errors.length} errors</Badge>
-                  )}
+                  <Badge variant={rows.length ? "success" : "destructive"}>{rows.length} valid</Badge>
+                  {errors.length > 0 && <Badge variant="destructive">{errors.length} errors</Badge>}
                 </div>
               </div>
 
               {errors.length > 0 && (
                 <div className="rounded-2xl border border-destructive/20 bg-destructive/5 p-4">
-                  <p className="text-sm font-semibold text-destructive">
-                    Fix these rows before importing
-                  </p>
+                  <p className="text-sm font-semibold text-destructive">Fix these rows before importing</p>
                   <div className="mt-3 max-h-44 space-y-2 overflow-auto text-xs text-muted-foreground">
                     {errors.slice(0, 50).map((error) => (
                       <p key={`${error.row}-${error.message}`}>
-                        <span className="font-semibold text-foreground">
-                          Row {error.row}:
-                        </span>{" "}
+                        <span className="font-semibold text-foreground">Row {error.row}:</span>{" "}
                         {error.message}
                       </p>
                     ))}
@@ -392,35 +368,18 @@ export default function BulkMarksPage() {
                     <table className="w-full text-sm">
                       <thead className="sticky top-0 z-10 border-b border-border/60 bg-card">
                         <tr>
-                          <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                            #
-                          </th>
+                          <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-muted-foreground">#</th>
                           {HEADERS.map((header) => (
-                            <th
-                              key={header}
-                              className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-muted-foreground"
-                            >
-                              {header}
-                            </th>
+                            <th key={header} className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{header}</th>
                           ))}
                         </tr>
                       </thead>
                       <tbody>
                         {rows.slice(0, 100).map((row, index) => (
-                          <tr
-                            key={`${row.admissionNo}-${row.subjectName}-${index}`}
-                            className="border-b border-border/40 last:border-0 hover:bg-muted/20"
-                          >
-                            <td className="px-4 py-3 text-xs text-muted-foreground">
-                              {index + 1}
-                            </td>
+                          <tr key={`${row.admissionNo}-${row.subjectName}-${index}`} className="border-b border-border/40 last:border-0 hover:bg-muted/20">
+                            <td className="px-4 py-3 text-xs text-muted-foreground">{index + 1}</td>
                             {HEADERS.map((header) => (
-                              <td
-                                key={header}
-                                className="whitespace-nowrap px-4 py-3"
-                              >
-                                {row[header]}
-                              </td>
+                              <td key={header} className="whitespace-nowrap px-4 py-3">{row[header]}</td>
                             ))}
                           </tr>
                         ))}
@@ -433,30 +392,14 @@ export default function BulkMarksPage() {
               {result && (
                 <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4">
                   <p className="text-sm font-bold">Import complete</p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {result.created} marks created · {result.failed} failed
-                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">{result.created} marks created · {result.failed} failed</p>
                 </div>
               )}
 
               <div className="flex justify-end gap-3">
-                <Button variant="outline" onClick={reset} disabled={importing}>
-                  Start Over
-                </Button>
-                <Button
-                  onClick={() => void importMarks()}
-                  disabled={
-                    importing ||
-                    !!errors.length ||
-                    duplicateCount > 0 ||
-                    !rows.length
-                  }
-                >
-                  {importing ? (
-                    <Loader2 className="size-4 animate-spin" />
-                  ) : (
-                    <UploadCloud className="size-4" />
-                  )}
+                <Button variant="outline" onClick={reset} disabled={importing}>Start Over</Button>
+                <Button onClick={() => void importMarks()} disabled={importing || !!errors.length || !rows.length}>
+                  {importing ? <Loader2 className="size-4 animate-spin" /> : <UploadCloud className="size-4" />}
                   {importing ? "Importing..." : `Import ${rows.length} Marks`}
                 </Button>
               </div>
