@@ -32,10 +32,7 @@ export async function previewFeeRemindersAction(
     ["SUPER_ADMIN", "SCHOOL_ADMIN", "ACCOUNTANT"],
     schoolSlug,
   );
-  return previewManualFeeReminders(
-    membership.schoolId,
-    parseFilters(filters),
-  );
+  return previewManualFeeReminders(membership.schoolId, parseFilters(filters));
 }
 
 export async function sendFeeRemindersAction(

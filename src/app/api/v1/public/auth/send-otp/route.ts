@@ -20,7 +20,10 @@ const inputSchema = z.object({
   phone: z.string(),
   schoolSlug: z.string().min(1),
 });
-const genericSuccess = { success: true, message: "If this number is registered, a WhatsApp code has been sent." };
+const genericSuccess = {
+  success: true,
+  message: "If this number is registered, a WhatsApp code has been sent.",
+};
 const WHATSAPP_TIMEOUT_MS = Math.max(
   15_000,
   Number(process.env.META_WA_TIMEOUT_MS) || 35_000,
@@ -45,28 +48,43 @@ function isConnectionTimeout(error: unknown) {
   const cause = error.cause;
   return Boolean(
     cause &&
-      typeof cause === "object" &&
-      "code" in cause &&
-      cause.code === "UND_ERR_CONNECT_TIMEOUT",
+    typeof cause === "object" &&
+    "code" in cause &&
+    cause.code === "UND_ERR_CONNECT_TIMEOUT",
   );
 }
 
 export async function POST(request: Request) {
   try {
     const parsed = inputSchema.safeParse(await request.json());
-    if (!parsed.success) return Response.json({ error: "Phone and school are required." }, { status: 400 });
+    if (!parsed.success)
+      return Response.json(
+        { error: "Phone and school are required." },
+        { status: 400 },
+      );
 
     const phone = normalizeIndianMobile(parsed.data.phone);
-    if (!phone) return Response.json({ error: "Enter a valid 10-digit Indian mobile number." }, { status: 400 });
+    if (!phone)
+      return Response.json(
+        { error: "Enter a valid 10-digit Indian mobile number." },
+        { status: 400 },
+      );
 
-    const school = await prisma.school.findUnique({ where: { slug: parsed.data.schoolSlug }, select: { id: true } });
-    if (!school) return Response.json({ error: "School not found." }, { status: 404 });
+    const school = await prisma.school.findUnique({
+      where: { slug: parsed.data.schoolSlug },
+      select: { id: true },
+    });
+    if (!school)
+      return Response.json({ error: "School not found." }, { status: 404 });
 
     const reviewOtp = playReviewOtpFor(parsed.data.schoolSlug, phone);
     const phoneNumberId = process.env.META_PHONE_NUMBER_ID;
     const accessToken = process.env.META_WA_TOKEN;
     if (!reviewOtp && (!phoneNumberId || !accessToken)) {
-      return Response.json({ error: "WhatsApp login is not configured yet." }, { status: 503 });
+      return Response.json(
+        { error: "WhatsApp login is not configured yet." },
+        { status: 503 },
+      );
     }
 
     const ip = requestIp(request);
@@ -96,7 +114,9 @@ export async function POST(request: Request) {
         { error: "Too many code requests. Please wait and try again." },
         {
           status: 429,
-          headers: { "Retry-After": String(blockedRateLimit.retryAfterSeconds) },
+          headers: {
+            "Retry-After": String(blockedRateLimit.retryAfterSeconds),
+          },
         },
       );
     }
@@ -106,19 +126,44 @@ export async function POST(request: Request) {
 
     const hashedPhone = phoneHash(school.id, phone);
     const existing = await prisma.otpChallenge.findUnique({
-      where: { schoolId_phoneHash: { schoolId: school.id, phoneHash: hashedPhone } },
+      where: {
+        schoolId_phoneHash: { schoolId: school.id, phoneHash: hashedPhone },
+      },
       select: { lastSentAt: true },
     });
-    if (existing && Date.now() - existing.lastSentAt.getTime() < OTP_RESEND_MS) {
-      return Response.json({ error: "Please wait before requesting another code." }, { status: 429 });
+    if (
+      existing &&
+      Date.now() - existing.lastSentAt.getTime() < OTP_RESEND_MS
+    ) {
+      return Response.json(
+        { error: "Please wait before requesting another code." },
+        { status: 429 },
+      );
     }
 
     const code = reviewOtp ?? generateOtp();
     const codeHash = otpHash(school.id, phone, code);
     await prisma.otpChallenge.upsert({
-      where: { schoolId_phoneHash: { schoolId: school.id, phoneHash: hashedPhone } },
-      update: { userId: accounts[0].id, candidateUserIds: accounts.map((account) => account.id), codeHash, expiresAt: new Date(Date.now() + OTP_EXPIRY_MS), verifiedAt: null, attempts: 0, lastSentAt: new Date() },
-      create: { schoolId: school.id, userId: accounts[0].id, candidateUserIds: accounts.map((account) => account.id), phoneHash: hashedPhone, codeHash, expiresAt: new Date(Date.now() + OTP_EXPIRY_MS) },
+      where: {
+        schoolId_phoneHash: { schoolId: school.id, phoneHash: hashedPhone },
+      },
+      update: {
+        userId: accounts[0].id,
+        candidateUserIds: accounts.map((account) => account.id),
+        codeHash,
+        expiresAt: new Date(Date.now() + OTP_EXPIRY_MS),
+        verifiedAt: null,
+        attempts: 0,
+        lastSentAt: new Date(),
+      },
+      create: {
+        schoolId: school.id,
+        userId: accounts[0].id,
+        candidateUserIds: accounts.map((account) => account.id),
+        phoneHash: hashedPhone,
+        codeHash,
+        expiresAt: new Date(Date.now() + OTP_EXPIRY_MS),
+      },
     });
 
     // Google Play reviewers use the submitted fixed code for this isolated
@@ -133,7 +178,10 @@ export async function POST(request: Request) {
         method: "POST",
         signal: controller.signal,
         dispatcher: whatsappDispatcher,
-        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({
           messaging_product: "whatsapp",
           to: `91${phone}`,
@@ -143,7 +191,12 @@ export async function POST(request: Request) {
             language: { code: "en" },
             components: [
               { type: "body", parameters: [{ type: "text", text: code }] },
-              { type: "button", sub_type: "url", index: "0", parameters: [{ type: "text", text: code }] },
+              {
+                type: "button",
+                sub_type: "url",
+                index: "0",
+                parameters: [{ type: "text", text: code }],
+              },
             ],
           },
         }),
@@ -158,7 +211,10 @@ export async function POST(request: Request) {
       });
       if (isConnectionTimeout(error)) {
         return Response.json(
-          { error: "WhatsApp is responding slowly. Please try sending the code again." },
+          {
+            error:
+              "WhatsApp is responding slowly. Please try sending the code again.",
+          },
           { status: 504 },
         );
       }
@@ -168,13 +224,21 @@ export async function POST(request: Request) {
     }
 
     if (!whatsappResponse.ok) {
-      await prisma.otpChallenge.deleteMany({ where: { schoolId: school.id, phoneHash: hashedPhone, codeHash } });
-      return Response.json({ error: "WhatsApp could not send the code. Please try again." }, { status: 502 });
+      await prisma.otpChallenge.deleteMany({
+        where: { schoolId: school.id, phoneHash: hashedPhone, codeHash },
+      });
+      return Response.json(
+        { error: "WhatsApp could not send the code. Please try again." },
+        { status: 502 },
+      );
     }
 
     return Response.json(genericSuccess);
   } catch (error) {
     console.error("SEND OTP ERROR", error);
-    return Response.json({ error: "Unable to send the code right now." }, { status: 500 });
+    return Response.json(
+      { error: "Unable to send the code right now." },
+      { status: 500 },
+    );
   }
 }
