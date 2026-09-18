@@ -1,0 +1,75 @@
+"use client";
+
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Home, Loader2, Plus, Search, Users } from "lucide-react";
+import { toast } from "sonner";
+
+import { PageHeader } from "@/components/common/PageHeader";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+type House = { id:string; name:string; code:string|null; color:string|null; active:boolean; _count:{students:number} };
+type Year = { id:string; name:string; active:boolean };
+type SchoolClass = { id:string; name:string; sections:{id:string;name:string}[] };
+type Enrollment = { id:string; rollNo:number|null; student:{id:string;admissionNo:string;fullName:string|null;gender:string}; class:{id:string;name:string}; section:{id:string;name:string}; houseAssignment:{houseId:string;house:{id:string;name:string;code:string|null;color:string|null}}|null };
+type Data = { houses:House[]; academicYears:Year[]; classes:SchoolClass[]; enrollments:Enrollment[] };
+
+export default function StudentHousesPage() {
+  const [data,setData]=useState<Data>({houses:[],academicYears:[],classes:[],enrollments:[]});
+  const [yearId,setYearId]=useState(""); const [houseId,setHouseId]=useState(""); const [classId,setClassId]=useState("ALL"); const [sectionId,setSectionId]=useState("ALL");
+  const [selected,setSelected]=useState<string[]>([]); const [search,setSearch]=useState(""); const [loading,setLoading]=useState(true); const [saving,setSaving]=useState(false);
+  const [name,setName]=useState(""); const [code,setCode]=useState(""); const [color,setColor]=useState("#4f46e5");
+
+  const load=useCallback(async (targetYear=yearId)=>{
+    setLoading(true);
+    try {
+      const q=new URLSearchParams();
+      if(targetYear) q.set("academicYearId",targetYear);
+      if(classId!=="ALL") q.set("classId",classId);
+      if(sectionId!=="ALL") q.set("sectionId",sectionId);
+      const res=await fetch(`/api/v1/houses?${q}`,{cache:"no-store"}); const json=await res.json();
+      if(!res.ok||!json.success) throw new Error(json.message||"Failed to load houses.");
+      setData(json.data);
+      if(!targetYear){const active=json.data.academicYears.find((y:Year)=>y.active)?.id||json.data.academicYears[0]?.id||""; if(active) setYearId(active);}
+    } catch(e){toast.error(e instanceof Error?e.message:"Failed to load houses.");} finally{setLoading(false);}
+  },[yearId,classId,sectionId]);
+
+  useEffect(()=>{void load();},[load]);
+  useEffect(()=>{setSectionId("ALL");setSelected([]);},[classId]);
+  useEffect(()=>{setSelected([]);},[yearId,sectionId]);
+
+  const sections=data.classes.find(c=>c.id===classId)?.sections??[];
+  const visible=useMemo(()=>{const q=search.trim().toLowerCase();return data.enrollments.filter(e=>!q||e.student.fullName?.toLowerCase().includes(q)||e.student.admissionNo.toLowerCase().includes(q));},[data.enrollments,search]);
+  const allChecked=visible.length>0&&visible.every(e=>selected.includes(e.id));
+
+  async function createHouse(){
+    if(!name.trim()) return toast.error("Enter house name.");
+    setSaving(true); try{const res=await fetch("/api/v1/houses",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name,code,color})});const json=await res.json();if(!res.ok||!json.success)throw new Error(json.message||"Failed to create house.");toast.success("House created.");setName("");setCode("");await load();}catch(e){toast.error(e instanceof Error?e.message:"Failed to create house.");}finally{setSaving(false);}
+  }
+  async function allocate(){
+    if(!yearId||!houseId||selected.length===0)return toast.error("Select academic year, house and students.");
+    setSaving(true);try{const res=await fetch("/api/v1/houses",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({academicYearId:yearId,houseId,enrollmentIds:selected})});const json=await res.json();if(!res.ok||!json.success)throw new Error(json.message||"Allocation failed.");toast.success(json.message||"Students allocated.");setSelected([]);await load();}catch(e){toast.error(e instanceof Error?e.message:"Allocation failed.");}finally{setSaving(false);}
+  }
+
+  return <div className="space-y-6">
+    <PageHeader title="Student Houses" description="Create school houses and allocate students house-wise for each academic year." />
+    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      {data.houses.map(h=><Card key={h.id}><CardContent className="flex items-center gap-4 p-5"><div className="flex size-11 items-center justify-center rounded-xl text-white" style={{backgroundColor:h.color||"#4f46e5"}}><Home className="size-5"/></div><div><p className="font-semibold">{h.name}</p><p className="text-xs text-muted-foreground">{h.code||"No code"} · {h._count.students} allocations</p></div></CardContent></Card>)}
+    </div>
+    <Card><CardContent className="p-5"><div className="mb-4 flex items-center gap-2 font-semibold"><Plus className="size-4"/>Create House</div><div className="grid gap-3 md:grid-cols-[1fr_160px_100px_auto]"><Input placeholder="House name" value={name} onChange={e=>setName(e.target.value)}/><Input placeholder="Code" value={code} onChange={e=>setCode(e.target.value)}/><Input type="color" value={color} onChange={e=>setColor(e.target.value)}/><Button onClick={createHouse} disabled={saving}>Add House</Button></div></CardContent></Card>
+    <Card><CardContent className="p-5">
+      <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-end">
+        <div className="min-w-48"><p className="mb-1 text-xs text-muted-foreground">Academic Year</p><Select value={yearId} onValueChange={setYearId}><SelectTrigger><SelectValue placeholder="Academic year"/></SelectTrigger><SelectContent>{data.academicYears.map(y=><SelectItem key={y.id} value={y.id}>{y.name}{y.active?" · Active":""}</SelectItem>)}</SelectContent></Select></div>
+        <div className="min-w-44"><p className="mb-1 text-xs text-muted-foreground">Class</p><Select value={classId} onValueChange={setClassId}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent><SelectItem value="ALL">All Classes</SelectItem>{data.classes.map(c=><SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent></Select></div>
+        <div className="min-w-44"><p className="mb-1 text-xs text-muted-foreground">Section</p><Select value={sectionId} onValueChange={setSectionId} disabled={classId==="ALL"}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent><SelectItem value="ALL">All Sections</SelectItem>{sections.map(s=><SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent></Select></div>
+        <div className="min-w-48"><p className="mb-1 text-xs text-muted-foreground">Allocate to House</p><Select value={houseId} onValueChange={setHouseId}><SelectTrigger><SelectValue placeholder="Select house"/></SelectTrigger><SelectContent>{data.houses.filter(h=>h.active).map(h=><SelectItem key={h.id} value={h.id}>{h.name}</SelectItem>)}</SelectContent></Select></div>
+        <Button onClick={allocate} disabled={saving||selected.length===0}>{saving?<Loader2 className="mr-2 size-4 animate-spin"/>:<Users className="mr-2 size-4"/>}Allocate {selected.length||""}</Button>
+      </div>
+      <div className="mb-4 relative max-w-md"><Search className="absolute left-3 top-3 size-4 text-muted-foreground"/><Input className="pl-9" placeholder="Search student or admission no." value={search} onChange={e=>setSearch(e.target.value)}/></div>
+      {loading?<div className="flex h-40 items-center justify-center text-sm text-muted-foreground"><Loader2 className="mr-2 size-4 animate-spin"/>Loading students...</div>:<div className="overflow-x-auto rounded-xl border"><table className="w-full text-sm"><thead className="bg-muted/50"><tr><th className="w-12 p-3"><Checkbox checked={allChecked} onCheckedChange={()=>setSelected(allChecked?selected.filter(id=>!visible.some(e=>e.id===id)):[...new Set([...selected,...visible.map(e=>e.id)])])}/></th><th className="p-3 text-left">Roll No</th><th className="p-3 text-left">Admission No</th><th className="p-3 text-left">Student</th><th className="p-3 text-left">Class</th><th className="p-3 text-left">Section</th><th className="p-3 text-left">Current House</th></tr></thead><tbody className="divide-y">{visible.map(e=><tr key={e.id}><td className="p-3"><Checkbox checked={selected.includes(e.id)} onCheckedChange={()=>setSelected(v=>v.includes(e.id)?v.filter(id=>id!==e.id):[...v,e.id])}/></td><td className="p-3">{e.rollNo??"—"}</td><td className="p-3">{e.student.admissionNo}</td><td className="p-3 font-medium">{e.student.fullName||"Unnamed Student"}</td><td className="p-3">{e.class.name}</td><td className="p-3">{e.section.name}</td><td className="p-3">{e.houseAssignment?<span className="inline-flex items-center gap-2"><span className="size-2.5 rounded-full" style={{backgroundColor:e.houseAssignment.house.color||"#64748b"}}/>{e.houseAssignment.house.name}</span>:<span className="text-muted-foreground">Not allocated</span>}</td></tr>)}</tbody></table>{visible.length===0&&<div className="p-8 text-center text-sm text-muted-foreground">No students found for the selected filters.</div>}</div>}
+    </CardContent></Card>
+  </div>;
+}
