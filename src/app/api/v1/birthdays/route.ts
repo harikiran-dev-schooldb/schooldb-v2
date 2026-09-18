@@ -15,7 +15,7 @@ function indiaDateParts(value: Date) {
   };
 }
 
-function dateKey(month:number,day:number){return month*100+day;}
+function monthDayKey(month:number,day:number){return month*100+day;}
 
 export async function GET() {
   return apiHandler(async () => {
@@ -34,9 +34,9 @@ export async function GET() {
       orderBy:{fullName:"asc"},
     });
 
-    const dateKey=new Intl.DateTimeFormat("en-CA",{year:"numeric",month:"2-digit",day:"2-digit",timeZone:INDIA_TIME_ZONE}).format(now);
+    const todayDateKey=new Intl.DateTimeFormat("en-CA",{year:"numeric",month:"2-digit",day:"2-digit",timeZone:INDIA_TIME_ZONE}).format(now);
     const campaigns=await prisma.whatsappCampaign.findMany({where:{schoolId:tenant.schoolId,sourceType:"BIRTHDAY",automationKey:{startsWith:"birthday:"}},select:{sourceId:true,automationKey:true,status:true,sentCount:true,deliveredCount:true,readCount:true,failedCount:true}});
-    const campaignMap=new Map(campaigns.filter(c=>c.automationKey?.endsWith(`:${dateKey}`)).map(c=>[c.sourceId,c]));
+    const campaignMap=new Map(campaigns.filter(c=>c.automationKey?.endsWith(`:${todayDateKey}`)).map(c=>[c.sourceId,c]));
 
     const enriched=students.map(student=>{
       const dob=indiaDateParts(student.dob);
@@ -44,8 +44,8 @@ export async function GET() {
       if(occurrence<todayUtc) occurrence=new Date(Date.UTC(today.year+1,dob.month-1,dob.day));
       return {...student,birthdayMonth:dob.month,birthdayDay:dob.day,nextBirthday:occurrence.toISOString(),ageTurning:occurrence.getUTCFullYear()-dob.year,wishStatus:campaignMap.get(student.id)??null};
     });
-    const todayKey=dateKey(today.month,today.day);
-    const birthdays=enriched.filter(s=>dateKey(s.birthdayMonth,s.birthdayDay)===todayKey);
+    const todayKey=monthDayKey(today.month,today.day);
+    const birthdays=enriched.filter(s=>monthDayKey(s.birthdayMonth,s.birthdayDay)===todayKey);
     const next7=enriched.filter(s=>{const d=new Date(s.nextBirthday);return d>todayUtc&&d<=next7Utc;}).sort((a,b)=>a.nextBirthday.localeCompare(b.nextBirthday));
     const thisMonth=enriched.filter(s=>s.birthdayMonth===today.month).sort((a,b)=>a.birthdayDay-b.birthdayDay);
 
