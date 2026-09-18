@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   ArrowRight,
+  Cake,
   CalendarCheck,
   CheckCircle2,
   CircleAlert,
@@ -150,6 +151,7 @@ type OutstandingRow = {
 };
 
 type HouseSummary = { id: string; name: string; code: string | null; color: string | null; _count: { students: number } };
+type BirthdaySummary = { id:string; admissionNo:string; fullName:string|null; imageUrl:string|null; whatsappOptIn:boolean; enrollments:Array<{class:{name:string};section:{name:string}}> };
 
 type DashboardData = {
   academicYear: AcademicYear | null;
@@ -161,6 +163,7 @@ type DashboardData = {
   lowAttendance: LowAttendanceRow[];
   outstanding: OutstandingRow[];
   houses: HouseSummary[];
+  birthdays: BirthdaySummary[];
 };
 
 const EMPTY_DASHBOARD_DATA: DashboardData = {
@@ -173,6 +176,7 @@ const EMPTY_DASHBOARD_DATA: DashboardData = {
   lowAttendance: [],
   outstanding: [],
   houses: [],
+  birthdays: [],
 };
 
 /* ==========================================================================
@@ -225,11 +229,12 @@ async function fetchDashboardData(
   let lowAttendance: LowAttendanceRow[] = [];
   let outstanding: OutstandingRow[] = [];
   let houseSummaries: HouseSummary[] = [];
+  let birthdaySummaries: BirthdaySummary[] = [];
 
   if (currentAcademicYear) {
     const academicYearId = encodeURIComponent(currentAcademicYear.id);
 
-    const [feeDashboard, lowAttendanceReport, outstandingReport, houseData] =
+    const [feeDashboard, lowAttendanceReport, outstandingReport, houseData, birthdayData] =
       await Promise.all([
         access.fees
           ? getJson<FeeDashboard>(
@@ -257,12 +262,14 @@ async function fetchDashboardData(
           `/api/v1/houses?academicYearId=${academicYearId}`,
           signal,
         ),
+        getJson<{ birthdays: BirthdaySummary[] }>("/api/v1/birthdays", signal),
       ]);
 
     fees = feeDashboard;
     lowAttendance = lowAttendanceReport?.rows ?? [];
     outstanding = outstandingReport?.rows ?? [];
     houseSummaries = houseData?.houses ?? [];
+    birthdaySummaries = birthdayData?.birthdays ?? [];
   }
 
   return {
@@ -275,6 +282,7 @@ async function fetchDashboardData(
     lowAttendance,
     outstanding,
     houses: houseSummaries,
+    birthdays: birthdaySummaries,
   };
 }
 
@@ -821,6 +829,36 @@ export default function DashboardPage() {
               </Link>
             ))}
           </div>
+        </section>
+      )}
+
+      {isAdministrator && data.birthdays.length > 0 && (
+        <section>
+          <div className="mb-3 flex items-end justify-between gap-4">
+            <div>
+              <p className="text-[10px] font-bold tracking-[0.18em] text-violet-500 uppercase">Celebrations</p>
+              <h3 className="mt-1 text-lg font-bold text-slate-900">Today&apos;s Birthdays</h3>
+            </div>
+            <Link href={`/${school.slug}/birthdays`} className="text-sm font-semibold text-indigo-600 hover:text-indigo-700">View birthdays</Link>
+          </div>
+          <Card className="premium-card rounded-2xl border-0 bg-gradient-to-r from-violet-50/70 via-white to-amber-50/60">
+            <CardContent className="flex flex-wrap gap-3 p-5">
+              {data.birthdays.slice(0, 6).map((student) => {
+                const enrollment = student.enrollments[0];
+                return (
+                  <Link key={student.id} href={`/${school.slug}/students/${student.id}`} className="flex min-w-[230px] flex-1 items-center gap-3 rounded-2xl border border-white bg-white/90 p-3 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md">
+                    {student.imageUrl ? <img src={student.imageUrl} alt="" className="size-11 rounded-xl object-cover" /> : <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-violet-100 font-bold text-violet-600">{student.fullName?.charAt(0) || "S"}</div>}
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold text-slate-900">{student.fullName || "Unnamed Student"}</p>
+                      <p className="mt-0.5 text-xs text-slate-500">{enrollment ? `${enrollment.class.name} - ${enrollment.section.name}` : student.admissionNo}</p>
+                    </div>
+                    <Cake className="size-5 shrink-0 text-violet-500" />
+                  </Link>
+                );
+              })}
+              {data.birthdays.length > 6 && <Link href={`/${school.slug}/birthdays`} className="flex min-w-[150px] items-center justify-center rounded-2xl border border-dashed border-violet-200 px-4 py-3 text-sm font-semibold text-violet-600 hover:bg-violet-50">+${data.birthdays.length - 6} more</Link>}
+            </CardContent>
+          </Card>
         </section>
       )}
 
