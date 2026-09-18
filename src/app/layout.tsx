@@ -3,6 +3,7 @@ import { ClerkProvider } from "@clerk/nextjs";
 
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
+import { Analytics } from "@vercel/analytics/next";
 
 export const metadata: Metadata = {
   title: {
@@ -36,6 +37,7 @@ export default function RootLayout({
                 "rounded-2xl border-border/70 bg-card/95 shadow-2xl backdrop-blur-xl",
             }}
           />
+          <Analytics />
         </body>
       </html>
     </ClerkProvider>
