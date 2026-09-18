@@ -55,6 +55,7 @@ export const navigation: NavigationItem[] = [
         roles: [...ADMIN_ROLES, "RECEPTIONIST"],
       },
       { title: "Enrollments", href: "enrollments" },
+      { title: "Student Houses", href: "student-houses", roles: ADMIN_ROLES },
       { title: "Student ID Cards", href: "id-cards" },
       {
         title: "Certificate Register",
