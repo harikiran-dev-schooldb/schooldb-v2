@@ -10,9 +10,15 @@ import { validateBody } from "@/lib/validation";
 
 async function familyNotificationContext() {
   const { membership, students } = await listAccessibleStudents();
+  const visibility = notificationVisibility(membership.schoolId, students);
   return {
     membership,
-    where: notificationVisibility(membership.schoolId, students),
+    where: {
+      ...visibility,
+      ...(membership.role === "PARENT"
+        ? { category: { not: "BIRTHDAY" } }
+        : {}),
+    },
   };
 }
 
