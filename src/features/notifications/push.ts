@@ -15,6 +15,18 @@ type PushAnnouncement = {
 };
 
 async function audienceUserIds(announcement: PushAnnouncement) {
+  if (announcement.targetType === "ADMIN") {
+    const memberships = await prisma.membership.findMany({
+      where: {
+        schoolId: announcement.schoolId,
+        isActive: true,
+        role: { in: ["SUPER_ADMIN", "SCHOOL_ADMIN"] },
+      },
+      select: { userId: true },
+    });
+    return memberships.map((membership) => membership.userId);
+  }
+
   if (announcement.targetType === "SCHOOL") {
     const memberships = await prisma.membership.findMany({
       where: { schoolId: announcement.schoolId, isActive: true },
