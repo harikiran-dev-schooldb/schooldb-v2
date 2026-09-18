@@ -219,7 +219,7 @@ export async function createWhatsappCampaign(input: CreateCampaignInput) {
 type AutomatedAlertInput = {
   schoolId: string;
   automationKey: string;
-  sourceType: "ATTENDANCE" | "HOMEWORK" | "RESULT" | "FEE_DUE" | "PROMOTION";
+  sourceType: "ATTENDANCE" | "HOMEWORK" | "RESULT" | "FEE_DUE" | "PROMOTION" | "BIRTHDAY";
   sourceId: string;
   title: string;
   message: string;
@@ -234,6 +234,7 @@ function automatedTemplateName(sourceType: AutomatedAlertInput["sourceType"]) {
     RESULT: process.env.META_WA_RESULT_TEMPLATE,
     FEE_DUE: process.env.META_WA_FEE_REMINDER_TEMPLATE,
     PROMOTION: process.env.META_WA_PROMOTION_TEMPLATE,
+    BIRTHDAY: process.env.META_WA_BIRTHDAY_TEMPLATE,
   };
   return templates[sourceType] || process.env.META_WA_ANNOUNCEMENT_TEMPLATE;
 }

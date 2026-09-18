@@ -144,6 +144,55 @@ export async function queueResultsPublishedAlert(
   });
 }
 
+
+export async function queueDailyBirthdayWishes(now = new Date()) {
+  if (process.env.META_WA_AUTOMATION_ENABLED !== "true") return [];
+  const dateKey = indiaDateKey(now);
+  const [, month, day] = dateKey.split("-").map(Number);
+
+  const students = await prisma.student.findMany({
+    where: {
+      status: "ACTIVE",
+      whatsappOptIn: true,
+      enrollments: { some: { active: true } },
+    },
+    select: {
+      id: true,
+      schoolId: true,
+      fullName: true,
+      dob: true,
+    },
+  });
+
+  const birthdays = students.filter((student) => {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      month: "numeric",
+      day: "numeric",
+      timeZone: "Asia/Kolkata",
+    }).formatToParts(student.dob);
+    const dobMonth = Number(parts.find((part) => part.type === "month")?.value);
+    const dobDay = Number(parts.find((part) => part.type === "day")?.value);
+    return dobMonth === month && dobDay === day;
+  });
+
+  const queued = [];
+  for (const student of birthdays) {
+    const name = student.fullName?.trim() || "Student";
+    const campaign = await queueAutomatedWhatsappAlert({
+      schoolId: student.schoolId,
+      automationKey: `birthday:${student.id}:${dateKey}`,
+      sourceType: "BIRTHDAY",
+      sourceId: student.id,
+      title: "Birthday wishes",
+      message: `Happy Birthday, ${name}! 🎉 Wishing you a wonderful year filled with happiness, good health, learning and success. Best wishes from your school.`,
+      studentIds: [student.id],
+      targetLabel: `${name} — Birthday`,
+    });
+    if (campaign) queued.push(campaign);
+  }
+  return queued;
+}
+
 export async function queueDailyFeeDueAlerts(now = new Date()) {
   if (process.env.META_WA_AUTOMATION_ENABLED !== "true") return [];
   const dateKey = indiaDateKey(now);
