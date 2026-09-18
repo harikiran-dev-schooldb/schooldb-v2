@@ -27,7 +27,9 @@ export function ExamStatusControl({
   status: string;
   onUpdated: () => Promise<void>;
 }) {
-  const [nextStatus, setNextStatus] = useState<"PUBLISHED" | "COMPLETED" | null>(null);
+  const [nextStatus, setNextStatus] = useState<
+    "PUBLISHED" | "COMPLETED" | null
+  >(null);
   const [saving, setSaving] = useState(false);
 
   async function updateStatus() {
@@ -44,7 +46,11 @@ export function ExamStatusControl({
         toast.error(result.message || "Unable to update exam status.");
         return;
       }
-      toast.success(nextStatus === "COMPLETED" ? "Results published and WhatsApp alerts queued." : "Exam schedule published.");
+      toast.success(
+        nextStatus === "COMPLETED"
+          ? "Results published and WhatsApp alerts queued."
+          : "Exam schedule published.",
+      );
       setNextStatus(null);
       await onUpdated();
     } catch {
@@ -55,11 +61,20 @@ export function ExamStatusControl({
   }
 
   if (status === "COMPLETED") {
-    return <Button variant="outline" disabled><CheckCircle2 className="mr-2 size-4" />Results published</Button>;
+    return (
+      <Button variant="outline" disabled>
+        <CheckCircle2 className="mr-2 size-4" />
+        Results published
+      </Button>
+    );
   }
 
   if (status === "CANCELLED") {
-    return <Button variant="outline" disabled>Exam cancelled</Button>;
+    return (
+      <Button variant="outline" disabled>
+        Exam cancelled
+      </Button>
+    );
   }
 
   const target = status === "DRAFT" ? "PUBLISHED" : "COMPLETED";
@@ -69,10 +84,17 @@ export function ExamStatusControl({
         <Send className="mr-2 size-4" />
         {target === "PUBLISHED" ? "Publish schedule" : "Publish results"}
       </Button>
-      <AlertDialog open={nextStatus !== null} onOpenChange={(open) => !open && setNextStatus(null)}>
+      <AlertDialog
+        open={nextStatus !== null}
+        onOpenChange={(open) => !open && setNextStatus(null)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{target === "PUBLISHED" ? "Publish exam schedule?" : "Publish exam results?"}</AlertDialogTitle>
+            <AlertDialogTitle>
+              {target === "PUBLISHED"
+                ? "Publish exam schedule?"
+                : "Publish exam results?"}
+            </AlertDialogTitle>
             <AlertDialogDescription>
               {target === "PUBLISHED"
                 ? `“${examName}” will become visible to students.`
@@ -81,7 +103,13 @@ export function ExamStatusControl({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={saving}>Cancel</AlertDialogCancel>
-            <AlertDialogAction disabled={saving} onClick={(event) => { event.preventDefault(); void updateStatus(); }}>
+            <AlertDialogAction
+              disabled={saving}
+              onClick={(event) => {
+                event.preventDefault();
+                void updateStatus();
+              }}
+            >
               {saving ? "Publishing…" : "Confirm publish"}
             </AlertDialogAction>
           </AlertDialogFooter>

@@ -74,13 +74,19 @@ export function AppSidebar() {
 
   const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({});
 
-  const visibleNavigation = useMemo(() => navigation.flatMap((item) => {
-    if (item.roles && !item.roles.includes(role)) return [];
-    if (!item.children) return [item];
+  const visibleNavigation = useMemo(
+    () =>
+      navigation.flatMap((item) => {
+        if (item.roles && !item.roles.includes(role)) return [];
+        if (!item.children) return [item];
 
-    const children = item.children.filter((child) => !child.roles || child.roles.includes(role));
-    return children.length ? [{ ...item, children }] : [];
-  }), [role]);
+        const children = item.children.filter(
+          (child) => !child.roles || child.roles.includes(role),
+        );
+        return children.length ? [{ ...item, children }] : [];
+      }),
+    [role],
+  );
 
   function toggleSidebar() {
     setSidebarCollapsed(!collapsed);
@@ -432,7 +438,11 @@ export function AppSidebar() {
                             {item.children!.map((child) => {
                               const href = `/${school.slug}/${child.href}`;
 
-                              const active = isRouteActive(pathname, href, child.exact);
+                              const active = isRouteActive(
+                                pathname,
+                                href,
+                                child.exact,
+                              );
 
                               return (
                                 <Link

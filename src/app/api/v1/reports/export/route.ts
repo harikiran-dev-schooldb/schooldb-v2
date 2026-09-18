@@ -25,7 +25,13 @@ export async function GET(request: Request) {
   });
 
   if (!report) {
-    return NextResponse.json({ success: false, message: "Create an academic year before exporting reports." }, { status: 404 });
+    return NextResponse.json(
+      {
+        success: false,
+        message: "Create an academic year before exporting reports.",
+      },
+      { status: 404 },
+    );
   }
 
   const lines = [
@@ -57,10 +63,30 @@ export async function GET(request: Request) {
     ...report.students.classes.map((item) => row(item.name, item.count)),
     "",
     row("Subject performance", "Entries", "Average %", "Pass %"),
-    ...report.academics.subjects.map((item) => row(item.name, item.entries, item.averagePercentage, item.passPercentage)),
+    ...report.academics.subjects.map((item) =>
+      row(item.name, item.entries, item.averagePercentage, item.passPercentage),
+    ),
     "",
-    row("Low attendance students", "Admission no.", "Class", "Section", "Present", "Total", "Attendance %"),
-    ...report.attendance.low.map((item) => row(item.fullName, item.admissionNo, item.className, item.sectionName, item.present, item.total, item.percentage)),
+    row(
+      "Low attendance students",
+      "Admission no.",
+      "Class",
+      "Section",
+      "Present",
+      "Total",
+      "Attendance %",
+    ),
+    ...report.attendance.low.map((item) =>
+      row(
+        item.fullName,
+        item.admissionNo,
+        item.className,
+        item.sectionName,
+        item.present,
+        item.total,
+        item.percentage,
+      ),
+    ),
   ];
 
   await recordAuditLog({
@@ -69,7 +95,13 @@ export async function GET(request: Request) {
     action: "EXPORT",
     entityType: "REPORT",
     summary: `Exported the school report for ${report.scope.academicYearName}, ${report.scope.className}, ${report.scope.sectionName}.`,
-    metadata: { academicYearId: report.scope.academicYearId, classId: report.scope.classId || null, sectionId: report.scope.sectionId || null, from: report.scope.from, to: report.scope.to },
+    metadata: {
+      academicYearId: report.scope.academicYearId,
+      classId: report.scope.classId || null,
+      sectionId: report.scope.sectionId || null,
+      from: report.scope.from,
+      to: report.scope.to,
+    },
   });
 
   const filename = `schooldb-report-${report.scope.from}-${report.scope.to}.csv`;

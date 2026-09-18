@@ -23,18 +23,57 @@ export async function GET() {
   ] = await Promise.all([
     prisma.school.findUnique({
       where: { id: schoolId },
-      select: { id: true, name: true, slug: true, logo: true, createdAt: true, updatedAt: true },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        logo: true,
+        createdAt: true,
+        updatedAt: true,
+      },
     }),
-    prisma.academicYear.findMany({ where: { schoolId }, orderBy: { startDate: "asc" } }),
-    prisma.class.findMany({ where: { schoolId }, orderBy: [{ displayOrder: "asc" }, { name: "asc" }] }),
-    prisma.section.findMany({ where: { class: { schoolId } }, orderBy: [{ classId: "asc" }, { name: "asc" }] }),
+    prisma.academicYear.findMany({
+      where: { schoolId },
+      orderBy: { startDate: "asc" },
+    }),
+    prisma.class.findMany({
+      where: { schoolId },
+      orderBy: [{ displayOrder: "asc" }, { name: "asc" }],
+    }),
+    prisma.section.findMany({
+      where: { class: { schoolId } },
+      orderBy: [{ classId: "asc" }, { name: "asc" }],
+    }),
     prisma.subject.findMany({ where: { schoolId }, orderBy: { name: "asc" } }),
-    prisma.student.findMany({ where: { schoolId }, orderBy: { admissionNo: "asc" }, take: 25_000 }),
-    prisma.studentEnrollment.findMany({ where: { schoolId }, orderBy: { createdAt: "asc" }, take: 25_000 }),
-    prisma.teacher.findMany({ where: { schoolId }, orderBy: { employeeId: "asc" }, take: 10_000 }),
-    prisma.feeCategory.findMany({ where: { schoolId }, orderBy: { name: "asc" } }),
-    prisma.feePayment.findMany({ where: { schoolId }, orderBy: { paymentDate: "asc" }, take: 25_000 }),
-    prisma.announcement.findMany({ where: { schoolId }, orderBy: { createdAt: "asc" }, take: 10_000 }),
+    prisma.student.findMany({
+      where: { schoolId },
+      orderBy: { admissionNo: "asc" },
+      take: 25_000,
+    }),
+    prisma.studentEnrollment.findMany({
+      where: { schoolId },
+      orderBy: { createdAt: "asc" },
+      take: 25_000,
+    }),
+    prisma.teacher.findMany({
+      where: { schoolId },
+      orderBy: { employeeId: "asc" },
+      take: 10_000,
+    }),
+    prisma.feeCategory.findMany({
+      where: { schoolId },
+      orderBy: { name: "asc" },
+    }),
+    prisma.feePayment.findMany({
+      where: { schoolId },
+      orderBy: { paymentDate: "asc" },
+      take: 25_000,
+    }),
+    prisma.announcement.findMany({
+      where: { schoolId },
+      orderBy: { createdAt: "asc" },
+      take: 10_000,
+    }),
   ]);
 
   const snapshot = {
