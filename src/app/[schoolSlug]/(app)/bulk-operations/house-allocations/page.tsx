@@ -10,13 +10,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useSchool } from "@/contexts/school-context";
 import { postImportInBatches, type ImportProgress } from "@/lib/batched-import";
 
-const HEADERS=["academicYear","admissionNo","houseCode","houseName"] as const;
+const HEADERS=["academicYear","admissionNo","houseCode"] as const;
 type Header=(typeof HEADERS)[number];
 type HouseRow=Record<Header,string>;
 type RowError={row:number;message:string};
 const MAX_ROWS=5000;
 const BATCH_SIZE=250;
-const TEMPLATE=[HEADERS.join(","),"2026-27,17492,BLUE,","2026-27,17285,RED,"].join("\n");
+const TEMPLATE=[HEADERS.join(","),"2026-27,17492,BLUE","2026-27,17285,RED"].join("\n");
 
 function parseCsvLine(line:string){const values:string[]=[];let current="";let quoted=false;for(let i=0;i<line.length;i++){const c=line[i];if(c==='"'){if(quoted&&line[i+1]==='"'){current+='"';i++;}else quoted=!quoted;}else if(c===","&&!quoted){values.push(current.trim());current="";}else current+=c;}values.push(current.trim());return values;}
 function parseCsv(text:string){
@@ -28,7 +28,7 @@ function parseCsv(text:string){
  lines.slice(1).forEach((line,index)=>{const values=parseCsvLine(line);const row=Object.fromEntries(HEADERS.map((h,i)=>[h,values[i]??""])) as HouseRow;const n=index+2;
   if(!row.academicYear)errors.push({row:n,message:"Academic year is required."});
   else if(!row.admissionNo)errors.push({row:n,message:"Admission number is required."});
-  else if(!row.houseCode&&!row.houseName)errors.push({row:n,message:"House code or house name is required."});
+  else if(!row.houseCode)errors.push({row:n,message:"House code is required."});
   else rows.push(row);
  });return{rows,errors,totalRows};
 }
@@ -44,7 +44,7 @@ export default function BulkHouseAllocationsPage(){
  return <div className="space-y-8 pb-12">
   <PageHeader eyebrow="Bulk Operations" title="Student House Allocation" description="Upload, validate and allocate students to houses by academic year." action={<Button variant="outline" onClick={downloadTemplate}><Download className="size-4"/>Download Template</Button>}/>
   <div className="flex items-center gap-2 text-xs text-muted-foreground"><Link href={`/${school.slug}/bulk-operations`} className="font-semibold text-primary hover:underline">Bulk Operations</Link><span>/</span><span>Student House Allocation</span></div>
-  <Card className="premium-card overflow-hidden rounded-2xl border-0"><CardHeader className="border-b border-border/60 px-6 py-5"><div className="flex items-center gap-3"><div className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><FileSpreadsheet className="size-5"/></div><div><CardTitle>House allocation import</CardTitle><p className="mt-1 text-xs text-muted-foreground">Columns: academicYear, admissionNo, houseCode, houseName. Existing allocations are updated. Maximum {MAX_ROWS.toLocaleString()} rows.</p></div></div></CardHeader>
+  <Card className="premium-card overflow-hidden rounded-2xl border-0"><CardHeader className="border-b border-border/60 px-6 py-5"><div className="flex items-center gap-3"><div className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><FileSpreadsheet className="size-5"/></div><div><CardTitle>House allocation import</CardTitle><p className="mt-1 text-xs text-muted-foreground">Columns: academicYear, admissionNo, houseCode. Existing allocations are updated. Maximum {MAX_ROWS.toLocaleString()} rows.</p></div></div></CardHeader>
   <CardContent className="space-y-6 p-6"><input ref={inputRef} type="file" accept=".csv,text/csv" className="hidden" onChange={e=>{const f=e.target.files?.[0];if(f)void handleFile(f);}}/>
   {!fileName&&!fileError&&<button type="button" onClick={()=>inputRef.current?.click()} className="flex min-h-64 w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed border-border/70 bg-muted/20 px-6 text-center transition-all hover:border-primary/40 hover:bg-primary/[0.03]"><div className="flex size-14 items-center justify-center rounded-2xl bg-primary/10 text-primary"><UploadCloud className="size-7"/></div><p className="mt-4 text-base font-bold">Upload house allocation CSV</p><p className="mt-1 text-sm text-muted-foreground">Validation happens before database changes. Use the SchoolDB template.</p></button>}
   {fileError&&<div className="flex items-start gap-3 rounded-2xl border border-destructive/20 bg-destructive/5 p-4"><XCircle className="mt-0.5 size-5 text-destructive"/><div className="flex-1"><p className="text-sm font-semibold">Import cannot continue</p><p className="mt-1 text-sm text-muted-foreground">{fileError}</p></div><Button size="sm" variant="outline" onClick={reset}>Reset</Button></div>}
