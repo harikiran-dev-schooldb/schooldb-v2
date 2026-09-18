@@ -34,11 +34,22 @@ export async function POST(request: Request) {
   }
 
   const rawBody = await request.text();
-  if (!verifyMetaWebhookSignature(
+  const signature = request.headers.get("x-hub-signature-256");
+  const signatureValid = verifyMetaWebhookSignature(
     rawBody,
-    request.headers.get("x-hub-signature-256"),
+    signature,
     appSecret,
-  )) {
+  );
+
+  if (!signatureValid) {
+    console.warn("[whatsapp-webhook] Invalid Meta signature", {
+      signaturePresent: Boolean(signature),
+      signatureHasSha256Prefix: signature?.startsWith("sha256=") ?? false,
+      signatureLength: signature?.length ?? 0,
+      rawBodyLength: Buffer.byteLength(rawBody, "utf8"),
+      appSecretConfigured: Boolean(appSecret),
+      appSecretLength: appSecret.length,
+    });
     return Response.json({ error: "Invalid signature" }, { status: 401 });
   }
 

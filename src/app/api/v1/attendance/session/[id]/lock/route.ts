@@ -1,5 +1,5 @@
 import { apiHandler } from "@/lib/api";
-import { requireRole } from "@/lib/auth";
+import { requireRole, requireTeacherAttendanceSession } from "@/lib/auth";
 import { ApiResponse } from "@/lib/response";
 import { after } from "next/server";
 
@@ -16,9 +16,15 @@ type Props = {
 
 export async function POST(req: Request, { params }: Props) {
   return apiHandler(async () => {
-    const tenant = await requireRole(["SUPER_ADMIN", "SCHOOL_ADMIN"]);
+    const tenant = await requireRole([
+      "SUPER_ADMIN",
+      "SCHOOL_ADMIN",
+      "TEACHER",
+    ]);
 
     const { id } = await params;
+
+    await requireTeacherAttendanceSession(id);
 
     const result = await attendanceService.lockAttendanceSession(
       tenant.schoolId,

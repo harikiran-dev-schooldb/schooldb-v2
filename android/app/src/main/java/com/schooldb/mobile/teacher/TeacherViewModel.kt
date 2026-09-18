@@ -101,6 +101,26 @@ class TeacherViewModel(
         }
     }
 
+    fun saveAndLockAttendance() {
+        val sheet = _uiState.value.attendanceSheet ?: return
+        if (sheet.students.isEmpty()) return showMessage("There are no active students in this class.")
+        _uiState.value = _uiState.value.copy(saving = true, message = null, error = null)
+        viewModelScope.launch {
+            try {
+                withContext(Dispatchers.IO) { repository.saveAndLockAttendance(sheet) }
+                val dashboard = withContext(Dispatchers.IO) { repository.dashboard() }
+                _uiState.value = TeacherUiState(
+                    context = _uiState.value.context,
+                    dashboard = dashboard,
+                    loading = false,
+                    message = "Attendance saved and locked successfully.",
+                )
+            } catch (error: Exception) {
+                fail(error)
+            }
+        }
+    }
+
     fun closeAttendance() {
         _uiState.value = _uiState.value.copy(attendanceSheet = null, message = null)
     }

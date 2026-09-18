@@ -9,17 +9,13 @@ import {
   CheckCircle2,
   CircleAlert,
   Clock3,
-  CreditCard,
   GraduationCap,
   IndianRupee,
   RefreshCw,
-  Sparkles,
-  Users,
   WalletCards,
 } from "lucide-react";
 
 import { PageHeader } from "@/components/common/PageHeader";
-import { StatCard } from "@/components/common/StatCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useSchool } from "@/contexts/school-context";
@@ -150,8 +146,21 @@ type OutstandingRow = {
   };
 };
 
-type HouseSummary = { id: string; name: string; code: string | null; color: string | null; _count: { students: number } };
-type BirthdaySummary = { id:string; admissionNo:string; fullName:string|null; imageUrl:string|null; whatsappOptIn:boolean; enrollments:Array<{class:{name:string};section:{name:string}}> };
+type HouseSummary = {
+  id: string;
+  name: string;
+  code: string | null;
+  color: string | null;
+  _count: { students: number };
+};
+type BirthdaySummary = {
+  id: string;
+  admissionNo: string;
+  fullName: string | null;
+  imageUrl: string | null;
+  whatsappOptIn: boolean;
+  enrollments: Array<{ class: { name: string }; section: { name: string } }>;
+};
 
 type DashboardData = {
   academicYear: AcademicYear | null;
@@ -234,36 +243,44 @@ async function fetchDashboardData(
   if (currentAcademicYear) {
     const academicYearId = encodeURIComponent(currentAcademicYear.id);
 
-    const [feeDashboard, lowAttendanceReport, outstandingReport, houseData, birthdayData] =
-      await Promise.all([
-        access.fees
-          ? getJson<FeeDashboard>(
-              `/api/v1/fees/dashboard?academicYearId=${academicYearId}`,
-              signal,
-            )
-          : Promise.resolve(null),
+    const [
+      feeDashboard,
+      lowAttendanceReport,
+      outstandingReport,
+      houseData,
+      birthdayData,
+    ] = await Promise.all([
+      access.fees
+        ? getJson<FeeDashboard>(
+            `/api/v1/fees/dashboard?academicYearId=${academicYearId}`,
+            signal,
+          )
+        : Promise.resolve(null),
 
-        access.attendance
-          ? getJson<{
-              rows: LowAttendanceRow[];
-            }>(
-              `/api/v1/attendance/reports/low?academicYearId=${academicYearId}&threshold=75`,
-              signal,
-            )
-          : Promise.resolve(null),
+      access.attendance
+        ? getJson<{
+            rows: LowAttendanceRow[];
+          }>(
+            `/api/v1/attendance/reports/low?academicYearId=${academicYearId}&threshold=75`,
+            signal,
+          )
+        : Promise.resolve(null),
 
-        access.fees
-          ? getJson<{
-              rows: OutstandingRow[];
-            }>(`/api/v1/fees/outstanding?academicYearId=${academicYearId}`, signal)
-          : Promise.resolve(null),
+      access.fees
+        ? getJson<{
+            rows: OutstandingRow[];
+          }>(
+            `/api/v1/fees/outstanding?academicYearId=${academicYearId}`,
+            signal,
+          )
+        : Promise.resolve(null),
 
-        getJson<{ houses: HouseSummary[] }>(
-          `/api/v1/houses?academicYearId=${academicYearId}`,
-          signal,
-        ),
-        getJson<{ birthdays: BirthdaySummary[] }>("/api/v1/birthdays", signal),
-      ]);
+      getJson<{ houses: HouseSummary[] }>(
+        `/api/v1/houses?academicYearId=${academicYearId}`,
+        signal,
+      ),
+      getJson<{ birthdays: BirthdaySummary[] }>("/api/v1/birthdays", signal),
+    ]);
 
     fees = feeDashboard;
     lowAttendance = lowAttendanceReport?.rows ?? [];
@@ -587,15 +604,19 @@ export default function DashboardPage() {
      RENDER
      ========================================================================== */
 
-  return (
-    <div className="space-y-7 pb-12">
-      {/* ======================================================================
-          PAGE HEADER
-          ====================================================================== */}
+  const incompleteSessions =
+    attendance?.recentSessions.filter((session) => !session.completed).length ??
+    0;
+  const totalOutstanding = (data.outstanding ?? []).reduce(
+    (sum, row) => sum + Number(row.outstanding || 0),
+    0,
+  );
 
+  return (
+    <div className="space-y-6 pb-12">
       <PageHeader
-        title="Dashboard"
-        description="A live operational view of your school."
+        title="School Command Center"
+        description={`${school.name ?? "School"} · ${data.academicYear?.name ?? "No active academic year"}`}
         action={
           <Button
             variant="outline"
@@ -612,27 +633,20 @@ export default function DashboardPage() {
         }
       />
 
-      {/* ======================================================================
-          ERROR
-          ====================================================================== */}
-
       {error && (
         <Card className="rounded-2xl border-red-200 bg-red-50/70 shadow-none">
           <CardContent className="flex items-center justify-between gap-4 p-4">
             <div className="flex items-center gap-3">
-              <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-red-100">
+              <div className="flex size-9 items-center justify-center rounded-xl bg-red-100">
                 <CircleAlert className="size-4 text-red-600" />
               </div>
-
               <div>
                 <p className="font-semibold text-slate-900">
                   Dashboard data could not be loaded
                 </p>
-
                 <p className="text-sm text-slate-500">{error}</p>
               </div>
             </div>
-
             <Button
               size="sm"
               variant="outline"
@@ -646,326 +660,205 @@ export default function DashboardPage() {
         </Card>
       )}
 
-      {/* ======================================================================
-          PREMIUM LIGHT HERO
-          ====================================================================== */}
-
-      <section className="premium-hero relative overflow-hidden px-6 py-6 md:px-8 md:py-7">
-        <div className="pointer-events-none absolute -right-16 -top-20 size-64 rounded-full bg-indigo-500/10 blur-3xl" />
-
-        <div className="pointer-events-none absolute -bottom-24 right-1/3 size-72 rounded-full bg-violet-500/10 blur-3xl" />
-
-        <div className="relative flex flex-col gap-7 lg:flex-row lg:items-center lg:justify-between">
-          {/* LEFT */}
-
-          <div className="max-w-2xl">
-            <div className="inline-flex items-center gap-2 rounded-full border border-indigo-100 bg-white/80 px-3 py-1.5 shadow-sm backdrop-blur">
-              <Sparkles className="size-3 text-indigo-500" />
-
-              <span className="text-[10px] font-bold tracking-[0.18em] text-indigo-600 uppercase">
-                {data.academicYear?.name ?? "No active academic year"}
-              </span>
-            </div>
-
-            <h2 className="mt-4 text-2xl font-bold tracking-[-0.04em] text-slate-950 md:text-4xl md:leading-[1.08]">
-              Run your school
-              <br className="hidden md:block" />{" "}
-              <span className="bg-gradient-to-r from-indigo-600 via-violet-600 to-blue-600 bg-clip-text text-transparent">
-                from one clear view.
-              </span>
-            </h2>
-
-            <p className="mt-3 max-w-xl text-sm leading-6 text-slate-500">
-              {canReadFees
-                ? "Live attendance, student, teacher and fee metrics for the current academic year."
-                : "Live student, teacher and attendance metrics for the current academic year."}
-            </p>
-
-            <div className="mt-6 flex flex-wrap items-center gap-x-7 gap-y-4">
-              {/* Attendance */}
-
-              <div className="flex items-center gap-2.5">
-                <div className="flex size-9 items-center justify-center rounded-xl bg-indigo-50 ring-1 ring-indigo-100">
-                  <CalendarCheck className="size-4 text-indigo-600" />
-                </div>
-
-                <div>
-                  <p className="text-base font-bold leading-none text-slate-900">
-                    {loading
-                      ? "—"
-                      : `${attendance?.summary.attendancePercentage ?? 0}%`}
-                  </p>
-
-                  <p className="mt-1 text-[10px] font-medium text-slate-400">
-                    Attendance today
-                  </p>
-                </div>
+      <section className="overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-sm">
+        <div className="border-b border-slate-100 px-6 py-5 md:px-7">
+          <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="size-2 rounded-full bg-emerald-500" />
+                <p className="text-[11px] font-bold tracking-[0.18em] text-slate-500 uppercase">
+                  Today at school
+                </p>
               </div>
-
-              <div className="hidden h-8 w-px bg-slate-200 sm:block" />
-
-              {/* Students */}
-
-              <div className="flex items-center gap-2.5">
-                <div className="flex size-9 items-center justify-center rounded-xl bg-blue-50 ring-1 ring-blue-100">
-                  <GraduationCap className="size-4 text-blue-600" />
-                </div>
-
-                <div>
-                  <p className="text-base font-bold leading-none text-slate-900">
-                    {loading ? "—" : data.students.toLocaleString("en-IN")}
-                  </p>
-
-                  <p className="mt-1 text-[10px] font-medium text-slate-400">
-                    Students
-                  </p>
-                </div>
-              </div>
+              <h2 className="mt-2 text-2xl font-bold tracking-tight text-slate-950">
+                Your school, at a glance
+              </h2>
             </div>
+            <p className="text-sm text-slate-400">Live operational snapshot</p>
           </div>
+        </div>
 
-          {/* COLLECTION */}
-
+        <div
+          className={`grid divide-y divide-slate-100 md:divide-x md:divide-y-0 ${canReadFees ? "md:grid-cols-3" : "md:grid-cols-2"}`}
+        >
+          <CommandMetric
+            icon={GraduationCap}
+            label="Students"
+            value={loading ? "—" : data.students.toLocaleString("en-IN")}
+            detail={
+              canReadStaff
+                ? `${data.teachers.toLocaleString("en-IN")} teachers · ${data.classes} classes`
+                : `${data.classes} classes`
+            }
+          />
+          {canReadAttendance && (
+            <CommandMetric
+              icon={CalendarCheck}
+              label="Attendance today"
+              value={
+                loading
+                  ? "—"
+                  : `${attendance?.summary.attendancePercentage ?? 0}%`
+              }
+              detail={`${attendance?.summary.present ?? 0} present · ${attendance?.summary.absent ?? 0} absent`}
+            />
+          )}
           {canReadFees && (
-            <div className="min-w-[230px] rounded-2xl border border-indigo-100 bg-white/85 p-4 shadow-[0_15px_35px_rgba(79,70,229,0.08)] backdrop-blur-xl">
-              <div className="flex items-center gap-3">
-                <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-50 to-violet-50 ring-1 ring-indigo-100">
-                  <WalletCards className="size-5 text-indigo-600" />
-                </div>
-
-                <div>
-                  <p className="text-[10px] font-bold tracking-[0.15em] text-slate-400 uppercase">
-                    This month
-                  </p>
-
-                  <p className="mt-1 text-xl font-bold tracking-tight text-slate-900">
-                    {fees ? formatCurrency(fees.collection.thisMonth) : "—"}
-                  </p>
-
-                  <p className="mt-1 text-[10px] text-slate-400">
-                    {fees
-                      ? `${fees.collection.thisMonthPaymentCount} payments received`
-                      : "Collection data"}
-                  </p>
-                </div>
-              </div>
-            </div>
+            <CommandMetric
+              icon={IndianRupee}
+              label="Collection this month"
+              value={fees ? formatCurrency(fees.collection.thisMonth) : "—"}
+              detail={
+                fees
+                  ? `${fees.collection.thisMonthPaymentCount} payments · ${formatCurrency(fees.summary.outstanding)} due`
+                  : "Collection data"
+              }
+            />
           )}
         </div>
       </section>
 
-      {/* ======================================================================
-          KPI
-          ====================================================================== */}
-
-      <section className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard
-          title="Students"
-          value={loading ? "—" : data.students.toLocaleString("en-IN")}
-          icon={GraduationCap}
-          description="Active school records"
-          className="premium-card rounded-2xl border-0 bg-white transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
-        />
-
-        {canReadStaff && (
-          <StatCard
-            title="Teachers"
-            value={loading ? "—" : data.teachers.toLocaleString("en-IN")}
-            icon={Users}
-            description="Teaching staff"
-            className="premium-card rounded-2xl border-0 bg-white transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
-          />
-        )}
-
-        {canReadAttendance && <StatCard
-          title="Attendance"
-          value={
-            loading ? "—" : `${attendance?.summary.attendancePercentage ?? 0}%`
-          }
-          icon={CalendarCheck}
-          description={`${attendance?.summary.present ?? 0} present today`}
-          className="premium-card rounded-2xl border-0 bg-white transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
-        />}
-
-        {canReadFees && <StatCard
-          title="Fee Collection"
-          value={fees ? formatCurrency(fees.collection.thisMonth) : "—"}
-          icon={IndianRupee}
-          description={
-            fees
-              ? `${fees.collection.thisMonthPaymentCount} payments this month`
-              : "Current academic year"
-          }
-          className="premium-card rounded-2xl border-0 bg-white transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
-        />}
-      </section>
-
-      {isAdministrator && data.houses.length > 0 && (
-        <section>
-          <div className="mb-3 flex items-end justify-between gap-4">
-            <div>
-              <p className="text-[10px] font-bold tracking-[0.18em] text-indigo-500 uppercase">Student Houses</p>
-              <h3 className="mt-1 text-lg font-bold text-slate-900">House-wise strength</h3>
-            </div>
-            <Link href={`/${school.slug}/student-houses`} className="text-sm font-semibold text-indigo-600 hover:text-indigo-700">
-              Manage houses
-            </Link>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            {data.houses.map((house) => (
-              <Link key={house.id} href={`/${school.slug}/student-houses?houseId=${encodeURIComponent(house.id)}`}>
-                <Card className="premium-card h-full rounded-2xl border-0 bg-white transition-all hover:-translate-y-0.5 hover:shadow-lg">
-                  <CardContent className="flex items-center gap-4 p-5">
-                    <div className="flex size-11 shrink-0 items-center justify-center rounded-xl text-sm font-black text-white shadow-sm" style={{ backgroundColor: house.color || "#4f46e5" }}>
-                      {(house.code || house.name).slice(0, 2).toUpperCase()}
-                    </div>
-                    <div>
-                      <p className="font-semibold text-slate-900">{house.name}</p>
-                      <p className="mt-1 text-2xl font-bold tracking-tight text-slate-950">{house._count.students.toLocaleString("en-IN")}</p>
-                      <p className="text-xs text-slate-400">students</p>
-                    </div>
-                  </CardContent>
-                </Card>
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {isAdministrator && data.birthdays.length > 0 && (
-        <section>
-          <div className="mb-3 flex items-end justify-between gap-4">
-            <div>
-              <p className="text-[10px] font-bold tracking-[0.18em] text-violet-500 uppercase">Celebrations</p>
-              <h3 className="mt-1 text-lg font-bold text-slate-900">Today&apos;s Birthdays</h3>
-            </div>
-            <Link href={`/${school.slug}/birthdays`} className="text-sm font-semibold text-indigo-600 hover:text-indigo-700">View birthdays</Link>
-          </div>
-          <Card className="premium-card rounded-2xl border-0 bg-gradient-to-r from-violet-50/70 via-white to-amber-50/60">
-            <CardContent className="flex flex-wrap gap-3 p-5">
-              {data.birthdays.slice(0, 6).map((student) => {
-                const enrollment = student.enrollments[0];
-                return (
-                  <Link key={student.id} href={`/${school.slug}/students/${student.id}`} className="flex min-w-[230px] flex-1 items-center gap-3 rounded-2xl border border-white bg-white/90 p-3 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md">
-                    {student.imageUrl ? <img src={student.imageUrl} alt="" className="size-11 rounded-xl object-cover" /> : <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-violet-100 font-bold text-violet-600">{student.fullName?.charAt(0) || "S"}</div>}
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold text-slate-900">{student.fullName || "Unnamed Student"}</p>
-                      <p className="mt-0.5 text-xs text-slate-500">{enrollment ? `${enrollment.class.name} - ${enrollment.section.name}` : student.admissionNo}</p>
-                    </div>
-                    <Cake className="size-5 shrink-0 text-violet-500" />
+      <section
+        className={`grid gap-6 ${canReadAttendance ? "xl:grid-cols-[1.35fr_0.85fr]" : ""}`}
+      >
+        {canReadAttendance && (
+          <Card className="overflow-hidden rounded-3xl border-slate-200/80 bg-white shadow-sm">
+            <CardHeader className="border-b border-slate-100 px-6 py-5">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-[11px] font-bold tracking-[0.16em] text-indigo-600 uppercase">
+                    Attendance today
+                  </p>
+                  <CardTitle className="mt-1.5 text-xl text-slate-950">
+                    Daily attendance position
+                  </CardTitle>
+                </div>
+                <Button asChild variant="ghost" size="sm">
+                  <Link href={`/${school.slug}/attendance`}>
+                    Open attendance <ArrowRight className="size-4" />
                   </Link>
-                );
-              })}
-              {data.birthdays.length > 6 && <Link href={`/${school.slug}/birthdays`} className="flex min-w-[150px] items-center justify-center rounded-2xl border border-dashed border-violet-200 px-4 py-3 text-sm font-semibold text-violet-600 hover:bg-violet-50">+${data.birthdays.length - 6} more</Link>}
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="p-6">
+              <div className="grid gap-6 md:grid-cols-[220px_1fr] md:items-center">
+                <div className="flex flex-col items-center justify-center rounded-2xl bg-slate-50 p-6 text-center">
+                  <p className="text-4xl font-black tracking-tight text-slate-950">
+                    {loading
+                      ? "—"
+                      : `${attendance?.summary.attendancePercentage ?? 0}%`}
+                  </p>
+                  <p className="mt-1 text-xs font-medium text-slate-500">
+                    overall attendance
+                  </p>
+                  <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-slate-200">
+                    <div
+                      className="h-full rounded-full bg-indigo-600"
+                      style={{
+                        width: `${Math.min(100, attendance?.summary.attendancePercentage ?? 0)}%`,
+                      }}
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-x-6 gap-y-5">
+                  <AttendanceCount
+                    label="Present"
+                    value={attendance?.summary.present ?? 0}
+                  />
+                  <AttendanceCount
+                    label="Absent"
+                    value={attendance?.summary.absent ?? 0}
+                  />
+                  <AttendanceCount
+                    label="Late"
+                    value={attendance?.summary.late ?? 0}
+                  />
+                  <AttendanceCount
+                    label="Leave"
+                    value={attendance?.summary.leave ?? 0}
+                  />
+                </div>
+              </div>
+              {attendance?.recentSessions.length ? (
+                <div className="mt-6 border-t border-slate-100 pt-5">
+                  <div className="mb-3 flex items-center justify-between">
+                    <p className="text-xs font-bold tracking-wide text-slate-500 uppercase">
+                      Recent sessions
+                    </p>
+                    <p className="text-xs text-slate-400">
+                      {incompleteSessions} incomplete
+                    </p>
+                  </div>
+                  <div className="divide-y divide-slate-100">
+                    {attendance.recentSessions.slice(0, 4).map((session) => {
+                      const percentage =
+                        session.totalStudents > 0
+                          ? Math.round(
+                              (session.present / session.totalStudents) * 100,
+                            )
+                          : 0;
+                      return (
+                        <div
+                          key={session.id}
+                          className="flex items-center gap-4 py-3"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-semibold text-slate-800">
+                              {session.className} - {session.sectionName}
+                            </p>
+                            <p className="mt-0.5 text-xs text-slate-400">
+                              {formatDate(session.attendanceDate)} ·{" "}
+                              {titleCase(session.sessionType)}
+                            </p>
+                          </div>
+                          <span
+                            className={`rounded-full px-2.5 py-1 text-xs font-bold ${session.completed ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}
+                          >
+                            {session.completed
+                              ? `${percentage}%`
+                              : "Incomplete"}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : (
+                <EmptyState text="No attendance sessions are available yet." />
+              )}
             </CardContent>
           </Card>
-        </section>
-      )}
+        )}
 
-      {/* ======================================================================
-          ATTENDANCE + ACTION CENTER
-          ====================================================================== */}
-
-      <section className={`grid gap-6 ${canReadAttendance ? "xl:grid-cols-[1.35fr_0.85fr]" : ""}`}>
-        {/* ATTENDANCE */}
-
-        {canReadAttendance && <Card className="premium-card overflow-hidden rounded-2xl border-0 bg-white">
-          <CardHeader className="border-b border-border/60 px-6 py-5">
-            <p className="text-[10px] font-bold tracking-[0.18em] text-indigo-500 uppercase">
-              Attendance Overview
+        <Card className="overflow-hidden rounded-3xl border-slate-200/80 bg-white shadow-sm">
+          <CardHeader className="border-b border-slate-100 px-6 py-5">
+            <p className="text-[11px] font-bold tracking-[0.16em] text-amber-600 uppercase">
+              Needs attention
             </p>
-
-            <CardTitle className="mt-1.5 text-xl font-bold tracking-tight text-slate-900">
-              Recent sessions
+            <CardTitle className="mt-1.5 text-xl text-slate-950">
+              Action center
             </CardTitle>
-
-            <p className="mt-1 text-sm text-slate-500">
-              Latest attendance activity from the active academic year.
+            <p className="text-sm text-slate-500">
+              Items that need action today.
             </p>
           </CardHeader>
-
-          <CardContent className="p-6">
-            {attendance?.recentSessions.length ? (
-              <div className="space-y-5">
-                {attendance.recentSessions.slice(0, 6).map((session) => {
-                  const percentage =
-                    session.totalStudents > 0
-                      ? Math.round(
-                          (session.present / session.totalStudents) * 100,
-                        )
-                      : 0;
-
-                  return (
-                    <div key={session.id} className="space-y-2.5">
-                      <div className="flex items-center justify-between gap-4">
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-semibold text-slate-800">
-                            {session.className} - {session.sectionName}
-                          </p>
-
-                          <p className="mt-0.5 text-xs text-slate-400">
-                            {formatDate(session.attendanceDate)} ·{" "}
-                            {titleCase(session.sessionType)}
-                          </p>
-                        </div>
-
-                        <span className="shrink-0 rounded-lg bg-indigo-50 px-2.5 py-1 text-xs font-bold text-indigo-600">
-                          {percentage}%
-                        </span>
-                      </div>
-
-                      <div className="h-2 overflow-hidden rounded-full bg-slate-100">
-                        <div
-                          className="h-full rounded-full bg-gradient-to-r from-indigo-500 via-violet-500 to-blue-500 transition-all"
-                          style={{
-                            width: `${Math.min(100, percentage)}%`,
-                          }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <EmptyState text="No attendance sessions are available yet." />
-            )}
-          </CardContent>
-        </Card>}
-
-        {/* ACTION CENTER */}
-
-        <Card className="premium-card overflow-hidden rounded-2xl border-0 bg-white">
-          <CardHeader className="border-b border-border/60 px-6 py-5">
-            <p className="text-[10px] font-bold tracking-[0.18em] text-indigo-500 uppercase">
-              Action Center
-            </p>
-
-            <CardTitle className="mt-1.5 text-xl font-bold tracking-tight text-slate-900">
-              Needs your attention
-            </CardTitle>
-          </CardHeader>
-
-          <CardContent className="space-y-1 p-4">
+          <CardContent className="p-3">
             {actionItems.map((item) => (
               <Link
                 key={item.title}
                 href={item.href}
-                className="group flex items-start gap-3.5 rounded-2xl border border-transparent p-3.5 transition-all hover:border-slate-200 hover:bg-slate-50/80 hover:shadow-sm"
+                className="group flex items-start gap-3 rounded-2xl p-3.5 transition-colors hover:bg-slate-50"
               >
                 <div
-                  className={[
-                    "mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-xl",
-
-                    item.tone === "success" && "bg-emerald-50 text-emerald-600",
-
-                    item.tone === "info" && "bg-blue-50 text-blue-600",
-
-                    item.tone === "warning" && "bg-amber-50 text-amber-600",
-
-                    item.tone === "danger" && "bg-red-50 text-red-600",
-                  ]
-                    .filter(Boolean)
-                    .join(" ")}
+                  className={`mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-xl ${
+                    item.tone === "danger"
+                      ? "bg-red-50 text-red-600"
+                      : item.tone === "warning"
+                        ? "bg-amber-50 text-amber-600"
+                        : item.tone === "success"
+                          ? "bg-emerald-50 text-emerald-600"
+                          : "bg-blue-50 text-blue-600"
+                  }`}
                 >
                   {item.tone === "success" ? (
                     <CheckCircle2 className="size-4" />
@@ -973,134 +866,293 @@ export default function DashboardPage() {
                     <CircleAlert className="size-4" />
                   )}
                 </div>
-
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-semibold text-slate-800">
                     {item.title}
                   </p>
-
-                  <p className="mt-1 text-xs leading-5 text-slate-500">
+                  <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-500">
                     {item.description}
                   </p>
                 </div>
-
-                <ArrowRight className="mt-1 size-4 shrink-0 text-slate-300 transition-all group-hover:translate-x-1 group-hover:text-indigo-500" />
+                <ArrowRight className="mt-2 size-4 shrink-0 text-slate-300 transition-transform group-hover:translate-x-0.5" />
               </Link>
             ))}
           </CardContent>
         </Card>
       </section>
 
-      {/* ======================================================================
-          QUICK ACTIONS + FEE OPERATIONS
-          ====================================================================== */}
-
-      <section className={`grid gap-6 ${canReadFees ? "lg:grid-cols-[0.85fr_1.15fr]" : ""}`}>
-        {/* QUICK ACTIONS */}
-
-        <Card className="premium-card rounded-2xl border-0 bg-white">
-          <CardHeader className="px-6 py-5">
-            <p className="text-[10px] font-bold tracking-[0.18em] text-indigo-500 uppercase">
-              Quick Actions
+      <section className="rounded-3xl border border-slate-200/80 bg-white shadow-sm">
+        <div className="flex flex-col gap-4 border-b border-slate-100 px-6 py-5 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="text-[11px] font-bold tracking-[0.16em] text-indigo-600 uppercase">
+              Today&apos;s operations
             </p>
-
-            <CardTitle className="mt-1.5 text-xl font-bold tracking-tight text-slate-900">
-              Get things done
-            </CardTitle>
-          </CardHeader>
-
-          <CardContent className="grid grid-cols-2 gap-3 p-6 pt-0">
+            <h3 className="mt-1 text-xl font-bold text-slate-950">
+              Move directly into the work
+            </h3>
+          </div>
+          <div className="flex flex-wrap gap-2">
             {quickActions.map((action) => {
               const Icon = action.icon;
-
               return (
-                <Link
+                <Button
                   key={action.label}
-                  href={action.href}
-                  className="group rounded-2xl border border-slate-200/80 bg-slate-50/50 p-4 transition-all hover:-translate-y-0.5 hover:border-indigo-200 hover:bg-indigo-50/40 hover:shadow-md"
+                  asChild
+                  variant="outline"
+                  size="sm"
+                  className="bg-white"
                 >
-                  <div className="flex size-9 items-center justify-center rounded-xl bg-white text-indigo-600 shadow-sm ring-1 ring-indigo-100">
+                  <Link href={action.href}>
                     <Icon className="size-4" />
-                  </div>
-
-                  <p className="mt-3 text-sm font-semibold text-slate-800">
                     {action.label}
-                  </p>
-
-                  <ArrowRight className="mt-3 size-4 text-slate-300 transition-all group-hover:translate-x-1 group-hover:text-indigo-500" />
-                </Link>
+                  </Link>
+                </Button>
               );
             })}
-          </CardContent>
-        </Card>
-
-        {/* FEE OPERATIONS */}
-
-        {canReadFees && <Card className="premium-card rounded-2xl border-0 bg-white">
-          <CardHeader className="flex flex-row items-start justify-between gap-4 px-6 py-5">
-            <div>
-              <p className="text-[10px] font-bold tracking-[0.18em] text-indigo-500 uppercase">
-                Fee Operations
-              </p>
-
-              <CardTitle className="mt-1.5 text-xl font-bold tracking-tight text-slate-900">
-                Collection snapshot
-              </CardTitle>
-            </div>
-
-            <div className="flex size-9 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 ring-1 ring-indigo-100">
-              <CreditCard className="size-4" />
-            </div>
-          </CardHeader>
-
-          <CardContent className="grid gap-4 p-6 pt-0 sm:grid-cols-3">
-            <Metric
-              label="Today"
-              value={fees ? formatCurrency(fees.collection.today) : "—"}
-              hint={
-                fees ? `${fees.collection.todayPaymentCount} payments` : "—"
-              }
+          </div>
+        </div>
+        <div
+          className={`grid divide-y divide-slate-100 sm:grid-cols-2 sm:divide-x sm:divide-y-0 ${canReadFees ? "lg:grid-cols-4" : "lg:grid-cols-3"}`}
+        >
+          <OperationMetric
+            label="Attendance sessions"
+            value={
+              attendance ? attendance.recentSessions.length.toString() : "—"
+            }
+            hint={`${incompleteSessions} need marking`}
+          />
+          <OperationMetric
+            label="Low attendance"
+            value={data.lowAttendance.length.toLocaleString("en-IN")}
+            hint="Below 75%"
+          />
+          {canReadFees && (
+            <OperationMetric
+              label="Outstanding items"
+              value={data.outstanding.length.toLocaleString("en-IN")}
+              hint={formatCurrency(totalOutstanding)}
             />
-
-            <Metric
-              label="Outstanding"
-              value={fees ? formatCurrency(fees.summary.outstanding) : "—"}
-              hint={fees ? `${fees.summary.pendingCount} pending` : "—"}
-            />
-
-            <Metric
-              label="Paid Installments"
-              value={
-                fees ? fees.summary.paidCount.toLocaleString("en-IN") : "—"
-              }
-              hint={fees ? `${fees.summary.installmentCount} total` : "—"}
-            />
-          </CardContent>
-        </Card>}
+          )}
+          <OperationMetric
+            label="Classes"
+            value={data.classes.toLocaleString("en-IN")}
+            hint="Active structure"
+          />
+        </div>
       </section>
 
-      {/* ======================================================================
-          REPORT LINK
-          ====================================================================== */}
+      {canReadFees && (
+        <section className="grid gap-6 lg:grid-cols-[0.8fr_1.2fr]">
+          <Card className="rounded-3xl border-slate-200/80 bg-white shadow-sm">
+            <CardHeader className="px-6 py-5">
+              <p className="text-[11px] font-bold tracking-[0.16em] text-indigo-600 uppercase">
+                Fee position
+              </p>
+              <CardTitle className="mt-1.5 text-xl text-slate-950">
+                Collections
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 px-6 pb-6">
+              <Metric
+                label="Collected today"
+                value={fees ? formatCurrency(fees.collection.today) : "—"}
+                hint={
+                  fees ? `${fees.collection.todayPaymentCount} payments` : "—"
+                }
+              />
+              <Metric
+                label="Collected this month"
+                value={fees ? formatCurrency(fees.collection.thisMonth) : "—"}
+                hint={
+                  fees
+                    ? `${fees.collection.thisMonthPaymentCount} payments`
+                    : "—"
+                }
+              />
+              <Metric
+                label="Outstanding"
+                value={fees ? formatCurrency(fees.summary.outstanding) : "—"}
+                hint={
+                  fees
+                    ? `${fees.summary.pendingCount} pending installments`
+                    : "—"
+                }
+              />
+            </CardContent>
+          </Card>
 
-      {isAdministrator && <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-indigo-100 bg-gradient-to-r from-white to-indigo-50/50 px-5 py-4 shadow-sm">
-        <div>
-          <p className="text-sm font-semibold text-slate-800">
-            Need detailed reports?
-          </p>
+          <Card className="rounded-3xl border-slate-200/80 bg-white shadow-sm">
+            <CardHeader className="flex flex-row items-center justify-between px-6 py-5">
+              <div>
+                <p className="text-[11px] font-bold tracking-[0.16em] text-slate-500 uppercase">
+                  Recent activity
+                </p>
+                <CardTitle className="mt-1.5 text-xl text-slate-950">
+                  Latest fee receipts
+                </CardTitle>
+              </div>
+              <Button asChild variant="ghost" size="sm">
+                <Link href={`/${school.slug}/fees/dashboard`}>
+                  Fee dashboard <ArrowRight className="size-4" />
+                </Link>
+              </Button>
+            </CardHeader>
+            <CardContent className="px-6 pb-6">
+              {fees?.recentPayments?.length ? (
+                <div className="divide-y divide-slate-100">
+                  {fees.recentPayments.slice(0, 5).map((payment) => (
+                    <div
+                      key={payment.id}
+                      className="flex items-center gap-4 py-3"
+                    >
+                      <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
+                        <IndianRupee className="size-4" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold text-slate-800">
+                          {payment.studentEnrollment.student.fullName}
+                        </p>
+                        <p className="mt-0.5 text-xs text-slate-400">
+                          {payment.studentEnrollment.class.name} -{" "}
+                          {payment.studentEnrollment.section.name} ·{" "}
+                          {formatDate(payment.paymentDate)}
+                        </p>
+                      </div>
+                      <p className="text-sm font-bold text-slate-900">
+                        {formatCurrency(payment.amount)}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <EmptyState text="No recent fee payments are available." />
+              )}
+            </CardContent>
+          </Card>
+        </section>
+      )}
 
-          <p className="mt-0.5 text-xs text-slate-500">
-            Open the reporting area for filtered and exportable school data.
-          </p>
-        </div>
+      {isAdministrator &&
+        (data.birthdays.length > 0 || data.houses.length > 0) && (
+          <section className="grid gap-6 lg:grid-cols-2">
+            {data.birthdays.length > 0 && (
+              <Card className="rounded-3xl border-slate-200/80 bg-white shadow-sm">
+                <CardHeader className="flex flex-row items-center justify-between px-6 py-5">
+                  <div>
+                    <p className="text-[11px] font-bold tracking-[0.16em] text-violet-600 uppercase">
+                      Today
+                    </p>
+                    <CardTitle className="mt-1 text-lg">Birthdays</CardTitle>
+                  </div>
+                  <Cake className="size-5 text-violet-500" />
+                </CardHeader>
+                <CardContent className="space-y-2 px-6 pb-6">
+                  {data.birthdays.slice(0, 4).map((student) => (
+                    <Link
+                      key={student.id}
+                      href={`/${school.slug}/students/${student.id}`}
+                      className="flex items-center gap-3 rounded-xl p-2 hover:bg-slate-50"
+                    >
+                      <div className="flex size-9 items-center justify-center rounded-xl bg-violet-50 font-bold text-violet-600">
+                        {student.fullName?.charAt(0) || "S"}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-slate-800">
+                          {student.fullName || "Unnamed Student"}
+                        </p>
+                        <p className="text-xs text-slate-400">
+                          {student.admissionNo}
+                        </p>
+                      </div>
+                    </Link>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
+            {data.houses.length > 0 && (
+              <Card className="rounded-3xl border-slate-200/80 bg-white shadow-sm">
+                <CardHeader className="px-6 py-5">
+                  <p className="text-[11px] font-bold tracking-[0.16em] text-indigo-600 uppercase">
+                    Student houses
+                  </p>
+                  <CardTitle className="mt-1 text-lg">House strength</CardTitle>
+                </CardHeader>
+                <CardContent className="grid grid-cols-2 gap-3 px-6 pb-6">
+                  {data.houses.slice(0, 4).map((house) => (
+                    <Link
+                      key={house.id}
+                      href={`/${school.slug}/student-houses?houseId=${encodeURIComponent(house.id)}`}
+                      className="rounded-2xl border border-slate-100 p-4 hover:bg-slate-50"
+                    >
+                      <p className="text-sm font-semibold text-slate-700">
+                        {house.name}
+                      </p>
+                      <p className="mt-1 text-2xl font-black text-slate-950">
+                        {house._count.students.toLocaleString("en-IN")}
+                      </p>
+                    </Link>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
+          </section>
+        )}
+    </div>
+  );
+}
 
-        <Button asChild variant="outline" size="sm" className="bg-white">
-          <Link href={`/${school.slug}/reports`}>
-            View Reports
-            <ArrowRight className="size-4" />
-          </Link>
-        </Button>
-      </div>}
+function CommandMetric({
+  icon: Icon,
+  label,
+  value,
+  detail,
+}: {
+  icon: typeof GraduationCap;
+  label: string;
+  value: string;
+  detail: string;
+}) {
+  return (
+    <div className="flex items-center gap-4 px-6 py-6 md:px-7">
+      <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-slate-950 text-white">
+        <Icon className="size-5" />
+      </div>
+      <div>
+        <p className="text-xs font-semibold text-slate-500">{label}</p>
+        <p className="mt-1 text-2xl font-black tracking-tight text-slate-950">
+          {value}
+        </p>
+        <p className="mt-1 text-xs text-slate-400">{detail}</p>
+      </div>
+    </div>
+  );
+}
+
+function AttendanceCount({ label, value }: { label: string; value: number }) {
+  return (
+    <div>
+      <p className="text-xs font-medium text-slate-400">{label}</p>
+      <p className="mt-1 text-2xl font-bold text-slate-900">
+        {value.toLocaleString("en-IN")}
+      </p>
+    </div>
+  );
+}
+
+function OperationMetric({
+  label,
+  value,
+  hint,
+}: {
+  label: string;
+  value: string;
+  hint: string;
+}) {
+  return (
+    <div className="px-6 py-5">
+      <p className="text-xs font-medium text-slate-400">{label}</p>
+      <p className="mt-1 text-xl font-bold text-slate-900">{value}</p>
+      <p className="mt-1 text-xs text-slate-400">{hint}</p>
     </div>
   );
 }
