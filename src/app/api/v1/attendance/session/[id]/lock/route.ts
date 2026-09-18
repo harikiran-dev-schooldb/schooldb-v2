@@ -4,6 +4,7 @@ import { ApiResponse } from "@/lib/response";
 import { after } from "next/server";
 
 import { attendanceService } from "@/features/attendance/services/attendance.service";
+import { notifyAttendanceLocked } from "@/features/notifications/events";
 import { processAutomatedCampaign, queueAttendanceSessionAlert } from "@/features/whatsapp/automation";
 import { recordAuditLog } from "@/lib/audit";
 
@@ -23,6 +24,7 @@ export async function POST(req: Request, { params }: Props) {
       tenant.schoolId,
       id,
     );
+    await notifyAttendanceLocked(id, tenant.schoolId);
     const campaign = await queueAttendanceSessionAlert(tenant.schoolId, id);
     if (campaign) after(() => processAutomatedCampaign(campaign.id));
     await recordAuditLog({
