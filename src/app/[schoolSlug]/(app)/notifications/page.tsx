@@ -16,7 +16,7 @@ export default async function NotificationsPage({ params }: { params: Promise<{ 
       select: { id: true },
       orderBy: { startDate: "desc" },
     }),
-    prisma.announcement.findMany({ where: { schoolId: membership.schoolId }, orderBy: { createdAt: "desc" }, take: 100, include: { _count: { select: { reads: true } } } }),
+    prisma.announcement.findMany({ where: { schoolId: membership.schoolId, createdBy: { not: "SYSTEM" } }, orderBy: { createdAt: "desc" }, take: 100, include: { _count: { select: { reads: true } } } }),
   ]);
   const now = new Date();
   return (
