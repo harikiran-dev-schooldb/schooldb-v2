@@ -61,6 +61,7 @@ export const homeworkService = {
       page: number;
       pageSize: number;
       search?: string;
+      teacherScope?: Array<{ classId: string; sectionId: string }>;
     }
   ) {
     const skip =
@@ -68,6 +69,13 @@ export const homeworkService = {
 
     const where: Prisma.HomeworkWhereInput = {
       schoolId,
+
+      ...(query.teacherScope && {
+        OR: query.teacherScope.map((scope) => ({
+          classId: scope.classId,
+          OR: [{ sectionId: scope.sectionId }, { sectionId: null }],
+        })),
+      }),
 
       ...(query.search && {
         OR: [

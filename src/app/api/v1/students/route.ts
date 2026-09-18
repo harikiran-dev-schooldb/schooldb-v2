@@ -1,5 +1,5 @@
 import { apiHandler } from "@/lib/api";
-import { requirePermission, requireRole } from "@/lib/auth";
+import { requireCurrentTeacher, requirePermission, requireRole } from "@/lib/auth";
 import { PERMISSIONS } from "@/lib/access-control";
 import { ApiResponse } from "@/lib/response";
 
@@ -7,6 +7,7 @@ import { createStudentSchema } from "@/features/students/schemas/student.schema"
 import { studentService } from "@/features/students/services/student.service";
 import { StudentStatus } from "@/features/students/constants/student-status";
 import { recordAuditLog } from "@/lib/audit";
+import { prisma } from "@/lib/prisma";
 
 export async function POST(req: Request) {
   return apiHandler(async () => {
@@ -64,6 +65,36 @@ export async function GET(req: Request) {
     const classId = searchParams.get("classId") || undefined;
     const sectionId = searchParams.get("sectionId") || undefined;
 
+    let teacherScope:
+      | Array<{ classId: string; sectionId: string }>
+      | undefined;
+
+    if (tenant.role === "TEACHER") {
+      const teacher = await requireCurrentTeacher(tenant.schoolId);
+      const allocations = await prisma.teacherAllocation.findMany({
+        where: {
+          schoolId: tenant.schoolId,
+          teacherId: teacher.id,
+          active: true,
+        },
+        distinct: ["classId", "sectionId"],
+        select: { classId: true, sectionId: true },
+      });
+
+      teacherScope = allocations;
+
+      if (
+        classId &&
+        !allocations.some(
+          (item) =>
+            item.classId === classId &&
+            (!sectionId || item.sectionId === sectionId),
+        )
+      ) {
+        return ApiResponse.error("This class or section is not assigned to you.", 403);
+      }
+    }
+
     const students = await studentService.list(tenant.schoolId, {
       page,
       pageSize,
@@ -71,6 +102,7 @@ export async function GET(req: Request) {
       status,
       classId,
       sectionId,
+      teacherScope,
     });
     return ApiResponse.success(students);
   });

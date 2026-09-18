@@ -1,13 +1,13 @@
 import { timetableSchema } from "@/features/timetable";
 import { timetableService } from "@/features/timetable/services/timetable.service";
 import { apiHandler } from "@/lib/api";
-import { requireRole, requireTenant } from "@/lib/auth";
+import { requireRole } from "@/lib/auth";
 import { ApiResponse } from "@/lib/response";
 import { validateBody } from "@/lib/validation";
 
 export async function GET(req: Request) {
   return apiHandler(async () => {
-    const tenant = await requireTenant();
+    const tenant = await requireRole(["SUPER_ADMIN", "SCHOOL_ADMIN", "TEACHER"]);
 
     const { searchParams } = new URL(req.url);
 

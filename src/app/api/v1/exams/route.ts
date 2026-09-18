@@ -1,5 +1,5 @@
 import { apiHandler } from "@/lib/api";
-import { requireRole, requireTenant } from "@/lib/auth";
+import { requireRole } from "@/lib/auth";
 import { ApiResponse } from "@/lib/response";
 
 import { examService } from "@/features/exams/services/exam.service";
@@ -8,7 +8,7 @@ import { recordAuditLog } from "@/lib/audit";
 
 export async function GET() {
   return apiHandler(async () => {
-    const tenant = await requireTenant();
+    const tenant = await requireRole(["SUPER_ADMIN", "SCHOOL_ADMIN", "TEACHER"]);
     const exams = await examService.getAll(tenant.schoolId);
     return ApiResponse.success(exams);
   });

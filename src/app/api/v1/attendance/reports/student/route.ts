@@ -1,5 +1,5 @@
 import { apiHandler } from "@/lib/api";
-import { requirePermission } from "@/lib/auth";
+import { requirePermission, requireTeacherStudent } from "@/lib/auth";
 import { PERMISSIONS } from "@/lib/access-control";
 import { ApiResponse } from "@/lib/response";
 
@@ -32,6 +32,8 @@ export async function GET(req: Request) {
         "Academic year is required."
       );
     }
+
+    await requireTeacherStudent(studentId, academicYearId);
 
     const result =
       await attendanceService.studentAttendanceReport(

@@ -1,5 +1,5 @@
 import { apiHandler } from "@/lib/api";
-import { requireRole, requireTenant } from "@/lib/auth";
+import { requireRole } from "@/lib/auth";
 import { ApiResponse } from "@/lib/response";
 
 import { studentEnrollmentService } from "@/features/student-enrollments/services/student-enrollment.service";
@@ -7,7 +7,7 @@ import { studentEnrollmentSchema } from "@/features/student-enrollments/schemas/
 
 export async function GET(request: Request) {
   return apiHandler(async () => {
-    const tenant = await requireTenant();
+    const tenant = await requireRole(["SUPER_ADMIN", "SCHOOL_ADMIN"]);
 
     const { searchParams } = new URL(request.url);
 

@@ -1,5 +1,5 @@
 import { apiHandler } from "@/lib/api";
-import { requireTenant } from "@/lib/auth";
+import { requireCurrentTeacher, requireTenant } from "@/lib/auth";
 import { ApiResponse } from "@/lib/response";
 
 import { WeekDay } from "@/generated/prisma/client";
@@ -19,12 +19,17 @@ export async function GET(req: Request) {
       (searchParams.get("day") as WeekDay) ??
       "MONDAY";
 
-    const data =
-      await timetableService.dailyView(
-        tenant.schoolId,
-        academicYearId,
-        day
-      );
+    const data = tenant.role === "TEACHER"
+      ? await timetableService.teacherView(
+          tenant.schoolId,
+          academicYearId,
+          (await requireCurrentTeacher(tenant.schoolId)).id,
+        ).then((rows) => rows.filter((row) => row.day === day))
+      : await timetableService.dailyView(
+          tenant.schoolId,
+          academicYearId,
+          day
+        );
 
     return ApiResponse.success(data);
   });

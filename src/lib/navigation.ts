@@ -31,12 +31,26 @@ type NavigationItem = {
 const ADMIN_ROLES = ["SUPER_ADMIN", "SCHOOL_ADMIN"];
 const ATTENDANCE_ROLES = [...ADMIN_ROLES, "TEACHER"];
 const FEE_ROLES = [...ADMIN_ROLES, "ACCOUNTANT"];
+const TEACHING_ROLES = [...ADMIN_ROLES, "TEACHER"];
+const STUDENT_DIRECTORY_ROLES = [
+  ...ADMIN_ROLES,
+  "TEACHER",
+  "ACCOUNTANT",
+  "RECEPTIONIST",
+];
 
 export const navigation: NavigationItem[] = [
   {
     title: "Dashboard",
     href: "dashboard",
     icon: LayoutDashboard,
+    roles: [...ADMIN_ROLES, "ACCOUNTANT", "RECEPTIONIST"],
+  },
+  {
+    title: "My Dashboard",
+    href: "teacher/dashboard",
+    icon: LayoutDashboard,
+    roles: ["TEACHER"],
   },
   {
     title: "Reports & Analytics",
@@ -47,23 +61,24 @@ export const navigation: NavigationItem[] = [
   {
     title: "People",
     icon: UsersRound,
+    roles: STUDENT_DIRECTORY_ROLES,
     children: [
-      { title: "Students", href: "students" },
+      { title: "Students", href: "students", roles: STUDENT_DIRECTORY_ROLES },
       {
         title: "Online Admissions",
         href: "admissions",
         roles: [...ADMIN_ROLES, "RECEPTIONIST"],
       },
-      { title: "Enrollments", href: "enrollments" },
+      { title: "Enrollments", href: "enrollments", roles: ADMIN_ROLES },
       { title: "Student Houses", href: "student-houses", roles: ADMIN_ROLES },
       { title: "Birthdays", href: "birthdays", roles: ADMIN_ROLES },
-      { title: "Student ID Cards", href: "id-cards" },
+      { title: "Student ID Cards", href: "id-cards", roles: [...ADMIN_ROLES, "RECEPTIONIST"] },
       {
         title: "Certificate Register",
         href: "certificates",
         roles: ADMIN_ROLES,
       },
-      { title: "Teachers", href: "teachers" },
+      { title: "Teachers", href: "teachers", roles: ADMIN_ROLES },
       { title: "User Accounts", href: "users", roles: ADMIN_ROLES },
     ],
   },
@@ -84,6 +99,7 @@ export const navigation: NavigationItem[] = [
   {
     title: "Learning",
     icon: BookOpenCheck,
+    roles: TEACHING_ROLES,
     children: [
       { title: "Homework", href: "homework" },
       { title: "Exams & Results", href: "exams" },
@@ -112,17 +128,19 @@ export const navigation: NavigationItem[] = [
   {
     title: "Timetable",
     icon: CalendarRange,
+    roles: TEACHING_ROLES,
     children: [
-      { title: "Build Timetable", href: "timetable", exact: true },
-      { title: "Daily View", href: "timetable/daily" },
-      { title: "Class View", href: "timetable/class" },
-      { title: "Teacher View", href: "timetable/teacher" },
-      { title: "School Periods", href: "periods" },
+      { title: "Build Timetable", href: "timetable", exact: true, roles: ADMIN_ROLES },
+      { title: "Daily View", href: "timetable/daily", roles: TEACHING_ROLES },
+      { title: "Class View", href: "timetable/class", roles: TEACHING_ROLES },
+      { title: "Teacher View", href: "timetable/teacher", roles: TEACHING_ROLES },
+      { title: "School Periods", href: "periods", roles: ADMIN_ROLES },
     ],
   },
   {
     title: "Academic Setup",
     icon: GraduationCap,
+    roles: ADMIN_ROLES,
     children: [
       { title: "Academic Years", href: "academic-year" },
       { title: "Classes", href: "classes" },
@@ -158,6 +176,7 @@ export const navigation: NavigationItem[] = [
   {
     title: "Administration",
     icon: Settings2,
+    roles: ADMIN_ROLES,
     children: [
       { title: "Bulk Operations", href: "bulk-operations" },
       {

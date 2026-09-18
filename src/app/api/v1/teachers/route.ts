@@ -1,5 +1,5 @@
 import { apiHandler } from "@/lib/api";
-import { requireRole, requireTenant } from "@/lib/auth";
+import { requireRole } from "@/lib/auth";
 import { ApiResponse } from "@/lib/response";
 
 import { teacherSchema } from "@/features/teachers/schemas/teacher.schema";
@@ -11,7 +11,7 @@ export async function GET(req: Request) {
     const page = Number(searchParams.get("page") ?? 1);
     const pageSize = Number(searchParams.get("pageSize") ?? 25);
     const search = searchParams.get("search") ?? undefined;
-    const tenant = await requireTenant();
+    const tenant = await requireRole(["SUPER_ADMIN", "SCHOOL_ADMIN"]);
     const teachers = await teacherService.list(tenant.schoolId, {
       page,
       pageSize,

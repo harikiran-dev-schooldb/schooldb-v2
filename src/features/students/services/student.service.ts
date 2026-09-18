@@ -16,7 +16,12 @@ function studentUsername(admissionNo: string) {
 }
 
 export const studentService = {
-  async list(schoolId: string, query: ListQuery) {
+  async list(
+    schoolId: string,
+    query: ListQuery & {
+      teacherScope?: Array<{ classId: string; sectionId: string }>;
+    },
+  ) {
     const page = query.page ?? 1;
     const pageSize = query.pageSize ?? 10;
 
@@ -25,15 +30,29 @@ export const studentService = {
 
       status: query.status ?? StudentStatus.ACTIVE,
 
-      ...((query.classId || query.sectionId) && {
-        enrollments: {
-          some: {
-            active: true,
-            ...(query.classId && { classId: query.classId }),
-            ...(query.sectionId && { sectionId: query.sectionId }),
-          },
-        },
-      }),
+      ...(query.teacherScope
+        ? {
+            enrollments: {
+              some: {
+                active: true,
+                OR: query.teacherScope.map((scope) => ({
+                  classId: scope.classId,
+                  sectionId: scope.sectionId,
+                })),
+                ...(query.classId && { classId: query.classId }),
+                ...(query.sectionId && { sectionId: query.sectionId }),
+              },
+            },
+          }
+        : (query.classId || query.sectionId) && {
+            enrollments: {
+              some: {
+                active: true,
+                ...(query.classId && { classId: query.classId }),
+                ...(query.sectionId && { sectionId: query.sectionId }),
+              },
+            },
+          }),
 
       ...(query.search && {
         OR: [

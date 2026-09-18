@@ -209,18 +209,27 @@ const EMPTY_DASHBOARD_DATA: DashboardData = {
    ========================================================================== */
 
 async function getJson<T>(url: string, signal: AbortSignal): Promise<T> {
-  const response = await fetch(url, {
-    cache: "no-store",
-    signal,
-  });
+  const startedAt = performance.now();
 
-  const result = (await response.json()) as ApiEnvelope<T>;
+  try {
+    const response = await fetch(url, {
+      cache: "no-store",
+      signal,
+    });
 
-  if (!response.ok || !result.success) {
-    throw new Error(result.message || "Unable to load dashboard data.");
+    const result = (await response.json()) as ApiEnvelope<T>;
+
+    if (!response.ok || !result.success) {
+      throw new Error(result.message || "Unable to load dashboard data.");
+    }
+
+    return result.data;
+  } finally {
+    if (process.env.NODE_ENV === "development") {
+      const duration = Math.round(performance.now() - startedAt);
+      console.info(`[Dashboard] ${url} — ${duration}ms`);
+    }
   }
-
-  return result.data;
 }
 
 async function fetchDashboardCore(
@@ -246,14 +255,6 @@ async function fetchDashboardCore(
   const currentAcademicYear =
     academicYears.data.find((year) => year.active) ?? null;
 
-  const fees =
-    currentAcademicYear && access.fees
-      ? await getJson<FeeDashboard>(
-          `/api/v1/fees/dashboard?academicYearId=${encodeURIComponent(currentAcademicYear.id)}`,
-          signal,
-        )
-      : null;
-
   return {
     ...EMPTY_DASHBOARD_DATA,
     academicYear: currentAcademicYear,
@@ -261,7 +262,7 @@ async function fetchDashboardCore(
     teachers: teachers?.total ?? 0,
     classes: classes.total,
     attendance: attendance ?? null,
-    fees,
+    fees: null,
   };
 }
 
@@ -272,7 +273,13 @@ async function fetchDashboardSecondary(
 ) {
   const id = encodeURIComponent(academicYearId);
 
-  const [lowAttendance, outstanding, houses, birthdays] = await Promise.all([
+  const [fees, lowAttendance, outstanding, houses, birthdays] = await Promise.all([
+    access.fees
+      ? getJson<FeeDashboard>(
+          `/api/v1/fees/dashboard?academicYearId=${id}`,
+          signal,
+        )
+      : Promise.resolve(null),
     access.attendance
       ? getJson<{ lowAttendanceCount: number }>(
           `/api/v1/attendance/reports/low?academicYearId=${id}&threshold=75&summary=1`,
@@ -289,10 +296,11 @@ async function fetchDashboardSecondary(
       `/api/v1/houses?academicYearId=${id}&summary=1`,
       signal,
     ),
-    getJson<{ birthdays: BirthdaySummary[] }>("/api/v1/birthdays", signal),
+    getJson<{ birthdays: BirthdaySummary[] }>("/api/v1/birthdays?summary=1", signal),
   ]);
 
   return {
+    fees,
     lowAttendance: [],
     lowAttendanceCount: lowAttendance?.lowAttendanceCount ?? 0,
     outstanding: [],

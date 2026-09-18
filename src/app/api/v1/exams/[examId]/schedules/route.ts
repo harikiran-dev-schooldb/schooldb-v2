@@ -1,8 +1,9 @@
 import { apiHandler } from "@/lib/api";
-import { requireRole, requireTenant } from "@/lib/auth";
+import { requireCurrentTeacher, requireRole, requireTenant } from "@/lib/auth";
 import { ApiResponse } from "@/lib/response";
 
 import { examScheduleService } from "@/features/exams/services/exam-schedule.service";
+import { prisma } from "@/lib/prisma";
 
 type Params = Promise<{
   examId: string;
@@ -17,10 +18,25 @@ export async function GET(
 
     const { examId } = await params;
 
-    const schedules = await examScheduleService.list(
+    let schedules = await examScheduleService.list(
       examId,
       tenant.schoolId,
     );
+
+    if (tenant.role === "TEACHER") {
+      const teacher = await requireCurrentTeacher(tenant.schoolId);
+      const allocations = await prisma.teacherAllocation.findMany({
+        where: { schoolId: tenant.schoolId, teacherId: teacher.id, active: true },
+        select: { academicYearId: true, classId: true, sectionId: true, subjectId: true },
+      });
+      schedules = schedules.filter((schedule) =>
+        allocations.some((allocation) =>
+          allocation.classId === schedule.classId &&
+          allocation.subjectId === schedule.subjectId &&
+          (!schedule.sectionId || allocation.sectionId === schedule.sectionId),
+        ),
+      );
+    }
 
     return ApiResponse.success(schedules);
   });

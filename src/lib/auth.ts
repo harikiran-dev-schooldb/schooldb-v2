@@ -111,14 +111,86 @@ export async function requireCurrentTeacher(schoolId: string) {
     },
   });
 
-  if (!teacher) {
-    throw new ApiError(
-      403,
-      "You are not linked to an active teacher account for this school",
-    );
+  if (teacher) {
+    return teacher;
   }
 
-  return teacher;
+  /*
+   * Legacy/repaired accounts can have an active TEACHER membership while the
+   * Teacher.clerkId link is missing or stale. Recover the link only when the
+   * signed-in user's normalized phone uniquely identifies one active teacher.
+   */
+  const user = await prisma.user.findUnique({
+    where: { clerkUserId: userId },
+    select: { phone: true },
+  });
+  const phoneDigits = user?.phone?.replace(/\D/g, "").slice(-10);
+
+  if (phoneDigits) {
+    const matches = await prisma.teacher.findMany({
+      where: {
+        schoolId,
+        active: true,
+        phone: { endsWith: phoneDigits },
+      },
+      take: 2,
+    });
+
+    if (matches.length === 1) {
+      return prisma.teacher.update({
+        where: { id: matches[0].id },
+        data: { clerkId: userId },
+      });
+    }
+  }
+
+  throw new ApiError(
+    403,
+    "You are not linked to an active teacher account for this school",
+  );
+}
+
+export async function teacherAllocationScope(schoolId: string) {
+  const teacher = await requireCurrentTeacher(schoolId);
+  return prisma.teacherAllocation.findMany({
+    where: { schoolId, teacherId: teacher.id, active: true },
+    distinct: ["academicYearId", "classId", "sectionId", "subjectId"],
+    select: {
+      academicYearId: true,
+      classId: true,
+      sectionId: true,
+      subjectId: true,
+    },
+  });
+}
+
+export async function requireTeacherStudent(
+  studentId: string,
+  academicYearId?: string,
+  schoolSlug?: string,
+) {
+  const membership = await requireTenant(schoolSlug);
+  if (membership.role !== "TEACHER") return membership;
+
+  const scope = await teacherAllocationScope(membership.schoolId);
+  const enrollment = await prisma.studentEnrollment.findFirst({
+    where: {
+      schoolId: membership.schoolId,
+      studentId,
+      active: true,
+      ...(academicYearId ? { academicYearId } : {}),
+      OR: scope.map((item) => ({
+        academicYearId: item.academicYearId,
+        classId: item.classId,
+        sectionId: item.sectionId,
+      })),
+    },
+    select: { id: true },
+  });
+  if (!enrollment) {
+    throw new ApiError(403, "This student is not in one of your assigned classes");
+  }
+  return membership;
 }
 
 export async function requireTeacherAllocation(
