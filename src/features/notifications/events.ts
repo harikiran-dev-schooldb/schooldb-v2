@@ -6,7 +6,7 @@ async function createEventNotification(input: {
   title: string;
   body: string;
   category: string;
-  targetType: "SCHOOL" | "CLASS" | "SECTION" | "STUDENT";
+  targetType: "SCHOOL" | "CLASS" | "SECTION" | "STUDENT" | "ADMIN";
   targetId: string | null;
   targetLabel: string;
 }) {
@@ -92,7 +92,7 @@ export async function notifyAttendanceLocked(sessionId: string, schoolId: string
     where: {
       schoolId,
       category: "ATTENDANCE_SUMMARY",
-      targetType: "SCHOOL",
+      targetType: "ADMIN",
       targetId: session.id,
     },
     select: { id: true },
@@ -104,7 +104,7 @@ export async function notifyAttendanceLocked(sessionId: string, schoolId: string
       title: `${label} attendance completed`,
       body: `${session.records.length} students · ${present} present · ${absent} absent · ${late} late · ${leave} leave.`,
       category: "ATTENDANCE_SUMMARY",
-      targetType: "SCHOOL",
+      targetType: "ADMIN",
       targetId: session.id,
       targetLabel: "School administrators",
     });
