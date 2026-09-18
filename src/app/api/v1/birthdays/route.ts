@@ -34,11 +34,15 @@ export async function GET() {
       orderBy:{fullName:"asc"},
     });
 
+    const dateKey=new Intl.DateTimeFormat("en-CA",{year:"numeric",month:"2-digit",day:"2-digit",timeZone:INDIA_TIME_ZONE}).format(now);
+    const campaigns=await prisma.whatsappCampaign.findMany({where:{schoolId:tenant.schoolId,sourceType:"BIRTHDAY",automationKey:{startsWith:"birthday:"}},select:{sourceId:true,automationKey:true,status:true,sentCount:true,deliveredCount:true,readCount:true,failedCount:true}});
+    const campaignMap=new Map(campaigns.filter(c=>c.automationKey?.endsWith(`:${dateKey}`)).map(c=>[c.sourceId,c]));
+
     const enriched=students.map(student=>{
       const dob=indiaDateParts(student.dob);
       let occurrence=new Date(Date.UTC(today.year,dob.month-1,dob.day));
       if(occurrence<todayUtc) occurrence=new Date(Date.UTC(today.year+1,dob.month-1,dob.day));
-      return {...student,birthdayMonth:dob.month,birthdayDay:dob.day,nextBirthday:occurrence.toISOString(),ageTurning:occurrence.getUTCFullYear()-dob.year};
+      return {...student,birthdayMonth:dob.month,birthdayDay:dob.day,nextBirthday:occurrence.toISOString(),ageTurning:occurrence.getUTCFullYear()-dob.year,wishStatus:campaignMap.get(student.id)??null};
     });
     const todayKey=dateKey(today.month,today.day);
     const birthdays=enriched.filter(s=>dateKey(s.birthdayMonth,s.birthdayDay)===todayKey);
