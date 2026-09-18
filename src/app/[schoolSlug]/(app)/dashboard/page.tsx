@@ -149,6 +149,8 @@ type OutstandingRow = {
   };
 };
 
+type HouseSummary = { id: string; name: string; code: string | null; color: string | null; _count: { students: number } };
+
 type DashboardData = {
   academicYear: AcademicYear | null;
   students: number;
@@ -158,6 +160,7 @@ type DashboardData = {
   fees: FeeDashboard | null;
   lowAttendance: LowAttendanceRow[];
   outstanding: OutstandingRow[];
+  houses: HouseSummary[];
 };
 
 const EMPTY_DASHBOARD_DATA: DashboardData = {
@@ -169,6 +172,7 @@ const EMPTY_DASHBOARD_DATA: DashboardData = {
   fees: null,
   lowAttendance: [],
   outstanding: [],
+  houses: [],
 };
 
 /* ==========================================================================
@@ -220,11 +224,12 @@ async function fetchDashboardData(
   let fees: FeeDashboard | null = null;
   let lowAttendance: LowAttendanceRow[] = [];
   let outstanding: OutstandingRow[] = [];
+  let houseSummaries: HouseSummary[] = [];
 
   if (currentAcademicYear) {
     const academicYearId = encodeURIComponent(currentAcademicYear.id);
 
-    const [feeDashboard, lowAttendanceReport, outstandingReport] =
+    const [feeDashboard, lowAttendanceReport, outstandingReport, houseData] =
       await Promise.all([
         access.fees
           ? getJson<FeeDashboard>(
@@ -247,11 +252,17 @@ async function fetchDashboardData(
               rows: OutstandingRow[];
             }>(`/api/v1/fees/outstanding?academicYearId=${academicYearId}`, signal)
           : Promise.resolve(null),
+
+        getJson<{ houses: HouseSummary[] }>(
+          `/api/v1/houses?academicYearId=${academicYearId}`,
+          signal,
+        ),
       ]);
 
     fees = feeDashboard;
     lowAttendance = lowAttendanceReport?.rows ?? [];
     outstanding = outstandingReport?.rows ?? [];
+    houseSummaries = houseData?.houses ?? [];
   }
 
   return {
@@ -263,6 +274,7 @@ async function fetchDashboardData(
     fees,
     lowAttendance,
     outstanding,
+    houses: houseSummaries,
   };
 }
 
@@ -779,6 +791,38 @@ export default function DashboardPage() {
           className="premium-card rounded-2xl border-0 bg-white transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
         />}
       </section>
+
+      {isAdministrator && data.houses.length > 0 && (
+        <section>
+          <div className="mb-3 flex items-end justify-between gap-4">
+            <div>
+              <p className="text-[10px] font-bold tracking-[0.18em] text-indigo-500 uppercase">Student Houses</p>
+              <h3 className="mt-1 text-lg font-bold text-slate-900">House-wise strength</h3>
+            </div>
+            <Link href={`/${school.slug}/student-houses`} className="text-sm font-semibold text-indigo-600 hover:text-indigo-700">
+              Manage houses
+            </Link>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            {data.houses.map((house) => (
+              <Link key={house.id} href={`/${school.slug}/student-houses?houseId=${encodeURIComponent(house.id)}`}>
+                <Card className="premium-card h-full rounded-2xl border-0 bg-white transition-all hover:-translate-y-0.5 hover:shadow-lg">
+                  <CardContent className="flex items-center gap-4 p-5">
+                    <div className="flex size-11 shrink-0 items-center justify-center rounded-xl text-sm font-black text-white shadow-sm" style={{ backgroundColor: house.color || "#4f46e5" }}>
+                      {(house.code || house.name).slice(0, 2).toUpperCase()}
+                    </div>
+                    <div>
+                      <p className="font-semibold text-slate-900">{house.name}</p>
+                      <p className="mt-1 text-2xl font-bold tracking-tight text-slate-950">{house._count.students.toLocaleString("en-IN")}</p>
+                      <p className="text-xs text-slate-400">students</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* ======================================================================
           ATTENDANCE + ACTION CENTER

@@ -18,7 +18,13 @@ export async function GET(req: Request) {
       prisma.house.findMany({
         where: { schoolId: tenant.schoolId },
         orderBy: [{ displayOrder: "asc" }, { name: "asc" }],
-        include: { _count: { select: { students: true } } },
+        include: {
+          _count: {
+            select: {
+              students: academicYearId ? { where: { academicYearId } } : true,
+            },
+          },
+        },
       }),
       prisma.academicYear.findMany({
         where: { schoolId: tenant.schoolId },

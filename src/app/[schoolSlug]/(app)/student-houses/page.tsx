@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Home, Loader2, Plus, Search, Users } from "lucide-react";
 import { toast } from "sonner";
 
@@ -18,8 +19,10 @@ type Enrollment = { id:string; rollNo:number|null; student:{id:string;admissionN
 type Data = { houses:House[]; academicYears:Year[]; classes:SchoolClass[]; enrollments:Enrollment[] };
 
 export default function StudentHousesPage() {
+  const searchParams = useSearchParams();
+  const initialHouseId = searchParams.get("houseId") || "ALL";
   const [data,setData]=useState<Data>({houses:[],academicYears:[],classes:[],enrollments:[]});
-  const [yearId,setYearId]=useState(""); const [houseId,setHouseId]=useState(""); const [classId,setClassId]=useState("ALL"); const [sectionId,setSectionId]=useState("ALL");
+  const [yearId,setYearId]=useState(""); const [houseId,setHouseId]=useState(""); const [houseFilter,setHouseFilter]=useState(initialHouseId); const [classId,setClassId]=useState("ALL"); const [sectionId,setSectionId]=useState("ALL");
   const [selected,setSelected]=useState<string[]>([]); const [search,setSearch]=useState(""); const [loading,setLoading]=useState(true); const [saving,setSaving]=useState(false);
   const [name,setName]=useState(""); const [code,setCode]=useState(""); const [color,setColor]=useState("#4f46e5");
 
@@ -30,19 +33,20 @@ export default function StudentHousesPage() {
       if(targetYear) q.set("academicYearId",targetYear);
       if(classId!=="ALL") q.set("classId",classId);
       if(sectionId!=="ALL") q.set("sectionId",sectionId);
+      if(houseFilter!=="ALL" && houseFilter!=="UNALLOCATED") q.set("houseId",houseFilter);
       const res=await fetch(`/api/v1/houses?${q}`,{cache:"no-store"}); const json=await res.json();
       if(!res.ok||!json.success) throw new Error(json.message||"Failed to load houses.");
       setData(json.data);
       if(!targetYear){const active=json.data.academicYears.find((y:Year)=>y.active)?.id||json.data.academicYears[0]?.id||""; if(active) setYearId(active);}
     } catch(e){toast.error(e instanceof Error?e.message:"Failed to load houses.");} finally{setLoading(false);}
-  },[yearId,classId,sectionId]);
+  },[yearId,classId,sectionId,houseFilter]);
 
   useEffect(()=>{void load();},[load]);
   useEffect(()=>{setSectionId("ALL");setSelected([]);},[classId]);
   useEffect(()=>{setSelected([]);},[yearId,sectionId]);
 
   const sections=data.classes.find(c=>c.id===classId)?.sections??[];
-  const visible=useMemo(()=>{const q=search.trim().toLowerCase();return data.enrollments.filter(e=>!q||e.student.fullName?.toLowerCase().includes(q)||e.student.admissionNo.toLowerCase().includes(q));},[data.enrollments,search]);
+  const visible=useMemo(()=>{const q=search.trim().toLowerCase();return data.enrollments.filter(e=>(houseFilter!=="UNALLOCATED"||!e.houseAssignment)&&(!q||e.student.fullName?.toLowerCase().includes(q)||e.student.admissionNo.toLowerCase().includes(q)));},[data.enrollments,search,houseFilter]);
   const allChecked=visible.length>0&&visible.every(e=>selected.includes(e.id));
 
   async function createHouse(){
@@ -65,6 +69,7 @@ export default function StudentHousesPage() {
         <div className="min-w-48"><p className="mb-1 text-xs text-muted-foreground">Academic Year</p><Select value={yearId} onValueChange={setYearId}><SelectTrigger><SelectValue placeholder="Academic year"/></SelectTrigger><SelectContent>{data.academicYears.map(y=><SelectItem key={y.id} value={y.id}>{y.name}{y.active?" · Active":""}</SelectItem>)}</SelectContent></Select></div>
         <div className="min-w-44"><p className="mb-1 text-xs text-muted-foreground">Class</p><Select value={classId} onValueChange={setClassId}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent><SelectItem value="ALL">All Classes</SelectItem>{data.classes.map(c=><SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent></Select></div>
         <div className="min-w-44"><p className="mb-1 text-xs text-muted-foreground">Section</p><Select value={sectionId} onValueChange={setSectionId} disabled={classId==="ALL"}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent><SelectItem value="ALL">All Sections</SelectItem>{sections.map(s=><SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent></Select></div>
+        <div className="min-w-48"><p className="mb-1 text-xs text-muted-foreground">House Filter</p><Select value={houseFilter} onValueChange={setHouseFilter}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent><SelectItem value="ALL">All Houses</SelectItem><SelectItem value="UNALLOCATED">Not Allocated</SelectItem>{data.houses.map(h=><SelectItem key={h.id} value={h.id}>{h.name}</SelectItem>)}</SelectContent></Select></div>
         <div className="min-w-48"><p className="mb-1 text-xs text-muted-foreground">Allocate to House</p><Select value={houseId} onValueChange={setHouseId}><SelectTrigger><SelectValue placeholder="Select house"/></SelectTrigger><SelectContent>{data.houses.filter(h=>h.active).map(h=><SelectItem key={h.id} value={h.id}>{h.name}</SelectItem>)}</SelectContent></Select></div>
         <Button onClick={allocate} disabled={saving||selected.length===0}>{saving?<Loader2 className="mr-2 size-4 animate-spin"/>:<Users className="mr-2 size-4"/>}Allocate {selected.length||""}</Button>
       </div>
