@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
-import { apiHandler, ApiResponse } from "@/lib/api";
-import { requireRole } from "@/lib/tenant";
+import { apiHandler } from "@/lib/api";
+import { requireRole } from "@/lib/auth";
+import { ApiResponse } from "@/lib/response";
 
 const ADMIN_ROLES = ["SUPER_ADMIN", "SCHOOL_ADMIN"] as const;
 
