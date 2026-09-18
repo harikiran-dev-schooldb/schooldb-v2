@@ -804,6 +804,7 @@ async lowAttendanceReport(
   fromDate?: string,
   toDate?: string,
   threshold = 75,
+  summaryOnly = false,
 ) {
   const academicYear =
     await academicYearRepository.findById(
@@ -815,6 +816,29 @@ async lowAttendanceReport(
     throw new Error(
       "Academic year not found.",
     );
+  }
+
+  if (summaryOnly) {
+    const summary =
+      await attendanceRepository.lowAttendanceSummary(
+        schoolId,
+        academicYearId,
+        academicYear.attendanceMode,
+        threshold,
+        classId,
+        sectionId,
+        fromDate
+          ? new Date(`${fromDate}T00:00:00`)
+          : undefined,
+        toDate
+          ? new Date(`${toDate}T23:59:59.999`)
+          : undefined,
+      );
+
+    return {
+      threshold,
+      ...summary,
+    };
   }
 
   /*
@@ -939,7 +963,9 @@ async lowAttendanceReport(
     lowAttendanceCount:
       lowAttendance.length,
 
-    students: lowAttendance,
+    ...(summaryOnly
+      ? {}
+      : { students: lowAttendance }),
   };
 },
 
@@ -1290,6 +1316,55 @@ const todayRecords =
     ),
   );
 
+  const todayClassSessions =
+    await attendanceRepository.todayClassAttendance(
+      schoolId,
+      academicYear.id,
+      today,
+      tomorrow,
+    );
+
+  const classTotals = new Map<
+    string,
+    { className: string; total: number; attended: number }
+  >();
+
+  for (const session of todayClassSessions) {
+    const current = classTotals.get(session.class.id) ?? {
+      className: session.class.name,
+      total: 0,
+      attended: 0,
+    };
+
+    for (const record of session.records) {
+      current.total++;
+      if (record.status === "PRESENT" || record.status === "LATE") {
+        current.attended++;
+      }
+    }
+
+    classTotals.set(session.class.id, current);
+  }
+
+  const topClasses = Array.from(classTotals.entries())
+    .map(([classId, value]) => ({
+      classId,
+      className: value.className,
+      totalStudents: value.total,
+      present: value.attended,
+      attendancePercentage:
+        value.total > 0
+          ? Number(((value.attended / value.total) * 100).toFixed(2))
+          : 0,
+    }))
+    .filter((item) => item.totalStudents > 0)
+    .sort(
+      (a, b) =>
+        b.attendancePercentage - a.attendancePercentage ||
+        a.className.localeCompare(b.className),
+    )
+    .slice(0, 3);
+
   const present =
     todayRecords.filter(
       (record) =>
@@ -1442,6 +1517,7 @@ const todayRecords =
     },
 
     recentSessions,
+    topClasses,
 
     alerts: {
       lowAttendanceCount,

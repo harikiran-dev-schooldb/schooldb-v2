@@ -30,6 +30,9 @@ export async function GET(req: Request) {
         "academicYearId",
       ) || undefined;
 
+    const summaryOnly =
+      searchParams.get("summary") === "1";
+
     const pageParam =
       Number(
         searchParams.get("page") || "1",
@@ -56,19 +59,23 @@ export async function GET(req: Request) {
           )
         : 25;
 
-    const result =
-      await outstandingFeesService.list({
-        schoolId:
-          tenant.schoolId,
-
-        search,
-        classId,
-        sectionId,
-        academicYearId,
-
-        page,
-        pageSize,
-      });
+    const result = summaryOnly
+      ? await outstandingFeesService.summary({
+          schoolId: tenant.schoolId,
+          search,
+          classId,
+          sectionId,
+          academicYearId,
+        })
+      : await outstandingFeesService.list({
+          schoolId: tenant.schoolId,
+          search,
+          classId,
+          sectionId,
+          academicYearId,
+          page,
+          pageSize,
+        });
 
     return ApiResponse.success(
       result,

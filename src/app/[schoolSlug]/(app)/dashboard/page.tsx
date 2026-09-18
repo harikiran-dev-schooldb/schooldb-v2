@@ -13,6 +13,8 @@ import {
   IndianRupee,
   RefreshCw,
   WalletCards,
+  Sparkles,
+  Activity,
 } from "lucide-react";
 
 import { PageHeader } from "@/components/common/PageHeader";
@@ -50,6 +52,14 @@ type AttendanceDashboard = {
     leave: number;
     attendancePercentage: number;
   };
+
+  topClasses: Array<{
+    classId: string;
+    className: string;
+    totalStudents: number;
+    present: number;
+    attendancePercentage: number;
+  }>;
 
   recentSessions: Array<{
     id: string;
@@ -170,7 +180,10 @@ type DashboardData = {
   attendance: AttendanceDashboard | null;
   fees: FeeDashboard | null;
   lowAttendance: LowAttendanceRow[];
+  lowAttendanceCount: number;
   outstanding: OutstandingRow[];
+  outstandingCount: number;
+  outstandingAmount: number;
   houses: HouseSummary[];
   birthdays: BirthdaySummary[];
 };
@@ -183,7 +196,10 @@ const EMPTY_DASHBOARD_DATA: DashboardData = {
   attendance: null,
   fees: null,
   lowAttendance: [],
+  lowAttendanceCount: 0,
   outstanding: [],
+  outstandingCount: 0,
+  outstandingAmount: 0,
   houses: [],
   birthdays: [],
 };
@@ -207,25 +223,21 @@ async function getJson<T>(url: string, signal: AbortSignal): Promise<T> {
   return result.data;
 }
 
-async function fetchDashboardData(
+async function fetchDashboardCore(
   signal: AbortSignal,
   access: { attendance: boolean; fees: boolean; staff: boolean },
 ): Promise<DashboardData> {
   const [academicYears, students, teachers, classes, attendance] =
     await Promise.all([
-      getJson<{
-        data: AcademicYear[];
-        total: number;
-      }>("/api/v1/academic-years?page=1&pageSize=100", signal),
-
+      getJson<{ data: AcademicYear[]; total: number }>(
+        "/api/v1/academic-years?page=1&pageSize=20",
+        signal,
+      ),
       getJson<PaginatedResult>("/api/v1/students?page=1&pageSize=1", signal),
-
       access.staff
         ? getJson<PaginatedResult>("/api/v1/teachers?page=1&pageSize=1", signal)
         : Promise.resolve(null),
-
       getJson<PaginatedResult>("/api/v1/classes?page=1&pageSize=1", signal),
-
       access.attendance
         ? getJson<AttendanceDashboard>("/api/v1/attendance/dashboard", signal)
         : Promise.resolve(null),
@@ -234,72 +246,60 @@ async function fetchDashboardData(
   const currentAcademicYear =
     academicYears.data.find((year) => year.active) ?? null;
 
-  let fees: FeeDashboard | null = null;
-  let lowAttendance: LowAttendanceRow[] = [];
-  let outstanding: OutstandingRow[] = [];
-  let houseSummaries: HouseSummary[] = [];
-  let birthdaySummaries: BirthdaySummary[] = [];
-
-  if (currentAcademicYear) {
-    const academicYearId = encodeURIComponent(currentAcademicYear.id);
-
-    const [
-      feeDashboard,
-      lowAttendanceReport,
-      outstandingReport,
-      houseData,
-      birthdayData,
-    ] = await Promise.all([
-      access.fees
-        ? getJson<FeeDashboard>(
-            `/api/v1/fees/dashboard?academicYearId=${academicYearId}`,
-            signal,
-          )
-        : Promise.resolve(null),
-
-      access.attendance
-        ? getJson<{
-            rows: LowAttendanceRow[];
-          }>(
-            `/api/v1/attendance/reports/low?academicYearId=${academicYearId}&threshold=75`,
-            signal,
-          )
-        : Promise.resolve(null),
-
-      access.fees
-        ? getJson<{
-            rows: OutstandingRow[];
-          }>(
-            `/api/v1/fees/outstanding?academicYearId=${academicYearId}`,
-            signal,
-          )
-        : Promise.resolve(null),
-
-      getJson<{ houses: HouseSummary[] }>(
-        `/api/v1/houses?academicYearId=${academicYearId}`,
-        signal,
-      ),
-      getJson<{ birthdays: BirthdaySummary[] }>("/api/v1/birthdays", signal),
-    ]);
-
-    fees = feeDashboard;
-    lowAttendance = lowAttendanceReport?.rows ?? [];
-    outstanding = outstandingReport?.rows ?? [];
-    houseSummaries = houseData?.houses ?? [];
-    birthdaySummaries = birthdayData?.birthdays ?? [];
-  }
+  const fees =
+    currentAcademicYear && access.fees
+      ? await getJson<FeeDashboard>(
+          `/api/v1/fees/dashboard?academicYearId=${encodeURIComponent(currentAcademicYear.id)}`,
+          signal,
+        )
+      : null;
 
   return {
+    ...EMPTY_DASHBOARD_DATA,
     academicYear: currentAcademicYear,
     students: students.total,
     teachers: teachers?.total ?? 0,
     classes: classes.total,
     attendance: attendance ?? null,
     fees,
-    lowAttendance,
-    outstanding,
-    houses: houseSummaries,
-    birthdays: birthdaySummaries,
+  };
+}
+
+async function fetchDashboardSecondary(
+  signal: AbortSignal,
+  academicYearId: string,
+  access: { attendance: boolean; fees: boolean },
+) {
+  const id = encodeURIComponent(academicYearId);
+
+  const [lowAttendance, outstanding, houses, birthdays] = await Promise.all([
+    access.attendance
+      ? getJson<{ lowAttendanceCount: number }>(
+          `/api/v1/attendance/reports/low?academicYearId=${id}&threshold=75&summary=1`,
+          signal,
+        )
+      : Promise.resolve(null),
+    access.fees
+      ? getJson<{ installmentCount: number; outstanding: number }>(
+          `/api/v1/fees/outstanding?academicYearId=${id}&summary=1`,
+          signal,
+        )
+      : Promise.resolve(null),
+    getJson<{ houses: HouseSummary[] }>(
+      `/api/v1/houses?academicYearId=${id}&summary=1`,
+      signal,
+    ),
+    getJson<{ birthdays: BirthdaySummary[] }>("/api/v1/birthdays", signal),
+  ]);
+
+  return {
+    lowAttendance: [],
+    lowAttendanceCount: lowAttendance?.lowAttendanceCount ?? 0,
+    outstanding: [],
+    outstandingCount: outstanding?.installmentCount ?? 0,
+    outstandingAmount: outstanding?.outstanding ?? 0,
+    houses: houses?.houses ?? [],
+    birthdays: birthdays?.birthdays ?? [],
   };
 }
 
@@ -356,17 +356,38 @@ export default function DashboardPage() {
       try {
         setError(null);
 
-        const dashboardData = await fetchDashboardData(controller.signal, {
+        const dashboardData = await fetchDashboardCore(controller.signal, {
           attendance: canReadAttendance,
           fees: canReadFees,
           staff: canReadStaff,
         });
 
-        if (controller.signal.aborted) {
-          return;
-        }
+        if (controller.signal.aborted) return;
 
         setData(dashboardData);
+        setLoading(false);
+
+        if (dashboardData.academicYear) {
+          void fetchDashboardSecondary(
+            controller.signal,
+            dashboardData.academicYear.id,
+            { attendance: canReadAttendance, fees: canReadFees },
+          )
+            .then((secondary) => {
+              if (!controller.signal.aborted) {
+                setData((current) => ({ ...current, ...secondary }));
+              }
+            })
+            .catch((secondaryError) => {
+              if (
+                !controller.signal.aborted &&
+                !(secondaryError instanceof DOMException &&
+                  secondaryError.name === "AbortError")
+              ) {
+                console.error("Dashboard secondary data failed:", secondaryError);
+              }
+            });
+        }
       } catch (loadError) {
         if (
           loadError instanceof DOMException &&
@@ -409,7 +430,7 @@ export default function DashboardPage() {
     setError(null);
 
     try {
-      const dashboardData = await fetchDashboardData(controller.signal, {
+      const dashboardData = await fetchDashboardCore(controller.signal, {
         attendance: canReadAttendance,
         fees: canReadFees,
         staff: canReadStaff,
@@ -417,6 +438,18 @@ export default function DashboardPage() {
 
       if (!controller.signal.aborted) {
         setData(dashboardData);
+
+        if (dashboardData.academicYear) {
+          const secondary = await fetchDashboardSecondary(
+            controller.signal,
+            dashboardData.academicYear.id,
+            { attendance: canReadAttendance, fees: canReadFees },
+          );
+
+          if (!controller.signal.aborted) {
+            setData((current) => ({ ...current, ...secondary }));
+          }
+        }
       }
     } catch (loadError) {
       if (
@@ -480,24 +513,13 @@ export default function DashboardPage() {
 
     /* OUTSTANDING FEES */
 
-    if (outstanding.length > 0 && academicYearId) {
-      const totalOutstanding = outstanding.reduce(
-        (sum, row) => sum + Number(row.outstanding || 0),
-        0,
-      );
-
-      const first = outstanding[0];
-
+    if (data.outstandingCount > 0 && academicYearId) {
       items.push({
-        title: `${outstanding.length} fee installments need attention`,
+        title: `${data.outstandingCount} fee installments need attention`,
 
-        description: first
-          ? `${first.student.fullName} has ${formatCurrency(
-              first.outstanding,
-            )} outstanding. Total visible outstanding: ${formatCurrency(
-              totalOutstanding,
-            )}.`
-          : `${formatCurrency(totalOutstanding)} is currently outstanding.`,
+        description: `${formatCurrency(
+          data.outstandingAmount,
+        )} is currently outstanding.`,
 
         href:
           `/${school.slug}` +
@@ -607,13 +629,10 @@ export default function DashboardPage() {
   const incompleteSessions =
     attendance?.recentSessions.filter((session) => !session.completed).length ??
     0;
-  const totalOutstanding = (data.outstanding ?? []).reduce(
-    (sum, row) => sum + Number(row.outstanding || 0),
-    0,
-  );
+  const totalOutstanding = data.outstandingAmount;
 
   return (
-    <div className="space-y-6 pb-12">
+    <div className="space-y-4 pb-8 sm:space-y-5 sm:pb-10">
       <PageHeader
         title="School Command Center"
         description={`${school.name ?? "School"} · ${data.academicYear?.name ?? "No active academic year"}`}
@@ -623,7 +642,7 @@ export default function DashboardPage() {
             size="sm"
             onClick={() => void loadDashboard()}
             disabled={loading || refreshing}
-            className="bg-white shadow-sm"
+            className="h-9 rounded-xl border-slate-200 bg-white px-3 shadow-sm hover:bg-slate-50"
           >
             <RefreshCw
               className={refreshing ? "size-4 animate-spin" : "size-4"}
@@ -660,291 +679,181 @@ export default function DashboardPage() {
         </Card>
       )}
 
-      <section className="overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-sm">
-        <div className="border-b border-slate-100 px-6 py-5 md:px-7">
-          <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
-            <div>
+      <section className="relative overflow-hidden rounded-3xl border border-indigo-100 bg-gradient-to-br from-white via-indigo-50/60 to-violet-50/60 px-4 py-4 shadow-[0_16px_45px_rgba(15,23,42,0.06)] sm:px-5 sm:py-5 md:px-7">
+        <div className="pointer-events-none absolute -right-20 -top-24 size-72 rounded-full bg-violet-400/10 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-24 left-1/3 size-64 rounded-full bg-blue-400/10 blur-3xl" />
+        <div className="pointer-events-none absolute right-1/4 top-1/2 size-40 -translate-y-1/2 rounded-full bg-indigo-400/5 blur-3xl" />
+
+        <div className="relative z-10 flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
+          <div className="flex items-start gap-3 sm:gap-4">
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-xl sm:size-12 sm:rounded-2xl bg-gradient-to-br from-indigo-600 to-violet-600 text-white shadow-[0_10px_25px_rgba(79,70,229,0.20)] ring-1 ring-indigo-500/10">
+              <Activity className="size-5 sm:size-6" strokeWidth={2} />
+            </div>
+            <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <span className="size-2 rounded-full bg-emerald-500" />
-                <p className="text-[11px] font-bold tracking-[0.18em] text-slate-500 uppercase">
-                  Today at school
+                <Sparkles className="size-3 text-indigo-500" />
+                <p className="text-[10px] font-bold tracking-[0.2em] text-indigo-600 uppercase">
+                  School Operations
                 </p>
               </div>
-              <h2 className="mt-2 text-2xl font-bold tracking-tight text-slate-950">
-                Your school, at a glance
+              <h2 className="mt-1.5 text-xl font-bold tracking-[-0.025em] text-slate-950 md:text-2xl">
+                Today at {school.name ?? "your school"}
               </h2>
+              <p className="mt-1.5 max-w-xl text-sm leading-5 text-slate-500">
+                A live view of attendance, students, staff and collections for {data.academicYear?.name ?? "the current academic year"}.
+              </p>
             </div>
-            <p className="text-sm text-slate-400">Live operational snapshot</p>
           </div>
-        </div>
 
-        <div
-          className={`grid divide-y divide-slate-100 md:divide-x md:divide-y-0 ${canReadFees ? "md:grid-cols-3" : "md:grid-cols-2"}`}
-        >
-          <CommandMetric
-            icon={GraduationCap}
-            label="Students"
-            value={loading ? "—" : data.students.toLocaleString("en-IN")}
-            detail={
-              canReadStaff
-                ? `${data.teachers.toLocaleString("en-IN")} teachers · ${data.classes} classes`
-                : `${data.classes} classes`
-            }
-          />
-          {canReadAttendance && (
-            <CommandMetric
-              icon={CalendarCheck}
-              label="Attendance today"
-              value={
-                loading
-                  ? "—"
-                  : `${attendance?.summary.attendancePercentage ?? 0}%`
-              }
-              detail={`${attendance?.summary.present ?? 0} present · ${attendance?.summary.absent ?? 0} absent`}
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-3">
+            <HeroMetric
+              icon={GraduationCap}
+              label="Students"
+              value={loading ? "—" : data.students.toLocaleString("en-IN")}
+              detail={canReadStaff ? `${data.teachers.toLocaleString("en-IN")} teachers` : `${data.classes} classes`}
             />
-          )}
-          {canReadFees && (
-            <CommandMetric
-              icon={IndianRupee}
-              label="Collection this month"
-              value={fees ? formatCurrency(fees.collection.thisMonth) : "—"}
-              detail={
-                fees
-                  ? `${fees.collection.thisMonthPaymentCount} payments · ${formatCurrency(fees.summary.outstanding)} due`
-                  : "Collection data"
-              }
-            />
-          )}
+            {canReadAttendance && (
+              <HeroMetric
+                icon={CalendarCheck}
+                label="Attendance"
+                value={loading ? "—" : `${attendance?.summary.attendancePercentage ?? 0}%`}
+                detail={`${attendance?.summary.absent ?? 0} absent today`}
+              />
+            )}
+            {canReadFees && (
+              <HeroMetric
+                icon={IndianRupee}
+                label="This Month"
+                value={fees ? formatCurrency(fees.collection.thisMonth) : "—"}
+                detail={fees ? `${fees.collection.thisMonthPaymentCount} payments` : "Fee collection"}
+              />
+            )}
+          </div>
         </div>
       </section>
 
       <section
-        className={`grid gap-6 ${canReadAttendance ? "xl:grid-cols-[1.35fr_0.85fr]" : ""}`}
+        className={`grid gap-5 ${canReadAttendance ? "lg:grid-cols-[1.35fr_0.85fr]" : ""}`}
       >
         {canReadAttendance && (
-          <Card className="overflow-hidden rounded-3xl border-slate-200/80 bg-white shadow-sm">
-            <CardHeader className="border-b border-slate-100 px-6 py-5">
+          <Card className="premium-card overflow-hidden rounded-3xl border-0 bg-white">
+            <CardHeader className="border-b border-slate-200/70 bg-white px-4 py-3.5 sm:px-5 sm:py-4 md:px-6">
               <div className="flex items-center justify-between gap-4">
                 <div>
-                  <p className="text-[11px] font-bold tracking-[0.16em] text-indigo-600 uppercase">
-                    Attendance today
-                  </p>
-                  <CardTitle className="mt-1.5 text-xl text-slate-950">
-                    Daily attendance position
-                  </CardTitle>
+                  <p className="text-[10px] font-bold tracking-[0.18em] text-indigo-600 uppercase">Attendance Today</p>
+                  <CardTitle className="mt-1 text-lg text-slate-950">Daily attendance position</CardTitle>
                 </div>
                 <Button asChild variant="ghost" size="sm">
-                  <Link href={`/${school.slug}/attendance`}>
-                    Open attendance <ArrowRight className="size-4" />
-                  </Link>
+                  <Link href={`/${school.slug}/attendance`}>Open attendance <ArrowRight className="size-4" /></Link>
                 </Button>
               </div>
             </CardHeader>
-            <CardContent className="p-6">
-              <div className="grid gap-6 md:grid-cols-[220px_1fr] md:items-center">
-                <div className="flex flex-col items-center justify-center rounded-2xl bg-slate-50 p-6 text-center">
-                  <p className="text-4xl font-black tracking-tight text-slate-950">
-                    {loading
-                      ? "—"
-                      : `${attendance?.summary.attendancePercentage ?? 0}%`}
+            <CardContent className="p-3.5 sm:p-4 md:p-5">
+              <div className="grid gap-3 sm:grid-cols-[140px_1fr] sm:items-center md:grid-cols-[150px_1fr] md:gap-4">
+                <div className="rounded-2xl bg-indigo-50/60 px-4 py-4 text-center ring-1 ring-indigo-100/70">
+                  <p className="text-3xl font-black tracking-[-0.04em] text-slate-950">
+                    {loading ? "—" : `${attendance?.summary.attendancePercentage ?? 0}%`}
                   </p>
-                  <p className="mt-1 text-xs font-medium text-slate-500">
-                    overall attendance
-                  </p>
-                  <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-slate-200">
-                    <div
-                      className="h-full rounded-full bg-indigo-600"
-                      style={{
-                        width: `${Math.min(100, attendance?.summary.attendancePercentage ?? 0)}%`,
-                      }}
-                    />
+                  <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400">Overall</p>
+                  <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-indigo-100">
+                    <div className="h-full rounded-full bg-indigo-600" style={{ width: `${Math.min(100, attendance?.summary.attendancePercentage ?? 0)}%` }} />
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-x-6 gap-y-5">
-                  <AttendanceCount
-                    label="Present"
-                    value={attendance?.summary.present ?? 0}
-                  />
-                  <AttendanceCount
-                    label="Absent"
-                    value={attendance?.summary.absent ?? 0}
-                  />
-                  <AttendanceCount
-                    label="Late"
-                    value={attendance?.summary.late ?? 0}
-                  />
-                  <AttendanceCount
-                    label="Leave"
-                    value={attendance?.summary.leave ?? 0}
-                  />
+                <div className="grid grid-cols-2 gap-2 xs:grid-cols-4 sm:grid-cols-2 md:grid-cols-4">
+                  <AttendanceCount label="Present" value={attendance?.summary.present ?? 0} />
+                  <AttendanceCount label="Absent" value={attendance?.summary.absent ?? 0} />
+                  <AttendanceCount label="Late" value={attendance?.summary.late ?? 0} />
+                  <AttendanceCount label="Leave" value={attendance?.summary.leave ?? 0} />
                 </div>
               </div>
-              {attendance?.recentSessions.length ? (
-                <div className="mt-6 border-t border-slate-100 pt-5">
-                  <div className="mb-3 flex items-center justify-between">
-                    <p className="text-xs font-bold tracking-wide text-slate-500 uppercase">
-                      Recent sessions
-                    </p>
-                    <p className="text-xs text-slate-400">
-                      {incompleteSessions} incomplete
-                    </p>
+
+              {attendance?.topClasses?.length ? (
+                <div className="mt-4 border-t border-slate-100 pt-3">
+                  <div className="mb-2 flex items-center justify-between">
+                    <p className="text-[10px] font-bold tracking-[0.16em] text-slate-400 uppercase">Top 3 classes today</p>
+                    <p className="text-[11px] text-slate-400">Highest attendance</p>
                   </div>
-                  <div className="divide-y divide-slate-100">
-                    {attendance.recentSessions.slice(0, 4).map((session) => {
-                      const percentage =
-                        session.totalStudents > 0
-                          ? Math.round(
-                              (session.present / session.totalStudents) * 100,
-                            )
-                          : 0;
-                      return (
-                        <div
-                          key={session.id}
-                          className="flex items-center gap-4 py-3"
-                        >
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate text-sm font-semibold text-slate-800">
-                              {session.className} - {session.sectionName}
-                            </p>
-                            <p className="mt-0.5 text-xs text-slate-400">
-                              {formatDate(session.attendanceDate)} ·{" "}
-                              {titleCase(session.sessionType)}
-                            </p>
-                          </div>
-                          <span
-                            className={`rounded-full px-2.5 py-1 text-xs font-bold ${session.completed ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}
-                          >
-                            {session.completed
-                              ? `${percentage}%`
-                              : "Incomplete"}
-                          </span>
+                  <div className="grid gap-2 md:grid-cols-3">
+                    {attendance.topClasses.map((item, index) => (
+                      <div key={item.classId} className="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50/50 px-3 py-2">
+                        <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-[11px] font-black text-indigo-600 ring-1 ring-indigo-100">
+                          {index + 1}
                         </div>
-                      );
-                    })}
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-xs font-semibold text-slate-700">{item.className}</p>
+                          <p className="mt-0.5 text-[10px] text-slate-400">{item.present} of {item.totalStudents} present</p>
+                        </div>
+                        <span className="shrink-0 rounded-lg bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
+                          {item.attendancePercentage}%
+                        </span>
+                      </div>
+                    ))}
                   </div>
                 </div>
-              ) : (
-                <EmptyState text="No attendance sessions are available yet." />
-              )}
+              ) : <EmptyState text="No class attendance is available for today." />}
             </CardContent>
           </Card>
         )}
 
-        <Card className="overflow-hidden rounded-3xl border-slate-200/80 bg-white shadow-sm">
-          <CardHeader className="border-b border-slate-100 px-6 py-5">
-            <p className="text-[11px] font-bold tracking-[0.16em] text-amber-600 uppercase">
-              Needs attention
-            </p>
-            <CardTitle className="mt-1.5 text-xl text-slate-950">
-              Action center
-            </CardTitle>
-            <p className="text-sm text-slate-500">
-              Items that need action today.
-            </p>
+        <Card className="premium-card overflow-hidden rounded-3xl border-0 bg-white">
+          <CardHeader className="border-b border-slate-200/70 bg-white px-4 py-3.5 sm:px-5 sm:py-4 md:px-6">
+            <p className="text-[10px] font-bold tracking-[0.18em] text-amber-600 uppercase">Needs Attention</p>
+            <div className="mt-1 flex items-center justify-between gap-3">
+              <CardTitle className="text-lg text-slate-950">Action center</CardTitle>
+              <span className="rounded-full bg-amber-50 px-2.5 py-1 text-[10px] font-bold text-amber-700">{actionItems.length} items</span>
+            </div>
           </CardHeader>
-          <CardContent className="p-3">
-            {actionItems.map((item) => (
-              <Link
-                key={item.title}
-                href={item.href}
-                className="group flex items-start gap-3 rounded-2xl p-3.5 transition-colors hover:bg-slate-50"
-              >
-                <div
-                  className={`mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-xl ${
-                    item.tone === "danger"
-                      ? "bg-red-50 text-red-600"
-                      : item.tone === "warning"
-                        ? "bg-amber-50 text-amber-600"
-                        : item.tone === "success"
-                          ? "bg-emerald-50 text-emerald-600"
-                          : "bg-blue-50 text-blue-600"
-                  }`}
-                >
-                  {item.tone === "success" ? (
-                    <CheckCircle2 className="size-4" />
-                  ) : (
-                    <CircleAlert className="size-4" />
-                  )}
+          <CardContent className="p-2.5">
+            {actionItems.slice(0, 3).map((item) => (
+              <Link key={item.title} href={item.href} className="group flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors hover:bg-slate-50">
+                <div className={`flex size-8 shrink-0 items-center justify-center rounded-lg ${
+                  item.tone === "danger" ? "bg-red-50 text-red-600" :
+                  item.tone === "warning" ? "bg-amber-50 text-amber-600" :
+                  item.tone === "success" ? "bg-emerald-50 text-emerald-600" :
+                  "bg-blue-50 text-blue-600"
+                }`}>
+                  {item.tone === "success" ? <CheckCircle2 className="size-3.5" /> : <CircleAlert className="size-3.5" />}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-slate-800">
-                    {item.title}
-                  </p>
-                  <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-500">
-                    {item.description}
-                  </p>
+                  <p className="truncate text-xs font-semibold text-slate-800">{item.title}</p>
+                  <p className="mt-0.5 truncate text-[10px] text-slate-400">{item.description}</p>
                 </div>
-                <ArrowRight className="mt-2 size-4 shrink-0 text-slate-300 transition-transform group-hover:translate-x-0.5" />
+                <ArrowRight className="size-3.5 shrink-0 text-slate-300 transition-transform group-hover:translate-x-0.5" />
               </Link>
             ))}
           </CardContent>
         </Card>
       </section>
 
-      <section className="rounded-3xl border border-slate-200/80 bg-white shadow-sm">
-        <div className="flex flex-col gap-4 border-b border-slate-100 px-6 py-5 md:flex-row md:items-center md:justify-between">
+      <section className="premium-card overflow-hidden rounded-3xl border-0 bg-white">
+        <div className="flex flex-col gap-3 px-4 py-3.5 sm:px-5 sm:py-4 md:flex-row md:items-center md:justify-between md:px-6">
           <div>
-            <p className="text-[11px] font-bold tracking-[0.16em] text-indigo-600 uppercase">
-              Today&apos;s operations
-            </p>
-            <h3 className="mt-1 text-xl font-bold text-slate-950">
-              Move directly into the work
-            </h3>
+            <p className="text-[10px] font-bold tracking-[0.18em] text-indigo-600 uppercase">Today&apos;s Operations</p>
+            <h3 className="mt-0.5 text-base font-bold text-slate-950">Move directly into the work</h3>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
             {quickActions.map((action) => {
               const Icon = action.icon;
               return (
-                <Button
-                  key={action.label}
-                  asChild
-                  variant="outline"
-                  size="sm"
-                  className="bg-white"
-                >
-                  <Link href={action.href}>
-                    <Icon className="size-4" />
-                    {action.label}
-                  </Link>
+                <Button key={action.label} asChild variant="outline" size="sm" className="h-8 w-full justify-start rounded-xl bg-white text-xs sm:w-auto">
+                  <Link href={action.href}><Icon className="size-3.5" />{action.label}</Link>
                 </Button>
               );
             })}
           </div>
         </div>
-        <div
-          className={`grid divide-y divide-slate-100 sm:grid-cols-2 sm:divide-x sm:divide-y-0 ${canReadFees ? "lg:grid-cols-4" : "lg:grid-cols-3"}`}
-        >
-          <OperationMetric
-            label="Attendance sessions"
-            value={
-              attendance ? attendance.recentSessions.length.toString() : "—"
-            }
-            hint={`${incompleteSessions} need marking`}
-          />
-          <OperationMetric
-            label="Low attendance"
-            value={data.lowAttendance.length.toLocaleString("en-IN")}
-            hint="Below 75%"
-          />
-          {canReadFees && (
-            <OperationMetric
-              label="Outstanding items"
-              value={data.outstanding.length.toLocaleString("en-IN")}
-              hint={formatCurrency(totalOutstanding)}
-            />
-          )}
-          <OperationMetric
-            label="Classes"
-            value={data.classes.toLocaleString("en-IN")}
-            hint="Active structure"
-          />
+        <div className={`grid border-t border-slate-100 divide-y divide-slate-100 sm:grid-cols-2 sm:divide-x sm:divide-y-0 ${canReadFees ? "lg:grid-cols-4" : "lg:grid-cols-3"}`}>
+          <OperationMetric label="Attendance sessions" value={attendance ? attendance.recentSessions.length.toString() : "—"} hint={`${incompleteSessions} need marking`} />
+          <OperationMetric label="Low attendance" value={data.lowAttendanceCount.toLocaleString("en-IN")} hint="Below 75%" />
+          {canReadFees && <OperationMetric label="Outstanding items" value={data.outstandingCount.toLocaleString("en-IN")} hint={formatCurrency(totalOutstanding)} />}
+          <OperationMetric label="Classes" value={data.classes.toLocaleString("en-IN")} hint="Active structure" />
         </div>
       </section>
 
       {canReadFees && (
-        <section className="grid gap-6 lg:grid-cols-[0.8fr_1.2fr]">
-          <Card className="rounded-3xl border-slate-200/80 bg-white shadow-sm">
-            <CardHeader className="px-6 py-5">
+        <section className="grid gap-4 sm:gap-5 lg:grid-cols-[0.8fr_1.2fr]">
+          <Card className="premium-card overflow-hidden rounded-3xl border-0 bg-white">
+            <CardHeader className="px-4 py-4 sm:px-5 md:px-6">
               <p className="text-[11px] font-bold tracking-[0.16em] text-indigo-600 uppercase">
                 Fee position
               </p>
@@ -952,7 +861,7 @@ export default function DashboardPage() {
                 Collections
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4 px-6 pb-6">
+            <CardContent className="space-y-3 px-5 pb-5">
               <Metric
                 label="Collected today"
                 value={fees ? formatCurrency(fees.collection.today) : "—"}
@@ -981,8 +890,8 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
 
-          <Card className="rounded-3xl border-slate-200/80 bg-white shadow-sm">
-            <CardHeader className="flex flex-row items-center justify-between px-6 py-5">
+          <Card className="premium-card overflow-hidden rounded-3xl border-0 bg-white">
+            <CardHeader className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5 md:px-6">
               <div>
                 <p className="text-[11px] font-bold tracking-[0.16em] text-slate-500 uppercase">
                   Recent activity
@@ -997,7 +906,7 @@ export default function DashboardPage() {
                 </Link>
               </Button>
             </CardHeader>
-            <CardContent className="px-6 pb-6">
+            <CardContent className="px-5 pb-5">
               {fees?.recentPayments?.length ? (
                 <div className="divide-y divide-slate-100">
                   {fees.recentPayments.slice(0, 5).map((payment) => (
@@ -1036,8 +945,8 @@ export default function DashboardPage() {
         (data.birthdays.length > 0 || data.houses.length > 0) && (
           <section className="grid gap-6 lg:grid-cols-2">
             {data.birthdays.length > 0 && (
-              <Card className="rounded-3xl border-slate-200/80 bg-white shadow-sm">
-                <CardHeader className="flex flex-row items-center justify-between px-6 py-5">
+              <Card className="premium-card overflow-hidden rounded-3xl border-0 bg-white">
+                <CardHeader className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5 md:px-6">
                   <div>
                     <p className="text-[11px] font-bold tracking-[0.16em] text-violet-600 uppercase">
                       Today
@@ -1070,8 +979,8 @@ export default function DashboardPage() {
               </Card>
             )}
             {data.houses.length > 0 && (
-              <Card className="rounded-3xl border-slate-200/80 bg-white shadow-sm">
-                <CardHeader className="px-6 py-5">
+              <Card className="premium-card overflow-hidden rounded-3xl border-0 bg-white">
+                <CardHeader className="px-4 py-4 sm:px-5 md:px-6">
                   <p className="text-[11px] font-bold tracking-[0.16em] text-indigo-600 uppercase">
                     Student houses
                   </p>
@@ -1101,28 +1010,16 @@ export default function DashboardPage() {
   );
 }
 
-function CommandMetric({
-  icon: Icon,
-  label,
-  value,
-  detail,
-}: {
-  icon: typeof GraduationCap;
-  label: string;
-  value: string;
-  detail: string;
-}) {
+function HeroMetric({ icon: Icon, label, value, detail }: { icon: typeof GraduationCap; label: string; value: string; detail: string }) {
   return (
-    <div className="flex items-center gap-4 px-6 py-6 md:px-7">
-      <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-slate-950 text-white">
-        <Icon className="size-5" />
+    <div className="flex min-w-0 items-center gap-3 rounded-2xl border border-indigo-100 bg-white/85 px-3 py-2.5 sm:min-w-[160px] sm:px-4 sm:py-3 shadow-[0_10px_30px_rgba(79,70,229,0.06)] backdrop-blur-xl">
+      <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 ring-1 ring-indigo-100">
+        <Icon className="size-4" strokeWidth={2} />
       </div>
-      <div>
-        <p className="text-xs font-semibold text-slate-500">{label}</p>
-        <p className="mt-1 text-2xl font-black tracking-tight text-slate-950">
-          {value}
-        </p>
-        <p className="mt-1 text-xs text-slate-400">{detail}</p>
+      <div className="min-w-0">
+        <p className="text-[10px] font-bold tracking-[0.14em] text-slate-400 uppercase">{label}</p>
+        <p className="mt-0.5 truncate text-base font-bold tracking-tight text-slate-900">{value}</p>
+        <p className="mt-0.5 truncate text-[10px] text-slate-400">{detail}</p>
       </div>
     </div>
   );
@@ -1149,7 +1046,7 @@ function OperationMetric({
   hint: string;
 }) {
   return (
-    <div className="px-6 py-5">
+    <div className="px-4 py-4 sm:px-5 md:px-6">
       <p className="text-xs font-medium text-slate-400">{label}</p>
       <p className="mt-1 text-xl font-bold text-slate-900">{value}</p>
       <p className="mt-1 text-xs text-slate-400">{hint}</p>

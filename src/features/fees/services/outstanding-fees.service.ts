@@ -12,6 +12,34 @@ type OutstandingFeesInput = {
 };
 
 export const outstandingFeesService = {
+  async summary(input: Omit<OutstandingFeesInput, "page" | "pageSize">) {
+    const filters = {
+      schoolId: input.schoolId,
+      search: input.search,
+      classId: input.classId,
+      sectionId: input.sectionId,
+      academicYearId: input.academicYearId,
+    };
+
+    const [total, aggregate] = await Promise.all([
+      outstandingFeesRepository.count(filters),
+      outstandingFeesRepository.aggregate(filters),
+    ]);
+
+    const totalPayable = Number(aggregate._sum.payableAmount ?? 0);
+    const totalConcession = Number(aggregate._sum.concession ?? 0);
+    const totalPaid = Number(aggregate._sum.paidAmount ?? 0);
+
+    return {
+      installmentCount: total,
+      totalPayable,
+      totalConcession,
+      totalPaid,
+      outstanding: Math.max(0, totalPayable - totalPaid),
+    };
+  },
+
+
   async list(input: OutstandingFeesInput) {
     const {
       schoolId,
