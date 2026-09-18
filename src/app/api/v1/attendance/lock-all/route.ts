@@ -4,6 +4,7 @@ import { ApiResponse } from "@/lib/response";
 import { after } from "next/server";
 
 import { attendanceService } from "@/features/attendance/services/attendance.service";
+import { notifyAttendanceLocked } from "@/features/notifications/events";
 import { processAutomatedCampaign, queueAttendanceSessionAlert } from "@/features/whatsapp/automation";
 
 export async function POST(req: Request) {
@@ -24,6 +25,12 @@ export async function POST(req: Request) {
       tenant.schoolId,
       academicYearId,
       attendanceDate,
+    );
+
+    await Promise.all(
+      (result.lockedSessionIds ?? []).map((sessionId) =>
+        notifyAttendanceLocked(sessionId, tenant.schoolId),
+      ),
     );
 
     const campaigns = await Promise.all(
