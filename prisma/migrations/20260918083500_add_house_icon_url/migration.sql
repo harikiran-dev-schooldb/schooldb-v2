@@ -1,0 +1,1 @@
+ALTER TABLE "House" ADD COLUMN "iconUrl" TEXT;

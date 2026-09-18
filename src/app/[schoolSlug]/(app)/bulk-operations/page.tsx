@@ -7,6 +7,7 @@ import {
   CalendarDays,
   ClipboardList,
   GraduationCap,
+  Home,
   IndianRupee,
   Layers3,
   Network,
@@ -25,6 +26,22 @@ const operations = [
       "Create student records and optional academic-year enrollments from one validated file.",
     href: "bulk-operations/students",
     icon: GraduationCap,
+    status: "Ready",
+  },
+  {
+    title: "Student Houses",
+    description:
+      "Create or update house masters in bulk with code, color, ordering and active status.",
+    href: "bulk-operations/houses",
+    icon: Home,
+    status: "Ready",
+  },
+  {
+    title: "Student House Allocation",
+    description:
+      "Assign or move students to houses in bulk by academic year and admission number.",
+    href: "bulk-operations/house-allocations",
+    icon: Home,
     status: "Ready",
   },
   {

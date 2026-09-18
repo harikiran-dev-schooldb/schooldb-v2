@@ -395,6 +395,7 @@ model House {
   code         String?
   color        String?
   description  String?
+  iconUrl      String?
   displayOrder Int            @default(0)
   active       Boolean        @default(true)
   createdAt    DateTime       @default(now())

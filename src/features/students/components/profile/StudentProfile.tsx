@@ -33,6 +33,7 @@ type Enrollment = {
   academicYear: { id: string; name: string };
   class: { id: string; name: string };
   section: { id: string; name: string };
+  houseAssignment: { house: { id: string; name: string; code: string | null; color: string | null; iconUrl: string | null } } | null;
 };
 
 export type StudentProfileData = {

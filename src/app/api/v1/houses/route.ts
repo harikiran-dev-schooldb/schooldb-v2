@@ -71,15 +71,39 @@ export async function POST(req: Request) {
     const code = String(body.code ?? "").trim().toUpperCase() || null;
     const color = String(body.color ?? "").trim() || null;
     const description = String(body.description ?? "").trim() || null;
+    const iconUrl = String(body.iconUrl ?? "").trim() || null;
     const displayOrder = Number.isFinite(Number(body.displayOrder)) ? Number(body.displayOrder) : 0;
 
     if (!name) return ApiResponse.error("House name is required.", 400);
 
     const house = await prisma.house.create({
-      data: { schoolId: tenant.schoolId, name, code, color, description, displayOrder },
+      data: { schoolId: tenant.schoolId, name, code, color, description, iconUrl, displayOrder },
     });
 
     return ApiResponse.success(house, "House created successfully.", 201);
+  });
+}
+
+
+export async function PATCH(req: Request) {
+  return apiHandler(async () => {
+    const tenant = await requireRole([...ADMIN_ROLES]);
+    const body = await req.json();
+    const id = String(body.id ?? "");
+    const name = String(body.name ?? "").trim();
+    const code = String(body.code ?? "").trim().toUpperCase() || null;
+    const color = String(body.color ?? "").trim() || null;
+    const description = String(body.description ?? "").trim() || null;
+    const iconUrl = String(body.iconUrl ?? "").trim() || null;
+    const displayOrder = Number.isFinite(Number(body.displayOrder)) ? Number(body.displayOrder) : 0;
+    const active = body.active !== false;
+
+    if (!id || !name) return ApiResponse.error("House and house name are required.", 400);
+    const existing = await prisma.house.findFirst({ where: { id, schoolId: tenant.schoolId }, select: { id: true } });
+    if (!existing) return ApiResponse.error("House not found.", 404);
+
+    const house = await prisma.house.update({ where: { id }, data: { name, code, color, description, iconUrl, displayOrder, active } });
+    return ApiResponse.success(house, "House updated successfully.");
   });
 }
 

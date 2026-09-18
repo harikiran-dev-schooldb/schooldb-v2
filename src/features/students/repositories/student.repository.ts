@@ -163,6 +163,9 @@ export const studentRepository = {
             academicYear: true,
             class: true,
             section: true,
+            houseAssignment: {
+              include: { house: true },
+            },
           },
           orderBy: { academicYear: { startDate: "desc" } },
         },

@@ -1,11 +1,13 @@
 "use client";
 
 import { Badge } from "@/components/ui/badge";
+import { Shield } from "lucide-react";
 
 type StudentProfileHeaderData = {
   fullName: string | null;
   admissionNo: string;
   status: string;
+  enrollments: { houseAssignment: { house: { name: string; color: string | null; iconUrl: string | null } } | null }[];
 };
 
 type Props = {
@@ -14,6 +16,7 @@ type Props = {
 
 export function StudentProfileHeader({ student }: Props) {
   const initial = student.fullName?.charAt(0).toUpperCase() || "?";
+  const house = student.enrollments[0]?.houseAssignment?.house ?? null;
 
   return (
     <div className="flex items-center gap-6 rounded-lg border p-6">
@@ -26,9 +29,11 @@ export function StudentProfileHeader({ student }: Props) {
           {student.fullName || "Student name not provided"}
         </h2>
 
-        <p className="text-sm text-muted-foreground">
-          Admission No: {student.admissionNo}
-        </p>
+        <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+          <span>Admission No: {student.admissionNo}</span>
+          <span>·</span>
+          {house ? <span className="inline-flex items-center gap-1.5 font-medium text-foreground">{house.iconUrl ? <img src={house.iconUrl} alt="" className="size-6 rounded object-contain" /> : <Shield className="size-5" style={{ color: house.color || "#64748b" }} />}{house.name}</span> : <span>—</span>}
+        </div>
 
         <Badge>{student.status}</Badge>
       </div>
