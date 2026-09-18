@@ -146,14 +146,14 @@ export async function queueResultsPublishedAlert(
 
 
 export async function queueDailyBirthdayWishes(now = new Date()) {
-  if (process.env.META_WA_AUTOMATION_ENABLED !== "true") return [];
   const dateKey = indiaDateKey(now);
-  const [, month, day] = dateKey.split("-").map(Number);
+  const [year, month, day] = dateKey.split("-").map(Number);
+  const indiaDayStart = new Date(Date.UTC(year, month - 1, day) - 5.5 * 60 * 60 * 1000);
+  const indiaDayEnd = new Date(indiaDayStart.getTime() + 24 * 60 * 60 * 1000);
 
   const students = await prisma.student.findMany({
     where: {
       status: "ACTIVE",
-      whatsappOptIn: true,
       enrollments: { some: { active: true } },
     },
     select: {
@@ -161,6 +161,7 @@ export async function queueDailyBirthdayWishes(now = new Date()) {
       schoolId: true,
       fullName: true,
       dob: true,
+      whatsappOptIn: true,
     },
   });
 
@@ -178,18 +179,54 @@ export async function queueDailyBirthdayWishes(now = new Date()) {
   const queued = [];
   for (const student of birthdays) {
     const name = student.fullName?.trim() || "Student";
-    const campaign = await queueAutomatedWhatsappAlert({
-      schoolId: student.schoolId,
-      automationKey: `birthday:${student.id}:${dateKey}`,
-      sourceType: "BIRTHDAY",
-      sourceId: student.id,
-      title: "Birthday wishes",
-      message: `Happy Birthday, ${name}! 🎉 Wishing you a wonderful year filled with happiness, good health, learning and success. Best wishes from your school.`,
-      studentIds: [student.id],
-      targetLabel: `${name} — Birthday`,
+    const message = `Happy Birthday, ${name}! 🎉 Wishing you a wonderful year filled with happiness, good health, learning and success. Best wishes from your school.`;
+
+    const existingNotification = await prisma.announcement.findFirst({
+      where: {
+        schoolId: student.schoolId,
+        category: "BIRTHDAY",
+        targetType: "STUDENT",
+        targetId: student.id,
+        createdAt: { gte: indiaDayStart, lt: indiaDayEnd },
+      },
+      select: { id: true },
     });
-    if (campaign) queued.push(campaign);
+
+    if (!existingNotification) {
+      await prisma.announcement.create({
+        data: {
+          schoolId: student.schoolId,
+          title: "🎂 Happy Birthday!",
+          body: message,
+          category: "BIRTHDAY",
+          priority: "NORMAL",
+          targetType: "STUDENT",
+          targetId: student.id,
+          targetLabel: name,
+          createdBy: "SYSTEM",
+          publishedAt: now,
+        },
+      });
+    }
+
+    if (
+      process.env.META_WA_AUTOMATION_ENABLED === "true" &&
+      student.whatsappOptIn
+    ) {
+      const campaign = await queueAutomatedWhatsappAlert({
+        schoolId: student.schoolId,
+        automationKey: `birthday:${student.id}:${dateKey}`,
+        sourceType: "BIRTHDAY",
+        sourceId: student.id,
+        title: "Birthday wishes",
+        message,
+        studentIds: [student.id],
+        targetLabel: `${name} — Birthday`,
+      });
+      if (campaign) queued.push(campaign);
+    }
   }
+
   return queued;
 }
 
