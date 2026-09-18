@@ -46,8 +46,12 @@ object PushNotificationManager {
             val channel = NotificationChannel(
                 CHANNEL_ID,
                 "School updates",
-                NotificationManager.IMPORTANCE_DEFAULT,
-            ).apply { description = "Announcements, attendance, homework, fees, and school alerts" }
+                NotificationManager.IMPORTANCE_HIGH,
+            ).apply {
+                description = "Announcements, attendance, homework, fees, and school alerts"
+                enableVibration(true)
+                setShowBadge(true)
+            }
             context.getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
         }
     }
@@ -137,7 +141,8 @@ class SchoolDbMessagingService : FirebaseMessagingService() {
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))
             .setAutoCancel(true)
             .setContentIntent(pendingIntent)
-            .setPriority(if (message.data["priority"] == "URGENT") NotificationCompat.PRIORITY_HIGH else NotificationCompat.PRIORITY_DEFAULT)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setDefaults(NotificationCompat.DEFAULT_ALL)
             .build()
         if (
             Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
