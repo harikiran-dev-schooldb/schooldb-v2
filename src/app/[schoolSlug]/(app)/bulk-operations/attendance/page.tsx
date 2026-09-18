@@ -12,6 +12,17 @@ type AttendanceRow = { admissionNo: string; date: string };
 type RowError = { row: number; message: string };
 const HEADERS = ["admissionNo", "date"] as const;
 const MAX_ROWS = 20_000;
+
+function isStrictIsoDate(value: string) {
+  if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(value)) return false;
+  const [year, month, day] = value.split("-").map(Number);
+  const parsed = new Date(Date.UTC(year, month - 1, day));
+  return parsed.getUTCFullYear() === year && parsed.getUTCMonth() + 1 === month && parsed.getUTCDate() === day;
+}
+
+function normalizeAdmissionNo(value: string) {
+  return value.trim().toUpperCase();
+}
 const TEMPLATE = [HEADERS.join(","), "ADM001,2026-09-01", "ADM015,2026-09-01"].join("\n");
 
 function parseCsv(text: string) {
@@ -32,8 +43,8 @@ function parseCsv(text: string) {
     const [admissionNo = "", date = ""] = line.split(",").map((value) => value.trim());
     const row = index + 2;
     if (!admissionNo) errors.push({ row, message: "Admission number is required." });
-    else if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) errors.push({ row, message: "Date must use YYYY-MM-DD format." });
-    else rows.push({ admissionNo, date });
+    else if (!isStrictIsoDate(date)) errors.push({ row, message: "Date must be a valid calendar date in YYYY-MM-DD format." });
+    else rows.push({ admissionNo: normalizeAdmissionNo(admissionNo), date });
   });
   return { rows, errors, totalRows };
 }
@@ -61,7 +72,7 @@ export default function BulkAttendancePage() {
     const seen = new Set<string>();
     let count = 0;
     rows.forEach((row) => {
-      const key = `${row.admissionNo.toLowerCase()}:${row.date}`;
+      const key = `${normalizeAdmissionNo(row.admissionNo)}:${row.date}`;
       if (seen.has(key)) count += 1;
       seen.add(key);
     });
