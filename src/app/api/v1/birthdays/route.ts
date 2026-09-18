@@ -4,16 +4,27 @@ import { requireRole } from "@/lib/auth";
 import { ApiResponse } from "@/lib/response";
 
 const ADMIN_ROLES = ["SUPER_ADMIN", "SCHOOL_ADMIN"] as const;
+const INDIA_TIME_ZONE = "Asia/Kolkata";
 
-function indiaParts(value: Date) {
-  const parts = new Intl.DateTimeFormat("en-US", { month:"numeric", day:"numeric", timeZone:"Asia/Kolkata" }).formatToParts(value);
-  return { month:Number(parts.find(p=>p.type==="month")?.value), day:Number(parts.find(p=>p.type==="day")?.value) };
+function indiaDateParts(value: Date) {
+  const parts = new Intl.DateTimeFormat("en-US", { year:"numeric", month:"numeric", day:"numeric", timeZone:INDIA_TIME_ZONE }).formatToParts(value);
+  return {
+    year:Number(parts.find(p=>p.type==="year")?.value),
+    month:Number(parts.find(p=>p.type==="month")?.value),
+    day:Number(parts.find(p=>p.type==="day")?.value),
+  };
 }
+
+function dateKey(month:number,day:number){return month*100+day;}
 
 export async function GET() {
   return apiHandler(async () => {
     const tenant = await requireRole([...ADMIN_ROLES]);
-    const today = indiaParts(new Date());
+    const now = new Date();
+    const today = indiaDateParts(now);
+    const todayUtc = new Date(Date.UTC(today.year,today.month-1,today.day));
+    const next7Utc = new Date(todayUtc); next7Utc.setUTCDate(next7Utc.getUTCDate()+7);
+
     const students = await prisma.student.findMany({
       where:{ schoolId:tenant.schoolId, status:"ACTIVE", enrollments:{some:{active:true}} },
       select:{
@@ -22,7 +33,18 @@ export async function GET() {
       },
       orderBy:{fullName:"asc"},
     });
-    const birthdays=students.filter(s=>{const d=indiaParts(s.dob);return d.month===today.month&&d.day===today.day;});
-    return ApiResponse.success({birthdays,total:birthdays.length});
+
+    const enriched=students.map(student=>{
+      const dob=indiaDateParts(student.dob);
+      let occurrence=new Date(Date.UTC(today.year,dob.month-1,dob.day));
+      if(occurrence<todayUtc) occurrence=new Date(Date.UTC(today.year+1,dob.month-1,dob.day));
+      return {...student,birthdayMonth:dob.month,birthdayDay:dob.day,nextBirthday:occurrence.toISOString(),ageTurning:occurrence.getUTCFullYear()-dob.year};
+    });
+    const todayKey=dateKey(today.month,today.day);
+    const birthdays=enriched.filter(s=>dateKey(s.birthdayMonth,s.birthdayDay)===todayKey);
+    const next7=enriched.filter(s=>{const d=new Date(s.nextBirthday);return d>todayUtc&&d<=next7Utc;}).sort((a,b)=>a.nextBirthday.localeCompare(b.nextBirthday));
+    const thisMonth=enriched.filter(s=>s.birthdayMonth===today.month).sort((a,b)=>a.birthdayDay-b.birthdayDay);
+
+    return ApiResponse.success({birthdays,next7,thisMonth,total:birthdays.length});
   });
 }
