@@ -9,6 +9,7 @@ import { feePaymentService } from "@/features/fee-payments/services/fee-payment.
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { recordAuditLog } from "@/lib/audit";
+import { notifyFeePayment } from "@/features/notifications/events";
 
 export async function POST(req: Request) {
   return apiHandler(async () => {
@@ -20,6 +21,7 @@ export async function POST(req: Request) {
     ]);
     const body = await validateBody(req, feePaymentSchema);
     const payment = await feePaymentService.create(tenant.schoolId, body);
+    await notifyFeePayment(payment.id, tenant.schoolId);
     await recordAuditLog({
       actor: tenant,
       module: "FEES",
