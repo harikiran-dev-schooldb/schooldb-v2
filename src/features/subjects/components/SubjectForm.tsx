@@ -208,6 +208,7 @@ export function SubjectForm({ mode, subjectId, onSuccess }: Props) {
             <SelectItem value="SCHOLASTIC">Scholastic</SelectItem>
 
             <SelectItem value="CO_SCHOLASTIC">Co-Scholastic</SelectItem>
+            <SelectItem value="CO_SCHOLASTIC">Co-Scholastic</SelectItem>
             <SelectItem value="CO_CURRICULAR">Co-Curricular</SelectItem>
             <SelectItem value="CORE">Core</SelectItem>
             <SelectItem value="ACTIVITY">Activity</SelectItem>

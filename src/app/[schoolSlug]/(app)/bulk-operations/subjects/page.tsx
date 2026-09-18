@@ -77,10 +77,14 @@ function parseCsv(text: string) {
       });
       return;
     }
-    if (!/^(SCHOLASTIC|CO_SCHOLASTIC)$/i.test(row.type)) {
+    if (
+      !/^(SCHOLASTIC|CO_SCHOLASTIC|CO_CURRICULAR|CORE|ACTIVITY|LANGUAGE)$/i.test(
+        row.type,
+      )
+    ) {
       errors.push({
         row: index + 2,
-        message: "Type must be SCHOLASTIC or CO_SCHOLASTIC.",
+        message: "Type must be a valid subject type.",
       });
       return;
     }
@@ -168,19 +172,16 @@ export default function BulkSubjectsPage() {
     setImporting(true);
     setMessage(null);
     try {
-      const data = await postImportInBatches<
-        unknown,
-        { created: number }
-      >({
+      const data = await postImportInBatches<unknown, { created: number }>({
         endpoint: "/api/v1/subjects/bulk",
         bodyKey: "subjects",
         rows: rows.map((row) => ({
-            name: row.name,
-            code: row.code,
-            type: row.type,
-            displayOrder: Number(row.displayOrder),
-            active: row.active === "true",
-          })),
+          name: row.name,
+          code: row.code,
+          type: row.type,
+          displayOrder: Number(row.displayOrder),
+          active: row.active === "true",
+        })),
         failureMessage: "Bulk subject import failed.",
       });
       setResult(data.created);
