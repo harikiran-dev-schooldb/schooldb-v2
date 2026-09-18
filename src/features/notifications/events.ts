@@ -117,7 +117,8 @@ export async function notifyAttendanceLocked(sessionId: string, schoolId: string
         category: "ATTENDANCE",
         targetType: "STUDENT",
         targetId: studentId,
-        body: { contains: session.id },
+        createdBy: "SYSTEM",
+        publishedAt: { gte: session.attendanceDate },
       },
       select: { id: true },
     });
@@ -126,7 +127,7 @@ export async function notifyAttendanceLocked(sessionId: string, schoolId: string
     await createEventNotification({
       schoolId,
       title: "Attendance alert",
-      body: `You were marked absent in ${label}. Attendance session: ${session.id}.`,
+      body: `You were marked absent today in ${label}.`,
       category: "ATTENDANCE",
       targetType: "STUDENT",
       targetId: studentId,
