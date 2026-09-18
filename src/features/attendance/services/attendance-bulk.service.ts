@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { bulkAttendanceSchema } from "../schemas/bulk-attendance.schema";
+import { bulkAttendanceSchema, normalizeAdmissionNo } from "../schemas/bulk-attendance.schema";
 
 type RowResult = {
   row: number;
@@ -36,7 +36,7 @@ export const attendanceBulkService = {
 
     const candidates = parsed.attendance.flatMap((item, index) => {
       const row = index + 2;
-      const key = `${item.admissionNo.toLowerCase()}:${item.date}`;
+      const key = `${normalizeAdmissionNo(item.admissionNo)}:${item.date}`;
       if (seen.has(key)) {
         results.push({ row, ...item, status: "failed", message: "Duplicate admission number and date in the import file." });
         return [];
@@ -45,12 +45,19 @@ export const attendanceBulkService = {
       return [{ row, ...item }];
     });
 
-    const admissionNos = [...new Set(candidates.map((item) => item.admissionNo))];
+    const admissionNos = [...new Set(candidates.map((item) => normalizeAdmissionNo(item.admissionNo)))];
     const students = await prisma.student.findMany({
-      where: { schoolId, admissionNo: { in: admissionNos } },
+      where: {
+        schoolId,
+        OR: admissionNos.map((admissionNo) => ({
+          admissionNo: { equals: admissionNo, mode: "insensitive" as const },
+        })),
+      },
       select: { id: true, admissionNo: true },
     });
-    const studentByAdmissionNo = new Map(students.map((student) => [student.admissionNo, student]));
+    const studentByAdmissionNo = new Map(
+      students.map((student) => [normalizeAdmissionNo(student.admissionNo), student]),
+    );
 
     const academicYears = await prisma.academicYear.findMany({
       where: { schoolId },
@@ -71,7 +78,7 @@ export const attendanceBulkService = {
     const prepared: PreparedRow[] = [];
 
     for (const candidate of candidates) {
-      const student = studentByAdmissionNo.get(candidate.admissionNo);
+      const student = studentByAdmissionNo.get(normalizeAdmissionNo(candidate.admissionNo));
       if (!student) {
         results.push({ ...candidate, status: "failed", message: "Student admission number not found." });
         continue;
