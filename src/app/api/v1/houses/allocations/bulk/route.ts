@@ -4,7 +4,7 @@ import { ApiResponse } from "@/lib/response";
 import { prisma } from "@/lib/prisma";
 
 const ADMIN_ROLES = ["SUPER_ADMIN", "SCHOOL_ADMIN"] as const;
-type Row = { academicYear?: unknown; admissionNo?: unknown; houseCode?: unknown; houseName?: unknown };
+type Row = { academicYear?: unknown; admissionNo?: unknown; houseCode?: unknown };
 
 export async function POST(req: Request) {
   return apiHandler(async () => {
@@ -18,16 +18,14 @@ export async function POST(req: Request) {
       academicYear:String(row.academicYear??"").trim(),
       admissionNo:String(row.admissionNo??"").trim(),
       houseCode:String(row.houseCode??"").trim().toUpperCase(),
-      houseName:String(row.houseName??"").trim(),
     }));
-    const missing=normalized.filter(r=>!r.academicYear||!r.admissionNo||(!r.houseCode&&!r.houseName));
+    const missing=normalized.filter(r=>!r.academicYear||!r.admissionNo||!r.houseCode);
     if(missing.length)return ApiResponse.error(`Required data missing on row(s): ${missing.slice(0,20).map(r=>r.row).join(", ")}.`,400);
 
     const years=await prisma.academicYear.findMany({where:{schoolId:tenant.schoolId},select:{id:true,name:true}});
-    const houses=await prisma.house.findMany({where:{schoolId:tenant.schoolId},select:{id:true,name:true,code:true}});
+    const houses=await prisma.house.findMany({where:{schoolId:tenant.schoolId},select:{id:true,code:true}});
     const yearMap=new Map(years.map(y=>[y.name.toLowerCase(),y.id]));
     const houseCodeMap=new Map(houses.filter(h=>h.code).map(h=>[h.code!,h.id]));
-    const houseNameMap=new Map(houses.map(h=>[h.name.toLowerCase(),h.id]));
 
     const admissionNos=[...new Set(normalized.map(r=>r.admissionNo))];
     const students=await prisma.student.findMany({where:{schoolId:tenant.schoolId,admissionNo:{in:admissionNos}},select:{id:true,admissionNo:true}});
@@ -38,10 +36,10 @@ export async function POST(req: Request) {
     for(const row of normalized){
       const academicYearId=yearMap.get(row.academicYear.toLowerCase());
       const studentId=studentMap.get(row.admissionNo);
-      const houseId=(row.houseCode?houseCodeMap.get(row.houseCode):undefined)||houseNameMap.get(row.houseName.toLowerCase());
+      const houseId=houseCodeMap.get(row.houseCode);
       if(!academicYearId)errors.push(`Row ${row.row}: academic year "${row.academicYear}" not found.`);
       else if(!studentId)errors.push(`Row ${row.row}: admission no "${row.admissionNo}" not found.`);
-      else if(!houseId)errors.push(`Row ${row.row}: house not found.`);
+      else if(!houseId)errors.push(`Row ${row.row}: house code "${row.houseCode}" not found.`);
       else resolved.push({row:row.row,academicYearId,studentId,houseId});
     }
     if(errors.length)return ApiResponse.error(errors.slice(0,30).join(" "),400);
