@@ -4,9 +4,15 @@ import { notificationVisibility } from "./visibility";
 
 export async function notificationContext(schoolSlug: string) {
   const { membership, students } = await listAccessibleStudents(schoolSlug);
+  const visibility = notificationVisibility(membership.schoolId, students);
   return {
     membership,
-    where: notificationVisibility(membership.schoolId, students),
+    where: {
+      ...visibility,
+      ...(membership.role === "PARENT"
+        ? { category: { not: "BIRTHDAY" } }
+        : {}),
+    },
   };
 }
 
