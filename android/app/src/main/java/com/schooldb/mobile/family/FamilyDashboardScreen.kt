@@ -2,6 +2,7 @@ package com.schooldb.mobile.family
 
 import android.content.Intent
 import android.net.Uri
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -13,11 +14,15 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.automirrored.outlined.Assignment
 import androidx.compose.material.icons.automirrored.outlined.EventNote
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.DirectionsBus
 import androidx.compose.material.icons.outlined.Home
@@ -37,6 +42,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -60,12 +67,16 @@ private val FamilyIndigo = Color(0xFF4F46E5)
 private val FamilyGreen = Color(0xFF059669)
 private val FamilyRed = Color(0xFFDC2626)
 private val FamilyAmber = Color(0xFFD97706)
+private val StudentInk = Color(0xFF172039)
+private val StudentMuted = Color(0xFF6E7891)
+private val StudentCanvas = Color(0xFFF6F8FD)
 
 private enum class FamilyTab(val label: String, val icon: ImageVector) {
     HOME("Home", Icons.Outlined.Home),
     ATTENDANCE("Attendance", Icons.Outlined.CalendarMonth),
     HOMEWORK("Homework", Icons.AutoMirrored.Outlined.Assignment),
     FEES("Fees", Icons.Outlined.Payments),
+    RESULTS("Results", Icons.Default.EmojiEvents),
     MORE("More", Icons.Outlined.MoreHoriz),
 }
 
@@ -80,10 +91,25 @@ fun FamilyDashboardScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val dashboard = state.dashboard
+    val isStudent = dashboard?.role == "STUDENT"
     val student = dashboard?.students?.firstOrNull { it.id == state.selectedStudentId }
     var tab by rememberSaveable { mutableStateOf(FamilyTab.HOME) }
     var moreScreen by rememberSaveable { mutableStateOf("MENU") }
 
+    BackHandler(enabled = tab != FamilyTab.HOME) {
+        if (tab == FamilyTab.MORE && moreScreen != "MENU") {
+            moreScreen = "MENU"
+        } else {
+            tab = FamilyTab.HOME
+            moreScreen = "MENU"
+        }
+    }
+
+    LaunchedEffect(dashboard?.role) {
+        if ((isStudent && tab == FamilyTab.FEES) || (!isStudent && tab == FamilyTab.RESULTS)) {
+            tab = FamilyTab.HOME
+        }
+    }
     LaunchedEffect(refreshKey) { if (refreshKey > 0) viewModel.refresh() }
     LaunchedEffect(openNotificationId) {
         if (!openNotificationId.isNullOrBlank()) {
@@ -95,17 +121,18 @@ fun FamilyDashboardScreen(
     }
 
     Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = if (isStudent) StudentCanvas else MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
                 title = {
                     Column {
-                        Text(dashboard?.schoolName ?: "SchoolDB", fontWeight = FontWeight.Bold, maxLines = 1)
-                        Text(
-                            if (dashboard?.role == "STUDENT") "Student space" else "Parent space",
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontSize = 12.sp,
-                        )
+                        if (isStudent) {
+                            Text("SCHOOLDB  /  STUDENT", color = FamilyIndigo, fontWeight = FontWeight.Bold, fontSize = 11.sp, letterSpacing = 1.2.sp)
+                            Text(dashboard.schoolName, color = StudentInk, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        } else {
+                            Text(dashboard?.schoolName ?: "SchoolDB", fontWeight = FontWeight.Bold, maxLines = 1)
+                            Text("Parent space", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+                        }
                     }
                 },
                 actions = {
@@ -137,8 +164,13 @@ fun FamilyDashboardScreen(
         },
         bottomBar = {
             if (student != null) {
-                NavigationBar {
-                    FamilyTab.entries.forEach { item ->
+                NavigationBar(containerColor = MaterialTheme.colorScheme.surface, tonalElevation = 0.dp) {
+                    val tabs = if (isStudent) {
+                        listOf(FamilyTab.HOME, FamilyTab.ATTENDANCE, FamilyTab.HOMEWORK, FamilyTab.RESULTS, FamilyTab.MORE)
+                    } else {
+                        listOf(FamilyTab.HOME, FamilyTab.ATTENDANCE, FamilyTab.HOMEWORK, FamilyTab.FEES, FamilyTab.MORE)
+                    }
+                    tabs.forEach { item ->
                         NavigationBarItem(
                             selected = tab == item,
                             onClick = {
@@ -147,6 +179,13 @@ fun FamilyDashboardScreen(
                             },
                             icon = { Icon(item.icon, contentDescription = item.label) },
                             label = { Text(item.label, fontSize = 10.sp) },
+                            colors = NavigationBarItemDefaults.colors(
+                                selectedIconColor = FamilyIndigo,
+                                selectedTextColor = FamilyIndigo,
+                                indicatorColor = FamilyIndigo.copy(alpha = .1f),
+                                unselectedIconColor = StudentMuted,
+                                unselectedTextColor = StudentMuted,
+                            ),
                         )
                     }
                 }
@@ -161,7 +200,14 @@ fun FamilyDashboardScreen(
                 FamilyTab.ATTENDANCE -> AttendanceTab(dashboard, student, state, viewModel::selectStudent, viewModel::refreshDetails, Modifier.padding(padding))
                 FamilyTab.HOMEWORK -> HomeworkTab(dashboard, student, state, viewModel::selectStudent, viewModel::refreshDetails, Modifier.padding(padding))
                 FamilyTab.FEES -> FeesTab(dashboard, student, state, viewModel::selectStudent, viewModel::refreshDetails, Modifier.padding(padding))
-                FamilyTab.MORE -> if (moreScreen == "TIMETABLE") {
+                FamilyTab.RESULTS -> ResultsTab(dashboard, student, state, viewModel::selectStudent, viewModel::refreshDetails, Modifier.padding(padding))
+                FamilyTab.MORE -> if (moreScreen == "FEES") {
+                    FeesTab(
+                        dashboard, student, state, viewModel::selectStudent,
+                        viewModel::refreshDetails, Modifier.padding(padding),
+                        onBack = { moreScreen = "MENU" },
+                    )
+                } else if (moreScreen == "TIMETABLE") {
                     TimetableTab(
                         dashboard,
                         student,
@@ -223,6 +269,7 @@ fun FamilyDashboardScreen(
                         onOpenCalendar = { moreScreen = "CALENDAR" },
                         onOpenTransport = { moreScreen = "TRANSPORT" },
                         onOpenNotifications = { moreScreen = "NOTIFICATIONS" },
+                        onOpenFees = { moreScreen = "FEES" },
                         onSwitchAccount = onSwitchAccount,
                         modifier = Modifier.padding(padding),
                     )
@@ -242,12 +289,16 @@ private fun FamilyHome(
     onRefresh: () -> Unit,
     modifier: Modifier,
 ) {
+    if (dashboard.role == "STUDENT") {
+        StudentHome(student, state, onRefresh, modifier)
+        return
+    }
     LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 28.dp)) {
-        item { FamilyPageIntro(dashboard, student, "Student overview", onSelect) }
+        item { FamilyPageIntro(dashboard, student, if (dashboard.role == "STUDENT") "My overview" else "Student overview", onSelect) }
         item {
             StudentSummary(student)
             Text("Today at a glance", Modifier.padding(start = 20.dp, top = 24.dp, bottom = 12.dp), fontWeight = FontWeight.Bold, fontSize = 18.sp)
-            Metrics(student)
+            Metrics(student, dashboard.role == "STUDENT")
             Text("Upcoming events", Modifier.padding(start = 20.dp, top = 24.dp, bottom = 8.dp), fontWeight = FontWeight.Bold, fontSize = 18.sp)
         }
         val today = LocalDate.now().toString()
@@ -263,8 +314,149 @@ private fun FamilyHome(
         item {
             SectionHeader("Recent homework", onRefresh)
         }
-        if (student.recentHomework.isEmpty()) item { EmptyMessage("No active homework for this child.") }
+        if (student.recentHomework.isEmpty()) item { EmptyMessage("No active homework right now.") }
         else items(student.recentHomework, key = { it.id }) { HomeworkSummaryCard(it) }
+    }
+}
+
+@Composable
+private fun StudentHome(
+    student: FamilyStudent,
+    state: FamilyUiState,
+    onRefresh: () -> Unit,
+    modifier: Modifier,
+) {
+    val today = LocalDate.now()
+    val upcomingEvents = state.details?.calendarEvents
+        ?.filter { it.endDate.take(10) >= today.toString() }
+        ?.take(3)
+        .orEmpty()
+
+    LazyColumn(
+        modifier = modifier.fillMaxSize().background(StudentCanvas),
+        contentPadding = PaddingValues(bottom = 32.dp),
+        verticalArrangement = Arrangement.spacedBy(18.dp),
+    ) {
+        item {
+            Column(Modifier.padding(start = 20.dp, end = 20.dp, top = 18.dp)) {
+                Text("YOUR SCHOOL DAY", color = FamilyIndigo, fontWeight = FontWeight.Bold, fontSize = 11.sp, letterSpacing = 1.4.sp)
+                Text("Welcome back", color = StudentInk, fontWeight = FontWeight.Bold, fontSize = 29.sp, letterSpacing = (-.7).sp)
+                Text(today.format(DateTimeFormatter.ofPattern("EEEE, d MMMM", Locale.ENGLISH)), color = StudentMuted, fontSize = 13.sp)
+            }
+        }
+        item { StudentHero(student) }
+        item {
+            Column {
+                StudentSectionHeading("At a glance", "A quick view of your progress")
+                StudentMetrics(student)
+            }
+        }
+        item { StudentSectionHeading("Coming up", "School events and deadlines") }
+        if (state.details != null && upcomingEvents.isEmpty()) {
+            item { StudentEmptyState(Icons.Outlined.CalendarMonth, "A clear calendar", "Nothing coming up right now.") }
+        } else {
+            items(upcomingEvents, key = { it.id }) { CalendarEventCard(it) }
+        }
+        item { SectionHeader("Recent homework", onRefresh) }
+        if (student.recentHomework.isEmpty()) item { StudentEmptyState(Icons.AutoMirrored.Outlined.Assignment, "All caught up", "No active homework right now.") }
+        else items(student.recentHomework, key = { it.id }) { HomeworkSummaryCard(it) }
+    }
+}
+
+@Composable
+private fun StudentHero(student: FamilyStudent) {
+    Box(
+        Modifier.fillMaxWidth().padding(horizontal = 20.dp)
+            .clip(RoundedCornerShape(28.dp))
+            .background(Brush.linearGradient(listOf(Color(0xFF293A9D), Color(0xFF5B42D8), Color(0xFF8463E8)))),
+    ) {
+        Box(Modifier.align(Alignment.TopEnd).offset(x = 60.dp, y = (-65).dp).size(180.dp).background(Color.White.copy(alpha = .07f), CircleShape))
+        Box(Modifier.align(Alignment.BottomEnd).offset(x = 38.dp, y = 60.dp).size(145.dp).background(Color.White.copy(alpha = .06f), CircleShape))
+        Column(Modifier.fillMaxWidth().padding(22.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(42.dp).background(Color.White.copy(alpha = .16f), RoundedCornerShape(14.dp)), contentAlignment = Alignment.Center) {
+                    Icon(Icons.Default.School, contentDescription = null, tint = Color.White, modifier = Modifier.size(22.dp))
+                }
+                Spacer(Modifier.width(11.dp))
+                Text("STUDENT PROFILE", color = Color.White.copy(alpha = .78f), fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+            }
+            Spacer(Modifier.height(19.dp))
+            Text(student.fullName, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 25.sp, lineHeight = 29.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(
+                listOfNotNull(student.className, student.sectionName?.let { "Section $it" }, student.rollNo?.let { "Roll $it" }).joinToString("  ·  ").ifBlank { "Enrollment details unavailable" },
+                Modifier.padding(top = 7.dp), color = Color.White.copy(alpha = .85f), fontSize = 13.sp,
+            )
+            if (student.admissionNo.isNotBlank()) {
+                Spacer(Modifier.height(20.dp))
+                Text(
+                    "ADMISSION  ${student.admissionNo}",
+                    Modifier.background(Color.White.copy(alpha = .14f), RoundedCornerShape(10.dp)).padding(horizontal = 11.dp, vertical = 7.dp),
+                    color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, letterSpacing = .4.sp,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun StudentSectionHeading(title: String, subtitle: String) {
+    Column(Modifier.padding(horizontal = 20.dp)) {
+        Text(title, color = StudentInk, fontWeight = FontWeight.Bold, fontSize = 19.sp)
+        Text(subtitle, color = StudentMuted, fontSize = 12.sp)
+    }
+}
+
+@Composable
+private fun StudentMetrics(student: FamilyStudent) {
+    Column(Modifier.padding(start = 20.dp, end = 20.dp, top = 12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            StudentMetricCard("Attendance", student.attendancePercentage?.let { "${number(it)}%" } ?: "—", "${student.attendanceAttended} of ${student.attendanceTotal} sessions", Icons.Outlined.CalendarMonth, Color(0xFF14847B), Modifier.weight(1f))
+            StudentMetricCard("Homework", student.pendingHomeworkCount.toString(), "active assignments", Icons.AutoMirrored.Outlined.Assignment, FamilyIndigo, Modifier.weight(1f))
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            StudentMetricCard("Results", student.completedResultCount.toString(), "completed exams", Icons.Default.EmojiEvents, Color(0xFFB87014), Modifier.weight(1f))
+            StudentMetricCard("Fees due", currency(student.outstandingFee), if (student.outstandingFee > 0) "outstanding" else "nothing pending", Icons.Outlined.Payments, Color(0xFFB74E69), Modifier.weight(1f))
+        }
+    }
+}
+
+@Composable
+private fun StudentMetricCard(label: String, value: String, detail: String, icon: ImageVector, accent: Color, modifier: Modifier) {
+    Card(
+        modifier = modifier,
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+    ) {
+        Column(Modifier.fillMaxWidth().padding(15.dp)) {
+            Box(Modifier.size(34.dp).background(accent.copy(alpha = .1f), RoundedCornerShape(11.dp)), contentAlignment = Alignment.Center) {
+                Icon(icon, contentDescription = null, tint = accent, modifier = Modifier.size(19.dp))
+            }
+            Spacer(Modifier.height(13.dp))
+            Text(value, color = StudentInk, fontWeight = FontWeight.Bold, fontSize = 21.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(label, color = StudentInk, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+            Text(detail, color = StudentMuted, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+    }
+}
+
+@Composable
+private fun StudentEmptyState(icon: ImageVector, title: String, detail: String) {
+    Card(
+        Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 6.dp),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+    ) {
+        Row(Modifier.fillMaxWidth().padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(44.dp).background(FamilyIndigo.copy(alpha = .09f), RoundedCornerShape(14.dp)), contentAlignment = Alignment.Center) {
+                Icon(icon, contentDescription = null, tint = FamilyIndigo, modifier = Modifier.size(22.dp))
+            }
+            Column(Modifier.padding(start = 14.dp)) {
+                Text(title, color = StudentInk, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                Text(detail, color = StudentMuted, fontSize = 12.sp)
+            }
+        }
     }
 }
 
@@ -282,11 +474,19 @@ private fun AttendanceTab(
     else {
         item {
             Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                MetricCard("Attendance", "${number(attendance.percentage)}%", "${attendance.total} sessions", Modifier.weight(1f))
-                MetricCard("Present", attendance.present.toString(), "${attendance.absent} absent", Modifier.weight(1f))
+                if (dashboard.role == "STUDENT") {
+                    StudentMetricCard("Attendance", "${number(attendance.percentage)}%", "${attendance.total} sessions", Icons.Outlined.CalendarMonth, Color(0xFF14847B), Modifier.weight(1f))
+                    StudentMetricCard("Present", attendance.present.toString(), "${attendance.absent} absent", Icons.Default.CheckCircle, FamilyIndigo, Modifier.weight(1f))
+                } else {
+                    MetricCard("Attendance", "${number(attendance.percentage)}%", "${attendance.total} sessions", Modifier.weight(1f))
+                    MetricCard("Present", attendance.present.toString(), "${attendance.absent} absent", Modifier.weight(1f))
+                }
             }
         }
-        if (attendance.records.isEmpty()) item { EmptyMessage("No attendance has been recorded yet.") }
+        if (attendance.records.isEmpty()) item {
+            if (dashboard.role == "STUDENT") StudentEmptyState(Icons.Outlined.CalendarMonth, "No records yet", "Attendance will appear after your classes are recorded.")
+            else EmptyMessage("No attendance has been recorded yet.")
+        }
         else items(attendance.records, key = { it.id }) { AttendanceCard(it) }
     }
 }
@@ -300,8 +500,115 @@ private fun HomeworkTab(
     onRefresh: () -> Unit,
     modifier: Modifier,
 ) = DetailList(modifier, dashboard, student, "Homework", state, onSelect, onRefresh) { details ->
-    if (details.homework.isEmpty()) item { EmptyMessage("No active homework for this child.") }
-    else items(details.homework, key = { it.id }) { HomeworkCard(it) }
+    if (details.homework.isEmpty()) item {
+        if (dashboard.role == "STUDENT") StudentEmptyState(Icons.AutoMirrored.Outlined.Assignment, "No homework posted", "Assignments from your teachers will appear here.")
+        else EmptyMessage("No active homework right now.")
+    }
+    else if (dashboard.role == "STUDENT") {
+        item { StudentHomeworkSummary(details.homework) }
+        items(details.homework, key = { it.id }) { StudentHomeworkCard(it) }
+    } else {
+        items(details.homework, key = { it.id }) { HomeworkCard(it) }
+    }
+}
+
+@Composable
+private fun StudentHomeworkSummary(homework: List<FamilyHomeworkDetails>) {
+    val today = LocalDate.now()
+    val dueSoon = homework.count { item ->
+        calendarDate(item.dueDate.orEmpty())?.let { due ->
+            !due.isBefore(today) && due.isBefore(today.plusDays(8))
+        } == true
+    }
+    Card(
+        Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = FamilyIndigo.copy(alpha = .08f)),
+    ) {
+        Row(Modifier.fillMaxWidth().padding(17.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(42.dp).background(FamilyIndigo.copy(alpha = .12f), RoundedCornerShape(13.dp)), contentAlignment = Alignment.Center) {
+                Icon(Icons.AutoMirrored.Outlined.Assignment, contentDescription = null, tint = FamilyIndigo, modifier = Modifier.size(22.dp))
+            }
+            Column(Modifier.weight(1f).padding(start = 13.dp)) {
+                Text("${homework.size} ${if (homework.size == 1) "assignment" else "assignments"}", color = StudentInk, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                Text("From your teachers", color = StudentMuted, fontSize = 12.sp)
+            }
+            if (dueSoon > 0) {
+                Text("$dueSoon due soon", color = FamilyIndigo, fontWeight = FontWeight.SemiBold, fontSize = 11.sp)
+            }
+        }
+    }
+}
+
+@Composable
+private fun StudentHomeworkCard(item: FamilyHomeworkDetails) {
+    val today = LocalDate.now()
+    val due = item.dueDate?.let(::calendarDate)
+    val daysUntilDue = due?.let { ChronoUnit.DAYS.between(today, it) }
+    val status = when {
+        daysUntilDue == null -> "No due date"
+        daysUntilDue < 0 -> "Past due"
+        daysUntilDue == 0L -> "Due today"
+        daysUntilDue == 1L -> "Due tomorrow"
+        daysUntilDue <= 7 -> "Due in $daysUntilDue days"
+        else -> "Upcoming"
+    }
+    val statusColor = when {
+        daysUntilDue == null -> StudentMuted
+        daysUntilDue < 0 -> FamilyRed
+        daysUntilDue <= 1 -> FamilyAmber
+        else -> FamilyIndigo
+    }
+
+    Card(
+        Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 6.dp),
+        shape = RoundedCornerShape(21.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+    ) {
+        Column(Modifier.fillMaxWidth().padding(18.dp)) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    item.subjectName.uppercase(),
+                    Modifier.weight(1f, fill = false).background(FamilyIndigo.copy(alpha = .09f), RoundedCornerShape(8.dp)).padding(horizontal = 9.dp, vertical = 5.dp),
+                    color = FamilyIndigo, fontWeight = FontWeight.Bold, fontSize = 10.sp, letterSpacing = .5.sp,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis,
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    status,
+                    Modifier.background(statusColor.copy(alpha = .1f), RoundedCornerShape(8.dp)).padding(horizontal = 9.dp, vertical = 5.dp),
+                    color = statusColor, fontWeight = FontWeight.SemiBold, fontSize = 10.sp,
+                )
+            }
+            Text(item.title, Modifier.padding(top = 15.dp), color = StudentInk, fontWeight = FontWeight.Bold, fontSize = 17.sp, lineHeight = 22.sp)
+            item.description?.let {
+                Text(it, Modifier.padding(top = 7.dp), color = StudentMuted, fontSize = 13.sp, lineHeight = 19.sp, maxLines = 4, overflow = TextOverflow.Ellipsis)
+            }
+            HorizontalDivider(Modifier.padding(top = 16.dp, bottom = 12.dp), color = Color(0xFFE9EDF5))
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Outlined.CalendarMonth, contentDescription = null, tint = StudentMuted, modifier = Modifier.size(16.dp))
+                Text("Assigned ${date(item.assignedDate)}", Modifier.padding(start = 6.dp), color = StudentMuted, fontSize = 11.sp)
+                Spacer(Modifier.weight(1f))
+                item.dueDate?.let {
+                    Text("Due ${date(it)}", color = if (daysUntilDue != null && daysUntilDue < 0) FamilyRed else StudentInk, fontWeight = FontWeight.SemiBold, fontSize = 11.sp)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ResultsTab(
+    dashboard: FamilyDashboard,
+    student: FamilyStudent,
+    state: FamilyUiState,
+    onSelect: (String) -> Unit,
+    onRefresh: () -> Unit,
+    modifier: Modifier,
+) = DetailList(modifier, dashboard, student, "Results", state, onSelect, onRefresh) { details ->
+    if (details.results.isEmpty()) item { StudentEmptyState(Icons.Default.EmojiEvents, "Results are on the way", "Completed examination results will appear here.") }
+    else items(details.results, key = { it.id }) { ResultCard(it) }
 }
 
 @Composable
@@ -312,7 +619,17 @@ private fun FeesTab(
     onSelect: (String) -> Unit,
     onRefresh: () -> Unit,
     modifier: Modifier,
+    onBack: (() -> Unit)? = null,
 ) = DetailList(modifier, dashboard, student, "Fees", state, onSelect, onRefresh) { details ->
+    if (onBack != null) {
+        item {
+            TextButton(onClick = onBack, modifier = Modifier.padding(horizontal = 8.dp)) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
+                Spacer(Modifier.width(6.dp))
+                Text("Back to More")
+            }
+        }
+    }
     item {
         Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             MetricCard("Paid", currency(details.fees.paid), "of ${currency(details.fees.payable)}", Modifier.weight(1f))
@@ -340,9 +657,20 @@ private fun MoreTab(
     onOpenCalendar: () -> Unit,
     onOpenTransport: () -> Unit,
     onOpenNotifications: () -> Unit,
+    onOpenFees: () -> Unit,
     onSwitchAccount: () -> Unit,
     modifier: Modifier,
-) = DetailList(modifier, dashboard, student, "More", state, onSelect, onRefresh) { details ->
+) {
+    if (dashboard.role == "STUDENT") {
+        StudentMoreTab(
+            dashboard, student, state, onSelect, onOpenTimetable, onOpenLeave,
+            onOpenCalendar, onOpenTransport, onOpenNotifications, onOpenFees,
+            onSwitchAccount, modifier,
+        )
+        return
+    }
+
+    DetailList(modifier, dashboard, student, "More", state, onSelect, onRefresh) { details ->
     item {
         Card(
             onClick = onOpenNotifications,
@@ -431,9 +759,11 @@ private fun MoreTab(
             }
         }
     }
-    item { Subheading("Results") }
-    if (details.results.isEmpty()) item { EmptyMessage("Completed examination results will appear here.") }
-    else items(details.results, key = { it.id }) { ResultCard(it) }
+    if (dashboard.role != "STUDENT") {
+        item { Subheading("Results") }
+        if (details.results.isEmpty()) item { EmptyMessage("Completed examination results will appear here.") }
+        else items(details.results, key = { it.id }) { ResultCard(it) }
+    }
     item {
         Card(onClick = onSwitchAccount, modifier = Modifier.fillMaxWidth().padding(20.dp), shape = RoundedCornerShape(18.dp)) {
             Row(Modifier.fillMaxWidth().padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -443,6 +773,81 @@ private fun MoreTab(
                     Text("Choose another profile without a new OTP", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
                 }
             }
+        }
+    }
+    }
+}
+
+@Composable
+private fun StudentMoreTab(
+    dashboard: FamilyDashboard,
+    student: FamilyStudent,
+    state: FamilyUiState,
+    onSelect: (String) -> Unit,
+    onOpenTimetable: () -> Unit,
+    onOpenLeave: () -> Unit,
+    onOpenCalendar: () -> Unit,
+    onOpenTransport: () -> Unit,
+    onOpenNotifications: () -> Unit,
+    onOpenFees: () -> Unit,
+    onSwitchAccount: () -> Unit,
+    modifier: Modifier,
+) {
+    LazyColumn(
+        modifier.fillMaxSize().background(StudentCanvas),
+        contentPadding = PaddingValues(bottom = 30.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        item { FamilyPageIntro(dashboard, student, "More", onSelect) }
+        item { StudentSectionHeading("Learning", "Your classes and important dates") }
+        item { StudentMoreAction(Icons.Outlined.Schedule, "Class timetable", "See your weekly class schedule", Color(0xFF4F46E5), onOpenTimetable) }
+        item { StudentMoreAction(Icons.Outlined.CalendarMonth, "School calendar", "Exams, holidays and deadlines", Color(0xFF0F8A83), onOpenCalendar) }
+        item { Spacer(Modifier.height(5.dp)) }
+        item { StudentSectionHeading("School life", "Updates and daily essentials") }
+        item {
+            StudentMoreAction(
+                Icons.Outlined.Notifications, "Notifications", "Announcements and school updates",
+                Color(0xFFB87014), onOpenNotifications,
+                if (state.unreadNotificationCount > 0) "${state.unreadNotificationCount} new" else null,
+            )
+        }
+        item { StudentMoreAction(Icons.Outlined.DirectionsBus, "School transport", "Route, stop and pickup time", Color(0xFF3474B7), onOpenTransport) }
+        item { StudentMoreAction(Icons.AutoMirrored.Outlined.EventNote, "Leave requests", "Request leave and track decisions", Color(0xFF9A58AD), onOpenLeave) }
+        item { Spacer(Modifier.height(5.dp)) }
+        item { StudentSectionHeading("Account", "Your school account") }
+        item { StudentMoreAction(Icons.Outlined.Payments, "Fees", "Installments and payments", Color(0xFFB74E69), onOpenFees) }
+        item { StudentMoreAction(Icons.AutoMirrored.Filled.Logout, "Switch account or role", "Choose another linked profile", FamilyIndigo, onSwitchAccount) }
+    }
+}
+
+@Composable
+private fun StudentMoreAction(
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+    accent: Color,
+    onClick: () -> Unit,
+    badge: String? = null,
+) {
+    Card(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+    ) {
+        Row(Modifier.fillMaxWidth().padding(15.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(43.dp).background(accent.copy(alpha = .1f), RoundedCornerShape(13.dp)), contentAlignment = Alignment.Center) {
+                Icon(icon, contentDescription = null, tint = accent, modifier = Modifier.size(22.dp))
+            }
+            Column(Modifier.weight(1f).padding(start = 13.dp)) {
+                Text(title, color = StudentInk, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                Text(subtitle, color = StudentMuted, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            if (badge != null) {
+                Text(badge, color = accent, fontWeight = FontWeight.Bold, fontSize = 10.sp, modifier = Modifier.padding(end = 6.dp))
+            }
+            Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = StudentMuted, modifier = Modifier.size(16.dp))
         }
     }
 }
@@ -595,11 +1000,29 @@ private fun TimetableTab(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 items(schoolDays) { day ->
-                    FilterChip(
-                        selected = selectedDay == day,
-                        onClick = { selectedDay = day },
-                        label = { Text(day.take(3).lowercase().replaceFirstChar(Char::uppercase)) },
-                    )
+                    if (dashboard.role == "STUDENT") {
+                        val selected = selectedDay == day
+                        Surface(
+                            onClick = { selectedDay = day },
+                            shape = RoundedCornerShape(13.dp),
+                            color = if (selected) FamilyIndigo else MaterialTheme.colorScheme.surface,
+                            shadowElevation = if (selected) 2.dp else 1.dp,
+                        ) {
+                            Text(
+                                day.take(3).lowercase().replaceFirstChar(Char::uppercase),
+                                Modifier.padding(horizontal = 17.dp, vertical = 11.dp),
+                                color = if (selected) Color.White else StudentMuted,
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 12.sp,
+                            )
+                        }
+                    } else {
+                        FilterChip(
+                            selected = selectedDay == day,
+                            onClick = { selectedDay = day },
+                            label = { Text(day.take(3).lowercase().replaceFirstChar(Char::uppercase)) },
+                        )
+                    }
                 }
             }
         }
@@ -607,10 +1030,73 @@ private fun TimetableTab(
         val entries = details.timetable
             .filter { it.day == selectedDay }
             .sortedBy { it.displayOrder }
+        if (dashboard.role == "STUDENT") {
+            item {
+                StudentTimetableSummary(
+                    selectedDay.lowercase().replaceFirstChar(Char::uppercase),
+                    entries.size,
+                    selectedDay == today,
+                )
+            }
+        }
         if (entries.isEmpty()) {
-            item { EmptyMessage("No classes are scheduled for ${selectedDay.lowercase().replaceFirstChar(Char::uppercase)}.") }
+            item {
+                if (dashboard.role == "STUDENT") {
+                    StudentEmptyState(Icons.Outlined.Schedule, "No classes scheduled", "Your timetable has no classes for ${selectedDay.lowercase().replaceFirstChar(Char::uppercase)}.")
+                } else {
+                    EmptyMessage("No classes are scheduled for ${selectedDay.lowercase().replaceFirstChar(Char::uppercase)}.")
+                }
+            }
         } else {
-            items(entries, key = { it.id }) { entry -> TimetableCard(entry) }
+            items(entries, key = { it.id }) { entry ->
+                if (dashboard.role == "STUDENT") StudentTimetableCard(entry)
+                else TimetableCard(entry)
+            }
+        }
+    }
+}
+
+@Composable
+private fun StudentTimetableSummary(day: String, count: Int, isToday: Boolean) {
+    Card(
+        Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = FamilyIndigo.copy(alpha = .08f)),
+    ) {
+        Row(Modifier.fillMaxWidth().padding(17.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(42.dp).background(FamilyIndigo.copy(alpha = .12f), RoundedCornerShape(13.dp)), contentAlignment = Alignment.Center) {
+                Icon(Icons.Outlined.Schedule, contentDescription = null, tint = FamilyIndigo, modifier = Modifier.size(22.dp))
+            }
+            Column(Modifier.weight(1f).padding(start = 13.dp)) {
+                Text(day, color = StudentInk, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                Text("$count ${if (count == 1) "class" else "classes"} scheduled", color = StudentMuted, fontSize = 12.sp)
+            }
+            if (isToday) Text("TODAY", color = FamilyIndigo, fontWeight = FontWeight.Bold, fontSize = 10.sp, letterSpacing = .7.sp)
+        }
+    }
+}
+
+@Composable
+private fun StudentTimetableCard(entry: FamilyTimetableEntry) {
+    Card(
+        Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 5.dp),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+    ) {
+        Row(Modifier.fillMaxWidth().padding(17.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(
+                Modifier.width(86.dp).background(FamilyIndigo.copy(alpha = .09f), RoundedCornerShape(13.dp)).padding(horizontal = 10.dp, vertical = 12.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text(entry.periodName, color = FamilyIndigo, fontWeight = FontWeight.Bold, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(entry.startTime.take(5), color = StudentMuted, fontSize = 10.sp)
+            }
+            Column(Modifier.weight(1f).padding(start = 15.dp)) {
+                Text(entry.subjectName, color = StudentInk, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                if (entry.teacherName.isNotBlank()) Text(entry.teacherName, color = StudentMuted, fontSize = 12.sp)
+                if (entry.endTime.isNotBlank()) Text("Until ${entry.endTime.take(5)}", color = StudentMuted, fontSize = 11.sp)
+            }
         }
     }
 }
@@ -1068,8 +1554,17 @@ private fun DetailList(
 @Composable
 private fun FamilyPageIntro(dashboard: FamilyDashboard, student: FamilyStudent, title: String, onSelect: (String) -> Unit) {
     Column(Modifier.padding(vertical = 18.dp)) {
-        Text(title, Modifier.padding(horizontal = 20.dp), fontWeight = FontWeight.Bold, fontSize = 24.sp)
-        Text(student.fullName, Modifier.padding(horizontal = 20.dp), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
+        if (dashboard.role == "STUDENT") {
+            Text("YOUR SCHOOL DAY", Modifier.padding(horizontal = 20.dp), color = FamilyIndigo, fontWeight = FontWeight.Bold, fontSize = 11.sp, letterSpacing = 1.2.sp)
+            Text(title, Modifier.padding(start = 20.dp, end = 20.dp, top = 4.dp), color = StudentInk, fontWeight = FontWeight.Bold, fontSize = 29.sp)
+            Text(
+                listOfNotNull(student.className, student.sectionName?.let { "Section $it" }).joinToString("  ·  ").ifBlank { student.fullName },
+                Modifier.padding(horizontal = 20.dp), color = StudentMuted, fontSize = 13.sp,
+            )
+        } else {
+            Text(title, Modifier.padding(horizontal = 20.dp), fontWeight = FontWeight.Bold, fontSize = 24.sp)
+            Text(student.fullName, Modifier.padding(horizontal = 20.dp), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
+        }
         if (dashboard.students.size > 1) {
             Spacer(Modifier.height(14.dp))
             LazyRow(contentPadding = PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -1113,15 +1608,20 @@ private fun StudentSummary(student: FamilyStudent) {
 }
 
 @Composable
-private fun Metrics(student: FamilyStudent) {
+private fun Metrics(student: FamilyStudent, isStudent: Boolean) {
     Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             MetricCard("Attendance", student.attendancePercentage?.let { "${number(it)}%" } ?: "—", "${student.attendanceAttended} of ${student.attendanceTotal} sessions", Modifier.weight(1f))
             MetricCard("Homework", student.pendingHomeworkCount.toString(), "active assignments", Modifier.weight(1f))
         }
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            MetricCard("Fees due", currency(student.outstandingFee), if (student.outstandingFee > 0) "outstanding" else "nothing pending", Modifier.weight(1f))
-            MetricCard("Results", student.completedResultCount.toString(), "completed exams", Modifier.weight(1f))
+            if (isStudent) {
+                MetricCard("Results", student.completedResultCount.toString(), "completed exams", Modifier.weight(1f))
+                MetricCard("Fees due", currency(student.outstandingFee), if (student.outstandingFee > 0) "outstanding" else "nothing pending", Modifier.weight(1f))
+            } else {
+                MetricCard("Fees due", currency(student.outstandingFee), if (student.outstandingFee > 0) "outstanding" else "nothing pending", Modifier.weight(1f))
+                MetricCard("Results", student.completedResultCount.toString(), "completed exams", Modifier.weight(1f))
+            }
         }
     }
 }
@@ -1208,14 +1708,24 @@ private fun HomeworkSummaryCard(item: FamilyHomework) = ColumnCard {
 
 @Composable
 private fun RowCard(content: @Composable RowScope.() -> Unit) {
-    Card(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 5.dp), shape = RoundedCornerShape(16.dp)) {
+    Card(
+        Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 5.dp),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+    ) {
         Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically, content = content)
     }
 }
 
 @Composable
 private fun ColumnCard(content: @Composable ColumnScope.() -> Unit) {
-    Card(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 5.dp), shape = RoundedCornerShape(16.dp)) {
+    Card(
+        Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 5.dp),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+    ) {
         Column(Modifier.padding(16.dp), content = content)
     }
 }

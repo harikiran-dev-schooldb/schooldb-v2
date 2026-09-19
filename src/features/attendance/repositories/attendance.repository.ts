@@ -588,6 +588,102 @@ async classAttendanceReport(
   };
 },
 
+async lowAttendanceSummary(
+  schoolId: string,
+  academicYearId: string,
+  attendanceMode: "ONCE_DAILY" | "MORNING_AFTERNOON" | "EVERY_PERIOD",
+  threshold: number,
+  classId?: string,
+  sectionId?: string,
+  fromDate?: Date,
+  toDate?: Date,
+) {
+  const classFilter = classId
+    ? Prisma.sql`AND e."classId" = ${classId}`
+    : Prisma.empty;
+  const sectionFilter = sectionId
+    ? Prisma.sql`AND e."sectionId" = ${sectionId}`
+    : Prisma.empty;
+  const fromFilter = fromDate
+    ? Prisma.sql`AND s."attendanceDate" >= ${fromDate}`
+    : Prisma.empty;
+  const toFilter = toDate
+    ? Prisma.sql`AND s."attendanceDate" <= ${toDate}`
+    : Prisma.empty;
+
+  const modeFilter =
+    attendanceMode === "MORNING_AFTERNOON"
+      ? Prisma.sql`AND s."sessionType"::text IN ('MORNING', 'AFTERNOON')`
+      : attendanceMode === "EVERY_PERIOD"
+        ? Prisma.sql`AND s."sessionType"::text = 'PERIOD' AND s."periodId" IS NOT NULL`
+        : Prisma.empty;
+
+  const opportunity =
+    attendanceMode === "ONCE_DAILY"
+      ? Prisma.sql`s."attendanceDate"::text`
+      : attendanceMode === "MORNING_AFTERNOON"
+        ? Prisma.sql`s."attendanceDate"::text || ':' || s."sessionType"::text`
+        : Prisma.sql`s."attendanceDate"::text || ':PERIOD:' || s."periodId"`;
+
+  const rows = await prisma.$queryRaw<
+    Array<{ totalStudents: bigint; lowAttendanceCount: bigint }>
+  >(Prisma.sql`
+    WITH active_students AS (
+      SELECT e."studentId"
+      FROM "StudentEnrollment" e
+      WHERE e."schoolId" = ${schoolId}
+        AND e."academicYearId" = ${academicYearId}
+        AND e."active" = true
+        ${classFilter}
+        ${sectionFilter}
+    ),
+    ranked AS (
+      SELECT
+        a."studentId",
+        a."status"::text AS status,
+        ROW_NUMBER() OVER (
+          PARTITION BY a."studentId", ${opportunity}
+          ORDER BY s."createdAt" DESC, a."createdAt" DESC
+        ) AS rn
+      FROM "Attendance" a
+      JOIN "AttendanceSession" s ON s."id" = a."sessionId"
+      JOIN active_students e ON e."studentId" = a."studentId"
+      WHERE a."schoolId" = ${schoolId}
+        AND s."academicYearId" = ${academicYearId}
+        ${modeFilter}
+        ${fromFilter}
+        ${toFilter}
+    ),
+    student_summary AS (
+      SELECT
+        e."studentId",
+        COUNT(r.status) FILTER (WHERE r.rn = 1) AS total,
+        COUNT(r.status) FILTER (
+          WHERE r.rn = 1 AND r.status IN ('PRESENT', 'LATE')
+        ) AS attended
+      FROM active_students e
+      LEFT JOIN ranked r ON r."studentId" = e."studentId"
+      GROUP BY e."studentId"
+    )
+    SELECT
+      COUNT(*)::bigint AS "totalStudents",
+      COUNT(*) FILTER (
+        WHERE CASE
+          WHEN total = 0 THEN 0
+          ELSE (attended::numeric / total::numeric) * 100
+        END < ${threshold}
+      )::bigint AS "lowAttendanceCount"
+    FROM student_summary
+  `);
+
+  const row = rows[0];
+
+  return {
+    totalStudents: Number(row?.totalStudents ?? 0),
+    lowAttendanceCount: Number(row?.lowAttendanceCount ?? 0),
+  };
+},
+
 lowAttendanceReport(
   schoolId: string,
   academicYearId: string,
@@ -1037,6 +1133,37 @@ todayAttendanceSessions(
 
     select: {
       id: true,
+    },
+  });
+},
+
+todayClassAttendance(
+  schoolId: string,
+  academicYearId: string,
+  from: Date,
+  to: Date,
+) {
+  return prisma.attendanceSession.findMany({
+    where: {
+      schoolId,
+      academicYearId,
+      attendanceDate: {
+        gte: from,
+        lt: to,
+      },
+    },
+    select: {
+      class: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+      records: {
+        select: {
+          status: true,
+        },
+      },
     },
   });
 },

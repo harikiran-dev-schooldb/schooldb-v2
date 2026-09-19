@@ -141,7 +141,7 @@ export async function getSchoolReport(
    *
    * Default behavior:
    *
-   * From = AcademicYear.startDate
+   * From = 29 days before the default end date
    * To   = Today
    *
    * If today is after the academic year:
@@ -150,6 +150,7 @@ export async function getSchoolReport(
    * If today is before the academic year:
    * To = AcademicYear.startDate
    *
+   * This gives a 30-day default reporting window.
    * User-provided from/to values are still supported, but
    * they are restricted to the selected academic year.
    */
@@ -172,7 +173,14 @@ export async function getSchoolReport(
   const requestedFrom = parseDate(input.from);
   const requestedTo = parseDate(input.to, true);
 
-  let from = requestedFrom ?? academicYearStart;
+  const defaultFrom = startOfDay(defaultTo);
+  defaultFrom.setDate(defaultFrom.getDate() - 29);
+
+  if (defaultFrom < academicYearStart) {
+    defaultFrom.setTime(academicYearStart.getTime());
+  }
+
+  let from = requestedFrom ?? defaultFrom;
   let to = requestedTo ?? defaultTo;
 
   /*
@@ -547,6 +555,7 @@ export async function getSchoolReport(
     {
       date: string;
       present: number;
+      absent: number;
       total: number;
     }
   >();
@@ -565,6 +574,7 @@ export async function getSchoolReport(
     const day = daily.get(key) ?? {
       date: key,
       present: 0,
+      absent: 0,
       total: 0,
     };
 
@@ -572,6 +582,8 @@ export async function getSchoolReport(
 
     if (row.status === "PRESENT") {
       day.present += 1;
+    } else if (row.status === "ABSENT") {
+      day.absent += 1;
     }
 
     daily.set(key, day);

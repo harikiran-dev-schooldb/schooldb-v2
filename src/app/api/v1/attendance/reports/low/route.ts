@@ -39,6 +39,9 @@ export async function GET(req: Request) {
       ) ?? 75
     );
 
+    const summaryOnly =
+      searchParams.get("summary") === "1";
+
     if (!academicYearId) {
       throw new Error(
         "Academic year is required."
@@ -63,7 +66,8 @@ export async function GET(req: Request) {
         sectionId,
         fromDate,
         toDate,
-        threshold
+        threshold,
+        summaryOnly,
       );
 
     return ApiResponse.success(result);

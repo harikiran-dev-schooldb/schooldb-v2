@@ -15,6 +15,10 @@ export default async function SchoolEntryPage({
     redirect(`/${schoolSlug}/my`);
   }
 
+  if (membership.role === "TEACHER") {
+    redirect(`/${schoolSlug}/teacher/dashboard`);
+  }
+
   if (isOperationalRole(membership.role)) {
     redirect(`/${schoolSlug}/dashboard`);
   }

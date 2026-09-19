@@ -171,6 +171,14 @@ class TeacherRepository(
         )
     }
 
+    suspend fun saveAndLockAttendance(sheet: AttendanceSheet) {
+        saveAttendance(sheet)
+        api.post(
+            "api/v1/attendance/session/${sheet.sessionId}/lock",
+            JSONObject(),
+        )
+    }
+
     private suspend fun createSession(period: TeachingPeriod): String {
         val data = api.post(
             "api/v1/attendance/session",

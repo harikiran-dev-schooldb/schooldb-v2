@@ -13,6 +13,7 @@ export async function GET(req: Request) {
     const houseId = searchParams.get("houseId") || undefined;
     const classId = searchParams.get("classId") || undefined;
     const sectionId = searchParams.get("sectionId") || undefined;
+    const summaryOnly = searchParams.get("summary") === "1";
 
     const [houses, academicYears, classes, enrollments] = await Promise.all([
       prisma.house.findMany({
@@ -26,17 +27,21 @@ export async function GET(req: Request) {
           },
         },
       }),
-      prisma.academicYear.findMany({
-        where: { schoolId: tenant.schoolId },
-        select: { id: true, name: true, active: true },
-        orderBy: { startDate: "desc" },
-      }),
-      prisma.class.findMany({
-        where: { schoolId: tenant.schoolId, active: true },
-        select: { id: true, name: true, displayOrder: true, sections: { where: { active: true }, select: { id: true, name: true } } },
-        orderBy: [{ displayOrder: "asc" }, { name: "asc" }],
-      }),
-      academicYearId
+      summaryOnly
+        ? Promise.resolve([])
+        : prisma.academicYear.findMany({
+            where: { schoolId: tenant.schoolId },
+            select: { id: true, name: true, active: true },
+            orderBy: { startDate: "desc" },
+          }),
+      summaryOnly
+        ? Promise.resolve([])
+        : prisma.class.findMany({
+            where: { schoolId: tenant.schoolId, active: true },
+            select: { id: true, name: true, displayOrder: true, sections: { where: { active: true }, select: { id: true, name: true } } },
+            orderBy: [{ displayOrder: "asc" }, { name: "asc" }],
+          }),
+      academicYearId && !summaryOnly
         ? prisma.studentEnrollment.findMany({
             where: {
               schoolId: tenant.schoolId,

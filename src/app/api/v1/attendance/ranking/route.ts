@@ -1,6 +1,6 @@
 import { attendanceService } from "@/features/attendance/services/attendance.service";
 import { apiHandler } from "@/lib/api";
-import { requirePermission } from "@/lib/auth";
+import { requirePermission, requireTeacherClassSection } from "@/lib/auth";
 import { PERMISSIONS } from "@/lib/access-control";
 import { ApiResponse } from "@/lib/response";
 
@@ -30,6 +30,8 @@ export async function GET(request: Request) {
     if (fromDate && toDate && fromDate > toDate) {
       return ApiResponse.error("From date cannot be after to date.", 400);
     }
+
+    await requireTeacherClassSection(classId, sectionId);
 
     const data = await attendanceService.attendanceToppers(
       tenant.schoolId,

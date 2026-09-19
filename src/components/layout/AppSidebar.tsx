@@ -150,7 +150,7 @@ export function AppSidebar() {
           )}
         >
           <Link
-            href={`/${school.slug}/dashboard`}
+            href={`/${school.slug}/${role === "TEACHER" ? "teacher/dashboard" : "dashboard"}`}
             className={cn(
               "group flex min-w-0 items-center",
               collapsed ? "justify-center" : "gap-3",

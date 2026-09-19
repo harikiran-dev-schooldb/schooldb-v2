@@ -38,6 +38,7 @@ import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.School
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
@@ -144,6 +145,7 @@ fun TeacherDashboardScreen(
             saving = state.saving,
             onStatusChange = viewModel::setStatus,
             onSave = viewModel::saveAttendance,
+            onLock = viewModel::saveAndLockAttendance,
             onBack = viewModel::closeAttendance,
             snackbar = snackbar,
         )
@@ -308,7 +310,7 @@ private fun TeacherShell(
                                 onOpenResults = { moreScreen = "RESULTS" },
                                 onOpenProfile = { moreScreen = "PROFILE" },
                                 onOpenSettings = { moreScreen = "SETTINGS" },
-                                onSignOut = onSwitchAccount,
+                                onSwitchAccount = onSwitchAccount,
                             )
                         }
                     }
@@ -515,7 +517,7 @@ private fun TeacherMoreScreen(
     onOpenResults: () -> Unit,
     onOpenProfile: () -> Unit,
     onOpenSettings: () -> Unit,
-    onSignOut: () -> Unit,
+    onSwitchAccount: () -> Unit,
 ) {
     Scaffold(
         containerColor = SchoolDbBackground,
@@ -594,6 +596,15 @@ private fun TeacherMoreScreen(
             item {
                 MoreMenuCard {
                     MoreMenuItem(
+                        icon = Icons.Default.Groups,
+                        title = "Switch account or role",
+                        subtitle = "Choose another profile linked to your number",
+                        onClick = onSwitchAccount,
+                    )
+
+                    SchoolDbMenuDivider()
+
+                    MoreMenuItem(
                         icon = Icons.Outlined.Person,
                         title = "My Profile",
                         subtitle = "Personal and teacher information",
@@ -607,29 +618,6 @@ private fun TeacherMoreScreen(
                         title = "Settings",
                         subtitle = "App preferences",
                         onClick = onOpenSettings,
-                    )
-                }
-            }
-
-            item {
-                TextButton(
-                    onClick = onSignOut,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.Logout,
-                        contentDescription = null,
-                        tint = SchoolDbDanger,
-                    )
-
-                    Spacer(
-                        modifier = Modifier.width(10.dp),
-                    )
-
-                    Text(
-                        text = "Switch account or role",
-                        color = SchoolDbDanger,
-                        fontWeight = FontWeight.SemiBold,
                     )
                 }
             }
@@ -1835,9 +1823,44 @@ private fun AttendanceScreen(
     saving: Boolean,
     onStatusChange: (String, AttendanceStatus) -> Unit,
     onSave: () -> Unit,
+    onLock: () -> Unit,
     onBack: () -> Unit,
     snackbar: SnackbarHostState,
 ) {
+    var confirmLock by rememberSaveable { mutableStateOf(false) }
+
+    if (confirmLock) {
+        AlertDialog(
+            onDismissRequest = { if (!saving) confirmLock = false },
+            title = { Text("Lock attendance?") },
+            text = {
+                Text(
+                    "The current attendance will be saved first, then this session will be locked. " +
+                        "Locked attendance cannot be edited by the teacher."
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        confirmLock = false
+                        onLock()
+                    },
+                    enabled = !saving,
+                ) {
+                    Text("Save & lock")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { confirmLock = false },
+                    enabled = !saving,
+                ) {
+                    Text("Cancel")
+                }
+            },
+        )
+    }
+
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         snackbarHost = {
@@ -1884,26 +1907,42 @@ private fun AttendanceScreen(
                     )
                     .padding(16.dp),
             ) {
-                Button(
-                    onClick = onSave,
-                    enabled =
-                        !saving &&
-                            sheet.students.isNotEmpty(),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(50.dp),
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    if (saving) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(20.dp),
-                            color = MaterialTheme.colorScheme.onPrimary,
-                            strokeWidth = 2.dp,
-                        )
-                    } else {
+                    TextButton(
+                        onClick = onSave,
+                        enabled = !saving && sheet.students.isNotEmpty(),
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(50.dp),
+                    ) {
                         Text(
-                            text = "Save attendance",
+                            text = "Save",
                             fontWeight = FontWeight.SemiBold,
                         )
+                    }
+
+                    Button(
+                        onClick = { confirmLock = true },
+                        enabled = !saving && sheet.students.isNotEmpty(),
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(50.dp),
+                    ) {
+                        if (saving) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                color = MaterialTheme.colorScheme.onPrimary,
+                                strokeWidth = 2.dp,
+                            )
+                        } else {
+                            Text(
+                                text = "Save & lock",
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                        }
                     }
                 }
             }

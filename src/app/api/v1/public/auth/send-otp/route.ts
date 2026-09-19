@@ -223,6 +223,13 @@ export async function POST(request: Request) {
       clearTimeout(timeout);
     }
 
+    const whatsappPayload = await whatsappResponse.text();
+    console.log("WHATSAPP OTP RESPONSE", {
+      status: whatsappResponse.status,
+      phone,
+      payload: whatsappPayload,
+    });
+
     if (!whatsappResponse.ok) {
       await prisma.otpChallenge.deleteMany({
         where: { schoolId: school.id, phoneHash: hashedPhone, codeHash },

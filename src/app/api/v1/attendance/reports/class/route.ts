@@ -1,5 +1,5 @@
 import { apiHandler } from "@/lib/api";
-import { requirePermission } from "@/lib/auth";
+import { requirePermission, requireTeacherClassSection } from "@/lib/auth";
 import { PERMISSIONS } from "@/lib/access-control";
 import { ApiResponse } from "@/lib/response";
 
@@ -48,6 +48,8 @@ export async function GET(req: Request) {
         "Section is required."
       );
     }
+
+    await requireTeacherClassSection(classId, sectionId);
 
     const result =
       await attendanceService.classAttendanceReport(

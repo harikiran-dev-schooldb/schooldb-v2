@@ -26,6 +26,7 @@ class AuthenticatedApiClient(
         val connection = URL(baseUrl + path.trimStart('/')).openConnection() as HttpURLConnection
         return try {
             connection.requestMethod = method
+            connection.instanceFollowRedirects = false
             connection.connectTimeout = 15_000
             connection.readTimeout = 45_000
             connection.setRequestProperty("Accept", "application/json")
@@ -38,6 +39,9 @@ class AuthenticatedApiClient(
             }
 
             val status = connection.responseCode
+            if (status in 300..399 && connection.getHeaderField("Location")?.contains("/login") == true) {
+                throw ApiException("Your session expired. Please sign in again.")
+            }
             val stream = if (status in 200..299) connection.inputStream else connection.errorStream
             val payload = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
             val json = if (payload.isBlank()) JSONObject() else JSONObject(payload)
@@ -57,7 +61,7 @@ class AuthenticatedApiClient(
         var token: String? = null
         var failure: String? = null
         Clerk.auth
-            .getToken(GetTokenOptions())
+            .getToken(GetTokenOptions(skipCache = true))
             .onSuccess { token = it }
             .onFailure { failure = it.errorMessage }
         return token?.takeIf(String::isNotBlank)

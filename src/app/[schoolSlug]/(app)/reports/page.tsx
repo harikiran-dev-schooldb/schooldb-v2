@@ -75,6 +75,33 @@ export default async function ReportsPage({ params, searchParams }: Props) {
     );
   }
 
+  const hasCustomAttendanceRange = Boolean(filters.from || filters.to);
+  const attendanceTrendStart = new Date(`${report.scope.to}T00:00:00`);
+  attendanceTrendStart.setDate(attendanceTrendStart.getDate() - 29);
+  const attendanceTrendStartKey = [
+    attendanceTrendStart.getFullYear(),
+    String(attendanceTrendStart.getMonth() + 1).padStart(2, "0"),
+    String(attendanceTrendStart.getDate()).padStart(2, "0"),
+  ].join("-");
+
+  const attendanceTrend = hasCustomAttendanceRange
+    ? report.attendance.daily
+    : report.attendance.daily.filter(
+        (day) => day.date >= attendanceTrendStartKey,
+      );
+
+  const attendanceTrendAbsences = attendanceTrend.reduce(
+    (sum, day) => sum + day.absent,
+    0,
+  );
+  const attendanceTrendAverage = attendanceTrend.length
+    ? Math.round(attendanceTrendAbsences / attendanceTrend.length)
+    : 0;
+  const attendanceTrendHighest = Math.max(
+    0,
+    ...attendanceTrend.map((day) => day.absent),
+  );
+
   return (
     <PageContainer>
       <div className="print:hidden">
@@ -108,16 +135,18 @@ export default async function ReportsPage({ params, searchParams }: Props) {
         }}
       />
 
-      <section className="mt-6 overflow-hidden rounded-[1.75rem] bg-gradient-to-br from-slate-950 via-indigo-950 to-indigo-700 p-6 text-white shadow-xl print:border print:bg-white print:text-black print:shadow-none sm:p-8">
-        <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
+      <section className="relative mt-6 overflow-hidden rounded-3xl border border-indigo-100 bg-gradient-to-br from-white via-indigo-50/70 to-violet-50/70 p-6 shadow-[0_18px_50px_rgba(15,23,42,0.07)] print:bg-white print:shadow-none sm:p-8">
+        <div className="pointer-events-none absolute -right-16 -top-24 size-72 rounded-full bg-violet-400/10 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-28 left-1/3 size-64 rounded-full bg-blue-400/10 blur-3xl" />
+        <div className="relative z-10 flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.24em] text-cyan-300 print:text-indigo-600">
+            <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-indigo-600">
               Reporting scope
             </p>
-            <h2 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">
+            <h2 className="mt-2 text-3xl font-black tracking-[-0.035em] text-slate-950 sm:text-4xl">
               {report.scope.className}
             </h2>
-            <p className="mt-2 text-sm text-white/65 print:text-muted-foreground">
+            <p className="mt-2 text-sm text-slate-500">
               {report.scope.sectionName} · {report.scope.academicYearName} ·{" "}
               {shortDate(report.scope.from)} – {shortDate(report.scope.to)}
             </p>
@@ -176,31 +205,30 @@ export default async function ReportsPage({ params, searchParams }: Props) {
 
       <section className="mt-6 grid gap-6 xl:grid-cols-[1.5fr_1fr]">
         <ReportCard
-          title="Attendance trend"
-          description="Daily attendance percentage for the selected period"
-          badge={`${report.attendance.percentage}% overall`}
+          accent
+          title="Absentees trend"
+          description={
+            hasCustomAttendanceRange
+              ? "Daily absent student count for the selected period"
+              : "Daily absent student count for the last 30 days"
+          }
+          badge={`${attendanceTrendAbsences.toLocaleString("en-IN")} absences`}
         >
-          <AttendanceChart data={report.attendance.daily} />
-          <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <AbsenteesChart data={attendanceTrend} />
+          <div className="mt-5 grid grid-cols-3 gap-3">
             <MiniMetric
-              label="Present"
-              value={report.attendance.present}
-              className="text-emerald-700"
-            />
-            <MiniMetric
-              label="Absent"
-              value={report.attendance.absent}
+              label="Latest"
+              value={attendanceTrend.at(-1)?.absent ?? 0}
               className="text-rose-700"
             />
             <MiniMetric
-              label="Late"
-              value={report.attendance.late}
-              className="text-amber-700"
+              label="Daily average"
+              value={attendanceTrendAverage}
             />
             <MiniMetric
-              label="Leave"
-              value={report.attendance.leave}
-              className="text-blue-700"
+              label="Highest"
+              value={attendanceTrendHighest}
+              className="text-amber-700"
             />
           </div>
         </ReportCard>
@@ -318,8 +346,8 @@ export default async function ReportsPage({ params, searchParams }: Props) {
         />
       </section>
 
-      <section className="mt-6 overflow-hidden rounded-2xl border bg-card shadow-sm print:break-before-page print:shadow-none">
-        <div className="flex items-center justify-between border-b px-5 py-4">
+      <section className="mt-6 overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-[0_12px_35px_rgba(15,23,42,0.045)] print:break-before-page print:shadow-none">
+        <div className="flex items-center justify-between border-b border-slate-100 bg-gradient-to-r from-white via-slate-50/50 to-amber-50/30 px-5 py-4">
           <div>
             <h2 className="font-bold">Low attendance attention list</h2>
             <p className="mt-1 text-xs text-muted-foreground">
@@ -333,7 +361,7 @@ export default async function ReportsPage({ params, searchParams }: Props) {
         {report.attendance.low.length ? (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[720px] text-left text-sm">
-              <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
+              <thead className="bg-slate-50/80 text-[10px] uppercase tracking-[0.12em] text-slate-400">
                 <tr>
                   <th className="px-5 py-3">Student</th>
                   <th className="px-5 py-3">Admission no.</th>
@@ -344,7 +372,7 @@ export default async function ReportsPage({ params, searchParams }: Props) {
               </thead>
               <tbody className="divide-y">
                 {report.attendance.low.map((student) => (
-                  <tr key={student.studentId}>
+                  <tr key={student.studentId} className="transition-colors hover:bg-indigo-50/25">
                     <td className="px-5 py-4 font-semibold">
                       {student.fullName}
                     </td>
@@ -386,11 +414,11 @@ export default async function ReportsPage({ params, searchParams }: Props) {
 
 function HeroMetric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="min-w-28 rounded-2xl border border-white/10 bg-white/10 px-4 py-3 backdrop-blur print:border-border print:bg-muted">
-      <p className="text-[10px] font-bold uppercase tracking-wider text-white/55 print:text-muted-foreground">
+    <div className="min-w-28 rounded-2xl border border-indigo-100/80 bg-white/85 px-4 py-3 shadow-sm backdrop-blur">
+      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
         {label}
       </p>
-      <p className="mt-1 text-lg font-black">{value}</p>
+      <p className="mt-1 text-lg font-black tracking-tight text-slate-950">{value}</p>
     </div>
   );
 }
@@ -416,17 +444,24 @@ function MetricCard({
   tone: keyof typeof tones;
 }) {
   return (
-    <div className="rounded-2xl border bg-card p-5 shadow-sm print:shadow-none">
-      <div
-        className={`flex size-10 items-center justify-center rounded-xl ${tones[tone]}`}
-      >
-        <Icon className="size-5" />
+    <div className="group relative min-h-[124px] overflow-hidden rounded-3xl border border-slate-200/70 bg-white px-5 py-4 shadow-[0_10px_28px_rgba(15,23,42,0.045)] transition-all duration-300 hover:-translate-y-0.5 hover:border-indigo-100 hover:shadow-[0_16px_34px_rgba(79,70,229,0.07)] print:shadow-none">
+      <div className="pointer-events-none absolute -right-8 -top-10 size-24 rounded-full bg-indigo-100/25 blur-2xl transition-transform duration-500 group-hover:scale-125" />
+
+      <div className="relative flex h-full items-center justify-between gap-4">
+        <div className="min-w-0">
+          <p className="text-xs font-semibold text-slate-500">{label}</p>
+          <p className="mt-1 text-2xl font-black tracking-[-0.035em] text-slate-950">
+            {value}
+          </p>
+          <p className="mt-1.5 truncate text-xs text-slate-500">{detail}</p>
+        </div>
+
+        <div
+          className={`flex size-11 shrink-0 items-center justify-center rounded-2xl ring-1 ring-black/5 ${tones[tone]}`}
+        >
+          <Icon className="size-5" />
+        </div>
       </div>
-      <p className="mt-4 text-sm font-semibold text-muted-foreground">
-        {label}
-      </p>
-      <p className="mt-1 text-2xl font-black tracking-tight">{value}</p>
-      <p className="mt-2 text-xs text-muted-foreground">{detail}</p>
     </div>
   );
 }
@@ -436,22 +471,30 @@ function ReportCard({
   description,
   badge,
   children,
+  accent = false,
 }: {
   title: string;
   description: string;
   badge: string;
   children: React.ReactNode;
+  accent?: boolean;
 }) {
   return (
-    <section className="rounded-2xl border bg-card p-5 shadow-sm print:break-inside-avoid print:shadow-none">
-      <div className="mb-5 flex items-start justify-between gap-3">
+    <section className={`relative overflow-hidden rounded-3xl border p-5 shadow-[0_12px_35px_rgba(15,23,42,0.045)] print:break-inside-avoid print:shadow-none ${accent ? "border-rose-100 bg-gradient-to-br from-white via-white to-rose-50/35" : "border-slate-200/80 bg-white"}`}>
+      {accent && (
+        <>
+          <div className="pointer-events-none absolute -right-20 -top-24 size-64 rounded-full bg-rose-200/20 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-24 left-1/3 size-52 rounded-full bg-orange-100/25 blur-3xl" />
+        </>
+      )}
+      <div className="relative z-10 mb-5 flex items-start justify-between gap-3">
         <div>
-          <h2 className="font-bold">{title}</h2>
+          <h2 className="text-base font-bold tracking-[-0.015em] text-slate-950">{title}</h2>
           <p className="mt-1 text-xs text-muted-foreground">{description}</p>
         </div>
         <Badge variant="outline">{badge}</Badge>
       </div>
-      {children}
+      <div className="relative z-10">{children}</div>
     </section>
   );
 }
@@ -466,7 +509,7 @@ function MiniMetric({
   className?: string;
 }) {
   return (
-    <div className="rounded-xl bg-muted/55 p-3">
+    <div className="rounded-2xl border border-slate-200/60 bg-white/80 p-3.5 shadow-[0_4px_14px_rgba(15,23,42,0.025)] backdrop-blur">
       <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
         {label}
       </p>
@@ -488,7 +531,7 @@ function MoneyBlock({
 }) {
   return (
     <div
-      className={`rounded-xl border p-4 ${alert ? "border-amber-200 bg-amber-50/70" : "bg-muted/30"}`}
+      className={`rounded-2xl border p-4 transition-colors ${alert ? "border-amber-200 bg-gradient-to-br from-amber-50/80 to-orange-50/50" : "border-slate-200/70 bg-slate-50/45"}`}
     >
       <p className="text-xs font-semibold text-muted-foreground">{label}</p>
       <p className={`mt-2 text-xl font-black ${alert ? "text-amber-800" : ""}`}>
@@ -513,7 +556,7 @@ function OperationCard({
 }) {
   return (
     <div
-      className={`flex items-center gap-4 rounded-2xl border bg-card p-5 shadow-sm print:shadow-none ${alert ? "border-amber-200" : ""}`}
+      className={`group flex items-center gap-4 rounded-3xl border bg-white p-5 shadow-[0_10px_30px_rgba(15,23,42,0.045)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_16px_36px_rgba(79,70,229,0.07)] print:shadow-none ${alert ? "border-amber-200" : "border-slate-200/70 hover:border-indigo-100"}`}
     >
       <div
         className={`flex size-11 shrink-0 items-center justify-center rounded-xl ${alert ? "bg-amber-50 text-amber-700" : "bg-indigo-50 text-indigo-700"}`}
@@ -560,9 +603,9 @@ function BarList({
               {row.suffix}
             </span>
           </div>
-          <div className="h-2 overflow-hidden rounded-full bg-muted">
+          <div className="h-1.5 overflow-hidden rounded-full bg-slate-100">
             <div
-              className="h-full rounded-full bg-gradient-to-r from-indigo-600 to-cyan-400"
+              className="h-full rounded-full bg-gradient-to-r from-indigo-600 via-violet-500 to-cyan-400"
               style={{
                 width: `${Math.max(2, Math.min(100, (row.value / max) * 100))}%`,
               }}
@@ -574,10 +617,10 @@ function BarList({
   );
 }
 
-function AttendanceChart({
+function AbsenteesChart({
   data,
 }: {
-  data: Array<{ date: string; percentage: number }>;
+  data: Array<{ date: string; absent: number }>;
 }) {
   if (!data.length)
     return (
@@ -585,75 +628,109 @@ function AttendanceChart({
         No attendance records for this period.
       </div>
     );
+
   const width = 800;
-  const height = 220;
-  const padding = 18;
-  const usableWidth = width - padding * 2;
-  const usableHeight = height - padding * 2;
-  const points = data
-    .map((item, index) => {
-      const x =
-        padding +
-        (data.length === 1
-          ? usableWidth / 2
-          : (index / (data.length - 1)) * usableWidth);
-      const y = padding + usableHeight - (item.percentage / 100) * usableHeight;
-      return `${x},${y}`;
-    })
-    .join(" ");
-  const area = `${padding},${height - padding} ${points} ${width - padding},${height - padding}`;
+  const height = 245;
+  const paddingX = 28;
+  const paddingTop = 18;
+  const paddingBottom = 24;
+  const usableWidth = width - paddingX * 2;
+  const usableHeight = height - paddingTop - paddingBottom;
+  const highest = Math.max(1, ...data.map((item) => item.absent));
+  const axisMax = Math.max(4, Math.ceil(highest / 4) * 4);
+  const ticks = [0, axisMax / 4, axisMax / 2, (axisMax * 3) / 4, axisMax];
+
+  const coordinates = data.map((item, index) => {
+    const x =
+      paddingX +
+      (data.length === 1
+        ? usableWidth / 2
+        : (index / (data.length - 1)) * usableWidth);
+    const y =
+      paddingTop +
+      usableHeight -
+      (item.absent / axisMax) * usableHeight;
+
+    return { ...item, x, y };
+  });
+
+  const points = coordinates.map((item) => `${item.x},${item.y}`).join(" ");
+  const area = `${paddingX},${height - paddingBottom} ${points} ${width - paddingX},${height - paddingBottom}`;
+
   return (
     <div>
       <svg
         role="img"
-        aria-label="Daily attendance percentage trend"
+        aria-label="Daily absentee count trend"
         viewBox={`0 0 ${width} ${height}`}
-        className="h-56 w-full overflow-visible"
+        className="h-60 w-full overflow-visible"
       >
         <defs>
-          <linearGradient id="attendanceArea" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#4f46e5" stopOpacity="0.3" />
-            <stop offset="100%" stopColor="#06b6d4" stopOpacity="0.02" />
+          <linearGradient id="absenteesArea" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#f43f5e" stopOpacity="0.2" />
+            <stop offset="100%" stopColor="#f43f5e" stopOpacity="0.01" />
           </linearGradient>
-          <linearGradient id="attendanceLine" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0%" stopColor="#4f46e5" />
-            <stop offset="100%" stopColor="#06b6d4" />
+          <linearGradient id="absenteesLine" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor="#e11d48" />
+            <stop offset="100%" stopColor="#f97316" />
           </linearGradient>
         </defs>
-        {[25, 50, 75, 100].map((tick) => {
-          const y = padding + usableHeight - (tick / 100) * usableHeight;
+
+        {ticks.map((tick) => {
+          const y =
+            paddingTop +
+            usableHeight -
+            (tick / axisMax) * usableHeight;
+
           return (
             <g key={tick}>
               <line
-                x1={padding}
-                x2={width - padding}
+                x1={paddingX}
+                x2={width - paddingX}
                 y1={y}
                 y2={y}
                 stroke="currentColor"
                 strokeOpacity="0.08"
               />
               <text
-                x={padding}
+                x={paddingX}
                 y={y - 5}
                 fontSize="10"
                 fill="currentColor"
                 opacity="0.45"
               >
-                {tick}%
+                {Math.round(tick)}
               </text>
             </g>
           );
         })}
-        <polygon points={area} fill="url(#attendanceArea)" />
+
+        <polygon points={area} fill="url(#absenteesArea)" />
         <polyline
           points={points}
           fill="none"
-          stroke="url(#attendanceLine)"
+          stroke="url(#absenteesLine)"
           strokeWidth="4"
           strokeLinecap="round"
           strokeLinejoin="round"
         />
+
+        {coordinates.map((item) => (
+          <g key={item.date}>
+            <circle
+              cx={item.x}
+              cy={item.y}
+              r="5"
+              fill="white"
+              stroke="#e11d48"
+              strokeWidth="3"
+            >
+              <title>{`${shortDate(item.date)}: ${item.absent} absent`}</title>
+            </circle>
+          </g>
+        ))}
       </svg>
+
       <div className="mt-1 flex justify-between text-[10px] font-semibold text-muted-foreground">
         <span>{shortDate(data[0].date)}</span>
         <span>{shortDate(data[data.length - 1].date)}</span>

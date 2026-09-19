@@ -9,9 +9,11 @@ export async function GET() {
     const studentIds = students.map((student) => student.id);
     const enrollmentTargets = students.flatMap((student) =>
       student.enrollments.map((enrollment) => ({
-        academicYearId: enrollment.academicYearId,
         classId: enrollment.classId,
-        OR: [{ sectionId: null }, { sectionId: enrollment.sectionId }],
+        AND: [
+          { OR: [{ academicYearId: enrollment.academicYearId }, { academicYearId: null }] },
+          { OR: [{ sectionId: null }, { sectionId: enrollment.sectionId }] },
+        ],
       })),
     );
 
@@ -92,7 +94,7 @@ export async function GET() {
         const studentHomework = enrollment
           ? homework.filter(
               (item) =>
-                item.academicYearId === enrollment.academicYearId &&
+                (item.academicYearId === enrollment.academicYearId || item.academicYearId === null) &&
                 item.classId === enrollment.classId &&
                 (item.sectionId === null || item.sectionId === enrollment.sectionId),
             )

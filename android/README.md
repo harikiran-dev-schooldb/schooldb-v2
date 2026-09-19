@@ -12,7 +12,7 @@ Native Android client built with Kotlin and Jetpack Compose.
 ## Open and run
 
 1. Open the `android` directory in Android Studio.
-2. Let Android Studio install JDK 17 and synchronize Gradle if prompted.
+2. Let Android Studio install JDK 21 and synchronize Gradle if prompted.
 3. Add your Clerk publishable key to `~/.gradle/gradle.properties`:
 
    ```properties
@@ -24,13 +24,14 @@ Native Android client built with Kotlin and Jetpack Compose.
 
 The debug build connects to `http://10.0.2.2:3000/`, which is the Android emulator alias for the host machine.
 
-To use another server, add this to `~/.gradle/gradle.properties` or pass it on the command line:
+To use another server for either build type, add this to `~/.gradle/gradle.properties` or pass it on the command line with `-PSCHOOLDB_API_BASE_URL=...`:
 
 ```properties
 SCHOOLDB_API_BASE_URL=https://your-schooldb.example.com/
 ```
 
 Production builds reject cleartext HTTP traffic. Use an HTTPS URL for deployed environments.
+Release signing uses `android/keystore.properties` when present. It is not needed for debug builds; without it, release builds are unsigned.
 
 The app redeems the short-lived ticket returned by the SchoolDB OTP endpoint through Clerk's native Android SDK. The SDK then owns session persistence and refresh.
 

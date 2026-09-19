@@ -41,7 +41,7 @@ export function AccountSwitcher({
   schoolName: string;
 }) {
   const router = useRouter();
-  const { client, setActive } = useClerk();
+  const { client, setActive, signOut } = useClerk();
   const { fetchStatus, signIn } = useSignIn();
   const [accounts, setAccounts] = useState<AccountChoice[]>([]);
   const [loading, setLoading] = useState(true);
@@ -116,6 +116,12 @@ export function AccountSwitcher({
       }
       if (result.data.current) return void (await navigateToPortal());
       if (!result.data.token) throw new Error("Account switch could not be completed.");
+
+      // Clerk multi-session is not required for SchoolDB account switching.
+      // End the current session first, then consume the short-lived ticket for
+      // the selected account. The school root resolves the new role and sends
+      // the user to the correct portal.
+      await signOut();
 
       const ticketResult = await signIn.ticket({ ticket: result.data.token });
       if (ticketResult.error) throw ticketResult.error;
