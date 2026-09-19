@@ -28,15 +28,6 @@ val clerkProductionPublishableKey = keystoreProperties
     ?: providers.environmentVariable("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY").orNull
     ?: ""
 
-val apiBaseUrlOverride = providers.gradleProperty("SCHOOLDB_API_BASE_URL")
-    .orElse(providers.environmentVariable("SCHOOLDB_API_BASE_URL"))
-    .orNull
-    ?.trim()
-    ?.takeIf { it.isNotEmpty() }
-
-fun apiBaseUrl(defaultUrl: String): String =
-    (apiBaseUrlOverride ?: defaultUrl).trimEnd('/') + "/"
-
 android {
     namespace = "com.schooldb.mobile"
     compileSdk = 37
@@ -58,14 +49,12 @@ android {
         buildConfigField("boolean", "FIREBASE_CONFIGURED", firebaseConfigFile.exists().toString())
     }
 
-    if (keystorePropertiesFile.exists()) {
-        signingConfigs {
-            create("release") {
-                storeFile = file(keystoreProperties.getProperty("storeFile"))
-                storePassword = keystoreProperties.getProperty("storePassword")
-                keyAlias = keystoreProperties.getProperty("keyAlias")
-                keyPassword = keystoreProperties.getProperty("keyPassword")
-            }
+    signingConfigs {
+        create("release") {
+            storeFile = file(keystoreProperties["storeFile"] as String)
+            storePassword = keystoreProperties["storePassword"] as String
+            keyAlias = keystoreProperties["keyAlias"] as String
+            keyPassword = keystoreProperties["keyPassword"] as String
         }
     }
 
@@ -74,7 +63,7 @@ android {
             buildConfigField(
                 "String",
                 "API_BASE_URL",
-                "\"${apiBaseUrl("http://10.0.2.2:3000/")}\""
+                "\"http://10.0.2.2:3000/\""
             )
         }
 
@@ -82,7 +71,7 @@ android {
             buildConfigField(
                 "String",
                 "API_BASE_URL",
-                "\"${apiBaseUrl("https://www.schooldb.co.in/")}\""
+                "\"https://www.schooldb.co.in/\""
             )
             buildConfigField(
                 "String",
@@ -90,9 +79,7 @@ android {
                 "\"$clerkProductionPublishableKey\""
             )
 
-            if (keystorePropertiesFile.exists()) {
-                signingConfig = signingConfigs.getByName("release")
-            }
+            signingConfig = signingConfigs.getByName("release")
         }
     }
 
