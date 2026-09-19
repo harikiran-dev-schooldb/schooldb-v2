@@ -310,7 +310,7 @@ private fun TeacherShell(
                                 onOpenResults = { moreScreen = "RESULTS" },
                                 onOpenProfile = { moreScreen = "PROFILE" },
                                 onOpenSettings = { moreScreen = "SETTINGS" },
-                                onSignOut = onSwitchAccount,
+                                onSwitchAccount = onSwitchAccount,
                             )
                         }
                     }
@@ -517,7 +517,7 @@ private fun TeacherMoreScreen(
     onOpenResults: () -> Unit,
     onOpenProfile: () -> Unit,
     onOpenSettings: () -> Unit,
-    onSignOut: () -> Unit,
+    onSwitchAccount: () -> Unit,
 ) {
     Scaffold(
         containerColor = SchoolDbBackground,
@@ -596,6 +596,15 @@ private fun TeacherMoreScreen(
             item {
                 MoreMenuCard {
                     MoreMenuItem(
+                        icon = Icons.Default.Groups,
+                        title = "Switch account or role",
+                        subtitle = "Choose another profile linked to your number",
+                        onClick = onSwitchAccount,
+                    )
+
+                    SchoolDbMenuDivider()
+
+                    MoreMenuItem(
                         icon = Icons.Outlined.Person,
                         title = "My Profile",
                         subtitle = "Personal and teacher information",
@@ -609,29 +618,6 @@ private fun TeacherMoreScreen(
                         title = "Settings",
                         subtitle = "App preferences",
                         onClick = onOpenSettings,
-                    )
-                }
-            }
-
-            item {
-                TextButton(
-                    onClick = onSignOut,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.Logout,
-                        contentDescription = null,
-                        tint = SchoolDbDanger,
-                    )
-
-                    Spacer(
-                        modifier = Modifier.width(10.dp),
-                    )
-
-                    Text(
-                        text = "Switch account or role",
-                        color = SchoolDbDanger,
-                        fontWeight = FontWeight.SemiBold,
                     )
                 }
             }

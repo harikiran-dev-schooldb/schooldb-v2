@@ -7,6 +7,9 @@ import org.json.JSONObject
 class FamilyRepository(
     private val api: AuthenticatedApiClient = AuthenticatedApiClient(),
 ) {
+    private fun JSONObject.optionalText(key: String): String? =
+        if (isNull(key)) null else optString(key).takeIf(String::isNotBlank)
+
     suspend fun dashboard(): FamilyDashboard {
         val data = api.get("api/v1/mobile/family/dashboard")
         val studentsJson = data.optJSONArray("students") ?: JSONArray()
@@ -81,10 +84,10 @@ class FamilyRepository(
                             FamilyAttendanceRecord(
                                 id = item.getString("id"),
                                 date = item.optString("date"),
-                                sessionType = item.optString("sessionType", "DAILY"),
-                                subjectName = item.optString("subjectName").takeIf(String::isNotBlank),
+                                sessionType = item.optionalText("sessionType") ?: "DAILY",
+                                subjectName = item.optionalText("subjectName"),
                                 status = item.optString("status", "PRESENT"),
-                                remarks = item.optString("remarks").takeIf(String::isNotBlank),
+                                remarks = item.optionalText("remarks"),
                             ),
                         )
                     }
@@ -100,10 +103,10 @@ class FamilyRepository(
                     FamilyHomeworkDetails(
                         id = item.getString("id"),
                         title = item.optString("title", "Homework"),
-                        description = item.optString("description").takeIf(String::isNotBlank),
+                        description = item.optionalText("description"),
                         subjectName = item.optString("subjectName", "General"),
                         assignedDate = item.optString("assignedDate"),
-                        dueDate = item.optString("dueDate").takeIf(String::isNotBlank),
+                        dueDate = item.optionalText("dueDate"),
                     ),
                 )
             }
