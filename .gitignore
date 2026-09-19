@@ -55,3 +55,4 @@ next-env.d.ts
 /android/local.properties
 /android/**/build/
 *.iml
+.student-e2e-app/
