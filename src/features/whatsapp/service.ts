@@ -352,6 +352,86 @@ export async function queueAdmissionWhatsappUpdate(input: {
   }
 }
 
+export async function queueParentQueryWhatsappUpdate(input: {
+  schoolId: string;
+  ticketId: string;
+  ticketNo: string;
+  phone: string | null;
+  parentName: string | null;
+  status: string;
+  eventKey: string;
+}) {
+  if (process.env.META_WA_AUTOMATION_ENABLED !== "true" || !input.phone) return null;
+
+  const phone = normalizeIndianMobile(input.phone);
+  const templateName = process.env.META_WA_PARENT_QUERY_TEMPLATE || process.env.META_WA_ANNOUNCEMENT_TEMPLATE;
+  if (!phone || !templateName) return null;
+
+  const statusText: Record<string, string> = {
+    OPEN: "was received by the school",
+    ASSIGNED: "has been assigned to the school team",
+    IN_PROGRESS: "is being reviewed",
+    WAITING: "is waiting for follow-up from the school",
+    RESOLVED: "has been resolved",
+    CLOSED: "has been closed",
+    REOPENED: "has been reopened for further review",
+  };
+  const school = await prisma.school.findUnique({ where: { id: input.schoolId }, select: { name: true } });
+  const title = input.status === "OPEN" ? "Parent query received" : `Parent query ${input.status.toLowerCase().replaceAll("_", " ")}`;
+  const message = `${school?.name || "Your school"} query ${input.ticketNo} ${statusText[input.status] || `is ${input.status.toLowerCase()}`}. Keep this ticket number for follow-up.`;
+  const automationKey = `parent-query:${input.ticketId}:${input.eventKey}`;
+
+  try {
+    const existing = await prisma.whatsappCampaign.findUnique({
+      where: { schoolId_automationKey: { schoolId: input.schoolId, automationKey } },
+      select: { id: true },
+    });
+    if (existing) return existing;
+
+    const campaign = await prisma.$transaction(async (tx) => {
+      const created = await tx.whatsappCampaign.create({
+        data: {
+          schoolId: input.schoolId,
+          title,
+          message,
+          templateName,
+          targetType: "PARENT_QUERY",
+          targetId: input.ticketId,
+          targetLabel: input.ticketNo,
+          status: "QUEUED",
+          recipientCount: 1,
+          createdBy: "SYSTEM",
+          scheduledAt: new Date(),
+          automatic: true,
+          automationKey,
+          sourceType: "PARENT_QUERY",
+          sourceId: input.ticketId,
+        },
+        select: { id: true },
+      });
+      await tx.whatsappRecipient.create({
+        data: {
+          schoolId: input.schoolId,
+          campaignId: created.id,
+          recipientName: input.parentName || "Parent",
+          phone,
+        },
+      });
+      return created;
+    });
+
+    await processWhatsappCampaignBatch(input.schoolId, campaign.id, 1);
+    return campaign;
+  } catch (error) {
+    console.error("[parent-query-whatsapp] Unable to send update", {
+      ticketId: input.ticketId,
+      status: input.status,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return null;
+  }
+}
+
 function templateParameterText(value: string) {
   return value.replace(/[\r\n\t]+/g, " ").replace(/\s{2,}/g, " ").trim();
 }

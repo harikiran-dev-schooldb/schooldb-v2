@@ -158,8 +158,8 @@ export function ParentQueryForm({ schoolSlug, classes }: { schoolSlug: string; c
         <label className={labelClass}>Your name <span className="font-normal text-slate-500">(optional)</span>
           <input name="parentName" maxLength={100} className={fieldClass} autoComplete="name" />
         </label>
-        <label className={labelClass}>Phone for follow-up <span className="font-normal text-slate-500">(optional)</span>
-          <input name="parentPhone" maxLength={20} inputMode="tel" className={fieldClass} autoComplete="tel" />
+        <label className={labelClass}>WhatsApp mobile number <span className="font-normal text-slate-500">(optional)</span>
+          <input name="parentPhone" maxLength={20} inputMode="tel" className={fieldClass} autoComplete="tel" placeholder="10-digit Indian mobile number" />
         </label>
       </div>
       <div className="hidden" aria-hidden="true"><label>Website <input name="website" tabIndex={-1} autoComplete="off" /></label></div>
@@ -167,7 +167,7 @@ export function ParentQueryForm({ schoolSlug, classes }: { schoolSlug: string; c
       <button type="submit" disabled={submitting || !student} className="w-full rounded-xl bg-indigo-700 px-5 py-3.5 font-bold text-white hover:bg-indigo-800 disabled:opacity-50">
         {submitting ? "Submitting…" : "Send query to school"}
       </button>
-      <p className="text-center text-xs text-slate-500">Only share information needed for this query. The school may contact you using the number you provide.</p>
+      <p className="text-center text-xs text-slate-500">If you add a number, the school will send WhatsApp updates when your query is received and as its status changes through resolution. The school may also contact you at that number.</p>
     </form>
   );
 }

@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { ApiResponse } from "@/lib/response";
 import { supportActor, visibleTicket } from "@/lib/support-tickets";
 import { sendSupportPush, supportAdminUserIds } from "@/lib/support-push";
+import { queueParentQueryWhatsappUpdate } from "@/features/whatsapp/service";
 
 type Context = { params: Promise<{ id: string }> };
 const updateInput = z.object({
@@ -79,6 +80,22 @@ export async function PATCH(request: Request, context: Context) {
         ticketId: current.id,
         ticketNo: current.ticketNo,
       }).catch((error) => console.error("Support push failed", error));
+    }
+    const parentStatus = input.data.status && input.data.status !== current.status
+      ? input.data.status
+      : input.data.assignedToId && input.data.assignedToId !== current.assignedToId
+        ? "ASSIGNED"
+        : null;
+    if (current.source === "PARENT_QR" && current.parentPhone && parentStatus) {
+      await queueParentQueryWhatsappUpdate({
+        schoolId: actor.schoolId,
+        ticketId: current.id,
+        ticketNo: current.ticketNo,
+        phone: current.parentPhone,
+        parentName: current.parentName,
+        status: parentStatus,
+        eventKey: `update:${ticket.updatedAt.toISOString()}`,
+      }).catch((error) => console.error("Parent query WhatsApp failed", error));
     }
 
     return ApiResponse.success(ticket);

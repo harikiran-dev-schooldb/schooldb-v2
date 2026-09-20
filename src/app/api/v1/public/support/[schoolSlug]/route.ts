@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { normalizeIndianMobile } from "@/features/auth/otp";
 
 import { apiHandler } from "@/lib/api";
 import { ApiError } from "@/lib/errors";
@@ -34,7 +35,9 @@ export async function POST(request: Request, { params }: Context) {
 
     const { website: _website, ...input } = parsed.data;
     void _website;
-    const ticket = await submitParentSupport({ schoolSlug, ...input });
+    const parentPhone = input.parentPhone ? normalizeIndianMobile(input.parentPhone) : undefined;
+    if (input.parentPhone && !parentPhone) throw new ApiError(400, "Enter a valid Indian mobile number for WhatsApp updates.");
+    const ticket = await submitParentSupport({ schoolSlug, ...input, parentPhone: parentPhone || undefined });
     return ApiResponse.success({ ticketNo: ticket.ticketNo }, "Query submitted to the school.", 201);
   });
 }

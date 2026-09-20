@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { ApiError } from "@/lib/errors";
 import { sendSupportPush, supportAdminUserIds } from "@/lib/support-push";
+import { queueParentQueryWhatsappUpdate } from "@/features/whatsapp/service";
 
 export const parentCategories = ["STUDENT", "ACADEMIC", "FEES", "TRANSPORT", "GENERAL"] as const;
 
@@ -126,6 +127,17 @@ export async function submitParentSupport(input: {
     });
   } catch (error) {
     console.error("Parent support push failed", error);
+  }
+  if (input.parentPhone) {
+    await queueParentQueryWhatsappUpdate({
+      schoolId: school.id,
+      ticketId: ticket.id,
+      ticketNo: ticket.ticketNo,
+      phone: input.parentPhone,
+      parentName: input.parentName || null,
+      status: "OPEN",
+      eventKey: "created",
+    }).catch((error) => console.error("Parent query WhatsApp failed", error));
   }
   return ticket;
 }
