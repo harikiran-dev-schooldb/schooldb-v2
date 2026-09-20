@@ -22,7 +22,7 @@ export async function PATCH(request: Request, context: Context) {
     const actor = await supportActor();
     if (!actor.isAdmin) throw new ApiError(403, "Only school admins can manage tickets.");
     const id = (await context.params).id;
-    await visibleTicket(id, actor);
+    const current = await visibleTicket(id, actor);
     const input = updateInput.safeParse(await request.json());
     if (!input.success) throw new ApiError(400, "Invalid ticket update.");
     if (input.data.assignedToId) {
@@ -32,14 +32,35 @@ export async function PATCH(request: Request, context: Context) {
       });
       if (!assignee) throw new ApiError(400, "Assignee is not active staff in this school.");
     }
-    const ticket = await prisma.supportTicket.update({
-      where: { id },
-      data: {
-        ...input.data,
-        resolvedAt: input.data.status === "RESOLVED" || input.data.status === "CLOSED"
-          ? new Date()
-          : input.data.status ? null : undefined,
-      },
+    const changes: Array<{ action: string; detail: string }> = [];
+    if (input.data.status && input.data.status !== current.status)
+      changes.push({ action: "STATUS_CHANGED", detail: `Status changed from ${current.status} to ${input.data.status}` });
+    if (input.data.priority && input.data.priority !== current.priority)
+      changes.push({ action: "PRIORITY_CHANGED", detail: `Priority changed from ${current.priority} to ${input.data.priority}` });
+    if (input.data.assignedToId !== undefined && input.data.assignedToId !== current.assignedToId) {
+      const assigneeName = input.data.assignedToId
+        ? await prisma.user.findUnique({ where: { id: input.data.assignedToId }, select: { firstName: true, lastName: true } })
+        : null;
+      const name = assigneeName ? [assigneeName.firstName, assigneeName.lastName].filter(Boolean).join(" ") || "staff member" : "Unassigned";
+      changes.push({ action: "ASSIGNMENT_CHANGED", detail: input.data.assignedToId ? `Assigned to ${name}` : "Ticket unassigned" });
+    }
+    const ticket = await prisma.$transaction(async (tx) => {
+      const updated = await tx.supportTicket.update({
+        where: { id },
+        data: {
+          ...input.data,
+          resolvedAt: input.data.status === "RESOLVED" || input.data.status === "CLOSED"
+            ? new Date()
+            : input.data.status ? null : undefined,
+        },
+      });
+      if (changes.length) await tx.supportTicketActivity.createMany({
+        data: changes.map((change) => ({
+          schoolId: actor.schoolId, ticketId: id, actorId: actor.userId,
+          action: change.action, detail: change.detail,
+        })),
+      });
+      return updated;
     });
     return ApiResponse.success(ticket);
   });
