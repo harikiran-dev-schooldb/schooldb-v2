@@ -1,27 +1,16 @@
 # School Support Android
 
-Standalone internal school ticketing app, kept separate from the SchoolDB parent/student Android app.
+Standalone internal ticketing app for SchoolDB staff and school admins. It uses the same school code, WhatsApp OTP and Clerk sign-in flow as the main Android app, but keeps its own session.
 
-## V1 scope
+## Run locally
 
-- Staff and admin can raise tickets.
-- Admin can monitor all tickets, assign, reply, update priority/status, resolve and close.
-- Student complaints can reference an existing SchoolDB student.
-- Student search supports both admission number and student name.
-- Student records remain in SchoolDB; this app stores only the selected student ID on a ticket.
-- Planned push notifications reuse the proven Firebase/FCM approach from `android/`.
+1. Apply the repository migrations to a local SchoolDB database and start the web server on port 3000.
+2. Configure `CLERK_PUBLISHABLE_KEY` in `~/.gradle/gradle.properties` (the same development key used by `android/`).
+3. Open this directory in Android Studio, or build with `../android/gradlew -p . :app:assembleDebug`.
+4. Install the debug APK on an emulator. Debug connects to `http://10.0.2.2:3000/`.
 
-## Planned flow
+The app signs in staff, lists accessible tickets, creates tickets, searches students by name or admission number, shows details, and adds replies. School admins can assign staff and update status and priority. Staff see tickets they created or were assigned; school admins see all tickets in their school.
 
-Login -> Ticket Dashboard -> Raise Ticket -> optional Student Search -> Ticket Details -> Replies/History -> Resolve/Close.
+Ticket records are stored in SchoolDB. The first migration is `20260920080000_support_tickets`. The API routes are under `/api/v1/support/`.
 
-## API contract planned
-
-- `GET /api/v1/support/students?q=`
-- `GET /api/v1/support/tickets`
-- `POST /api/v1/support/tickets`
-- `GET /api/v1/support/tickets/:id`
-- `POST /api/v1/support/tickets/:id/messages`
-- `PATCH /api/v1/support/tickets/:id`
-
-The next implementation step is the shared SchoolDB backend: ticket Prisma models, authorization, student search, and ticket endpoints.
+The debug build allows cleartext traffic for the local emulator server. The release build uses `https://www.schooldb.co.in/` and disallows cleartext traffic.

@@ -112,6 +112,8 @@ model School {
   whatsappRecipients    WhatsappRecipient[]
   houses                House[]
   studentHouses         StudentHouse[]
+  supportTickets        SupportTicket[]
+  supportTicketMessages SupportTicketMessage[]
 }
 
 model SchoolIdCardSetting {
@@ -162,6 +164,9 @@ model User {
   otpChallenges      OtpChallenge[]
   parentStudentLinks ParentStudentLink[]
   pushDevices        PushDevice[]
+  createdSupportTickets SupportTicket[]       @relation("SupportTicketCreator")
+  assignedSupportTickets SupportTicket[]      @relation("SupportTicketAssignee")
+  supportTicketMessages SupportTicketMessage[]
 
   @@index([phone])
 }
@@ -379,6 +384,7 @@ model Student {
   enrollments           StudentEnrollment[]
   whatsappRecipients    WhatsappRecipient[]
   houseAssignments      StudentHouse[]
+  supportTickets        SupportTicket[]
 
   @@unique([schoolId, admissionNo])
   @@index([schoolId])
@@ -1744,6 +1750,78 @@ enum Role {
   STUDENT
   ACCOUNTANT
   RECEPTIONIST
+}
+
+enum SupportTicketType {
+  STUDENT
+  STAFF
+  ACADEMIC
+  MAINTENANCE
+  IT
+  ADMINISTRATION
+  FEES
+  TRANSPORT
+  GENERAL
+}
+
+enum SupportTicketPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum SupportTicketStatus {
+  OPEN
+  ASSIGNED
+  IN_PROGRESS
+  WAITING
+  RESOLVED
+  CLOSED
+  REOPENED
+}
+
+model SupportTicket {
+  id          String                @id @default(cuid())
+  schoolId    String
+  ticketNo    String
+  subject     String
+  description String
+  type        SupportTicketType
+  priority    SupportTicketPriority @default(NORMAL)
+  status      SupportTicketStatus   @default(OPEN)
+  studentId   String?
+  createdById String
+  assignedToId String?
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+  resolvedAt  DateTime?
+  school      School                @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student     Student?              @relation(fields: [studentId], references: [id], onDelete: SetNull)
+  createdBy   User                  @relation("SupportTicketCreator", fields: [createdById], references: [id])
+  assignedTo  User?                 @relation("SupportTicketAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+  messages    SupportTicketMessage[]
+
+  @@unique([schoolId, ticketNo])
+  @@index([schoolId, status, createdAt(sort: Desc)])
+  @@index([schoolId, createdById])
+  @@index([schoolId, assignedToId])
+  @@index([schoolId, studentId])
+}
+
+model SupportTicketMessage {
+  id        String        @id @default(cuid())
+  schoolId  String
+  ticketId  String
+  authorId  String
+  body      String
+  createdAt DateTime      @default(now())
+  school    School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  ticket    SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  author    User          @relation(fields: [authorId], references: [id])
+
+  @@index([ticketId, createdAt])
+  @@index([schoolId, createdAt])
 }
 
 enum ExamStatus {
