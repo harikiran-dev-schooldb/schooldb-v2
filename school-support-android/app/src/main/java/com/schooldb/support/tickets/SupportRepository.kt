@@ -88,8 +88,10 @@ class SupportRepository {
         if (!succeeded) error(failure ?: "Could not sign out.")
     }
 
-    suspend fun tickets(school: String): TicketList = withContext(Dispatchers.IO) {
-        val data = request("GET", "api/v1/support/tickets", school).getJSONObject("data")
+    suspend fun tickets(school: String, filter: String? = null): TicketList = withContext(Dispatchers.IO) {
+        val path = if (filter.isNullOrBlank() || filter == "ALL") "api/v1/support/tickets"
+            else "api/v1/support/tickets?filter=" + java.net.URLEncoder.encode(filter, "UTF-8")
+        val data = request("GET", path, school).getJSONObject("data")
         val items = data.getJSONArray("tickets")
         TicketList((0 until items.length()).map { index ->
             val item = items.getJSONObject(index)
