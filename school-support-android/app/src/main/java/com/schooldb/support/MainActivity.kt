@@ -35,6 +35,7 @@ import com.clerk.api.Clerk
 import com.schooldb.support.tickets.*
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import androidx.activity.compose.BackHandler
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -61,6 +62,16 @@ private fun SupportApp() {
     var summary by remember { mutableStateOf(listOf(0, 0, 0, 0)) }
     var detail by remember { mutableStateOf<TicketDetail?>(null) }
     var staff by remember { mutableStateOf<List<StaffOption>>(emptyList()) }
+
+    BackHandler(enabled = page != "login" && page != "list") {
+    when (page) {
+        "otp" -> page = "login"
+        "accounts" -> page = "otp"
+        "create" -> page = "list"
+        "detail" -> page = "list"
+        else -> page = "list"
+    }
+}
 
     fun run(action: suspend () -> Unit) {
         if (busy) return
