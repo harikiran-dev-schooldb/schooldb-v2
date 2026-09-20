@@ -4,7 +4,7 @@ import { ApiError } from "@/lib/errors";
 import { prisma } from "@/lib/prisma";
 import { ApiResponse } from "@/lib/response";
 import { supportActor, visibleTicket } from "@/lib/support-tickets";
-import { sendSupportPush } from "@/lib/support-push";
+import { sendSupportPush, supportAdminUserIds } from "@/lib/support-push";
 
 type Context = { params: Promise<{ id: string }> };
 const inputSchema = z.object({ body: z.string().trim().min(1).max(5000) });
@@ -28,9 +28,12 @@ export async function POST(request: Request, context: Context) {
       });
       return created;
     });
+    const recipients = ticket.assignedToId
+      ? [ticket.createdById, ticket.assignedToId]
+      : [ticket.createdById, ...(await supportAdminUserIds(actor.schoolId))];
     await sendSupportPush({
       schoolId: actor.schoolId,
-      userIds: [ticket.createdById, ...(ticket.assignedToId ? [ticket.assignedToId] : [])],
+      userIds: recipients,
       excludeUserId: actor.userId,
       title: `New reply · ${ticket.ticketNo}`,
       body: input.data.body.length > 120 ? input.data.body.slice(0, 117) + "..." : input.data.body,

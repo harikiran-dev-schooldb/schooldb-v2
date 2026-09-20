@@ -4,8 +4,10 @@ import android.Manifest
 import android.os.Build
 import android.os.Bundle
 import android.content.Intent
+import android.content.pm.PackageManager
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.core.content.ContextCompat
 import com.google.firebase.messaging.FirebaseMessaging
 import java.util.UUID
 import androidx.activity.ComponentActivity
@@ -104,7 +106,9 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
     ) { }
     LaunchedEffect(page, school) {
         if (page == "list" && school.isNotBlank() && BuildConfig.FIREBASE_CONFIGURED) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+            ) {
                 notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
             val pushPreferences = context.getSharedPreferences("support_push", 0)
@@ -117,7 +121,9 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
                 scope.launch {
                     try {
                         api.registerPushDevice(school, installationId, token)
-                        pushPreferences.edit().remove("pending_fcm_token").apply()
+                        if (pushPreferences.getString("pending_fcm_token", null) == token) {
+                            pushPreferences.edit().remove("pending_fcm_token").apply()
+                        }
                     } catch (_: Exception) {
                         // Retry on the next authenticated app load.
                     }

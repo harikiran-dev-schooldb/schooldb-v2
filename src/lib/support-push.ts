@@ -1,23 +1,7 @@
-import { cert, getApps, initializeApp } from "firebase-admin/app";
-import { getMessaging } from "firebase-admin/messaging";
-
+import { firebaseMessaging } from "@/lib/firebase-admin";
 import { prisma } from "@/lib/prisma";
 
 const SUPPORT_APP = "SCHOOL_SUPPORT";
-
-function firebaseApp() {
-  if (getApps().length) return getApps()[0];
-
-  const projectId = process.env.FIREBASE_PROJECT_ID;
-  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-  const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n");
-
-  if (!projectId || !clientEmail || !privateKey) return null;
-
-  return initializeApp({
-    credential: cert({ projectId, clientEmail, privateKey }),
-  });
-}
 
 export async function sendSupportPush(input: {
   schoolId: string;
@@ -33,9 +17,9 @@ export async function sendSupportPush(input: {
   );
   if (!userIds.length) return;
 
-  const app = firebaseApp();
-  if (!app) {
-    console.warn("Support push skipped: Firebase server credentials are not configured.");
+  const messaging = firebaseMessaging();
+  if (!messaging) {
+    console.warn("Support push skipped: Firebase messaging is unavailable.");
     return;
   }
 
@@ -50,9 +34,12 @@ export async function sendSupportPush(input: {
     select: { id: true, fcmToken: true },
   });
   const tokens = devices.flatMap((device) => device.fcmToken ? [device.fcmToken] : []);
-  if (!tokens.length) return;
+  if (!tokens.length) {
+    console.warn("Support push skipped: no registered support devices for recipients.");
+    return;
+  }
 
-  const response = await getMessaging(app).sendEachForMulticast({
+  const response = await messaging.sendEachForMulticast({
     tokens,
     notification: { title: input.title, body: input.body },
     data: {
@@ -69,6 +56,7 @@ export async function sendSupportPush(input: {
   const invalidIds = response.responses.flatMap((result, index) => {
     if (result.success) return [];
     const code = result.error?.code ?? "";
+    console.error("Support push delivery failed", { code, ticketId: input.ticketId });
     return code === "messaging/registration-token-not-registered" ||
       code === "messaging/invalid-registration-token"
       ? [devices[index].id]
