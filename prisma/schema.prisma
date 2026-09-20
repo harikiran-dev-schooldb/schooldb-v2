@@ -242,6 +242,8 @@ model PushDevice {
   schoolId       String
   userId         String
   installationId String   @unique
+  fcmToken       String?
+  app            String   @default("SCHOOLDB")
   platform       String   @default("ANDROID")
   appVersion     String?
   enabled        Boolean  @default(true)
