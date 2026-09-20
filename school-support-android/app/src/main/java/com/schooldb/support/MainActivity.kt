@@ -5,6 +5,7 @@ import android.os.Build
 import android.os.Bundle
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.util.Log
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.core.content.ContextCompat
@@ -117,17 +118,21 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
                     pushPreferences.edit().putString("installation_id", it).apply()
                 }
             FirebaseMessaging.getInstance().token.addOnSuccessListener { token ->
+                Log.i("SupportPush", "Firebase token available; registering support device")
                 pushPreferences.edit().putString("pending_fcm_token", token).apply()
                 scope.launch {
                     try {
                         api.registerPushDevice(school, installationId, token)
+                        Log.i("SupportPush", "Support device registered")
                         if (pushPreferences.getString("pending_fcm_token", null) == token) {
                             pushPreferences.edit().remove("pending_fcm_token").apply()
                         }
-                    } catch (_: Exception) {
-                        // Retry on the next authenticated app load.
+                    } catch (exception: Exception) {
+                        Log.e("SupportPush", "Support device registration failed", exception)
                     }
                 }
+            }.addOnFailureListener { exception ->
+                Log.e("SupportPush", "Firebase token request failed", exception)
             }
         }
     }

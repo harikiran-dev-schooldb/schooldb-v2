@@ -28,3 +28,7 @@ there and a WhatsApp OTP. An administrator cannot edit their own account from th
 Ticket records are stored in SchoolDB. The first migration is `20260920080000_support_tickets`. The API routes are under `/api/v1/support/`.
 
 The debug build allows cleartext traffic for the local server. The release build disallows cleartext traffic and reads the production Clerk publishable key and signing key from `android/keystore.properties` (or the publishable key from `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`).
+
+## Push notification setup
+
+Keep `app/google-services.json` configured for `com.schooldb.support`. When its support client contains multiple `api_key` entries, the Google Services build plugin uses the first one. That key must be allowed to call the Firebase Installations API; otherwise Firebase token retrieval fails with `FIS_AUTH_ERROR` and the server has no support device to notify. The working release configuration for this project uses the same Firebase project key as the main Android app. After changing the JSON file, rebuild and reinstall the support app, then open it while signed in so it can register the device.
