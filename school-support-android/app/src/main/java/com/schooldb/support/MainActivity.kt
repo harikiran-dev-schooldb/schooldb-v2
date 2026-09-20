@@ -20,11 +20,11 @@ import androidx.compose.material.icons.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.Dashboard
 import androidx.compose.material.icons.outlined.ConfirmationNumber
-import androidx.compose.material.icons.outlined.BarChart
 import androidx.compose.material.icons.outlined.Logout
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -128,16 +128,13 @@ private fun SupportApp() {
                     listOf(
                         Triple("Overview", Icons.Outlined.Dashboard, "Overview"),
                         Triple("Tickets", Icons.Outlined.ConfirmationNumber, "Tickets"),
-                        Triple("Analytics", Icons.Outlined.BarChart, "Analytics"),
                     ).forEach { (tab, icon, label) ->
-                        if (tab != "Analytics" || admin) {
-                            NavigationBarItem(
-                                selected = dashboardTab == tab,
-                                onClick = { dashboardTab = tab },
-                                icon = { Icon(icon, contentDescription = label) },
-                                label = { Text(label) },
-                            )
-                        }
+                        NavigationBarItem(
+                            selected = dashboardTab == tab,
+                            onClick = { dashboardTab = tab },
+                            icon = { Icon(icon, contentDescription = label) },
+                            label = { Text(label) },
+                        )
                     }
                 }
             }
@@ -274,6 +271,11 @@ private fun TicketDashboard(school: String, tickets: List<TicketSummary>, summar
         "Resolved" -> ticket.status == TicketStatus.RESOLVED || ticket.status == TicketStatus.CLOSED
         else -> true
     } }
+    PullToRefreshBox(
+        isRefreshing = busy,
+        onRefresh = onRefresh,
+        modifier = Modifier.fillMaxSize(),
+    ) {
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 28.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)) {
         if (selectedTab == "Overview") {
@@ -339,7 +341,6 @@ private fun TicketDashboard(school: String, tickets: List<TicketSummary>, summar
                     }
                 }
             }
-            if (selectedTab == "Overview" || selectedTab == "Analytics") {
             item {
                 SectionTitle("This month", "Principal / Admin support performance")
             }
@@ -379,7 +380,6 @@ private fun TicketDashboard(school: String, tickets: List<TicketSummary>, summar
                     }
                 }
             }
-            }
         }
 
         }
@@ -413,6 +413,7 @@ private fun TicketDashboard(school: String, tickets: List<TicketSummary>, summar
         }
         items(visible, key = { it.id }) { ticket -> TicketCard(ticket) { onTicket(ticket.id) } }
         }
+    }
     }
 }
 
