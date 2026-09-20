@@ -26,6 +26,7 @@ type ManagedAccountInput = {
   existingClerkUserId?: string | null;
   designation?: string | null;
   allowRoleUpdate?: boolean;
+  isActive?: boolean;
 };
 
 function identityHash(value: string) {
@@ -127,11 +128,11 @@ async function ensureManagedAccount(input: ManagedAccountInput) {
         userId: user.id,
         schoolId: input.schoolId,
         role: input.role,
-        isActive: true,
+        isActive: input.isActive ?? true,
         designation: input.designation,
       },
       update: {
-        isActive: true,
+        isActive: input.isActive ?? true,
         ...(input.allowRoleUpdate ? { role: input.role } : {}),
         ...(input.designation !== undefined
           ? { designation: input.designation }
@@ -148,9 +149,11 @@ export async function provisionStaffLogin(input: {
   schoolSlug: string;
   displayName: string;
   phone: string;
-  role: "SCHOOL_ADMIN" | "ACCOUNTANT" | "RECEPTIONIST";
+  role: "SUPER_ADMIN" | "SCHOOL_ADMIN" | "ACCOUNTANT" | "RECEPTIONIST";
   designation: string;
   existingClerkUserId?: string;
+  isActive?: boolean;
+  externalId?: string;
 }) {
   const phone = normalizeIndianMobile(input.phone);
   if (!phone) throw new Error("Enter a valid Indian mobile number.");
@@ -159,7 +162,7 @@ export async function provisionStaffLogin(input: {
     return await ensureManagedAccount({
       ...input,
       phone,
-      externalId: `schooldb:${input.schoolId}:staff:${phone}`,
+      externalId: input.externalId ?? `schooldb:${input.schoolId}:staff:${phone}`,
       allowRoleUpdate: true,
     });
   } catch (error) {

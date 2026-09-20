@@ -65,6 +65,7 @@ export async function GET(request: Request) {
     return ApiResponse.success({
       tickets,
       isAdmin: actor.isAdmin,
+      canManageAdmins: actor.role === "SUPER_ADMIN",
       summary: { open, inProgress, urgent, resolved },
       pagination: { page, pageSize, total, totalPages: Math.ceil(total / pageSize), hasMore: page * pageSize < total },
     });

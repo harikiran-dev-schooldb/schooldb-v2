@@ -21,6 +21,10 @@ local sign-in state. Tickets remain on the server.
 
 The app signs in staff, lists accessible tickets, creates tickets, searches students by name or admission number, shows details, and adds replies. School admins can assign staff and update status and priority. Staff see tickets they created or were assigned; school admins see all tickets in their school.
 
+Super Admins can open **Manage administrators** from the support dashboard to create or update
+Super Admin and School Admin accounts. New administrators sign in with the mobile number entered
+there and a WhatsApp OTP. An administrator cannot edit their own account from this screen.
+
 Ticket records are stored in SchoolDB. The first migration is `20260920080000_support_tickets`. The API routes are under `/api/v1/support/`.
 
 The debug build allows cleartext traffic for the local server. The release build disallows cleartext traffic and reads the production Clerk publishable key and signing key from `android/keystore.properties` (or the publishable key from `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`).

@@ -7,6 +7,7 @@ export async function supportActor() {
   return {
     schoolId: membership.schoolId,
     userId: membership.userId,
+    role: membership.role,
     isAdmin: ["SUPER_ADMIN", "SCHOOL_ADMIN"].includes(membership.role),
   };
 }

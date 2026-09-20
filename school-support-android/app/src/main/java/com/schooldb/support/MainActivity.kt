@@ -71,6 +71,9 @@ private fun SupportApp() {
     var accounts by remember { mutableStateOf<List<Pair<String, String>>>(emptyList()) }
     var tickets by remember { mutableStateOf<List<TicketSummary>>(emptyList()) }
     var admin by remember { mutableStateOf(false) }
+    var canManageAdmins by remember { mutableStateOf(false) }
+    var adminAccounts by remember { mutableStateOf<AdminAccounts?>(null) }
+    var selectedAdmin by remember { mutableStateOf<AdminAccount?>(null) }
     var summary by remember { mutableStateOf(listOf(0, 0, 0, 0)) }
     var detail by remember { mutableStateOf<TicketDetail?>(null) }
     var staff by remember { mutableStateOf<List<StaffOption>>(emptyList()) }
@@ -117,8 +120,8 @@ private fun SupportApp() {
     when (page) {
         "otp" -> page = "login"
         "accounts" -> page = "otp"
-        "create" -> page = "list"
-        "detail" -> page = "list"
+        "create", "detail", "admins" -> page = "list"
+        "adminForm" -> page = "admins"
         else -> page = "list"
     }
 }
@@ -140,6 +143,7 @@ private fun SupportApp() {
         ticketTotal = result.total
         ticketTotalPages = result.totalPages
         admin = result.isAdmin
+        canManageAdmins = result.canManageAdmins
         summary = listOf(result.open, result.inProgress, result.urgent, result.resolved)
         page = "list"
     }
@@ -206,19 +210,25 @@ private fun SupportApp() {
             }
         },
         topBar = {
-        if (page in listOf("list", "create", "detail")) {
+        if (page in listOf("list", "create", "detail", "admins", "adminForm")) {
             Surface(color = Canvas) {
                 Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
                     horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         if (page == "list") BrandMark(Modifier.size(42.dp))
-                        else IconButton(onClick = { page = "list" }, modifier = Modifier.size(42.dp)) {
+                        else IconButton(onClick = { page = if (page == "adminForm") "admins" else "list" }, modifier = Modifier.size(42.dp)) {
                             Icon(Icons.Outlined.ArrowBack, contentDescription = "Back", tint = Ink)
                         }
                         Column {
                             Text(if (page == "list") "SCHOOLDB" else "SCHOOL SUPPORT",
                                 style = MaterialTheme.typography.labelSmall, color = Muted, fontWeight = FontWeight.Bold)
-                            Text(if (page == "list") "Support desk" else if (page == "create") "New ticket" else "Ticket details",
+                            Text(when (page) {
+                                "list" -> "Support desk"
+                                "create" -> "New ticket"
+                                "detail" -> "Ticket details"
+                                "admins" -> "Administrators"
+                                else -> if (selectedAdmin == null) "Add administrator" else "Edit administrator"
+                            },
                                 style = MaterialTheme.typography.titleMedium, color = Ink, fontWeight = FontWeight.Bold)
                         }
                     }
@@ -229,6 +239,8 @@ private fun SupportApp() {
                             tickets = emptyList()
                             analytics = null
                             staff = emptyList()
+                            adminAccounts = null
+                            canManageAdmins = false
                             page = "login"
                         }
                     }) { Icon(Icons.Outlined.Logout, contentDescription = "Sign out", tint = Ink) }
@@ -296,7 +308,7 @@ private fun SupportApp() {
                         }
                     }
                 }
-                "list" -> TicketDashboard(school, tickets, summary, admin, analytics,
+                "list" -> TicketDashboard(school, tickets, summary, admin, canManageAdmins, analytics,
                     analyticsLoading, analyticsError, busy,
                     selectedTab = dashboardTab,
                     query = ticketQuery,
@@ -326,6 +338,10 @@ private fun SupportApp() {
                         run { loadTickets(serverTicketFilter, ticketQuery, 1) }
                     },
                     onCreate = { page = "create" },
+                    onManageAdmins = { run {
+                        adminAccounts = api.adminAccounts(school)
+                        page = "admins"
+                    } },
                     onRefresh = {
                         analytics = null
                         analyticsRefresh++
@@ -347,6 +363,16 @@ private fun SupportApp() {
                     onStatus = { status -> run { api.updateStatus(school, ticket.id, status); loadDetail(ticket.id) } },
                     onPriority = { priority -> run { api.updatePriority(school, ticket.id, priority); loadDetail(ticket.id) } },
                     onAssign = { userId -> run { api.assign(school, ticket.id, userId); loadDetail(ticket.id) } }) }
+                "admins" -> adminAccounts?.let { result -> AdminAccountsScreen(result, busy,
+                    onCreate = { selectedAdmin = null; page = "adminForm" },
+                    onEdit = { selectedAdmin = it; page = "adminForm" },
+                    onRefresh = { run { adminAccounts = api.adminAccounts(school) } }) }
+                "adminForm" -> AdminAccountForm(selectedAdmin, busy) { fullName, mobile, role, active -> run {
+                    api.saveAdminAccount(school, selectedAdmin?.id, fullName, mobile, role, active)
+                    adminAccounts = api.adminAccounts(school)
+                    page = "admins"
+                    notice = if (selectedAdmin == null) "Administrator account created." else "Administrator account updated."
+                } }
             }
         }
     }
@@ -354,13 +380,14 @@ private fun SupportApp() {
 
 @Composable
 private fun TicketDashboard(school: String, tickets: List<TicketSummary>, summary: List<Int>,
-    admin: Boolean, analytics: SupportAnalytics?, analyticsLoading: Boolean,
+    admin: Boolean, canManageAdmins: Boolean, analytics: SupportAnalytics?, analyticsLoading: Boolean,
     analyticsError: String?, busy: Boolean,
     selectedTab: String, query: String, page: Int, total: Int, totalPages: Int,
     onQueryChange: (String) -> Unit, onSearch: () -> Unit, onPage: (Int) -> Unit,
     requestedFilter: String?, onFilterConsumed: () -> Unit,
     onOpenQueue: (String) -> Unit,
-    onCreate: () -> Unit, onRefresh: () -> Unit, onTicket: (String) -> Unit) {
+    onCreate: () -> Unit, onManageAdmins: () -> Unit,
+    onRefresh: () -> Unit, onTicket: (String) -> Unit) {
     var filter by remember { mutableStateOf("All") }
     LaunchedEffect(requestedFilter) {
         requestedFilter?.let {
@@ -431,6 +458,20 @@ private fun TicketDashboard(school: String, tickets: List<TicketSummary>, summar
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     MetricCard("Urgent", summary[2], Color(0xFFD05F50), Modifier.weight(1f))
                     MetricCard("Resolved", summary[3], Color(0xFF1D9D73), Modifier.weight(1f))
+                }
+            }
+        }
+        if (canManageAdmins) item {
+            SurfaceCard(Modifier.fillMaxWidth().clickable(onClick = onManageAdmins)) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Manage administrators", style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold, color = Ink)
+                        Spacer(Modifier.height(4.dp))
+                        Text("Create and update school admin access", style = MaterialTheme.typography.bodySmall,
+                            color = Muted)
+                    }
+                    Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = Indigo)
                 }
             }
         }
@@ -949,6 +990,102 @@ private fun TicketDetails(ticket: TicketDetail, admin: Boolean, busy: Boolean, s
                 Spacer(Modifier.height(10.dp))
                 PrimaryAction("Send reply", !busy && reply.isNotBlank(), onClick = { onReply(reply.trim()); reply = "" })
             }
+        }
+        Spacer(Modifier.height(20.dp))
+    }
+}
+
+@Composable
+private fun AdminAccountsScreen(result: AdminAccounts, busy: Boolean,
+    onCreate: () -> Unit, onEdit: (AdminAccount) -> Unit, onRefresh: () -> Unit) {
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Spacer(Modifier.height(2.dp))
+        SectionTitle("School administrators", "Manage who can lead and respond to school issues.")
+        PrimaryAction("Add administrator", !busy, onCreate)
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically) {
+            Text("${result.accounts.size} accounts", style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold, color = Ink)
+            TextButton(onClick = onRefresh, enabled = !busy) { Text("Refresh") }
+        }
+        result.accounts.forEach { account ->
+            val ownAccount = account.userId == result.actorUserId
+            SurfaceCard(Modifier.fillMaxWidth().then(if (ownAccount) Modifier else Modifier.clickable { onEdit(account) })) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(account.fullName, style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold, color = Ink)
+                        Spacer(Modifier.height(4.dp))
+                        Text(account.phone, style = MaterialTheme.typography.bodySmall, color = Muted)
+                    }
+                    if (!ownAccount) Icon(Icons.Outlined.ChevronRight, contentDescription = "Edit administrator", tint = Indigo)
+                }
+                Spacer(Modifier.height(12.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Pill(if (account.role == "SUPER_ADMIN") "Super Admin" else "School Admin", Indigo)
+                    Pill(if (account.isActive) "Active" else "Disabled",
+                        if (account.isActive) Color(0xFF15976C) else Muted)
+                }
+                if (ownAccount) {
+                    Spacer(Modifier.height(8.dp))
+                    Text("Your account", style = MaterialTheme.typography.bodySmall, color = Muted)
+                }
+            }
+        }
+        Spacer(Modifier.height(20.dp))
+    }
+}
+
+@Composable
+private fun AdminAccountForm(account: AdminAccount?, busy: Boolean,
+    onSave: (String, String, String, Boolean) -> Unit) {
+    var fullName by remember(account?.id) { mutableStateOf(account?.fullName.orEmpty()) }
+    var phone by remember(account?.id) { mutableStateOf(account?.phone?.filter(Char::isDigit)?.takeLast(10).orEmpty()) }
+    var role by remember(account?.id) { mutableStateOf(account?.role ?: "SCHOOL_ADMIN") }
+    var active by remember(account?.id) { mutableStateOf(account?.isActive ?: true) }
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Spacer(Modifier.height(2.dp))
+        SectionTitle(if (account == null) "Create administrator" else "Update administrator",
+            "This account signs in with a WhatsApp code sent to its mobile number.")
+        SurfaceCard(Modifier.fillMaxWidth()) {
+            Text("ACCOUNT DETAILS", style = MaterialTheme.typography.labelSmall,
+                color = Indigo, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(14.dp))
+            SupportField(fullName, { fullName = it }, "Full name")
+            Spacer(Modifier.height(12.dp))
+            SupportField(phone, { phone = it.filter(Char::isDigit).take(10) }, "10-digit mobile number")
+            Spacer(Modifier.height(16.dp))
+            Text("Access role", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+            Spacer(Modifier.height(7.dp))
+            OptionMenu(if (role == "SUPER_ADMIN") "Super Admin" else "School Admin",
+                listOf("SUPER_ADMIN", "SCHOOL_ADMIN")) { role = it }
+            Spacer(Modifier.height(8.dp))
+            Text(if (role == "SUPER_ADMIN") "Full school access, including administrator management."
+                else "School administration and support ticket access.",
+                style = MaterialTheme.typography.bodySmall, color = Muted)
+            if (account != null) {
+                Spacer(Modifier.height(18.dp))
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween) {
+                    Column {
+                        Text("Account active", style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.SemiBold, color = Ink)
+                        Text("Disabled accounts cannot sign in", style = MaterialTheme.typography.bodySmall, color = Muted)
+                    }
+                    Switch(checked = active, onCheckedChange = { active = it })
+                }
+            }
+        }
+        val validPhone = phone.length == 10 && phone.firstOrNull() in '6'..'9'
+        if (fullName.trim().length < 2 || !validPhone) {
+            Text("Enter a name and valid 10-digit mobile number to continue.",
+                style = MaterialTheme.typography.bodySmall, color = Muted)
+        }
+        PrimaryAction(if (account == null) "Create administrator" else "Save changes",
+            !busy && fullName.trim().length >= 2 && validPhone) {
+            onSave(fullName.trim(), phone, role, active)
         }
         Spacer(Modifier.height(20.dp))
     }

@@ -33,7 +33,11 @@ data class TicketDetail(
 data class TicketMessage(val body: String, val author: String)
 data class TicketActivity(val action: String, val detail: String, val actor: String, val createdAt: String)
 data class StaffOption(val id: String, val name: String, val role: String)
+data class AdminAccount(val id: String, val userId: String, val fullName: String,
+    val phone: String, val role: String, val isActive: Boolean)
+data class AdminAccounts(val accounts: List<AdminAccount>, val actorUserId: String)
 data class TicketList(val tickets: List<TicketSummary>, val isAdmin: Boolean,
+    val canManageAdmins: Boolean,
     val open: Int, val inProgress: Int, val urgent: Int, val resolved: Int,
     val page: Int, val total: Int, val totalPages: Int, val hasMore: Boolean)
 
@@ -127,7 +131,7 @@ class SupportRepository {
                 status = TicketStatus.valueOf(item.getString("status")),
                 studentName = item.optJSONObject("student")?.optString("fullName")?.takeIf(String::isNotBlank),
             )
-        }, data.optBoolean("isAdmin"), data.getJSONObject("summary").optInt("open"),
+        }, data.optBoolean("isAdmin"), data.optBoolean("canManageAdmins"), data.getJSONObject("summary").optInt("open"),
             data.getJSONObject("summary").optInt("inProgress"),
             data.getJSONObject("summary").optInt("urgent"),
             data.getJSONObject("summary").optInt("resolved"),
@@ -250,6 +254,24 @@ class SupportRepository {
             val item = items.getJSONObject(index)
             StaffOption(item.getString("id"), item.getString("name"), item.getString("role"))
         }
+    }
+
+    suspend fun adminAccounts(school: String): AdminAccounts = withContext(Dispatchers.IO) {
+        val data = request("GET", "api/v1/support/admin-accounts", school).getJSONObject("data")
+        val items = data.getJSONArray("accounts")
+        AdminAccounts((0 until items.length()).map { index ->
+            val item = items.getJSONObject(index)
+            AdminAccount(item.getString("id"), item.getString("userId"), item.getString("fullName"),
+                item.optString("phone"), item.getString("role"), item.getBoolean("isActive"))
+        }, data.getString("actorUserId"))
+    }
+
+    suspend fun saveAdminAccount(school: String, accountId: String?, fullName: String,
+        phone: String, role: String, isActive: Boolean) = withContext(Dispatchers.IO) {
+        val body = JSONObject().put("fullName", fullName).put("phone", phone)
+            .put("role", role).put("isActive", isActive)
+        if (accountId == null) request("POST", "api/v1/support/admin-accounts", school, body)
+        else request("PATCH", "api/v1/support/admin-accounts/$accountId", school, body)
     }
 
     private suspend fun token(): String {
