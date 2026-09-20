@@ -21,7 +21,21 @@ export async function visibleTicket(id: string, actor: Awaited<ReturnType<typeof
   const ticket = await prisma.supportTicket.findFirst({
     where: { id, ...ticketVisibility(actor) },
     include: {
-      student: { select: { id: true, admissionNo: true, fullName: true } },
+      student: {
+        select: {
+          id: true,
+          admissionNo: true,
+          fullName: true,
+          enrollments: {
+            where: { active: true, academicYear: { active: true } },
+            take: 1,
+            select: {
+              class: { select: { name: true } },
+              section: { select: { name: true } },
+            },
+          },
+        },
+      },
       createdBy: { select: { id: true, firstName: true, lastName: true } },
       assignedTo: { select: { id: true, firstName: true, lastName: true } },
       messages: {
