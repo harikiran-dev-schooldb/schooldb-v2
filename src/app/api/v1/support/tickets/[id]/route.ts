@@ -5,6 +5,7 @@ import { ApiError } from "@/lib/errors";
 import { prisma } from "@/lib/prisma";
 import { ApiResponse } from "@/lib/response";
 import { supportActor, visibleTicket } from "@/lib/support-tickets";
+import { sendSupportPush, supportAdminUserIds } from "@/lib/support-push";
 
 type Context = { params: Promise<{ id: string }> };
 const updateInput = z.object({
@@ -62,6 +63,24 @@ export async function PATCH(request: Request, context: Context) {
       });
       return updated;
     });
+    const recipients = new Set<string>([current.createdById]);
+    if (ticket.assignedToId) recipients.add(ticket.assignedToId);
+    if (input.data.priority === "URGENT" && current.priority !== "URGENT") {
+      (await supportAdminUserIds(actor.schoolId)).forEach((id) => recipients.add(id));
+    }
+    const notificationDetail = changes.at(-1)?.detail;
+    if (notificationDetail) {
+      await sendSupportPush({
+        schoolId: actor.schoolId,
+        userIds: [...recipients],
+        excludeUserId: actor.userId,
+        title: `${current.ticketNo} updated`,
+        body: notificationDetail,
+        ticketId: current.id,
+        ticketNo: current.ticketNo,
+      }).catch((error) => console.error("Support push failed", error));
+    }
+
     return ApiResponse.success(ticket);
   });
 }
