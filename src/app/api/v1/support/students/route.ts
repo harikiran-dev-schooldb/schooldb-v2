@@ -8,6 +8,12 @@ export async function GET(request: Request) {
     const actor = await supportActor();
     const q = new URL(request.url).searchParams.get("q")?.trim() ?? "";
     if (q.length < 2) return ApiResponse.success([]);
+    const activeAcademicYear = await prisma.academicYear.findFirst({
+      where: { schoolId: actor.schoolId, active: true },
+      select: { id: true, name: true },
+    });
+    if (!activeAcademicYear) return ApiResponse.success([]);
+
     const students = await prisma.student.findMany({
       where: {
         schoolId: actor.schoolId,
@@ -19,8 +25,12 @@ export async function GET(request: Request) {
       select: {
         id: true, admissionNo: true, fullName: true,
         enrollments: {
-          where: { active: true }, take: 1,
-          select: { class: { select: { name: true } }, section: { select: { name: true } } },
+          where: { academicYearId: activeAcademicYear.id, active: true },
+          take: 1,
+          select: {
+            class: { select: { name: true } },
+            section: { select: { name: true } },
+          },
         },
       },
       take: 20,
@@ -30,6 +40,7 @@ export async function GET(request: Request) {
       id: student.id,
       admissionNo: student.admissionNo,
       fullName: student.fullName ?? "Student",
+      academicYearName: activeAcademicYear.name,
       className: student.enrollments[0]?.class.name ?? null,
       sectionName: student.enrollments[0]?.section.name ?? null,
     })));
