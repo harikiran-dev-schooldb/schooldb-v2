@@ -20,6 +20,7 @@ import androidx.compose.material.icons.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.Dashboard
 import androidx.compose.material.icons.outlined.ConfirmationNumber
+import androidx.compose.material.icons.outlined.BarChart
 import androidx.compose.material.icons.outlined.Logout
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Search
@@ -128,6 +129,7 @@ private fun SupportApp() {
                     listOf(
                         Triple("Overview", Icons.Outlined.Dashboard, "Overview"),
                         Triple("Tickets", Icons.Outlined.ConfirmationNumber, "Tickets"),
+                        Triple("Analytics", Icons.Outlined.BarChart, "Analytics"),
                     ).forEach { (tab, icon, label) ->
                         NavigationBarItem(
                             selected = dashboardTab == tab,
@@ -383,6 +385,95 @@ private fun TicketDashboard(school: String, tickets: List<TicketSummary>, summar
         }
 
         }
+        if (selectedTab == "Analytics") {
+            item {
+                Column(Modifier.padding(top = 14.dp)) {
+                    Text("ANALYTICS · " + school.uppercase(), style = MaterialTheme.typography.labelSmall,
+                        color = Indigo, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(5.dp))
+                    Text("Support performance", style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold, color = Ink)
+                    Text("School-wide ticket trends, workload and resolution performance.",
+                        color = Muted, style = MaterialTheme.typography.bodyMedium)
+                }
+            }
+            if (!admin) {
+                item {
+                    SurfaceCard(Modifier.fillMaxWidth()) {
+                        Text("Analytics is available to Principal and School Admin accounts.",
+                            style = MaterialTheme.typography.bodyMedium, color = Muted)
+                    }
+                }
+            } else if (analytics == null) {
+                item {
+                    SurfaceCard(Modifier.fillMaxWidth()) {
+                        Text("Analytics is not available yet.", style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold, color = Ink)
+                        Spacer(Modifier.height(4.dp))
+                        Text("Pull down to refresh after the analytics API is deployed.",
+                            style = MaterialTheme.typography.bodyMedium, color = Muted)
+                    }
+                }
+            } else {
+                item {
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        MetricCard("Total this month", analytics.month.total, Indigo, Modifier.weight(1f))
+                        MetricCard("Pending", analytics.month.pending, Color(0xFFE58B2A), Modifier.weight(1f))
+                    }
+                }
+                item {
+                    SurfaceCard(Modifier.fillMaxWidth()) {
+                        SectionTitle("Resolution performance", "This month")
+                        Spacer(Modifier.height(14.dp))
+                        Row(Modifier.fillMaxWidth()) {
+                            AnalyticsValue("Resolved", analytics.month.resolved.toString(), Modifier.weight(1f))
+                            AnalyticsValue("Resolution rate", formatPercent(analytics.month.resolutionRate), Modifier.weight(1f))
+                        }
+                        Spacer(Modifier.height(18.dp))
+                        AnalyticsValue("Average resolution", formatResolutionTime(analytics.month.averageResolutionHours))
+                    }
+                }
+                item {
+                    SectionTitle("Attention queue", "Current school-wide workload")
+                }
+                item {
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            MetricCard("Urgent", analytics.attention.urgent, Color(0xFFD05F50), Modifier.weight(1f)) { onOpenQueue("Urgent") }
+                            MetricCard("Unassigned", analytics.attention.unassigned, Color(0xFFE58B2A), Modifier.weight(1f)) { onOpenQueue("Unassigned") }
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            MetricCard("Waiting > 2 days", analytics.attention.waitingOverTwoDays, Color(0xFFB16A2D), Modifier.weight(1f)) { onOpenQueue("Waiting") }
+                            MetricCard("New today", analytics.attention.newToday, Color(0xFF3D71C9), Modifier.weight(1f)) { onOpenQueue("All") }
+                        }
+                    }
+                }
+                if (analytics.byType.isNotEmpty()) {
+                    item {
+                        SurfaceCard(Modifier.fillMaxWidth()) {
+                            SectionTitle("Tickets by category", "Created this month")
+                            Spacer(Modifier.height(12.dp))
+                            analytics.byType.forEach { category ->
+                                AnalyticsRow(category.type.replace('_', ' ').lowercase().replaceFirstChar { it.uppercase() },
+                                    category.count.toString())
+                            }
+                        }
+                    }
+                }
+                if (analytics.staffWorkload.isNotEmpty()) {
+                    item {
+                        SurfaceCard(Modifier.fillMaxWidth()) {
+                            SectionTitle("Staff workload", "Active assigned tickets")
+                            Spacer(Modifier.height(12.dp))
+                            analytics.staffWorkload.forEach { person ->
+                                AnalyticsRow(person.name, person.active.toString() + " active")
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         if (selectedTab == "Tickets") {
         item {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
