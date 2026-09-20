@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
-import { SupportTicketPriority, SupportTicketType } from "@/generated/prisma/enums";
+import { SupportTicketPriority, SupportTicketStatus, SupportTicketType } from "@/generated/prisma/enums";
+import type { Prisma } from "@/generated/prisma/client";
 import { z } from "zod";
 import { apiHandler } from "@/lib/api";
 import { ApiError } from "@/lib/errors";
@@ -27,27 +28,27 @@ export async function GET(request: Request) {
     const now = new Date();
     const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const waitingCutoff = new Date(now.getTime() - 48 * 60 * 60 * 1000);
-    const filterWhere =
-      filter === "OPEN" ? { status: { in: ["OPEN", "REOPENED"] } } :
-      filter === "ACTIVE" ? { status: { in: ["ASSIGNED", "IN_PROGRESS", "WAITING"] } } :
-      filter === "WAITING" ? { status: "WAITING" as const } :
-      filter === "WAITING_OVERDUE" ? { status: "WAITING" as const, updatedAt: { lte: waitingCutoff } } :
-      filter === "URGENT" ? { priority: "URGENT" as const, status: { notIn: ["RESOLVED", "CLOSED"] } } :
-      filter === "UNASSIGNED" ? { assignedToId: null, status: { notIn: ["RESOLVED", "CLOSED"] } } :
+    const filterWhere: Prisma.SupportTicketWhereInput =
+      filter === "OPEN" ? { status: { in: [SupportTicketStatus.OPEN, SupportTicketStatus.REOPENED] } } :
+      filter === "ACTIVE" ? { status: { in: [SupportTicketStatus.ASSIGNED, SupportTicketStatus.IN_PROGRESS, SupportTicketStatus.WAITING] } } :
+      filter === "WAITING" ? { status: SupportTicketStatus.WAITING } :
+      filter === "WAITING_OVERDUE" ? { status: SupportTicketStatus.WAITING, updatedAt: { lte: waitingCutoff } } :
+      filter === "URGENT" ? { priority: SupportTicketPriority.URGENT, status: { notIn: [SupportTicketStatus.RESOLVED, SupportTicketStatus.CLOSED] } } :
+      filter === "UNASSIGNED" ? { assignedToId: null, status: { notIn: [SupportTicketStatus.RESOLVED, SupportTicketStatus.CLOSED] } } :
       filter === "NEW_TODAY" ? { createdAt: { gte: startOfToday } } :
-      filter === "RESOLVED" ? { status: { in: ["RESOLVED", "CLOSED"] } } : {};
-    const searchWhere = q
+      filter === "RESOLVED" ? { status: { in: [SupportTicketStatus.RESOLVED, SupportTicketStatus.CLOSED] } } : {};
+    const searchWhere: Prisma.SupportTicketWhereInput = q
       ? {
           OR: [
-            { ticketNo: { contains: q, mode: "insensitive" as const } },
-            { subject: { contains: q, mode: "insensitive" as const } },
-            { description: { contains: q, mode: "insensitive" as const } },
-            { student: { is: { fullName: { contains: q, mode: "insensitive" as const } } } },
-            { student: { is: { admissionNo: { contains: q, mode: "insensitive" as const } } } },
+            { ticketNo: { contains: q, mode: "insensitive" } },
+            { subject: { contains: q, mode: "insensitive" } },
+            { description: { contains: q, mode: "insensitive" } },
+            { student: { is: { fullName: { contains: q, mode: "insensitive" } } } },
+            { student: { is: { admissionNo: { contains: q, mode: "insensitive" } } } },
           ],
         }
       : {};
-    const where = { ...visibility, ...filterWhere, ...searchWhere };
+    const where: Prisma.SupportTicketWhereInput = { ...visibility, ...filterWhere, ...searchWhere };
     const [tickets, total, open, inProgress, urgent, resolved] = await Promise.all([
       prisma.supportTicket.findMany({
       where,
