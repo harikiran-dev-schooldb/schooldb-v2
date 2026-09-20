@@ -19,10 +19,11 @@ Native Android client built with Kotlin and Jetpack Compose.
    CLERK_PUBLISHABLE_KEY=pk_test_your_key
    ```
 
-4. Start the SchoolDB web server from the repository root with `npm run dev`.
-5. Run the Android `app` configuration on an emulator.
+4. Build or run the Android `app` configuration.
 
-The debug build connects to `http://10.0.2.2:3000/`, which is the Android emulator alias for the host machine.
+When `android/keystore.properties` contains `clerkProductionPublishableKey=pk_live_...`, a plain debug build connects to `https://www.schooldb.co.in/` with that matching Clerk key. This works on both physical devices and emulators. Without a live key, debug defaults to `http://10.0.2.2:3000/` and the development Clerk key.
+
+For a local server on an emulator, start the web server with `npm run dev` and build with `-PSCHOOLDB_API_BASE_URL=http://10.0.2.2:3000/`. The app then uses the development Clerk key from `CLERK_PUBLISHABLE_KEY`. On a physical device, use your computer's LAN address instead of `10.0.2.2` for local testing.
 
 To use another server for either build type, add this to `~/.gradle/gradle.properties` or pass it on the command line with `-PSCHOOLDB_API_BASE_URL=...`:
 
@@ -32,6 +33,7 @@ SCHOOLDB_API_BASE_URL=https://your-schooldb.example.com/
 
 Production builds reject cleartext HTTP traffic. Use an HTTPS URL for deployed environments.
 Release signing uses `android/keystore.properties` when present. It is not needed for debug builds; without it, release builds are unsigned.
+Debug and release use different signing keys. Switching from an installed debug app to release requires uninstalling the debug app, which clears its local sign-in state.
 
 The app redeems the short-lived ticket returned by the SchoolDB OTP endpoint through Clerk's native Android SDK. The SDK then owns session persistence and refresh.
 

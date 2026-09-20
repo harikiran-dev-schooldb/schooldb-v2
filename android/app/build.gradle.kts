@@ -34,12 +34,24 @@ val apiBaseUrlOverride = providers.gradleProperty("SCHOOLDB_API_BASE_URL")
     ?.trim()
     ?.takeIf { it.isNotEmpty() }
 
-val debugClerkPublishableKey = if (
-    apiBaseUrlOverride?.trimEnd('/') == "https://www.schooldb.co.in"
-) clerkProductionPublishableKey else clerkDevelopmentPublishableKey
-
 fun apiBaseUrl(defaultUrl: String): String =
     (apiBaseUrlOverride ?: defaultUrl).trimEnd('/') + "/"
+
+val productionApiBaseUrl = "https://www.schooldb.co.in/"
+val debugDefaultApiBaseUrl = if (clerkProductionPublishableKey.startsWith("pk_live_")) {
+    productionApiBaseUrl
+} else {
+    "http://10.0.2.2:3000/"
+}
+val debugApiBaseUrl = apiBaseUrl(debugDefaultApiBaseUrl)
+val debugClerkPublishableKey = if (debugApiBaseUrl == productionApiBaseUrl) {
+    require(clerkProductionPublishableKey.startsWith("pk_live_")) {
+        "A live Clerk publishable key is required when debug uses the production server."
+    }
+    clerkProductionPublishableKey
+} else {
+    clerkDevelopmentPublishableKey
+}
 
 android {
     namespace = "com.schooldb.mobile"
@@ -83,7 +95,7 @@ android {
             buildConfigField(
                 "String",
                 "API_BASE_URL",
-                "\"${apiBaseUrl("http://10.0.2.2:3000/")}\""
+                "\"$debugApiBaseUrl\""
             )
         }
 
@@ -91,7 +103,7 @@ android {
             buildConfigField(
                 "String",
                 "API_BASE_URL",
-                "\"${apiBaseUrl("https://www.schooldb.co.in/")}\""
+                "\"${apiBaseUrl(productionApiBaseUrl)}\""
             )
             buildConfigField(
                 "String",
