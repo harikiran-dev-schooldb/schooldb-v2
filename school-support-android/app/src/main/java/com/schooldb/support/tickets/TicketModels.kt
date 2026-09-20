@@ -20,4 +20,5 @@ data class TicketSummary(
     val priority: TicketPriority,
     val status: TicketStatus,
     val student: StudentOption? = null,
+    val studentName: String? = null,
 )

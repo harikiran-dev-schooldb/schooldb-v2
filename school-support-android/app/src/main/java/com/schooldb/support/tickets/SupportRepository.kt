@@ -81,6 +81,7 @@ class SupportRepository {
                 subject = item.getString("subject"), type = TicketType.valueOf(item.getString("type")),
                 priority = TicketPriority.valueOf(item.getString("priority")),
                 status = TicketStatus.valueOf(item.getString("status")),
+                studentName = item.optJSONObject("student")?.optString("fullName")?.takeIf(String::isNotBlank),
             )
         }, data.optBoolean("isAdmin"), data.getJSONObject("summary").optInt("open"),
             data.getJSONObject("summary").optInt("inProgress"),
