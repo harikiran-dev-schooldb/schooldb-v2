@@ -66,6 +66,7 @@ private fun SupportApp() {
     var page by remember { mutableStateOf("loading") }
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf("") }
+    var notice by remember { mutableStateOf("") }
     var challenge by remember { mutableStateOf("") }
     var accounts by remember { mutableStateOf<List<Pair<String, String>>>(emptyList()) }
     var tickets by remember { mutableStateOf<List<TicketSummary>>(emptyList()) }
@@ -123,6 +124,7 @@ private fun SupportApp() {
         if (busy) return
         busy = true
         error = ""
+        notice = ""
         scope.launch {
             try { action() } catch (e: Exception) { error = e.message ?: "Request failed." }
             finally { busy = false }
@@ -213,6 +215,11 @@ private fun SupportApp() {
         }
     }) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
+            if (notice.isNotBlank()) Surface(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
+                color = Color(0xFFE9F7EF), shape = RoundedCornerShape(14.dp)) {
+                Text(notice, Modifier.padding(14.dp), color = Color(0xFF16704C),
+                    style = MaterialTheme.typography.bodyMedium)
+            }
             if (error.isNotBlank()) Surface(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
                 color = Color(0xFFFFF0F0), shape = RoundedCornerShape(14.dp)) {
                 Text(error, Modifier.padding(14.dp), color = MaterialTheme.colorScheme.error,
@@ -299,7 +306,14 @@ private fun SupportApp() {
                     onRefresh = { run { loadTickets() } },
                     onTicket = { id -> run { loadDetail(id) } })
                 "create" -> CreateTicket(api, school, busy) { subject, description, type, priority, studentId -> run {
-                    loadDetail(api.create(school, subject, description, type, priority, studentId))
+                    val createdId = api.create(school, subject, description, type, priority, studentId)
+                    notice = "Ticket created successfully."
+                    try {
+                        loadDetail(createdId)
+                    } catch (_: Exception) {
+                        page = "list"
+                        loadTickets()
+                    }
                 } }
                 "detail" -> detail?.let { ticket -> TicketDetails(ticket, admin, busy, staff,
                     onReply = { body -> run { api.reply(school, ticket.id, body); loadDetail(ticket.id) } },
@@ -715,7 +729,14 @@ private fun CreateTicket(api: SupportRepository, school: String, busy: Boolean,
             Spacer(Modifier.height(16.dp))
             Text("Category", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.height(7.dp))
-            OptionMenu(type.name.replace('_', ' '), TicketType.entries.map { it.name }) { type = TicketType.valueOf(it) }
+            OptionMenu(type.name.replace('_', ' '), TicketType.entries.map { it.name }) {
+                type = TicketType.valueOf(it)
+                if (type != TicketType.STUDENT) {
+                    selected = null
+                    options = emptyList()
+                    searchError = ""
+                }
+            }
             Spacer(Modifier.height(14.dp))
             Text("Priority", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.height(7.dp))
@@ -775,10 +796,17 @@ private fun CreateTicket(api: SupportRepository, school: String, busy: Boolean,
                 }
             }
         }
-        PrimaryAction("Create ticket",
-            !busy && subject.trim().length >= 3 && description.trim().length >= 10 &&
-                (type != TicketType.STUDENT || selected != null),
-            onClick = { submit(subject.trim(), description.trim(), type, priority, selected?.id) })
+        val missingField = when {
+            subject.trim().length < 3 -> "Enter a subject with at least 3 characters."
+            description.trim().length < 10 -> "Describe the issue in at least 10 characters."
+            type == TicketType.STUDENT && selected == null -> "Find and select a student to continue."
+            else -> null
+        }
+        if (missingField != null) Text(missingField, color = Muted,
+            style = MaterialTheme.typography.bodySmall)
+        PrimaryAction("Create ticket", !busy && missingField == null,
+            onClick = { submit(subject.trim(), description.trim(), type, priority,
+                selected?.id?.takeIf { type == TicketType.STUDENT }) })
         Text("Your ticket will be visible to the support team at " + school + ".",
             style = MaterialTheme.typography.bodySmall, color = Muted)
         Spacer(Modifier.height(20.dp))

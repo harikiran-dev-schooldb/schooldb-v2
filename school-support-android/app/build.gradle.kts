@@ -36,6 +36,17 @@ android {
     namespace = "com.schooldb.support"
     compileSdk = 37
 
+    if (keystorePropertiesFile.exists()) {
+        signingConfigs {
+            create("release") {
+                storeFile = rootProject.file("../android/app/${keystoreProperties.getProperty("storeFile")}")
+                storePassword = keystoreProperties.getProperty("storePassword")
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+            }
+        }
+    }
+
     defaultConfig {
         applicationId = "com.schooldb.support"
         minSdk = 26
@@ -59,6 +70,9 @@ android {
     getByName("release") {
         resValue("bool", "uses_cleartext_traffic", "false")
         isMinifyEnabled = false
+        if (keystorePropertiesFile.exists()) {
+            signingConfig = signingConfigs.getByName("release")
+        }
         buildConfigField(
             "String",
             "API_BASE_URL",

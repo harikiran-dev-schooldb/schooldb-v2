@@ -9,8 +9,18 @@ Standalone internal ticketing app for SchoolDB staff and school admins. It uses 
 3. Open this directory in Android Studio, or build with `../android/gradlew -p . :app:assembleDebug`.
 4. Install the debug APK on an emulator. Debug connects to `http://10.0.2.2:3000/`.
 
+The debug APK's default server address works only in an emulator. For a physical phone on the
+same Wi-Fi network as the development computer, build with
+`../android/gradlew -p . :app:assembleDebug -PSCHOOLDB_API_BASE_URL=http://YOUR_COMPUTER_LAN_IP:3000/`
+and keep the local web server running. Rebuild if the computer's LAN address changes.
+
+For a production install, build `:app:assembleRelease`. The signed release APK connects to
+`https://www.schooldb.co.in/` and uses the production Clerk key. A debug install must be
+uninstalled before installing release because the signing keys differ; this clears only the app's
+local sign-in state. Tickets remain on the server.
+
 The app signs in staff, lists accessible tickets, creates tickets, searches students by name or admission number, shows details, and adds replies. School admins can assign staff and update status and priority. Staff see tickets they created or were assigned; school admins see all tickets in their school.
 
 Ticket records are stored in SchoolDB. The first migration is `20260920080000_support_tickets`. The API routes are under `/api/v1/support/`.
 
-The debug build allows cleartext traffic for the local emulator server. The release build uses `https://www.schooldb.co.in/`, disallows cleartext traffic, and reads the same production Clerk publishable key as the main Android app from `android/keystore.properties` (or `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`).
+The debug build allows cleartext traffic for the local server. The release build disallows cleartext traffic and reads the production Clerk publishable key and signing key from `android/keystore.properties` (or the publishable key from `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`).

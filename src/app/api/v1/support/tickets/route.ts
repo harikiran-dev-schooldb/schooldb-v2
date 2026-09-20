@@ -106,16 +106,20 @@ export async function POST(request: Request) {
       return created;
     });
 
-    const adminIds = await supportAdminUserIds(actor.schoolId);
-    await sendSupportPush({
-      schoolId: actor.schoolId,
-      userIds: adminIds,
-      excludeUserId: actor.userId,
-      title: input.data.priority === "URGENT" ? "Urgent support ticket" : "New support ticket",
-      body: `${ticket.ticketNo} · ${ticket.subject}`,
-      ticketId: ticket.id,
-      ticketNo: ticket.ticketNo,
-    }).catch((error) => console.error("Support push failed", error));
+    try {
+      const adminIds = await supportAdminUserIds(actor.schoolId);
+      await sendSupportPush({
+        schoolId: actor.schoolId,
+        userIds: adminIds,
+        excludeUserId: actor.userId,
+        title: input.data.priority === "URGENT" ? "Urgent support ticket" : "New support ticket",
+        body: `${ticket.ticketNo} · ${ticket.subject}`,
+        ticketId: ticket.id,
+        ticketNo: ticket.ticketNo,
+      });
+    } catch (error) {
+      console.error("Support push failed", error);
+    }
 
     return ApiResponse.success(ticket, "Ticket created", 201);
   });
