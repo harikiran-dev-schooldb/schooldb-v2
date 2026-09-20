@@ -20,6 +20,7 @@ export async function GET() {
     const [
       totalThisMonth,
       resolvedThisMonth,
+      resolvedCreatedThisMonth,
       open,
       active,
       urgent,
@@ -33,6 +34,13 @@ export async function GET() {
       prisma.supportTicket.count({ where: { ...schoolWhere, createdAt: { gte: monthStart } } }),
       prisma.supportTicket.count({
         where: { ...schoolWhere, status: { in: ["RESOLVED", "CLOSED"] }, resolvedAt: { gte: monthStart } },
+      }),
+      prisma.supportTicket.count({
+        where: {
+          ...schoolWhere,
+          createdAt: { gte: monthStart },
+          status: { in: ["RESOLVED", "CLOSED"] },
+        },
       }),
       prisma.supportTicket.count({ where: { ...schoolWhere, status: { in: ["OPEN", "REOPENED"] } } }),
       prisma.supportTicket.count({
@@ -106,14 +114,15 @@ export async function GET() {
         : null;
 
     const resolutionRate =
-      totalThisMonth > 0 ? Math.round((resolvedThisMonth / totalThisMonth) * 1000) / 10 : 0;
+      totalThisMonth > 0 ? Math.round((resolvedCreatedThisMonth / totalThisMonth) * 1000) / 10 : 0;
 
     return ApiResponse.success({
       attention: { open, active, urgent, unassigned, waitingOverTwoDays, newToday },
       month: {
         total: totalThisMonth,
-        resolved: resolvedThisMonth,
-        pending: Math.max(totalThisMonth - resolvedThisMonth, 0),
+        resolved: resolvedCreatedThisMonth,
+        pending: Math.max(totalThisMonth - resolvedCreatedThisMonth, 0),
+        resolvedThroughput: resolvedThisMonth,
         resolutionRate,
         averageResolutionHours,
       },
