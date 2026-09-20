@@ -34,6 +34,10 @@ val apiBaseUrlOverride = providers.gradleProperty("SCHOOLDB_API_BASE_URL")
     ?.trim()
     ?.takeIf { it.isNotEmpty() }
 
+val debugClerkPublishableKey = if (
+    apiBaseUrlOverride?.trimEnd('/') == "https://www.schooldb.co.in"
+) clerkProductionPublishableKey else clerkDevelopmentPublishableKey
+
 fun apiBaseUrl(defaultUrl: String): String =
     (apiBaseUrlOverride ?: defaultUrl).trimEnd('/') + "/"
 
@@ -71,6 +75,11 @@ android {
 
     buildTypes {
         getByName("debug") {
+            buildConfigField(
+                "String",
+                "CLERK_PUBLISHABLE_KEY",
+                "\"$debugClerkPublishableKey\""
+            )
             buildConfigField(
                 "String",
                 "API_BASE_URL",
