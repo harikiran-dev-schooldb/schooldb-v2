@@ -56,7 +56,8 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 private fun SupportApp() {
-    val preferences = LocalContext.current.getSharedPreferences("support_session", 0)
+    val context = LocalContext.current
+    val preferences = context.getSharedPreferences("support_session", 0)
     val api = remember { SupportRepository() }
     val scope = rememberCoroutineScope()
     var school by remember { mutableStateOf(preferences.getString("school", "").orEmpty()) }
@@ -89,9 +90,7 @@ private fun SupportApp() {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
-            val pushPreferences = preferences.let {
-                LocalContext.current.getSharedPreferences("support_push", 0)
-            }
+            val pushPreferences = context.getSharedPreferences("support_push", 0)
             val installationId = pushPreferences.getString("installation_id", null)
                 ?: UUID.randomUUID().toString().also {
                     pushPreferences.edit().putString("installation_id", it).apply()
