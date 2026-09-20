@@ -106,6 +106,11 @@ class SupportRepository {
         )
     }
 
+    suspend fun unregisterPushDevice(school: String, installationId: String) = withContext(Dispatchers.IO) {
+        val encoded = java.net.URLEncoder.encode(installationId, "UTF-8")
+        request("DELETE", "api/v1/support/devices?installationId=$encoded", school)
+    }
+
     suspend fun signOut() {
         var succeeded = false
         var failure: String? = null
