@@ -26,9 +26,11 @@ data class TicketDetail(
     val studentName: String?,
     val assignedToName: String?,
     val messages: List<TicketMessage>,
+    val activities: List<TicketActivity>,
 )
 
 data class TicketMessage(val body: String, val author: String)
+data class TicketActivity(val action: String, val detail: String, val actor: String, val createdAt: String)
 data class StaffOption(val id: String, val name: String, val role: String)
 data class TicketList(val tickets: List<TicketSummary>, val isAdmin: Boolean,
     val open: Int, val inProgress: Int, val urgent: Int, val resolved: Int,
@@ -120,6 +122,7 @@ class SupportRepository {
     suspend fun detail(school: String, id: String): TicketDetail = withContext(Dispatchers.IO) {
         val item = request("GET", "api/v1/support/tickets/$id", school).getJSONObject("data")
         val messages = item.getJSONArray("messages")
+        val activities = item.optJSONArray("activities") ?: JSONArray()
         TicketDetail(
             id = item.getString("id"), ticketNo = item.getString("ticketNo"),
             subject = item.getString("subject"), description = item.getString("description"),
@@ -135,6 +138,17 @@ class SupportRepository {
                 val author = message.getJSONObject("author")
                 TicketMessage(message.getString("body"),
                     listOf(author.optString("firstName"), author.optString("lastName")).filter { it.isNotBlank() }.joinToString(" ").ifBlank { "Staff" })
+            },
+            activities = (0 until activities.length()).map { index ->
+                val activity = activities.getJSONObject(index)
+                val actor = activity.getJSONObject("actor")
+                TicketActivity(
+                    action = activity.optString("action"),
+                    detail = activity.optString("detail"),
+                    actor = listOf(actor.optString("firstName"), actor.optString("lastName"))
+                        .filter { it.isNotBlank() }.joinToString(" ").ifBlank { "Staff" },
+                    createdAt = activity.optString("createdAt"),
+                )
             },
         )
     }
