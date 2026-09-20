@@ -94,6 +94,12 @@ export async function POST(request: Request) {
         createdById: actor.userId,
       },
     });
+    await prisma.supportTicketActivity.create({
+      data: {
+        schoolId: actor.schoolId, ticketId: ticket.id, actorId: actor.userId,
+        action: "CREATED", detail: "Ticket created",
+      },
+    });
     return ApiResponse.success(ticket, "Ticket created", 201);
   });
 }
