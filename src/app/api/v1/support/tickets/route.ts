@@ -27,8 +27,8 @@ export async function GET() {
       }),
       prisma.supportTicket.count({ where: { ...where, status: { in: ["OPEN", "REOPENED"] } } }),
       prisma.supportTicket.count({ where: { ...where, status: { in: ["ASSIGNED", "IN_PROGRESS", "WAITING"] } } }),
-      prisma.supportTicket.count({ where: { ...where, priority: "URGENT", status: { not: "CLOSED" } } }),
-      prisma.supportTicket.count({ where: { ...where, status: "RESOLVED" } }),
+      prisma.supportTicket.count({ where: { ...where, priority: "URGENT", status: { notIn: ["RESOLVED", "CLOSED"] } } }),
+      prisma.supportTicket.count({ where: { ...where, status: { in: ["RESOLVED", "CLOSED"] } } }),
     ]);
     return ApiResponse.success({ tickets, isAdmin: actor.isAdmin, summary: { open, inProgress, urgent, resolved } });
   });
