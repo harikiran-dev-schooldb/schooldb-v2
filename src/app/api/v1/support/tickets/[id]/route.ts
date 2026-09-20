@@ -68,7 +68,7 @@ export async function PATCH(request: Request, context: Context) {
     if (input.data.priority === "URGENT" && current.priority !== "URGENT") {
       (await supportAdminUserIds(actor.schoolId)).forEach((id) => recipients.add(id));
     }
-    const notificationDetail = changes.at(-1)?.detail;
+    const notificationDetail = changes[changes.length - 1]?.detail;
     if (notificationDetail) {
       await sendSupportPush({
         schoolId: actor.schoolId,
