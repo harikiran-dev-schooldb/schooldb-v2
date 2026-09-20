@@ -18,6 +18,15 @@ val productionClerkKey = keystoreProperties.getProperty("clerkProductionPublisha
     ?: providers.environmentVariable("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY").orNull
     ?: ""
 
+val apiBaseUrlOverride = providers.gradleProperty("SCHOOLDB_API_BASE_URL")
+    .orElse(providers.environmentVariable("SCHOOLDB_API_BASE_URL"))
+    .orNull
+    ?.trim()
+    ?.takeIf { it.isNotEmpty() }
+
+fun apiBaseUrl(defaultUrl: String): String =
+    (apiBaseUrlOverride ?: defaultUrl).trimEnd('/') + "/"
+
 android {
     namespace = "com.schooldb.support"
     compileSdk = 37
@@ -32,17 +41,30 @@ android {
     }
 
     buildTypes {
-        getByName("debug") {
-            resValue("bool", "uses_cleartext_traffic", "true")
-            buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:3000/\"")
-        }
-        getByName("release") {
-            resValue("bool", "uses_cleartext_traffic", "false")
-            isMinifyEnabled = false
-            buildConfigField("String", "API_BASE_URL", "\"https://www.schooldb.co.in/\"")
-            buildConfigField("String", "CLERK_PUBLISHABLE_KEY", "\"$productionClerkKey\"")
-        }
+    getByName("debug") {
+        resValue("bool", "uses_cleartext_traffic", "true")
+        buildConfigField(
+            "String",
+            "API_BASE_URL",
+            "\"${apiBaseUrl("http://10.0.2.2:3000/")}\""
+        )
     }
+
+    getByName("release") {
+        resValue("bool", "uses_cleartext_traffic", "false")
+        isMinifyEnabled = false
+        buildConfigField(
+            "String",
+            "API_BASE_URL",
+            "\"${apiBaseUrl("https://www.schooldb.co.in/")}\""
+        )
+        buildConfigField(
+            "String",
+            "CLERK_PUBLISHABLE_KEY",
+            "\"$productionClerkKey\""
+        )
+    }
+}
 
     buildFeatures { buildConfig = true; compose = true; resValues = true }
     compileOptions {
