@@ -15,20 +15,35 @@ const createInput = z.object({
   studentId: z.string().trim().min(1).nullable().optional(),
 });
 
-export async function GET() {
+export async function GET(request: Request) {
   return apiHandler(async () => {
     const actor = await supportActor();
-    const where = ticketVisibility(actor);
+    const visibility = ticketVisibility(actor);
+    const url = new URL(request.url);
+    const filter = url.searchParams.get("filter")?.toUpperCase() ?? "ALL";
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const waitingCutoff = new Date(now.getTime() - 48 * 60 * 60 * 1000);
+    const filterWhere =
+      filter === "OPEN" ? { status: { in: ["OPEN", "REOPENED"] } } :
+      filter === "ACTIVE" ? { status: { in: ["ASSIGNED", "IN_PROGRESS", "WAITING"] } } :
+      filter === "WAITING" ? { status: "WAITING" as const } :
+      filter === "WAITING_OVERDUE" ? { status: "WAITING" as const, updatedAt: { lte: waitingCutoff } } :
+      filter === "URGENT" ? { priority: "URGENT" as const, status: { notIn: ["RESOLVED", "CLOSED"] } } :
+      filter === "UNASSIGNED" ? { assignedToId: null, status: { notIn: ["RESOLVED", "CLOSED"] } } :
+      filter === "NEW_TODAY" ? { createdAt: { gte: startOfToday } } :
+      filter === "RESOLVED" ? { status: { in: ["RESOLVED", "CLOSED"] } } : {};
+    const where = { ...visibility, ...filterWhere };
     const [tickets, open, inProgress, urgent, resolved] = await Promise.all([
       prisma.supportTicket.findMany({
       where,
       orderBy: { createdAt: "desc" }, take: 100,
       include: { student: { select: { id: true, admissionNo: true, fullName: true } } },
       }),
-      prisma.supportTicket.count({ where: { ...where, status: { in: ["OPEN", "REOPENED"] } } }),
-      prisma.supportTicket.count({ where: { ...where, status: { in: ["ASSIGNED", "IN_PROGRESS", "WAITING"] } } }),
-      prisma.supportTicket.count({ where: { ...where, priority: "URGENT", status: { notIn: ["RESOLVED", "CLOSED"] } } }),
-      prisma.supportTicket.count({ where: { ...where, status: { in: ["RESOLVED", "CLOSED"] } } }),
+      prisma.supportTicket.count({ where: { ...visibility, status: { in: ["OPEN", "REOPENED"] } } }),
+      prisma.supportTicket.count({ where: { ...visibility, status: { in: ["ASSIGNED", "IN_PROGRESS", "WAITING"] } } }),
+      prisma.supportTicket.count({ where: { ...visibility, priority: "URGENT", status: { notIn: ["RESOLVED", "CLOSED"] } } }),
+      prisma.supportTicket.count({ where: { ...visibility, status: { in: ["RESOLVED", "CLOSED"] } } }),
     ]);
     return ApiResponse.success({ tickets, isAdmin: actor.isAdmin, summary: { open, inProgress, urgent, resolved } });
   });
