@@ -86,6 +86,23 @@ class SupportRepository {
         if (!active) error(failure ?: "Could not activate the session.")
     }
 
+    suspend fun registerPushDevice(
+        school: String,
+        installationId: String,
+        fcmToken: String,
+        appVersion: String = BuildConfig.VERSION_NAME,
+    ) = withContext(Dispatchers.IO) {
+        request(
+            "POST",
+            "api/v1/support/devices",
+            school,
+            JSONObject()
+                .put("installationId", installationId)
+                .put("fcmToken", fcmToken)
+                .put("appVersion", appVersion),
+        )
+    }
+
     suspend fun signOut() {
         var succeeded = false
         var failure: String? = null
