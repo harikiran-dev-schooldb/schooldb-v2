@@ -620,13 +620,19 @@ export async function processWhatsappCampaignBatch(
     await Promise.all(
       group.map(async (recipient) => {
         try {
+          const parameters =
+            campaign.sourceType === "PARENT_QUERY"
+              ? [
+                  campaign.school.name,
+                  campaign.targetLabel ?? "Parent Query",
+                  campaign.message,
+                ]
+              : [campaign.title, campaign.message];
+
           const providerMessageId = await sendTemplate(
             recipient.phone,
             campaign.templateName,
-            campaign.sourceType === "PARENT_QUERY" &&
-              campaign.automationKey?.startsWith("parent-query-v2:")
-              ? [campaign.school.name, campaign.targetLabel, campaign.message]
-              : [campaign.title, campaign.message],
+            parameters,
           );
           await prisma.whatsappRecipient.update({
             where: { id: recipient.id },

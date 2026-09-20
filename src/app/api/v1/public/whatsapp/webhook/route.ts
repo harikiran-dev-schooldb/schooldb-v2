@@ -30,7 +30,10 @@ export async function POST(request: Request) {
   const appSecret = process.env.META_APP_SECRET;
   if (!appSecret) {
     console.error("[whatsapp-webhook] META_APP_SECRET is not configured");
-    return Response.json({ error: "Webhook is not configured" }, { status: 503 });
+    return Response.json(
+      { error: "Webhook is not configured" },
+      { status: 503 },
+    );
   }
 
   const rawBody = await request.text();
@@ -60,6 +63,9 @@ export async function POST(request: Request) {
     console.error("[whatsapp-webhook] Unable to process status update", {
       error: error instanceof Error ? error.message : String(error),
     });
-    return Response.json({ error: "Unable to process webhook" }, { status: 500 });
+    return Response.json(
+      { error: "Unable to process webhook" },
+      { status: 500 },
+    );
   }
 }
