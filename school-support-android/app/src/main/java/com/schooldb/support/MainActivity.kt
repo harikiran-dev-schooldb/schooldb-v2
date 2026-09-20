@@ -69,6 +69,7 @@ private fun SupportApp() {
     var analytics by remember { mutableStateOf<SupportAnalytics?>(null) }
     var dashboardTab by remember { mutableStateOf("Overview") }
     var requestedTicketFilter by remember { mutableStateOf<String?>(null) }
+    var serverTicketFilter by remember { mutableStateOf("ALL") }
 
     BackHandler(enabled = page != "login" && page != "list") {
     when (page) {
@@ -89,8 +90,8 @@ private fun SupportApp() {
             finally { busy = false }
         }
     }
-    suspend fun loadTickets() {
-        val result = api.tickets(school)
+    suspend fun loadTickets(filter: String = serverTicketFilter) {
+        val result = api.tickets(school, filter)
         tickets = result.tickets
         admin = result.isAdmin
         summary = listOf(result.open, result.inProgress, result.urgent, result.resolved)
@@ -231,7 +232,13 @@ private fun SupportApp() {
                     onFilterConsumed = { requestedTicketFilter = null },
                     onOpenQueue = { filter ->
                         requestedTicketFilter = filter
+                        serverTicketFilter = when (filter) {
+                            "Waiting > 2 days" -> "WAITING_OVERDUE"
+                            "New today" -> "NEW_TODAY"
+                            else -> filter.uppercase().replace(' ', '_')
+                        }
                         dashboardTab = "Tickets"
+                        run { loadTickets(serverTicketFilter) }
                     },
                     onCreate = { page = "create" },
                     onRefresh = { run { loadTickets() } },
@@ -266,6 +273,7 @@ private fun TicketDashboard(school: String, tickets: List<TicketSummary>, summar
         "Open" -> ticket.status == TicketStatus.OPEN || ticket.status == TicketStatus.REOPENED
         "Active" -> ticket.status in listOf(TicketStatus.ASSIGNED, TicketStatus.IN_PROGRESS, TicketStatus.WAITING)
         "Waiting" -> ticket.status == TicketStatus.WAITING
+        "Waiting > 2 days" -> ticket.status == TicketStatus.WAITING
         "Urgent" -> ticket.priority == TicketPriority.URGENT && ticket.status !in listOf(TicketStatus.RESOLVED, TicketStatus.CLOSED)
         "Unassigned" -> ticket.status in listOf(TicketStatus.OPEN, TicketStatus.REOPENED) &&
             ticket.status !in listOf(TicketStatus.RESOLVED, TicketStatus.CLOSED)
@@ -335,10 +343,10 @@ private fun TicketDashboard(school: String, tickets: List<TicketSummary>, summar
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         MetricCard("Unassigned", analytics.attention.unassigned, Color(0xFFE58B2A), Modifier.weight(1f)) { onOpenQueue("Unassigned") }
-                        MetricCard("Waiting > 2 days", analytics.attention.waitingOverTwoDays, Color(0xFFB16A2D), Modifier.weight(1f)) { onOpenQueue("Waiting") }
+                        MetricCard("Waiting > 2 days", analytics.attention.waitingOverTwoDays, Color(0xFFB16A2D), Modifier.weight(1f)) { onOpenQueue("Waiting > 2 days") }
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        MetricCard("New today", analytics.attention.newToday, Color(0xFF3D71C9), Modifier.weight(1f)) { onOpenQueue("All") }
+                        MetricCard("New today", analytics.attention.newToday, Color(0xFF3D71C9), Modifier.weight(1f)) { onOpenQueue("New today") }
                         MetricCard("Urgent active", analytics.attention.urgent, Color(0xFFD05F50), Modifier.weight(1f)) { onOpenQueue("Urgent") }
                     }
                 }
@@ -443,8 +451,8 @@ private fun TicketDashboard(school: String, tickets: List<TicketSummary>, summar
                             MetricCard("Unassigned", analytics.attention.unassigned, Color(0xFFE58B2A), Modifier.weight(1f)) { onOpenQueue("Unassigned") }
                         }
                         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            MetricCard("Waiting > 2 days", analytics.attention.waitingOverTwoDays, Color(0xFFB16A2D), Modifier.weight(1f)) { onOpenQueue("Waiting") }
-                            MetricCard("New today", analytics.attention.newToday, Color(0xFF3D71C9), Modifier.weight(1f)) { onOpenQueue("All") }
+                            MetricCard("Waiting > 2 days", analytics.attention.waitingOverTwoDays, Color(0xFFB16A2D), Modifier.weight(1f)) { onOpenQueue("Waiting > 2 days") }
+                            MetricCard("New today", analytics.attention.newToday, Color(0xFF3D71C9), Modifier.weight(1f)) { onOpenQueue("New today") }
                         }
                     }
                 }
