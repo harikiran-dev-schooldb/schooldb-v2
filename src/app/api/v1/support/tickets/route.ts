@@ -21,6 +21,9 @@ export async function GET(request: Request) {
     const visibility = ticketVisibility(actor);
     const url = new URL(request.url);
     const filter = url.searchParams.get("filter")?.toUpperCase() ?? "ALL";
+    const q = url.searchParams.get("q")?.trim().slice(0, 100) ?? "";
+    const page = Math.max(Number.parseInt(url.searchParams.get("page") ?? "1", 10) || 1, 1);
+    const pageSize = Math.min(Math.max(Number.parseInt(url.searchParams.get("pageSize") ?? "25", 10) || 25, 10), 100);
     const now = new Date();
     const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const waitingCutoff = new Date(now.getTime() - 48 * 60 * 60 * 1000);
@@ -33,19 +36,36 @@ export async function GET(request: Request) {
       filter === "UNASSIGNED" ? { assignedToId: null, status: { notIn: ["RESOLVED", "CLOSED"] } } :
       filter === "NEW_TODAY" ? { createdAt: { gte: startOfToday } } :
       filter === "RESOLVED" ? { status: { in: ["RESOLVED", "CLOSED"] } } : {};
-    const where = { ...visibility, ...filterWhere };
-    const [tickets, open, inProgress, urgent, resolved] = await Promise.all([
+    const searchWhere = q
+      ? {
+          OR: [
+            { ticketNo: { contains: q, mode: "insensitive" as const } },
+            { subject: { contains: q, mode: "insensitive" as const } },
+            { description: { contains: q, mode: "insensitive" as const } },
+            { student: { is: { fullName: { contains: q, mode: "insensitive" as const } } } },
+            { student: { is: { admissionNo: { contains: q, mode: "insensitive" as const } } } },
+          ],
+        }
+      : {};
+    const where = { ...visibility, ...filterWhere, ...searchWhere };
+    const [tickets, total, open, inProgress, urgent, resolved] = await Promise.all([
       prisma.supportTicket.findMany({
       where,
-      orderBy: { createdAt: "desc" }, take: 100,
+      orderBy: { createdAt: "desc" }, skip: (page - 1) * pageSize, take: pageSize,
       include: { student: { select: { id: true, admissionNo: true, fullName: true } } },
       }),
+      prisma.supportTicket.count({ where }),
       prisma.supportTicket.count({ where: { ...visibility, status: { in: ["OPEN", "REOPENED"] } } }),
       prisma.supportTicket.count({ where: { ...visibility, status: { in: ["ASSIGNED", "IN_PROGRESS", "WAITING"] } } }),
       prisma.supportTicket.count({ where: { ...visibility, priority: "URGENT", status: { notIn: ["RESOLVED", "CLOSED"] } } }),
       prisma.supportTicket.count({ where: { ...visibility, status: { in: ["RESOLVED", "CLOSED"] } } }),
     ]);
-    return ApiResponse.success({ tickets, isAdmin: actor.isAdmin, summary: { open, inProgress, urgent, resolved } });
+    return ApiResponse.success({
+      tickets,
+      isAdmin: actor.isAdmin,
+      summary: { open, inProgress, urgent, resolved },
+      pagination: { page, pageSize, total, totalPages: Math.ceil(total / pageSize), hasMore: page * pageSize < total },
+    });
   });
 }
 
