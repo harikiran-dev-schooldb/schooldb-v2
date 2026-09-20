@@ -2,3 +2,5 @@
 /build/
 /app/build/
 /local.properties
+# Firebase config - School Support Android
+/app/google-services.json
