@@ -60,7 +60,12 @@ function preferredPhone(student: {
   guardianPhone: string | null;
   phone: string | null;
 }) {
-  for (const value of [student.fatherPhone, student.motherPhone, student.guardianPhone, student.phone]) {
+  for (const value of [
+    student.fatherPhone,
+    student.motherPhone,
+    student.guardianPhone,
+    student.phone,
+  ]) {
     if (!value) continue;
     const phone = normalizeIndianMobile(value);
     if (phone) return phone;
@@ -69,7 +74,10 @@ function preferredPhone(student: {
 }
 
 function buildRecipients(students: WhatsappStudent[]) {
-  const recipients = new Map<string, { studentId: string; recipientName: string; phone: string }>();
+  const recipients = new Map<
+    string,
+    { studentId: string; recipientName: string; phone: string }
+  >();
   for (const student of students) {
     const phone = preferredPhone(student);
     if (!phone || recipients.has(phone)) continue;
@@ -117,7 +125,10 @@ export async function getWhatsappEligibleRecipientCount(
   });
 
   const recipients = buildRecipients(students);
-  return { optedInStudents: students.length, eligibleRecipients: recipients.size };
+  return {
+    optedInStudents: students.length,
+    eligibleRecipients: recipients.size,
+  };
 }
 
 export async function createWhatsappCampaign(input: CreateCampaignInput) {
@@ -130,14 +141,19 @@ export async function createWhatsappCampaign(input: CreateCampaignInput) {
   }
 
   const audience = input.studentIds
-    ? { targetId: input.targetId || null, targetLabel: input.targetLabel || "Automatic alert" }
+    ? {
+        targetId: input.targetId || null,
+        targetLabel: input.targetLabel || "Automatic alert",
+      }
     : await resolveAudience(input.schoolId, input.targetType, input.targetId);
 
   const enrollmentWhere = {
     schoolId: input.schoolId,
     active: true,
     ...(input.targetType === "CLASS" ? { classId: audience.targetId! } : {}),
-    ...(input.targetType === "SECTION" ? { sectionId: audience.targetId! } : {}),
+    ...(input.targetType === "SECTION"
+      ? { sectionId: audience.targetId! }
+      : {}),
   };
 
   const students = await prisma.student.findMany({
@@ -164,7 +180,9 @@ export async function createWhatsappCampaign(input: CreateCampaignInput) {
 
   const recipients = buildRecipients(students);
   if (recipients.size === 0) {
-    throw new Error("No WhatsApp-opted-in students with valid mobile numbers were found for this audience.");
+    throw new Error(
+      "No WhatsApp-opted-in students with valid mobile numbers were found for this audience.",
+    );
   }
 
   const createdBy = await resolveCreatorFullName(input.createdBy);
@@ -208,7 +226,10 @@ export async function createWhatsappCampaign(input: CreateCampaignInput) {
         error.code === "P2002"
       ) {
         return prisma.whatsappCampaign.findFirstOrThrow({
-          where: { schoolId: input.schoolId, automationKey: input.automationKey },
+          where: {
+            schoolId: input.schoolId,
+            automationKey: input.automationKey,
+          },
           select: { id: true, recipientCount: true },
         });
       }
@@ -219,7 +240,13 @@ export async function createWhatsappCampaign(input: CreateCampaignInput) {
 type AutomatedAlertInput = {
   schoolId: string;
   automationKey: string;
-  sourceType: "ATTENDANCE" | "HOMEWORK" | "RESULT" | "FEE_DUE" | "PROMOTION" | "BIRTHDAY";
+  sourceType:
+    | "ATTENDANCE"
+    | "HOMEWORK"
+    | "RESULT"
+    | "FEE_DUE"
+    | "PROMOTION"
+    | "BIRTHDAY";
   sourceId: string;
   title: string;
   message: string;
@@ -228,7 +255,10 @@ type AutomatedAlertInput = {
 };
 
 function automatedTemplateName(sourceType: AutomatedAlertInput["sourceType"]) {
-  const templates: Record<AutomatedAlertInput["sourceType"], string | undefined> = {
+  const templates: Record<
+    AutomatedAlertInput["sourceType"],
+    string | undefined
+  > = {
     ATTENDANCE: process.env.META_WA_ATTENDANCE_TEMPLATE,
     HOMEWORK: process.env.META_WA_HOMEWORK_TEMPLATE,
     RESULT: process.env.META_WA_RESULT_TEMPLATE,
@@ -240,7 +270,11 @@ function automatedTemplateName(sourceType: AutomatedAlertInput["sourceType"]) {
 }
 
 export async function queueAutomatedWhatsappAlert(input: AutomatedAlertInput) {
-  if (process.env.META_WA_AUTOMATION_ENABLED !== "true" || input.studentIds.length === 0) return null;
+  if (
+    process.env.META_WA_AUTOMATION_ENABLED !== "true" ||
+    input.studentIds.length === 0
+  )
+    return null;
 
   const templateName = automatedTemplateName(input.sourceType);
   if (!templateName) {
@@ -287,17 +321,24 @@ export async function queueAdmissionWhatsappUpdate(input: {
   status: string;
   schoolName: string;
 }) {
-  if (process.env.META_WA_AUTOMATION_ENABLED !== "true" || !input.phone) return null;
+  if (process.env.META_WA_AUTOMATION_ENABLED !== "true" || !input.phone)
+    return null;
 
   const phone = normalizeIndianMobile(input.phone);
-  const templateName = process.env.META_WA_ADMISSION_TEMPLATE || process.env.META_WA_ANNOUNCEMENT_TEMPLATE;
+  const templateName =
+    process.env.META_WA_ADMISSION_TEMPLATE ||
+    process.env.META_WA_ANNOUNCEMENT_TEMPLATE;
   if (!phone || !templateName) return null;
 
   const statusLabel = input.status.replaceAll("_", " ").toLowerCase();
-  const title = input.status === "SUBMITTED" ? "Admission application received" : "Admission application updated";
-  const message = input.status === "SUBMITTED"
-    ? `${input.schoolName} received ${input.studentName}'s application ${input.applicationNo}. Keep this number to track the application.`
-    : `${input.studentName}'s application ${input.applicationNo} is now ${statusLabel}. Contact ${input.schoolName} if you need clarification.`;
+  const title =
+    input.status === "SUBMITTED"
+      ? "Admission application received"
+      : "Admission application updated";
+  const message =
+    input.status === "SUBMITTED"
+      ? `${input.schoolName} received ${input.studentName}'s application ${input.applicationNo}. Keep this number to track the application.`
+      : `${input.studentName}'s application ${input.applicationNo} is now ${statusLabel}. Contact ${input.schoolName} if you need clarification.`;
   const automationKey = `admission:${input.applicationId}:${input.status}`;
 
   try {
@@ -361,29 +402,40 @@ export async function queueParentQueryWhatsappUpdate(input: {
   status: string;
   eventKey: string;
 }) {
-  if (process.env.META_WA_AUTOMATION_ENABLED !== "true" || !input.phone) return null;
+  if (process.env.META_WA_AUTOMATION_ENABLED !== "true" || !input.phone)
+    return null;
 
   const phone = normalizeIndianMobile(input.phone);
-  const templateName = process.env.META_WA_PARENT_QUERY_TEMPLATE || process.env.META_WA_ANNOUNCEMENT_TEMPLATE;
-  if (!phone || !templateName) return null;
+  const templateName = process.env.META_WA_PARENT_QUERY_TEMPLATE;
+  if (!phone) return null;
+  if (!templateName) {
+    console.warn(
+      "[parent-query-whatsapp] META_WA_PARENT_QUERY_TEMPLATE is not configured",
+    );
+    return null;
+  }
 
   const statusText: Record<string, string> = {
-    OPEN: "was received by the school",
-    ASSIGNED: "has been assigned to the school team",
-    IN_PROGRESS: "is being reviewed",
-    WAITING: "is waiting for follow-up from the school",
-    RESOLVED: "has been resolved",
-    CLOSED: "has been closed",
-    REOPENED: "has been reopened for further review",
+    OPEN: "Received by the school",
+    ASSIGNED: "Assigned to the school team",
+    IN_PROGRESS: "In progress",
+    WAITING: "Waiting for follow-up from the school",
+    RESOLVED: "Resolved",
+    CLOSED: "Closed",
+    REOPENED: "Reopened for further review",
   };
-  const school = await prisma.school.findUnique({ where: { id: input.schoolId }, select: { name: true } });
-  const title = input.status === "OPEN" ? "Parent query received" : `Parent query ${input.status.toLowerCase().replaceAll("_", " ")}`;
-  const message = `${school?.name || "Your school"} query ${input.ticketNo} ${statusText[input.status] || `is ${input.status.toLowerCase()}`}. Keep this ticket number for follow-up.`;
-  const automationKey = `parent-query:${input.ticketId}:${input.eventKey}`;
+  const title =
+    input.status === "OPEN"
+      ? "Parent query received"
+      : `Parent query ${input.status.toLowerCase().replaceAll("_", " ")}`;
+  const message = statusText[input.status] || input.status.replaceAll("_", " ");
+  const automationKey = `parent-query-v2:${input.ticketId}:${input.eventKey}`;
 
   try {
     const existing = await prisma.whatsappCampaign.findUnique({
-      where: { schoolId_automationKey: { schoolId: input.schoolId, automationKey } },
+      where: {
+        schoolId_automationKey: { schoolId: input.schoolId, automationKey },
+      },
       select: { id: true },
     });
     if (existing) return existing;
@@ -433,46 +485,69 @@ export async function queueParentQueryWhatsappUpdate(input: {
 }
 
 function templateParameterText(value: string) {
-  return value.replace(/[\r\n\t]+/g, " ").replace(/\s{2,}/g, " ").trim();
+  return value
+    .replace(/[\r\n\t]+/g, " ")
+    .replace(/\s{2,}/g, " ")
+    .trim();
 }
 
-async function sendTemplate(phone: string, templateName: string, title: string, message: string) {
+async function sendTemplate(
+  phone: string,
+  templateName: string,
+  parameters: string[],
+) {
   const phoneNumberId = process.env.META_PHONE_NUMBER_ID;
   const accessToken = process.env.META_WA_TOKEN;
-  if (!phoneNumberId || !accessToken) throw new Error("WhatsApp Cloud API is not configured.");
+  if (!phoneNumberId || !accessToken)
+    throw new Error("WhatsApp Cloud API is not configured.");
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 30_000);
   try {
     const apiVersion = process.env.META_WA_API_VERSION || "v22.0";
-    const response = await fetch(`https://graph.facebook.com/${apiVersion}/${phoneNumberId}/messages`, {
-      method: "POST",
-      signal: controller.signal,
-      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        messaging_product: "whatsapp",
-        to: `91${phone}`,
-        type: "template",
-        template: {
-          name: templateName,
-          language: { code: process.env.META_WA_ANNOUNCEMENT_LANGUAGE || "en" },
-          components: [{
-            type: "body",
-            parameters: [
-              { type: "text", text: templateParameterText(title) },
-              { type: "text", text: templateParameterText(message) },
-            ],
-          }],
+    const response = await fetch(
+      `https://graph.facebook.com/${apiVersion}/${phoneNumberId}/messages`,
+      {
+        method: "POST",
+        signal: controller.signal,
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
         },
-      }),
-    });
+        body: JSON.stringify({
+          messaging_product: "whatsapp",
+          to: `91${phone}`,
+          type: "template",
+          template: {
+            name: templateName,
+            language: {
+              code: process.env.META_WA_ANNOUNCEMENT_LANGUAGE || "en",
+            },
+            components: [
+              {
+                type: "body",
+                parameters: parameters.map((value) => ({
+                  type: "text",
+                  text: templateParameterText(value),
+                })),
+              },
+            ],
+          },
+        }),
+      },
+    );
 
     const data = (await response.json()) as {
       messages?: Array<{ id?: string }>;
       error?: { message?: string; error_data?: { details?: string } };
     };
     if (!response.ok) {
-      const providerError = [data.error?.message, data.error?.error_data?.details].filter(Boolean).join(" — ");
+      const providerError = [
+        data.error?.message,
+        data.error?.error_data?.details,
+      ]
+        .filter(Boolean)
+        .join(" — ");
       throw new Error(providerError || "WhatsApp rejected the message.");
     }
     return data.messages?.[0]?.id || null;
@@ -493,9 +568,19 @@ export async function processWhatsappCampaignBatch(
       status: { notIn: ["CANCELLED", "COMPLETED"] },
       scheduledAt: { lte: new Date() },
     },
-    select: { id: true, title: true, message: true, templateName: true },
+    select: {
+      id: true,
+      title: true,
+      message: true,
+      templateName: true,
+      sourceType: true,
+      automationKey: true,
+      targetLabel: true,
+      school: { select: { name: true } },
+    },
   });
-  if (!campaign) throw new Error("This campaign is unavailable or not ready to send.");
+  if (!campaign)
+    throw new Error("This campaign is unavailable or not ready to send.");
 
   const recipients = await prisma.whatsappRecipient.findMany({
     where: {
@@ -508,13 +593,21 @@ export async function processWhatsappCampaignBatch(
     take: batchSize,
     select: { id: true, phone: true },
   });
-  if (recipients.length === 0) throw new Error("There are no queued messages ready to send.");
+  if (recipients.length === 0)
+    throw new Error("There are no queued messages ready to send.");
 
   await prisma.$transaction([
-    prisma.whatsappCampaign.update({ where: { id: campaign.id }, data: { status: "SENDING" } }),
+    prisma.whatsappCampaign.update({
+      where: { id: campaign.id },
+      data: { status: "SENDING" },
+    }),
     prisma.whatsappRecipient.updateMany({
       where: { id: { in: recipients.map((recipient) => recipient.id) } },
-      data: { status: "SENDING", lastAttemptAt: new Date(), attempts: { increment: 1 } },
+      data: {
+        status: "SENDING",
+        lastAttemptAt: new Date(),
+        attempts: { increment: 1 },
+      },
     }),
   ]);
 
@@ -524,57 +617,76 @@ export async function processWhatsappCampaignBatch(
   );
 
   for (const group of groups) {
-    await Promise.all(group.map(async (recipient) => {
-      try {
-        const providerMessageId = await sendTemplate(
-          recipient.phone,
-          campaign.templateName,
-          campaign.title,
-          campaign.message,
-        );
-        await prisma.whatsappRecipient.update({
-          where: { id: recipient.id },
-          data: {
-            status: "SENT",
-            providerMessageId,
-            sentAt: new Date(),
-            deliveredAt: null,
-            readAt: null,
-            failedAt: null,
-            providerStatusAt: null,
-            errorMessage: null,
-          },
-        });
-      } catch (error) {
-        await prisma.whatsappRecipient.update({
-          where: { id: recipient.id },
-          data: {
-            status: "FAILED",
-            failedAt: new Date(),
-            errorMessage: (error instanceof Error ? error.message : "Delivery failed").slice(0, 500),
-          },
-        });
-      }
-    }));
+    await Promise.all(
+      group.map(async (recipient) => {
+        try {
+          const providerMessageId = await sendTemplate(
+            recipient.phone,
+            campaign.templateName,
+            campaign.sourceType === "PARENT_QUERY" &&
+              campaign.automationKey?.startsWith("parent-query-v2:")
+              ? [campaign.school.name, campaign.targetLabel, campaign.message]
+              : [campaign.title, campaign.message],
+          );
+          await prisma.whatsappRecipient.update({
+            where: { id: recipient.id },
+            data: {
+              status: "SENT",
+              providerMessageId,
+              sentAt: new Date(),
+              deliveredAt: null,
+              readAt: null,
+              failedAt: null,
+              providerStatusAt: null,
+              errorMessage: null,
+            },
+          });
+        } catch (error) {
+          await prisma.whatsappRecipient.update({
+            where: { id: recipient.id },
+            data: {
+              status: "FAILED",
+              failedAt: new Date(),
+              errorMessage: (error instanceof Error
+                ? error.message
+                : "Delivery failed"
+              ).slice(0, 500),
+            },
+          });
+        }
+      }),
+    );
   }
 
-  const [sentCount, deliveredCount, readCount, failedCount, retryableCount] = await Promise.all([
-    prisma.whatsappRecipient.count({ where: { campaignId, status: { in: ["SENT", "DELIVERED", "READ"] } } }),
-    prisma.whatsappRecipient.count({ where: { campaignId, status: { in: ["DELIVERED", "READ"] } } }),
-    prisma.whatsappRecipient.count({ where: { campaignId, status: "READ" } }),
-    prisma.whatsappRecipient.count({ where: { campaignId, status: "FAILED" } }),
-    prisma.whatsappRecipient.count({
-      where: { campaignId, status: { in: ["QUEUED", "FAILED"] }, attempts: { lt: 3 } },
-    }),
-  ]);
+  const [sentCount, deliveredCount, readCount, failedCount, retryableCount] =
+    await Promise.all([
+      prisma.whatsappRecipient.count({
+        where: { campaignId, status: { in: ["SENT", "DELIVERED", "READ"] } },
+      }),
+      prisma.whatsappRecipient.count({
+        where: { campaignId, status: { in: ["DELIVERED", "READ"] } },
+      }),
+      prisma.whatsappRecipient.count({ where: { campaignId, status: "READ" } }),
+      prisma.whatsappRecipient.count({
+        where: { campaignId, status: "FAILED" },
+      }),
+      prisma.whatsappRecipient.count({
+        where: {
+          campaignId,
+          status: { in: ["QUEUED", "FAILED"] },
+          attempts: { lt: 3 },
+        },
+      }),
+    ]);
 
-  const status = retryableCount > 0
-    ? "QUEUED"
-    : failedCount === 0
-      ? "COMPLETED"
-      : sentCount === 0
-        ? "FAILED"
-        : "PARTIAL";
+  const status =
+    retryableCount > 0
+      ? "QUEUED"
+      : failedCount === 0
+        ? "COMPLETED"
+        : sentCount === 0
+          ? "FAILED"
+          : "PARTIAL";
 
   await prisma.whatsappCampaign.update({
     where: { id: campaignId },
@@ -588,5 +700,10 @@ export async function processWhatsappCampaignBatch(
     },
   });
 
-  return { processed: recipients.length, sentCount, failedCount, remaining: retryableCount };
+  return {
+    processed: recipients.length,
+    sentCount,
+    failedCount,
+    remaining: retryableCount,
+  };
 }

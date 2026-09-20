@@ -282,7 +282,7 @@ The complete reference lives in [`.env.example`](.env.example). Configuration is
 5. Enable automation only after the templates show an active status.
 6. Verify delivery with one test student before sending to a class or the whole school.
 
-Template names currently supported by configuration include OTP login, school announcements, attendance, homework, results, fees, and parent queries. A parent who supplies an Indian mobile number in the public query form receives a ticket receipt and WhatsApp updates when the ticket is assigned or its status changes. Set `META_WA_PARENT_QUERY_TEMPLATE` to an approved two-body-parameter utility template, or the announcement template is used. Delivery and failures are recorded in WhatsApp campaign recipients.
+Template names currently supported by configuration include OTP login, school announcements, attendance, homework, results, fees, and parent queries. A parent who supplies an Indian mobile number in the public query form receives a ticket receipt and WhatsApp updates when the ticket is assigned or its status changes. Set `META_WA_PARENT_QUERY_TEMPLATE` to an approved utility template with three body parameters: school name, ticket number, and status. Parent query updates are not sent through the announcement template, which may be classified as marketing. Delivery and failures are recorded in WhatsApp campaign recipients when the Meta webhook has the correct `META_APP_SECRET`.
 
 ## Quality and performance
 
