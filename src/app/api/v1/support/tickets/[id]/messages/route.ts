@@ -15,8 +15,17 @@ export async function POST(request: Request, context: Context) {
     if (ticket.status === "CLOSED") throw new ApiError(400, "Closed tickets cannot receive replies.");
     const input = inputSchema.safeParse(await request.json());
     if (!input.success) throw new ApiError(400, "Enter a reply of up to 5000 characters.");
-    const message = await prisma.supportTicketMessage.create({
-      data: { schoolId: actor.schoolId, ticketId: ticket.id, authorId: actor.userId, body: input.data.body },
+    const message = await prisma.$transaction(async (tx) => {
+      const created = await tx.supportTicketMessage.create({
+        data: { schoolId: actor.schoolId, ticketId: ticket.id, authorId: actor.userId, body: input.data.body },
+      });
+      await tx.supportTicketActivity.create({
+        data: {
+          schoolId: actor.schoolId, ticketId: ticket.id, actorId: actor.userId,
+          action: "REPLY_ADDED", detail: "Reply added",
+        },
+      });
+      return created;
     });
     return ApiResponse.success(message, "Reply added", 201);
   });
