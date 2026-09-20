@@ -7,6 +7,7 @@ import { ApiError } from "@/lib/errors";
 import { prisma } from "@/lib/prisma";
 import { ApiResponse } from "@/lib/response";
 import { supportActor, ticketVisibility } from "@/lib/support-tickets";
+import { sendSupportPush, supportAdminUserIds } from "@/lib/support-push";
 
 const createInput = z.object({
   subject: z.string().trim().min(3).max(160),
@@ -83,24 +84,39 @@ export async function POST(request: Request) {
       const student = await prisma.student.findFirst({ where: { id: input.data.studentId, schoolId: actor.schoolId }, select: { id: true } });
       if (!student) throw new ApiError(400, "Student not found in this school.");
     }
-    const ticket = await prisma.supportTicket.create({
-      data: {
-        schoolId: actor.schoolId,
-        ticketNo: `TCK-${randomUUID().slice(0, 12).toUpperCase()}`,
-        subject: input.data.subject,
-        description: input.data.description,
-        type: input.data.type,
-        priority: input.data.priority,
-        studentId: input.data.studentId || null,
-        createdById: actor.userId,
-      },
+    const ticket = await prisma.$transaction(async (tx) => {
+      const created = await tx.supportTicket.create({
+        data: {
+          schoolId: actor.schoolId,
+          ticketNo: `TCK-${randomUUID().slice(0, 12).toUpperCase()}`,
+          subject: input.data.subject,
+          description: input.data.description,
+          type: input.data.type,
+          priority: input.data.priority,
+          studentId: input.data.studentId || null,
+          createdById: actor.userId,
+        },
+      });
+      await tx.supportTicketActivity.create({
+        data: {
+          schoolId: actor.schoolId, ticketId: created.id, actorId: actor.userId,
+          action: "CREATED", detail: "Ticket created",
+        },
+      });
+      return created;
     });
-    await prisma.supportTicketActivity.create({
-      data: {
-        schoolId: actor.schoolId, ticketId: ticket.id, actorId: actor.userId,
-        action: "CREATED", detail: "Ticket created",
-      },
-    });
+
+    const adminIds = await supportAdminUserIds(actor.schoolId);
+    await sendSupportPush({
+      schoolId: actor.schoolId,
+      userIds: adminIds,
+      excludeUserId: actor.userId,
+      title: input.data.priority === "URGENT" ? "Urgent support ticket" : "New support ticket",
+      body: `${ticket.ticketNo} · ${ticket.subject}`,
+      ticketId: ticket.id,
+      ticketNo: ticket.ticketNo,
+    }).catch((error) => console.error("Support push failed", error));
+
     return ApiResponse.success(ticket, "Ticket created", 201);
   });
 }
