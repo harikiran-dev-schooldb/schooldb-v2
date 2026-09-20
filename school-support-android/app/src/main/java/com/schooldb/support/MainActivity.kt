@@ -70,6 +70,10 @@ private fun SupportApp() {
     var dashboardTab by remember { mutableStateOf("Overview") }
     var requestedTicketFilter by remember { mutableStateOf<String?>(null) }
     var serverTicketFilter by remember { mutableStateOf("ALL") }
+    var ticketQuery by remember { mutableStateOf("") }
+    var ticketPage by remember { mutableIntStateOf(1) }
+    var ticketTotal by remember { mutableIntStateOf(0) }
+    var ticketTotalPages by remember { mutableIntStateOf(1) }
 
     BackHandler(enabled = page != "login" && page != "list") {
     when (page) {
@@ -90,9 +94,12 @@ private fun SupportApp() {
             finally { busy = false }
         }
     }
-    suspend fun loadTickets(filter: String = serverTicketFilter) {
-        val result = api.tickets(school, filter)
+    suspend fun loadTickets(filter: String = serverTicketFilter, query: String = ticketQuery, targetPage: Int = ticketPage) {
+        val result = api.tickets(school, filter, query, targetPage)
         tickets = result.tickets
+        ticketPage = result.page
+        ticketTotal = result.total
+        ticketTotalPages = result.totalPages
         admin = result.isAdmin
         summary = listOf(result.open, result.inProgress, result.urgent, result.resolved)
         analytics = if (admin) api.analytics(school) else null
@@ -228,17 +235,31 @@ private fun SupportApp() {
                 }
                 "list" -> TicketDashboard(school, tickets, summary, admin, analytics, busy,
                     selectedTab = dashboardTab,
+                    query = ticketQuery,
+                    page = ticketPage,
+                    total = ticketTotal,
+                    totalPages = ticketTotalPages,
+                    onQueryChange = { ticketQuery = it },
+                    onSearch = {
+                        ticketPage = 1
+                        run { loadTickets(serverTicketFilter, ticketQuery, 1) }
+                    },
+                    onPage = { nextPage ->
+                        ticketPage = nextPage
+                        run { loadTickets(serverTicketFilter, ticketQuery, nextPage) }
+                    },
                     requestedFilter = requestedTicketFilter,
                     onFilterConsumed = { requestedTicketFilter = null },
                     onOpenQueue = { filter ->
                         requestedTicketFilter = filter
+                        ticketPage = 1
                         serverTicketFilter = when (filter) {
                             "Waiting > 2 days" -> "WAITING_OVERDUE"
                             "New today" -> "NEW_TODAY"
                             else -> filter.uppercase().replace(' ', '_')
                         }
                         dashboardTab = "Tickets"
-                        run { loadTickets(serverTicketFilter) }
+                        run { loadTickets(serverTicketFilter, ticketQuery, 1) }
                     },
                     onCreate = { page = "create" },
                     onRefresh = { run { loadTickets() } },
@@ -259,7 +280,9 @@ private fun SupportApp() {
 @Composable
 private fun TicketDashboard(school: String, tickets: List<TicketSummary>, summary: List<Int>,
     admin: Boolean, analytics: SupportAnalytics?, busy: Boolean,
-    selectedTab: String, requestedFilter: String?, onFilterConsumed: () -> Unit,
+    selectedTab: String, query: String, page: Int, total: Int, totalPages: Int,
+    onQueryChange: (String) -> Unit, onSearch: () -> Unit, onPage: (Int) -> Unit,
+    requestedFilter: String?, onFilterConsumed: () -> Unit,
     onOpenQueue: (String) -> Unit,
     onCreate: () -> Unit, onRefresh: () -> Unit, onTicket: (String) -> Unit) {
     var filter by remember { mutableStateOf("All") }
@@ -493,6 +516,28 @@ private fun TicketDashboard(school: String, tickets: List<TicketSummary>, summar
             }
         }
         item {
+            SurfaceCard(Modifier.fillMaxWidth()) {
+                Text("Search tickets", style = MaterialTheme.typography.labelLarge,
+                    color = Ink, fontWeight = FontWeight.SemiBold)
+                Spacer(Modifier.height(8.dp))
+                Row(verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = query,
+                        onValueChange = onQueryChange,
+                        modifier = Modifier.weight(1f),
+                        singleLine = true,
+                        placeholder = { Text("Ticket no, subject, student...") },
+                        shape = RoundedCornerShape(13.dp),
+                    )
+                    IconButton(onClick = onSearch, enabled = !busy) {
+                        Icon(Icons.Outlined.Search, contentDescription = "Search", tint = Indigo)
+                    }
+                }
+                Text("$total tickets", style = MaterialTheme.typography.bodySmall, color = Muted)
+            }
+        }
+        item {
             Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf("All", "Open", "Active", "Waiting", "Urgent", "Resolved").forEach { value ->
@@ -511,6 +556,14 @@ private fun TicketDashboard(school: String, tickets: List<TicketSummary>, summar
             }
         }
         items(visible, key = { it.id }) { ticket -> TicketCard(ticket) { onTicket(ticket.id) } }
+        if (totalPages > 1) item {
+            Row(Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                OutlinedButton(onClick = { onPage(page - 1) }, enabled = !busy && page > 1) { Text("Previous") }
+                Text("Page $page of $totalPages", style = MaterialTheme.typography.bodyMedium, color = Muted)
+                OutlinedButton(onClick = { onPage(page + 1) }, enabled = !busy && page < totalPages) { Text("Next") }
+            }
+        }
         }
     }
     }
