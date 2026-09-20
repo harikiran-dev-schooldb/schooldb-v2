@@ -24,6 +24,8 @@ data class TicketDetail(
     val priority: String,
     val type: String,
     val studentName: String?,
+    val studentClassName: String?,
+    val studentSectionName: String?,
     val assignedToName: String?,
     val messages: List<TicketMessage>,
     val activities: List<TicketActivity>,
@@ -129,6 +131,10 @@ class SupportRepository {
             status = item.getString("status"), priority = item.getString("priority"),
             type = item.getString("type"),
             studentName = item.optJSONObject("student")?.optString("fullName")?.takeIf(String::isNotBlank),
+            studentClassName = item.optJSONObject("student")?.optJSONArray("enrollments")
+                ?.optJSONObject(0)?.optJSONObject("class")?.optString("name")?.takeIf(String::isNotBlank),
+            studentSectionName = item.optJSONObject("student")?.optJSONArray("enrollments")
+                ?.optJSONObject(0)?.optJSONObject("section")?.optString("name")?.takeIf(String::isNotBlank),
             assignedToName = item.optJSONObject("assignedTo")?.let { person ->
                 listOf(person.optString("firstName"), person.optString("lastName"))
                     .filter { it.isNotBlank() }.joinToString(" ")
