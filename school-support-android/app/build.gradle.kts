@@ -1,3 +1,6 @@
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.plugin.compose")
@@ -6,6 +9,14 @@ plugins {
 val clerkKey = providers.gradleProperty("CLERK_PUBLISHABLE_KEY")
     .orElse(providers.environmentVariable("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY"))
     .orElse("").get()
+val keystoreProperties = Properties()
+val keystorePropertiesFile = rootProject.file("../android/keystore.properties")
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+}
+val productionClerkKey = keystoreProperties.getProperty("clerkProductionPublishableKey")
+    ?: providers.environmentVariable("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY").orNull
+    ?: ""
 
 android {
     namespace = "com.schooldb.support"
@@ -29,6 +40,7 @@ android {
             resValue("bool", "uses_cleartext_traffic", "false")
             isMinifyEnabled = false
             buildConfigField("String", "API_BASE_URL", "\"https://www.schooldb.co.in/\"")
+            buildConfigField("String", "CLERK_PUBLISHABLE_KEY", "\"$productionClerkKey\"")
         }
     }
 

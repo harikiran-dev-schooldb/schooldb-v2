@@ -13,4 +13,4 @@ The app signs in staff, lists accessible tickets, creates tickets, searches stud
 
 Ticket records are stored in SchoolDB. The first migration is `20260920080000_support_tickets`. The API routes are under `/api/v1/support/`.
 
-The debug build allows cleartext traffic for the local emulator server. The release build uses `https://www.schooldb.co.in/` and disallows cleartext traffic.
+The debug build allows cleartext traffic for the local emulator server. The release build uses `https://www.schooldb.co.in/`, disallows cleartext traffic, and reads the same production Clerk publishable key as the main Android app from `android/keystore.properties` (or `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`).
