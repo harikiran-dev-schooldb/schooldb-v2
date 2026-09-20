@@ -4,7 +4,6 @@ import com.clerk.api.Clerk
 import com.clerk.api.network.serialization.errorMessage
 import com.clerk.api.network.serialization.onFailure
 import com.clerk.api.network.serialization.onSuccess
-import com.clerk.api.session.GetTokenOptions
 import com.clerk.api.signin.SignIn
 import com.schooldb.support.BuildConfig
 import java.net.HttpURLConnection
@@ -256,7 +255,7 @@ class SupportRepository {
     private suspend fun token(): String {
         var value: String? = null
         var failure: String? = null
-        Clerk.auth.getToken(GetTokenOptions(skipCache = true)).onSuccess { value = it }.onFailure { failure = it.errorMessage }
+        Clerk.auth.getToken().onSuccess { value = it }.onFailure { failure = it.errorMessage }
         return value?.takeIf(String::isNotBlank) ?: error(failure ?: "Session expired. Sign in again.")
     }
 

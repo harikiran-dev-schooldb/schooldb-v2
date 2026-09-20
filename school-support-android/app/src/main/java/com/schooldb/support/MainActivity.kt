@@ -75,6 +75,9 @@ private fun SupportApp() {
     var detail by remember { mutableStateOf<TicketDetail?>(null) }
     var staff by remember { mutableStateOf<List<StaffOption>>(emptyList()) }
     var analytics by remember { mutableStateOf<SupportAnalytics?>(null) }
+    var analyticsLoading by remember { mutableStateOf(false) }
+    var analyticsError by remember { mutableStateOf<String?>(null) }
+    var analyticsRefresh by remember { mutableIntStateOf(0) }
     var dashboardTab by remember { mutableStateOf("Overview") }
     var requestedTicketFilter by remember { mutableStateOf<String?>(null) }
     var serverTicketFilter by remember { mutableStateOf("ALL") }
@@ -138,13 +141,30 @@ private fun SupportApp() {
         ticketTotalPages = result.totalPages
         admin = result.isAdmin
         summary = listOf(result.open, result.inProgress, result.urgent, result.resolved)
-        analytics = if (admin) api.analytics(school) else null
         page = "list"
     }
     suspend fun loadDetail(id: String) {
         detail = api.detail(school, id)
-        if (admin) staff = api.staff(school)
         page = "detail"
+    }
+    LaunchedEffect(page, school, admin, analyticsRefresh) {
+        if (page == "list" && admin && school.isNotBlank() && analytics == null) {
+            analyticsLoading = true
+            analyticsError = null
+            try {
+                analytics = api.analytics(school)
+            } catch (e: Exception) {
+                analyticsError = e.message ?: "Could not load analytics."
+            } finally {
+                analyticsLoading = false
+            }
+        }
+    }
+    LaunchedEffect(page, school, admin) {
+        if (page == "detail" && admin && staff.isEmpty()) {
+            try { staff = api.staff(school) }
+            catch (e: Exception) { error = e.message ?: "Could not load staff options." }
+        }
     }
     suspend fun finishLogin(token: String) {
         api.activate(token)
@@ -207,6 +227,8 @@ private fun SupportApp() {
                             api.signOut()
                             preferences.edit().remove("school").apply()
                             tickets = emptyList()
+                            analytics = null
+                            staff = emptyList()
                             page = "login"
                         }
                     }) { Icon(Icons.Outlined.Logout, contentDescription = "Sign out", tint = Ink) }
@@ -274,7 +296,8 @@ private fun SupportApp() {
                         }
                     }
                 }
-                "list" -> TicketDashboard(school, tickets, summary, admin, analytics, busy,
+                "list" -> TicketDashboard(school, tickets, summary, admin, analytics,
+                    analyticsLoading, analyticsError, busy,
                     selectedTab = dashboardTab,
                     query = ticketQuery,
                     page = ticketPage,
@@ -303,7 +326,11 @@ private fun SupportApp() {
                         run { loadTickets(serverTicketFilter, ticketQuery, 1) }
                     },
                     onCreate = { page = "create" },
-                    onRefresh = { run { loadTickets() } },
+                    onRefresh = {
+                        analytics = null
+                        analyticsRefresh++
+                        run { loadTickets() }
+                    },
                     onTicket = { id -> run { loadDetail(id) } })
                 "create" -> CreateTicket(api, school, busy) { subject, description, type, priority, studentId -> run {
                     val createdId = api.create(school, subject, description, type, priority, studentId)
@@ -327,7 +354,8 @@ private fun SupportApp() {
 
 @Composable
 private fun TicketDashboard(school: String, tickets: List<TicketSummary>, summary: List<Int>,
-    admin: Boolean, analytics: SupportAnalytics?, busy: Boolean,
+    admin: Boolean, analytics: SupportAnalytics?, analyticsLoading: Boolean,
+    analyticsError: String?, busy: Boolean,
     selectedTab: String, query: String, page: Int, total: Int, totalPages: Int,
     onQueryChange: (String) -> Unit, onSearch: () -> Unit, onPage: (Int) -> Unit,
     requestedFilter: String?, onFilterConsumed: () -> Unit,
@@ -486,10 +514,12 @@ private fun TicketDashboard(school: String, tickets: List<TicketSummary>, summar
             } else if (analytics == null) {
                 item {
                     SurfaceCard(Modifier.fillMaxWidth()) {
-                        Text("Analytics is not available yet.", style = MaterialTheme.typography.titleMedium,
+                        Text(if (analyticsLoading) "Loading analytics…" else "Analytics is not available yet.",
+                            style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold, color = Ink)
                         Spacer(Modifier.height(4.dp))
-                        Text("Pull down to refresh after the analytics API is deployed.",
+                        Text(analyticsError ?: if (analyticsLoading) "Your tickets are ready while we load school insights."
+                            else "Pull down to retry.",
                             style = MaterialTheme.typography.bodyMedium, color = Muted)
                     }
                 }
