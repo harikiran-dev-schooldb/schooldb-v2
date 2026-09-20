@@ -114,6 +114,7 @@ model School {
   studentHouses         StudentHouse[]
   supportTickets        SupportTicket[]
   supportTicketMessages SupportTicketMessage[]
+  supportTicketActivities SupportTicketActivity[]
 }
 
 model SchoolIdCardSetting {
@@ -167,6 +168,7 @@ model User {
   createdSupportTickets SupportTicket[]       @relation("SupportTicketCreator")
   assignedSupportTickets SupportTicket[]      @relation("SupportTicketAssignee")
   supportTicketMessages SupportTicketMessage[]
+  supportTicketActivities SupportTicketActivity[]
 
   @@index([phone])
 }
@@ -1801,12 +1803,29 @@ model SupportTicket {
   createdBy   User                  @relation("SupportTicketCreator", fields: [createdById], references: [id])
   assignedTo  User?                 @relation("SupportTicketAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
   messages    SupportTicketMessage[]
+  activities  SupportTicketActivity[]
 
   @@unique([schoolId, ticketNo])
   @@index([schoolId, status, createdAt(sort: Desc)])
   @@index([schoolId, createdById])
   @@index([schoolId, assignedToId])
   @@index([schoolId, studentId])
+}
+
+model SupportTicketActivity {
+  id        String        @id @default(cuid())
+  schoolId  String
+  ticketId  String
+  actorId   String
+  action    String
+  detail    String
+  createdAt DateTime      @default(now())
+  school    School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  ticket    SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  actor     User          @relation(fields: [actorId], references: [id])
+
+  @@index([ticketId, createdAt])
+  @@index([schoolId, createdAt])
 }
 
 model SupportTicketMessage {
