@@ -18,6 +18,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.ChevronRight
+import androidx.compose.material.icons.outlined.Dashboard
+import androidx.compose.material.icons.outlined.ConfirmationNumber
+import androidx.compose.material.icons.outlined.BarChart
 import androidx.compose.material.icons.outlined.Logout
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Search
@@ -63,6 +66,8 @@ private fun SupportApp() {
     var detail by remember { mutableStateOf<TicketDetail?>(null) }
     var staff by remember { mutableStateOf<List<StaffOption>>(emptyList()) }
     var analytics by remember { mutableStateOf<SupportAnalytics?>(null) }
+    var dashboardTab by remember { mutableStateOf("Overview") }
+    var requestedTicketFilter by remember { mutableStateOf<String?>(null) }
 
     BackHandler(enabled = page != "login" && page != "list") {
     when (page) {
@@ -117,6 +122,26 @@ private fun SupportApp() {
         modifier = Modifier.fillMaxSize().background(Canvas).safeDrawingPadding(),
         containerColor = Canvas,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
+        bottomBar = {
+            if (page == "list") {
+                NavigationBar(containerColor = Color.White) {
+                    listOf(
+                        Triple("Overview", Icons.Outlined.Dashboard, "Overview"),
+                        Triple("Tickets", Icons.Outlined.ConfirmationNumber, "Tickets"),
+                        Triple("Analytics", Icons.Outlined.BarChart, "Analytics"),
+                    ).forEach { (tab, icon, label) ->
+                        if (tab != "Analytics" || admin) {
+                            NavigationBarItem(
+                                selected = dashboardTab == tab,
+                                onClick = { dashboardTab = tab },
+                                icon = { Icon(icon, contentDescription = label) },
+                                label = { Text(label) },
+                            )
+                        }
+                    }
+                }
+            }
+        },
         topBar = {
         if (page in listOf("list", "create", "detail")) {
             Surface(color = Canvas) {
@@ -202,6 +227,13 @@ private fun SupportApp() {
                     }
                 }
                 "list" -> TicketDashboard(school, tickets, summary, admin, analytics, busy,
+                    selectedTab = dashboardTab,
+                    requestedFilter = requestedTicketFilter,
+                    onFilterConsumed = { requestedTicketFilter = null },
+                    onOpenQueue = { filter ->
+                        requestedTicketFilter = filter
+                        dashboardTab = "Tickets"
+                    },
                     onCreate = { page = "create" },
                     onRefresh = { run { loadTickets() } },
                     onTicket = { id -> run { loadDetail(id) } })
@@ -221,20 +253,32 @@ private fun SupportApp() {
 @Composable
 private fun TicketDashboard(school: String, tickets: List<TicketSummary>, summary: List<Int>,
     admin: Boolean, analytics: SupportAnalytics?, busy: Boolean,
+    selectedTab: String, requestedFilter: String?, onFilterConsumed: () -> Unit,
+    onOpenQueue: (String) -> Unit,
     onCreate: () -> Unit, onRefresh: () -> Unit, onTicket: (String) -> Unit) {
     var filter by remember { mutableStateOf("All") }
+    LaunchedEffect(requestedFilter) {
+        requestedFilter?.let {
+            filter = it
+            onFilterConsumed()
+        }
+    }
     val visible = tickets.filter { ticket -> when (filter) {
         "Open" -> ticket.status == TicketStatus.OPEN || ticket.status == TicketStatus.REOPENED
         "Active" -> ticket.status in listOf(TicketStatus.ASSIGNED, TicketStatus.IN_PROGRESS, TicketStatus.WAITING)
         "Waiting" -> ticket.status == TicketStatus.WAITING
         "Urgent" -> ticket.priority == TicketPriority.URGENT && ticket.status !in listOf(TicketStatus.RESOLVED, TicketStatus.CLOSED)
-        "Unassigned" -> ticket.status in listOf(TicketStatus.OPEN, TicketStatus.REOPENED)
+        "Unassigned" -> ticket.status in listOf(TicketStatus.OPEN, TicketStatus.REOPENED) &&
+            ticket.status !in listOf(TicketStatus.RESOLVED, TicketStatus.CLOSED)
+        "New today" -> true
         "Resolved" -> ticket.status == TicketStatus.RESOLVED || ticket.status == TicketStatus.CLOSED
         else -> true
     } }
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 28.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        item {
+        if (selectedTab == "Overview") {
+
+            item {
             Column(Modifier.padding(top = 14.dp)) {
                 Text("OVERVIEW · " + school.uppercase(), style = MaterialTheme.typography.labelSmall,
                     color = Indigo, fontWeight = FontWeight.Bold)
@@ -279,22 +323,23 @@ private fun TicketDashboard(school: String, tickets: List<TicketSummary>, summar
                 }
             }
         }
-        if (admin && analytics != null) {
+        if (admin && analytics != null && selectedTab == "Overview") {
             item {
                 SectionTitle("Needs attention", "School-wide issues requiring action")
             }
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        MetricCard("Unassigned", analytics.attention.unassigned, Color(0xFFE58B2A), Modifier.weight(1f))
-                        MetricCard("Waiting > 2 days", analytics.attention.waitingOverTwoDays, Color(0xFFB16A2D), Modifier.weight(1f))
+                        MetricCard("Unassigned", analytics.attention.unassigned, Color(0xFFE58B2A), Modifier.weight(1f)) { onOpenQueue("Unassigned") }
+                        MetricCard("Waiting > 2 days", analytics.attention.waitingOverTwoDays, Color(0xFFB16A2D), Modifier.weight(1f)) { onOpenQueue("Waiting") }
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        MetricCard("New today", analytics.attention.newToday, Color(0xFF3D71C9), Modifier.weight(1f))
-                        MetricCard("Urgent active", analytics.attention.urgent, Color(0xFFD05F50), Modifier.weight(1f))
+                        MetricCard("New today", analytics.attention.newToday, Color(0xFF3D71C9), Modifier.weight(1f)) { onOpenQueue("All") }
+                        MetricCard("Urgent active", analytics.attention.urgent, Color(0xFFD05F50), Modifier.weight(1f)) { onOpenQueue("Urgent") }
                     }
                 }
             }
+            if (selectedTab == "Overview" || selectedTab == "Analytics") {
             item {
                 SectionTitle("This month", "Principal / Admin support performance")
             }
@@ -334,8 +379,11 @@ private fun TicketDashboard(school: String, tickets: List<TicketSummary>, summar
                     }
                 }
             }
+            }
         }
 
+        }
+        if (selectedTab == "Tickets") {
         item {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween) {
@@ -364,12 +412,14 @@ private fun TicketDashboard(school: String, tickets: List<TicketSummary>, summar
             }
         }
         items(visible, key = { it.id }) { ticket -> TicketCard(ticket) { onTicket(ticket.id) } }
+        }
     }
 }
 
 @Composable
-private fun MetricCard(label: String, value: Int, tint: Color, modifier: Modifier = Modifier) {
-    SurfaceCard(modifier) {
+private fun MetricCard(label: String, value: Int, tint: Color, modifier: Modifier = Modifier, onClick: (() -> Unit)? = null) {
+    val cardModifier = if (onClick != null) modifier.clickable(onClick = onClick) else modifier
+    SurfaceCard(cardModifier) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(10.dp).background(tint, CircleShape))
             Spacer(Modifier.width(10.dp))
