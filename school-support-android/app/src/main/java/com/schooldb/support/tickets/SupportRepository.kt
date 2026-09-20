@@ -33,6 +33,23 @@ data class StaffOption(val id: String, val name: String, val role: String)
 data class TicketList(val tickets: List<TicketSummary>, val isAdmin: Boolean,
     val open: Int, val inProgress: Int, val urgent: Int, val resolved: Int)
 
+data class AttentionAnalytics(
+    val open: Int, val active: Int, val urgent: Int, val unassigned: Int,
+    val waitingOverTwoDays: Int, val newToday: Int,
+)
+data class MonthAnalytics(
+    val total: Int, val resolved: Int, val pending: Int,
+    val resolutionRate: Double, val averageResolutionHours: Double?,
+)
+data class CategoryAnalytics(val type: String, val count: Int)
+data class StaffWorkload(val userId: String, val name: String, val active: Int)
+data class SupportAnalytics(
+    val attention: AttentionAnalytics,
+    val month: MonthAnalytics,
+    val byType: List<CategoryAnalytics>,
+    val staffWorkload: List<StaffWorkload>,
+)
+
 class SupportRepository {
     suspend fun sendCode(school: String, phone: String) = withContext(Dispatchers.IO) {
         request("POST", "api/v1/public/auth/send-otp", null,
@@ -143,6 +160,40 @@ class SupportRepository {
 
     suspend fun assign(school: String, id: String, userId: String?) = withContext(Dispatchers.IO) {
         request("PATCH", "api/v1/support/tickets/$id", school, JSONObject().put("assignedToId", userId))
+    }
+
+    suspend fun analytics(school: String): SupportAnalytics = withContext(Dispatchers.IO) {
+        val data = request("GET", "api/v1/support/analytics", school).getJSONObject("data")
+        val attention = data.getJSONObject("attention")
+        val month = data.getJSONObject("month")
+        val categories = data.getJSONArray("byType")
+        val workload = data.getJSONArray("staffWorkload")
+        SupportAnalytics(
+            attention = AttentionAnalytics(
+                open = attention.optInt("open"),
+                active = attention.optInt("active"),
+                urgent = attention.optInt("urgent"),
+                unassigned = attention.optInt("unassigned"),
+                waitingOverTwoDays = attention.optInt("waitingOverTwoDays"),
+                newToday = attention.optInt("newToday"),
+            ),
+            month = MonthAnalytics(
+                total = month.optInt("total"),
+                resolved = month.optInt("resolved"),
+                pending = month.optInt("pending"),
+                resolutionRate = month.optDouble("resolutionRate"),
+                averageResolutionHours = if (month.isNull("averageResolutionHours")) null
+                    else month.optDouble("averageResolutionHours"),
+            ),
+            byType = (0 until categories.length()).map { index ->
+                val item = categories.getJSONObject(index)
+                CategoryAnalytics(item.getString("type"), item.optInt("count"))
+            },
+            staffWorkload = (0 until workload.length()).map { index ->
+                val item = workload.getJSONObject(index)
+                StaffWorkload(item.getString("userId"), item.getString("name"), item.optInt("active"))
+            },
+        )
     }
 
     suspend fun staff(school: String): List<StaffOption> = withContext(Dispatchers.IO) {
