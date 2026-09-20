@@ -31,7 +31,8 @@ data class TicketDetail(
 data class TicketMessage(val body: String, val author: String)
 data class StaffOption(val id: String, val name: String, val role: String)
 data class TicketList(val tickets: List<TicketSummary>, val isAdmin: Boolean,
-    val open: Int, val inProgress: Int, val urgent: Int, val resolved: Int)
+    val open: Int, val inProgress: Int, val urgent: Int, val resolved: Int,
+    val page: Int, val total: Int, val totalPages: Int, val hasMore: Boolean)
 
 data class AttentionAnalytics(
     val open: Int, val active: Int, val urgent: Int, val unassigned: Int,
@@ -88,9 +89,13 @@ class SupportRepository {
         if (!succeeded) error(failure ?: "Could not sign out.")
     }
 
-    suspend fun tickets(school: String, filter: String? = null): TicketList = withContext(Dispatchers.IO) {
-        val path = if (filter.isNullOrBlank() || filter == "ALL") "api/v1/support/tickets"
-            else "api/v1/support/tickets?filter=" + java.net.URLEncoder.encode(filter, "UTF-8")
+    suspend fun tickets(school: String, filter: String? = null, query: String = "", page: Int = 1): TicketList = withContext(Dispatchers.IO) {
+        val params = mutableListOf<String>()
+        if (!filter.isNullOrBlank() && filter != "ALL") params += "filter=" + java.net.URLEncoder.encode(filter, "UTF-8")
+        if (query.isNotBlank()) params += "q=" + java.net.URLEncoder.encode(query.trim(), "UTF-8")
+        params += "page=" + page
+        params += "pageSize=25"
+        val path = "api/v1/support/tickets?" + params.joinToString("&")
         val data = request("GET", path, school).getJSONObject("data")
         val items = data.getJSONArray("tickets")
         TicketList((0 until items.length()).map { index ->
@@ -105,7 +110,11 @@ class SupportRepository {
         }, data.optBoolean("isAdmin"), data.getJSONObject("summary").optInt("open"),
             data.getJSONObject("summary").optInt("inProgress"),
             data.getJSONObject("summary").optInt("urgent"),
-            data.getJSONObject("summary").optInt("resolved"))
+            data.getJSONObject("summary").optInt("resolved"),
+            data.getJSONObject("pagination").optInt("page", 1),
+            data.getJSONObject("pagination").optInt("total"),
+            data.getJSONObject("pagination").optInt("totalPages", 1),
+            data.getJSONObject("pagination").optBoolean("hasMore"))
     }
 
     suspend fun detail(school: String, id: String): TicketDetail = withContext(Dispatchers.IO) {
