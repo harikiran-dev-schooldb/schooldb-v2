@@ -8,6 +8,7 @@ data class StudentOption(
     val id: String,
     val admissionNo: String,
     val fullName: String,
+    val academicYearName: String?,
     val className: String?,
     val sectionName: String?,
 )
