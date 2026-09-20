@@ -62,6 +62,7 @@ private fun SupportApp() {
     var summary by remember { mutableStateOf(listOf(0, 0, 0, 0)) }
     var detail by remember { mutableStateOf<TicketDetail?>(null) }
     var staff by remember { mutableStateOf<List<StaffOption>>(emptyList()) }
+    var analytics by remember { mutableStateOf<SupportAnalytics?>(null) }
 
     BackHandler(enabled = page != "login" && page != "list") {
     when (page) {
@@ -87,6 +88,7 @@ private fun SupportApp() {
         tickets = result.tickets
         admin = result.isAdmin
         summary = listOf(result.open, result.inProgress, result.urgent, result.resolved)
+        analytics = if (admin) api.analytics(school) else null
         page = "list"
     }
     suspend fun loadDetail(id: String) {
@@ -199,7 +201,7 @@ private fun SupportApp() {
                         }
                     }
                 }
-                "list" -> TicketDashboard(school, tickets, summary, busy,
+                "list" -> TicketDashboard(school, tickets, summary, admin, analytics, busy,
                     onCreate = { page = "create" },
                     onRefresh = { run { loadTickets() } },
                     onTicket = { id -> run { loadDetail(id) } })
@@ -217,12 +219,16 @@ private fun SupportApp() {
 }
 
 @Composable
-private fun TicketDashboard(school: String, tickets: List<TicketSummary>, summary: List<Int>, busy: Boolean,
+private fun TicketDashboard(school: String, tickets: List<TicketSummary>, summary: List<Int>,
+    admin: Boolean, analytics: SupportAnalytics?, busy: Boolean,
     onCreate: () -> Unit, onRefresh: () -> Unit, onTicket: (String) -> Unit) {
     var filter by remember { mutableStateOf("All") }
     val visible = tickets.filter { ticket -> when (filter) {
         "Open" -> ticket.status == TicketStatus.OPEN || ticket.status == TicketStatus.REOPENED
         "Active" -> ticket.status in listOf(TicketStatus.ASSIGNED, TicketStatus.IN_PROGRESS, TicketStatus.WAITING)
+        "Waiting" -> ticket.status == TicketStatus.WAITING
+        "Urgent" -> ticket.priority == TicketPriority.URGENT && ticket.status !in listOf(TicketStatus.RESOLVED, TicketStatus.CLOSED)
+        "Unassigned" -> ticket.status in listOf(TicketStatus.OPEN, TicketStatus.REOPENED)
         "Resolved" -> ticket.status == TicketStatus.RESOLVED || ticket.status == TicketStatus.CLOSED
         else -> true
     } }
@@ -273,6 +279,63 @@ private fun TicketDashboard(school: String, tickets: List<TicketSummary>, summar
                 }
             }
         }
+        if (admin && analytics != null) {
+            item {
+                SectionTitle("Needs attention", "School-wide issues requiring action")
+            }
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        MetricCard("Unassigned", analytics.attention.unassigned, Color(0xFFE58B2A), Modifier.weight(1f))
+                        MetricCard("Waiting > 2 days", analytics.attention.waitingOverTwoDays, Color(0xFFB16A2D), Modifier.weight(1f))
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        MetricCard("New today", analytics.attention.newToday, Color(0xFF3D71C9), Modifier.weight(1f))
+                        MetricCard("Urgent active", analytics.attention.urgent, Color(0xFFD05F50), Modifier.weight(1f))
+                    }
+                }
+            }
+            item {
+                SectionTitle("This month", "Principal / Admin support performance")
+            }
+            item {
+                SurfaceCard(Modifier.fillMaxWidth()) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        AnalyticsValue("Total", analytics.month.total.toString(), Modifier.weight(1f))
+                        AnalyticsValue("Resolved", analytics.month.resolved.toString(), Modifier.weight(1f))
+                        AnalyticsValue("Pending", analytics.month.pending.toString(), Modifier.weight(1f))
+                    }
+                    Spacer(Modifier.height(18.dp))
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        AnalyticsValue("Resolution", formatPercent(analytics.month.resolutionRate), Modifier.weight(1f))
+                        AnalyticsValue("Avg. resolution", formatResolutionTime(analytics.month.averageResolutionHours), Modifier.weight(1f))
+                    }
+                }
+            }
+            if (analytics.byType.isNotEmpty()) {
+                item {
+                    SurfaceCard(Modifier.fillMaxWidth()) {
+                        SectionTitle("Issues by category", "Tickets created this month")
+                        Spacer(Modifier.height(14.dp))
+                        analytics.byType.forEach { category ->
+                            AnalyticsRow(category.type.replace('_', ' ').lowercase().replaceFirstChar { it.uppercase() }, category.count.toString())
+                        }
+                    }
+                }
+            }
+            if (analytics.staffWorkload.isNotEmpty()) {
+                item {
+                    SurfaceCard(Modifier.fillMaxWidth()) {
+                        SectionTitle("Staff workload", "Currently active assigned tickets")
+                        Spacer(Modifier.height(14.dp))
+                        analytics.staffWorkload.forEach { person ->
+                            AnalyticsRow(person.name, person.active.toString() + " active")
+                        }
+                    }
+                }
+            }
+        }
+
         item {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween) {
@@ -285,7 +348,7 @@ private fun TicketDashboard(school: String, tickets: List<TicketSummary>, summar
         item {
             Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf("All", "Open", "Active", "Resolved").forEach { value ->
+                listOf("All", "Open", "Active", "Waiting", "Urgent", "Resolved").forEach { value ->
                     FilterChip(selected = filter == value, onClick = { filter = value }, label = { Text(value) },
                         shape = RoundedCornerShape(12.dp))
                 }
@@ -315,6 +378,36 @@ private fun MetricCard(label: String, value: Int, tint: Color, modifier: Modifie
         }
         Spacer(Modifier.height(5.dp))
         Text(label, style = MaterialTheme.typography.bodySmall, color = Muted)
+    }
+}
+
+@Composable
+private fun AnalyticsValue(label: String, value: String, modifier: Modifier = Modifier) {
+    Column(modifier) {
+        Text(value, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = Ink)
+        Text(label, style = MaterialTheme.typography.bodySmall, color = Muted)
+    }
+}
+
+@Composable
+private fun AnalyticsRow(label: String, value: String) {
+    Row(Modifier.fillMaxWidth().padding(vertical = 7.dp),
+        horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+        Text(label, style = MaterialTheme.typography.bodyMedium, color = Ink)
+        Text(value, style = MaterialTheme.typography.bodyMedium, color = Indigo, fontWeight = FontWeight.Bold)
+    }
+}
+
+private fun formatPercent(value: Double): String =
+    if (value % 1.0 == 0.0) value.toInt().toString() + "%" else String.format("%.1f%%", value)
+
+private fun formatResolutionTime(hours: Double?): String {
+    if (hours == null) return "—"
+    return if (hours >= 24) {
+        val days = hours / 24.0
+        if (days % 1.0 == 0.0) days.toInt().toString() + " days" else String.format("%.1f days", days)
+    } else {
+        if (hours % 1.0 == 0.0) hours.toInt().toString() + " hrs" else String.format("%.1f hrs", hours)
     }
 }
 
