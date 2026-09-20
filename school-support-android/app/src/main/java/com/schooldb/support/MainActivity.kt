@@ -541,7 +541,7 @@ private fun TicketDashboard(school: String, tickets: List<TicketSummary>, summar
             Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf("All", "Open", "Active", "Waiting", "Urgent", "Resolved").forEach { value ->
-                    FilterChip(selected = filter == value, onClick = { filter = value }, label = { Text(value) },
+                    FilterChip(selected = filter == value, onClick = { onOpenQueue(value) }, label = { Text(value) },
                         shape = RoundedCornerShape(12.dp))
                 }
             }
@@ -556,12 +556,26 @@ private fun TicketDashboard(school: String, tickets: List<TicketSummary>, summar
             }
         }
         items(visible, key = { it.id }) { ticket -> TicketCard(ticket) { onTicket(ticket.id) } }
-        if (totalPages > 1) item {
-            Row(Modifier.fillMaxWidth().padding(vertical = 6.dp),
-                horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                OutlinedButton(onClick = { onPage(page - 1) }, enabled = !busy && page > 1) { Text("Previous") }
-                Text("Page $page of $totalPages", style = MaterialTheme.typography.bodyMedium, color = Muted)
-                OutlinedButton(onClick = { onPage(page + 1) }, enabled = !busy && page < totalPages) { Text("Next") }
+        item {
+            SurfaceCard(Modifier.fillMaxWidth()) {
+                Text(
+                    "Showing ${visible.size} of $total tickets · Page $page of ${totalPages.coerceAtLeast(1)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Muted,
+                )
+                if (totalPages > 1) {
+                    Spacer(Modifier.height(10.dp))
+                    Row(Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically) {
+                        OutlinedButton(onClick = { onPage(page - 1) },
+                            enabled = !busy && page > 1) { Text("Previous") }
+                        Text("$page / $totalPages", style = MaterialTheme.typography.bodyMedium,
+                            color = Ink, fontWeight = FontWeight.SemiBold)
+                        OutlinedButton(onClick = { onPage(page + 1) },
+                            enabled = !busy && page < totalPages) { Text("Next") }
+                    }
+                }
             }
         }
         }
