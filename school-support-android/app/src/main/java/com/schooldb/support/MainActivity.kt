@@ -708,15 +708,36 @@ private fun CreateTicket(api: SupportRepository, school: String, busy: Boolean,
                         .padding(vertical = 11.dp), verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
                             Text(option.fullName, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
-                            Text(option.admissionNo + (option.className?.let { " · " + it } ?: ""),
-                                style = MaterialTheme.typography.bodySmall, color = Muted)
+                            Text(
+                                buildList {
+                                    add(option.admissionNo)
+                                    option.academicYearName?.let(::add)
+                                    option.className?.let { className ->
+                                        add(className + (option.sectionName?.let { " · " + it } ?: ""))
+                                    }
+                                }.joinToString(" · "),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Muted
+                            )
                         }
                         Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = Muted)
                     }
                 }
                 selected?.let {
                     Spacer(Modifier.height(8.dp))
-                    Pill(it.fullName + " · " + it.admissionNo, Indigo)
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Pill(it.fullName + " · " + it.admissionNo, Indigo)
+                        Text(
+                            listOfNotNull(
+                                it.academicYearName,
+                                it.className?.let { className ->
+                                    className + (it.sectionName?.let { section -> " · " + section } ?: "")
+                                }
+                            ).joinToString(" · "),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Muted
+                        )
+                    }
                 }
             }
         }
