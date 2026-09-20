@@ -3,6 +3,7 @@ package com.schooldb.support
 import android.Manifest
 import android.os.Build
 import android.os.Bundle
+import android.content.Intent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.rememberLauncherForActivityResult
 import com.google.firebase.messaging.FirebaseMessaging
@@ -48,14 +49,23 @@ import kotlinx.coroutines.launch
 import androidx.activity.compose.BackHandler
 
 class MainActivity : ComponentActivity() {
+    private val notificationTicketId = mutableStateOf<String?>(null)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContent { SupportTheme { SupportApp() } }
+        notificationTicketId.value = intent.getStringExtra("ticketId")
+        setContent { SupportTheme { SupportApp(notificationTicketId.value) { notificationTicketId.value = null } } }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        notificationTicketId.value = intent.getStringExtra("ticketId")
     }
 }
 
 @Composable
-private fun SupportApp() {
+private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: () -> Unit) {
     val context = LocalContext.current
     val preferences = context.getSharedPreferences("support_session", 0)
     val api = remember { SupportRepository() }
@@ -116,13 +126,16 @@ private fun SupportApp() {
         }
     }
 
-    BackHandler(enabled = page != "login" && page != "list") {
-    when (page) {
+    BackHandler(enabled = page != "login" && (page != "list" || dashboardTab != "Overview")) {
+    when {
+        page == "list" && dashboardTab != "Overview" -> dashboardTab = "Overview"
+        else -> when (page) {
         "otp" -> page = "login"
         "accounts" -> page = "otp"
         "create", "detail", "admins" -> page = "list"
         "adminForm" -> page = "admins"
         else -> page = "list"
+    }
     }
 }
 
@@ -170,6 +183,20 @@ private fun SupportApp() {
             catch (e: Exception) { error = e.message ?: "Could not load staff options." }
         }
     }
+    LaunchedEffect(notificationTicketId, page, school) {
+        val ticketId = notificationTicketId
+        if (ticketId != null && school.isNotBlank() && Clerk.activeSession != null &&
+            page !in listOf("loading", "login", "otp", "accounts")) {
+            try {
+                loadDetail(ticketId)
+                onNotificationConsumed()
+            } catch (e: Exception) {
+                error = e.message ?: "Could not open the ticket from the notification."
+                onNotificationConsumed()
+            }
+        }
+    }
+
     suspend fun finishLogin(token: String) {
         api.activate(token)
         preferences.edit().putString("school", school).apply()
@@ -234,6 +261,10 @@ private fun SupportApp() {
                     }
                     if (page == "list") IconButton(onClick = {
                         if (page == "list") run {
+                            val pushPreferences = context.getSharedPreferences("support_push", 0)
+                            pushPreferences.getString("installation_id", null)?.let { installationId ->
+                                try { api.unregisterPushDevice(school, installationId) } catch (_: Exception) { }
+                            }
                             api.signOut()
                             preferences.edit().remove("school").apply()
                             tickets = emptyList()
