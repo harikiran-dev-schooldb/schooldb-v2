@@ -144,7 +144,7 @@ class FamilyRepository(
                     add(
                         FamilyFeePayment(
                             id = item.getString("id"),
-                            receiptNo = item.optString("receiptNo").takeIf(String::isNotBlank),
+                            receiptNo = item.optionalText("receiptNo"),
                             paymentDate = item.optString("paymentDate"),
                             amount = item.optDouble("amount"),
                             paymentMode = item.optString("paymentMode"),
@@ -203,7 +203,7 @@ class FamilyRepository(
                         endDate = item.optString("endDate"),
                         reason = item.optString("reason"),
                         status = item.optString("status", "PENDING"),
-                        decisionNote = item.optString("decisionNote").takeIf(String::isNotBlank),
+                        decisionNote = item.optionalText("decisionNote"),
                         createdAt = item.optString("createdAt"),
                     ),
                 )
@@ -218,7 +218,7 @@ class FamilyRepository(
                     FamilyCalendarEvent(
                         id = item.getString("id"),
                         title = item.optString("title", "School event"),
-                        description = item.optString("description").takeIf(String::isNotBlank),
+                        description = item.optionalText("description"),
                         category = item.optString("category", "EVENT"),
                         startDate = item.optString("startDate"),
                         endDate = item.optString("endDate"),
@@ -236,21 +236,21 @@ class FamilyRepository(
                 pickupEnabled = item.optBoolean("pickupEnabled"),
                 dropEnabled = item.optBoolean("dropEnabled"),
                 startDate = item.optString("startDate"),
-                notes = item.optString("notes").takeIf(String::isNotBlank),
+                notes = item.optionalText("notes"),
                 routeCode = item.optString("routeCode"),
                 routeName = item.optString("routeName", "School route"),
-                routePickupStart = item.optString("routePickupStart").takeIf(String::isNotBlank),
-                routeDropStart = item.optString("routeDropStart").takeIf(String::isNotBlank),
+                routePickupStart = item.optionalText("routePickupStart"),
+                routeDropStart = item.optionalText("routeDropStart"),
                 stop = transportStop(stopJson),
                 vehicle = vehicleJson?.let {
                     FamilyTransportVehicle(
                         registrationNo = it.optString("registrationNo"),
-                        name = it.optString("name").takeIf(String::isNotBlank),
+                        name = it.optionalText("name"),
                         type = it.optString("type", "BUS"),
                         driverName = it.optString("driverName"),
                         driverPhone = it.optString("driverPhone"),
-                        attendantName = it.optString("attendantName").takeIf(String::isNotBlank),
-                        attendantPhone = it.optString("attendantPhone").takeIf(String::isNotBlank),
+                        attendantName = it.optionalText("attendantName"),
+                        attendantPhone = it.optionalText("attendantPhone"),
                     )
                 },
                 stops = buildList {
@@ -322,8 +322,8 @@ class FamilyRepository(
         id = json.getString("id"),
         name = json.optString("name", "Stop"),
         sequence = if (json.has("sequence") && !json.isNull("sequence")) json.optInt("sequence") else null,
-        pickupTime = json.optString("pickupTime").takeIf(String::isNotBlank),
-        dropTime = json.optString("dropTime").takeIf(String::isNotBlank),
+        pickupTime = json.optionalText("pickupTime"),
+        dropTime = json.optionalText("dropTime"),
         monthlyFee = if (json.has("monthlyFee") && !json.isNull("monthlyFee")) json.optDouble("monthlyFee") else null,
     )
 }
