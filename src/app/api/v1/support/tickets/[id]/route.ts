@@ -63,7 +63,7 @@ export async function PATCH(request: Request, context: Context) {
       });
       return updated;
     });
-    const recipients = new Set<string>([current.createdById]);
+    const recipients = new Set<string>(current.createdById ? [current.createdById] : []);
     if (ticket.assignedToId) recipients.add(ticket.assignedToId);
     if (input.data.priority === "URGENT" && current.priority !== "URGENT") {
       (await supportAdminUserIds(actor.schoolId)).forEach((id) => recipients.add(id));

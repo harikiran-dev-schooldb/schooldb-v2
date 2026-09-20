@@ -22,6 +22,9 @@ data class TicketDetail(
     val status: String,
     val priority: String,
     val type: String,
+    val source: String,
+    val parentName: String?,
+    val parentPhone: String?,
     val studentName: String?,
     val studentClassName: String?,
     val studentSectionName: String?,
@@ -134,6 +137,7 @@ class SupportRepository {
                 subject = item.getString("subject"), type = TicketType.valueOf(item.getString("type")),
                 priority = TicketPriority.valueOf(item.getString("priority")),
                 status = TicketStatus.valueOf(item.getString("status")),
+                source = item.optString("source", "STAFF"),
                 studentName = item.optJSONObject("student")?.optString("fullName")?.takeIf(String::isNotBlank),
             )
         }, data.optBoolean("isAdmin"), data.optBoolean("canManageAdmins"), data.getJSONObject("summary").optInt("open"),
@@ -155,6 +159,9 @@ class SupportRepository {
             subject = item.getString("subject"), description = item.getString("description"),
             status = item.getString("status"), priority = item.getString("priority"),
             type = item.getString("type"),
+            source = item.optString("source", "STAFF"),
+            parentName = item.optString("parentName").takeIf(String::isNotBlank),
+            parentPhone = item.optString("parentPhone").takeIf(String::isNotBlank),
             studentName = item.optJSONObject("student")?.optString("fullName")?.takeIf(String::isNotBlank),
             studentClassName = item.optJSONObject("student")?.optJSONArray("enrollments")
                 ?.optJSONObject(0)?.optJSONObject("class")?.optString("name")?.takeIf(String::isNotBlank),

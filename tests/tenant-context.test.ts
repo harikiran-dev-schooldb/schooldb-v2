@@ -37,6 +37,9 @@ test("keeps the public route allowlist narrow", () => {
   assert.equal(isPublicPath("/login/SignIn_clerk_catchall_check_123"), true);
   assert.equal(isPublicPath("/green-valley/login"), true);
   assert.equal(isPublicPath("/green-valley/apply"), true);
+  assert.equal(isPublicPath("/green-valley/parent-query"), true);
+  assert.equal(isPublicPath("/green-valley/parent-query/qr"), true);
+  assert.equal(isPublicPath("/green-valley/parent-query/admin"), false);
   assert.equal(isPublicPath("/api/health"), true);
   assert.equal(isPublicPath("/api/health/database"), false);
   assert.equal(isPublicPath("/api/cron/whatsapp"), true);
@@ -65,6 +68,9 @@ test("keeps the public route allowlist narrow", () => {
   assert.equal(isPublicPath("/api/v1/public/auth/verify-otp"), true);
   assert.equal(isPublicPath("/api/v1/public/auth/not-a-real-route"), false);
   assert.equal(isPublicPath("/api/v1/public/admissions/green-valley"), true);
+  assert.equal(isPublicPath("/api/v1/public/support/green-valley"), true);
+  assert.equal(isPublicPath("/api/v1/public/support/green-valley/students"), true);
+  assert.equal(isPublicPath("/api/v1/public/support/green-valley/admin"), false);
   assert.equal(
     isPublicPath("/api/v1/public/admissions/green-valley/track"),
     true,

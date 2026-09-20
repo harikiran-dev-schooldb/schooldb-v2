@@ -24,6 +24,7 @@ const PUBLIC_PATH_PATTERNS = [
   /^\/pay\/cashfree\/[^/]+\/[^/]+(?:\/complete)?$/,
   /^\/[^/]+\/login(?:\/.*)?$/,
   /^\/[^/]+\/apply(?:\/.*)?$/,
+  /^\/[^/]+\/parent-query(?:\/qr)?\/?$/,
   /^\/api\/health$/,
   /^\/api\/cron\/whatsapp$/,
   /^\/api\/v1\/public\/whatsapp\/webhook$/,
@@ -31,6 +32,7 @@ const PUBLIC_PATH_PATTERNS = [
   /^\/api\/v1\/public\/payments\/cashfree\/orders\/[^/]+\/verify$/,
   /^\/api\/v1\/public\/auth\/(?:send-otp|verify-otp)$/,
   /^\/api\/v1\/public\/admissions\/[^/]+(?:\/(?:track|documents))?$/,
+  /^\/api\/v1\/public\/support\/[^/]+(?:\/students)?\/?$/,
 ];
 
 export function isPublicPath(pathname: string): boolean {

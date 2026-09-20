@@ -4,6 +4,7 @@ import android.Manifest
 import android.os.Build
 import android.os.Bundle
 import android.content.Intent
+import android.net.Uri
 import android.content.pm.PackageManager
 import android.util.Log
 import androidx.activity.result.contract.ActivityResultContracts
@@ -33,6 +34,7 @@ import androidx.compose.material.icons.outlined.ConfirmationNumber
 import androidx.compose.material.icons.outlined.BarChart
 import androidx.compose.material.icons.outlined.Logout
 import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material.icons.outlined.QrCode2
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -430,6 +432,7 @@ private fun TicketDashboard(school: String, tickets: List<TicketSummary>, summar
     onOpenQueue: (String) -> Unit,
     onCreate: () -> Unit, onManageAdmins: () -> Unit,
     onRefresh: () -> Unit, onTicket: (String) -> Unit) {
+    val context = LocalContext.current
     var filter by remember { mutableStateOf("All") }
     LaunchedEffect(requestedFilter) {
         requestedFilter?.let {
@@ -487,6 +490,17 @@ private fun TicketDashboard(school: String, tickets: List<TicketSummary>, summar
                         Icon(Icons.Outlined.Add, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(6.dp))
                         Text("Raise a ticket", fontWeight = FontWeight.SemiBold)
+                    }
+                    if (admin) {
+                        Spacer(Modifier.height(8.dp))
+                        TextButton(onClick = {
+                            val url = BuildConfig.API_BASE_URL.trimEnd('/') + "/$school/parent-query/qr"
+                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                        }) {
+                            Icon(Icons.Outlined.QrCode2, contentDescription = null, tint = Color.White)
+                            Spacer(Modifier.width(8.dp))
+                            Text("Parent query QR", color = Color.White, fontWeight = FontWeight.SemiBold)
+                        }
                     }
                 }
             }
@@ -810,6 +824,7 @@ private fun TicketCard(ticket: TicketSummary, onClick: () -> Unit) {
         Spacer(Modifier.height(14.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Pill(ticket.status.name.replace('_', ' '), statusTint(ticket.status.name))
+            if (ticket.source == "PARENT_QR") Pill("PARENT QUERY", Indigo)
             if (ticket.priority == TicketPriority.URGENT || ticket.priority == TicketPriority.HIGH)
                 Pill(ticket.priority.name, priorityTint(ticket.priority.name))
         }
@@ -942,7 +957,14 @@ private fun TicketDetails(ticket: TicketDetail, admin: Boolean, busy: Boolean, s
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Pill(ticket.status.replace('_', ' '), statusTint(ticket.status))
                 Pill(ticket.priority, priorityTint(ticket.priority))
+                if (ticket.source == "PARENT_QR") Pill("PARENT QUERY", Indigo)
             }
+        }
+        if (ticket.source == "PARENT_QR") SurfaceCard(Modifier.fillMaxWidth()) {
+            SectionTitle("Submitted by parent", "Received from the school's QR form")
+            ticket.parentName?.let { Text(it, color = Ink) }
+            ticket.parentPhone?.let { Text("Follow-up phone: $it", color = Ink) }
+            if (ticket.parentPhone == null) Text("No follow-up number was provided.", color = Muted)
         }
         ticket.studentName?.let { student -> SurfaceCard(Modifier.fillMaxWidth()) {
             Text("LINKED STUDENT", style = MaterialTheme.typography.labelSmall, color = Muted,
@@ -1009,9 +1031,14 @@ private fun TicketDetails(ticket: TicketDetail, admin: Boolean, busy: Boolean, s
             }
         }
         SurfaceCard(Modifier.fillMaxWidth()) {
-            SectionTitle("Conversation", ticket.messages.size.toString() + " replies")
+            SectionTitle(
+                if (ticket.source == "PARENT_QR") "Internal notes" else "Conversation",
+                ticket.messages.size.toString() + " replies"
+            )
             Spacer(Modifier.height(14.dp))
-            if (ticket.messages.isEmpty()) Text("No replies yet. Start the conversation below.",
+            if (ticket.messages.isEmpty()) Text(if (ticket.source == "PARENT_QR")
+                "No notes yet. Use the follow-up number above to contact the parent."
+                else "No replies yet. Start the conversation below.",
                 style = MaterialTheme.typography.bodyMedium, color = Muted)
             ticket.messages.forEach { message ->
                 Row(Modifier.fillMaxWidth().padding(bottom = 12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -1028,9 +1055,10 @@ private fun TicketDetails(ticket: TicketDetail, admin: Boolean, busy: Boolean, s
             }
             if (ticket.status != "CLOSED") {
                 Spacer(Modifier.height(8.dp))
-                SupportField(reply, { reply = it }, "Write a reply", minLines = 3)
+                SupportField(reply, { reply = it }, if (ticket.source == "PARENT_QR") "Write an internal note" else "Write a reply", minLines = 3)
                 Spacer(Modifier.height(10.dp))
-                PrimaryAction("Send reply", !busy && reply.isNotBlank(), onClick = { onReply(reply.trim()); reply = "" })
+                PrimaryAction(if (ticket.source == "PARENT_QR") "Add internal note" else "Send reply",
+                    !busy && reply.isNotBlank(), onClick = { onReply(reply.trim()); reply = "" })
             }
         }
         Spacer(Modifier.height(20.dp))

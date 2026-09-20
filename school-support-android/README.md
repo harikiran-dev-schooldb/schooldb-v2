@@ -27,6 +27,10 @@ there and a WhatsApp OTP. An administrator cannot edit their own account from th
 
 Ticket records are stored in SchoolDB. The first migration is `20260920080000_support_tickets`. The API routes are under `/api/v1/support/`.
 
+## Parent query QR
+
+After deploying the `20260920140000_parent_support_qr` migration and the web app, a school admin can open **Parent query QR** on the support dashboard. The printable page is at `https://www.schooldb.co.in/<school-code>/parent-query/qr`; its QR opens the public form at `/<school-code>/parent-query`. Parents do not sign in. They choose class and section, search for their child, select a category, and submit a subject and description. A name and phone number can be added for follow-up. The query appears in the admin ticket list with a **PARENT QUERY** label and sends a push alert to active Super Admin and School Admin devices. Notes added inside the app are internal; contact the parent using the provided number when a response is needed.
+
 The debug build allows cleartext traffic for the local server. The release build disallows cleartext traffic and reads the production Clerk publishable key and signing key from `android/keystore.properties` (or the publishable key from `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`).
 
 ## Push notification setup

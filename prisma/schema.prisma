@@ -1795,14 +1795,17 @@ model SupportTicket {
   priority    SupportTicketPriority @default(NORMAL)
   status      SupportTicketStatus   @default(OPEN)
   studentId   String?
-  createdById String
+  createdById String?
+  source      String                @default("STAFF")
+  parentName  String?
+  parentPhone String?
   assignedToId String?
   createdAt   DateTime              @default(now())
   updatedAt   DateTime              @updatedAt
   resolvedAt  DateTime?
   school      School                @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   student     Student?              @relation(fields: [studentId], references: [id], onDelete: SetNull)
-  createdBy   User                  @relation("SupportTicketCreator", fields: [createdById], references: [id])
+  createdBy   User?                 @relation("SupportTicketCreator", fields: [createdById], references: [id], onDelete: SetNull)
   assignedTo  User?                 @relation("SupportTicketAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
   messages    SupportTicketMessage[]
   activities  SupportTicketActivity[]
@@ -1810,6 +1813,7 @@ model SupportTicket {
   @@unique([schoolId, ticketNo])
   @@index([schoolId, status, createdAt(sort: Desc)])
   @@index([schoolId, createdById])
+  @@index([schoolId, source, createdAt(sort: Desc)])
   @@index([schoolId, assignedToId])
   @@index([schoolId, studentId])
 }

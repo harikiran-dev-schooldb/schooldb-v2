@@ -33,7 +33,7 @@ export async function POST(request: Request, context: Context) {
       : [ticket.createdById, ...(await supportAdminUserIds(actor.schoolId))];
     await sendSupportPush({
       schoolId: actor.schoolId,
-      userIds: recipients,
+      userIds: recipients.filter((id): id is string => Boolean(id)),
       excludeUserId: actor.userId,
       title: `New reply · ${ticket.ticketNo}`,
       body: input.data.body.length > 120 ? input.data.body.slice(0, 117) + "..." : input.data.body,
