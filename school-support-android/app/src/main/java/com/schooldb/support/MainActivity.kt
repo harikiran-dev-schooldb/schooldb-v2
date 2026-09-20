@@ -1,6 +1,12 @@
 package com.schooldb.support
 
+import android.Manifest
+import android.os.Build
 import android.os.Bundle
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.compose.rememberLauncherForActivityResult
+import com.google.firebase.messaging.FirebaseMessaging
+import java.util.UUID
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.BorderStroke
@@ -74,6 +80,35 @@ private fun SupportApp() {
     var ticketPage by remember { mutableIntStateOf(1) }
     var ticketTotal by remember { mutableIntStateOf(0) }
     var ticketTotalPages by remember { mutableIntStateOf(1) }
+
+    val notificationPermission = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { }
+    LaunchedEffect(page, school) {
+        if (page == "list" && school.isNotBlank() && BuildConfig.FIREBASE_CONFIGURED) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+            val pushPreferences = preferences.let {
+                LocalContext.current.getSharedPreferences("support_push", 0)
+            }
+            val installationId = pushPreferences.getString("installation_id", null)
+                ?: UUID.randomUUID().toString().also {
+                    pushPreferences.edit().putString("installation_id", it).apply()
+                }
+            FirebaseMessaging.getInstance().token.addOnSuccessListener { token ->
+                pushPreferences.edit().putString("pending_fcm_token", token).apply()
+                scope.launch {
+                    try {
+                        api.registerPushDevice(school, installationId, token)
+                        pushPreferences.edit().remove("pending_fcm_token").apply()
+                    } catch (_: Exception) {
+                        // Retry on the next authenticated app load.
+                    }
+                }
+            }
+        }
+    }
 
     BackHandler(enabled = page != "login" && page != "list") {
     when (page) {
