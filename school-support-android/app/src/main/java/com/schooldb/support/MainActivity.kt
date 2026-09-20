@@ -773,8 +773,14 @@ private fun TicketDetails(ticket: TicketDetail, admin: Boolean, busy: Boolean, s
             Text("LINKED STUDENT", style = MaterialTheme.typography.labelSmall, color = Muted,
                 fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(6.dp))
-            Text(student, style = MaterialTheme.typography.titleMedium, color = Ink,
-                fontWeight = FontWeight.SemiBold)
+            Text(
+                student + listOfNotNull(ticket.studentClassName, ticket.studentSectionName)
+                    .takeIf { it.isNotEmpty() }
+                    ?.joinToString(" - ", prefix = " (", postfix = ")").orEmpty(),
+                style = MaterialTheme.typography.titleMedium,
+                color = Ink,
+                fontWeight = FontWeight.SemiBold
+            )
         } }
         SurfaceCard(Modifier.fillMaxWidth()) {
             SectionTitle("Issue", ticket.type.replace('_', ' ').lowercase().replaceFirstChar { it.uppercase() })
