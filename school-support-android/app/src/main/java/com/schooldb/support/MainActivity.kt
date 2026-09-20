@@ -775,6 +775,23 @@ private fun TicketDetails(ticket: TicketDetail, admin: Boolean, busy: Boolean, s
                 }
             }
         }
+        if (ticket.activities.isNotEmpty()) {
+            SurfaceCard(Modifier.fillMaxWidth()) {
+                SectionTitle("Activity", ticket.activities.size.toString() + " updates")
+                Spacer(Modifier.height(14.dp))
+                ticket.activities.asReversed().forEach { activity ->
+                    Row(Modifier.fillMaxWidth().padding(bottom = 14.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Box(Modifier.size(10.dp).padding(top = 5.dp).background(Indigo, CircleShape))
+                        Column(Modifier.weight(1f)) {
+                            Text(activity.detail, style = MaterialTheme.typography.bodyMedium,
+                                color = Ink, fontWeight = FontWeight.Medium)
+                            Text(activity.actor, style = MaterialTheme.typography.bodySmall, color = Muted)
+                        }
+                    }
+                }
+            }
+        }
         SurfaceCard(Modifier.fillMaxWidth()) {
             SectionTitle("Conversation", ticket.messages.size.toString() + " replies")
             Spacer(Modifier.height(14.dp))
