@@ -159,6 +159,7 @@ class SupportRepository {
         (0 until items.length()).map { index ->
             val item = items.getJSONObject(index)
             StudentOption(item.getString("id"), item.getString("admissionNo"), item.getString("fullName"),
+                item.optString("academicYearName").takeUnless { it.isBlank() || it == "null" },
                 item.optString("className").takeUnless { it.isBlank() || it == "null" },
                 item.optString("sectionName").takeUnless { it.isBlank() || it == "null" })
         }
