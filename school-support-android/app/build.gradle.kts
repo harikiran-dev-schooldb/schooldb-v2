@@ -6,6 +6,11 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
+val firebaseConfigFile = file("google-services.json")
+if (firebaseConfigFile.exists()) {
+    apply(plugin = "com.google.gms.google-services")
+}
+
 val clerkKey = providers.gradleProperty("CLERK_PUBLISHABLE_KEY")
     .orElse(providers.environmentVariable("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY"))
     .orElse("").get()
@@ -38,6 +43,7 @@ android {
         versionCode = 1
         versionName = "0.1.0"
         buildConfigField("String", "CLERK_PUBLISHABLE_KEY", "\"$clerkKey\"")
+        buildConfigField("boolean", "FIREBASE_CONFIGURED", firebaseConfigFile.exists().toString())
     }
 
     buildTypes {
@@ -75,7 +81,9 @@ android {
 
 dependencies {
     val composeBom = platform("androidx.compose:compose-bom:2026.08.00")
+    val firebaseBom = platform("com.google.firebase:firebase-bom:34.19.0")
     implementation(composeBom)
+    implementation(firebaseBom)
     implementation("androidx.activity:activity-compose:1.12.4")
     implementation("androidx.core:core-ktx:1.18.0")
     implementation("androidx.compose.material3:material3")
@@ -84,6 +92,7 @@ dependencies {
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.10.0")
     implementation("com.clerk:clerk-android-api:1.1.3")
+    implementation("com.google.firebase:firebase-messaging")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
     debugImplementation("androidx.compose.ui:ui-tooling")
 }
