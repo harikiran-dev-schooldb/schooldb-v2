@@ -1847,6 +1847,7 @@ model SupportTicketMessage {
   author    User          @relation(fields: [authorId], references: [id])
 
   @@index([ticketId, createdAt])
+  @@index([ticketId, isInternal, createdAt])
   @@index([schoolId, createdAt])
 }
 
