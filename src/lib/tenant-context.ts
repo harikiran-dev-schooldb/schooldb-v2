@@ -21,6 +21,8 @@ const PUBLIC_PATH_PATTERNS = [
   /^\/marketing(?:\/.*)?$/,
   /^\/login(?:\/.*)?$/,
   /^\/register(?:\/.*)?$/,
+  /^\/onboarding\/?$/,
+  /^\/api\/v1\/onboarding\/school\/?$/,
   /^\/pay\/cashfree\/[^/]+\/[^/]+(?:\/complete)?$/,
   /^\/[^/]+\/login(?:\/.*)?$/,
   /^\/[^/]+\/apply(?:\/.*)?$/,
