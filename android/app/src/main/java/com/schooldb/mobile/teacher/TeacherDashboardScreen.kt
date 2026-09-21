@@ -68,6 +68,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
@@ -79,9 +80,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.delay
 import androidx.compose.material.icons.automirrored.outlined.Assignment
 import androidx.compose.material.icons.automirrored.outlined.FactCheck
 import com.schooldb.mobile.preferences.AppPreferences
+import com.schooldb.mobile.admin.AdminDashboardScreen
 import com.schooldb.mobile.preferences.StartTabPreference
 import com.schooldb.mobile.family.FamilyDashboardScreen
 
@@ -126,7 +129,11 @@ fun TeacherDashboardScreen(
     }
 
     LaunchedEffect(refreshKey) {
-        if (refreshKey > 0) viewModel.refresh()
+        if (refreshKey == 0) {
+            withFrameNanos { }
+            delay(50)
+        }
+        if (refreshKey > 0) viewModel.refreshForAccountChange() else viewModel.refresh()
     }
 
     if (state.context?.role in setOf("PARENT", "STUDENT")) {
@@ -135,6 +142,16 @@ fun TeacherDashboardScreen(
             onSwitchAccount = onSwitchAccount ?: viewModel::signOut,
             openNotificationId = openNotificationId,
             onNotificationOpened = onNotificationOpened,
+        )
+        return
+    }
+
+    val adminContext = state.context
+    if (adminContext != null && adminContext.role in setOf("SUPER_ADMIN", "SCHOOL_ADMIN")) {
+        AdminDashboardScreen(
+            school = adminContext,
+            refreshKey = refreshKey,
+            onSwitchAccount = onSwitchAccount ?: viewModel::signOut,
         )
         return
     }
@@ -203,6 +220,14 @@ private fun TeacherShell(
     }
 
     val noticeState by noticeViewModel.uiState.collectAsStateWithLifecycle()
+
+    LaunchedEffect(Unit) {
+        if (openNotificationId.isNullOrBlank()) {
+            withFrameNanos { }
+            delay(100)
+            noticeViewModel.refresh()
+        }
+    }
 
     LaunchedEffect(openNotificationId) {
         if (!openNotificationId.isNullOrBlank()) {
@@ -1150,7 +1175,7 @@ private fun TeacherHome(
     ) { padding ->
 
         when {
-            state.loading && state.context == null -> {
+            state.loading && state.dashboard == null -> {
                 LoadingPage(
                     modifier = Modifier.padding(padding),
                 )

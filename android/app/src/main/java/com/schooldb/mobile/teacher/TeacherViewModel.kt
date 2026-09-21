@@ -21,13 +21,17 @@ class TeacherViewModel(
     private val _uiState = MutableStateFlow(TeacherUiState())
     val uiState: StateFlow<TeacherUiState> = _uiState.asStateFlow()
 
-    init { refresh() }
+    fun refresh() = loadDashboard(clearPrevious = false)
 
-    fun refresh() {
-        _uiState.value = _uiState.value.copy(loading = true, message = null, error = null)
+    fun refreshForAccountChange() = loadDashboard(clearPrevious = true)
+
+    private fun loadDashboard(clearPrevious: Boolean) {
+        _uiState.value = if (clearPrevious) TeacherUiState(loading = true)
+            else _uiState.value.copy(loading = true, message = null, error = null)
         viewModelScope.launch {
             try {
                 val context = withContext(Dispatchers.IO) { repository.context() }
+                _uiState.value = _uiState.value.copy(context = context)
                 val dashboard = if (context.role == "TEACHER") {
                     withContext(Dispatchers.IO) { repository.dashboard() }
                 } else {

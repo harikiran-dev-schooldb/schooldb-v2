@@ -48,6 +48,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -66,6 +67,7 @@ import com.schooldb.mobile.auth.AccountSwitchScreen
 import com.schooldb.mobile.auth.SchoolAccount
 import com.schooldb.mobile.teacher.TeacherDashboardScreen
 import com.schooldb.mobile.notifications.PushNotificationManager
+import kotlinx.coroutines.delay
 
 @Composable
 fun SchoolDbApp(
@@ -86,6 +88,8 @@ fun SchoolDbApp(
 
     LaunchedEffect(state.step, portalRefreshKey) {
         if (state.step == AuthStep.SignedIn && PushNotificationManager.isConfigured()) {
+            withFrameNanos { }
+            delay(500)
             if (PushNotificationManager.shouldRequestPermission(context)) {
                 PushNotificationManager.markPermissionRequested(context)
                 notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)

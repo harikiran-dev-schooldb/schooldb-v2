@@ -6,9 +6,9 @@
     <application
         android:name=".SchoolDbApplication"
         android:allowBackup="true"
-        android:icon="@drawable/ic_schooldb"
+        android:icon="@drawable/schooldb_logo"
         android:label="@string/app_name"
-        android:roundIcon="@drawable/ic_schooldb"
+        android:roundIcon="@drawable/schooldb_logo"
         android:supportsRtl="true"
         android:theme="@style/Theme.SchoolDB"
         android:usesCleartextTraffic="@bool/uses_cleartext_traffic">

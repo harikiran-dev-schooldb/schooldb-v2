@@ -17,10 +17,13 @@ class FamilyViewModel(
     private val _uiState = MutableStateFlow(FamilyUiState())
     val uiState: StateFlow<FamilyUiState> = _uiState.asStateFlow()
 
-    init { refresh() }
+    fun refresh() = loadDashboard(clearPrevious = false)
 
-    fun refresh() {
-        _uiState.value = _uiState.value.copy(loading = true, error = null)
+    fun refreshForAccountChange() = loadDashboard(clearPrevious = true)
+
+    private fun loadDashboard(clearPrevious: Boolean) {
+        _uiState.value = if (clearPrevious) FamilyUiState(loading = true)
+            else _uiState.value.copy(loading = true, error = null)
         viewModelScope.launch {
             try {
                 val dashboard = withContext(Dispatchers.IO) { repository.dashboard() }
@@ -36,8 +39,8 @@ class FamilyViewModel(
                     detailsLoading = selectedId != null,
                     notificationsLoading = true,
                 )
-                if (selectedId != null) loadDetails(selectedId)
-                loadNotifications()
+                if (selectedId != null) viewModelScope.launch { loadDetails(selectedId) }
+                viewModelScope.launch { loadNotifications() }
             } catch (error: Exception) {
                 val message = when (error) {
                     is ApiException -> error.message ?: "SchoolDB request failed."

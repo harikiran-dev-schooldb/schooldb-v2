@@ -17,8 +17,6 @@ class NoticeViewModel(
     private val _uiState = MutableStateFlow(NoticeUiState())
     val uiState: StateFlow<NoticeUiState> = _uiState.asStateFlow()
 
-    init { refresh() }
-
     fun refresh() {
         _uiState.value = _uiState.value.copy(loading = true, error = null)
         viewModelScope.launch {

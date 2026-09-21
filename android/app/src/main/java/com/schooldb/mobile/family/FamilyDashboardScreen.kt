@@ -40,6 +40,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -62,6 +63,7 @@ import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 import java.util.Locale
+import kotlinx.coroutines.delay
 
 private val FamilyIndigo = Color(0xFF4F46E5)
 private val FamilyGreen = Color(0xFF059669)
@@ -110,13 +112,21 @@ fun FamilyDashboardScreen(
             tab = FamilyTab.HOME
         }
     }
-    LaunchedEffect(refreshKey) { if (refreshKey > 0) viewModel.refresh() }
-    LaunchedEffect(openNotificationId) {
+    LaunchedEffect(refreshKey) {
+        if (refreshKey == 0) {
+            withFrameNanos { }
+            delay(50)
+        }
+        if (refreshKey > 0) viewModel.refreshForAccountChange() else viewModel.refresh()
+    }
+    LaunchedEffect(openNotificationId, dashboard != null) {
         if (!openNotificationId.isNullOrBlank()) {
             tab = FamilyTab.MORE
             moreScreen = "NOTIFICATIONS"
-            viewModel.refreshNotifications()
-            onNotificationOpened()
+            if (dashboard != null) {
+                if (!state.notificationsLoading) viewModel.refreshNotifications()
+                onNotificationOpened()
+            }
         }
     }
 

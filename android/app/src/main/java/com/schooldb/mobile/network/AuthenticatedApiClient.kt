@@ -4,7 +4,6 @@ import com.clerk.api.Clerk
 import com.clerk.api.network.serialization.errorMessage
 import com.clerk.api.network.serialization.onFailure
 import com.clerk.api.network.serialization.onSuccess
-import com.clerk.api.session.GetTokenOptions
 import com.schooldb.mobile.BuildConfig
 import java.net.HttpURLConnection
 import java.net.URL
@@ -61,7 +60,7 @@ class AuthenticatedApiClient(
         var token: String? = null
         var failure: String? = null
         Clerk.auth
-            .getToken(GetTokenOptions(skipCache = true))
+            .getToken()
             .onSuccess { token = it }
             .onFailure { failure = it.errorMessage }
         return token?.takeIf(String::isNotBlank)

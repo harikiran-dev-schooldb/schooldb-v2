@@ -50,6 +50,8 @@ import androidx.compose.ui.unit.dp
 import com.clerk.api.Clerk
 import com.schooldb.support.tickets.*
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import androidx.activity.compose.BackHandler
 
@@ -85,6 +87,8 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
     var challenge by remember { mutableStateOf("") }
     var accounts by remember { mutableStateOf<List<Pair<String, String>>>(emptyList()) }
     var tickets by remember { mutableStateOf<List<TicketSummary>>(emptyList()) }
+    var ticketsLoading by remember { mutableStateOf(false) }
+    var ticketsLoaded by remember { mutableStateOf(false) }
     var admin by remember { mutableStateOf(false) }
     var canManageAdmins by remember { mutableStateOf(false) }
     var adminAccounts by remember { mutableStateOf<AdminAccounts?>(null) }
@@ -107,8 +111,8 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
     val notificationPermission = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { }
-    LaunchedEffect(page, school) {
-        if (page == "list" && school.isNotBlank() && BuildConfig.FIREBASE_CONFIGURED) {
+    LaunchedEffect(page, school, ticketsLoaded) {
+        if (page == "list" && ticketsLoaded && school.isNotBlank() && BuildConfig.FIREBASE_CONFIGURED) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
                 ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
             ) {
@@ -163,15 +167,20 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
         }
     }
     suspend fun loadTickets(filter: String = serverTicketFilter, query: String = ticketQuery, targetPage: Int = ticketPage) {
-        val result = api.tickets(school, filter, query, targetPage)
-        tickets = result.tickets
-        ticketPage = result.page
-        ticketTotal = result.total
-        ticketTotalPages = result.totalPages
-        admin = result.isAdmin
-        canManageAdmins = result.canManageAdmins
-        summary = listOf(result.open, result.inProgress, result.urgent, result.resolved)
-        page = "list"
+        ticketsLoading = true
+        try {
+            val result = api.tickets(school, filter, query, targetPage)
+            tickets = result.tickets
+            ticketPage = result.page
+            ticketTotal = result.total
+            ticketTotalPages = result.totalPages
+            admin = result.isAdmin
+            canManageAdmins = result.canManageAdmins
+            summary = listOf(result.open, result.inProgress, result.urgent, result.resolved)
+            ticketsLoaded = true
+        } finally {
+            ticketsLoading = false
+        }
     }
     suspend fun loadDetail(id: String) {
         detail = api.detail(school, id)
@@ -213,7 +222,8 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
     suspend fun finishLogin(token: String) {
         api.activate(token)
         preferences.edit().putString("school", school).apply()
-        loadTickets()
+        ticketsLoaded = false
+        page = "list"
     }
     LaunchedEffect(Unit) {
         if (BuildConfig.CLERK_PUBLISHABLE_KEY.isBlank()) {
@@ -222,8 +232,22 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
         } else {
             Clerk.isInitialized.first { it }
             if (Clerk.activeSession != null && school.isNotBlank()) {
-                try { loadTickets() } catch (_: Exception) { page = "login" }
+                page = "list"
             } else page = "login"
+        }
+    }
+    LaunchedEffect(page, school, ticketsLoaded) {
+        if (page == "list" && school.isNotBlank() && !ticketsLoaded && Clerk.activeSession != null) {
+            // Draw the dashboard before starting its first network request.
+            withFrameNanos { }
+            delay(50)
+            try {
+                loadTickets()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                error = e.message ?: "Could not load tickets. Pull down to retry."
+            }
         }
     }
 
@@ -281,6 +305,8 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
                             api.signOut()
                             preferences.edit().remove("school").apply()
                             tickets = emptyList()
+                            ticketsLoaded = false
+                            ticketsLoading = false
                             analytics = null
                             staff = emptyList()
                             adminAccounts = null
@@ -353,7 +379,7 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
                     }
                 }
                 "list" -> TicketDashboard(school, tickets, summary, admin, canManageAdmins, analytics,
-                    analyticsLoading, analyticsError, busy,
+                    analyticsLoading, analyticsError, busy, ticketsLoading, ticketsLoaded,
                     selectedTab = dashboardTab,
                     query = ticketQuery,
                     page = ticketPage,
@@ -389,7 +415,7 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
                     onRefresh = {
                         analytics = null
                         analyticsRefresh++
-                        run { loadTickets() }
+                        if (!ticketsLoading) run { loadTickets() }
                     },
                     onTicket = { id -> run { loadDetail(id) } })
                 "create" -> CreateTicket(api, school, busy) { subject, description, type, priority, studentId -> run {
@@ -425,7 +451,7 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
 @Composable
 private fun TicketDashboard(school: String, tickets: List<TicketSummary>, summary: List<Int>,
     admin: Boolean, canManageAdmins: Boolean, analytics: SupportAnalytics?, analyticsLoading: Boolean,
-    analyticsError: String?, busy: Boolean,
+    analyticsError: String?, busy: Boolean, ticketsLoading: Boolean, ticketsLoaded: Boolean,
     selectedTab: String, query: String, page: Int, total: Int, totalPages: Int,
     onQueryChange: (String) -> Unit, onSearch: () -> Unit, onPage: (Int) -> Unit,
     requestedFilter: String?, onFilterConsumed: () -> Unit,
@@ -453,7 +479,7 @@ private fun TicketDashboard(school: String, tickets: List<TicketSummary>, summar
         else -> true
     } }
     PullToRefreshBox(
-        isRefreshing = busy,
+        isRefreshing = busy || ticketsLoading,
         onRefresh = onRefresh,
         modifier = Modifier.fillMaxSize(),
     ) {
@@ -479,7 +505,8 @@ private fun TicketDashboard(school: String, tickets: List<TicketSummary>, summar
                     Pill("SUPPORT DESK", Color(0xFFAFC4FF))
                     Spacer(Modifier.height(18.dp))
                     val activeTickets = summary[0] + summary[1]
-                    Text("$activeTickets ${if (activeTickets == 1) "ticket needs" else "tickets need"} attention",
+                    Text(if (!ticketsLoaded) "Your support desk is ready" else
+                        "$activeTickets ${if (activeTickets == 1) "ticket needs" else "tickets need"} attention",
                         style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = Color.White)
                     Spacer(Modifier.height(5.dp))
                     Text("Capture a concern and keep the right people in the loop.",
@@ -505,7 +532,11 @@ private fun TicketDashboard(school: String, tickets: List<TicketSummary>, summar
                 }
             }
         }
-        item {
+        if (ticketsLoading && !ticketsLoaded) item {
+            LinearProgressIndicator(Modifier.fillMaxWidth())
+            Text("Loading tickets…", style = MaterialTheme.typography.bodySmall, color = Muted)
+        }
+        if (ticketsLoaded) item {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     MetricCard("Open", summary[0], Indigo, Modifier.weight(1f))
@@ -705,11 +736,12 @@ private fun TicketDashboard(school: String, tickets: List<TicketSummary>, summar
                         placeholder = { Text("Ticket no, subject, student...") },
                         shape = RoundedCornerShape(13.dp),
                     )
-                    IconButton(onClick = onSearch, enabled = !busy) {
+                    IconButton(onClick = onSearch, enabled = !busy && !ticketsLoading) {
                         Icon(Icons.Outlined.Search, contentDescription = "Search", tint = Indigo)
                     }
                 }
-                Text("$total tickets", style = MaterialTheme.typography.bodySmall, color = Muted)
+                Text(if (ticketsLoaded) "$total tickets" else "Tickets are loading…",
+                    style = MaterialTheme.typography.bodySmall, color = Muted)
             }
         }
         item {
@@ -721,7 +753,14 @@ private fun TicketDashboard(school: String, tickets: List<TicketSummary>, summar
                 }
             }
         }
-        if (visible.isEmpty()) item {
+        if (ticketsLoading && !ticketsLoaded) item {
+            SurfaceCard(Modifier.fillMaxWidth()) {
+                CircularProgressIndicator(Modifier.size(24.dp))
+                Spacer(Modifier.height(8.dp))
+                Text("Loading tickets…", color = Muted)
+            }
+        }
+        if (visible.isEmpty() && ticketsLoaded) item {
             SurfaceCard(Modifier.fillMaxWidth()) {
                 Text(if (tickets.isEmpty()) "No tickets yet" else "No " + filter.lowercase() + " tickets",
                     style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
@@ -731,7 +770,7 @@ private fun TicketDashboard(school: String, tickets: List<TicketSummary>, summar
             }
         }
         items(visible, key = { it.id }) { ticket -> TicketCard(ticket) { onTicket(ticket.id) } }
-        item {
+        if (ticketsLoaded) item {
             SurfaceCard(Modifier.fillMaxWidth()) {
                 Text(
                     "Showing ${visible.size} of $total tickets · Page $page of ${totalPages.coerceAtLeast(1)}",
