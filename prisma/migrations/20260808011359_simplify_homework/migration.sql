@@ -1,4 +1,0 @@
--- AlterTable
-ALTER TABLE "Homework" ALTER COLUMN "academicYearId" DROP NOT NULL,
-ALTER COLUMN "teacherId" DROP NOT NULL,
-ALTER COLUMN "subjectId" DROP NOT NULL;
