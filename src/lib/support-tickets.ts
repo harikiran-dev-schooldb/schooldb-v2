@@ -1,6 +1,7 @@
 import { ApiError } from "@/lib/errors";
 import { requireTenant } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import type { SupportTicketStatus } from "@/generated/prisma/enums";
 
 export async function supportActor() {
   const membership = await requireTenant();
@@ -51,4 +52,25 @@ export async function visibleTicket(id: string, actor: Awaited<ReturnType<typeof
   });
   if (!ticket) throw new ApiError(404, "Ticket not found");
   return ticket;
+}
+
+
+const SUPPORT_STATUS_TRANSITIONS: Record<SupportTicketStatus, readonly SupportTicketStatus[]> = {
+  OPEN: ["ASSIGNED", "IN_PROGRESS", "RESOLVED", "CLOSED"],
+  ASSIGNED: ["OPEN", "IN_PROGRESS", "WAITING", "RESOLVED", "CLOSED"],
+  IN_PROGRESS: ["ASSIGNED", "WAITING", "RESOLVED", "CLOSED"],
+  WAITING: ["ASSIGNED", "IN_PROGRESS", "RESOLVED", "CLOSED"],
+  RESOLVED: ["REOPENED", "CLOSED"],
+  CLOSED: ["REOPENED"],
+  REOPENED: ["ASSIGNED", "IN_PROGRESS", "WAITING", "RESOLVED", "CLOSED"],
+};
+
+export function assertSupportStatusTransition(
+  current: SupportTicketStatus,
+  next: SupportTicketStatus,
+) {
+  if (current === next) return;
+  if (!SUPPORT_STATUS_TRANSITIONS[current].includes(next)) {
+    throw new ApiError(400, `Cannot change ticket status from ${current} to ${next}.`);
+  }
 }
