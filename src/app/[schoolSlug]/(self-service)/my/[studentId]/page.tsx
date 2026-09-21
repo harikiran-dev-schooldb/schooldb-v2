@@ -12,7 +12,6 @@ import {
   FolderLock,
   BusFront,
   LibraryBig,
-  LifeBuoy,
 } from "lucide-react";
 
 import { SelfServicePage } from "@/components/self-service/SelfServicePage";
@@ -79,12 +78,6 @@ const sections = [
     title: "My Library",
     description: "Track borrowed books, return dates and renewals.",
     icon: LibraryBig,
-  },
-  {
-    href: "support",
-    title: "School support",
-    description: "Send queries or concerns and track the school’s response.",
-    icon: LifeBuoy,
   },
   {
     href: "documents",
