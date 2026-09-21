@@ -1835,12 +1835,13 @@ model SupportTicketActivity {
 }
 
 model SupportTicketMessage {
-  id        String        @id @default(cuid())
-  schoolId  String
-  ticketId  String
-  authorId  String
-  body      String
-  createdAt DateTime      @default(now())
+  id         String        @id @default(cuid())
+  schoolId   String
+  ticketId   String
+  authorId   String
+  body       String
+  isInternal Boolean       @default(false)
+  createdAt  DateTime      @default(now())
   school    School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   ticket    SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
   author    User          @relation(fields: [authorId], references: [id])
