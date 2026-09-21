@@ -1,10 +1,11 @@
 package com.schooldb.mobile.admin
 
-import android.content.Intent
-import android.net.Uri
-import androidx.compose.foundation.clickable
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -21,7 +22,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
-import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.outlined.Assessment
 import androidx.compose.material.icons.outlined.Dashboard
@@ -52,7 +53,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -61,9 +62,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.schooldb.mobile.BuildConfig
 import com.schooldb.mobile.network.AuthenticatedApiClient
 import com.schooldb.mobile.network.ApiException
+import com.schooldb.mobile.R
 import com.schooldb.mobile.teacher.MobileContext
 import java.io.IOException
 import kotlinx.coroutines.Dispatchers
@@ -253,10 +254,19 @@ fun AdminDashboardScreen(
     val viewModel: AdminDashboardViewModel = viewModel(key = "admin-dashboard-${school.schoolSlug}")
     val state by viewModel.state.collectAsStateWithLifecycle()
     var selectedTab by rememberSaveable(school.schoolSlug) { mutableStateOf("Home") }
-    val context = LocalContext.current
-    val schoolUrl = BuildConfig.API_BASE_URL.trimEnd('/') + "/" + Uri.encode(school.schoolSlug)
-    fun openWebsite(path: String) {
-        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("$schoolUrl/$path")))
+    var selectedSection by rememberSaveable(school.schoolSlug) { mutableStateOf<String?>(null) }
+    var selectedTicket by rememberSaveable(school.schoolSlug) { mutableStateOf<String?>(null) }
+    BackHandler(enabled = selectedSection != null || selectedTicket != null) {
+        if (selectedTicket != null) selectedTicket = null else selectedSection = null
+    }
+
+    selectedTicket?.let { ticketId ->
+        AdminTicketScreen(ticketId, onBack = { selectedTicket = null })
+        return
+    }
+    selectedSection?.let { section ->
+        AdminSectionScreen(section, onBack = { selectedSection = null }, onTicket = { selectedTicket = it })
+        return
     }
 
     LaunchedEffect(refreshKey) {
@@ -326,9 +336,10 @@ fun AdminDashboardScreen(
     ) { padding ->
         val dashboard = state.dashboard
         if (selectedTab == "Reports") {
-            ReportsTab(state, Modifier.padding(padding), viewModel::loadReport) { openWebsite("reports") }
+            ReportsTab(state, Modifier.padding(padding), viewModel::loadReport)
         } else if (selectedTab == "More") {
-            MoreTab(school, Modifier.padding(padding), ::openWebsite)
+            MoreTab(school, Modifier.padding(padding),
+                onTab = { selectedTab = it }, onSection = { selectedSection = it })
         } else if (dashboard == null && state.loading) {
             Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
@@ -341,7 +352,8 @@ fun AdminDashboardScreen(
                 Button(onClick = viewModel::refresh) { Text("Try again") }
             }
         } else if (selectedTab == "Queries") {
-            QueriesTab(dashboard, Modifier.padding(padding), ::openWebsite)
+            QueriesTab(dashboard, Modifier.padding(padding),
+                onTicket = { selectedTicket = it }, onAllQueries = { selectedSection = "queries" })
         } else {
             LazyColumn(
                 modifier = Modifier.fillMaxSize().padding(padding),
@@ -426,8 +438,7 @@ private fun AdminMetric(label: String, value: Int, modifier: Modifier = Modifier
 }
 
 @Composable
-private fun ReportsTab(state: AdminUiState, modifier: Modifier, onRetry: () -> Unit,
-    onOpenFullReport: () -> Unit) {
+private fun ReportsTab(state: AdminUiState, modifier: Modifier, onRetry: () -> Unit) {
     val report = state.report
     if (report == null) {
         Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -446,7 +457,7 @@ private fun ReportsTab(state: AdminUiState, modifier: Modifier, onRetry: () -> U
                 Text("No active academic year", style = MaterialTheme.typography.titleLarge)
                 Text("Activate an academic year to see reports.")
                 Spacer(Modifier.height(12.dp))
-                Button(onClick = onOpenFullReport) { Text("Open reports website") }
+                Button(onClick = onRetry) { Text("Refresh report") }
             }
         }
         return
@@ -527,10 +538,8 @@ private fun ReportsTab(state: AdminUiState, modifier: Modifier, onRetry: () -> U
             AdminMetric("Overdue library", report.overdueLoans, Modifier.weight(1f))
             AdminMetric("Transport assigned", report.transportAssignments, Modifier.weight(1f))
         } }
-        item { Button(onClick = onOpenFullReport, modifier = Modifier.fillMaxWidth()) {
-            Text("Open full reports and filters")
-            Spacer(Modifier.width(8.dp))
-            Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null)
+        item { Button(onClick = onRetry, modifier = Modifier.fillMaxWidth(), enabled = !state.reportLoading) {
+            Text("Refresh report")
         } }
         if (state.reportLoading) item { CircularProgressIndicator() }
         state.reportError?.let { message -> item { Text(message, color = MaterialTheme.colorScheme.error) } }
@@ -538,7 +547,8 @@ private fun ReportsTab(state: AdminUiState, modifier: Modifier, onRetry: () -> U
 }
 
 @Composable
-private fun QueriesTab(dashboard: AdminDashboard, modifier: Modifier, openWebsite: (String) -> Unit) {
+private fun QueriesTab(dashboard: AdminDashboard, modifier: Modifier,
+    onTicket: (String) -> Unit, onAllQueries: () -> Unit) {
     LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(18.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item { Text("Support attention", style = MaterialTheme.typography.headlineSmall,
@@ -556,9 +566,7 @@ private fun QueriesTab(dashboard: AdminDashboard, modifier: Modifier, openWebsit
             Text("No tickets yet", color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         items(dashboard.recentTickets, key = { it.id }) { ticket ->
-            Card(modifier = if (ticket.parentQuery) Modifier.clickable {
-                openWebsite("parent-queries/${Uri.encode(ticket.id)}")
-            } else Modifier,
+            Card(onClick = { onTicket(ticket.id) },
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 shape = RoundedCornerShape(16.dp)) {
                 Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -572,36 +580,72 @@ private fun QueriesTab(dashboard: AdminDashboard, modifier: Modifier, openWebsit
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    if (ticket.parentQuery) Icon(Icons.AutoMirrored.Filled.OpenInNew,
-                        contentDescription = "Open parent query on website")
+                    Icon(Icons.AutoMirrored.Filled.ArrowForward,
+                        contentDescription = "Open ticket")
                 }
             }
         }
-        item { Button(onClick = { openWebsite("parent-queries") }, modifier = Modifier.fillMaxWidth()) {
+        item { Button(onClick = onAllQueries, modifier = Modifier.fillMaxWidth()) {
             Text("View all parent queries")
         } }
     }
 }
 
 @Composable
-private fun MoreTab(school: MobileContext, modifier: Modifier, openWebsite: (String) -> Unit) {
+private fun MoreTab(school: MobileContext, modifier: Modifier,
+    onTab: (String) -> Unit, onSection: (String) -> Unit) {
+    val tools = listOf(
+        AdminTool("Dashboard", R.drawable.admin_tool_dashboard, "Home"),
+        AdminTool("Reports", R.drawable.admin_tool_reports, "Reports"),
+        AdminTool("Attendance", R.drawable.admin_tool_attendance, "attendance"),
+        AdminTool("Students", R.drawable.admin_tool_students, "students"),
+        AdminTool("Teachers", R.drawable.admin_tool_teachers, "teachers"),
+        AdminTool("Classes", R.drawable.admin_tool_classes, "classes"),
+        AdminTool("Fees", R.drawable.admin_tool_fees, "fees"),
+        AdminTool("Leave requests", R.drawable.admin_tool_leave, "leave"),
+        AdminTool("Parent queries", R.drawable.admin_tool_queries, "queries"),
+    )
     LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(18.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        verticalArrangement = Arrangement.spacedBy(14.dp)) {
         item {
             Text(school.schoolName, style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold)
-            Text("School administration tools", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(Modifier.height(4.dp))
+            Text("Everything you need to run your school", color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         item { SectionHeading("School workspace") }
-        item { AdminLink("Full dashboard", "dashboard", openWebsite) }
-        item { AdminLink("Reports & Analytics", "reports", openWebsite) }
-        item { AdminLink("Attendance", "attendance/dashboard", openWebsite) }
-        item { AdminLink("Students", "students", openWebsite) }
-        item { AdminLink("Teachers", "teachers", openWebsite) }
-        item { AdminLink("Classes", "classes", openWebsite) }
-        item { AdminLink("Fees", "fees/dashboard", openWebsite) }
-        item { AdminLink("Leave requests", "leave-requests", openWebsite) }
-        item { AdminLink("Parent queries", "parent-queries", openWebsite) }
+        items(tools.chunked(2)) { pair ->
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                pair.forEach { tool ->
+                    AdminToolTile(tool, Modifier.weight(1f)) {
+                        if (tool.destination == "Home" || tool.destination == "Reports") {
+                            onTab(tool.destination)
+                        } else {
+                            onSection(tool.destination)
+                        }
+                    }
+                }
+                if (pair.size == 1) Spacer(Modifier.weight(1f))
+            }
+        }
+    }
+}
+
+private data class AdminTool(val label: String, val icon: Int, val destination: String)
+
+@Composable
+private fun AdminToolTile(tool: AdminTool, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    Card(onClick = onClick, modifier = modifier.aspectRatio(1.02f),
+        shape = RoundedCornerShape(22.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+        Column(Modifier.fillMaxSize().padding(15.dp), verticalArrangement = Arrangement.SpaceBetween) {
+            Image(painter = painterResource(tool.icon), contentDescription = null,
+                modifier = Modifier.size(60.dp))
+            Text(tool.label, style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        }
     }
 }
 
@@ -672,13 +716,3 @@ private fun formatPercent(value: Double) = "${formatNumber(value)}%"
 
 private fun formatMoney(value: Double): String = NumberFormat.getCurrencyInstance(Locale.forLanguageTag("en-IN"))
     .apply { maximumFractionDigits = 0 }.format(value)
-
-@Composable
-private fun AdminLink(label: String, path: String, openWebsite: (String) -> Unit) {
-    Card(onClick = { openWebsite(path) }, shape = RoundedCornerShape(14.dp)) {
-        Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(label, Modifier.weight(1f), fontWeight = FontWeight.SemiBold)
-            Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = "Open $label on website")
-        }
-    }
-}

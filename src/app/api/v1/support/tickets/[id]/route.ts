@@ -101,3 +101,6 @@ export async function PATCH(request: Request, context: Context) {
     return ApiResponse.success(ticket);
   });
 }
+
+// The Android client uses POST for updates because HttpURLConnection does not support PATCH.
+export const POST = PATCH;
