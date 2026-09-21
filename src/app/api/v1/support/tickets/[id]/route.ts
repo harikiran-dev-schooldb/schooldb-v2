@@ -4,7 +4,7 @@ import { apiHandler } from "@/lib/api";
 import { ApiError } from "@/lib/errors";
 import { prisma } from "@/lib/prisma";
 import { ApiResponse } from "@/lib/response";
-import { supportActor, visibleTicket } from "@/lib/support-tickets";
+import { assertSupportStatusTransition, supportActor, visibleTicket } from "@/lib/support-tickets";
 import { sendSupportPush, supportAdminUserIds } from "@/lib/support-push";
 import { queueParentQueryWhatsappUpdate } from "@/features/whatsapp/service";
 
@@ -27,6 +27,17 @@ export async function PATCH(request: Request, context: Context) {
     const current = await visibleTicket(id, actor);
     const input = updateInput.safeParse(await request.json());
     if (!input.success) throw new ApiError(400, "Invalid ticket update.");
+
+    const requestedStatus =
+      input.data.status ??
+      (input.data.assignedToId && !current.assignedToId && current.status === "OPEN"
+        ? SupportTicketStatus.ASSIGNED
+        : undefined);
+
+    if (requestedStatus) {
+      assertSupportStatusTransition(current.status, requestedStatus);
+    }
+
     if (input.data.assignedToId) {
       const assignee = await prisma.membership.findFirst({
         where: { schoolId: actor.schoolId, userId: input.data.assignedToId, isActive: true, role: { notIn: ["PARENT", "STUDENT"] } },
@@ -35,8 +46,8 @@ export async function PATCH(request: Request, context: Context) {
       if (!assignee) throw new ApiError(400, "Assignee is not active staff in this school.");
     }
     const changes: Array<{ action: string; detail: string }> = [];
-    if (input.data.status && input.data.status !== current.status)
-      changes.push({ action: "STATUS_CHANGED", detail: `Status changed from ${current.status} to ${input.data.status}` });
+    if (requestedStatus && requestedStatus !== current.status)
+      changes.push({ action: "STATUS_CHANGED", detail: `Status changed from ${current.status} to ${requestedStatus}` });
     if (input.data.priority && input.data.priority !== current.priority)
       changes.push({ action: "PRIORITY_CHANGED", detail: `Priority changed from ${current.priority} to ${input.data.priority}` });
     if (input.data.assignedToId !== undefined && input.data.assignedToId !== current.assignedToId) {
@@ -51,9 +62,10 @@ export async function PATCH(request: Request, context: Context) {
         where: { id },
         data: {
           ...input.data,
-          resolvedAt: input.data.status === "RESOLVED" || input.data.status === "CLOSED"
-            ? new Date()
-            : input.data.status ? null : undefined,
+          status: requestedStatus,
+          resolvedAt: requestedStatus === "RESOLVED" || requestedStatus === "CLOSED"
+            ? current.resolvedAt ?? new Date()
+            : requestedStatus ? null : undefined,
         },
       });
       if (changes.length) await tx.supportTicketActivity.createMany({
@@ -81,8 +93,8 @@ export async function PATCH(request: Request, context: Context) {
         ticketNo: current.ticketNo,
       }).catch((error) => console.error("Support push failed", error));
     }
-    const parentStatus = input.data.status && input.data.status !== current.status
-      ? input.data.status
+    const parentStatus = requestedStatus && requestedStatus !== current.status
+      ? requestedStatus
       : input.data.assignedToId && input.data.assignedToId !== current.assignedToId
         ? "ASSIGNED"
         : null;
