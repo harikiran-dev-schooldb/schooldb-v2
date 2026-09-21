@@ -10,6 +10,7 @@ import {
   LayoutDashboard,
   Megaphone,
   Settings2,
+  School,
   UsersRound,
 } from "lucide-react";
 
@@ -51,6 +52,12 @@ export const navigation: NavigationItem[] = [
     href: "teacher/dashboard",
     icon: LayoutDashboard,
     roles: ["TEACHER"],
+  },
+  {
+    title: "Schools",
+    href: "schools",
+    icon: School,
+    roles: ["SUPER_ADMIN"],
   },
   {
     title: "Reports & Analytics",
