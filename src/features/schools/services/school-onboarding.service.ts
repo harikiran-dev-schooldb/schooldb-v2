@@ -29,9 +29,7 @@ export const schoolOnboardingService = {
       throw new Error("School name is required.");
     }
 
-    const slug = normalizeSlug(
-      input.slug || name,
-    );
+    const slug = normalizeSlug(input.slug || name);
 
     if (!slug) {
       throw new Error(
@@ -41,20 +39,35 @@ export const schoolOnboardingService = {
 
     return prisma.$transaction(async (tx) => {
       /*
-       * --------------------------------------------------------------
-       * CHECK SCHOOL SLUG
-       * --------------------------------------------------------------
+       * Initial onboarding is a one-time bootstrap.
+       * With the current schema, SUPER_ADMIN belongs to a school
+       * membership, so the first user, school and membership are
+       * created atomically.
        */
+      const existingSuperAdmin = await tx.membership.findFirst({
+        where: {
+          role: "SUPER_ADMIN",
+          isActive: true,
+        },
+        select: {
+          id: true,
+        },
+      });
 
-      const existingSchool =
-        await tx.school.findUnique({
-          where: {
-            slug,
-          },
-          select: {
-            id: true,
-          },
-        });
+      if (existingSuperAdmin) {
+        throw new Error(
+          "Initial setup has already been completed. Sign in as a super administrator to create additional schools.",
+        );
+      }
+
+      const existingSchool = await tx.school.findUnique({
+        where: {
+          slug,
+        },
+        select: {
+          id: true,
+        },
+      });
 
       if (existingSchool) {
         throw new Error(
@@ -63,26 +76,19 @@ export const schoolOnboardingService = {
       }
 
       /*
-       * --------------------------------------------------------------
-       * USER
-       * --------------------------------------------------------------
-       *
        * Clerk is the source of authentication.
        * Our User table stores the application-level user.
        */
-
       const user = await tx.user.upsert({
         where: {
           clerkUserId,
         },
-
         update: {
           email,
           firstName,
           lastName,
           imageUrl,
         },
-
         create: {
           clerkUserId,
           email,
@@ -92,12 +98,6 @@ export const schoolOnboardingService = {
         },
       });
 
-      /*
-       * --------------------------------------------------------------
-       * SCHOOL
-       * --------------------------------------------------------------
-       */
-
       const school = await tx.school.create({
         data: {
           name,
@@ -105,23 +105,14 @@ export const schoolOnboardingService = {
         },
       });
 
-      /*
-       * --------------------------------------------------------------
-       * MEMBERSHIP
-       * --------------------------------------------------------------
-       *
-       * The creator becomes SUPER_ADMIN.
-       */
-
-      const membership =
-        await tx.membership.create({
-          data: {
-            userId: user.id,
-            schoolId: school.id,
-            role: "SUPER_ADMIN",
-            isActive: true,
-          },
-        });
+      const membership = await tx.membership.create({
+        data: {
+          userId: user.id,
+          schoolId: school.id,
+          role: "SUPER_ADMIN",
+          isActive: true,
+        },
+      });
 
       return {
         school,
