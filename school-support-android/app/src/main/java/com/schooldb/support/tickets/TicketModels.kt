@@ -4,6 +4,15 @@ enum class TicketType { STUDENT, STAFF, ACADEMIC, MAINTENANCE, IT, ADMINISTRATIO
 enum class TicketPriority { LOW, NORMAL, HIGH, URGENT }
 enum class TicketStatus { OPEN, ASSIGNED, IN_PROGRESS, WAITING, RESOLVED, CLOSED, REOPENED }
 
+fun ticketTypeOrDefault(value: String): TicketType =
+    TicketType.entries.firstOrNull { it.name == value } ?: TicketType.GENERAL
+
+fun ticketPriorityOrDefault(value: String): TicketPriority =
+    TicketPriority.entries.firstOrNull { it.name == value } ?: TicketPriority.NORMAL
+
+fun ticketStatusOrDefault(value: String): TicketStatus =
+    TicketStatus.entries.firstOrNull { it.name == value } ?: TicketStatus.OPEN
+
 data class StudentOption(
     val id: String,
     val admissionNo: String,
