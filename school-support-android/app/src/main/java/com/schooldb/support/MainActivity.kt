@@ -156,14 +156,37 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
     }
 }
 
+    fun handleSessionExpired() {
+        preferences.edit().remove("school").apply()
+        tickets = emptyList()
+        ticketsLoaded = false
+        ticketsLoading = false
+        analytics = null
+        staff = emptyList()
+        adminAccounts = null
+        canManageAdmins = false
+        admin = false
+        detail = null
+        summary = listOf(0, 0, 0, 0)
+        page = "login"
+        error = "Your session has expired. Please sign in again."
+    }
+
     fun run(action: suspend () -> Unit) {
         if (busy) return
         busy = true
         error = ""
         notice = ""
         scope.launch {
-            try { action() } catch (e: Exception) { error = e.message ?: "Request failed." }
-            finally { busy = false }
+            try {
+                action()
+            } catch (e: SupportSessionExpiredException) {
+                handleSessionExpired()
+            } catch (e: Exception) {
+                error = e.message ?: "Request failed."
+            } finally {
+                busy = false
+            }
         }
     }
     suspend fun loadTickets(filter: String = serverTicketFilter, query: String = ticketQuery, targetPage: Int = ticketPage) {
@@ -245,6 +268,8 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
                 loadTickets()
             } catch (e: CancellationException) {
                 throw e
+            } catch (e: SupportSessionExpiredException) {
+                handleSessionExpired()
             } catch (e: Exception) {
                 error = e.message ?: "Could not load tickets. Pull down to retry."
             }
@@ -300,7 +325,18 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
                         if (page == "list") run {
                             val pushPreferences = context.getSharedPreferences("support_push", 0)
                             pushPreferences.getString("installation_id", null)?.let { installationId ->
-                                try { api.unregisterPushDevice(school, installationId) } catch (_: Exception) { }
+                                try {
+                                    api.unregisterPushDevice(school, installationId)
+                                    pushPreferences.edit()
+                                        .remove("pending_unregister_school")
+                                        .remove("pending_unregister_installation_id")
+                                        .apply()
+                                } catch (_: Exception) {
+                                    pushPreferences.edit()
+                                        .putString("pending_unregister_school", school)
+                                        .putString("pending_unregister_installation_id", installationId)
+                                        .apply()
+                                }
                             }
                             api.signOut()
                             preferences.edit().remove("school").apply()
