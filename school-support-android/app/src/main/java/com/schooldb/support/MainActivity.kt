@@ -136,7 +136,7 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
         else -> when (page) {
         "otp" -> page = "login"
         "accounts" -> page = "otp"
-        "create", "ticketState.detail", "admins" -> page = "list"
+        "create", "detail", "admins" -> page = "list"
         "adminForm" -> page = "admins"
         else -> page = "list"
     }
@@ -274,7 +274,7 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
             }
         },
         topBar = {
-        if (page in listOf("list", "create", "ticketState.detail", "admins", "adminForm")) {
+        if (page in listOf("list", "create", "detail", "admins", "adminForm")) {
             Surface(color = Canvas) {
                 Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
                     horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
@@ -289,7 +289,7 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
                             Text(when (page) {
                                 "list" -> "Support desk"
                                 "create" -> "New ticket"
-                                "ticketState.detail" -> "Ticket details"
+                                "detail" -> "Ticket details"
                                 "admins" -> "Administrators"
                                 else -> if (selectedAdmin == null) "Add administrator" else "Edit administrator"
                             },
@@ -441,7 +441,7 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
                         loadTickets()
                     }
                 } }
-                "ticketState.detail" -> ticketState.detail?.let { ticket -> TicketDetails(ticket, ticketState.isAdmin, busy, ticketState.staff,
+                "detail" -> ticketState.detail?.let { ticket -> TicketDetails(ticket, ticketState.isAdmin, busy, ticketState.staff,
                     onReply = { body -> run { api.reply(school, ticket.id, body); loadDetail(ticket.id) } },
                     onStatus = { status -> run { api.updateStatus(school, ticket.id, status); loadDetail(ticket.id) } },
                     onPriority = { priority -> run { api.updatePriority(school, ticket.id, priority); loadDetail(ticket.id) } },
