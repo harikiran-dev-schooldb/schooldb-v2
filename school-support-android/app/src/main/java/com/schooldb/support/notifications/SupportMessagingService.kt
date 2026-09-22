@@ -41,6 +41,14 @@ class SupportMessagingService : FirebaseMessagingService() {
     }
 
     override fun onMessageReceived(message: RemoteMessage) {
+        // Explicit logout clears the school preference. Ignore any stale FCM delivery
+        // that arrives before Firebase rotates/deletes the previous token.
+        val school = getSharedPreferences("support_session", MODE_PRIVATE)
+            .getString("school", null)?.takeIf(String::isNotBlank) ?: return
+
+        val messageSchool = message.data["schoolSlug"]
+        if (!messageSchool.isNullOrBlank() && messageSchool != school) return
+
         val title = message.notification?.title ?: "School Support"
         val body = message.notification?.body ?: "A support ticket was updated."
         val ticketId = message.data["ticketId"]
