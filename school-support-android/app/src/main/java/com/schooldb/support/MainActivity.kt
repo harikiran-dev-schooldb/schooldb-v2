@@ -54,6 +54,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import androidx.activity.compose.BackHandler
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 
 class MainActivity : ComponentActivity() {
     private val notificationTicketId = mutableStateOf<String?>(null)
@@ -76,6 +78,8 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
     val context = LocalContext.current
     val preferences = context.getSharedPreferences("support_session", 0)
     val api = remember { SupportRepository() }
+    val ticketViewModel: SupportTicketViewModel = viewModel()
+    val ticketState by ticketViewModel.state.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     var school by remember { mutableStateOf(preferences.getString("school", "").orEmpty()) }
     var phone by remember { mutableStateOf("") }
@@ -86,33 +90,16 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
     var notice by remember { mutableStateOf("") }
     var challenge by remember { mutableStateOf("") }
     var accounts by remember { mutableStateOf<List<Pair<String, String>>>(emptyList()) }
-    var tickets by remember { mutableStateOf<List<TicketSummary>>(emptyList()) }
-    var ticketsLoading by remember { mutableStateOf(false) }
-    var ticketsLoaded by remember { mutableStateOf(false) }
-    var admin by remember { mutableStateOf(false) }
-    var canManageAdmins by remember { mutableStateOf(false) }
     var adminAccounts by remember { mutableStateOf<AdminAccounts?>(null) }
     var selectedAdmin by remember { mutableStateOf<AdminAccount?>(null) }
-    var summary by remember { mutableStateOf(listOf(0, 0, 0, 0)) }
-    var detail by remember { mutableStateOf<TicketDetail?>(null) }
-    var staff by remember { mutableStateOf<List<StaffOption>>(emptyList()) }
-    var analytics by remember { mutableStateOf<SupportAnalytics?>(null) }
-    var analyticsLoading by remember { mutableStateOf(false) }
-    var analyticsError by remember { mutableStateOf<String?>(null) }
-    var analyticsRefresh by remember { mutableIntStateOf(0) }
     var dashboardTab by remember { mutableStateOf("Overview") }
     var requestedTicketFilter by remember { mutableStateOf<String?>(null) }
-    var serverTicketFilter by remember { mutableStateOf("ALL") }
-    var ticketQuery by remember { mutableStateOf("") }
-    var ticketPage by remember { mutableIntStateOf(1) }
-    var ticketTotal by remember { mutableIntStateOf(0) }
-    var ticketTotalPages by remember { mutableIntStateOf(1) }
 
     val notificationPermission = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { }
-    LaunchedEffect(page, school, ticketsLoaded) {
-        if (page == "list" && ticketsLoaded && school.isNotBlank() && BuildConfig.FIREBASE_CONFIGURED) {
+    LaunchedEffect(page, school, ticketState.ticketsLoaded) {
+        if (page == "list" && ticketState.ticketsLoaded && school.isNotBlank() && BuildConfig.FIREBASE_CONFIGURED) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
                 ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
             ) {
@@ -149,7 +136,7 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
         else -> when (page) {
         "otp" -> page = "login"
         "accounts" -> page = "otp"
-        "create", "detail", "admins" -> page = "list"
+        "create", "ticketState.detail", "admins" -> page = "list"
         "adminForm" -> page = "admins"
         else -> page = "list"
     }
@@ -158,16 +145,8 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
 
     fun handleSessionExpired() {
         preferences.edit().remove("school").apply()
-        tickets = emptyList()
-        ticketsLoaded = false
-        ticketsLoading = false
-        analytics = null
-        staff = emptyList()
+        ticketViewModel.reset()
         adminAccounts = null
-        canManageAdmins = false
-        admin = false
-        detail = null
-        summary = listOf(0, 0, 0, 0)
         page = "login"
         error = "Your session has expired. Please sign in again."
     }
@@ -189,45 +168,41 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
             }
         }
     }
-    suspend fun loadTickets(filter: String = serverTicketFilter, query: String = ticketQuery, targetPage: Int = ticketPage) {
-        ticketsLoading = true
-        try {
-            val result = api.tickets(school, filter, query, targetPage)
-            tickets = result.tickets
-            ticketPage = result.page
-            ticketTotal = result.total
-            ticketTotalPages = result.totalPages
-            admin = result.isAdmin
-            canManageAdmins = result.canManageAdmins
-            summary = listOf(result.open, result.inProgress, result.urgent, result.resolved)
-            ticketsLoaded = true
-        } finally {
-            ticketsLoading = false
-        }
+    suspend fun loadTickets(
+        filter: String = ticketState.filter,
+        query: String = ticketState.query,
+        targetPage: Int = ticketState.page,
+    ) {
+        ticketViewModel.loadTickets(school, filter, query, targetPage)
     }
+
     suspend fun loadDetail(id: String) {
-        detail = api.detail(school, id)
+        ticketViewModel.loadDetail(school, id)
         page = "detail"
     }
-    LaunchedEffect(page, school, admin, analyticsRefresh) {
-        if (page == "list" && admin && school.isNotBlank() && analytics == null) {
-            analyticsLoading = true
-            analyticsError = null
+
+    LaunchedEffect(page, school, ticketState.isAdmin) {
+        if (page == "list" && ticketState.isAdmin && school.isNotBlank()) {
             try {
-                analytics = api.analytics(school)
-            } catch (e: Exception) {
-                analyticsError = e.message ?: "Could not load analytics."
-            } finally {
-                analyticsLoading = false
+                ticketViewModel.loadAnalytics(school)
+            } catch (e: SupportSessionExpiredException) {
+                handleSessionExpired()
             }
         }
     }
-    LaunchedEffect(page, school, admin) {
-        if (page == "detail" && admin && staff.isEmpty()) {
-            try { staff = api.staff(school) }
-            catch (e: Exception) { error = e.message ?: "Could not load staff options." }
+
+    LaunchedEffect(page, school, ticketState.isAdmin) {
+        if (page == "detail" && ticketState.isAdmin && school.isNotBlank()) {
+            try {
+                ticketViewModel.loadStaff(school)
+            } catch (e: SupportSessionExpiredException) {
+                handleSessionExpired()
+            } catch (e: Exception) {
+                error = e.message ?: "Could not load staff options."
+            }
         }
     }
+
     LaunchedEffect(notificationTicketId, page, school) {
         val ticketId = notificationTicketId
         if (ticketId != null && school.isNotBlank() && Clerk.activeSession != null &&
@@ -245,7 +220,7 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
     suspend fun finishLogin(token: String) {
         api.activate(token)
         preferences.edit().putString("school", school).apply()
-        ticketsLoaded = false
+        ticketViewModel.reset()
         page = "list"
     }
     LaunchedEffect(Unit) {
@@ -259,8 +234,8 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
             } else page = "login"
         }
     }
-    LaunchedEffect(page, school, ticketsLoaded) {
-        if (page == "list" && school.isNotBlank() && !ticketsLoaded && Clerk.activeSession != null) {
+    LaunchedEffect(page, school, ticketState.ticketsLoaded) {
+        if (page == "list" && school.isNotBlank() && !ticketState.ticketsLoaded && Clerk.activeSession != null) {
             // Draw the dashboard before starting its first network request.
             withFrameNanos { }
             delay(50)
@@ -271,7 +246,7 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
             } catch (e: SupportSessionExpiredException) {
                 handleSessionExpired()
             } catch (e: Exception) {
-                error = e.message ?: "Could not load tickets. Pull down to retry."
+                error = e.message ?: "Could not load ticketState.tickets. Pull down to retry."
             }
         }
     }
@@ -299,7 +274,7 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
             }
         },
         topBar = {
-        if (page in listOf("list", "create", "detail", "admins", "adminForm")) {
+        if (page in listOf("list", "create", "ticketState.detail", "admins", "adminForm")) {
             Surface(color = Canvas) {
                 Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
                     horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
@@ -314,7 +289,7 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
                             Text(when (page) {
                                 "list" -> "Support desk"
                                 "create" -> "New ticket"
-                                "detail" -> "Ticket details"
+                                "ticketState.detail" -> "Ticket details"
                                 "admins" -> "Administrators"
                                 else -> if (selectedAdmin == null) "Add administrator" else "Edit administrator"
                             },
@@ -345,13 +320,8 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
                             pushPreferences.edit().remove("pending_fcm_token").apply()
                             api.signOut()
                             preferences.edit().remove("school").apply()
-                            tickets = emptyList()
-                            ticketsLoaded = false
-                            ticketsLoading = false
-                            analytics = null
-                            staff = emptyList()
+                            ticketViewModel.reset()
                             adminAccounts = null
-                            canManageAdmins = false
                             page = "login"
                         }
                     }) { Icon(Icons.Outlined.Logout, contentDescription = "Sign out", tint = Ink) }
@@ -419,34 +389,34 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
                         }
                     }
                 }
-                "list" -> TicketDashboard(school, tickets, summary, admin, canManageAdmins, analytics,
-                    analyticsLoading, analyticsError, busy, ticketsLoading, ticketsLoaded,
+                "list" -> TicketDashboard(school, ticketState.tickets, ticketState.summary, ticketState.isAdmin, ticketState.canManageAdmins, ticketState.analytics,
+                    ticketState.analyticsLoading, ticketState.analyticsError, busy, ticketState.ticketsLoading, ticketState.ticketsLoaded,
                     selectedTab = dashboardTab,
-                    query = ticketQuery,
-                    page = ticketPage,
-                    total = ticketTotal,
-                    totalPages = ticketTotalPages,
-                    onQueryChange = { ticketQuery = it },
+                    query = ticketState.query,
+                    page = ticketState.page,
+                    total = ticketState.total,
+                    totalPages = ticketState.totalPages,
+                    onQueryChange = { ticketViewModel.setQuery(it) },
                     onSearch = {
-                        ticketPage = 1
-                        run { loadTickets(serverTicketFilter, ticketQuery, 1) }
+                        ticketViewModel.setPage(1)
+                        run { loadTickets(ticketState.filter, ticketState.query, 1) }
                     },
                     onPage = { nextPage ->
-                        ticketPage = nextPage
-                        run { loadTickets(serverTicketFilter, ticketQuery, nextPage) }
+                        ticketViewModel.setPage(nextPage)
+                        run { loadTickets(ticketState.filter, ticketState.query, nextPage) }
                     },
                     requestedFilter = requestedTicketFilter,
                     onFilterConsumed = { requestedTicketFilter = null },
                     onOpenQueue = { filter ->
                         requestedTicketFilter = filter
-                        ticketPage = 1
-                        serverTicketFilter = when (filter) {
+                        val apiFilter = when (filter) {
                             "Waiting > 2 days" -> "WAITING_OVERDUE"
                             "New today" -> "NEW_TODAY"
                             else -> filter.uppercase().replace(' ', '_')
                         }
+                        ticketViewModel.setFilter(apiFilter)
                         dashboardTab = "Tickets"
-                        run { loadTickets(serverTicketFilter, ticketQuery, 1) }
+                        run { loadTickets(apiFilter, ticketState.query, 1) }
                     },
                     onCreate = { page = "create" },
                     onManageAdmins = { run {
@@ -454,9 +424,11 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
                         page = "admins"
                     } },
                     onRefresh = {
-                        analytics = null
-                        analyticsRefresh++
-                        if (!ticketsLoading) run { loadTickets() }
+                        if (!ticketState.ticketsLoading) run {
+                            ticketViewModel.invalidateAnalytics()
+                            loadTickets()
+                            if (ticketState.isAdmin) ticketViewModel.loadAnalytics(school, force = true)
+                        }
                     },
                     onTicket = { id -> run { loadDetail(id) } })
                 "create" -> CreateTicket(api, school, busy) { subject, description, type, priority, studentId -> run {
@@ -469,7 +441,7 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
                         loadTickets()
                     }
                 } }
-                "detail" -> detail?.let { ticket -> TicketDetails(ticket, admin, busy, staff,
+                "ticketState.detail" -> ticketState.detail?.let { ticket -> TicketDetails(ticket, ticketState.isAdmin, busy, ticketState.staff,
                     onReply = { body -> run { api.reply(school, ticket.id, body); loadDetail(ticket.id) } },
                     onStatus = { status -> run { api.updateStatus(school, ticket.id, status); loadDetail(ticket.id) } },
                     onPriority = { priority -> run { api.updatePriority(school, ticket.id, priority); loadDetail(ticket.id) } },
