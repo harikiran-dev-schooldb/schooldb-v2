@@ -1,4 +1,4 @@
-const PLAY_REVIEW_SCHOOL_SLUG = "testing";
+const PLAY_REVIEW_SCHOOL_SLUG = "demo";
 const PLAY_REVIEW_PHONE = "9999999999";
 const PLAY_REVIEW_OTP = "123456";
 
