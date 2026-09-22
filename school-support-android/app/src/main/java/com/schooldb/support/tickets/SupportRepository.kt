@@ -142,9 +142,9 @@ class SupportRepository {
             val item = items.getJSONObject(index)
             TicketSummary(
                 id = item.getString("id"), ticketNo = item.getString("ticketNo"),
-                subject = item.getString("subject"), type = TicketType.valueOf(item.getString("type")),
-                priority = TicketPriority.valueOf(item.getString("priority")),
-                status = TicketStatus.valueOf(item.getString("status")),
+                subject = item.getString("subject"), type = ticketTypeOrDefault(item.getString("type")),
+                priority = ticketPriorityOrDefault(item.getString("priority")),
+                status = ticketStatusOrDefault(item.getString("status")),
                 source = item.optString("source", "STAFF"),
                 studentName = item.optJSONObject("student")?.optString("fullName")?.takeIf(String::isNotBlank),
             )
@@ -320,7 +320,14 @@ class SupportRepository {
             val status = connection.responseCode
             val payload = (if (status in 200..299) connection.inputStream else connection.errorStream)
                 ?.bufferedReader()?.use { it.readText() }.orEmpty()
-            val json = if (payload.isBlank()) JSONObject() else JSONObject(payload)
+            val json = try {
+                if (payload.isBlank()) JSONObject() else JSONObject(payload)
+            } catch (_: Exception) {
+                if (status !in 200..299) {
+                    throw SupportApiException(status, "Request failed (HTTP $status).")
+                }
+                throw SupportApiException(status, "The server returned an invalid response.")
+            }
             val message = json.optString("message").ifBlank { json.optString("error") }
                 .ifBlank { "Request failed (HTTP $status)." }
             if (status == HttpURLConnection.HTTP_UNAUTHORIZED) {
