@@ -27,3 +27,7 @@ export async function PATCH(request: Request, { params }: Context) {
     return ApiResponse.success(account, "Administrator account updated.");
   });
 }
+
+
+// Android HttpURLConnection is intentionally kept on POST for support mutations.
+export const POST = PATCH;
