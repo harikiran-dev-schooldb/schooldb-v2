@@ -288,7 +288,7 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         bottomBar = {
             if (page == SupportPage.DASHBOARD) {
-                NavigationBar(containerColor = Color.White) {
+                NavigationBar(containerColor = Color.White, tonalElevation = 3.dp) {
                     listOf(
                         Triple("Overview", Icons.Outlined.Dashboard, "Overview"),
                         Triple("Tickets", Icons.Outlined.ConfirmationNumber, "Tickets"),
@@ -315,10 +315,10 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
                             Icon(Icons.Outlined.ArrowBack, contentDescription = "Back", tint = Ink)
                         }
                         Column {
-                            Text(if (page == SupportPage.DASHBOARD) "SCHOOLDB" else "SCHOOL SUPPORT",
+                            Text(if (page == SupportPage.DASHBOARD) "KOTAK SALESIAN SCHOOL" else "KOTAK SUPPORT",
                                 style = MaterialTheme.typography.labelSmall, color = Muted, fontWeight = FontWeight.Bold)
                             Text(when (page) {
-                                SupportPage.DASHBOARD -> BuildConfig.BRAND_SCHOOL_NAME
+                                SupportPage.DASHBOARD -> "Support Desk"
                                 SupportPage.CREATE_TICKET -> "New ticket"
                                 SupportPage.TICKET_DETAIL -> "Ticket details"
                                 SupportPage.ADMINS -> "Administrators"
