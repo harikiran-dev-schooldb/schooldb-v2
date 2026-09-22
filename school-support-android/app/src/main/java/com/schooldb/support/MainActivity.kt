@@ -234,7 +234,12 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
                     "This support ticket is no longer available."
                 else -> e.message
             }
-            onNotificationConsumed()
+            // Consume only terminal deep-link failures. Server errors can be retried.
+            if (e.statusCode == HttpURLConnection.HTTP_FORBIDDEN ||
+                e.statusCode == HttpURLConnection.HTTP_NOT_FOUND
+            ) {
+                onNotificationConsumed()
+            }
         } catch (e: SupportNetworkException) {
             // Keep the ticket id pending. Retrying or reconnecting should still open it.
             error = e.message
