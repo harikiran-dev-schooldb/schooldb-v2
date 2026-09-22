@@ -299,7 +299,7 @@ class SupportRepository {
         val body = JSONObject().put("fullName", fullName).put("phone", phone)
             .put("role", role).put("isActive", isActive)
         if (accountId == null) request("POST", "api/v1/support/admin-accounts", school, body)
-        else request("PATCH", "api/v1/support/admin-accounts/$accountId", school, body)
+        else request("POST", "api/v1/support/admin-accounts/$accountId", school, body)
     }
 
     private suspend fun token(): String {
