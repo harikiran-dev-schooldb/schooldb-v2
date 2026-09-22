@@ -338,6 +338,11 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
                                         .apply()
                                 }
                             }
+                            FirebaseMessaging.getInstance().deleteToken()
+                                .addOnFailureListener { exception ->
+                                    Log.w("SupportPush", "Could not delete Firebase token during sign out", exception)
+                                }
+                            pushPreferences.edit().remove("pending_fcm_token").apply()
                             api.signOut()
                             preferences.edit().remove("school").apply()
                             tickets = emptyList()
