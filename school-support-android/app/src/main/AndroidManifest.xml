@@ -2,7 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    <application android:name=".SupportApplication" android:allowBackup="false" android:icon="@drawable/schooldb_logo" android:roundIcon="@drawable/schooldb_logo" android:label="School Support" android:theme="@style/Theme.SchoolSupport" android:usesCleartextTraffic="@bool/uses_cleartext_traffic">
+    <application android:name=".SupportApplication" android:allowBackup="false" android:icon="@drawable/kotak_school_logo" android:roundIcon="@drawable/kotak_school_logo" android:label="Kotak Salesian School" android:theme="@style/Theme.SchoolSupport" android:usesCleartextTraffic="@bool/uses_cleartext_traffic">
         <service android:name=".notifications.SupportMessagingService" android:exported="false">
             <intent-filter>
                 <action android:name="com.google.firebase.MESSAGING_EVENT" />
