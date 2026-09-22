@@ -87,7 +87,7 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
     val adminState by adminViewModel.state.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     val savedSchool = remember {
-        preferences.getString("school", BuildConfig.DEFAULT_SCHOOL_SLUG).orEmpty()
+        preferences.getString("school", SchoolBrand.defaultSchoolSlug).orEmpty()
     }
     LaunchedEffect(savedSchool) {
         authViewModel.initializeSchool(savedSchool)
@@ -324,7 +324,7 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
                             Icon(Icons.Outlined.ArrowBack, contentDescription = "Back", tint = Ink)
                         }
                         Column {
-                            Text(if (page == SupportPage.DASHBOARD) "KOTAK SALESIAN SCHOOL" else "KOTAK SUPPORT",
+                            Text(if (page == SupportPage.DASHBOARD) SchoolBrand.shortName else SchoolBrand.supportLabel,
                                 style = MaterialTheme.typography.labelSmall, color = Muted, fontWeight = FontWeight.Bold)
                             Text(when (page) {
                                 SupportPage.DASHBOARD -> "Support Desk"
