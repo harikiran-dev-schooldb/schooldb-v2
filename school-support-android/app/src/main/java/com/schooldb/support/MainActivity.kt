@@ -469,4 +469,3 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
     }
 }
 
-@Composable
