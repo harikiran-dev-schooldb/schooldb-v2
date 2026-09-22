@@ -12,6 +12,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.core.content.ContextCompat
 import com.google.firebase.messaging.FirebaseMessaging
 import java.util.UUID
+import java.net.HttpURLConnection
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.BorderStroke
@@ -213,16 +214,31 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
     }
 
     LaunchedEffect(notificationTicketId, page, school) {
-        val ticketId = notificationTicketId
-        if (ticketId != null && school.isNotBlank() && Clerk.activeSession != null &&
-            page !in listOf(SupportPage.LOADING, SupportPage.LOGIN, SupportPage.OTP, SupportPage.ACCOUNTS)) {
-            try {
-                loadDetail(ticketId)
-                onNotificationConsumed()
-            } catch (e: Exception) {
-                error = e.message ?: "Could not open the ticket from the notification."
-                onNotificationConsumed()
+        val ticketId = notificationTicketId ?: return@LaunchedEffect
+        if (school.isBlank() || Clerk.activeSession == null ||
+            page in listOf(SupportPage.LOADING, SupportPage.LOGIN, SupportPage.OTP, SupportPage.ACCOUNTS)
+        ) return@LaunchedEffect
+
+        try {
+            loadDetail(ticketId)
+            onNotificationConsumed()
+        } catch (e: SupportSessionExpiredException) {
+            // Keep the ticket id pending so it can open after the user signs in again.
+            handleSessionExpired()
+        } catch (e: SupportApiException) {
+            error = when (e.statusCode) {
+                HttpURLConnection.HTTP_FORBIDDEN ->
+                    "You do not have permission to open this support ticket."
+                HttpURLConnection.HTTP_NOT_FOUND ->
+                    "This support ticket is no longer available."
+                else -> e.message
             }
+            onNotificationConsumed()
+        } catch (e: SupportNetworkException) {
+            // Keep the ticket id pending. Retrying or reconnecting should still open it.
+            error = e.message
+        } catch (e: Exception) {
+            error = e.message ?: "Could not open the ticket from the notification."
         }
     }
 
