@@ -201,7 +201,7 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
     }
 
     LaunchedEffect(page, school, ticketState.isAdmin) {
-        if (page == "detail" && ticketState.isAdmin && school.isNotBlank()) {
+        if (page == SupportPage.TICKET_DETAIL && ticketState.isAdmin && school.isNotBlank()) {
             try {
                 ticketViewModel.loadStaff(school)
             } catch (e: SupportSessionExpiredException) {
