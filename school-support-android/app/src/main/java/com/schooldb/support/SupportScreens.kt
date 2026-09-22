@@ -52,18 +52,9 @@ internal fun TicketDashboard(school: String, tickets: List<TicketSummary>, summa
             onFilterConsumed()
         }
     }
-    val visible = tickets.filter { ticket -> when (filter) {
-        "Open" -> ticket.status == TicketStatus.OPEN || ticket.status == TicketStatus.REOPENED
-        "Active" -> ticket.status in listOf(TicketStatus.ASSIGNED, TicketStatus.IN_PROGRESS, TicketStatus.WAITING)
-        "Waiting" -> ticket.status == TicketStatus.WAITING
-        "Waiting > 2 days" -> ticket.status == TicketStatus.WAITING
-        "Urgent" -> ticket.priority == TicketPriority.URGENT && ticket.status !in listOf(TicketStatus.RESOLVED, TicketStatus.CLOSED)
-        "Unassigned" -> ticket.status in listOf(TicketStatus.OPEN, TicketStatus.REOPENED) &&
-            ticket.status !in listOf(TicketStatus.RESOLVED, TicketStatus.CLOSED)
-        "New today" -> true
-        "Resolved" -> ticket.status == TicketStatus.RESOLVED || ticket.status == TicketStatus.CLOSED
-        else -> true
-    } }
+    // Queue filters are applied by the API. Do not re-filter the current page locally:
+    // doing so made server-only filters such as WAITING_OVERDUE and NEW_TODAY inaccurate.
+    val visible = tickets
     PullToRefreshBox(
         isRefreshing = busy || ticketsLoading,
         onRefresh = onRefresh,
