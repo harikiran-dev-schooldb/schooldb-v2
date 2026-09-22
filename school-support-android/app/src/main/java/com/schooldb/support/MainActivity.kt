@@ -80,26 +80,29 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
     val api = remember { SupportRepository() }
     val ticketViewModel: SupportTicketViewModel = viewModel()
     val ticketState by ticketViewModel.state.collectAsStateWithLifecycle()
+    val authViewModel: SupportAuthViewModel = viewModel()
+    val authState by authViewModel.state.collectAsStateWithLifecycle()
+    val adminViewModel: SupportAdminViewModel = viewModel()
+    val adminState by adminViewModel.state.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
-    var school by remember { mutableStateOf(preferences.getString("school", "").orEmpty()) }
-    var phone by remember { mutableStateOf("") }
-    var code by remember { mutableStateOf("") }
-    var page by remember { mutableStateOf("loading") }
+    LaunchedEffect(Unit) {
+        authViewModel.initializeSchool(preferences.getString("school", "").orEmpty())
+    }
+    val school = authState.school
+    val phone = authState.phone
+    val code = authState.code
+    var page by remember { mutableStateOf(SupportPage.LOADING) }
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf("") }
     var notice by remember { mutableStateOf("") }
-    var challenge by remember { mutableStateOf("") }
-    var accounts by remember { mutableStateOf<List<Pair<String, String>>>(emptyList()) }
-    var adminAccounts by remember { mutableStateOf<AdminAccounts?>(null) }
-    var selectedAdmin by remember { mutableStateOf<AdminAccount?>(null) }
-    var dashboardTab by remember { mutableStateOf("Overview") }
+    var dashboardTab by remember { mutableStateOf(DashboardTab.OVERVIEW) }
     var requestedTicketFilter by remember { mutableStateOf<String?>(null) }
 
     val notificationPermission = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { }
     LaunchedEffect(page, school, ticketState.ticketsLoaded) {
-        if (page == "list" && ticketState.ticketsLoaded && school.isNotBlank() && BuildConfig.FIREBASE_CONFIGURED) {
+        if (page == SupportPage.DASHBOARD && ticketState.ticketsLoaded && school.isNotBlank() && BuildConfig.FIREBASE_CONFIGURED) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
                 ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
             ) {
@@ -130,15 +133,15 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
         }
     }
 
-    BackHandler(enabled = page != "login" && (page != "list" || dashboardTab != "Overview")) {
+    BackHandler(enabled = page != SupportPage.LOGIN && (page != SupportPage.DASHBOARD || dashboardTab != DashboardTab.OVERVIEW)) {
     when {
-        page == "list" && dashboardTab != "Overview" -> dashboardTab = "Overview"
+        page == SupportPage.DASHBOARD && dashboardTab != DashboardTab.OVERVIEW -> dashboardTab = DashboardTab.OVERVIEW
         else -> when (page) {
-        "otp" -> page = "login"
-        "accounts" -> page = "otp"
-        "create", "detail", "admins" -> page = "list"
-        "adminForm" -> page = "admins"
-        else -> page = "list"
+        SupportPage.OTP -> page = SupportPage.LOGIN
+        SupportPage.ACCOUNTS -> page = SupportPage.OTP
+        SupportPage.CREATE_TICKET, SupportPage.TICKET_DETAIL, SupportPage.ADMINS -> page = SupportPage.DASHBOARD
+        SupportPage.ADMIN_FORM -> page = SupportPage.ADMINS
+        else -> page = SupportPage.DASHBOARD
     }
     }
 }
@@ -146,8 +149,8 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
     fun handleSessionExpired() {
         preferences.edit().remove("school").apply()
         ticketViewModel.reset()
-        adminAccounts = null
-        page = "login"
+        adminViewModel.reset()
+        page = SupportPage.LOGIN
         error = "Your session has expired. Please sign in again."
     }
 
@@ -178,7 +181,7 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
 
     suspend fun loadDetail(id: String) {
         ticketViewModel.loadDetail(school, id)
-        page = "detail"
+        page = SupportPage.TICKET_DETAIL
     }
 
     suspend fun refreshTicketAfterMutation(id: String) {
@@ -188,7 +191,7 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
     }
 
     LaunchedEffect(page, school, ticketState.isAdmin) {
-        if (page == "list" && ticketState.isAdmin && school.isNotBlank()) {
+        if (page == SupportPage.DASHBOARD && ticketState.isAdmin && school.isNotBlank()) {
             try {
                 ticketViewModel.loadAnalytics(school)
             } catch (e: SupportSessionExpiredException) {
@@ -212,7 +215,7 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
     LaunchedEffect(notificationTicketId, page, school) {
         val ticketId = notificationTicketId
         if (ticketId != null && school.isNotBlank() && Clerk.activeSession != null &&
-            page !in listOf("loading", "login", "otp", "accounts")) {
+            page !in listOf(SupportPage.LOADING, SupportPage.LOGIN, SupportPage.OTP, SupportPage.ACCOUNTS)) {
             try {
                 loadDetail(ticketId)
                 onNotificationConsumed()
@@ -227,21 +230,21 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
         api.activate(token)
         preferences.edit().putString("school", school).apply()
         ticketViewModel.reset()
-        page = "list"
+        page = SupportPage.DASHBOARD
     }
     LaunchedEffect(Unit) {
         if (BuildConfig.CLERK_PUBLISHABLE_KEY.isBlank()) {
             error = "Configure CLERK_PUBLISHABLE_KEY before signing in."
-            page = "login"
+            page = SupportPage.LOGIN
         } else {
             Clerk.isInitialized.first { it }
             if (Clerk.activeSession != null && school.isNotBlank()) {
-                page = "list"
-            } else page = "login"
+                page = SupportPage.DASHBOARD
+            } else page = SupportPage.LOGIN
         }
     }
     LaunchedEffect(page, school, ticketState.ticketsLoaded) {
-        if (page == "list" && school.isNotBlank() && !ticketState.ticketsLoaded && Clerk.activeSession != null) {
+        if (page == SupportPage.DASHBOARD && school.isNotBlank() && !ticketState.ticketsLoaded && Clerk.activeSession != null) {
             // Draw the dashboard before starting its first network request.
             withFrameNanos { }
             delay(50)
@@ -262,7 +265,7 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
         containerColor = Canvas,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         bottomBar = {
-            if (page == "list") {
+            if (page == SupportPage.DASHBOARD) {
                 NavigationBar(containerColor = Color.White) {
                     listOf(
                         Triple("Overview", Icons.Outlined.Dashboard, "Overview"),
@@ -270,8 +273,8 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
                         Triple("Analytics", Icons.Outlined.BarChart, "Analytics"),
                     ).forEach { (tab, icon, label) ->
                         NavigationBarItem(
-                            selected = dashboardTab == tab,
-                            onClick = { dashboardTab = tab },
+                            selected = dashboardTab.label == tab,
+                            onClick = { dashboardTab = DashboardTab.entries.first { it.label == tab } },
                             icon = { Icon(icon, contentDescription = label) },
                             label = { Text(label) },
                         )
@@ -280,30 +283,30 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
             }
         },
         topBar = {
-        if (page in listOf("list", "create", "detail", "admins", "adminForm")) {
+        if (page in listOf(SupportPage.DASHBOARD, SupportPage.CREATE_TICKET, SupportPage.TICKET_DETAIL, SupportPage.ADMINS, SupportPage.ADMIN_FORM)) {
             Surface(color = Canvas) {
                 Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
                     horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        if (page == "list") BrandMark(Modifier.size(42.dp))
-                        else IconButton(onClick = { page = if (page == "adminForm") "admins" else "list" }, modifier = Modifier.size(42.dp)) {
+                        if (page == SupportPage.DASHBOARD) BrandMark(Modifier.size(42.dp))
+                        else IconButton(onClick = { page = if (page == SupportPage.ADMIN_FORM) SupportPage.ADMINS else SupportPage.DASHBOARD }, modifier = Modifier.size(42.dp)) {
                             Icon(Icons.Outlined.ArrowBack, contentDescription = "Back", tint = Ink)
                         }
                         Column {
-                            Text(if (page == "list") "SCHOOLDB" else "SCHOOL SUPPORT",
+                            Text(if (page == SupportPage.DASHBOARD) "SCHOOLDB" else "SCHOOL SUPPORT",
                                 style = MaterialTheme.typography.labelSmall, color = Muted, fontWeight = FontWeight.Bold)
                             Text(when (page) {
-                                "list" -> "Support desk"
-                                "create" -> "New ticket"
-                                "detail" -> "Ticket details"
-                                "admins" -> "Administrators"
-                                else -> if (selectedAdmin == null) "Add administrator" else "Edit administrator"
+                                SupportPage.DASHBOARD -> "Support desk"
+                                SupportPage.CREATE_TICKET -> "New ticket"
+                                SupportPage.TICKET_DETAIL -> "Ticket details"
+                                SupportPage.ADMINS -> "Administrators"
+                                else -> if (adminState.selected == null) "Add administrator" else "Edit administrator"
                             },
                                 style = MaterialTheme.typography.titleMedium, color = Ink, fontWeight = FontWeight.Bold)
                         }
                     }
-                    if (page == "list") IconButton(onClick = {
-                        if (page == "list") run {
+                    if (page == SupportPage.DASHBOARD) IconButton(onClick = {
+                        if (page == SupportPage.DASHBOARD) run {
                             val pushPreferences = context.getSharedPreferences("support_push", 0)
                             pushPreferences.getString("installation_id", null)?.let { installationId ->
                                 try {
@@ -327,8 +330,8 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
                             api.signOut()
                             preferences.edit().remove("school").apply()
                             ticketViewModel.reset()
-                            adminAccounts = null
-                            page = "login"
+                            adminViewModel.reset()
+                            page = SupportPage.LOGIN
                         }
                     }) { Icon(Icons.Outlined.Logout, contentDescription = "Sign out", tint = Ink) }
                 }
@@ -348,40 +351,41 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
             }
             if (busy) LinearProgressIndicator(Modifier.fillMaxWidth())
             when (page) {
-                "loading" -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
-                "login" -> AuthShell("Your school, supported.", "Sign in with the mobile number registered at your school.") {
+                SupportPage.LOADING -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+                SupportPage.LOGIN -> AuthShell("Your school, supported.", "Sign in with the mobile number registered at your school.") {
                     Text("WELCOME BACK", style = MaterialTheme.typography.labelSmall, color = Indigo, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(12.dp))
-                    SupportField(school, { school = it.trim() }, "School code")
+                    SupportField(school, authViewModel::setSchool, "School code")
                     Spacer(Modifier.height(12.dp))
-                    SupportField(phone, { phone = it.filter(Char::isDigit).take(10) }, "Mobile number")
+                    SupportField(phone, authViewModel::setPhone, "Mobile number")
                     Spacer(Modifier.height(20.dp))
                     PrimaryAction("Send WhatsApp code", !busy && school.isNotBlank() && phone.length == 10,
-                        onClick = { run { api.sendCode(school, phone); page = "otp" } })
+                        onClick = { run { api.sendCode(school, phone); page = SupportPage.OTP } })
                 }
-                "otp" -> AuthShell("Check WhatsApp", "Enter the six-digit code sent to +91 ••••••" + phone.takeLast(4) + ".") {
+                SupportPage.OTP -> AuthShell("Check WhatsApp", "Enter the six-digit code sent to +91 ••••••" + phone.takeLast(4) + ".") {
                     Text("VERIFY MOBILE", style = MaterialTheme.typography.labelSmall, color = Indigo, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(12.dp))
-                    SupportField(code, { code = it.filter(Char::isDigit).take(6) }, "Six-digit code")
+                    SupportField(code, authViewModel::setCode, "Six-digit code")
                     Spacer(Modifier.height(20.dp))
                     PrimaryAction("Verify and continue", !busy && code.length == 6, onClick = { run {
                         val response = api.verifyCode(school, phone, code)
                         if (response.optBoolean("requiresAccountSelection")) {
-                            challenge = response.getString("challengeId")
+                            val challenge = response.getString("challengeId")
                             val options = response.getJSONArray("accounts")
-                            accounts = (0 until options.length()).map { index ->
+                            val accountOptions = (0 until options.length()).map { index ->
                                 val item = options.getJSONObject(index)
                                 item.getString("id") to (item.optString("name") + " · " + item.optString("role"))
                             }
-                            page = "accounts"
+                            authViewModel.setAccountSelection(challenge, accountOptions)
+                            page = SupportPage.ACCOUNTS
                         } else finishLogin(response.getString("token"))
                     } })
-                    TextButton(onClick = { page = "login" }, modifier = Modifier.align(Alignment.CenterHorizontally)) { Text("Change number") }
+                    TextButton(onClick = { page = SupportPage.LOGIN }, modifier = Modifier.align(Alignment.CenterHorizontally)) { Text("Change number") }
                 }
-                "accounts" -> AuthShell("Choose an account", "Select how you want to work in " + school + ".") {
-                    accounts.forEach { (id, label) ->
+                SupportPage.ACCOUNTS -> AuthShell("Choose an account", "Select how you want to work in " + school + ".") {
+                    authState.accounts.forEach { (id, label) ->
                         SurfaceCard(Modifier.fillMaxWidth().padding(bottom = 10.dp).clickable { run {
-                            finishLogin(api.selectAccount(school, challenge, id).getString("token"))
+                            finishLogin(api.selectAccount(school, authState.challenge, id).getString("token"))
                         } }) {
                             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                                 Column(Modifier.weight(1f)) {
@@ -395,9 +399,9 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
                         }
                     }
                 }
-                "list" -> TicketDashboard(school, ticketState.tickets, ticketState.summary, ticketState.isAdmin, ticketState.canManageAdmins, ticketState.analytics,
+                SupportPage.DASHBOARD -> TicketDashboard(school, ticketState.tickets, ticketState.summary, ticketState.isAdmin, ticketState.canManageAdmins, ticketState.analytics,
                     ticketState.analyticsLoading, ticketState.analyticsError, busy, ticketState.ticketsLoading, ticketState.ticketsLoaded,
-                    selectedTab = dashboardTab,
+                    selectedTab = dashboardTab.label,
                     query = ticketState.query,
                     page = ticketState.page,
                     total = ticketState.total,
@@ -421,13 +425,13 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
                             else -> filter.uppercase().replace(' ', '_')
                         }
                         ticketViewModel.setFilter(apiFilter)
-                        dashboardTab = "Tickets"
+                        dashboardTab = DashboardTab.TICKETS
                         run { loadTickets(apiFilter, ticketState.query, 1) }
                     },
-                    onCreate = { page = "create" },
+                    onCreate = { page = SupportPage.CREATE_TICKET },
                     onManageAdmins = { run {
-                        adminAccounts = api.adminAccounts(school)
-                        page = "admins"
+                        adminViewModel.setAccounts(api.adminAccounts(school))
+                        page = SupportPage.ADMINS
                     } },
                     onRefresh = {
                         if (!ticketState.ticketsLoading) run {
@@ -437,7 +441,7 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
                         }
                     },
                     onTicket = { id -> run { loadDetail(id) } })
-                "create" -> CreateTicket(api, school, busy) { subject, description, type, priority, studentId -> run {
+                SupportPage.CREATE_TICKET -> CreateTicket(api, school, busy) { subject, description, type, priority, studentId -> run {
                     val createdId = api.create(school, subject, description, type, priority, studentId)
                     notice = "Ticket created successfully."
                     try {
@@ -445,24 +449,24 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
                         ticketViewModel.loadTickets(school)
                         ticketViewModel.invalidateAnalytics()
                     } catch (_: Exception) {
-                        page = "list"
+                        page = SupportPage.DASHBOARD
                         loadTickets()
                     }
                 } }
-                "detail" -> ticketState.detail?.let { ticket -> TicketDetails(ticket, ticketState.isAdmin, busy, ticketState.staff,
+                SupportPage.TICKET_DETAIL -> ticketState.detail?.let { ticket -> TicketDetails(ticket, ticketState.isAdmin, busy, ticketState.staff,
                     onReply = { body -> run { api.reply(school, ticket.id, body); refreshTicketAfterMutation(ticket.id) } },
                     onStatus = { status -> run { api.updateStatus(school, ticket.id, status); refreshTicketAfterMutation(ticket.id) } },
                     onPriority = { priority -> run { api.updatePriority(school, ticket.id, priority); refreshTicketAfterMutation(ticket.id) } },
                     onAssign = { userId -> run { api.assign(school, ticket.id, userId); refreshTicketAfterMutation(ticket.id) } }) }
-                "admins" -> adminAccounts?.let { result -> AdminAccountsScreen(result, busy,
-                    onCreate = { selectedAdmin = null; page = "adminForm" },
-                    onEdit = { selectedAdmin = it; page = "adminForm" },
-                    onRefresh = { run { adminAccounts = api.adminAccounts(school) } }) }
-                "adminForm" -> AdminAccountForm(selectedAdmin, busy) { fullName, mobile, role, active -> run {
-                    api.saveAdminAccount(school, selectedAdmin?.id, fullName, mobile, role, active)
-                    adminAccounts = api.adminAccounts(school)
-                    page = "admins"
-                    notice = if (selectedAdmin == null) "Administrator account created." else "Administrator account updated."
+                SupportPage.ADMINS -> adminState.accounts?.let { result -> AdminAccountsScreen(result, busy,
+                    onCreate = { adminViewModel.select(null); page = SupportPage.ADMIN_FORM },
+                    onEdit = { adminViewModel.select(it); page = SupportPage.ADMIN_FORM },
+                    onRefresh = { run { adminViewModel.setAccounts(api.adminAccounts(school)) } }) }
+                SupportPage.ADMIN_FORM -> AdminAccountForm(adminState.selected, busy) { fullName, mobile, role, active -> run {
+                    api.saveAdminAccount(school, adminState.selected?.id, fullName, mobile, role, active)
+                    adminViewModel.setAccounts(api.adminAccounts(school))
+                        page = SupportPage.ADMINS
+                    notice = if (adminState.selected == null) "Administrator account created." else "Administrator account updated."
                 } }
             }
         }
