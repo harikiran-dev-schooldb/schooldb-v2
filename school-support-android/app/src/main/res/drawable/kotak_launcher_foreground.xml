@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item
-        android:left="18dp"
-        android:top="18dp"
-        android:right="18dp"
-        android:bottom="18dp">
+        android:left="24dp"
+        android:top="24dp"
+        android:right="24dp"
+        android:bottom="24dp">
         <bitmap
             android:src="@drawable/kotak_school_logo"
-            android:gravity="fill" />
+            android:gravity="center" />
     </item>
 </layer-list>
