@@ -77,9 +77,9 @@ internal fun TicketDashboard(school: String, tickets: List<TicketSummary>, summa
         }
         item {
             Box(Modifier.fillMaxWidth().background(
-                Brush.linearGradient(listOf(Navy, Color(0xFF303E80), Violet)), RoundedCornerShape(24.dp))) {
+                Brush.linearGradient(listOf(Navy, Color(0xFF235A8C), SchoolGreen)), RoundedCornerShape(24.dp))) {
                 Column(Modifier.padding(22.dp)) {
-                    Pill("SUPPORT DESK", Color(0xFFAFC4FF))
+                    Pill("KOTAK SUPPORT", Color(0xFFFFE39A))
                     Spacer(Modifier.height(18.dp))
                     val activeTickets = summary[0] + summary[1]
                     Text(if (!ticketsLoaded) "Your support desk is ready" else
@@ -799,7 +799,7 @@ internal fun AuthShell(title: String, subtitle: String, content: @Composable Col
         Spacer(Modifier.height(46.dp))
         BrandMark(Modifier.size(64.dp))
         Spacer(Modifier.height(18.dp))
-        Text("SCHOOLDB  /  SUPPORT", style = MaterialTheme.typography.labelSmall,
+        Text("KOTAK SALESIAN SCHOOL  /  SUPPORT", style = MaterialTheme.typography.labelSmall,
             color = Indigo, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(10.dp))
         Text(title, style = MaterialTheme.typography.headlineLarge, color = Ink,
@@ -809,7 +809,7 @@ internal fun AuthShell(title: String, subtitle: String, content: @Composable Col
         Spacer(Modifier.height(30.dp))
         SurfaceCard(Modifier.fillMaxWidth(), content)
         Spacer(Modifier.height(30.dp))
-        Text("Secure access for your school team", style = MaterialTheme.typography.bodySmall,
+        Text("Kotak Salesian School · Visakhapatnam", style = MaterialTheme.typography.bodySmall,
             color = Muted, modifier = Modifier.align(Alignment.CenterHorizontally))
         Spacer(Modifier.height(30.dp))
     }
