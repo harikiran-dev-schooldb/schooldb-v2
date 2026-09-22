@@ -19,10 +19,10 @@ internal object SchoolBrand {
     @DrawableRes
     val logoRes: Int = R.drawable.kotak_school_logo
 
-    val primary = Color(BuildConfig.BRAND_PRIMARY_COLOR.toULong())
-    val secondary = Color(BuildConfig.BRAND_SECONDARY_COLOR.toULong())
-    val accent = Color(BuildConfig.BRAND_ACCENT_COLOR.toULong())
-    val danger = Color(BuildConfig.BRAND_DANGER_COLOR.toULong())
+    val primary = Color(BuildConfig.BRAND_PRIMARY_COLOR)
+    val secondary = Color(BuildConfig.BRAND_SECONDARY_COLOR)
+    val accent = Color(BuildConfig.BRAND_ACCENT_COLOR)
+    val danger = Color(BuildConfig.BRAND_DANGER_COLOR)
 
     val authEyebrow: String get() = "$schoolName  /  SUPPORT"
     val footer: String get() = listOf(schoolName, location).filter { it.isNotBlank() }.joinToString(" · ")
