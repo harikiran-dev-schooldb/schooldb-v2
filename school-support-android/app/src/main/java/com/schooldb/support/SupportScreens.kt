@@ -29,9 +29,12 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.schooldb.support.tickets.*
+import kotlinx.coroutines.launch
 
+@Composable
 internal fun TicketDashboard(school: String, tickets: List<TicketSummary>, summary: List<Int>,
     admin: Boolean, canManageAdmins: Boolean, analytics: SupportAnalytics?, analyticsLoading: Boolean,
     analyticsError: String?, busy: Boolean, ticketsLoading: Boolean, ticketsLoaded: Boolean,
