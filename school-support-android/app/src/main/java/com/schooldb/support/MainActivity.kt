@@ -86,9 +86,14 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
     val adminViewModel: SupportAdminViewModel = viewModel()
     val adminState by adminViewModel.state.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
-    LaunchedEffect(Unit) {
-        authViewModel.initializeSchool(preferences.getString("school", BuildConfig.DEFAULT_SCHOOL_SLUG).orEmpty())
+    val savedSchool = remember {
+        preferences.getString("school", BuildConfig.DEFAULT_SCHOOL_SLUG).orEmpty()
     }
+    LaunchedEffect(savedSchool) {
+        authViewModel.initializeSchool(savedSchool)
+    }
+    val clerkInitialized by Clerk.isInitialized.collectAsStateWithLifecycle()
+    val clerkUser by Clerk.userFlow.collectAsStateWithLifecycle()
     val school = authState.school
     val phone = authState.phone
     val code = authState.code
@@ -254,16 +259,20 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
         ticketViewModel.reset()
         page = SupportPage.DASHBOARD
     }
-    LaunchedEffect(Unit) {
+    // Clerk initialization is asynchronous. Observe its restored user state instead of
+    // reading activeSession once during process startup; this keeps the user signed in
+    // after swiping the app away or rebooting the device.
+    LaunchedEffect(clerkInitialized, clerkUser, school) {
         if (BuildConfig.CLERK_PUBLISHABLE_KEY.isBlank()) {
             error = "Configure CLERK_PUBLISHABLE_KEY before signing in."
             page = SupportPage.LOGIN
-        } else {
-            Clerk.isInitialized.first { it }
-            if (Clerk.activeSession != null && school.isNotBlank()) {
-                page = SupportPage.DASHBOARD
-            } else page = SupportPage.LOGIN
+            return@LaunchedEffect
         }
+        if (!clerkInitialized || school.isBlank()) {
+            page = SupportPage.LOADING
+            return@LaunchedEffect
+        }
+        page = if (clerkUser != null) SupportPage.DASHBOARD else SupportPage.LOGIN
     }
     LaunchedEffect(page, school, ticketState.ticketsLoaded) {
         if (page == SupportPage.DASHBOARD && school.isNotBlank() && !ticketState.ticketsLoaded && Clerk.activeSession != null) {
