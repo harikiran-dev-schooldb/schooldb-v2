@@ -20,13 +20,13 @@ import androidx.compose.ui.unit.dp
 internal val Ink = Color(0xFF18314F)
 internal val Muted = Color(0xFF6B7885)
 internal val Canvas = Color(0xFFF8FAF7)
-internal val Indigo = Color(0xFF235A8C)
+internal val Indigo = SchoolBrand.primary
 internal val Line = Color(0xFFE2E8E1)
 internal val Navy = Color(0xFF173F6B)
-internal val Violet = Color(0xFF2E7D4F)
-internal val SchoolGreen = Color(0xFF2E7D4F)
-internal val SchoolGold = Color(0xFFE0A62B)
-internal val SchoolRed = Color(0xFFC7352E)
+internal val Violet = SchoolBrand.secondary
+internal val SchoolGreen = SchoolBrand.secondary
+internal val SchoolGold = SchoolBrand.accent
+internal val SchoolRed = SchoolBrand.danger
 
 private val SupportColors = lightColorScheme(
     primary = Indigo,
@@ -54,8 +54,8 @@ internal fun BrandMark(modifier: Modifier = Modifier) {
         shadowElevation = 2.dp,
     ) {
         Image(
-            painter = painterResource(R.drawable.kotak_school_logo),
-            contentDescription = "Kotak Salesian School logo",
+            painter = painterResource(SchoolBrand.logoRes),
+            contentDescription = SchoolBrand.schoolName + " logo",
             modifier = Modifier.fillMaxSize().padding(3.dp),
             contentScale = ContentScale.Fit,
         )
