@@ -151,6 +151,7 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
         preferences.edit().remove("school").apply()
         ticketViewModel.reset()
         adminViewModel.reset()
+        authViewModel.clearCredentials()
         page = SupportPage.LOGIN
         error = "Your session has expired. Please sign in again."
     }
@@ -347,6 +348,9 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
                             preferences.edit().remove("school").apply()
                             ticketViewModel.reset()
                             adminViewModel.reset()
+                            authViewModel.clearAll()
+                            dashboardTab = DashboardTab.OVERVIEW
+                            requestedTicketFilter = null
                             page = SupportPage.LOGIN
                         }
                     }) { Icon(Icons.Outlined.Logout, contentDescription = "Sign out", tint = Ink) }
