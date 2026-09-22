@@ -255,7 +255,7 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
             } catch (e: SupportSessionExpiredException) {
                 handleSessionExpired()
             } catch (e: Exception) {
-                error = e.message ?: "Could not load ticketState.tickets. Pull down to retry."
+                error = e.message ?: "Could not load tickets. Pull down to retry."
             }
         }
     }
@@ -463,10 +463,11 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
                     onEdit = { adminViewModel.select(it); page = SupportPage.ADMIN_FORM },
                     onRefresh = { run { adminViewModel.setAccounts(api.adminAccounts(school)) } }) }
                 SupportPage.ADMIN_FORM -> AdminAccountForm(adminState.selected, busy) { fullName, mobile, role, active -> run {
+                    val creatingAdmin = adminState.selected == null
                     api.saveAdminAccount(school, adminState.selected?.id, fullName, mobile, role, active)
                     adminViewModel.setAccounts(api.adminAccounts(school))
-                        page = SupportPage.ADMINS
-                    notice = if (adminState.selected == null) "Administrator account created." else "Administrator account updated."
+                    page = SupportPage.ADMINS
+                    notice = if (creatingAdmin) "Administrator account created." else "Administrator account updated."
                 } }
             }
         }
