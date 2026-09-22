@@ -799,7 +799,7 @@ private fun OptionMenu(selected: String, values: List<String>, choose: (String) 
 }
 
 @Composable
-private fun AuthShell(title: String, subtitle: String, content: @Composable ColumnScope.() -> Unit) {
+internal fun AuthShell(title: String, subtitle: String, content: @Composable ColumnScope.() -> Unit) {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp),
         verticalArrangement = Arrangement.spacedBy(0.dp)) {
         Spacer(Modifier.height(46.dp))
@@ -822,7 +822,7 @@ private fun AuthShell(title: String, subtitle: String, content: @Composable Colu
 }
 
 @Composable
-private fun SupportField(value: String, onValueChange: (String) -> Unit, label: String, minLines: Int = 1) {
+internal fun SupportField(value: String, onValueChange: (String) -> Unit, label: String, minLines: Int = 1) {
     OutlinedTextField(value = value, onValueChange = onValueChange, label = { Text(label) },
         modifier = Modifier.fillMaxWidth(), minLines = minLines, singleLine = minLines == 1,
         shape = RoundedCornerShape(14.dp),
@@ -837,7 +837,7 @@ private fun SupportField(value: String, onValueChange: (String) -> Unit, label: 
 }
 
 @Composable
-private fun PrimaryAction(label: String, enabled: Boolean, onClick: () -> Unit) {
+internal fun PrimaryAction(label: String, enabled: Boolean, onClick: () -> Unit) {
     Button(onClick = onClick, enabled = enabled, modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp),
         shape = RoundedCornerShape(14.dp), colors = ButtonDefaults.buttonColors(containerColor = Indigo)) {
         Text(label, fontWeight = FontWeight.SemiBold)
