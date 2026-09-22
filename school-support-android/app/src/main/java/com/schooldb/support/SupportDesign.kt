@@ -1,28 +1,32 @@
 package com.schooldb.support
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.ConfirmationNumber
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
-internal val Ink = Color(0xFF172238)
-internal val Muted = Color(0xFF71819A)
-internal val Canvas = Color(0xFFF6F8FC)
-internal val Indigo = Color(0xFF4E46D4)
-internal val Line = Color(0xFFE7ECF5)
-internal val Navy = Color(0xFF15244A)
-internal val Violet = Color(0xFF6555E8)
+internal val Ink = Color(0xFF18314F)
+internal val Muted = Color(0xFF6B7885)
+internal val Canvas = Color(0xFFF8FAF7)
+internal val Indigo = Color(0xFF235A8C)
+internal val Line = Color(0xFFE2E8E1)
+internal val Navy = Color(0xFF173F6B)
+internal val Violet = Color(0xFF2E7D4F)
+internal val SchoolGreen = Color(0xFF2E7D4F)
+internal val SchoolGold = Color(0xFFE0A62B)
+internal val SchoolRed = Color(0xFFC7352E)
 
 private val SupportColors = lightColorScheme(
     primary = Indigo,
@@ -42,11 +46,19 @@ internal fun SupportTheme(content: @Composable () -> Unit) {
 
 @Composable
 internal fun BrandMark(modifier: Modifier = Modifier) {
-    Box(
-        modifier.size(48.dp).background(Brush.linearGradient(listOf(Navy, Indigo)), RoundedCornerShape(16.dp)),
-        contentAlignment = Alignment.Center,
+    Surface(
+        modifier = modifier,
+        shape = CircleShape,
+        color = Color.White,
+        border = BorderStroke(1.dp, Line),
+        shadowElevation = 2.dp,
     ) {
-        Icon(Icons.Outlined.ConfirmationNumber, contentDescription = null, tint = Color.White, modifier = Modifier.size(27.dp))
+        Image(
+            painter = painterResource(R.drawable.kotak_school_logo),
+            contentDescription = "Kotak Salesian School logo",
+            modifier = Modifier.fillMaxSize().padding(3.dp),
+            contentScale = ContentScale.Fit,
+        )
     }
 }
 
