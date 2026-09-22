@@ -55,6 +55,8 @@ android {
         versionName = "0.2.0"
         buildConfigField("String", "CLERK_PUBLISHABLE_KEY", "\"$clerkKey\"")
         buildConfigField("boolean", "FIREBASE_CONFIGURED", firebaseConfigFile.exists().toString())
+        buildConfigField("String", "DEFAULT_SCHOOL_SLUG", "\"demo\"")
+        buildConfigField("String", "BRAND_SCHOOL_NAME", "\"Kotak Salesian School\"")
     }
 
     buildTypes {
