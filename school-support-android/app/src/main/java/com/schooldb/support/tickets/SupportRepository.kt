@@ -61,6 +61,14 @@ data class SupportAnalytics(
     val staffWorkload: List<StaffWorkload>,
 )
 
+class SupportApiException(
+    val statusCode: Int,
+    override val message: String,
+) : Exception(message)
+
+class SupportSessionExpiredException :
+    Exception("Your session has expired. Please sign in again.")
+
 class SupportRepository {
     suspend fun sendCode(school: String, phone: String) = withContext(Dispatchers.IO) {
         request("POST", "api/v1/public/auth/send-otp", null,
@@ -215,15 +223,15 @@ class SupportRepository {
     }
 
     suspend fun updateStatus(school: String, id: String, status: TicketStatus) = withContext(Dispatchers.IO) {
-        request("PATCH", "api/v1/support/tickets/$id", school, JSONObject().put("status", status.name))
+        request("POST", "api/v1/support/tickets/$id", school, JSONObject().put("status", status.name))
     }
 
     suspend fun updatePriority(school: String, id: String, priority: TicketPriority) = withContext(Dispatchers.IO) {
-        request("PATCH", "api/v1/support/tickets/$id", school, JSONObject().put("priority", priority.name))
+        request("POST", "api/v1/support/tickets/$id", school, JSONObject().put("priority", priority.name))
     }
 
     suspend fun assign(school: String, id: String, userId: String?) = withContext(Dispatchers.IO) {
-        request("PATCH", "api/v1/support/tickets/$id", school, JSONObject().put("assignedToId", userId))
+        request("POST", "api/v1/support/tickets/$id", school, JSONObject().put("assignedToId", userId))
     }
 
     suspend fun analytics(school: String): SupportAnalytics = withContext(Dispatchers.IO) {
@@ -290,7 +298,7 @@ class SupportRepository {
         var value: String? = null
         var failure: String? = null
         Clerk.auth.getToken().onSuccess { value = it }.onFailure { failure = it.errorMessage }
-        return value?.takeIf(String::isNotBlank) ?: error(failure ?: "Session expired. Sign in again.")
+        return value?.takeIf(String::isNotBlank) ?: throw SupportSessionExpiredException()
     }
 
     private suspend fun request(method: String, path: String, school: String?, body: JSONObject? = null): JSONObject {
@@ -313,8 +321,14 @@ class SupportRepository {
             val payload = (if (status in 200..299) connection.inputStream else connection.errorStream)
                 ?.bufferedReader()?.use { it.readText() }.orEmpty()
             val json = if (payload.isBlank()) JSONObject() else JSONObject(payload)
-            if (status !in 200..299) error(json.optString("message").ifBlank { json.optString("error") }
-                .ifBlank { "Request failed (HTTP $status)." })
+            val message = json.optString("message").ifBlank { json.optString("error") }
+                .ifBlank { "Request failed (HTTP $status)." }
+            if (status == HttpURLConnection.HTTP_UNAUTHORIZED) {
+                throw SupportSessionExpiredException()
+            }
+            if (status !in 200..299) {
+                throw SupportApiException(status, message)
+            }
             json
         } finally { connection.disconnect() }
     }
