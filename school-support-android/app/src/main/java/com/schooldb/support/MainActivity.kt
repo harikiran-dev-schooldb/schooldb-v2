@@ -181,6 +181,12 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
         page = "detail"
     }
 
+    suspend fun refreshTicketAfterMutation(id: String) {
+        ticketViewModel.loadDetail(school, id)
+        ticketViewModel.loadTickets(school)
+        ticketViewModel.invalidateAnalytics()
+    }
+
     LaunchedEffect(page, school, ticketState.isAdmin) {
         if (page == "list" && ticketState.isAdmin && school.isNotBlank()) {
             try {
@@ -436,16 +442,18 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
                     notice = "Ticket created successfully."
                     try {
                         loadDetail(createdId)
+                        ticketViewModel.loadTickets(school)
+                        ticketViewModel.invalidateAnalytics()
                     } catch (_: Exception) {
                         page = "list"
                         loadTickets()
                     }
                 } }
                 "detail" -> ticketState.detail?.let { ticket -> TicketDetails(ticket, ticketState.isAdmin, busy, ticketState.staff,
-                    onReply = { body -> run { api.reply(school, ticket.id, body); loadDetail(ticket.id) } },
-                    onStatus = { status -> run { api.updateStatus(school, ticket.id, status); loadDetail(ticket.id) } },
-                    onPriority = { priority -> run { api.updatePriority(school, ticket.id, priority); loadDetail(ticket.id) } },
-                    onAssign = { userId -> run { api.assign(school, ticket.id, userId); loadDetail(ticket.id) } }) }
+                    onReply = { body -> run { api.reply(school, ticket.id, body); refreshTicketAfterMutation(ticket.id) } },
+                    onStatus = { status -> run { api.updateStatus(school, ticket.id, status); refreshTicketAfterMutation(ticket.id) } },
+                    onPriority = { priority -> run { api.updatePriority(school, ticket.id, priority); refreshTicketAfterMutation(ticket.id) } },
+                    onAssign = { userId -> run { api.assign(school, ticket.id, userId); refreshTicketAfterMutation(ticket.id) } }) }
                 "admins" -> adminAccounts?.let { result -> AdminAccountsScreen(result, busy,
                     onCreate = { selectedAdmin = null; page = "adminForm" },
                     onEdit = { selectedAdmin = it; page = "adminForm" },
