@@ -87,7 +87,7 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
     val adminState by adminViewModel.state.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     LaunchedEffect(Unit) {
-        authViewModel.initializeSchool(preferences.getString("school", "").orEmpty())
+        authViewModel.initializeSchool(preferences.getString("school", BuildConfig.DEFAULT_SCHOOL_SLUG).orEmpty())
     }
     val school = authState.school
     val phone = authState.phone
@@ -318,7 +318,7 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
                             Text(if (page == SupportPage.DASHBOARD) "SCHOOLDB" else "SCHOOL SUPPORT",
                                 style = MaterialTheme.typography.labelSmall, color = Muted, fontWeight = FontWeight.Bold)
                             Text(when (page) {
-                                SupportPage.DASHBOARD -> "Support desk"
+                                SupportPage.DASHBOARD -> BuildConfig.BRAND_SCHOOL_NAME
                                 SupportPage.CREATE_TICKET -> "New ticket"
                                 SupportPage.TICKET_DETAIL -> "Ticket details"
                                 SupportPage.ADMINS -> "Administrators"
