@@ -7,7 +7,10 @@ import com.clerk.api.network.serialization.onSuccess
 import com.clerk.api.signin.SignIn
 import com.schooldb.support.BuildConfig
 import java.net.HttpURLConnection
+import java.net.SocketTimeoutException
+import java.net.UnknownHostException
 import java.net.URL
+import java.io.IOException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
@@ -68,6 +71,11 @@ class SupportApiException(
 
 class SupportSessionExpiredException :
     Exception("Your session has expired. Please sign in again.")
+
+class SupportNetworkException(
+    override val message: String,
+    cause: Throwable? = null,
+) : Exception(message, cause)
 
 class SupportRepository {
     suspend fun sendCode(school: String, phone: String) = withContext(Dispatchers.IO) {
@@ -337,6 +345,18 @@ class SupportRepository {
                 throw SupportApiException(status, message)
             }
             json
-        } finally { connection.disconnect() }
+        } catch (error: SupportSessionExpiredException) {
+            throw error
+        } catch (error: SupportApiException) {
+            throw error
+        } catch (error: UnknownHostException) {
+            throw SupportNetworkException("No internet connection. Check your network and try again.", error)
+        } catch (error: SocketTimeoutException) {
+            throw SupportNetworkException("The request timed out. Please try again.", error)
+        } catch (error: IOException) {
+            throw SupportNetworkException("Could not reach SchoolDB. Check your connection and try again.", error)
+        } finally {
+            connection.disconnect()
+        }
     }
 }
