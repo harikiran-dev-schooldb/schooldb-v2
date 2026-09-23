@@ -70,26 +70,51 @@ android {
     }
 
     flavorDimensions += "school"
-    productFlavors {
-        create("kotak") {
-            dimension = "school"
 
-            // Keep the current package while the Kotak Firebase/Play identity is being finalized.
-            // Future school flavors should use their own unique applicationId.
-            applicationId = "com.schooldb.support"
+productFlavors {
 
-            buildConfigField("String", "DEFAULT_SCHOOL_SLUG", "\"demo\"")
-            buildConfigField("String", "BRAND_SCHOOL_NAME", "\"Kotak Salesian School\"")
-            buildConfigField("String", "BRAND_SHORT_NAME", "\"KOTAK SALESIAN SCHOOL\"")
-            buildConfigField("String", "BRAND_LOCATION", "\"Visakhapatnam\"")
-            buildConfigField("String", "BRAND_SUPPORT_LABEL", "\"KOTAK SUPPORT\"")
-            buildConfigField("Long", "BRAND_PRIMARY_COLOR", "0xFF235A8CL")
-            buildConfigField("Long", "BRAND_SECONDARY_COLOR", "0xFF2E7D4FL")
-            buildConfigField("Long", "BRAND_ACCENT_COLOR", "0xFFE0A62BL")
-            buildConfigField("Long", "BRAND_DANGER_COLOR", "0xFFC7352EL")
-            resValue("string", "brand_app_name", "Kotak Salesian School")
-        }
+    // Existing/demo app
+    create("demo") {
+        dimension = "school"
+
+        // Preserve existing Firebase / installed app identity
+        applicationId = "com.schooldb.support"
+
+        buildConfigField("String", "DEFAULT_SCHOOL_SLUG", "\"demo\"")
+        buildConfigField("String", "BRAND_SCHOOL_NAME", "\"Kotak Salesian School\"")
+        buildConfigField("String", "BRAND_SHORT_NAME", "\"KOTAK SALESIAN SCHOOL\"")
+        buildConfigField("String", "BRAND_LOCATION", "\"Visakhapatnam\"")
+        buildConfigField("String", "BRAND_SUPPORT_LABEL", "\"KOTAK SUPPORT\"")
+
+        buildConfigField("Long", "BRAND_PRIMARY_COLOR", "0xFF235A8CL")
+        buildConfigField("Long", "BRAND_SECONDARY_COLOR", "0xFF2E7D4FL")
+        buildConfigField("Long", "BRAND_ACCENT_COLOR", "0xFFE0A62BL")
+        buildConfigField("Long", "BRAND_DANGER_COLOR", "0xFFC7352EL")
+
+        resValue("string", "brand_app_name", "Kotak Salesian School Demo")
     }
+
+    // Actual Kotak school
+    create("kotak") {
+        dimension = "school"
+
+        // Separate Android app
+        applicationId = "com.schooldb.support.kotak"
+
+        buildConfigField("String", "DEFAULT_SCHOOL_SLUG", "\"kotak\"")
+        buildConfigField("String", "BRAND_SCHOOL_NAME", "\"Kotak Salesian School\"")
+        buildConfigField("String", "BRAND_SHORT_NAME", "\"KOTAK SALESIAN SCHOOL\"")
+        buildConfigField("String", "BRAND_LOCATION", "\"Visakhapatnam\"")
+        buildConfigField("String", "BRAND_SUPPORT_LABEL", "\"KOTAK SUPPORT\"")
+
+        buildConfigField("Long", "BRAND_PRIMARY_COLOR", "0xFF235A8CL")
+        buildConfigField("Long", "BRAND_SECONDARY_COLOR", "0xFF2E7D4FL")
+        buildConfigField("Long", "BRAND_ACCENT_COLOR", "0xFFE0A62BL")
+        buildConfigField("Long", "BRAND_DANGER_COLOR", "0xFFC7352EL")
+
+        resValue("string", "brand_app_name", "Kotak Salesian School")
+    }
+}
 
     buildTypes {
     getByName("debug") {
