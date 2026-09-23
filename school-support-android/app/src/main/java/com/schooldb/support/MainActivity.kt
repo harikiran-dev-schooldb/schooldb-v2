@@ -103,6 +103,7 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
     var notice by remember { mutableStateOf("") }
     var dashboardTab by remember { mutableStateOf(DashboardTab.OVERVIEW) }
     var requestedTicketFilter by remember { mutableStateOf<String?>(null) }
+    var signingOut by remember { mutableStateOf(false) }
 
     val notificationPermission = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -262,7 +263,8 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
     // Clerk initialization is asynchronous. Observe its restored user state instead of
     // reading activeSession once during process startup; this keeps the user signed in
     // after swiping the app away or rebooting the device.
-    LaunchedEffect(clerkInitialized, clerkUser, school) {
+    LaunchedEffect(clerkInitialized, clerkUser, school, signingOut) {
+        if (signingOut) return@LaunchedEffect
         if (BuildConfig.CLERK_PUBLISHABLE_KEY.isBlank()) {
             error = "Configure CLERK_PUBLISHABLE_KEY before signing in."
             page = SupportPage.LOGIN
@@ -337,35 +339,47 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
                         }
                     }
                     if (page == SupportPage.DASHBOARD) IconButton(onClick = {
-                        if (page == SupportPage.DASHBOARD) run {
-                            val pushPreferences = context.getSharedPreferences("support_push", 0)
-                            pushPreferences.getString("installation_id", null)?.let { installationId ->
+                        if (page == SupportPage.DASHBOARD && !signingOut) {
+                            // Leave the authenticated UI immediately. Push cleanup is best-effort
+                            // and must never keep the user on an endless loading screen.
+                            signingOut = true
+                            page = SupportPage.LOGIN
+                            scope.launch {
+                                val pushPreferences = context.getSharedPreferences("support_push", 0)
                                 try {
-                                    api.unregisterPushDevice(school, installationId)
-                                    pushPreferences.edit()
-                                        .remove("pending_unregister_school")
-                                        .remove("pending_unregister_installation_id")
-                                        .apply()
-                                } catch (_: Exception) {
-                                    pushPreferences.edit()
-                                        .putString("pending_unregister_school", school)
-                                        .putString("pending_unregister_installation_id", installationId)
-                                        .apply()
+                                    pushPreferences.getString("installation_id", null)?.let { installationId ->
+                                        try {
+                                            api.unregisterPushDevice(school, installationId)
+                                            pushPreferences.edit()
+                                                .remove("pending_unregister_school")
+                                                .remove("pending_unregister_installation_id")
+                                                .apply()
+                                        } catch (_: Exception) {
+                                            pushPreferences.edit()
+                                                .putString("pending_unregister_school", school)
+                                                .putString("pending_unregister_installation_id", installationId)
+                                                .apply()
+                                        }
+                                    }
+                                    FirebaseMessaging.getInstance().deleteToken()
+                                        .addOnFailureListener { exception ->
+                                            Log.w("SupportPush", "Could not delete Firebase token during sign out", exception)
+                                        }
+                                    pushPreferences.edit().remove("pending_fcm_token").apply()
+                                    api.signOut()
+                                } catch (exception: Exception) {
+                                    Log.w("SupportAuth", "Remote sign out cleanup failed", exception)
+                                } finally {
+                                    preferences.edit().remove("school").apply()
+                                    ticketViewModel.reset()
+                                    adminViewModel.reset()
+                                    authViewModel.clearAll()
+                                    dashboardTab = DashboardTab.OVERVIEW
+                                    requestedTicketFilter = null
+                                    signingOut = false
+                                    page = SupportPage.LOGIN
                                 }
                             }
-                            FirebaseMessaging.getInstance().deleteToken()
-                                .addOnFailureListener { exception ->
-                                    Log.w("SupportPush", "Could not delete Firebase token during sign out", exception)
-                                }
-                            pushPreferences.edit().remove("pending_fcm_token").apply()
-                            api.signOut()
-                            preferences.edit().remove("school").apply()
-                            ticketViewModel.reset()
-                            adminViewModel.reset()
-                            authViewModel.clearAll()
-                            dashboardTab = DashboardTab.OVERVIEW
-                            requestedTicketFilter = null
-                            page = SupportPage.LOGIN
                         }
                     }) { Icon(Icons.Outlined.Logout, contentDescription = "Sign out", tint = Ink) }
                 }
