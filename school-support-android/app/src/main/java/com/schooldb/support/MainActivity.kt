@@ -373,7 +373,7 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
                                     preferences.edit().remove("school").apply()
                                     ticketViewModel.reset()
                                     adminViewModel.reset()
-                                    authViewModel.clearAll()
+                                    authViewModel.clearAll(SchoolBrand.defaultSchoolSlug)
                                     dashboardTab = DashboardTab.OVERVIEW
                                     requestedTicketFilter = null
                                     signingOut = false
@@ -400,11 +400,13 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
             if (busy) LinearProgressIndicator(Modifier.fillMaxWidth())
             when (page) {
                 SupportPage.LOADING -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
-                SupportPage.LOGIN -> AuthShell("Your school, supported.", "Sign in with the mobile number registered at your school.") {
-                    Text("WELCOME BACK", style = MaterialTheme.typography.labelSmall, color = Indigo, fontWeight = FontWeight.Bold)
-                    Spacer(Modifier.height(12.dp))
-                    SupportField(school, authViewModel::setSchool, "School code")
-                    Spacer(Modifier.height(12.dp))
+                SupportPage.LOGIN -> AuthShell("School Support", "Sign in with the mobile number registered at " + SchoolBrand.schoolName + ".") {
+                    Text(SchoolBrand.shortName, style = MaterialTheme.typography.labelSmall, color = Indigo, fontWeight = FontWeight.Bold)
+                    if (SchoolBrand.location.isNotBlank()) {
+                        Spacer(Modifier.height(4.dp))
+                        Text(SchoolBrand.location, style = MaterialTheme.typography.bodySmall, color = Muted)
+                    }
+                    Spacer(Modifier.height(16.dp))
                     SupportField(phone, authViewModel::setPhone, "Mobile number")
                     Spacer(Modifier.height(20.dp))
                     PrimaryAction("Send WhatsApp code", !busy && school.isNotBlank() && phone.length == 10,
@@ -430,7 +432,7 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
                     } })
                     TextButton(onClick = { page = SupportPage.LOGIN }, modifier = Modifier.align(Alignment.CenterHorizontally)) { Text("Change number") }
                 }
-                SupportPage.ACCOUNTS -> AuthShell("Choose an account", "Select how you want to work in " + school + ".") {
+                SupportPage.ACCOUNTS -> AuthShell("Choose an account", "Select how you want to work in " + SchoolBrand.schoolName + ".") {
                     authState.accounts.forEach { (id, label) ->
                         SurfaceCard(Modifier.fillMaxWidth().padding(bottom = 10.dp).clickable { run {
                             finishLogin(api.selectAccount(school, authState.challenge, id).getString("token"))
