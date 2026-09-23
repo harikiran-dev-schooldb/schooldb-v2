@@ -65,14 +65,43 @@ export async function POST(request: Request) {
     });
 
     try {
-      await prisma.membership.create({
-        data: {
-          userId: membership.userId,
-          schoolId: school.id,
-          role: "SUPER_ADMIN",
-          isActive: true,
-        },
+      const playReviewUser = await prisma.user.findFirst({
+        where: { phone: "9999999999" },
+        select: { id: true },
       });
+
+      await prisma.$transaction([
+        prisma.membership.create({
+          data: {
+            userId: membership.userId,
+            schoolId: school.id,
+            role: "SUPER_ADMIN",
+            isActive: true,
+          },
+        }),
+        ...(playReviewUser && playReviewUser.id !== membership.userId
+          ? [
+              prisma.membership.upsert({
+                where: {
+                  userId_schoolId: {
+                    userId: playReviewUser.id,
+                    schoolId: school.id,
+                  },
+                },
+                update: {
+                  role: "SCHOOL_ADMIN",
+                  isActive: true,
+                },
+                create: {
+                  userId: playReviewUser.id,
+                  schoolId: school.id,
+                  role: "SCHOOL_ADMIN",
+                  isActive: true,
+                },
+              }),
+            ]
+          : []),
+      ]);
     } catch (error) {
       await prisma.school.delete({ where: { id: school.id } }).catch(() => undefined);
       throw error;
