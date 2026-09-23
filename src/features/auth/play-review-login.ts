@@ -1,13 +1,12 @@
-const PLAY_REVIEW_SCHOOL_SLUG = "demo";
 const PLAY_REVIEW_PHONE = "9999999999";
 const PLAY_REVIEW_OTP = "123456";
 
 /**
- * Returns the fixed Google Play review code only for the dedicated review
- * tenant and mobile number. All other accounts must use a generated OTP.
+ * Fixed Google Play review OTP.
+ *
+ * This review phone can use the fixed OTP across all SchoolDB tenants.
+ * Normal users continue through the regular generated WhatsApp OTP flow.
  */
-export function playReviewOtpFor(schoolSlug: string, phone: string) {
-  return schoolSlug === PLAY_REVIEW_SCHOOL_SLUG && phone === PLAY_REVIEW_PHONE
-    ? PLAY_REVIEW_OTP
-    : null;
+export function playReviewOtpFor(_schoolSlug: string, phone: string) {
+  return phone === PLAY_REVIEW_PHONE ? PLAY_REVIEW_OTP : null;
 }
