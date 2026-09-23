@@ -7,7 +7,8 @@ plugins {
 }
 
 val firebaseConfigFile = file("google-services.json")
-if (firebaseConfigFile.exists()) {
+val kotakFirebaseConfigFile = file("src/kotak/google-services.json")
+if (firebaseConfigFile.exists() || kotakFirebaseConfigFile.exists()) {
     apply(plugin = "com.google.gms.google-services")
 }
 
@@ -54,18 +55,40 @@ android {
         versionCode = 2
         versionName = "0.2.0"
         buildConfigField("String", "CLERK_PUBLISHABLE_KEY", "\"$clerkKey\"")
-        buildConfigField("boolean", "FIREBASE_CONFIGURED", firebaseConfigFile.exists().toString())
-        // School identity: keep product code school-agnostic and configure branding here.
-        buildConfigField("String", "DEFAULT_SCHOOL_SLUG", "\"demo\"")
-        buildConfigField("String", "BRAND_SCHOOL_NAME", "\"Kotak Salesian School\"")
-        buildConfigField("String", "BRAND_SHORT_NAME", "\"KOTAK SALESIAN SCHOOL\"")
-        buildConfigField("String", "BRAND_LOCATION", "\"Visakhapatnam\"")
-        buildConfigField("String", "BRAND_SUPPORT_LABEL", "\"KOTAK SUPPORT\"")
+        buildConfigField("boolean", "FIREBASE_CONFIGURED", (firebaseConfigFile.exists() || kotakFirebaseConfigFile.exists()).toString())
+        // Safe generic defaults. Each school flavor overrides these values.
+        buildConfigField("String", "DEFAULT_SCHOOL_SLUG", "\"\"")
+        buildConfigField("String", "BRAND_SCHOOL_NAME", "\"School Support\"")
+        buildConfigField("String", "BRAND_SHORT_NAME", "\"SCHOOL SUPPORT\"")
+        buildConfigField("String", "BRAND_LOCATION", "\"\"")
+        buildConfigField("String", "BRAND_SUPPORT_LABEL", "\"SUPPORT\"")
         buildConfigField("Long", "BRAND_PRIMARY_COLOR", "0xFF235A8CL")
         buildConfigField("Long", "BRAND_SECONDARY_COLOR", "0xFF2E7D4FL")
         buildConfigField("Long", "BRAND_ACCENT_COLOR", "0xFFE0A62BL")
         buildConfigField("Long", "BRAND_DANGER_COLOR", "0xFFC7352EL")
-        resValue("string", "brand_app_name", "Kotak Salesian School")
+        resValue("string", "brand_app_name", "School Support")
+    }
+
+    flavorDimensions += "school"
+    productFlavors {
+        create("kotak") {
+            dimension = "school"
+
+            // Keep the current package while the Kotak Firebase/Play identity is being finalized.
+            // Future school flavors should use their own unique applicationId.
+            applicationId = "com.schooldb.support"
+
+            buildConfigField("String", "DEFAULT_SCHOOL_SLUG", "\"demo\"")
+            buildConfigField("String", "BRAND_SCHOOL_NAME", "\"Kotak Salesian School\"")
+            buildConfigField("String", "BRAND_SHORT_NAME", "\"KOTAK SALESIAN SCHOOL\"")
+            buildConfigField("String", "BRAND_LOCATION", "\"Visakhapatnam\"")
+            buildConfigField("String", "BRAND_SUPPORT_LABEL", "\"KOTAK SUPPORT\"")
+            buildConfigField("Long", "BRAND_PRIMARY_COLOR", "0xFF235A8CL")
+            buildConfigField("Long", "BRAND_SECONDARY_COLOR", "0xFF2E7D4FL")
+            buildConfigField("Long", "BRAND_ACCENT_COLOR", "0xFFE0A62BL")
+            buildConfigField("Long", "BRAND_DANGER_COLOR", "0xFFC7352EL")
+            resValue("string", "brand_app_name", "Kotak Salesian School")
+        }
     }
 
     buildTypes {
