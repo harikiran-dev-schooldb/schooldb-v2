@@ -78,7 +78,7 @@ android {
             // Future school flavors should use their own unique applicationId.
             applicationId = "com.schooldb.support"
 
-            buildConfigField("String", "DEFAULT_SCHOOL_SLUG", "\"demo\"")
+            buildConfigField("String", "DEFAULT_SCHOOL_SLUG", "\"kotak\"")
             buildConfigField("String", "BRAND_SCHOOL_NAME", "\"Kotak Salesian School\"")
             buildConfigField("String", "BRAND_SHORT_NAME", "\"KOTAK SALESIAN SCHOOL\"")
             buildConfigField("String", "BRAND_LOCATION", "\"Visakhapatnam\"")
