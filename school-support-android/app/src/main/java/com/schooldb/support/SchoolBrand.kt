@@ -17,7 +17,7 @@ internal object SchoolBrand {
     val defaultSchoolSlug: String get() = BuildConfig.DEFAULT_SCHOOL_SLUG
 
     @DrawableRes
-    val logoRes: Int = R.drawable.brand_logo
+    val logoRes: Int = R.drawable.kotak_school_logo
 
     val primary = Color(BuildConfig.BRAND_PRIMARY_COLOR)
     val secondary = Color(BuildConfig.BRAND_SECONDARY_COLOR)
