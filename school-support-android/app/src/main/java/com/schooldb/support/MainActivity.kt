@@ -104,6 +104,14 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
     var dashboardTab by remember { mutableStateOf(DashboardTab.OVERVIEW) }
     var requestedTicketFilter by remember { mutableStateOf<String?>(null) }
     var signingOut by remember { mutableStateOf(false) }
+    var resendSeconds by remember { mutableIntStateOf(0) }
+
+    LaunchedEffect(resendSeconds) {
+        if (resendSeconds > 0) {
+            delay(1_000)
+            resendSeconds -= 1
+        }
+    }
 
     val notificationPermission = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -410,7 +418,7 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
                     SupportField(phone, authViewModel::setPhone, "Mobile number")
                     Spacer(Modifier.height(20.dp))
                     PrimaryAction("Send WhatsApp code", !busy && school.isNotBlank() && phone.length == 10,
-                        onClick = { run { api.sendCode(school, phone); page = SupportPage.OTP } })
+                        onClick = { run { api.sendCode(school, phone); resendSeconds = 60; page = SupportPage.OTP } })
                 }
                 SupportPage.OTP -> AuthShell("Check WhatsApp", "Enter the six-digit code sent to +91 ••••••" + phone.takeLast(4) + ".") {
                     Text("VERIFY MOBILE", style = MaterialTheme.typography.labelSmall, color = Indigo, fontWeight = FontWeight.Bold)
@@ -430,7 +438,13 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
                             page = SupportPage.ACCOUNTS
                         } else finishLogin(response.getString("token"))
                     } })
-                    TextButton(onClick = { page = SupportPage.LOGIN }, modifier = Modifier.align(Alignment.CenterHorizontally)) { Text("Change number") }
+                    Spacer(Modifier.height(8.dp))
+                    TextButton(
+                        onClick = { run { api.sendCode(school, phone); resendSeconds = 60 } },
+                        enabled = !busy && resendSeconds == 0,
+                        modifier = Modifier.align(Alignment.CenterHorizontally),
+                    ) { Text(if (resendSeconds > 0) "Resend code in ${resendSeconds}s" else "Resend WhatsApp code") }
+                    TextButton(onClick = { resendSeconds = 0; page = SupportPage.LOGIN }, modifier = Modifier.align(Alignment.CenterHorizontally)) { Text("Change number") }
                 }
                 SupportPage.ACCOUNTS -> AuthShell("Choose an account", "Select how you want to work in " + SchoolBrand.schoolName + ".") {
                     authState.accounts.forEach { (id, label) ->
