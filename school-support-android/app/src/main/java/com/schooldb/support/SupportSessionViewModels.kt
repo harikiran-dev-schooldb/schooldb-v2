@@ -35,8 +35,8 @@ class SupportAuthViewModel : ViewModel() {
         _state.update { it.copy(phone = "", code = "", challenge = "", accounts = emptyList()) }
     }
 
-    fun clearAll() {
-        _state.value = SupportAuthUiState()
+    fun clearAll(defaultSchool: String = "") {
+        _state.value = SupportAuthUiState(school = defaultSchool)
     }
 }
 
