@@ -5,6 +5,7 @@ import com.clerk.api.network.serialization.errorMessage
 import com.clerk.api.network.serialization.onFailure
 import com.clerk.api.network.serialization.onSuccess
 import com.clerk.api.signin.SignIn
+import com.clerk.api.session.GetTokenOptions
 import com.schooldb.support.BuildConfig
 import java.net.HttpURLConnection
 import java.net.SocketTimeoutException
@@ -302,15 +303,26 @@ class SupportRepository {
         else request("POST", "api/v1/support/admin-accounts/$accountId", school, body)
     }
 
-    private suspend fun token(): String {
+    private suspend fun token(forceRefresh: Boolean = false): String {
         var value: String? = null
         var failure: String? = null
-        Clerk.auth.getToken().onSuccess { value = it }.onFailure { failure = it.errorMessage }
+        Clerk.auth.getToken(GetTokenOptions(skipCache = forceRefresh))
+            .onSuccess { value = it }
+            .onFailure { failure = it.errorMessage }
         return value?.takeIf(String::isNotBlank) ?: throw SupportSessionExpiredException()
     }
 
-    private suspend fun request(method: String, path: String, school: String?, body: JSONObject? = null): JSONObject {
-        val authToken = if (school != null) token() else null
+    private suspend fun request(
+        method: String,
+        path: String,
+        school: String?,
+        body: JSONObject? = null,
+        retryOnUnauthorized: Boolean = true,
+    ): JSONObject {
+        // Clerk session JWTs are intentionally short-lived. Normally the SDK refreshes them,
+        // but a restored/backgrounded Android session can briefly hand us a stale cached token.
+        // On the first 401, force-mint a fresh token and retry the API request exactly once.
+        val authToken = if (school != null) token(forceRefresh = !retryOnUnauthorized) else null
         val connection = URL(BuildConfig.API_BASE_URL + path).openConnection() as HttpURLConnection
         return try {
             connection.requestMethod = method
@@ -339,6 +351,15 @@ class SupportRepository {
             val message = json.optString("message").ifBlank { json.optString("error") }
                 .ifBlank { "Request failed (HTTP $status)." }
             if (status == HttpURLConnection.HTTP_UNAUTHORIZED) {
+                if (school != null && retryOnUnauthorized) {
+                    return request(
+                        method = method,
+                        path = path,
+                        school = school,
+                        body = body,
+                        retryOnUnauthorized = false,
+                    )
+                }
                 throw SupportSessionExpiredException()
             }
             if (status !in 200..299) {
