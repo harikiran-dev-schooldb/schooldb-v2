@@ -7,7 +7,7 @@ import androidx.compose.ui.graphics.Color
  * Single source of truth for school-specific presentation.
  *
  * Keep support features school-agnostic. A school build should only need to change
- * the BuildConfig brand fields and the brand_logo drawable.
+ * the BuildConfig brand fields and the school_logo drawable.
  */
 internal object SchoolBrand {
     val schoolName: String get() = BuildConfig.BRAND_SCHOOL_NAME
@@ -17,7 +17,7 @@ internal object SchoolBrand {
     val defaultSchoolSlug: String get() = BuildConfig.DEFAULT_SCHOOL_SLUG
 
     @DrawableRes
-    val logoRes: Int = R.drawable.brand_logo
+    val logoRes: Int = R.drawable.school_logo
 
     val primary = Color(BuildConfig.BRAND_PRIMARY_COLOR)
     val secondary = Color(BuildConfig.BRAND_SECONDARY_COLOR)
