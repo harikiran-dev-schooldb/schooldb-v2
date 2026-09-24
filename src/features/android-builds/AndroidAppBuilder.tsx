@@ -431,8 +431,8 @@ export function AndroidAppBuilder() {
           <div>
             <CardTitle>Build history</CardTitle>
             <CardDescription>
-              Release APK artifacts remain available according to GitHub&apos;s
-              artifact retention policy.
+              Signed APK and Play Store AAB artifacts remain available according
+              to GitHub&apos;s artifact retention policy.
             </CardDescription>
           </div>
           <Button
@@ -585,7 +585,22 @@ function BuildRow({
               }
             >
               <Download className="size-4" />
-              Download APK package
+              Download APK
+            </a>
+          </Button>
+        )}
+        {completed && (
+          <Button asChild size="sm" variant="outline">
+            <a
+              href={
+                "/api/v1/android-builds/" +
+                build.id +
+                "/download?format=aab&schoolSlug=" +
+                encodeURIComponent(schoolSlug)
+              }
+            >
+              <Download className="size-4" />
+              Download Play Store AAB
             </a>
           </Button>
         )}

@@ -35,7 +35,7 @@ export async function POST(request: Request, { params }: Props) {
       typeof body.message === "string" && body.message.trim()
         ? body.message.trim().slice(0, 1000)
         : completed
-          ? "Signed release APK is ready."
+          ? "Signed release APK and Play Store AAB are ready."
           : "The Android build failed.";
     const runId =
       typeof body.runId === "string" || typeof body.runId === "number"

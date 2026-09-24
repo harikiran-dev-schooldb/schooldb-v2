@@ -258,7 +258,10 @@ export async function triggerGithubAndroidBuild(input: {
   }
 }
 
-export async function getGithubArtifactDownload(runId: string, artifactName: string) {
+export async function getGithubArtifactDownload(
+  runId: string,
+  artifactNames: string | string[],
+) {
   const settings = getGithubAndroidBuildSettings();
   const response = await fetch(
     "https://api.github.com/repos/" +
@@ -287,11 +290,12 @@ export async function getGithubArtifactDownload(runId: string, artifactName: str
       archive_download_url?: string;
     }>;
   };
+  const names = Array.isArray(artifactNames) ? artifactNames : [artifactNames];
   const artifact = payload.artifacts?.find(
-    (item) => item.name === artifactName && !item.expired,
+    (item) => item.name && names.includes(item.name) && !item.expired,
   );
   if (!artifact?.archive_download_url) {
-    throw new ApiError(404, "The APK artifact was not found or has expired.");
+    throw new ApiError(404, "The Android build artifact was not found or has expired.");
   }
 
   const download = await fetch(artifact.archive_download_url, {
@@ -305,11 +309,19 @@ export async function getGithubArtifactDownload(runId: string, artifactName: str
   });
   const location = download.headers.get("location");
   if (!location) {
-    throw new ApiError(502, "GitHub did not provide an APK download link.");
+    throw new ApiError(502, "GitHub did not provide an artifact download link.");
   }
   return location;
 }
 
-export function androidBuildArtifactName(configuration: AndroidBuildConfiguration) {
+export function androidBuildArtifactName(
+  configuration: AndroidBuildConfiguration,
+  format: "apk" | "aab" = "apk",
+) {
+  const base = "school-support-" + configuration.flavorId;
+  return format === "aab" ? base + "-play" : base + "-apk";
+}
+
+export function legacyAndroidBuildArtifactName(configuration: AndroidBuildConfiguration) {
   return "school-support-" + configuration.flavorId;
 }

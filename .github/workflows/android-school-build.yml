@@ -166,21 +166,36 @@ jobs:
             printf 'clerkProductionPublishableKey=%s\n' "$CLERK_PUBLISHABLE_KEY"
           } > android/keystore.properties
 
-      - name: Build signed release APK
+      - name: Build signed release APK and Play Store bundle
         working-directory: school-support-android
-        run: ./gradlew ":app:assemble${VARIANT}Release"
+        run: |
+          ./gradlew \
+            ":app:assemble${VARIANT}Release" \
+            ":app:bundle${VARIANT}Release" \
+            -PVERSION_CODE="$GITHUB_RUN_NUMBER"
 
-      - name: Stage APK
+      - name: Stage Android packages
         run: |
           cp \
             "school-support-android/app/build/outputs/apk/$FLAVOR_ID/release/app-$FLAVOR_ID-release.apk" \
             "/tmp/$FLAVOR_ID-school-support.apk"
+          cp \
+            "school-support-android/app/build/outputs/bundle/${FLAVOR_ID}Release/app-$FLAVOR_ID-release.aab" \
+            "/tmp/$FLAVOR_ID-school-support.aab"
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ env.ARTIFACT_NAME }}
+          name: ${{ env.ARTIFACT_NAME }}-apk
           path: /tmp/${{ env.FLAVOR_ID }}-school-support.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload Play Store bundle artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.ARTIFACT_NAME }}-play
+          path: /tmp/${{ env.FLAVOR_ID }}-school-support.aab
           if-no-files-found: error
           retention-days: 30
 
@@ -189,7 +204,7 @@ jobs:
         run: |
           jq -n \
             --arg status "COMPLETED" \
-            --arg message "Signed release APK is ready." \
+            --arg message "Signed release APK and Play Store AAB are ready." \
             --arg runId "$GITHUB_RUN_ID" \
             '{status: $status, message: $message, runId: $runId}' \
             > /tmp/android-build-callback.json
