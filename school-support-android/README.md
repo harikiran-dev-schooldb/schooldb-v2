@@ -6,7 +6,7 @@ Standalone internal ticketing app for SchoolDB staff and school admins. It uses 
 
 1. Apply the repository migrations to a local SchoolDB database and start the web server on port 3000.
 2. Configure `CLERK_PUBLISHABLE_KEY` in `~/.gradle/gradle.properties` (the same development key used by `android/`).
-3. Open this directory in Android Studio, or build with `../android/gradlew -p . :app:assembleDebug`.
+3. Open this directory in Android Studio, or build a school variant such as `./gradlew :app:assembleDemoDebug`.
 4. Install the debug APK on an emulator. Debug connects to `http://10.0.2.2:3000/`.
 
 The debug APK's default server address works only in an emulator. For a physical phone on the
@@ -35,4 +35,20 @@ The debug build allows cleartext traffic for the local server. The release build
 
 ## Push notification setup
 
-Keep `app/google-services.json` configured for `com.schooldb.support`. When its support client contains multiple `api_key` entries, the Google Services build plugin uses the first one. That key must be allowed to call the Firebase Installations API; otherwise Firebase token retrieval fails with `FIS_AUTH_ERROR` and the server has no support device to notify. The working release configuration for this project uses the same Firebase project key as the main Android app. After changing the JSON file, rebuild and reinstall the support app, then open it while signed in so it can register the device.
+Keep each school's Firebase file at `app/src/<flavor>/google-services.json`. Its Android client package must match that school's `applicationId` in `schools.properties`. The API key must be allowed to call the Firebase Installations API; otherwise Firebase token retrieval fails with `FIS_AUTH_ERROR`. Rebuild and reinstall that school variant after changing this file.
+
+## Create an app for another school
+
+Run:
+
+```bash
+./tools/create-school.sh <flavor-id> <school-slug> <application-id> "<school-name>" "<location>"
+```
+
+For example:
+
+```bash
+./tools/create-school.sh stjoseph st-joseph com.schooldb.support.stjoseph "St Joseph School" "Hyderabad"
+```
+
+The command adds the school to `schools.properties` and creates flavor-specific resources. Replace the placeholder logo, add the school's Firebase file, adjust its colors, and build `:app:assembleStjosephDebug` or `:app:assembleStjosephRelease`.

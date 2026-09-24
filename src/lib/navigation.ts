@@ -11,6 +11,7 @@ import {
   Megaphone,
   Settings2,
   School,
+  Smartphone,
   UsersRound,
 } from "lucide-react";
 
@@ -57,6 +58,12 @@ export const navigation: NavigationItem[] = [
     title: "Schools",
     href: "schools",
     icon: School,
+    roles: ["SUPER_ADMIN"],
+  },
+  {
+    title: "Android App Builder",
+    href: "schools/android-app",
+    icon: Smartphone,
     roles: ["SUPER_ADMIN"],
   },
   {

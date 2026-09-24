@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Building2, Loader2, Plus, School, Users, X } from "lucide-react";
+import { useParams } from "next/navigation";
+import { Building2, Loader2, Plus, School, Smartphone, X } from "lucide-react";
 
 import { PageHeader } from "@/components/common/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -22,6 +23,7 @@ type SchoolItem = {
 };
 
 export default function SchoolsPage() {
+  const { schoolSlug } = useParams<{ schoolSlug: string }>();
   const [schools, setSchools] = useState<SchoolItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -49,7 +51,10 @@ export default function SchoolsPage() {
   }
 
   useEffect(() => {
-    void loadSchools();
+    const timer = window.setTimeout(() => {
+      void loadSchools();
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, []);
 
   function updateName(value: string) {
@@ -104,10 +109,18 @@ export default function SchoolsPage() {
           title="Schools"
           description="Create and manage SchoolDB school workspaces."
         />
-        <Button className="rounded-xl" onClick={() => setShowCreate(true)}>
-          <Plus className="size-4" />
-          Add School
-        </Button>
+        <div className="flex flex-wrap gap-3">
+          <Button asChild variant="outline" className="rounded-xl">
+            <Link href={"/" + schoolSlug + "/schools/android-app"}>
+              <Smartphone className="size-4" />
+              Android App Builder
+            </Link>
+          </Button>
+          <Button className="rounded-xl" onClick={() => setShowCreate(true)}>
+            <Plus className="size-4" />
+            Add School
+          </Button>
+        </div>
       </div>
 
       {error && (

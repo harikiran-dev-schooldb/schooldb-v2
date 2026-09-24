@@ -115,6 +115,7 @@ model School {
   supportTickets        SupportTicket[]
   supportTicketMessages SupportTicketMessage[]
   supportTicketActivities SupportTicketActivity[]
+  androidAppBuilds       AndroidAppBuild[]
 }
 
 model SchoolIdCardSetting {
@@ -169,6 +170,7 @@ model User {
   assignedSupportTickets SupportTicket[]      @relation("SupportTicketAssignee")
   supportTicketMessages SupportTicketMessage[]
   supportTicketActivities SupportTicketActivity[]
+  androidAppBuilds       AndroidAppBuild[]
 
   @@index([phone])
 }
@@ -1744,6 +1746,28 @@ enum Category {
   ST
   EWS
   RTE
+}
+
+model AndroidAppBuild {
+  id                String   @id @default(cuid())
+  schoolId          String
+  requestedById     String
+  status            String   @default("QUEUED")
+  configuration     Json
+  logoBytes         Bytes?
+  firebaseConfig    Json?
+  callbackTokenHash String
+  githubRunId       String?
+  message           String?
+  createdAt         DateTime @default(now())
+  startedAt         DateTime?
+  completedAt       DateTime?
+  school            School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  requestedBy       User     @relation(fields: [requestedById], references: [id], onDelete: Cascade)
+
+  @@index([schoolId, createdAt(sort: Desc)])
+  @@index([status, createdAt])
+  @@index([requestedById])
 }
 
 enum Role {

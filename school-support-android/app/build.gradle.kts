@@ -6,9 +6,35 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
-val firebaseConfigFile = file("google-services.json")
-val kotakFirebaseConfigFile = file("src/kotak/google-services.json")
-if (firebaseConfigFile.exists() || kotakFirebaseConfigFile.exists()) {
+val schoolsFile = rootProject.file("schools.properties")
+require(schoolsFile.exists()) { "Missing schools.properties" }
+
+val schoolProperties = Properties().apply {
+    FileInputStream(schoolsFile).use(::load)
+}
+
+fun schoolValue(schoolId: String, key: String): String =
+    schoolProperties.getProperty("$schoolId.$key")
+        ?.trim()
+        ?.takeIf(String::isNotEmpty)
+        ?: error("Missing $schoolId.$key in schools.properties")
+
+fun quoted(value: String): String =
+    "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
+
+val schoolIds = schoolProperties.getProperty("schools")
+    ?.split(',')
+    ?.map(String::trim)
+    ?.filter(String::isNotEmpty)
+    ?.distinct()
+    .orEmpty()
+
+require(schoolIds.isNotEmpty()) { "schools.properties must define at least one school" }
+
+val firebaseConfigBySchool = schoolIds.associateWith { schoolId ->
+    file("src/$schoolId/google-services.json")
+}
+if (firebaseConfigBySchool.values.any { it.exists() }) {
     apply(plugin = "com.google.gms.google-services")
 }
 
@@ -55,7 +81,7 @@ android {
         versionCode = 2
         versionName = "0.2.0"
         buildConfigField("String", "CLERK_PUBLISHABLE_KEY", "\"$clerkKey\"")
-        buildConfigField("boolean", "FIREBASE_CONFIGURED", (firebaseConfigFile.exists() || kotakFirebaseConfigFile.exists()).toString())
+        buildConfigField("boolean", "FIREBASE_CONFIGURED", "false")
         // Safe generic defaults. Each school flavor overrides these values.
         buildConfigField("String", "DEFAULT_SCHOOL_SLUG", "\"\"")
         buildConfigField("String", "BRAND_SCHOOL_NAME", "\"School Support\"")
@@ -71,50 +97,26 @@ android {
 
     flavorDimensions += "school"
 
-productFlavors {
-
-    // Existing/demo app
-    create("demo") {
-        dimension = "school"
-
-        // Preserve existing Firebase / installed app identity
-        applicationId = "com.schooldb.support"
-
-        buildConfigField("String", "DEFAULT_SCHOOL_SLUG", "\"demo\"")
-        buildConfigField("String", "BRAND_SCHOOL_NAME", "\"Kotak Salesian School\"")
-        buildConfigField("String", "BRAND_SHORT_NAME", "\"KOTAK SALESIAN SCHOOL\"")
-        buildConfigField("String", "BRAND_LOCATION", "\"Visakhapatnam\"")
-        buildConfigField("String", "BRAND_SUPPORT_LABEL", "\"KOTAK SUPPORT\"")
-
-        buildConfigField("Long", "BRAND_PRIMARY_COLOR", "0xFF235A8CL")
-        buildConfigField("Long", "BRAND_SECONDARY_COLOR", "0xFF2E7D4FL")
-        buildConfigField("Long", "BRAND_ACCENT_COLOR", "0xFFE0A62BL")
-        buildConfigField("Long", "BRAND_DANGER_COLOR", "0xFFC7352EL")
-
-        resValue("string", "brand_app_name", "Kotak Salesian School Demo")
+    productFlavors {
+        schoolIds.forEach { schoolId ->
+            create(schoolId) {
+                dimension = "school"
+                applicationId = schoolValue(schoolId, "applicationId")
+                buildConfigField("String", "DEFAULT_SCHOOL_SLUG", quoted(schoolValue(schoolId, "schoolSlug")))
+                buildConfigField("String", "BRAND_SCHOOL_NAME", quoted(schoolValue(schoolId, "schoolName")))
+                buildConfigField("String", "BRAND_SHORT_NAME", quoted(schoolValue(schoolId, "shortName")))
+                buildConfigField("String", "BRAND_LOCATION", quoted(schoolValue(schoolId, "location")))
+                buildConfigField("String", "BRAND_SUPPORT_LABEL", quoted(schoolValue(schoolId, "supportLabel")))
+                buildConfigField("Long", "BRAND_PRIMARY_COLOR", schoolValue(schoolId, "primaryColor") + "L")
+                buildConfigField("Long", "BRAND_SECONDARY_COLOR", schoolValue(schoolId, "secondaryColor") + "L")
+                buildConfigField("Long", "BRAND_ACCENT_COLOR", schoolValue(schoolId, "accentColor") + "L")
+                buildConfigField("Long", "BRAND_DANGER_COLOR", schoolValue(schoolId, "dangerColor") + "L")
+                buildConfigField("boolean", "FIREBASE_CONFIGURED",
+                    firebaseConfigBySchool.getValue(schoolId).exists().toString())
+                resValue("string", "brand_app_name", schoolValue(schoolId, "appName"))
+            }
+        }
     }
-
-    // Actual Kotak school
-    create("kotak") {
-        dimension = "school"
-
-        // Separate Android app
-        applicationId = "com.schooldb.support.kotak"
-
-        buildConfigField("String", "DEFAULT_SCHOOL_SLUG", "\"kotak\"")
-        buildConfigField("String", "BRAND_SCHOOL_NAME", "\"Kotak Salesian School\"")
-        buildConfigField("String", "BRAND_SHORT_NAME", "\"KOTAK SALESIAN SCHOOL\"")
-        buildConfigField("String", "BRAND_LOCATION", "\"Visakhapatnam\"")
-        buildConfigField("String", "BRAND_SUPPORT_LABEL", "\"KOTAK SUPPORT\"")
-
-        buildConfigField("Long", "BRAND_PRIMARY_COLOR", "0xFF235A8CL")
-        buildConfigField("Long", "BRAND_SECONDARY_COLOR", "0xFF2E7D4FL")
-        buildConfigField("Long", "BRAND_ACCENT_COLOR", "0xFFE0A62BL")
-        buildConfigField("Long", "BRAND_DANGER_COLOR", "0xFFC7352EL")
-
-        resValue("string", "brand_app_name", "Kotak Salesian School")
-    }
-}
 
     buildTypes {
     getByName("debug") {
