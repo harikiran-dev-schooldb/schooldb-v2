@@ -19,6 +19,9 @@ fun schoolValue(schoolId: String, key: String): String =
         ?.takeIf(String::isNotEmpty)
         ?: error("Missing $schoolId.$key in schools.properties")
 
+fun optionalSchoolValue(schoolId: String, key: String): String =
+    schoolProperties.getProperty("$schoolId.$key")?.trim().orEmpty()
+
 fun quoted(value: String): String =
     "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
 
@@ -105,7 +108,7 @@ android {
                 buildConfigField("String", "DEFAULT_SCHOOL_SLUG", quoted(schoolValue(schoolId, "schoolSlug")))
                 buildConfigField("String", "BRAND_SCHOOL_NAME", quoted(schoolValue(schoolId, "schoolName")))
                 buildConfigField("String", "BRAND_SHORT_NAME", quoted(schoolValue(schoolId, "shortName")))
-                buildConfigField("String", "BRAND_LOCATION", quoted(schoolValue(schoolId, "location")))
+                buildConfigField("String", "BRAND_LOCATION", quoted(optionalSchoolValue(schoolId, "location")))
                 buildConfigField("String", "BRAND_SUPPORT_LABEL", quoted(schoolValue(schoolId, "supportLabel")))
                 buildConfigField("Long", "BRAND_PRIMARY_COLOR", schoolValue(schoolId, "primaryColor") + "L")
                 buildConfigField("Long", "BRAND_SECONDARY_COLOR", schoolValue(schoolId, "secondaryColor") + "L")
