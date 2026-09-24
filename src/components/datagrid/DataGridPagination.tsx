@@ -22,14 +22,14 @@ export function DataGridPagination({ page, totalPages, onPageChange }: Props) {
         <span className="font-semibold text-foreground">{totalPages}</span>
       </p>
 
-      <div className="flex items-center gap-2">
+      <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center">
         <Button
           type="button"
           variant="outline"
           size="sm"
           disabled={page <= 1}
           onClick={() => onPageChange(page - 1)}
-          className="h-9 rounded-xl px-3"
+          className="h-9 w-full rounded-xl px-3 sm:w-auto"
         >
           <ChevronLeft className="mr-1 size-4" />
           Previous
@@ -41,7 +41,7 @@ export function DataGridPagination({ page, totalPages, onPageChange }: Props) {
           size="sm"
           disabled={page >= totalPages}
           onClick={() => onPageChange(page + 1)}
-          className="h-9 rounded-xl px-3"
+          className="h-9 w-full rounded-xl px-3 sm:w-auto"
         >
           Next
           <ChevronRight className="ml-1 size-4" />

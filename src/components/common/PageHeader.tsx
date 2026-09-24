@@ -23,7 +23,7 @@ export function PageHeader({
           </p>
         )}
 
-        <h1 className="text-2xl font-bold tracking-[-0.04em] text-foreground sm:text-3xl md:text-[2rem]">
+        <h1 className="break-words text-2xl font-bold tracking-[-0.04em] text-foreground sm:text-3xl md:text-[2rem]">
           {title}
         </h1>
 
@@ -36,7 +36,9 @@ export function PageHeader({
 
       {/* Action */}
       {action && (
-        <div className="flex shrink-0 items-center gap-2">{action}</div>
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:shrink-0 sm:justify-end">
+          {action}
+        </div>
       )}
     </header>
   );

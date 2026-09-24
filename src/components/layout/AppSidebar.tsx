@@ -66,11 +66,17 @@ function isRouteActive(pathname: string, href: string, exact = false) {
    COMPONENT
    ========================================================================== */
 
-export function AppSidebar() {
+type Props = {
+  mobile?: boolean;
+  onNavigate?: () => void;
+};
+
+export function AppSidebar({ mobile = false, onNavigate }: Props) {
   const pathname = usePathname();
   const { school, role } = useSchool();
 
-  const collapsed = useSidebarCollapsed();
+  const storedCollapsed = useSidebarCollapsed();
+  const collapsed = mobile ? false : storedCollapsed;
 
   const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({});
 
@@ -124,15 +130,17 @@ export function AppSidebar() {
   return (
     <aside
       className={cn(
-        "sticky top-0 z-50 h-screen shrink-0 p-3",
+        "z-50 h-dvh shrink-0",
         "transition-[width] duration-300 ease-out",
-        collapsed ? "w-[82px]" : "w-[286px]",
+        mobile
+          ? "w-full p-0"
+          : ["sticky top-0 p-3", collapsed ? "w-[82px]" : "w-[286px]"],
       )}
     >
       <div
         className={cn(
           "flex h-full flex-col overflow-hidden",
-          "rounded-[20px]",
+          mobile ? "rounded-none" : "rounded-[20px]",
           "border border-sidebar-border",
           "bg-sidebar",
           "shadow-[0_12px_40px_rgba(15,23,42,0.07)]",
@@ -151,6 +159,7 @@ export function AppSidebar() {
         >
           <Link
             href={`/${school.slug}/${role === "TEACHER" ? "teacher/dashboard" : "dashboard"}`}
+            onClick={onNavigate}
             className={cn(
               "group flex min-w-0 items-center",
               collapsed ? "justify-center" : "gap-3",
@@ -448,6 +457,7 @@ export function AppSidebar() {
                                 <Link
                                   key={child.title}
                                   href={href}
+                                  onClick={onNavigate}
                                   className={cn(
                                     "group relative flex items-center gap-2.5",
                                     "rounded-lg px-3 py-2",
@@ -506,6 +516,7 @@ export function AppSidebar() {
                   <div key={item.title} className="group relative">
                     <Link
                       href={href}
+                      onClick={onNavigate}
                       className={cn(
                         "flex size-11 w-full items-center justify-center",
                         "rounded-xl",
@@ -555,6 +566,7 @@ export function AppSidebar() {
                 <Link
                   key={item.title}
                   href={href}
+                  onClick={onNavigate}
                   className={cn(
                     "group relative flex items-center gap-3",
                     "rounded-xl px-3 py-2.5",
@@ -630,6 +642,7 @@ export function AppSidebar() {
             <div className="mb-2 flex gap-1">
               <Link
                 href={`/${school.slug}/settings`}
+                onClick={onNavigate}
                 className={cn(
                   "flex flex-1 items-center gap-2",
                   "rounded-lg px-2.5 py-2",
@@ -644,21 +657,23 @@ export function AppSidebar() {
                 Settings
               </Link>
 
-              <button
-                type="button"
-                onClick={toggleSidebar}
-                className={cn(
-                  "flex items-center justify-center",
-                  "rounded-lg px-2.5",
-                  "text-slate-400",
-                  "transition-all duration-200",
-                  "hover:bg-slate-50",
-                  "hover:text-indigo-600",
-                )}
-                title="Collapse sidebar"
-              >
-                <PanelLeftClose className="size-4" />
-              </button>
+              {!mobile && (
+                <button
+                  type="button"
+                  onClick={toggleSidebar}
+                  className={cn(
+                    "flex items-center justify-center",
+                    "rounded-lg px-2.5",
+                    "text-slate-400",
+                    "transition-all duration-200",
+                    "hover:bg-slate-50",
+                    "hover:text-indigo-600",
+                  )}
+                  title="Collapse sidebar"
+                >
+                  <PanelLeftClose className="size-4" />
+                </button>
+              )}
             </div>
           )}
 

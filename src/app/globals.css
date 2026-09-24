@@ -200,10 +200,11 @@
   html {
     @apply font-sans antialiased;
     scroll-behavior: smooth;
+    text-size-adjust: 100%;
   }
 
   body {
-    @apply min-h-screen bg-background text-foreground antialiased;
+    @apply min-h-screen overflow-x-clip bg-background text-foreground antialiased;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
@@ -211,6 +212,13 @@
   button,
   a {
     -webkit-tap-highlight-color: transparent;
+  }
+
+  img,
+  svg,
+  video,
+  canvas {
+    max-width: 100%;
   }
 }
 

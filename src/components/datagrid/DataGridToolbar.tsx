@@ -22,7 +22,7 @@ export function DataGridToolbar({
   onStatusChange,
 }: Props) {
   return (
-    <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between md:px-5">
+    <div className="flex flex-col gap-3 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4 md:px-5">
       <DataGridSearch
         value={value}
         placeholder={placeholder}

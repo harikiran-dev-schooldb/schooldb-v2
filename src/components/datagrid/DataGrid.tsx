@@ -53,15 +53,15 @@ export function DataGrid<TData>({
   const rows = table.getRowModel().rows;
 
   return (
-    <div className="premium-card overflow-hidden rounded-2xl">
+    <div className="premium-card min-w-0 overflow-hidden rounded-2xl">
       {/* Toolbar */}
       {toolbar && (
         <div className="border-b border-border/60 bg-card/50">{toolbar}</div>
       )}
 
       {/* Table */}
-      <div className="w-full overflow-x-auto">
-        <Table>
+      <div className="w-full overflow-x-auto overscroll-x-contain [scrollbar-width:thin]">
+        <Table className="min-w-max">
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow
@@ -71,7 +71,7 @@ export function DataGrid<TData>({
                 {headerGroup.headers.map((header) => (
                   <TableHead
                     key={header.id}
-                    className="h-12 whitespace-nowrap px-5 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground md:px-6"
+                    className="h-11 whitespace-nowrap px-3 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground sm:h-12 sm:px-4 md:px-6"
                   >
                     {header.isPlaceholder
                       ? null
@@ -95,7 +95,7 @@ export function DataGrid<TData>({
                   {columns.map((_, columnIndex) => (
                     <TableCell
                       key={`loading-cell-${rowIndex}-${columnIndex}`}
-                      className="px-5 py-4 md:px-6"
+                      className="px-3 py-3 sm:px-4 sm:py-4 md:px-6"
                     >
                       <div className="h-4 w-full max-w-[180px] animate-pulse rounded-md bg-muted" />
                     </TableCell>
@@ -111,7 +111,7 @@ export function DataGrid<TData>({
                   {row.getVisibleCells().map((cell) => (
                     <TableCell
                       key={cell.id}
-                      className="whitespace-nowrap px-5 py-4 text-sm text-foreground md:px-6"
+                      className="whitespace-nowrap px-3 py-3 text-sm text-foreground sm:px-4 sm:py-4 md:px-6"
                     >
                       {flexRender(
                         cell.column.columnDef.cell,
@@ -138,7 +138,7 @@ export function DataGrid<TData>({
 
       {/* Pagination */}
       {!loading && totalPages > 1 && (
-        <div className="border-t border-border/60 bg-muted/[0.18] px-5 py-3.5 md:px-6">
+        <div className="border-t border-border/60 bg-muted/[0.18] px-3 py-3.5 sm:px-4 md:px-6">
           <DataGridPagination
             page={page}
             totalPages={totalPages}

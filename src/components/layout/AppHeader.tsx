@@ -1,6 +1,14 @@
 "use client";
 
-import { Bell, ChevronDown, LogOut, Repeat2, Search, User } from "lucide-react";
+import {
+  Bell,
+  ChevronDown,
+  LogOut,
+  Menu,
+  Repeat2,
+  Search,
+  User,
+} from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 
 import { useSchool } from "@/contexts/school-context";
@@ -22,7 +30,11 @@ function formatRole(role: string) {
     .join(" ");
 }
 
-export function AppHeader() {
+type Props = {
+  onMenuClick?: () => void;
+};
+
+export function AppHeader({ onMenuClick }: Props) {
   const { role, user } = useSchool();
   const router = useRouter();
 
@@ -37,15 +49,28 @@ export function AppHeader() {
   };
 
   return (
-    <header className="sticky top-0 z-40 h-[72px] border-b border-border/70 bg-background/80 backdrop-blur-xl">
-      <div className="flex h-full items-center justify-between px-4 sm:px-6 lg:px-8">
+    <header className="sticky top-0 z-40 h-16 border-b border-border/70 bg-background/90 backdrop-blur-xl sm:h-[72px]">
+      <div className="flex h-full items-center justify-between gap-2 px-3 sm:px-5 lg:px-6 xl:px-8">
         {/* Workspace context */}
-        <div className="min-w-0">
-          <p className="section-label">School workspace</p>
+        <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            aria-label="Open main navigation"
+            className="shrink-0 rounded-xl lg:hidden"
+            onClick={onMenuClick}
+          >
+            <Menu className="size-5" />
+          </Button>
 
-          <p className="mt-1 text-sm font-semibold tracking-tight text-foreground">
-            {formatRole(role)} Portal
-          </p>
+          <div className="min-w-0">
+            <p className="section-label hidden sm:block">School workspace</p>
+
+            <p className="truncate text-sm font-semibold tracking-tight text-foreground sm:mt-1">
+              {formatRole(role)} Portal
+            </p>
+          </div>
         </div>
 
         {/* Actions */}
