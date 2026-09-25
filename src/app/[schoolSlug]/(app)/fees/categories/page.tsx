@@ -6,14 +6,16 @@ import { AddFeeCategoryButton } from "@/features/fees/components/AddFeeCategoryB
 
 export default function FeeCategoryPage() {
   return (
-    <>
+    <div className="space-y-6 pb-10">
       <PageHeader
         title="Fee Categories"
         description="Manage fee categories for the school."
         action={<AddFeeCategoryButton />}
       />
 
-      <FeeCategoryTable />
-    </>
+      <section className="premium-card overflow-hidden rounded-3xl p-4 md:p-6">
+        <FeeCategoryTable />
+      </section>
+    </div>
   );
 }
