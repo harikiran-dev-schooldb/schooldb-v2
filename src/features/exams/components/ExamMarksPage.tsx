@@ -565,7 +565,9 @@ export function ExamMarksPage({ schoolSlug, examId }: Props) {
                               >
                                 <option value="PRESENT">Present</option>
 
-                                <option value="ABSENT">Absent</option>\n\n                                <option value="EXEMPTED">Exempted</option>
+                                <option value="ABSENT">Absent</option>
+
+                                <option value="EXEMPTED">Exempted</option>
                               </select>
                             </div>
                           </td>
