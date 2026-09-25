@@ -4,7 +4,7 @@ import { CalendarClock, CalendarDays, CircleCheckBig, Clock3, MessageSquareText,
 import { PageContainer, PageHeader } from "@/components/common/layout";
 import { Badge } from "@/components/ui/badge";
 import { LeaveDecisionControl } from "@/features/leave-requests/LeaveDecisionControl";
-import { listStaffLeaveRequests } from "@/features/leave-requests/service";
+import { leaveRequestFilterOptions, listStaffLeaveRequests } from "@/features/leave-requests/service";
 import { formatDate } from "@/lib/self-service-format";
 
 const statusStyle: Record<string, string> = {
@@ -47,12 +47,16 @@ export default async function LeaveRequestsManagementPage({
   searchParams,
 }: {
   params: Promise<{ schoolSlug: string }>;
-  searchParams: Promise<{ type?: string }>;
+  searchParams: Promise<{ type?: string; classId?: string; sectionId?: string; from?: string; to?: string }>;
 }) {
   const { schoolSlug } = await params;
-  const { type } = await searchParams;
-  const selectedType = filterTypes.includes(type as (typeof filterTypes)[number]) ? type! : "ALL";
-  const allRequests = await listStaffLeaveRequests(schoolSlug);
+  const query = await searchParams;
+  const selectedType = filterTypes.includes(query.type as (typeof filterTypes)[number]) ? query.type! : "ALL";
+  const [allRequests, filterOptions] = await Promise.all([
+    listStaffLeaveRequests(schoolSlug, { classId: query.classId, sectionId: query.sectionId, from: query.from, to: query.to }),
+    leaveRequestFilterOptions(schoolSlug),
+  ]);
+  const availableSections = query.classId ? filterOptions.sections.filter((section) => section.classId === query.classId) : filterOptions.sections;
   const requests = selectedType === "ALL" ? allRequests : allRequests.filter((request) => request.requestType === selectedType);
   const pending = requests.filter((request) => request.status === "PENDING");
   const completed = requests.filter((request) => request.status !== "PENDING");
@@ -73,10 +77,42 @@ export default async function LeaveRequestsManagementPage({
         </div>
       </div>
 
-      <div className="mt-6 flex flex-wrap gap-2">
+      <form className="mt-6 grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:grid-cols-2 lg:grid-cols-5">
+        {selectedType !== "ALL" && <input type="hidden" name="type" value={selectedType} />}
+        <label className="grid gap-1.5 text-xs font-bold text-slate-600">Class
+          <select name="classId" defaultValue={query.classId ?? ""} className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-800">
+            <option value="">All classes</option>
+            {filterOptions.classes.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+          </select>
+        </label>
+        <label className="grid gap-1.5 text-xs font-bold text-slate-600">Section
+          <select name="sectionId" defaultValue={query.sectionId ?? ""} className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-800">
+            <option value="">All sections</option>
+            {availableSections.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+          </select>
+        </label>
+        <label className="grid gap-1.5 text-xs font-bold text-slate-600">From date
+          <input name="from" type="date" defaultValue={query.from ?? ""} className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-800" />
+        </label>
+        <label className="grid gap-1.5 text-xs font-bold text-slate-600">To date
+          <input name="to" type="date" defaultValue={query.to ?? ""} className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-800" />
+        </label>
+        <div className="flex items-end gap-2">
+          <button type="submit" className="h-10 flex-1 rounded-xl bg-indigo-600 px-4 text-sm font-bold text-white hover:bg-indigo-700">Apply</button>
+          <Link href={selectedType === "ALL" ? `/${schoolSlug}/leave-requests` : `/${schoolSlug}/leave-requests?type=${selectedType}`} className="flex h-10 items-center rounded-xl border border-slate-200 px-3 text-sm font-bold text-slate-600 hover:bg-slate-50">Clear</Link>
+        </div>
+      </form>
+
+      <div className="mt-4 flex flex-wrap gap-2">
         {filterTypes.map((filter) => {
           const active = selectedType === filter;
-          const href = filter === "ALL" ? `/${schoolSlug}/leave-requests` : `/${schoolSlug}/leave-requests?type=${filter}`;
+          const filterQuery = new URLSearchParams();
+          if (filter !== "ALL") filterQuery.set("type", filter);
+          if (query.classId) filterQuery.set("classId", query.classId);
+          if (query.sectionId) filterQuery.set("sectionId", query.sectionId);
+          if (query.from) filterQuery.set("from", query.from);
+          if (query.to) filterQuery.set("to", query.to);
+          const href = `/${schoolSlug}/leave-requests${filterQuery.size ? `?${filterQuery.toString()}` : ""}`;
           return <Link key={filter} href={href} className={`rounded-full border px-4 py-2 text-xs font-bold transition ${active ? "border-indigo-600 bg-indigo-600 text-white shadow-sm" : "border-slate-200 bg-white text-slate-600 hover:border-indigo-200 hover:text-indigo-700"}`}>{filter === "ALL" ? "All" : requestTypeLabel[filter]}</Link>;
         })}
       </div>
