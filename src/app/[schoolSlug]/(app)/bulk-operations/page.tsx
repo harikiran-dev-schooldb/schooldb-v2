@@ -168,7 +168,7 @@ const operations = [
 
 export default function BulkOperationsPage() {
   return (
-    <div className="space-y-6 pb-12">
+    <div className="space-y-6 p-4 pb-12 sm:p-6">
       {/* ================================================================ */}
       {/* HEADER                                                           */}
       {/* ================================================================ */}
