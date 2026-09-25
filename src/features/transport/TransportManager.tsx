@@ -185,7 +185,7 @@ export function TransportManager({
   );
 
   return (
-    <div className="space-y-7">
+    <div className="space-y-6 p-4 pb-10 sm:p-6">
       <section className="relative overflow-hidden rounded-[30px] bg-gradient-to-br from-slate-950 via-indigo-950 to-blue-900 p-6 text-white shadow-[0_30px_80px_rgba(30,41,99,0.24)] sm:p-8">
         <div className="pointer-events-none absolute -right-16 -top-20 size-72 rounded-full bg-cyan-400/20 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-24 left-1/3 size-64 rounded-full bg-violet-500/20 blur-3xl" />
