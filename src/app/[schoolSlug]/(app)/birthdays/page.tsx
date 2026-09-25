@@ -9,6 +9,12 @@ import {
   Loader2,
   MessageCircle,
   Send,
+  Sparkles,
+  PartyPopper,
+  Users,
+  Clock3,
+  ChevronRight,
+  CheckCircle2,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -75,32 +81,32 @@ function StudentCard({
   const enrollment = student.enrollments[0];
 
   return (
-    <Link href={`students/${student.id}`}>
-      <Card className="h-full transition-all hover:-translate-y-0.5 hover:shadow-md">
-        <CardContent className="flex items-center gap-4 p-5">
+    <Link href={`students/${student.id}`} className="group block h-full">
+      <Card className="h-full overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_8px_24px_rgba(15,23,42,0.04)] transition-all duration-200 group-hover:-translate-y-0.5 group-hover:border-indigo-200 group-hover:shadow-[0_14px_32px_rgba(79,70,229,0.10)]">
+        <CardContent className="flex items-center gap-4 p-4 sm:p-5">
           {student.imageUrl ? (
             <img
               src={student.imageUrl}
               alt=""
-              className="size-14 rounded-2xl object-cover"
+              className="size-14 rounded-2xl object-cover ring-1 ring-slate-200"
             />
           ) : (
-            <div className="flex size-14 items-center justify-center rounded-2xl bg-violet-100 text-xl font-bold text-violet-600">
+            <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-50 to-violet-100 text-xl font-bold text-indigo-700 ring-1 ring-indigo-100">
               {student.fullName?.charAt(0) || "S"}
             </div>
           )}
 
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
-              <p className="truncate font-semibold">
+              <p className="truncate font-bold tracking-tight text-slate-900">
                 {student.fullName || "Unnamed Student"}
               </p>
               {showDate && (
-                <Badge variant="outline">{birthdayDate(student)}</Badge>
+                <Badge variant="outline" className="rounded-full border-indigo-100 bg-indigo-50/70 text-[10px] font-bold text-indigo-700">{birthdayDate(student)}</Badge>
               )}
             </div>
 
-            <p className="mt-1 text-xs text-muted-foreground">
+            <p className="mt-1 text-xs font-medium text-slate-500">
               {student.admissionNo}
               {enrollment
                 ? ` · ${enrollment.class.name} - ${enrollment.section.name}`
@@ -111,15 +117,15 @@ function StudentCard({
 
             <div className="mt-2 flex flex-wrap items-center gap-2">
               {student.whatsappOptIn ? (
-                <Badge variant="secondary">
-                  <MessageCircle className="mr-1 size-3" />
+                <Badge variant="secondary" className="rounded-full bg-emerald-50 text-[10px] font-semibold text-emerald-700 hover:bg-emerald-50">
+                  <CheckCircle2 className="mr-1 size-3" />
                   WhatsApp enabled
                 </Badge>
               ) : (
-                <Badge variant="outline">WhatsApp not opted in</Badge>
+                <Badge variant="outline" className="rounded-full text-[10px] font-medium text-slate-500">WhatsApp not opted in</Badge>
               )}
               {student.wishStatus && (
-                <Badge variant="outline">{student.wishStatus.status}</Badge>
+                <Badge variant="outline" className="rounded-full text-[10px] font-semibold">{student.wishStatus.status}</Badge>
               )}
             </div>
           </div>
@@ -133,7 +139,7 @@ function StudentCard({
                 event.stopPropagation();
                 onWish(student);
               }}
-              className="inline-flex h-9 items-center gap-1.5 rounded-lg border px-3 text-xs font-semibold disabled:opacity-50"
+              className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl border border-indigo-100 bg-indigo-50 px-3 text-xs font-bold text-indigo-700 transition-colors hover:bg-indigo-100 disabled:opacity-50"
             >
               {sending ? (
                 <Loader2 className="size-3.5 animate-spin" />
@@ -144,7 +150,7 @@ function StudentCard({
             </button>
           )}
 
-          <Cake className="size-5 text-violet-500" />
+          {!onWish && <ChevronRight className="size-4 shrink-0 text-slate-300 transition-transform group-hover:translate-x-0.5 group-hover:text-indigo-500" />}
         </CardContent>
       </Card>
     </Link>
@@ -217,45 +223,81 @@ export default function BirthdaysPage() {
         description="Today's celebrations and upcoming student birthdays."
       />
 
+      <section className="relative overflow-hidden rounded-3xl border border-indigo-100 bg-gradient-to-br from-white via-indigo-50/60 to-violet-50/60 px-5 py-6 shadow-[0_16px_45px_rgba(15,23,42,0.06)] sm:px-6 md:px-8 md:py-7">
+        <div className="pointer-events-none absolute -right-20 -top-24 size-72 rounded-full bg-violet-400/10 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-24 left-1/3 size-64 rounded-full bg-blue-400/10 blur-3xl" />
+
+        <div className="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex items-start gap-4">
+            <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-600 to-violet-600 text-white shadow-[0_10px_25px_rgba(79,70,229,0.20)]">
+              <PartyPopper className="size-6" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <Sparkles className="size-3 text-indigo-500" />
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-indigo-600">
+                  Student Celebrations
+                </p>
+              </div>
+              <h2 className="mt-2 text-xl font-bold tracking-[-0.025em] text-slate-950 md:text-2xl">
+                Make every birthday feel special
+              </h2>
+              <p className="mt-2 max-w-xl text-sm leading-6 text-slate-500">
+                See today&apos;s celebrations, plan upcoming wishes, and keep birthday communication in one polished workspace.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 rounded-2xl border border-indigo-100 bg-white/85 px-4 py-3 shadow-[0_10px_30px_rgba(79,70,229,0.06)]">
+            <div className="flex size-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 ring-1 ring-indigo-100">
+              <Cake className="size-4" />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Birthday Records</p>
+              <p className="mt-0.5 text-sm font-semibold text-slate-800">
+                {loading ? "Loading..." : `${data.total} students`}
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <div className="grid gap-4 sm:grid-cols-3">
-        <Card className="border-0 bg-gradient-to-br from-violet-50 to-white shadow-sm">
-          <CardContent className="flex items-center gap-4 p-5">
-            <div className="flex size-12 items-center justify-center rounded-2xl bg-violet-100 text-violet-600">
-              <Cake className="size-6" />
-            </div>
+        <Card className="rounded-2xl border border-violet-100 bg-white shadow-[0_8px_24px_rgba(15,23,42,0.04)]">
+          <CardContent className="flex items-center justify-between p-5">
             <div>
-              <p className="text-xs font-medium text-slate-500">Today</p>
-              <p className="text-2xl font-bold">
-                {loading ? "—" : data.birthdays.length}
-              </p>
+              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">Today</p>
+              <p className="mt-1 text-3xl font-bold tracking-tight text-slate-950">{loading ? "—" : data.birthdays.length}</p>
+              <p className="mt-1 text-xs text-slate-500">Celebrating today</p>
+            </div>
+            <div className="flex size-12 items-center justify-center rounded-2xl bg-violet-50 text-violet-600 ring-1 ring-violet-100">
+              <Cake className="size-5" />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-0 bg-gradient-to-br from-blue-50 to-white shadow-sm">
-          <CardContent className="flex items-center gap-4 p-5">
-            <div className="flex size-12 items-center justify-center rounded-2xl bg-blue-100 text-blue-600">
-              <CalendarDays className="size-6" />
-            </div>
+        <Card className="rounded-2xl border border-blue-100 bg-white shadow-[0_8px_24px_rgba(15,23,42,0.04)]">
+          <CardContent className="flex items-center justify-between p-5">
             <div>
-              <p className="text-xs font-medium text-slate-500">Next 7 Days</p>
-              <p className="text-2xl font-bold">
-                {loading ? "—" : data.next7.length}
-              </p>
+              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">Next 7 Days</p>
+              <p className="mt-1 text-3xl font-bold tracking-tight text-slate-950">{loading ? "—" : data.next7.length}</p>
+              <p className="mt-1 text-xs text-slate-500">Coming up soon</p>
+            </div>
+            <div className="flex size-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 ring-1 ring-blue-100">
+              <Clock3 className="size-5" />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-0 bg-gradient-to-br from-amber-50 to-white shadow-sm">
-          <CardContent className="flex items-center gap-4 p-5">
-            <div className="flex size-12 items-center justify-center rounded-2xl bg-amber-100 text-amber-600">
-              <Gift className="size-6" />
-            </div>
+        <Card className="rounded-2xl border border-amber-100 bg-white shadow-[0_8px_24px_rgba(15,23,42,0.04)]">
+          <CardContent className="flex items-center justify-between p-5">
             <div>
-              <p className="text-xs font-medium text-slate-500">This Month</p>
-              <p className="text-2xl font-bold">
-                {loading ? "—" : data.thisMonth.length}
-              </p>
+              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">This Month</p>
+              <p className="mt-1 text-3xl font-bold tracking-tight text-slate-950">{loading ? "—" : data.thisMonth.length}</p>
+              <p className="mt-1 text-xs text-slate-500">Monthly celebrations</p>
+            </div>
+            <div className="flex size-12 items-center justify-center rounded-2xl bg-amber-50 text-amber-600 ring-1 ring-amber-100">
+              <CalendarDays className="size-5" />
             </div>
           </CardContent>
         </Card>
@@ -268,13 +310,14 @@ export default function BirthdaysPage() {
         </div>
       ) : (
         <>
-          <section>
-            <div className="mb-3">
-              <h2 className="text-lg font-bold">Today&apos;s Birthdays</h2>
-              <p className="text-sm text-muted-foreground">
-                Students celebrating today.
-              </p>
+          <section className="overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-[0_12px_34px_rgba(15,23,42,0.05)]">
+            <div className="flex items-center gap-3 border-b border-slate-100 px-5 py-5 md:px-7">
+              <div className="flex size-10 items-center justify-center rounded-xl bg-violet-50 text-violet-600 ring-1 ring-violet-100"><PartyPopper className="size-4" /></div>
+              <div><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-violet-600">Celebrate Today</p>
+              <h2 className="mt-0.5 text-lg font-bold text-slate-950">Today&apos;s Birthdays</h2>
+              <p className="text-xs text-slate-500">Students celebrating today.</p></div>
             </div>
+            <div className="p-4 md:p-6">
             {data.birthdays.length ? (
               <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                 {data.birthdays.map((student) => (
@@ -296,15 +339,17 @@ export default function BirthdaysPage() {
                 </CardContent>
               </Card>
             )}
+            </div>
           </section>
 
-          <section>
-            <div className="mb-3">
-              <h2 className="text-lg font-bold">Next 7 Days</h2>
-              <p className="text-sm text-muted-foreground">
-                Upcoming birthdays after today.
-              </p>
+          <section className="overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-[0_12px_34px_rgba(15,23,42,0.05)]">
+            <div className="flex items-center gap-3 border-b border-slate-100 px-5 py-5 md:px-7">
+              <div className="flex size-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600 ring-1 ring-blue-100"><Clock3 className="size-4" /></div>
+              <div><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-blue-600">Coming Up</p>
+              <h2 className="mt-0.5 text-lg font-bold text-slate-950">Next 7 Days</h2>
+              <p className="text-xs text-slate-500">Upcoming birthdays after today.</p></div>
             </div>
+            <div className="p-4 md:p-6">
             {data.next7.length ? (
               <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                 {data.next7.map((student) => (
@@ -316,19 +361,19 @@ export default function BirthdaysPage() {
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">
-                No birthdays in the next 7 days.
-              </p>
+              <div className="flex min-h-28 flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 text-center"><Clock3 className="mb-2 size-6 text-slate-300" /><p className="text-sm text-slate-500">No birthdays in the next 7 days.</p></div>
             )}
+            </div>
           </section>
 
-          <section>
-            <div className="mb-3">
-              <h2 className="text-lg font-bold">This Month</h2>
-              <p className="text-sm text-muted-foreground">
-                All student birthdays in the current month.
-              </p>
+          <section className="overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-[0_12px_34px_rgba(15,23,42,0.05)]">
+            <div className="flex items-center gap-3 border-b border-slate-100 px-5 py-5 md:px-7">
+              <div className="flex size-10 items-center justify-center rounded-xl bg-amber-50 text-amber-600 ring-1 ring-amber-100"><Users className="size-4" /></div>
+              <div><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-amber-600">Monthly View</p>
+              <h2 className="mt-0.5 text-lg font-bold text-slate-950">This Month</h2>
+              <p className="text-xs text-slate-500">All student birthdays in the current month.</p></div>
             </div>
+            <div className="p-4 md:p-6">
             {data.thisMonth.length ? (
               <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                 {data.thisMonth.map((student) => (
@@ -340,10 +385,9 @@ export default function BirthdaysPage() {
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">
-                No birthdays this month.
-              </p>
+              <div className="flex min-h-28 flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 text-center"><Gift className="mb-2 size-6 text-slate-300" /><p className="text-sm text-slate-500">No birthdays this month.</p></div>
             )}
+            </div>
           </section>
         </>
       )}
