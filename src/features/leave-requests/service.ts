@@ -66,7 +66,7 @@ export async function leaveRequestFilterOptions(schoolSlug: string) {
   const sectionIds = [...new Set(enrollments.map((item) => item.sectionId))];
   const [classes, sections] = await Promise.all([
     prisma.class.findMany({ where: { schoolId: membership.schoolId, id: { in: classIds } }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
-    prisma.section.findMany({ where: { schoolId: membership.schoolId, id: { in: sectionIds } }, select: { id: true, name: true, classId: true }, orderBy: { name: "asc" } }),
+    prisma.section.findMany({ where: { id: { in: sectionIds }, class: { schoolId: membership.schoolId } }, select: { id: true, name: true, classId: true }, orderBy: { name: "asc" } }),
   ]);
   return { classes, sections };
 }
