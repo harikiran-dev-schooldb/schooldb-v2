@@ -8,6 +8,7 @@ import {
   CalendarDays,
   CheckCircle2,
   CreditCard,
+  Download,
   ExternalLink,
   Gift,
   GraduationCap,
@@ -536,6 +537,15 @@ export function StudentFeeLedger({ studentFeeIds }: Props) {
             </div>
 
             <div className="flex flex-col gap-3 sm:flex-row xl:justify-end">
+              {studentFeeIds.length === 1 && (
+                <Button asChild variant="outline" className="rounded-xl border-emerald-200 bg-emerald-50 text-emerald-700 shadow-sm hover:bg-emerald-100">
+                  <a href={`/api/v1/reports/${params.schoolSlug}/fees/students/${studentFeeIds[0]}/ledger`}>
+                    <Download className="mr-2 size-4" />
+                    Export Ledger
+                  </a>
+                </Button>
+              )}
+
               <Button
                 variant="outline"
                 className="rounded-xl border-slate-200 bg-white shadow-sm hover:bg-slate-50"
