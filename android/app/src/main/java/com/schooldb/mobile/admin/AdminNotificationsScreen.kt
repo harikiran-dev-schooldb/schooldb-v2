@@ -57,6 +57,14 @@ import com.composables.icons.lucide.ArrowLeft
 import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.Megaphone
 import com.composables.icons.lucide.RefreshCw
+import com.schooldb.mobile.ui.notifications.NotificationDayHeading
+import com.schooldb.mobile.ui.notifications.NotificationFilter
+import com.schooldb.mobile.ui.notifications.PremiumNotificationCard
+import com.schooldb.mobile.ui.notifications.PremiumNotificationData
+import com.schooldb.mobile.ui.notifications.PremiumNotificationEmpty
+import com.schooldb.mobile.ui.notifications.PremiumNotificationFilters
+import com.schooldb.mobile.ui.notifications.matches
+import com.schooldb.mobile.ui.notifications.notificationDay
 import java.io.IOException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -72,7 +80,7 @@ internal data class AdminNotification(
     val category: String,
     val priority: String,
     val target: String,
-    val date: String,
+    val publishedAt: String,
     val read: Boolean,
 )
 
@@ -107,7 +115,7 @@ internal class AdminNotificationsViewModel : ViewModel() {
                                 category = item.optString("category"),
                                 priority = item.optString("priority"),
                                 target = item.optString("targetLabel"),
-                                date = item.optString("publishedAt").take(10),
+                                publishedAt = item.optString("publishedAt"),
                                 read = item.optBoolean("read"),
                             )
                         }
@@ -151,9 +159,14 @@ internal class AdminNotificationsViewModel : ViewModel() {
 fun AdminNotificationsScreen(onBack: () -> Unit) {
     val viewModel: AdminNotificationsViewModel = viewModel()
     val state by viewModel.state.collectAsStateWithLifecycle()
-    var unreadOnly by rememberSaveable { mutableStateOf(false) }
+    var filter by rememberSaveable { mutableStateOf(NotificationFilter.ALL) }
     var expandedId by rememberSaveable { mutableStateOf<String?>(null) }
-    val visibleItems = if (unreadOnly) state.items.filter { !it.read } else state.items
+    val visibleItems = state.items.filter { item ->
+        PremiumNotificationData(
+            item.id, item.title, item.body, item.category, item.priority,
+            item.target, item.publishedAt, item.read,
+        ).matches(filter)
+    }
     BackHandler(onBack = onBack)
     LaunchedEffect(Unit) { viewModel.load() }
 
@@ -177,7 +190,7 @@ fun AdminNotificationsScreen(onBack: () -> Unit) {
                     }
                 }
                 Spacer(Modifier.height(14.dp))
-                Text("Announcements", fontSize = 32.sp, lineHeight = 36.sp,
+                Text("Notifications", fontSize = 32.sp, lineHeight = 36.sp,
                     letterSpacing = (-0.5).sp, fontWeight = FontWeight.ExtraBold)
                 Text("${state.items.count { !it.read }} unread",
                     style = MaterialTheme.typography.bodyMedium,
@@ -199,61 +212,34 @@ fun AdminNotificationsScreen(onBack: () -> Unit) {
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 item {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        FilterChip(selected = !unreadOnly, onClick = { unreadOnly = false },
-                            label = { Text("All") })
-                        FilterChip(selected = unreadOnly, onClick = { unreadOnly = true },
-                            label = { Text("Unread") })
-                    }
+                    PremiumNotificationFilters(
+                        selected = filter,
+                        unreadCount = state.items.count { !it.read },
+                        onSelect = { filter = it },
+                    )
                 }
                 if (visibleItems.isEmpty()) item {
-                    Text(if (unreadOnly) "You’re all caught up" else "No announcements yet",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    PremiumNotificationEmpty(filter)
                 }
-                items(visibleItems, key = { it.id }) { item ->
-                    Card(
-                        onClick = {
-                            expandedId = if (expandedId == item.id) null else item.id
-                            viewModel.markRead(item)
-                        },
-                        shape = RoundedCornerShape(20.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = if (item.read) MaterialTheme.colorScheme.surface
-                            else MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f),
-                        ),
-                    ) {
-                        Row(Modifier.fillMaxWidth().padding(16.dp),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primaryContainer,
-                                modifier = Modifier.size(42.dp)) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(Lucide.Megaphone, contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(22.dp))
-                                }
-                            }
-                            Column(Modifier.weight(1f)) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text(item.title, modifier = Modifier.weight(1f),
-                                        fontWeight = FontWeight.Bold, maxLines = 2,
-                                        overflow = TextOverflow.Ellipsis)
-                                    if (!item.read) Surface(shape = CircleShape,
-                                        color = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(8.dp)) {}
-                                }
-                                Spacer(Modifier.height(4.dp))
-                                Text(item.body,
-                                    maxLines = if (expandedId == item.id) Int.MAX_VALUE else 2,
-                                    overflow = TextOverflow.Ellipsis,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                Spacer(Modifier.height(8.dp))
-                                Text(listOf(item.category.replace('_', ' '), item.target, item.date)
-                                    .filter(String::isNotBlank).joinToString(" · "),
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.primary)
-                            }
-                        }
+                var previousDay: String? = null
+                visibleItems.forEach { notification ->
+                    val day = notificationDay(notification.publishedAt)
+                    if (day != previousDay) {
+                        item(key = "day-$day") { NotificationDayHeading(day) }
+                        previousDay = day
+                    }
+                    item(key = notification.id) {
+                        PremiumNotificationCard(
+                            item = PremiumNotificationData(
+                                notification.id, notification.title, notification.body, notification.category, notification.priority,
+                                notification.target, notification.publishedAt, notification.read,
+                            ),
+                            expanded = expandedId == notification.id,
+                            onClick = {
+                                expandedId = if (expandedId == notification.id) null else notification.id
+                                viewModel.markRead(notification)
+                            },
+                        )
                     }
                 }
                 if (state.loading) item { CircularProgressIndicator() }

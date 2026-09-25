@@ -76,6 +76,14 @@ import com.composables.icons.lucide.GraduationCap
 import com.composables.icons.lucide.House
 import com.composables.icons.lucide.LayoutGrid
 import com.composables.icons.lucide.Lucide
+import com.schooldb.mobile.ui.notifications.NotificationDayHeading
+import com.schooldb.mobile.ui.notifications.NotificationFilter
+import com.schooldb.mobile.ui.notifications.PremiumNotificationCard
+import com.schooldb.mobile.ui.notifications.PremiumNotificationData
+import com.schooldb.mobile.ui.notifications.PremiumNotificationEmpty
+import com.schooldb.mobile.ui.notifications.PremiumNotificationFilters
+import com.schooldb.mobile.ui.notifications.matches
+import com.schooldb.mobile.ui.notifications.notificationDay
 
 private val FamilyIndigo = Color(0xFF4F46E5)
 private val FamilyGreen = Color(0xFF059669)
@@ -1000,9 +1008,18 @@ private fun NotificationsTab(
     onBack: () -> Unit,
     modifier: Modifier,
 ) {
+    var filter by rememberSaveable { mutableStateOf(NotificationFilter.ALL) }
+    var expandedId by rememberSaveable { mutableStateOf<String?>(null) }
+    val visible = state.notifications.filter { notification ->
+        PremiumNotificationData(
+            notification.id, notification.title, notification.body, notification.category,
+            notification.priority, notification.targetLabel, notification.publishedAt, notification.read,
+        ).matches(filter)
+    }
     LazyColumn(
         modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(bottom = 28.dp),
+        contentPadding = PaddingValues(bottom = 34.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         item {
             Box(Modifier.padding(top = 12.dp, bottom = 14.dp)) {
@@ -1022,82 +1039,48 @@ private fun NotificationsTab(
                 )
             }
         }
+        item {
+            PremiumNotificationFilters(
+                selected = filter,
+                unreadCount = state.unreadNotificationCount,
+                onSelect = { filter = it },
+                modifier = Modifier.padding(horizontal = 20.dp),
+            )
+        }
         when {
             state.notificationsLoading && state.notifications.isEmpty() -> item { LoadingBlock() }
             state.notificationsError != null && state.notifications.isEmpty() -> item {
                 InlineError(state.notificationsError, onRefresh)
             }
-            state.notifications.isEmpty() -> item {
-                EmptyMessage("School announcements and updates will appear here.")
+            visible.isEmpty() -> item {
+                PremiumNotificationEmpty(filter, Modifier.padding(horizontal = 20.dp))
             }
-            else -> items(state.notifications, key = { it.id }) { notification ->
-                NotificationCard(notification, onOpen)
-            }
-        }
-    }
-}
-
-@Composable
-private fun NotificationCard(
-    notification: FamilyNotification,
-    onOpen: (String) -> Unit,
-) {
-    val urgent = notification.priority == "URGENT"
-    Card(
-        onClick = { onOpen(notification.id) },
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 6.dp),
-        shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = when {
-                urgent && !notification.read -> FamilyRed.copy(alpha = .09f)
-                !notification.read -> FamilyIndigo.copy(alpha = .09f)
-                else -> MaterialTheme.colorScheme.surface
-            },
-        ),
-        border = if (!notification.read) BorderStroke(
-            1.dp,
-            if (urgent) FamilyRed.copy(alpha = .35f) else FamilyIndigo.copy(alpha = .3f),
-        ) else null,
-    ) {
-        Column(Modifier.padding(16.dp)) {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                if (!notification.read) {
-                    Box(
-                        Modifier.size(9.dp).background(
-                            if (urgent) FamilyRed else FamilyIndigo,
-                            CircleShape,
-                        ),
-                    )
-                    Spacer(Modifier.width(9.dp))
-                }
-                Text(
-                    notification.title,
-                    Modifier.weight(1f),
-                    fontWeight = if (notification.read) FontWeight.SemiBold else FontWeight.Bold,
-                    fontSize = 16.sp,
-                )
-                if (urgent) {
-                    Badge(containerColor = FamilyRed) { Text("URGENT", color = Color.White) }
+            else -> {
+                var previousDay: String? = null
+                visible.forEach { notification ->
+                    val day = notificationDay(notification.publishedAt)
+                    if (day != previousDay) {
+                        item(key = "day-$day") {
+                            NotificationDayHeading(day, Modifier.padding(horizontal = 20.dp))
+                        }
+                        previousDay = day
+                    }
+                    item(key = notification.id) {
+                        PremiumNotificationCard(
+                            item = PremiumNotificationData(
+                                notification.id, notification.title, notification.body, notification.category,
+                                notification.priority, notification.targetLabel, notification.publishedAt, notification.read,
+                            ),
+                            expanded = expandedId == notification.id,
+                            onClick = {
+                                expandedId = if (expandedId == notification.id) null else notification.id
+                                onOpen(notification.id)
+                            },
+                            modifier = Modifier.padding(horizontal = 20.dp),
+                        )
+                    }
                 }
             }
-            Text(
-                notification.body,
-                Modifier.padding(top = 9.dp),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontSize = 13.sp,
-                lineHeight = 19.sp,
-            )
-            Text(
-                listOf(
-                    notification.category.replace('_', ' ').lowercase().replaceFirstChar(Char::uppercase),
-                    notification.targetLabel,
-                    date(notification.publishedAt),
-                ).filter(String::isNotBlank).joinToString(" · "),
-                Modifier.padding(top = 12.dp),
-                color = if (notification.read) MaterialTheme.colorScheme.onSurfaceVariant else FamilyIndigo,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.SemiBold,
-            )
         }
     }
 }

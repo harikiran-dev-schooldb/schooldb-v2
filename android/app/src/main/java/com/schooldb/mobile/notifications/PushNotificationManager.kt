@@ -124,6 +124,11 @@ class SchoolDbMessagingService : FirebaseMessagingService() {
     override fun onMessageReceived(message: RemoteMessage) {
         val title = message.notification?.title ?: message.data["title"] ?: "SchoolDB update"
         val body = message.notification?.body ?: message.data["body"] ?: return
+        val category = message.data["category"]
+            ?.replace('_', ' ')
+            ?.lowercase()
+            ?.replaceFirstChar(Char::uppercase)
+            ?: "School update"
         val intent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
             putExtra("announcementId", message.data["announcementId"])
@@ -138,9 +143,15 @@ class SchoolDbMessagingService : FirebaseMessagingService() {
             .setSmallIcon(R.drawable.ic_schooldb)
             .setContentTitle(title)
             .setContentText(body)
+            .setSubText(category)
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))
+            .setColor(android.graphics.Color.rgb(49, 84, 217))
+            .setCategory(NotificationCompat.CATEGORY_MESSAGE)
+            .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
+            .setGroup("schooldb_updates")
             .setAutoCancel(true)
             .setContentIntent(pendingIntent)
+            .addAction(0, "View", pendingIntent)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setDefaults(NotificationCompat.DEFAULT_ALL)
             .build()
