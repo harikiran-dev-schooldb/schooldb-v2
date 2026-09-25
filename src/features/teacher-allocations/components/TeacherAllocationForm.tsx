@@ -14,6 +14,7 @@ import { toast } from "sonner";
 
 import { FormField, SubmitButton } from "@/components/common/forms";
 import { RemoteCombobox } from "@/components/common/combobox/RemoteCombobox";
+import { AcademicYearSelect } from "@/components/common/select/AcademicYearSelect";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { refreshTable } from "@/lib/table-event";
@@ -305,10 +306,8 @@ export function TeacherAllocationForm({
           required
           error={form.formState.errors.academicYearId?.message}
         >
-          <RemoteCombobox
-            url="/api/v1/academic-years/options"
+          <AcademicYearSelect
             value={academicYearId ?? ""}
-            placeholder="Select academic year"
             onChange={handleAcademicYearChange}
           />
         </FormField>
