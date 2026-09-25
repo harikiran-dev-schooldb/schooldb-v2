@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Download } from "lucide-react";
+import { AlertCircle, Download, Loader2, RefreshCw } from "lucide-react";
 
 import { OutstandingFeesSummary } from "@/features/student-fees/components/OutstandingFeesSummary";
 import { OutstandingFeesSearch } from "@/features/student-fees/components/OutstandingFeesSearch";
@@ -179,22 +179,29 @@ export function OutstandingFeesContainer({
 
   if (loading && !data) {
     return (
-      <div className="py-6 text-sm text-muted-foreground">
-        Loading outstanding fees...
+      <div className="flex min-h-[360px] flex-col items-center justify-center text-center">
+        <div className="flex size-14 items-center justify-center rounded-2xl bg-amber-500/10">
+          <Loader2 className="size-6 animate-spin text-amber-600" />
+        </div>
+        <h2 className="mt-5 font-semibold">Loading outstanding fees</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Retrieving pending student fee installments...
+        </p>
       </div>
     );
   }
 
   if (error && !data) {
     return (
-      <Card>
-        <CardContent className="p-6">
-          <div className="text-sm text-destructive">{error}</div>
-
-          <Button
-            className="mt-4"
-            onClick={() => void loadOutstanding(search, page)}
-          >
+      <Card className="mx-auto max-w-lg overflow-hidden rounded-2xl border-destructive/20">
+        <CardContent className="flex flex-col items-center px-6 py-12 text-center">
+          <div className="flex size-14 items-center justify-center rounded-2xl bg-destructive/10">
+            <AlertCircle className="size-6 text-destructive" />
+          </div>
+          <h2 className="mt-5 font-semibold">Unable to load outstanding fees</h2>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">{error}</p>
+          <Button className="mt-6 rounded-xl" onClick={() => void loadOutstanding(search, page)}>
+            <RefreshCw className="mr-2 size-4" />
             Try Again
           </Button>
         </CardContent>
@@ -212,8 +219,8 @@ export function OutstandingFeesContainer({
     <div className="space-y-6">
       <OutstandingFeesSummary summary={data.summary} />
 
-      <div className="flex justify-end">
-        <Button asChild className="bg-emerald-600 text-white hover:bg-emerald-700">
+      <div className="flex flex-wrap justify-end gap-2">
+        <Button asChild className="rounded-xl bg-emerald-600 text-white hover:bg-emerald-700">
           <a href={`/api/v1/reports/${schoolSlug}/fees/outstanding?${new URLSearchParams({
             ...(search.trim() ? { search: search.trim() } : {}),
             ...(classId ? { classId } : {}),
@@ -261,9 +268,16 @@ export function OutstandingFeesContainer({
       )}
 
       {error && (
-        <Card>
-          <CardContent className="p-4">
-            <div className="text-sm text-destructive">{error}</div>
+        <Card className="rounded-2xl border-destructive/20 bg-destructive/5">
+          <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3">
+              <AlertCircle className="size-5 shrink-0 text-destructive" />
+              <p className="text-sm text-destructive">{error}</p>
+            </div>
+            <Button variant="outline" size="sm" className="rounded-lg" onClick={() => void loadOutstanding(search, page)} disabled={loading}>
+              <RefreshCw className={`mr-2 size-4 ${loading ? "animate-spin" : ""}`} />
+              Retry
+            </Button>
           </CardContent>
         </Card>
       )}
@@ -271,9 +285,9 @@ export function OutstandingFeesContainer({
       <OutstandingFeesTable rows={data.rows} onCollect={handleCollect} />
 
       {pagination && pagination.totalPages > 1 && (
-        <div className="flex items-center justify-between border-t pt-4">
+        <div className="flex flex-col gap-3 rounded-2xl border border-border/60 bg-card px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="text-sm text-muted-foreground">
-            Page {pagination.page} of {pagination.totalPages}
+            Page <span className="font-semibold text-foreground">{pagination.page}</span> of {pagination.totalPages}
             {" · "}
             {pagination.total} outstanding installments
           </div>
@@ -282,6 +296,7 @@ export function OutstandingFeesContainer({
             <Button
               variant="outline"
               size="sm"
+              className="rounded-lg"
               disabled={loading || pagination.page <= 1}
               onClick={handlePreviousPage}
             >
@@ -291,6 +306,7 @@ export function OutstandingFeesContainer({
             <Button
               variant="outline"
               size="sm"
+              className="rounded-lg"
               disabled={loading || pagination.page >= pagination.totalPages}
               onClick={handleNextPage}
             >
