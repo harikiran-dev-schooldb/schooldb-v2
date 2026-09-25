@@ -400,7 +400,6 @@ model Student {
   @@index([schoolId, fullName])
   @@index([schoolId, phone])
   @@index([schoolId, status, createdAt])
-  @@index([schoolId, requestType, startDate])
 }
 
 model House {
@@ -957,6 +956,7 @@ model LeaveRequest {
   student      Student           @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   @@index([schoolId, status, createdAt])
+  @@index([schoolId, requestType, startDate])
   @@index([studentId, createdAt])
   @@index([enrollmentId])
 }
