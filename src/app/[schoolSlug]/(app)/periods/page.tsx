@@ -6,16 +6,16 @@ import { PeriodTable } from "@/features/periods/components/PeriodTable";
 
 export default function PeriodPage() {
   return (
-    <div className="space-y-8 pb-6">
+    <div className="space-y-6 pb-10">
       <PageHeader
         title="Periods"
-        description="Manage school periods."
+        description="Configure the teaching periods used by timetables and attendance."
         actions={<AddPeriodButton />}
       />
 
-      <div className="p-3 md:p-5">
+      <section className="premium-card overflow-hidden rounded-3xl bg-white p-3 md:p-5">
         <PeriodTable />
-      </div>
+      </section>
     </div>
   );
 }
