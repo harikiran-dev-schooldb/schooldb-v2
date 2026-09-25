@@ -19,9 +19,9 @@ export default async function CertificateSettingsPage({ params }: Props) {
   return (
     <div className="space-y-6 p-4 pb-12 sm:p-6">
       <PageHeader eyebrow="School Setup" title="Certificate Settings" description="Customize the official wording and signatory shown on student certificates." />
-      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-950 via-indigo-950 to-violet-950 px-6 py-7 text-white shadow-2xl shadow-indigo-950/15 md:px-8">
-        <div className="absolute -right-16 -top-20 size-64 rounded-full bg-cyan-400/10 blur-3xl" />
-        <div className="relative flex items-center gap-4"><div className="flex size-12 items-center justify-center rounded-2xl bg-white/10 ring-1 ring-white/15"><FileBadge2 className="size-6 text-cyan-300" /></div><div><p className="text-[10px] font-bold uppercase tracking-[0.2em] text-cyan-300">Official Documents</p><h2 className="mt-1 text-2xl font-bold tracking-tight">Your school’s wording</h2><p className="mt-1 text-sm text-indigo-100/75">Saved once and applied automatically to newly generated certificates.</p></div></div>
+      <section className="relative overflow-hidden rounded-3xl border border-indigo-100 bg-gradient-to-br from-white via-indigo-50/60 to-violet-50/60 px-6 py-7 shadow-[0_16px_45px_rgba(15,23,42,0.06)] md:px-8">
+        <div className="absolute -right-16 -top-20 size-64 rounded-full bg-violet-400/10 blur-3xl" />
+        <div className="relative flex items-center gap-4"><div className="flex size-12 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600 ring-1 ring-indigo-100"><FileBadge2 className="size-6 text-indigo-600" /></div><div><p className="text-[10px] font-bold uppercase tracking-[0.2em] text-cyan-300">Official Documents</p><h2 className="mt-1 text-2xl font-bold tracking-tight text-slate-950">Your school’s wording</h2><p className="mt-1 text-sm text-slate-500">Saved once and applied automatically to newly generated certificates.</p></div></div>
       </section>
       <CertificateSettingsForm initialValue={setting ?? { ...DEFAULT_CERTIFICATE_SETTING }} />
     </div>
