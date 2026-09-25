@@ -27,7 +27,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   const [school, classInfo, section, report] = await Promise.all([
     prisma.school.findFirst({ where: { id: tenant.schoolId, slug: schoolSlug }, select: { name: true } }),
     prisma.class.findFirst({ where: { id: classId, schoolId: tenant.schoolId }, select: { name: true } }),
-    prisma.section.findFirst({ where: { id: sectionId, schoolId: tenant.schoolId }, select: { name: true } }),
+    prisma.section.findFirst({ where: { id: sectionId, class: { schoolId: tenant.schoolId } }, select: { name: true } }),
     attendanceService.classAttendanceReport(tenant.schoolId, academicYearId, classId, sectionId, fromDate, toDate),
   ]);
   if (!school || !classInfo || !section) return NextResponse.json({ error: "Report scope not found." }, { status: 404 });
