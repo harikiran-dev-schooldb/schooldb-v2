@@ -180,7 +180,7 @@ export function ExamDetailsPage({ schoolSlug, examId }: Props) {
 
   if (loading)
     return (
-      <div className="space-y-6">
+      <div className="space-y-6 p-4 sm:p-6">
         <div className="h-8 w-48 animate-pulse rounded-lg bg-muted" />
         <div className="grid gap-4 sm:grid-cols-3">
           {[1, 2, 3].map((item) => (
