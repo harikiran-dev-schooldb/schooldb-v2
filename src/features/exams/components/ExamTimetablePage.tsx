@@ -126,7 +126,7 @@ export function ExamTimetablePage({ schoolSlug, examId }: Props) {
   }
 
   return (
-    <div className="space-y-6 pb-12">
+    <div className="space-y-6 p-4 pb-12 sm:p-6">
       <div>
         <Button variant="ghost" className="-ml-3" onClick={() => router.push(`/${schoolSlug}/exams/${examId}`)}>
           <ArrowLeft className="mr-2 size-4" />
