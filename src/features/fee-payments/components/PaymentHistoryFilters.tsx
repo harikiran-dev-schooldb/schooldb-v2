@@ -24,6 +24,8 @@ import {
 type Props = {
   search: string;
   paymentMode: string;
+  installmentName: string;
+  installmentOptions: string[];
   fromDate: string;
   toDate: string;
 
@@ -31,6 +33,7 @@ type Props = {
 
   onSearchChange: (value: string) => void;
   onPaymentModeChange: (value: string) => void;
+  onInstallmentNameChange: (value: string) => void;
   onFromDateChange: (value: string) => void;
   onToDateChange: (value: string) => void;
 
@@ -68,11 +71,14 @@ const paymentModes = [
 export function PaymentHistoryFilters({
   search,
   paymentMode,
+  installmentName,
+  installmentOptions,
   fromDate,
   toDate,
   loading = false,
   onSearchChange,
   onPaymentModeChange,
+  onInstallmentNameChange,
   onFromDateChange,
   onToDateChange,
   onSearch,
@@ -81,6 +87,7 @@ export function PaymentHistoryFilters({
   const hasActiveFilters =
     Boolean(search.trim()) ||
     Boolean(paymentMode) ||
+    Boolean(installmentName) ||
     Boolean(fromDate) ||
     Boolean(toDate);
 
@@ -124,7 +131,7 @@ export function PaymentHistoryFilters({
       {/* ================================================================ */}
 
       <CardContent className="p-5 md:p-6">
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-7">
           {/* Search */}
           <div className="relative xl:col-span-2">
             <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -169,7 +176,7 @@ export function PaymentHistoryFilters({
             </Select>
           </div>
 
-          {/* From Date */}
+          <div>\n            <Select value={installmentName || "ALL"} onValueChange={(value) => onInstallmentNameChange(value === "ALL" ? "" : value)}>\n              <SelectTrigger className="h-10 rounded-xl border-border/70 bg-background shadow-none"><SelectValue placeholder="Installment / Term" /></SelectTrigger>\n              <SelectContent><SelectItem value="ALL">All Installments</SelectItem>{installmentOptions.map((name) => <SelectItem key={name} value={name}>{name}</SelectItem>)}</SelectContent>\n            </Select>\n          </div>\n\n          {/* From Date */}
           <div className="relative">
             <CalendarDays className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
 
