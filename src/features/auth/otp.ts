@@ -36,7 +36,6 @@ export function generateOtp() {
 type StudentPhoneMatch = {
   studentId: string;
   clerkId: string | null;
-  ownMatch: boolean;
 };
 
 const STAFF_ROLES = [
@@ -71,8 +70,7 @@ export async function resolveOtpAccounts(schoolId: string, phone: string) {
   const matches = await prisma.$queryRaw<StudentPhoneMatch[]>(Prisma.sql`
     SELECT
       s.id AS "studentId",
-      s."clerkId" AS "clerkId",
-      RIGHT(regexp_replace(COALESCE(s.phone, ''), '[^0-9]', '', 'g'), 10) = ${phone} AS "ownMatch"
+      s."clerkId" AS "clerkId"
     FROM "Student" s
     WHERE s."schoolId" = ${schoolId}
       AND s.status = 'ACTIVE'
@@ -84,15 +82,18 @@ export async function resolveOtpAccounts(schoolId: string, phone: string) {
       )
   `);
 
-  const directClerkIds = [...new Set(matches.filter((match) => match.ownMatch && match.clerkId).map((match) => match.clerkId!))];
-  const directUsers = directClerkIds.length > 0
-    ? await prisma.user.findMany({
+  // Student login provisioning may intentionally use the student's own,
+  // guardian's, father's, or mother's number. Every matched student account
+  // must therefore remain selectable for the number that provisioned it.
+  const studentClerkIds = [...new Set(matches.flatMap((match) => match.clerkId ? [match.clerkId] : []))];
+  const studentUsers = studentClerkIds.length > 0
+    ? (await prisma.user.findMany({
       where: {
-        clerkUserId: { in: directClerkIds },
+        clerkUserId: { in: studentClerkIds },
         memberships: { some: { schoolId, isActive: true, role: "STUDENT" } },
       },
-      select: { id: true },
-    })
+      select: { id: true, clerkUserId: true, phone: true },
+    })).filter((user) => normalizeIndianMobile(user.phone || "") === phone)
     : [];
 
   const parentLinks = matches.length > 0 ? await prisma.parentStudentLink.findMany({
@@ -107,7 +108,7 @@ export async function resolveOtpAccounts(schoolId: string, phone: string) {
 
   const candidateIds = [...new Set([
     ...staffUserIds.map((user) => user.id),
-    ...directUsers.map((user) => user.id),
+    ...studentUsers.map((user) => user.id),
     ...parentLinks.map((link) => link.parentUserId),
   ])];
 
@@ -128,9 +129,10 @@ export async function resolveOtpAccounts(schoolId: string, phone: string) {
     },
   });
 
-  const studentProfiles = directClerkIds.length > 0
+  const matchedStudentClerkIds = studentUsers.map((user) => user.clerkUserId);
+  const studentProfiles = matchedStudentClerkIds.length > 0
     ? await prisma.student.findMany({
-        where: { schoolId, status: "ACTIVE", clerkId: { in: directClerkIds } },
+        where: { schoolId, status: "ACTIVE", clerkId: { in: matchedStudentClerkIds } },
         select: { clerkId: true, fullName: true, admissionNo: true },
       })
     : [];
