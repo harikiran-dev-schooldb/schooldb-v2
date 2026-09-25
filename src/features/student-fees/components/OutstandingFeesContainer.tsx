@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Download } from "lucide-react";
 
 import { OutstandingFeesSummary } from "@/features/student-fees/components/OutstandingFeesSummary";
 import { OutstandingFeesSearch } from "@/features/student-fees/components/OutstandingFeesSearch";
@@ -210,6 +211,18 @@ export function OutstandingFeesContainer({
   return (
     <div className="space-y-6">
       <OutstandingFeesSummary summary={data.summary} />
+
+      <div className="flex justify-end">
+        <Button asChild className="bg-emerald-600 text-white hover:bg-emerald-700">
+          <a href={`/api/v1/reports/${schoolSlug}/fees/outstanding?${new URLSearchParams({
+            ...(search.trim() ? { search: search.trim() } : {}),
+            ...(classId ? { classId } : {}),
+            ...(sectionId ? { sectionId } : {}),
+          }).toString()}`}>
+            <Download className="size-4" /> Export Excel
+          </a>
+        </Button>
+      </div>
 
       <OutstandingFeesSearch
         value={search}
