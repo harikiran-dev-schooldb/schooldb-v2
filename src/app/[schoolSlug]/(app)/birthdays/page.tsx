@@ -211,7 +211,7 @@ export default function BirthdaysPage() {
   }
 
   return (
-    <div className="space-y-7 pb-10">
+    <div className="space-y-6 p-4 pb-10 sm:p-6">
       <PageHeader
         title="Birthdays"
         description="Today's celebrations and upcoming student birthdays."
