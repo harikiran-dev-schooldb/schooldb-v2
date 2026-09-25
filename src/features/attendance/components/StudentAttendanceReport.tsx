@@ -250,7 +250,7 @@ export function StudentAttendanceReport() {
   }
 
   return (
-    <div className="min-h-screen space-y-6 pb-10">
+    <div className="min-h-screen space-y-6 p-4 pb-10 sm:p-6">
       {/* ============================================================ */}
       {/* HEADER                                                       */}
       {/* ============================================================ */}
@@ -319,7 +319,7 @@ export function StudentAttendanceReport() {
           )}
         </div>
 
-        <div className="grid gap-4 md:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <AcademicYearSelect
             value={academicYearId}
             onChange={handleAcademicYearChange}
