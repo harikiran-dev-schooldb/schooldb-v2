@@ -259,7 +259,7 @@ export default function BulkMarksPage() {
   }
 
   return (
-    <div className="space-y-8 pb-12">
+    <div className="space-y-6 p-4 pb-12 sm:p-6">
       <PageHeader
         eyebrow="Bulk Operations"
         title="Bulk Marks"
