@@ -186,19 +186,19 @@ export function TransportManager({
 
   return (
     <div className="space-y-6 p-4 pb-10 sm:p-6">
-      <section className="relative overflow-hidden rounded-[30px] bg-gradient-to-br from-slate-950 via-indigo-950 to-blue-900 p-6 text-white shadow-[0_30px_80px_rgba(30,41,99,0.24)] sm:p-8">
-        <div className="pointer-events-none absolute -right-16 -top-20 size-72 rounded-full bg-cyan-400/20 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-24 left-1/3 size-64 rounded-full bg-violet-500/20 blur-3xl" />
+      <section className="relative overflow-hidden rounded-3xl border border-indigo-100 bg-gradient-to-br from-white via-indigo-50/60 to-blue-50/60 p-6 shadow-[0_16px_45px_rgba(15,23,42,0.06)] sm:p-8">
+        <div className="pointer-events-none absolute -right-16 -top-20 size-72 rounded-full bg-cyan-400/10 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-24 left-1/3 size-64 rounded-full bg-violet-400/10 blur-3xl" />
         <div className="relative grid gap-8 lg:grid-cols-[1.3fr_1fr] lg:items-end">
           <div>
-            <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.2em] text-cyan-200">
+            <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.2em] text-indigo-600">
               <Navigation className="size-4" />
               Safe journeys, clearly managed
             </div>
             <h2 className="mt-3 max-w-2xl text-3xl font-black tracking-[-0.04em]">
               Every route, vehicle and student in one transport desk.
             </h2>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-indigo-100/80">
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-500">
               Build stops in travel order, assign responsible staff, and give
               families the pickup information they need.
             </p>
@@ -743,7 +743,7 @@ function Metric({
 }) {
   return (
     <div className="rounded-2xl border border-white/15 bg-white/10 p-4 backdrop-blur-sm">
-      <Icon className="size-5 text-cyan-300" />
+      <Icon className="size-5 text-indigo-600" />
       <p className="mt-3 text-3xl font-black">{value}</p>
       <p className="text-xs font-semibold text-indigo-100">{label}</p>
     </div>
@@ -852,7 +852,7 @@ function RouteCard({
                 {index < route.stops.length - 1 && (
                   <div className="absolute left-[11px] top-6 h-[calc(100%-8px)] w-px bg-indigo-200" />
                 )}
-                <div className="relative z-10 mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-indigo-600 text-[10px] font-black text-white">
+                <div className="relative z-10 mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-indigo-600 text-[10px] font-black text-slate-950">
                   {stop.sequence}
                 </div>
                 <div className="min-w-0 flex-1">
