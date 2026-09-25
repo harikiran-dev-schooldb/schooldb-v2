@@ -11,7 +11,7 @@ import {
 
 export default function TeachersPage() {
   return (
-    <div className="space-y-7 pb-6">
+    <div className="space-y-6 pb-10">
       {/* ======================================================================
           PAGE HEADER
           ====================================================================== */}
@@ -77,7 +77,7 @@ export default function TeachersPage() {
               FEATURE INDICATORS
               ------------------------------------------------------------------ */}
 
-          <div className="grid grid-cols-2 gap-3 sm:flex">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:flex">
             {/* Records */}
 
             <div className="flex items-center gap-3 rounded-2xl border border-indigo-100 bg-white/85 px-4 py-3 shadow-[0_10px_30px_rgba(79,70,229,0.06)] backdrop-blur-xl">
