@@ -48,6 +48,7 @@ export const academicYearService = {
     id: item.id,
     label: item.name,
     attendanceMode: item.attendanceMode,
+    active: item.active,
   }));
 },
 
