@@ -67,7 +67,7 @@ export default function StudentHousesPage() {
     setSaving(true);try{const res=await fetch("/api/v1/houses",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({academicYearId:yearId,houseId,enrollmentIds:selected})});const json=await res.json();if(!res.ok||!json.success)throw new Error(json.message||"Allocation failed.");toast.success(json.message||"Students allocated.");setSelected([]);await load();}catch(e){toast.error(e instanceof Error?e.message:"Allocation failed.");}finally{setSaving(false);}
   }
 
-  return <div className="space-y-6">
+  return <div className="space-y-6 p-4 pb-10 sm:p-6">
     <PageHeader title="Student Houses" description="Create school houses and allocate students house-wise for each academic year." />
     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
       {data.houses.map(h=><Card key={h.id} className={`cursor-pointer transition-all hover:-translate-y-0.5 hover:shadow-md ${houseFilter===h.id?"ring-2 ring-primary/40":""}`} onClick={()=>setHouseFilter(h.id)}><CardContent className="flex items-center gap-4 p-5"><div className="flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-xl border bg-background">{h.iconUrl?<img src={h.iconUrl} alt={`${h.name} emblem`} className="size-full object-contain"/>:<Shield className="size-7" style={{color:h.color||"#4f46e5"}}/>}</div><div className="min-w-0 flex-1"><p className="font-semibold">{h.name}</p><p className="text-xs text-muted-foreground">{h.code||"No code"} · {h._count.students} allocations</p></div><Button size="icon" variant="ghost" onClick={e=>{e.stopPropagation();openEdit(h)}} aria-label={`Edit ${h.name}`}><Pencil className="size-4"/></Button></CardContent></Card>)}
