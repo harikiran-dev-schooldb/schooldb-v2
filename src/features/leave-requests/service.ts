@@ -58,14 +58,15 @@ export async function listStaffLeaveRequests(schoolSlug: string, filters: StaffL
 export async function leaveRequestFilterOptions(schoolSlug: string) {
   const membership = await requireRole(["SUPER_ADMIN", "SCHOOL_ADMIN", "TEACHER"], schoolSlug);
   const enrollments = await prisma.studentEnrollment.findMany({
-    where: { schoolId: membership.schoolId, status: "ACTIVE" },
-    select: {
-      class: { select: { id: true, name: true } },
-      section: { select: { id: true, name: true, classId: true } },
-    },
+    where: { schoolId: membership.schoolId, active: true },
+    select: { classId: true, sectionId: true },
     distinct: ["classId", "sectionId"],
   });
-  const classes = Array.from(new Map(enrollments.map((item) => [item.class.id, item.class])).values()).sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
-  const sections = Array.from(new Map(enrollments.map((item) => [item.section.id, item.section])).values()).sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+  const classIds = [...new Set(enrollments.map((item) => item.classId))];
+  const sectionIds = [...new Set(enrollments.map((item) => item.sectionId))];
+  const [classes, sections] = await Promise.all([
+    prisma.class.findMany({ where: { schoolId: membership.schoolId, id: { in: classIds } }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
+    prisma.section.findMany({ where: { schoolId: membership.schoolId, id: { in: sectionIds } }, select: { id: true, name: true, classId: true }, orderBy: { name: "asc" } }),
+  ]);
   return { classes, sections };
 }
