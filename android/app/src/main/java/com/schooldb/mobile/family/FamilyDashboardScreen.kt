@@ -5,6 +5,7 @@ import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
@@ -44,10 +45,14 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -64,14 +69,18 @@ import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 import java.util.Locale
 import kotlinx.coroutines.delay
+import com.composables.icons.lucide.CalendarCheck
+import com.composables.icons.lucide.Bell
+import com.composables.icons.lucide.ClipboardCheck
+import com.composables.icons.lucide.GraduationCap
+import com.composables.icons.lucide.House
+import com.composables.icons.lucide.LayoutGrid
+import com.composables.icons.lucide.Lucide
 
 private val FamilyIndigo = Color(0xFF4F46E5)
 private val FamilyGreen = Color(0xFF059669)
 private val FamilyRed = Color(0xFFDC2626)
 private val FamilyAmber = Color(0xFFD97706)
-private val StudentInk = Color(0xFF172039)
-private val StudentMuted = Color(0xFF6E7891)
-private val StudentCanvas = Color(0xFFF6F8FD)
 
 private enum class FamilyTab(val label: String, val icon: ImageVector) {
     HOME("Home", Icons.Outlined.Home),
@@ -80,6 +89,123 @@ private enum class FamilyTab(val label: String, val icon: ImageVector) {
     FEES("Fees", Icons.Outlined.Payments),
     RESULTS("Results", Icons.Default.EmojiEvents),
     MORE("More", Icons.Outlined.MoreHoriz),
+}
+
+private data class StudentNavItem(val tab: FamilyTab, val icon: ImageVector)
+
+@Composable
+private fun StudentPremiumTopBar(
+    schoolName: String,
+    studentName: String,
+    unread: Int,
+    onNotifications: () -> Unit,
+    onSwitchAccount: () -> Unit,
+) {
+    Row(
+        Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background)
+            .statusBarsPadding().padding(start = 20.dp, end = 14.dp, top = 12.dp, bottom = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text("STUDENT SPACE", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold,
+                fontSize = 10.sp, letterSpacing = 1.3.sp)
+            Text(schoolName, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold,
+                fontSize = 18.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+        Surface(
+            onClick = onNotifications,
+            modifier = Modifier.size(42.dp),
+            shape = CircleShape,
+            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = .72f),
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                BadgedBox(badge = {
+                    if (unread > 0) Badge { Text(unread.coerceAtMost(99).toString(), fontSize = 9.sp) }
+                }) {
+                    Icon(Lucide.Bell, contentDescription = "Notifications", modifier = Modifier.size(20.dp))
+                }
+            }
+        }
+        Spacer(Modifier.width(9.dp))
+        Surface(
+            onClick = onSwitchAccount,
+            modifier = Modifier.size(42.dp),
+            shape = CircleShape,
+            color = MaterialTheme.colorScheme.onSurface,
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Text(studentName.trim().take(1).uppercase().ifBlank { "S" },
+                    color = MaterialTheme.colorScheme.surface, fontWeight = FontWeight.Bold)
+            }
+        }
+    }
+}
+
+@Composable
+private fun StudentPremiumNavigation(
+    selected: FamilyTab,
+    unread: Int,
+    onSelect: (FamilyTab) -> Unit,
+) {
+    val haptic = LocalHapticFeedback.current
+    val darkTheme = MaterialTheme.colorScheme.background.luminance() < .5f
+    val dockColors = if (darkTheme) {
+        listOf(Color(0xEE454547), Color(0xF52D2D30), Color(0xF23A3A3D))
+    } else {
+        listOf(Color(0xF8FFFFFF), Color(0xF3F4F6FF), Color(0xF8FFFFFF))
+    }
+    val border = if (darkTheme) Color.White.copy(alpha = .16f) else Color.White.copy(alpha = .96f)
+    val inactive = if (darkTheme) Color.White.copy(alpha = .72f) else Color(0xFF667085)
+    val selectedFill = if (darkTheme) Color(0xF0121213) else Color(0xFFE1E9FF)
+    val selectedTint = if (darkTheme) Color.White else MaterialTheme.colorScheme.primary
+    val items = listOf(
+        StudentNavItem(FamilyTab.HOME, Lucide.House),
+        StudentNavItem(FamilyTab.ATTENDANCE, Lucide.CalendarCheck),
+        StudentNavItem(FamilyTab.HOMEWORK, Lucide.ClipboardCheck),
+        StudentNavItem(FamilyTab.RESULTS, Lucide.GraduationCap),
+        StudentNavItem(FamilyTab.MORE, Lucide.LayoutGrid),
+    )
+    Surface(
+        modifier = Modifier.navigationBarsPadding().padding(horizontal = 14.dp, vertical = 7.dp)
+            .shadow(18.dp, RoundedCornerShape(31.dp), ambientColor = Color.Black.copy(alpha = .30f),
+                spotColor = Color.Black.copy(alpha = .38f)),
+        shape = RoundedCornerShape(31.dp),
+        color = Color.Transparent,
+        border = BorderStroke(1.dp, border),
+    ) {
+        Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(31.dp)).background(Brush.linearGradient(dockColors))) {
+            Box(Modifier.fillMaxWidth().height(23.dp).align(Alignment.TopCenter)
+                .background(Brush.verticalGradient(listOf(Color.White.copy(alpha = .13f), Color.Transparent))))
+            Row(Modifier.fillMaxWidth().padding(5.dp)) {
+                items.forEach { item ->
+                    val active = selected == item.tab
+                    Box(
+                        Modifier.weight(1f).clip(RoundedCornerShape(25.dp))
+                            .then(if (active) Modifier.shadow(8.dp, RoundedCornerShape(25.dp),
+                                ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = .18f),
+                                spotColor = MaterialTheme.colorScheme.primary.copy(alpha = .22f))
+                                .background(selectedFill) else Modifier)
+                            .clickable {
+                                if (!active) {
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    onSelect(item.tab)
+                                }
+                            }.padding(vertical = 11.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        BadgedBox(badge = {
+                            if (item.tab == FamilyTab.MORE && unread > 0) {
+                                Badge { Text(if (unread > 99) "99+" else unread.toString(), fontSize = 8.sp) }
+                            }
+                        }) {
+                            Icon(item.icon, contentDescription = item.tab.label,
+                                tint = if (active) selectedTint else inactive, modifier = Modifier.size(24.dp))
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -131,18 +257,24 @@ fun FamilyDashboardScreen(
     }
 
     Scaffold(
-        containerColor = if (isStudent) StudentCanvas else MaterialTheme.colorScheme.background,
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            TopAppBar(
+            if (isStudent) {
+                StudentPremiumTopBar(
+                    schoolName = dashboard.schoolName,
+                    studentName = student?.fullName.orEmpty(),
+                    unread = state.unreadNotificationCount,
+                    onNotifications = {
+                        tab = FamilyTab.MORE
+                        moreScreen = "NOTIFICATIONS"
+                    },
+                    onSwitchAccount = onSwitchAccount,
+                )
+            } else TopAppBar(
                 title = {
                     Column {
-                        if (isStudent) {
-                            Text("SCHOOLDB  /  STUDENT", color = FamilyIndigo, fontWeight = FontWeight.Bold, fontSize = 11.sp, letterSpacing = 1.2.sp)
-                            Text(dashboard.schoolName, color = StudentInk, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        } else {
-                            Text(dashboard?.schoolName ?: "SchoolDB", fontWeight = FontWeight.Bold, maxLines = 1)
-                            Text("Parent space", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
-                        }
+                        Text(dashboard?.schoolName ?: "SchoolDB", fontWeight = FontWeight.Bold, maxLines = 1)
+                        Text("Parent space", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
                     }
                 },
                 actions = {
@@ -174,12 +306,18 @@ fun FamilyDashboardScreen(
         },
         bottomBar = {
             if (student != null) {
-                NavigationBar(containerColor = MaterialTheme.colorScheme.surface, tonalElevation = 0.dp) {
-                    val tabs = if (isStudent) {
-                        listOf(FamilyTab.HOME, FamilyTab.ATTENDANCE, FamilyTab.HOMEWORK, FamilyTab.RESULTS, FamilyTab.MORE)
-                    } else {
+                if (isStudent) {
+                    StudentPremiumNavigation(
+                        selected = tab,
+                        unread = state.unreadNotificationCount,
+                        onSelect = {
+                            tab = it
+                            moreScreen = "MENU"
+                        },
+                    )
+                } else NavigationBar(containerColor = MaterialTheme.colorScheme.surface, tonalElevation = 0.dp) {
+                    val tabs =
                         listOf(FamilyTab.HOME, FamilyTab.ATTENDANCE, FamilyTab.HOMEWORK, FamilyTab.FEES, FamilyTab.MORE)
-                    }
                     tabs.forEach { item ->
                         NavigationBarItem(
                             selected = tab == item,
@@ -193,8 +331,8 @@ fun FamilyDashboardScreen(
                                 selectedIconColor = FamilyIndigo,
                                 selectedTextColor = FamilyIndigo,
                                 indicatorColor = FamilyIndigo.copy(alpha = .1f),
-                                unselectedIconColor = StudentMuted,
-                                unselectedTextColor = StudentMuted,
+                                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
                             ),
                         )
                     }
@@ -343,15 +481,15 @@ private fun StudentHome(
         .orEmpty()
 
     LazyColumn(
-        modifier = modifier.fillMaxSize().background(StudentCanvas),
+        modifier = modifier.fillMaxSize().background(MaterialTheme.colorScheme.background),
         contentPadding = PaddingValues(bottom = 32.dp),
         verticalArrangement = Arrangement.spacedBy(18.dp),
     ) {
         item {
             Column(Modifier.padding(start = 20.dp, end = 20.dp, top = 18.dp)) {
                 Text("YOUR SCHOOL DAY", color = FamilyIndigo, fontWeight = FontWeight.Bold, fontSize = 11.sp, letterSpacing = 1.4.sp)
-                Text("Welcome back", color = StudentInk, fontWeight = FontWeight.Bold, fontSize = 29.sp, letterSpacing = (-.7).sp)
-                Text(today.format(DateTimeFormatter.ofPattern("EEEE, d MMMM", Locale.ENGLISH)), color = StudentMuted, fontSize = 13.sp)
+                Text("Welcome back", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold, fontSize = 29.sp, letterSpacing = (-.7).sp)
+                Text(today.format(DateTimeFormatter.ofPattern("EEEE, d MMMM", Locale.ENGLISH)), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
             }
         }
         item { StudentHero(student) }
@@ -411,8 +549,8 @@ private fun StudentHero(student: FamilyStudent) {
 @Composable
 private fun StudentSectionHeading(title: String, subtitle: String) {
     Column(Modifier.padding(horizontal = 20.dp)) {
-        Text(title, color = StudentInk, fontWeight = FontWeight.Bold, fontSize = 19.sp)
-        Text(subtitle, color = StudentMuted, fontSize = 12.sp)
+        Text(title, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold, fontSize = 19.sp)
+        Text(subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
     }
 }
 
@@ -435,17 +573,18 @@ private fun StudentMetricCard(label: String, value: String, detail: String, icon
     Card(
         modifier = modifier,
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = .7f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
     ) {
         Column(Modifier.fillMaxWidth().padding(15.dp)) {
             Box(Modifier.size(34.dp).background(accent.copy(alpha = .1f), RoundedCornerShape(11.dp)), contentAlignment = Alignment.Center) {
                 Icon(icon, contentDescription = null, tint = accent, modifier = Modifier.size(19.dp))
             }
             Spacer(Modifier.height(13.dp))
-            Text(value, color = StudentInk, fontWeight = FontWeight.Bold, fontSize = 21.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(label, color = StudentInk, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
-            Text(detail, color = StudentMuted, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(value, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold, fontSize = 21.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(label, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+            Text(detail, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }
@@ -463,8 +602,8 @@ private fun StudentEmptyState(icon: ImageVector, title: String, detail: String) 
                 Icon(icon, contentDescription = null, tint = FamilyIndigo, modifier = Modifier.size(22.dp))
             }
             Column(Modifier.padding(start = 14.dp)) {
-                Text(title, color = StudentInk, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-                Text(detail, color = StudentMuted, fontSize = 12.sp)
+                Text(title, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                Text(detail, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
             }
         }
     }
@@ -540,8 +679,8 @@ private fun StudentHomeworkSummary(homework: List<FamilyHomeworkDetails>) {
                 Icon(Icons.AutoMirrored.Outlined.Assignment, contentDescription = null, tint = FamilyIndigo, modifier = Modifier.size(22.dp))
             }
             Column(Modifier.weight(1f).padding(start = 13.dp)) {
-                Text("${homework.size} ${if (homework.size == 1) "assignment" else "assignments"}", color = StudentInk, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                Text("From your teachers", color = StudentMuted, fontSize = 12.sp)
+                Text("${homework.size} ${if (homework.size == 1) "assignment" else "assignments"}", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                Text("From your teachers", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
             }
             if (dueSoon > 0) {
                 Text("$dueSoon due soon", color = FamilyIndigo, fontWeight = FontWeight.SemiBold, fontSize = 11.sp)
@@ -564,7 +703,7 @@ private fun StudentHomeworkCard(item: FamilyHomeworkDetails) {
         else -> "Upcoming"
     }
     val statusColor = when {
-        daysUntilDue == null -> StudentMuted
+        daysUntilDue == null -> MaterialTheme.colorScheme.onSurfaceVariant
         daysUntilDue < 0 -> FamilyRed
         daysUntilDue <= 1 -> FamilyAmber
         else -> FamilyIndigo
@@ -591,17 +730,17 @@ private fun StudentHomeworkCard(item: FamilyHomeworkDetails) {
                     color = statusColor, fontWeight = FontWeight.SemiBold, fontSize = 10.sp,
                 )
             }
-            Text(item.title, Modifier.padding(top = 15.dp), color = StudentInk, fontWeight = FontWeight.Bold, fontSize = 17.sp, lineHeight = 22.sp)
+            Text(item.title, Modifier.padding(top = 15.dp), color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold, fontSize = 17.sp, lineHeight = 22.sp)
             item.description?.let {
-                Text(it, Modifier.padding(top = 7.dp), color = StudentMuted, fontSize = 13.sp, lineHeight = 19.sp, maxLines = 4, overflow = TextOverflow.Ellipsis)
+                Text(it, Modifier.padding(top = 7.dp), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp, lineHeight = 19.sp, maxLines = 4, overflow = TextOverflow.Ellipsis)
             }
             HorizontalDivider(Modifier.padding(top = 16.dp, bottom = 12.dp), color = Color(0xFFE9EDF5))
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Outlined.CalendarMonth, contentDescription = null, tint = StudentMuted, modifier = Modifier.size(16.dp))
-                Text("Assigned ${date(item.assignedDate)}", Modifier.padding(start = 6.dp), color = StudentMuted, fontSize = 11.sp)
+                Icon(Icons.Outlined.CalendarMonth, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
+                Text("Assigned ${date(item.assignedDate)}", Modifier.padding(start = 6.dp), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
                 Spacer(Modifier.weight(1f))
                 item.dueDate?.let {
-                    Text("Due ${date(it)}", color = if (daysUntilDue != null && daysUntilDue < 0) FamilyRed else StudentInk, fontWeight = FontWeight.SemiBold, fontSize = 11.sp)
+                    Text("Due ${date(it)}", color = if (daysUntilDue != null && daysUntilDue < 0) FamilyRed else MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold, fontSize = 11.sp)
                 }
             }
         }
@@ -804,7 +943,7 @@ private fun StudentMoreTab(
     modifier: Modifier,
 ) {
     LazyColumn(
-        modifier.fillMaxSize().background(StudentCanvas),
+        modifier.fillMaxSize().background(MaterialTheme.colorScheme.background),
         contentPadding = PaddingValues(bottom = 30.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
@@ -851,13 +990,13 @@ private fun StudentMoreAction(
                 Icon(icon, contentDescription = null, tint = accent, modifier = Modifier.size(22.dp))
             }
             Column(Modifier.weight(1f).padding(start = 13.dp)) {
-                Text(title, color = StudentInk, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-                Text(subtitle, color = StudentMuted, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(title, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                Text(subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             if (badge != null) {
                 Text(badge, color = accent, fontWeight = FontWeight.Bold, fontSize = 10.sp, modifier = Modifier.padding(end = 6.dp))
             }
-            Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = StudentMuted, modifier = Modifier.size(16.dp))
+            Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
         }
     }
 }
@@ -1021,7 +1160,7 @@ private fun TimetableTab(
                             Text(
                                 day.take(3).lowercase().replaceFirstChar(Char::uppercase),
                                 Modifier.padding(horizontal = 17.dp, vertical = 11.dp),
-                                color = if (selected) Color.White else StudentMuted,
+                                color = if (selected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontWeight = FontWeight.SemiBold,
                                 fontSize = 12.sp,
                             )
@@ -1078,8 +1217,8 @@ private fun StudentTimetableSummary(day: String, count: Int, isToday: Boolean) {
                 Icon(Icons.Outlined.Schedule, contentDescription = null, tint = FamilyIndigo, modifier = Modifier.size(22.dp))
             }
             Column(Modifier.weight(1f).padding(start = 13.dp)) {
-                Text(day, color = StudentInk, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                Text("$count ${if (count == 1) "class" else "classes"} scheduled", color = StudentMuted, fontSize = 12.sp)
+                Text(day, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                Text("$count ${if (count == 1) "class" else "classes"} scheduled", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
             }
             if (isToday) Text("TODAY", color = FamilyIndigo, fontWeight = FontWeight.Bold, fontSize = 10.sp, letterSpacing = .7.sp)
         }
@@ -1100,12 +1239,12 @@ private fun StudentTimetableCard(entry: FamilyTimetableEntry) {
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Text(entry.periodName, color = FamilyIndigo, fontWeight = FontWeight.Bold, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(entry.startTime.take(5), color = StudentMuted, fontSize = 10.sp)
+                Text(entry.startTime.take(5), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
             }
             Column(Modifier.weight(1f).padding(start = 15.dp)) {
-                Text(entry.subjectName, color = StudentInk, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                if (entry.teacherName.isNotBlank()) Text(entry.teacherName, color = StudentMuted, fontSize = 12.sp)
-                if (entry.endTime.isNotBlank()) Text("Until ${entry.endTime.take(5)}", color = StudentMuted, fontSize = 11.sp)
+                Text(entry.subjectName, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                if (entry.teacherName.isNotBlank()) Text(entry.teacherName, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+                if (entry.endTime.isNotBlank()) Text("Until ${entry.endTime.take(5)}", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
             }
         }
     }
@@ -1566,10 +1705,10 @@ private fun FamilyPageIntro(dashboard: FamilyDashboard, student: FamilyStudent, 
     Column(Modifier.padding(vertical = 18.dp)) {
         if (dashboard.role == "STUDENT") {
             Text("YOUR SCHOOL DAY", Modifier.padding(horizontal = 20.dp), color = FamilyIndigo, fontWeight = FontWeight.Bold, fontSize = 11.sp, letterSpacing = 1.2.sp)
-            Text(title, Modifier.padding(start = 20.dp, end = 20.dp, top = 4.dp), color = StudentInk, fontWeight = FontWeight.Bold, fontSize = 29.sp)
+            Text(title, Modifier.padding(start = 20.dp, end = 20.dp, top = 4.dp), color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold, fontSize = 29.sp)
             Text(
                 listOfNotNull(student.className, student.sectionName?.let { "Section $it" }).joinToString("  ·  ").ifBlank { student.fullName },
-                Modifier.padding(horizontal = 20.dp), color = StudentMuted, fontSize = 13.sp,
+                Modifier.padding(horizontal = 20.dp), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp,
             )
         } else {
             Text(title, Modifier.padding(horizontal = 20.dp), fontWeight = FontWeight.Bold, fontSize = 24.sp)
