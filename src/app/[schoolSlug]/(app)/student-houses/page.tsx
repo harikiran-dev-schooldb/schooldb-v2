@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Home, ImageIcon, Loader2, Pencil, Plus, Search, Shield, Users } from "lucide-react";
+import { ImageIcon, Loader2, Pencil, Plus, Search, Shield, Users } from "lucide-react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/common/PageHeader";
@@ -46,9 +46,11 @@ export default function StudentHousesPage() {
     } catch(e){toast.error(e instanceof Error?e.message:"Failed to load houses.");} finally{setLoading(false);}
   },[yearId,classId,sectionId,houseFilter]);
 
-  useEffect(()=>{void load();},[load]);
-  useEffect(()=>{setSectionId("ALL");setSelected([]);},[classId]);
-  useEffect(()=>{setSelected([]);},[yearId,sectionId]);
+  useEffect(()=>{
+    // Filter changes intentionally trigger a fresh server load.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void load();
+  },[load]);
 
   const sections=data.classes.find(c=>c.id===classId)?.sections??[];
   const visible=useMemo(()=>{const q=search.trim().toLowerCase();return data.enrollments.filter(e=>(houseFilter!=="UNALLOCATED"||!e.houseAssignment)&&(!q||e.student.fullName?.toLowerCase().includes(q)||e.student.admissionNo.toLowerCase().includes(q)));},[data.enrollments,search,houseFilter]);
@@ -73,9 +75,9 @@ export default function StudentHousesPage() {
     <Card><CardContent className="p-5"><div className="mb-4 flex items-center gap-2 font-semibold"><Plus className="size-4"/>Create House</div><div className="grid gap-3 md:grid-cols-[1fr_160px_100px_auto]"><Input placeholder="House name" value={name} onChange={e=>setName(e.target.value)}/><Input placeholder="Code" value={code} onChange={e=>setCode(e.target.value)}/><Input type="color" value={color} onChange={e=>setColor(e.target.value)}/><Button onClick={createHouse} disabled={saving}>Add House</Button></div></CardContent></Card>
     <Card><CardContent className="p-5">
       <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-end">
-        <div className="min-w-48"><p className="mb-1 text-xs text-muted-foreground">Academic Year</p><Select value={yearId} onValueChange={setYearId}><SelectTrigger><SelectValue placeholder="Academic year"/></SelectTrigger><SelectContent>{data.academicYears.map(y=><SelectItem key={y.id} value={y.id}>{y.name}{y.active?" · Active":""}</SelectItem>)}</SelectContent></Select></div>
-        <div className="min-w-44"><p className="mb-1 text-xs text-muted-foreground">Class</p><Select value={classId} onValueChange={setClassId}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent><SelectItem value="ALL">All Classes</SelectItem>{data.classes.map(c=><SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent></Select></div>
-        <div className="min-w-44"><p className="mb-1 text-xs text-muted-foreground">Section</p><Select value={sectionId} onValueChange={setSectionId} disabled={classId==="ALL"}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent><SelectItem value="ALL">All Sections</SelectItem>{sections.map(s=><SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent></Select></div>
+        <div className="min-w-48"><p className="mb-1 text-xs text-muted-foreground">Academic Year</p><Select value={yearId} onValueChange={value=>{setYearId(value);setSelected([]);}}><SelectTrigger><SelectValue placeholder="Academic year"/></SelectTrigger><SelectContent>{data.academicYears.map(y=><SelectItem key={y.id} value={y.id}>{y.name}{y.active?" · Active":""}</SelectItem>)}</SelectContent></Select></div>
+        <div className="min-w-44"><p className="mb-1 text-xs text-muted-foreground">Class</p><Select value={classId} onValueChange={value=>{setClassId(value);setSectionId("ALL");setSelected([]);}}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent><SelectItem value="ALL">All Classes</SelectItem>{data.classes.map(c=><SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent></Select></div>
+        <div className="min-w-44"><p className="mb-1 text-xs text-muted-foreground">Section</p><Select value={sectionId} onValueChange={value=>{setSectionId(value);setSelected([]);}} disabled={classId==="ALL"}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent><SelectItem value="ALL">All Sections</SelectItem>{sections.map(s=><SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent></Select></div>
         <div className="min-w-48"><p className="mb-1 text-xs text-muted-foreground">House Filter</p><Select value={houseFilter} onValueChange={setHouseFilter}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent><SelectItem value="ALL">All Houses</SelectItem><SelectItem value="UNALLOCATED">Not Allocated</SelectItem>{data.houses.map(h=><SelectItem key={h.id} value={h.id}>{h.name}</SelectItem>)}</SelectContent></Select></div>
         <div className="min-w-48"><p className="mb-1 text-xs text-muted-foreground">Allocate to House</p><Select value={houseId} onValueChange={setHouseId}><SelectTrigger><SelectValue placeholder="Select house"/></SelectTrigger><SelectContent>{data.houses.filter(h=>h.active).map(h=><SelectItem key={h.id} value={h.id}>{h.name}</SelectItem>)}</SelectContent></Select></div>
         <Button onClick={allocate} disabled={saving||selected.length===0}>{saving?<Loader2 className="mr-2 size-4 animate-spin"/>:<Users className="mr-2 size-4"/>}Allocate {selected.length||""}</Button>
