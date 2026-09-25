@@ -79,36 +79,12 @@ export default async function CertificateRegisterPage({ params, searchParams }: 
   if (sectionId) exportParams.set("sectionId", sectionId);
 
   return <PageContainer><PageHeader title="Certificate Issue Register" description="A permanent audit trail for every official certificate issued by the school." actions={<div className="flex gap-2"><Button asChild className="bg-emerald-600 text-white hover:bg-emerald-700"><a href={`/api/v1/reports/${schoolSlug}/certificates?${exportParams}`}><Download className="size-4" /> Export Excel</a></Button><Button asChild variant="outline"><a href={`/api/v1/certificate-issues/export?${exportParams}`}><Download className="size-4" /> Export CSV</a></Button></div>} />
-    <section className="grid gap-4 sm:grid-cols-3"><Stat icon={FileBadge2} label="All issued records" value={total} tone="violet" /><Stat icon={ShieldCheck} label="Active certificates" value={active} tone="emerald" /><Stat icon={XCircle} label="Cancelled records" value={cancelled} tone="rose" /></section>
+    <section className="relative overflow-hidden rounded-[28px] bg-gradient-to-br from-slate-950 via-indigo-950 to-violet-900 p-6 text-white shadow-[0_28px_70px_rgba(30,27,75,0.25)] sm:p-8"><div className="absolute -right-16 -top-20 size-64 rounded-full bg-cyan-400/10 blur-3xl" /><div className="relative grid gap-4 sm:grid-cols-3"><Stat icon={FileBadge2} label="All issued records" value={total} /><Stat icon={ShieldCheck} label="Active certificates" value={active} /><Stat icon={XCircle} label="Cancelled records" value={cancelled} /></div></section>
     <CertificateRegisterFilters initialQuery={q} initialType={type || ""} initialStatus={status || ""} initialClassId={classId} initialSectionId={sectionId} />
     <section className="mt-6 overflow-hidden rounded-2xl border bg-card shadow-sm"><div className="border-b px-5 py-4"><h2 className="font-bold">Recent issues <span className="text-sm font-normal text-muted-foreground">(latest 100)</span></h2></div>{issues.length ? <div className="divide-y">{issues.map((issue) => <article key={issue.id} className="flex flex-col gap-4 p-5 lg:flex-row lg:items-center"><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><Badge variant={issue.status === "ISSUED" ? "success" : "outline"}>{issue.status}</Badge><Badge variant="outline">{typeLabel[issue.type]}</Badge><span className="font-mono text-xs text-muted-foreground">{issue.certificateNo}</span></div><h3 className="mt-2 font-bold">{issue.student.fullName || "Student"} <span className="font-normal text-muted-foreground">({issue.student.admissionNo})</span></h3><p className="mt-1 text-xs text-muted-foreground">Issued {new Intl.DateTimeFormat("en-IN", { dateStyle: "medium", timeStyle: "short" }).format(issue.issuedAt)} by {issue.issuedByName} · {issue.printCount} print{issue.printCount === 1 ? "" : "s"}</p>{issue.purpose ? <p className="mt-2 text-sm text-muted-foreground">Purpose: {issue.purpose}</p> : null}{issue.cancellationNote ? <p className="mt-2 text-sm text-destructive">Cancelled: {issue.cancellationNote}</p> : null}</div><div className="flex shrink-0 gap-2">{issue.status === "ISSUED" ? <><Button asChild size="sm" variant="outline"><Link href={`/${schoolSlug}/students/${issue.student.id}/certificates/${typeSlug[issue.type]}?issueId=${issue.id}`}><Printer className="size-3.5" /> Open / reprint</Link></Button><CancelCertificateButton id={issue.id} certificateNo={issue.certificateNo} /></> : null}</div></article>)}</div> : <div className="p-12 text-center"><FileBadge2 className="mx-auto size-9 text-muted-foreground" /><p className="mt-3 font-semibold">No certificate records found</p><p className="mt-1 text-sm text-muted-foreground">Issue a certificate from a student’s Documents tab.</p></div>}</section>
   </PageContainer>;
 }
 
-function Stat({
-  icon: Icon,
-  label,
-  value,
-  tone,
-}: {
-  icon: LucideIcon;
-  label: string;
-  value: number;
-  tone: "violet" | "emerald" | "rose";
-}) {
-  const tones = {
-    violet: "border-violet-100 bg-violet-50 text-violet-600",
-    emerald: "border-emerald-100 bg-emerald-50 text-emerald-600",
-    rose: "border-rose-100 bg-rose-50 text-rose-600",
-  } as const;
-
-  return (
-    <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-[0_8px_24px_rgba(15,23,42,0.04)]">
-      <div className={`flex size-11 items-center justify-center rounded-xl border ${tones[tone]}`}>
-        <Icon className="size-5" />
-      </div>
-      <p className="mt-4 text-3xl font-bold tracking-tight text-slate-950">{value}</p>
-      <p className="mt-1 text-xs font-medium text-slate-500">{label}</p>
-    </div>
-  );
+function Stat({ icon: Icon, label, value }: { icon: LucideIcon; label: string; value: number }) {
+  return <div className="rounded-2xl border border-white/15 bg-white/10 p-4 backdrop-blur-sm"><Icon className="size-5 text-cyan-300" /><p className="mt-3 text-3xl font-black">{value}</p><p className="text-xs text-indigo-100/80">{label}</p></div>;
 }
