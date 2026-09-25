@@ -198,7 +198,7 @@ export function FeeDashboardContainer() {
         onAcademicYearChange={setAcademicYearId}
       />
 
-      <div className="flex justify-end"><Button asChild className="rounded-xl bg-emerald-600 text-white hover:bg-emerald-700"><a href={`/api/v1/reports/${params.schoolSlug}/fees/term-summary${academicYearId ? `?academicYearId=${encodeURIComponent(academicYearId)}` : ""}`}><Download className="mr-2 size-4" />Fee Term Summary Excel</a></Button></div>
+      <div className="flex flex-wrap justify-end gap-2"><Button asChild variant="outline" className="rounded-xl"><a href={`/api/v1/reports/${params.schoolSlug}/fees/term-summary${academicYearId ? `?academicYearId=${encodeURIComponent(academicYearId)}` : ""}`}><Download className="mr-2 size-4" />Fee Term Summary</a></Button><Button asChild className="rounded-xl bg-emerald-600 text-white hover:bg-emerald-700"><a href={`/api/v1/reports/${params.schoolSlug}/fees/collection-summary${academicYearId ? `?academicYearId=${encodeURIComponent(academicYearId)}` : ""}`}><Download className="mr-2 size-4" />Collection Summary Excel</a></Button></div>
 
       <FeeCollectionCards
         today={collection.today}
