@@ -6,7 +6,7 @@ import { requireMembership } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 type Params = Promise<{ schoolSlug: string }>;
-type Query = Promise<{ status?: string; q?: string; page?: string }>;
+type Query = Promise<{ status?: string; q?: string; page?: string; priority?: string; source?: string; unread?: string }>;
 
 const VIEW_ROLES = ["SUPER_ADMIN", "SCHOOL_ADMIN", "TEACHER", "ACCOUNTANT", "RECEPTIONIST"];
 
@@ -26,10 +26,13 @@ function statusWhere(status: string): Prisma.SupportTicketWhereInput {
   return {};
 }
 
-function listHref(schoolSlug: string, status: string, q: string, page = 1) {
+function listHref(schoolSlug: string, status: string, q: string, page = 1, priority = "ALL", source = "ALL", unread = false) {
   const params = new URLSearchParams();
   if (status !== "ALL") params.set("status", status);
   if (q) params.set("q", q);
+  if (priority !== "ALL") params.set("priority", priority);
+  if (source !== "ALL") params.set("source", source);
+  if (unread) params.set("unread", "1");
   if (page > 1) params.set("page", String(page));
   return `/${schoolSlug}/queries${params.size ? `?${params}` : ""}`;
 }
@@ -42,12 +45,18 @@ export default async function QueriesPage({ params, searchParams }: { params: Pa
   const query = await searchParams;
   const status = filters.some((item) => item.value === query.status) ? query.status! : "ALL";
   const q = query.q?.trim().slice(0, 100) || "";
+  const priority = ["LOW", "NORMAL", "HIGH", "URGENT"].includes(query.priority || "") ? query.priority! : "ALL";
+  const source = query.source?.trim().slice(0, 50) || "ALL";
+  const unreadOnly = query.unread === "1";
   const page = Math.max(1, Number.parseInt(query.page || "1", 10) || 1);
   const pageSize = 25;
 
   const where: Prisma.SupportTicketWhereInput = {
     schoolId: membership.schoolId,
     ...statusWhere(status),
+    ...(priority !== "ALL" ? { priority: priority as Prisma.EnumSupportTicketPriorityFilter["equals"] } : {}),
+    ...(source !== "ALL" ? { source } : {}),
+
     ...(q
       ? {
           OR: [
@@ -62,7 +71,7 @@ export default async function QueriesPage({ params, searchParams }: { params: Pa
       : {}),
   };
 
-  const [tickets, total, open, active, resolved] = await Promise.all([
+  const [rawTickets, totalBase, open, active, resolved, sources] = await Promise.all([
     prisma.supportTicket.findMany({
       where,
       orderBy: { createdAt: "desc" },
@@ -88,7 +97,11 @@ export default async function QueriesPage({ params, searchParams }: { params: Pa
     prisma.supportTicket.count({ where: { schoolId: membership.schoolId, status: { in: ["OPEN", "REOPENED"] } } }),
     prisma.supportTicket.count({ where: { schoolId: membership.schoolId, status: { in: ["ASSIGNED", "IN_PROGRESS", "WAITING"] } } }),
     prisma.supportTicket.count({ where: { schoolId: membership.schoolId, status: { in: ["RESOLVED", "CLOSED"] } } }),
+    prisma.supportTicket.findMany({ where: { schoolId: membership.schoolId }, distinct: ["source"], select: { source: true }, orderBy: { source: "asc" } }),
   ]);
+
+  const tickets = unreadOnly ? rawTickets.filter((ticket) => !ticket.reads[0] || ticket.updatedAt > ticket.reads[0].readAt) : rawTickets;
+  const total = unreadOnly ? tickets.length : totalBase;
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
@@ -118,8 +131,11 @@ export default async function QueriesPage({ params, searchParams }: { params: Pa
       </div>
 
       <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-        <form action={`/${schoolSlug}/queries`} className="flex gap-2">
+        <form action={`/${schoolSlug}/queries`} className="grid gap-2 md:grid-cols-[minmax(0,1fr)_auto_auto_auto_auto]">
           {status !== "ALL" && <input type="hidden" name="status" value={status} />}
+          <select name="priority" defaultValue={priority} aria-label="Filter by priority" className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm"><option value="ALL">All priorities</option><option value="URGENT">Urgent</option><option value="HIGH">High</option><option value="NORMAL">Normal</option><option value="LOW">Low</option></select>
+          <select name="source" defaultValue={source} aria-label="Filter by source" className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm"><option value="ALL">All sources</option>{sources.map((item) => <option key={item.source} value={item.source}>{item.source.replaceAll("_", " ")}</option>)}</select>
+          <label className="flex items-center gap-2 rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700"><input type="checkbox" name="unread" value="1" defaultChecked={unreadOnly} /> Unread</label>
           <input
             name="q"
             defaultValue={q}
@@ -136,7 +152,7 @@ export default async function QueriesPage({ params, searchParams }: { params: Pa
           {filters.map((item) => (
             <Link
               key={item.value}
-              href={listHref(schoolSlug, item.value, q)}
+              href={listHref(schoolSlug, item.value, q, 1, priority, source, unreadOnly)}
               aria-current={status === item.value ? "page" : undefined}
               className={`rounded-full px-4 py-2 text-sm font-semibold ${status === item.value ? "bg-indigo-700 text-white" : "bg-slate-100 text-slate-700 hover:bg-slate-200"}`}
             >
@@ -191,9 +207,9 @@ export default async function QueriesPage({ params, searchParams }: { params: Pa
 
       {totalPages > 1 && (
         <nav aria-label="Query pages" className="flex items-center justify-between text-sm">
-          {page > 1 ? <Link href={listHref(schoolSlug, status, q, page - 1)} className="font-semibold text-indigo-700">Previous</Link> : <span />}
+          {page > 1 ? <Link href={listHref(schoolSlug, status, q, page - 1, priority, source, unreadOnly)} className="font-semibold text-indigo-700">Previous</Link> : <span />}
           <span>Page {page} of {totalPages}</span>
-          {page < totalPages ? <Link href={listHref(schoolSlug, status, q, page + 1)} className="font-semibold text-indigo-700">Next</Link> : <span />}
+          {page < totalPages ? <Link href={listHref(schoolSlug, status, q, page + 1, priority, source, unreadOnly)} className="font-semibold text-indigo-700">Next</Link> : <span />}
         </nav>
       )}
     </div>
