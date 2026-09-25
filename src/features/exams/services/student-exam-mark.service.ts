@@ -246,10 +246,7 @@ export const studentExamMarkService = {
           in: enrollmentIds,
         },
 
-        schoolId,
-        active: true,
-        classId: schedule.classId,
-        sectionId,
+        schoolId,\n        academicYearId: schedule.exam.academicYearId,\n        active: true,\n        classId: schedule.classId,\n        sectionId,
       },
 
       select: {
