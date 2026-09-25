@@ -10,6 +10,7 @@ import {
   Clock,
   FileText,
   GraduationCap,
+  Download,
   RefreshCcw,
   Users,
   UserX,
@@ -159,6 +160,14 @@ export function ClassAttendanceReport({ schoolSlug }: Props) {
     };
   }, [academicYearId, classId, sectionId, fromDate, toDate, canLoadReport]);
 
+  function exportExcel() {
+    if (!canLoadReport) return;
+    const params = new URLSearchParams({ academicYearId, classId, sectionId });
+    if (fromDate) params.set("fromDate", fromDate);
+    if (toDate) params.set("toDate", toDate);
+    window.location.href = `/api/v1/reports/${schoolSlug}/attendance/class?${params.toString()}`;
+  }
+
   function openStudent(studentId: string) {
     const params = new URLSearchParams({
       studentId,
@@ -203,7 +212,11 @@ export function ClassAttendanceReport({ schoolSlug }: Props) {
           </div>
 
           {data && (
-            <div className="flex items-center gap-3 rounded-xl border bg-muted/30 px-4 py-3">
+            <div className="flex flex-wrap items-center gap-3">
+              <button type="button" onClick={exportExcel} className="inline-flex h-11 items-center gap-2 rounded-xl bg-emerald-600 px-4 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-700">
+                <Download className="h-4 w-4" />Export Excel
+              </button>
+              <div className="flex items-center gap-3 rounded-xl border bg-muted/30 px-4 py-3">
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-background shadow-sm">
                 <Users className="h-4 w-4 text-primary" />
               </div>
@@ -217,6 +230,7 @@ export function ClassAttendanceReport({ schoolSlug }: Props) {
                   Students in report
                 </p>
               </div>
+            </div>
             </div>
           )}
         </div>
