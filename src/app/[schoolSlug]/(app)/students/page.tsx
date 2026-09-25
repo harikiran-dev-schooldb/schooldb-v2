@@ -5,7 +5,7 @@ import { GraduationCap, Users, Sparkles } from "lucide-react";
 
 export default function StudentPage() {
   return (
-    <div className="space-y-7 pb-10">
+    <div className="space-y-6 pb-10">
       {/* ======================================================================
           PAGE HEADER
           ====================================================================== */}
@@ -71,7 +71,7 @@ export default function StudentPage() {
               RIGHT INFO CARD
               ------------------------------------------------------------------ */}
 
-          <div className="flex shrink-0 items-center gap-3 rounded-2xl border border-indigo-100 bg-white/85 px-4 py-3 shadow-[0_10px_30px_rgba(79,70,229,0.07)] backdrop-blur-xl">
+          <div className="flex w-full shrink-0 items-center gap-3 rounded-2xl lg:w-auto border border-indigo-100 bg-white/85 px-4 py-3 shadow-[0_10px_30px_rgba(79,70,229,0.07)] backdrop-blur-xl">
             <div className="flex size-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 ring-1 ring-indigo-100">
               <Users className="size-4" strokeWidth={2} />
             </div>
