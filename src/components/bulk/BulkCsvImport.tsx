@@ -210,7 +210,7 @@ export function BulkCsvImport({
   const hasFile = Boolean(fileName) && !message;
 
   return (
-    <div className="space-y-8 pb-12">
+    <div className="space-y-6 p-4 pb-12 sm:p-6">
       <PageHeader
         eyebrow="Bulk Operations"
         title={title}
@@ -244,7 +244,7 @@ export function BulkCsvImport({
           </div>
         </CardHeader>
 
-        <CardContent className="space-y-6 p-6">
+        <CardContent className="space-y-6 p-4 sm:p-6">
           <input
             ref={inputRef}
             type="file"
@@ -349,7 +349,7 @@ export function BulkCsvImport({
                 </div>
               ) : null}
 
-              <div className="flex justify-end gap-3">
+              <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
                 <Button variant="outline" onClick={reset} disabled={importing}>
                   <ArrowLeft className="size-4" /> Start Over
                 </Button>
