@@ -66,6 +66,7 @@ export const studentExamMarkService = {
     const enrollments = await prisma.studentEnrollment.findMany({
       where: {
         schoolId,
+        academicYearId: schedule.exam.academicYearId,
         active: true,
         classId: schedule.classId,
         sectionId,
@@ -187,6 +188,7 @@ export const studentExamMarkService = {
         classId: true,
         sectionId: true,
         maxMarks: true,
+        exam: { select: { academicYearId: true } },
       },
     });
 
