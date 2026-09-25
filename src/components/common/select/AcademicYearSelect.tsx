@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 
 import {
   RemoteCombobox,
@@ -24,12 +24,6 @@ export function AcademicYearSelect({
   disabled,
   autoSelectActive = true,
 }: Props) {
-  const [resolvedValue, setResolvedValue] = useState(value);
-
-  useEffect(() => {
-    setResolvedValue(value);
-  }, [value]);
-
   useEffect(() => {
     if (!autoSelectActive || value) return;
 
@@ -50,7 +44,6 @@ export function AcademicYearSelect({
         const activeYear = options.find((option) => option.active);
 
         if (activeYear) {
-          setResolvedValue(activeYear.id);
           onChange(activeYear.id);
         }
       } catch {
@@ -68,11 +61,8 @@ export function AcademicYearSelect({
   return (
     <RemoteCombobox
       url="/api/v1/academic-years/options"
-      value={value || resolvedValue}
-      onChange={(nextValue) => {
-        setResolvedValue(nextValue);
-        onChange(nextValue);
-      }}
+      value={value}
+      onChange={onChange}
       disabled={disabled}
       placeholder="Academic Year"
     />
