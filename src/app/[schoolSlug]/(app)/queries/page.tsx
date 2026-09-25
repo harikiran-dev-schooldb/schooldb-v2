@@ -81,6 +81,7 @@ export default async function QueriesPage({ params, searchParams }: { params: Pa
         updatedAt: true,
         student: { select: { admissionNo: true, fullName: true } },
         createdBy: { select: { firstName: true, lastName: true } },
+        reads: { where: { userId: membership.userId }, select: { readAt: true }, take: 1 },
       },
     }),
     prisma.supportTicket.count({ where }),
@@ -155,6 +156,7 @@ export default async function QueriesPage({ params, searchParams }: { params: Pa
           tickets.map((ticket) => {
             const creator = [ticket.createdBy?.firstName, ticket.createdBy?.lastName].filter(Boolean).join(" ");
             const requester = ticket.parentName || creator || "School user";
+            const unread = !ticket.reads[0] || ticket.updatedAt > ticket.reads[0].readAt;
             return (
               <Link
                 key={ticket.id}
@@ -163,7 +165,7 @@ export default async function QueriesPage({ params, searchParams }: { params: Pa
               >
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-500">
-                    <span>{ticket.ticketNo}</span><span>·</span>
+                    <span>{ticket.ticketNo}</span>{unread && <span className="rounded-full bg-rose-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-rose-700">Unread</span>}<span>·</span>
                     <span>{ticket.type.replaceAll("_", " ")}</span><span>·</span>
                     <span>{ticket.priority}</span><span>·</span>
                     <span>{ticket.createdAt.toLocaleDateString("en-IN")}</span>
