@@ -1,6 +1,6 @@
 "use client";
 
-import { Filter } from "lucide-react";
+import { Download, Filter } from "lucide-react";
 
 import { CrudToolbar } from "@/components/common/crud";
 import { ClassSelect, SectionSelect } from "@/components/common/select";
@@ -12,6 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { StudentStatus } from "@/generated/prisma/client";
+import { Button } from "@/components/ui/button";
 
 import { STUDENT_STATUS_OPTIONS } from "../constants/student-status";
 
@@ -25,6 +26,7 @@ type Props = {
   onClassChange: (value: string) => void;
   sectionId: string;
   onSectionChange: (value: string) => void;
+  exportHref: string;
 };
 
 export function StudentToolbar({
@@ -36,6 +38,7 @@ export function StudentToolbar({
   onClassChange,
   sectionId,
   onSectionChange,
+  exportHref,
 }: Props) {
   return (
     <CrudToolbar
@@ -85,6 +88,16 @@ export function StudentToolbar({
             ))}
           </SelectContent>
         </Select>
+
+        <Button
+          asChild
+          className="h-10 w-full rounded-xl bg-emerald-600 px-4 text-white shadow-sm hover:bg-emerald-700 sm:w-auto"
+        >
+          <a href={exportHref}>
+            <Download className="size-4" />
+            Export Excel
+          </a>
+        </Button>
       </div>
     </CrudToolbar>
   );

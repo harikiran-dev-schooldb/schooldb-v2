@@ -125,6 +125,14 @@ const operations = [
     status: "Ready",
   },
   {
+    title: "Fee Plans",
+    description:
+      "Create complete fee plans with class applicability and multiple fee items from one validated file.",
+    href: "bulk-operations/fee-plans",
+    icon: IndianRupee,
+    status: "Ready",
+  },
+  {
     title: "Fee Assignments",
     description:
       "Assign existing fee plans to enrolled students by academic year with duplicate and class applicability checks.",

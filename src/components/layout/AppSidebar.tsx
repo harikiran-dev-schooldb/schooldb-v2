@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import {
@@ -192,17 +193,20 @@ export function AppSidebar({ mobile = false, onNavigate }: Props) {
               className={cn(
                 "relative flex size-10 shrink-0 items-center justify-center",
                 "overflow-hidden rounded-xl",
-                "bg-gradient-to-br from-indigo-600 via-violet-600 to-blue-600",
-                "text-white",
                 "shadow-[0_8px_22px_rgba(79,70,229,0.22)]",
-                "ring-1 ring-indigo-500/10",
+                "ring-1 ring-indigo-200/70",
                 "transition-all duration-200",
                 "group-hover:scale-[1.03]",
               )}
             >
-              <div className="absolute inset-0 bg-white/10" />
-
-              <Building2 className="relative size-[19px]" strokeWidth={2.25} />
+              <Image
+                src="/schooldb-app-logo.png"
+                alt="SchoolDB"
+                width={40}
+                height={40}
+                className="size-10 object-cover"
+                priority
+              />
             </div>
 
             {!collapsed && (

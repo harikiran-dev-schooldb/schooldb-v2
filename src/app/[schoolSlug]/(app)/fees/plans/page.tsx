@@ -1,9 +1,16 @@
 import { PageHeader } from "@/components/common/PageHeader";
 import { AddFeePlanButton } from "@/features/fees/components/AddFeePlanButton";
 import { FeePlanTable } from "@/features/fees/components/FeePlanTable";
-import { ClipboardList, Settings2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
+import { ClipboardList, Settings2, Upload } from "lucide-react";
 
-export default function FeePlanPage() {
+export default async function FeePlanPage({
+  params,
+}: {
+  params: Promise<{ schoolSlug: string }>;
+}) {
+  const { schoolSlug } = await params;
   return (
     <div className="space-y-6 pb-10">
       {/* ================================================================ */}
@@ -13,7 +20,17 @@ export default function FeePlanPage() {
       <PageHeader
         title="Fee Plans"
         description="Manage fee plans and installment schedules for the school."
-        action={<AddFeePlanButton />}
+        action={
+          <div className="flex w-full flex-col-reverse gap-2 sm:w-auto sm:flex-row">
+            <Button asChild variant="outline" className="rounded-xl">
+              <Link href={`/${schoolSlug}/bulk-operations/fee-plans`}>
+                <Upload className="size-4" />
+                Bulk Import
+              </Link>
+            </Button>
+            <AddFeePlanButton />
+          </div>
+        }
       />
 
       {/* ================================================================ */}
