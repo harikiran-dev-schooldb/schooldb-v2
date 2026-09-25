@@ -4,7 +4,10 @@ import { prisma } from "@/lib/prisma";
 import { ApiResponse } from "@/lib/response";
 
 const PAGE_SIZE = 20;
-const VALID_SECTIONS = new Set(["students", "teachers", "classes", "attendance", "fees", "leave", "queries"]);
+const VALID_SECTIONS = new Set([
+  "students", "teachers", "classes", "attendance", "fees", "leave", "queries",
+  "timetable", "exams", "calendar", "fee-collection", "admissions",
+]);
 
 export async function GET(request: Request) {
   return apiHandler(async () => {
@@ -109,6 +112,113 @@ export async function GET(request: Request) {
           title: item.student.fullName || item.student.admissionNo,
           subtitle: `${item.enrollment.class.name} · ${item.enrollment.section.name} · ${item.startDate.toISOString().slice(0, 10)} to ${item.endDate.toISOString().slice(0, 10)}`,
           detail: item.reason, status: item.status })) });
+    }
+
+    if (section === "timetable") {
+      const where = { schoolId, active: true, academicYear: { active: true } };
+      const [total, entries] = await Promise.all([
+        prisma.timetable.count({ where }),
+        prisma.timetable.findMany({ where,
+          orderBy: [{ day: "asc" }, { period: { displayOrder: "asc" } }], skip, take: PAGE_SIZE,
+          select: { id: true, day: true,
+            period: { select: { name: true, startTime: true, endTime: true } },
+            teacherAllocation: { select: {
+              class: { select: { name: true } }, section: { select: { name: true } },
+              subject: { select: { name: true } }, teacher: { select: { fullName: true } },
+            } } } }),
+      ]);
+      return ApiResponse.success({ section, total, page, pageSize: PAGE_SIZE,
+        rows: entries.map((item) => ({ id: item.id,
+          title: `${item.teacherAllocation.class.name} · ${item.teacherAllocation.section.name}`,
+          subtitle: `${item.day.replaceAll("_", " ")} · ${item.period.name} · ${item.period.startTime}–${item.period.endTime}`,
+          detail: `${item.teacherAllocation.subject.name} · ${item.teacherAllocation.teacher.fullName}`,
+          status: "ACTIVE" })) });
+    }
+
+    if (section === "exams") {
+      const where = { schoolId, active: true };
+      const [total, exams] = await Promise.all([
+        prisma.exam.count({ where }),
+        prisma.exam.findMany({ where, orderBy: [{ startDate: "desc" }, { createdAt: "desc" }],
+          skip, take: PAGE_SIZE,
+          select: { id: true, name: true, status: true, startDate: true, endDate: true,
+            academicYear: { select: { name: true } }, _count: { select: { schedules: true } } } }),
+      ]);
+      return ApiResponse.success({ section, total, page, pageSize: PAGE_SIZE,
+        rows: exams.map((item) => ({ id: item.id, title: item.name,
+          subtitle: item.startDate
+            ? `${item.startDate.toISOString().slice(0, 10)}${item.endDate ? ` to ${item.endDate.toISOString().slice(0, 10)}` : ""}`
+            : item.academicYear.name,
+          detail: `${item._count.schedules} exam schedules`, status: item.status })) });
+    }
+
+    if (section === "calendar") {
+      const where = { schoolId, archived: false };
+      const [total, events] = await Promise.all([
+        prisma.schoolCalendarEvent.count({ where }),
+        prisma.schoolCalendarEvent.findMany({ where, orderBy: [{ startDate: "desc" }, { title: "asc" }],
+          skip, take: PAGE_SIZE,
+          select: { id: true, title: true, description: true, category: true,
+            startDate: true, endDate: true, targetLabel: true } }),
+      ]);
+      return ApiResponse.success({ section, total, page, pageSize: PAGE_SIZE,
+        rows: events.map((item) => ({ id: item.id, title: item.title,
+          subtitle: `${item.startDate.toISOString().slice(0, 10)}${item.endDate > item.startDate ? ` to ${item.endDate.toISOString().slice(0, 10)}` : ""} · ${item.targetLabel}`,
+          detail: item.description || "School calendar event", status: item.category })) });
+    }
+
+    if (section === "fee-collection") {
+      const where = {
+        status: { in: ["PENDING" as const, "PARTIAL" as const] },
+        studentFeeItem: { studentFee: { schoolId } },
+      };
+      const [total, installments] = await Promise.all([
+        prisma.studentFeeInstallment.count({ where }),
+        prisma.studentFeeInstallment.findMany({ where, orderBy: [{ dueDate: "asc" }, { createdAt: "desc" }],
+          skip, take: PAGE_SIZE,
+          select: {
+            id: true, name: true, payableAmount: true, paidAmount: true, dueDate: true, status: true,
+            studentFeeItem: {
+              select: {
+                studentFee: {
+                  select: {
+                    studentEnrollment: {
+                      select: {
+                        student: { select: { fullName: true, admissionNo: true } },
+                        class: { select: { name: true } },
+                        section: { select: { name: true } },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        }),
+      ]);
+      return ApiResponse.success({ section, total, page, pageSize: PAGE_SIZE,
+        rows: installments.map((item) => {
+          const enrollment = item.studentFeeItem.studentFee.studentEnrollment;
+          const outstanding = Number(item.payableAmount) - Number(item.paidAmount);
+          return { id: item.id, title: enrollment.student.fullName || enrollment.student.admissionNo,
+            subtitle: `${enrollment.class.name} · ${enrollment.section.name} · Due ${item.dueDate.toISOString().slice(0, 10)}`,
+            detail: `${item.name} · ₹${outstanding.toLocaleString("en-IN")}`, status: item.status };
+        }) });
+    }
+
+    if (section === "admissions") {
+      const where = { schoolId };
+      const [total, applications] = await Promise.all([
+        prisma.admissionApplication.count({ where }),
+        prisma.admissionApplication.findMany({ where, orderBy: { submittedAt: "desc" }, skip, take: PAGE_SIZE,
+          select: { id: true, applicationNo: true, studentName: true, status: true, submittedAt: true,
+            applyingClass: { select: { name: true } }, preferredSection: { select: { name: true } } } }),
+      ]);
+      return ApiResponse.success({ section, total, page, pageSize: PAGE_SIZE,
+        rows: applications.map((item) => ({ id: item.id, title: item.studentName,
+          subtitle: `${item.applicationNo} · ${item.submittedAt.toISOString().slice(0, 10)}`,
+          detail: `${item.applyingClass.name}${item.preferredSection ? ` · ${item.preferredSection.name}` : ""}`,
+          status: item.status })) });
     }
 
     const where = { schoolId, source: "PARENT_QR" };

@@ -2,6 +2,7 @@ package com.schooldb.mobile.admin
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,9 +16,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -28,6 +26,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -44,6 +43,9 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.schooldb.mobile.network.ApiException
 import com.schooldb.mobile.network.AuthenticatedApiClient
+import com.composables.icons.lucide.ArrowLeft
+import com.composables.icons.lucide.Lucide
+import com.composables.icons.lucide.RefreshCw
 import java.io.IOException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -59,6 +61,19 @@ private val sectionTitles = mapOf(
     "fees" to "Fees",
     "leave" to "Leave requests",
     "queries" to "Parent queries",
+    "timetable" to "Timetable",
+    "exams" to "Exams & results",
+    "calendar" to "School calendar",
+    "fee-collection" to "Fee collection",
+    "admissions" to "Online admissions",
+)
+
+private val sectionDescriptions = mapOf(
+    "timetable" to "Current class periods, subjects and teachers",
+    "exams" to "Exam cycles and published schedules",
+    "calendar" to "School events, holidays and important dates",
+    "fee-collection" to "Pending and partially paid installments",
+    "admissions" to "Recent online admission applications",
 )
 
 internal data class AdminListRow(
@@ -134,12 +149,12 @@ fun AdminSectionScreen(section: String, onBack: () -> Unit, onTicket: (String) -
         TopAppBar(title = { Text(title, fontWeight = FontWeight.Bold) },
             navigationIcon = {
                 IconButton(onClick = onBack) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    Icon(Lucide.ArrowLeft, contentDescription = "Back")
                 }
             },
             actions = {
                 IconButton(onClick = { viewModel.load(section) }, enabled = !state.loading) {
-                    Icon(Icons.Default.Refresh, contentDescription = "Refresh $title")
+                    Icon(Lucide.RefreshCw, contentDescription = "Refresh $title")
                 }
             })
     }) { padding ->
@@ -160,7 +175,8 @@ fun AdminSectionScreen(section: String, onBack: () -> Unit, onTicket: (String) -
                 item {
                     Text("$title · ${state.total}", style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold)
-                    Text("School records in this section", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(sectionDescriptions[section] ?: "School records in this section",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 if (state.rows.isEmpty()) item {
                     Text("No records yet", color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -168,14 +184,25 @@ fun AdminSectionScreen(section: String, onBack: () -> Unit, onTicket: (String) -
                 items(state.rows, key = { it.id }) { row ->
                     Card(modifier = if (section == "queries") Modifier.clickable { onTicket(row.id) } else Modifier,
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f)),
                         shape = RoundedCornerShape(16.dp)) {
                         Column(Modifier.fillMaxWidth().padding(17.dp)) {
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                 Text(row.title, modifier = Modifier.weight(1f), fontWeight = FontWeight.Bold,
                                     maxLines = 2, overflow = TextOverflow.Ellipsis)
-                                if (row.status.isNotBlank()) Text(row.status.replace('_', ' '),
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.primary)
+                                if (row.status.isNotBlank()) {
+                                    Surface(
+                                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.72f),
+                                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                        shape = RoundedCornerShape(50),
+                                    ) {
+                                        Text(
+                                            row.status.replace('_', ' '),
+                                            modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp),
+                                            style = MaterialTheme.typography.labelSmall,
+                                        )
+                                    }
+                                }
                             }
                             if (row.subtitle.isNotBlank()) Text(row.subtitle,
                                 style = MaterialTheme.typography.bodySmall,

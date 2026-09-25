@@ -55,68 +55,68 @@ model AcademicPeriod {
 }
 
 model School {
-  id                    String                       @id @default(cuid())
-  name                  String
-  slug                  String                       @unique
-  createdAt             DateTime                     @default(now())
-  updatedAt             DateTime                     @updatedAt
-  logo                  String?
-  academicPeriods       AcademicPeriod[]
-  academicYears         AcademicYear[]
-  admissionApplications AdmissionApplication[]
-  admissionDocuments    AdmissionDocument[]
-  announcements         Announcement[]
-  attendance            Attendance[]
-  attendanceSessions    AttendanceSession[]
-  auditLogs             AuditLog[]
-  cashfreePaymentOrders CashfreePaymentOrder[]
-  certificateIssues     CertificateIssue[]
-  classes               Class[]
-  classSubjects         ClassSubject[]
-  exams                 Exam[]
-  examSchedules         ExamSchedule[]
-  expenses              Expense[]
-  feeCategories         FeeCategory[]
-  feePayments           FeePayment[]
-  feePlans              FeePlan[]
-  homeworks             Homework[]
-  leaveRequests         LeaveRequest[]
-  libraryBooks          LibraryBook[]
-  libraryCopies         LibraryBookCopy[]
-  libraryCategories     LibraryCategory[]
-  libraryLoans          LibraryLoan[]
-  memberships           Membership[]
-  otpChallenges         OtpChallenge[]
-  parentStudentLinks    ParentStudentLink[]
-  periods               Period[]
-  pushDevices           PushDevice[]
-  admissionSetting      SchoolAdmissionSetting?
-  calendarEvents        SchoolCalendarEvent[]
-  certificateSetting    SchoolCertificateSetting?
-  idCardSetting         SchoolIdCardSetting?
-  students              Student[]
-  activities            StudentActivity[]
-  studentDocuments      StudentDocument[]
-  studentEnrollments    StudentEnrollment[]
-  studentExamMarks      StudentExamMark[]
-  studentFees           StudentFee[]
-  transportAssignments  StudentTransportAssignment[]
-  subjects              Subject[]
-  teachers              Teacher[]
-  teacherAllocations    TeacherAllocation[]
-  timetables            Timetable[]
-  transportRoutes       TransportRoute[]
-  transportStops        TransportStop[]
-  transportVehicles     TransportVehicle[]
-  whatsappCampaigns     WhatsappCampaign[]
-  whatsappRecipients    WhatsappRecipient[]
-  houses                House[]
-  studentHouses         StudentHouse[]
-  supportTickets        SupportTicket[]
-  supportTicketMessages SupportTicketMessage[]
+  id                      String                       @id @default(cuid())
+  name                    String
+  slug                    String                       @unique
+  createdAt               DateTime                     @default(now())
+  updatedAt               DateTime                     @updatedAt
+  logo                    String?
+  academicPeriods         AcademicPeriod[]
+  academicYears           AcademicYear[]
+  admissionApplications   AdmissionApplication[]
+  admissionDocuments      AdmissionDocument[]
+  announcements           Announcement[]
+  attendance              Attendance[]
+  attendanceSessions      AttendanceSession[]
+  auditLogs               AuditLog[]
+  cashfreePaymentOrders   CashfreePaymentOrder[]
+  certificateIssues       CertificateIssue[]
+  classes                 Class[]
+  classSubjects           ClassSubject[]
+  exams                   Exam[]
+  examSchedules           ExamSchedule[]
+  expenses                Expense[]
+  feeCategories           FeeCategory[]
+  feePayments             FeePayment[]
+  feePlans                FeePlan[]
+  homeworks               Homework[]
+  leaveRequests           LeaveRequest[]
+  libraryBooks            LibraryBook[]
+  libraryCopies           LibraryBookCopy[]
+  libraryCategories       LibraryCategory[]
+  libraryLoans            LibraryLoan[]
+  memberships             Membership[]
+  otpChallenges           OtpChallenge[]
+  parentStudentLinks      ParentStudentLink[]
+  periods                 Period[]
+  pushDevices             PushDevice[]
+  admissionSetting        SchoolAdmissionSetting?
+  calendarEvents          SchoolCalendarEvent[]
+  certificateSetting      SchoolCertificateSetting?
+  idCardSetting           SchoolIdCardSetting?
+  students                Student[]
+  activities              StudentActivity[]
+  studentDocuments        StudentDocument[]
+  studentEnrollments      StudentEnrollment[]
+  studentExamMarks        StudentExamMark[]
+  studentFees             StudentFee[]
+  transportAssignments    StudentTransportAssignment[]
+  subjects                Subject[]
+  teachers                Teacher[]
+  teacherAllocations      TeacherAllocation[]
+  timetables              Timetable[]
+  transportRoutes         TransportRoute[]
+  transportStops          TransportStop[]
+  transportVehicles       TransportVehicle[]
+  whatsappCampaigns       WhatsappCampaign[]
+  whatsappRecipients      WhatsappRecipient[]
+  houses                  House[]
+  studentHouses           StudentHouse[]
+  supportTickets          SupportTicket[]
+  supportTicketMessages   SupportTicketMessage[]
   supportTicketActivities SupportTicketActivity[]
   supportTicketReads      SupportTicketRead[]
-  androidAppBuilds       AndroidAppBuild[]
+  androidAppBuilds        AndroidAppBuild[]
 }
 
 model SchoolIdCardSetting {
@@ -152,27 +152,27 @@ model SchoolCertificateSetting {
 }
 
 model User {
-  id                 String              @id @default(cuid())
-  clerkUserId        String              @unique
-  email              String              @unique
-  firstName          String?
-  lastName           String?
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
-  imageUrl           String?
-  phone              String?
-  announcementReads  AnnouncementRead[]
-  auditLogs          AuditLog[]
-  memberships        Membership[]
-  otpChallenges      OtpChallenge[]
-  parentStudentLinks ParentStudentLink[]
-  pushDevices        PushDevice[]
-  createdSupportTickets SupportTicket[]       @relation("SupportTicketCreator")
-  assignedSupportTickets SupportTicket[]      @relation("SupportTicketAssignee")
-  supportTicketMessages SupportTicketMessage[]
+  id                      String                  @id @default(cuid())
+  clerkUserId             String                  @unique
+  email                   String                  @unique
+  firstName               String?
+  lastName                String?
+  createdAt               DateTime                @default(now())
+  updatedAt               DateTime                @updatedAt
+  imageUrl                String?
+  phone                   String?
+  announcementReads       AnnouncementRead[]
+  auditLogs               AuditLog[]
+  memberships             Membership[]
+  otpChallenges           OtpChallenge[]
+  parentStudentLinks      ParentStudentLink[]
+  pushDevices             PushDevice[]
+  createdSupportTickets   SupportTicket[]         @relation("SupportTicketCreator")
+  assignedSupportTickets  SupportTicket[]         @relation("SupportTicketAssignee")
+  supportTicketMessages   SupportTicketMessage[]
   supportTicketActivities SupportTicketActivity[]
   supportTicketReads      SupportTicketRead[]
-  androidAppBuilds       AndroidAppBuild[]
+  androidAppBuilds        AndroidAppBuild[]
 
   @@index([phone])
 }
@@ -1763,21 +1763,21 @@ enum Category {
 }
 
 model AndroidAppBuild {
-  id                String   @id @default(cuid())
+  id                String    @id @default(cuid())
   schoolId          String
   requestedById     String
-  status            String   @default("QUEUED")
+  status            String    @default("QUEUED")
   configuration     Json
   logoBytes         Bytes?
   firebaseConfig    Json?
   callbackTokenHash String
   githubRunId       String?
   message           String?
-  createdAt         DateTime @default(now())
+  createdAt         DateTime  @default(now())
   startedAt         DateTime?
   completedAt       DateTime?
-  school            School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  requestedBy       User     @relation(fields: [requestedById], references: [id], onDelete: Cascade)
+  school            School    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  requestedBy       User      @relation(fields: [requestedById], references: [id], onDelete: Cascade)
 
   @@index([schoolId, createdAt(sort: Desc)])
   @@index([status, createdAt])
@@ -1824,30 +1824,30 @@ enum SupportTicketStatus {
 }
 
 model SupportTicket {
-  id          String                @id @default(cuid())
-  schoolId    String
-  ticketNo    String
-  subject     String
-  description String
-  type        SupportTicketType
-  priority    SupportTicketPriority @default(NORMAL)
-  status      SupportTicketStatus   @default(OPEN)
-  studentId   String?
-  createdById String?
-  source      String                @default("STAFF")
-  parentName  String?
-  parentPhone String?
+  id           String                  @id @default(cuid())
+  schoolId     String
+  ticketNo     String
+  subject      String
+  description  String
+  type         SupportTicketType
+  priority     SupportTicketPriority   @default(NORMAL)
+  status       SupportTicketStatus     @default(OPEN)
+  studentId    String?
+  createdById  String?
+  source       String                  @default("STAFF")
+  parentName   String?
+  parentPhone  String?
   assignedToId String?
-  createdAt   DateTime              @default(now())
-  updatedAt   DateTime              @updatedAt
-  resolvedAt  DateTime?
-  school      School                @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  student     Student?              @relation(fields: [studentId], references: [id], onDelete: SetNull)
-  createdBy   User?                 @relation("SupportTicketCreator", fields: [createdById], references: [id], onDelete: SetNull)
-  assignedTo  User?                 @relation("SupportTicketAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
-  messages    SupportTicketMessage[]
-  activities  SupportTicketActivity[]
-  reads       SupportTicketRead[]
+  createdAt    DateTime                @default(now())
+  updatedAt    DateTime                @updatedAt
+  resolvedAt   DateTime?
+  school       School                  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student      Student?                @relation(fields: [studentId], references: [id], onDelete: SetNull)
+  createdBy    User?                   @relation("SupportTicketCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  assignedTo   User?                   @relation("SupportTicketAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+  messages     SupportTicketMessage[]
+  activities   SupportTicketActivity[]
+  reads        SupportTicketRead[]
 
   @@unique([schoolId, ticketNo])
   @@index([schoolId, status, createdAt(sort: Desc)])
@@ -1858,14 +1858,14 @@ model SupportTicket {
 }
 
 model SupportTicketRead {
-  id        String        @id @default(cuid())
-  schoolId  String
-  ticketId  String
-  userId    String
-  readAt    DateTime      @default(now())
-  school    School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  ticket    SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id       String        @id @default(cuid())
+  schoolId String
+  ticketId String
+  userId   String
+  readAt   DateTime      @default(now())
+  school   School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  ticket   SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([ticketId, userId])
   @@index([schoolId, userId, readAt])
@@ -1896,9 +1896,9 @@ model SupportTicketMessage {
   body       String
   isInternal Boolean       @default(false)
   createdAt  DateTime      @default(now())
-  school    School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  ticket    SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-  author    User          @relation(fields: [authorId], references: [id])
+  school     School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  ticket     SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  author     User          @relation(fields: [authorId], references: [id])
 
   @@index([ticketId, createdAt])
   @@index([ticketId, isInternal, createdAt])
