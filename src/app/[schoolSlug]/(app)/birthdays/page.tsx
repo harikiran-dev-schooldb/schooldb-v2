@@ -7,7 +7,6 @@ import {
   CalendarDays,
   Gift,
   Loader2,
-  MessageCircle,
   Send,
   Sparkles,
   PartyPopper,
