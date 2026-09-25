@@ -64,6 +64,23 @@ export default async function QueryDetailPage({
 
   if (!ticket) notFound();
 
+  await prisma.supportTicketRead.upsert({
+    where: {
+      ticketId_userId: {
+        ticketId: ticket.id,
+        userId: membership.userId,
+      },
+    },
+    create: {
+      schoolId: membership.schoolId,
+      ticketId: ticket.id,
+      userId: membership.userId,
+    },
+    update: {
+      readAt: new Date(),
+    },
+  });
+
   const enrollment = ticket.student?.enrollments[0];
   const creator = [ticket.createdBy?.firstName, ticket.createdBy?.lastName].filter(Boolean).join(" ") || null;
   const assignee = [ticket.assignedTo?.firstName, ticket.assignedTo?.lastName].filter(Boolean).join(" ") || "Unassigned";
