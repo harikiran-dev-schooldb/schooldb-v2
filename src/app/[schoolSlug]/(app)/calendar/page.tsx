@@ -22,7 +22,7 @@ export default async function CalendarManagementPage({ params }: { params: Promi
         <h2 className="text-lg font-bold">Calendar events <span className="text-sm font-normal text-muted-foreground">(latest 200)</span></h2>
         {events.length === 0 && <p className="rounded-2xl border p-8 text-center text-muted-foreground">No calendar events yet.</p>}
         {events.map((event) => (
-          <article key={event.id} className="space-y-3 rounded-2xl border bg-card p-5">
+          <article key={event.id} className="space-y-3 rounded-2xl border border-slate-200/80 bg-card p-4 shadow-sm transition-shadow hover:shadow-md sm:p-5">
             <div className="flex flex-wrap items-center gap-2"><Badge>{event.category.replaceAll("_", " ")}</Badge><Badge variant="outline">{event.targetLabel}</Badge>{event.archived && <Badge variant="outline">Archived</Badge>}</div>
             <h3 className="font-bold">{event.title}</h3>
             {event.description && <p className="whitespace-pre-wrap text-sm leading-6 text-muted-foreground">{event.description}</p>}
