@@ -31,6 +31,7 @@ type NavigationItem = {
 };
 
 const ADMIN_ROLES = ["SUPER_ADMIN", "SCHOOL_ADMIN"];
+const STAFF_ROLES = [...ADMIN_ROLES, "TEACHER", "ACCOUNTANT", "RECEPTIONIST"];
 const ATTENDANCE_ROLES = [...ADMIN_ROLES, "TEACHER"];
 const FEE_ROLES = [...ADMIN_ROLES, "ACCOUNTANT"];
 const TEACHING_ROLES = [...ADMIN_ROLES, "TEACHER"];
@@ -181,11 +182,11 @@ export const navigation: NavigationItem[] = [
   {
     title: "Communication",
     icon: Megaphone,
-    roles: ADMIN_ROLES,
+    roles: STAFF_ROLES,
     children: [
-      { title: "Notifications", href: "notifications" },
-      { title: "Parent Queries", href: "parent-queries" },
-      { title: "WhatsApp Messages", href: "whatsapp" },
+      { title: "Notifications", href: "notifications", roles: ADMIN_ROLES },
+      { title: "Queries", href: "queries", roles: STAFF_ROLES },
+      { title: "WhatsApp Messages", href: "whatsapp", roles: ADMIN_ROLES },
     ],
   },
   {
