@@ -158,7 +158,7 @@ export default function SetupClassesPage() {
   const configured = classes.length > 0;
 
   return (
-    <div className="space-y-8 pb-12">
+    <div className="space-y-6 p-4 pb-12 sm:p-6">
       <PageHeader
         eyebrow="School Setup"
         title="Classes"
