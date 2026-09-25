@@ -1,8 +1,8 @@
 "use client";
 
 import { FormEvent, useMemo, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
-import { BookCopy, BookOpenCheck, LibraryBig, Plus, RotateCcw, Search, Undo2 } from "lucide-react";
+import { useParams, useRouter } from "next/navigation";
+import { BookCopy, BookOpenCheck, Download, LibraryBig, Plus, RotateCcw, Search, Undo2 } from "lucide-react";
 import { toast } from "sonner";
 import { SearchableStudentSelect } from "@/components/common/select/SearchableStudentSelect";
 import { Badge } from "@/components/ui/badge";
@@ -25,7 +25,7 @@ const object = (form: HTMLFormElement) => Object.fromEntries(new FormData(form))
 const date = (value: string) => new Intl.DateTimeFormat("en-IN", { dateStyle: "medium" }).format(new Date(value));
 
 export function LibraryManager({ data, academicYearId, teachers }: { data: LibraryData; academicYearId: string | null; teachers: Array<{ id: string; fullName: string; employeeId: string }> }) {
-  const router = useRouter(); const [pending, startTransition] = useTransition();
+  const router = useRouter(); const params = useParams<{ schoolSlug: string }>(); const [pending, startTransition] = useTransition();
   const [studentId, setStudentId] = useState(""); const [borrowerType, setBorrowerType] = useState("STUDENT"); const [teacherId, setTeacherId] = useState(""); const [search, setSearch] = useState("");
   const availableBooks = data.books.filter((book) => book.copies.some((copy) => copy.status === "AVAILABLE"));
   const activeLoans = data.loans.filter((loan) => !loan.returnedAt); const [now] = useState(() => Date.now());
@@ -35,6 +35,10 @@ export function LibraryManager({ data, academicYearId, teachers }: { data: Libra
   const totalCopies = data.books.reduce((sum, book) => sum + book.copies.length, 0); const available = data.books.reduce((sum, book) => sum + book.copies.filter((copy) => copy.status === "AVAILABLE").length, 0); const overdue = activeLoans.filter((loan) => new Date(loan.dueAt).getTime() < now).length;
   return <div className="space-y-7">
     <section className="relative overflow-hidden rounded-[30px] bg-gradient-to-br from-slate-950 via-violet-950 to-indigo-900 p-7 text-white shadow-[0_30px_80px_rgba(46,16,101,0.24)]"><div className="pointer-events-none absolute -right-20 -top-24 size-72 rounded-full bg-fuchsia-400/20 blur-3xl" /><div className="relative grid gap-7 lg:grid-cols-[1.3fr_1fr] lg:items-end"><div><p className="text-xs font-bold uppercase tracking-[0.2em] text-violet-200">Knowledge, always in circulation</p><h2 className="mt-3 text-3xl font-black tracking-[-0.04em]">A modern library desk for every book and borrower.</h2><p className="mt-3 max-w-xl text-sm leading-6 text-violet-100/80">Track physical copies, issue and return books, renew loans and surface overdue items instantly.</p></div><div className="grid grid-cols-3 gap-3"><Metric value={totalCopies} label="Copies" /><Metric value={available} label="Available" /><Metric value={overdue} label="Overdue" /></div></div></section>
+    <div className="flex flex-wrap justify-end gap-2">
+      <Button asChild className="rounded-xl bg-emerald-600 text-white hover:bg-emerald-700"><a href={`/api/v1/reports/${params.schoolSlug}/library?report=inventory`}><Download className="size-4" />Inventory Excel</a></Button>
+      <Button asChild variant="outline" className="rounded-xl"><a href={`/api/v1/reports/${params.schoolSlug}/library?report=circulation`}><Download className="size-4" />Circulation Excel</a></Button>
+    </div>
     <Tabs defaultValue="catalog"><TabsList><TabsTrigger value="catalog"><LibraryBig className="mr-2 size-4" />Catalog</TabsTrigger><TabsTrigger value="circulation"><BookOpenCheck className="mr-2 size-4" />Issue & return</TabsTrigger></TabsList>
       <TabsContent value="catalog" className="space-y-5"><div className="grid gap-5 xl:grid-cols-[0.65fr_1.35fr]">
         <Card><CardHeader><CardTitle>Add category</CardTitle><CardDescription>Organize the catalog for faster discovery.</CardDescription></CardHeader><CardContent><form className="flex gap-2" onSubmit={(e: FormEvent<HTMLFormElement>) => { e.preventDefault(); submit("CREATE_CATEGORY", e.currentTarget); }}><Input name="name" required placeholder="Science" /><Button disabled={pending} size="icon"><Plus className="size-4" /></Button></form><div className="mt-4 flex flex-wrap gap-2">{data.categories.map((category) => <Badge key={category.id} variant="outline">{category.name}</Badge>)}</div></CardContent></Card>
