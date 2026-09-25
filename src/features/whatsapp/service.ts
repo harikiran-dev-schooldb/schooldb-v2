@@ -484,6 +484,26 @@ export async function queueParentQueryWhatsappUpdate(input: {
   }
 }
 
+export async function queueParentQueryWhatsappReply(input: {
+  schoolId: string;
+  ticketId: string;
+  ticketNo: string;
+  phone: string | null;
+  parentName: string | null;
+  reply: string;
+  messageId: string;
+}) {
+  return queueParentQueryWhatsappUpdate({
+    schoolId: input.schoolId,
+    ticketId: input.ticketId,
+    ticketNo: input.ticketNo,
+    phone: input.phone,
+    parentName: input.parentName,
+    status: input.reply.trim().slice(0, 500),
+    eventKey: `reply:${input.messageId}`,
+  });
+}
+
 function templateParameterText(value: string) {
   return value
     .replace(/[\r\n\t]+/g, " ")
