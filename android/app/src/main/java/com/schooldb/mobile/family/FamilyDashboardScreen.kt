@@ -734,7 +734,7 @@ private fun StudentHomeworkCard(item: FamilyHomeworkDetails) {
             item.description?.let {
                 Text(it, Modifier.padding(top = 7.dp), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp, lineHeight = 19.sp, maxLines = 4, overflow = TextOverflow.Ellipsis)
             }
-            HorizontalDivider(Modifier.padding(top = 16.dp, bottom = 12.dp), color = Color(0xFFE9EDF5))
+            HorizontalDivider(Modifier.padding(top = 16.dp, bottom = 12.dp), color = MaterialTheme.colorScheme.outlineVariant)
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Outlined.CalendarMonth, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
                 Text("Assigned ${date(item.assignedDate)}", Modifier.padding(start = 6.dp), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
@@ -769,16 +769,7 @@ private fun FeesTab(
     onRefresh: () -> Unit,
     modifier: Modifier,
     onBack: (() -> Unit)? = null,
-) = DetailList(modifier, dashboard, student, "Fees", state, onSelect, onRefresh) { details ->
-    if (onBack != null) {
-        item {
-            TextButton(onClick = onBack, modifier = Modifier.padding(horizontal = 8.dp)) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
-                Spacer(Modifier.width(6.dp))
-                Text("Back to More")
-            }
-        }
-    }
+) = DetailList(modifier, dashboard, student, "Fees", state, onSelect, onRefresh, onBack) { details ->
     item {
         Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             MetricCard("Paid", currency(details.fees.paid), "of ${currency(details.fees.payable)}", Modifier.weight(1f))
@@ -1014,29 +1005,20 @@ private fun NotificationsTab(
         contentPadding = PaddingValues(bottom = 28.dp),
     ) {
         item {
-            Row(
-                Modifier.fillMaxWidth().padding(start = 8.dp, end = 12.dp, top = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                TextButton(onClick = onBack) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
-                    Spacer(Modifier.width(6.dp))
-                    Text("Back to More")
-                }
-                Spacer(Modifier.weight(1f))
-                IconButton(onClick = onRefresh) {
-                    Icon(Icons.Default.Refresh, contentDescription = "Refresh notifications")
-                }
-            }
-        }
-        item {
-            Column(Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) {
-                Text("Notifications", fontWeight = FontWeight.Bold, fontSize = 24.sp)
-                Text(
-                    if (state.unreadNotificationCount > 0) "${state.unreadNotificationCount} unread school updates"
-                    else "You are all caught up",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontSize = 13.sp,
+            Box(Modifier.padding(top = 12.dp, bottom = 14.dp)) {
+                StudentPageHeader(
+                    title = "Notifications",
+                    subtitle = if (state.unreadNotificationCount > 0) "${state.unreadNotificationCount} unread school updates"
+                        else "You are all caught up",
+                    onBack = onBack,
+                    action = {
+                        Surface(onClick = onRefresh, modifier = Modifier.size(43.dp), shape = CircleShape,
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = .78f)) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(Icons.Default.Refresh, contentDescription = "Refresh notifications", modifier = Modifier.size(20.dp))
+                            }
+                        }
+                    },
                 )
             }
         }
@@ -1135,14 +1117,7 @@ private fun TimetableTab(
     val initialDay = today.takeIf { it in schoolDays } ?: "MONDAY"
     var selectedDay by rememberSaveable(student.id) { mutableStateOf(initialDay) }
 
-    DetailList(modifier, dashboard, student, "Class timetable", state, onSelect, onRefresh) { details ->
-        item {
-            TextButton(onClick = onBack, modifier = Modifier.padding(horizontal = 8.dp)) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
-                Spacer(Modifier.width(6.dp))
-                Text("Back to More")
-            }
-        }
+    DetailList(modifier, dashboard, student, "Class timetable", state, onSelect, onRefresh, onBack) { details ->
         item {
             LazyRow(
                 contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
@@ -1320,23 +1295,26 @@ private fun LeaveRequestsTab(
         ) { DatePicker(state = pickerState) }
     }
 
-    DetailList(modifier, dashboard, student, "Leave requests", state, onSelect, onRefresh) { details ->
-        item {
-            TextButton(onClick = onBack, modifier = Modifier.padding(horizontal = 8.dp)) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
-                Spacer(Modifier.width(6.dp))
-                Text("Back to More")
-            }
-        }
+    DetailList(modifier, dashboard, student, "Leave requests", state, onSelect, onRefresh, onBack) { details ->
         item {
             Card(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 6.dp),
                 shape = RoundedCornerShape(22.dp),
-                colors = CardDefaults.cardColors(containerColor = FamilyIndigo.copy(alpha = .08f)),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = .75f)),
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
             ) {
-                Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text("Request student leave", fontWeight = FontWeight.Bold, fontSize = 19.sp)
-                    Text("Choose the absence dates and share a clear reason with the school.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
+                Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Surface(shape = RoundedCornerShape(13.dp), color = FamilyIndigo.copy(alpha = .10f)) {
+                            Icon(Icons.AutoMirrored.Outlined.EventNote, contentDescription = null, tint = FamilyIndigo,
+                                modifier = Modifier.padding(10.dp).size(20.dp))
+                        }
+                        Column(Modifier.padding(start = 12.dp)) {
+                            Text("Request leave", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                            Text("Send an absence request to your school", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+                        }
+                    }
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         DateField("From", startDate, Modifier.weight(1f)) { pickerTarget = "START" }
                         DateField("To", endDate, Modifier.weight(1f)) { pickerTarget = "END" }
@@ -1348,6 +1326,7 @@ private fun LeaveRequestsTab(
                         placeholder = { Text("Medical appointment, family function…") },
                         minLines = 3,
                         modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(17.dp),
                     )
                     state.leaveMessage?.let {
                         Text(
@@ -1360,7 +1339,8 @@ private fun LeaveRequestsTab(
                     Button(
                         onClick = { onSubmit(startDate, endDate, reason.trim()) },
                         enabled = !state.leaveSaving && startDate.isNotBlank() && endDate.isNotBlank() && endDate >= startDate && reason.trim().length >= 5,
-                        modifier = Modifier.fillMaxWidth().height(50.dp),
+                        modifier = Modifier.fillMaxWidth().height(52.dp),
+                        shape = RoundedCornerShape(17.dp),
                     ) {
                         if (state.leaveSaving) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
                         else Text("Submit request")
@@ -1381,10 +1361,21 @@ private fun LeaveRequestsTab(
 
 @Composable
 private fun DateField(label: String, value: String, modifier: Modifier, onClick: () -> Unit) {
-    OutlinedButton(onClick = onClick, modifier = modifier.height(56.dp)) {
-        Column(horizontalAlignment = Alignment.Start, modifier = Modifier.fillMaxWidth()) {
-            Text(label, fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text(value.ifBlank { "Choose date" }, fontSize = 12.sp, maxLines = 1)
+    Surface(
+        onClick = onClick,
+        modifier = modifier.height(62.dp),
+        shape = RoundedCornerShape(17.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = .58f),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+    ) {
+        Row(Modifier.fillMaxSize().padding(horizontal = 13.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Outlined.CalendarMonth, contentDescription = null, tint = FamilyIndigo, modifier = Modifier.size(18.dp))
+            Column(Modifier.padding(start = 9.dp)) {
+                Text(label.uppercase(), fontSize = 9.sp, fontWeight = FontWeight.Bold,
+                    letterSpacing = .5.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(value.takeIf(String::isNotBlank)?.let(::date) ?: "Choose date",
+                    fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+            }
         }
     }
 }
@@ -1431,14 +1422,7 @@ private fun CalendarTab(
     var mode by rememberSaveable { mutableStateOf("UPCOMING") }
     var monthValue by rememberSaveable { mutableStateOf(YearMonth.now().toString()) }
 
-    DetailList(modifier, dashboard, student, "School calendar", state, onSelect, onRefresh) { details ->
-        item {
-            TextButton(onClick = onBack, modifier = Modifier.padding(horizontal = 8.dp)) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
-                Spacer(Modifier.width(6.dp))
-                Text("Back to More")
-            }
-        }
+    DetailList(modifier, dashboard, student, "School calendar", state, onSelect, onRefresh, onBack) { details ->
         item {
             Row(Modifier.padding(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 FilterChip(selected = mode == "UPCOMING", onClick = { mode = "UPCOMING" }, label = { Text("Upcoming") })
@@ -1523,14 +1507,7 @@ private fun TransportTab(
     onRefresh: () -> Unit,
     onBack: () -> Unit,
     modifier: Modifier,
-) = DetailList(modifier, dashboard, student, "School transport", state, onSelect, onRefresh) { details ->
-    item {
-        TextButton(onClick = onBack, modifier = Modifier.padding(horizontal = 8.dp)) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
-            Spacer(Modifier.width(6.dp))
-            Text("Back to More")
-        }
-    }
+) = DetailList(modifier, dashboard, student, "School transport", state, onSelect, onRefresh, onBack) { details ->
     val transport = details.transport
     if (transport == null) {
         item { EmptyMessage("No active transport assignment is linked to this student.") }
@@ -1688,10 +1665,11 @@ private fun DetailList(
     state: FamilyUiState,
     onSelect: (String) -> Unit,
     onRefresh: () -> Unit,
+    onBack: (() -> Unit)? = null,
     content: LazyListScope.(FamilyStudentDetails) -> Unit,
 ) {
-    LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 28.dp)) {
-        item { FamilyPageIntro(dashboard, student, title, onSelect) }
+    LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 34.dp)) {
+        item { FamilyPageIntro(dashboard, student, title, onSelect, onBack) }
         when {
             state.detailsLoading && state.details == null -> item { LoadingBlock() }
             state.detailsError != null && state.details == null -> item { InlineError(state.detailsError, onRefresh) }
@@ -1701,14 +1679,20 @@ private fun DetailList(
 }
 
 @Composable
-private fun FamilyPageIntro(dashboard: FamilyDashboard, student: FamilyStudent, title: String, onSelect: (String) -> Unit) {
-    Column(Modifier.padding(vertical = 18.dp)) {
+private fun FamilyPageIntro(
+    dashboard: FamilyDashboard,
+    student: FamilyStudent,
+    title: String,
+    onSelect: (String) -> Unit,
+    onBack: (() -> Unit)? = null,
+) {
+    Column(Modifier.padding(top = 12.dp, bottom = 14.dp)) {
         if (dashboard.role == "STUDENT") {
-            Text("YOUR SCHOOL DAY", Modifier.padding(horizontal = 20.dp), color = FamilyIndigo, fontWeight = FontWeight.Bold, fontSize = 11.sp, letterSpacing = 1.2.sp)
-            Text(title, Modifier.padding(start = 20.dp, end = 20.dp, top = 4.dp), color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold, fontSize = 29.sp)
-            Text(
-                listOfNotNull(student.className, student.sectionName?.let { "Section $it" }).joinToString("  ·  ").ifBlank { student.fullName },
-                Modifier.padding(horizontal = 20.dp), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp,
+            StudentPageHeader(
+                title = title,
+                subtitle = listOfNotNull(student.className, student.sectionName?.let { "Section $it" })
+                    .joinToString("  ·  ").ifBlank { student.fullName },
+                onBack = onBack,
             )
         } else {
             Text(title, Modifier.padding(horizontal = 20.dp), fontWeight = FontWeight.Bold, fontSize = 24.sp)
@@ -1719,6 +1703,40 @@ private fun FamilyPageIntro(dashboard: FamilyDashboard, student: FamilyStudent, 
             LazyRow(contentPadding = PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 items(dashboard.students, key = { it.id }) { item -> StudentChip(item, item.id == student.id) { onSelect(item.id) } }
             }
+        }
+    }
+}
+
+@Composable
+private fun StudentPageHeader(
+    title: String,
+    subtitle: String,
+    onBack: (() -> Unit)? = null,
+    action: (@Composable () -> Unit)? = null,
+) {
+    Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp), verticalAlignment = Alignment.CenterVertically) {
+        if (onBack != null) {
+            Surface(
+                onClick = onBack,
+                modifier = Modifier.size(43.dp),
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = .78f),
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", modifier = Modifier.size(21.dp))
+                }
+            }
+            Spacer(Modifier.width(13.dp))
+        }
+        Column(Modifier.weight(1f)) {
+            Text(title, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.ExtraBold,
+                fontSize = 27.sp, lineHeight = 31.sp, letterSpacing = (-.45).sp)
+            Text(subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp,
+                maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+        if (action != null) {
+            Spacer(Modifier.width(10.dp))
+            action()
         }
     }
 }
@@ -1777,7 +1795,10 @@ private fun Metrics(student: FamilyStudent, isStudent: Boolean) {
 
 @Composable
 private fun MetricCard(label: String, value: String, detail: String, modifier: Modifier = Modifier) {
-    Card(modifier, shape = RoundedCornerShape(18.dp)) {
+    Card(modifier, shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = .72f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)) {
         Column(Modifier.padding(16.dp)) {
             Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
             Text(value, fontWeight = FontWeight.Bold, fontSize = 21.sp)
@@ -1788,13 +1809,32 @@ private fun MetricCard(label: String, value: String, detail: String, modifier: M
 
 @Composable
 private fun AttendanceCard(record: FamilyAttendanceRecord) {
-    RowCard {
-        Column(Modifier.weight(1f)) {
-            Text(date(record.date), fontWeight = FontWeight.Bold)
-            Text(record.subjectName ?: record.sessionType.lowercase().replaceFirstChar(Char::uppercase), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
-            record.remarks?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp) }
+    val recordDate = calendarDate(record.date)
+    Card(
+        Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 5.dp),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = .68f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+    ) {
+        Row(Modifier.fillMaxWidth().padding(15.dp), verticalAlignment = Alignment.CenterVertically) {
+            Surface(shape = RoundedCornerShape(14.dp), color = FamilyIndigo.copy(alpha = .10f)) {
+                Column(Modifier.width(48.dp).padding(vertical = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(recordDate?.format(DateTimeFormatter.ofPattern("MMM"))?.uppercase() ?: "DATE",
+                        color = FamilyIndigo, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                    Text(recordDate?.dayOfMonth?.toString() ?: "—", color = FamilyIndigo,
+                        fontSize = 19.sp, fontWeight = FontWeight.ExtraBold)
+                }
+            }
+            Column(Modifier.weight(1f).padding(start = 13.dp)) {
+                Text(record.subjectName ?: record.sessionType.lowercase().replaceFirstChar(Char::uppercase),
+                    fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                Text(record.sessionType.lowercase().replaceFirstChar(Char::uppercase),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+                record.remarks?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp) }
+            }
+            StatusText(record.status)
         }
-        StatusText(record.status)
     }
 }
 
@@ -1835,15 +1875,38 @@ private fun PaymentCard(item: FamilyFeePayment) {
 
 @Composable
 private fun ResultCard(item: FamilyResult) {
-    RowCard {
-        Column(Modifier.weight(1f)) {
-            Text(item.name, fontWeight = FontWeight.Bold)
-            Text("${date(item.startDate)} – ${date(item.endDate)}", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
-            Text("${number(item.obtained)} / ${number(item.maximum)} marks", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
-        }
-        Column(horizontalAlignment = Alignment.End) {
-            Text("${number(item.percentage)}%", fontWeight = FontWeight.Bold, fontSize = 20.sp)
-            StatusText(item.status)
+    Card(
+        Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 6.dp),
+        shape = RoundedCornerShape(21.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = .68f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+    ) {
+        Column(Modifier.fillMaxWidth().padding(17.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Surface(shape = RoundedCornerShape(13.dp), color = FamilyIndigo.copy(alpha = .10f)) {
+                    Icon(Icons.Default.EmojiEvents, contentDescription = null, tint = FamilyIndigo,
+                        modifier = Modifier.padding(10.dp).size(20.dp))
+                }
+                Column(Modifier.weight(1f).padding(start = 12.dp)) {
+                    Text(item.name, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                    Text("${date(item.startDate)} – ${date(item.endDate)}",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+                }
+                Column(horizontalAlignment = Alignment.End) {
+                    Text("${number(item.percentage)}%", fontWeight = FontWeight.ExtraBold, fontSize = 20.sp)
+                    StatusText(item.status)
+                }
+            }
+            Spacer(Modifier.height(14.dp))
+            LinearProgressIndicator(
+                progress = { (item.percentage / 100.0).coerceIn(0.0, 1.0).toFloat() },
+                modifier = Modifier.fillMaxWidth().height(6.dp).clip(CircleShape),
+                color = statusColor(item.status),
+                trackColor = MaterialTheme.colorScheme.surfaceVariant,
+            )
+            Text("${number(item.obtained)} of ${number(item.maximum)} marks",
+                Modifier.padding(top = 8.dp), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
         }
     }
 }
@@ -1859,8 +1922,9 @@ private fun HomeworkSummaryCard(item: FamilyHomework) = ColumnCard {
 private fun RowCard(content: @Composable RowScope.() -> Unit) {
     Card(
         Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 5.dp),
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = .68f)),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
     ) {
         Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically, content = content)
@@ -1871,8 +1935,9 @@ private fun RowCard(content: @Composable RowScope.() -> Unit) {
 private fun ColumnCard(content: @Composable ColumnScope.() -> Unit) {
     Card(
         Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 5.dp),
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = .68f)),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
     ) {
         Column(Modifier.padding(16.dp), content = content)
@@ -1891,10 +1956,21 @@ private fun SectionHeader(title: String, onRefresh: () -> Unit) {
 }
 
 @Composable
-private fun Subheading(title: String) = Text(title, Modifier.padding(start = 20.dp, top = 22.dp, bottom = 8.dp), fontWeight = FontWeight.Bold, fontSize = 18.sp)
+private fun Subheading(title: String) = Text(title, Modifier.padding(start = 20.dp, top = 22.dp, bottom = 9.dp),
+    fontWeight = FontWeight.ExtraBold, fontSize = 19.sp, letterSpacing = (-.2).sp)
 
 @Composable
-private fun EmptyMessage(message: String) = Text(message, Modifier.fillMaxWidth().padding(20.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
+private fun EmptyMessage(message: String) {
+    Surface(
+        Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 6.dp),
+        shape = RoundedCornerShape(20.dp),
+        color = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = .68f)),
+    ) {
+        Text(message, Modifier.padding(18.dp), color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontSize = 13.sp, lineHeight = 19.sp)
+    }
+}
 
 @Composable
 private fun LoadingBlock() = Box(Modifier.fillMaxWidth().height(180.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
