@@ -284,7 +284,24 @@ export function BulkExamMarksPage({ schoolSlug, examId }: Props) {
                     const mark = student.marks[schedule.id] ?? { marksObtained: "", status: "PRESENT" as Status, remarks: "" };
                     return <td key={schedule.id} className="border-r p-2"><div className="flex min-w-[125px] gap-2">
                       <Input type="number" min="0" max={Number(schedule.maxMarks)} step="0.01" value={mark.marksObtained} disabled={saving || mark.status !== "PRESENT"} onChange={(event) => updateMark(student.studentEnrollmentId, schedule.id, event.target.value)} placeholder="Marks" className="w-20" />
-                      <Button type="button" variant={mark.status !== "PRESENT" ? "destructive" : "outline"} size="sm" disabled={saving} onClick={() => updateStatus(student.studentEnrollmentId, schedule.id, mark.status !== "PRESENT" ? "PRESENT" : "ABSENT")} title="Toggle absent">{mark.status !== "PRESENT" ? "AB" : "P"}</Button>
+                      <Button
+                      type="button"
+                      variant={mark.status === "ABSENT" ? "destructive" : mark.status === "EXEMPTED" ? "secondary" : "outline"}
+                      size="sm"
+                      disabled={saving}
+                      onClick={() => {
+                        const nextStatus: Status =
+                          mark.status === "PRESENT"
+                            ? "ABSENT"
+                            : mark.status === "ABSENT"
+                              ? "EXEMPTED"
+                              : "PRESENT";
+                        updateStatus(student.studentEnrollmentId, schedule.id, nextStatus);
+                      }}
+                      title="Cycle Present / Absent / Exempted"
+                    >
+                      {mark.status === "ABSENT" ? "AB" : mark.status === "EXEMPTED" ? "EX" : "P"}
+                    </Button>
                     </div></td>;
                   })}
                 </tr>)}</tbody>
