@@ -49,7 +49,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   if (sheet) {
     const percentageColumn = sheet.getColumn(8);
     for (let row = 6; row <= data.results.length + 5; row += 1) {
-      const cell = percentageColumn.getCell(row);
+      const cell = sheet.getCell(row, percentageColumn.number);
       if (typeof cell.value === "number") cell.value = cell.value / 100;
     }
   }
