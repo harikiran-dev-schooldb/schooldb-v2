@@ -36,7 +36,16 @@ export function TeacherTable() {
       page={page}
       totalPages={totalPages}
       onPageChange={setPage}
-      toolbar={\n        <div className="flex flex-col gap-3">\n          <div className="flex justify-end">\n            <Button asChild className="rounded-xl bg-emerald-600 text-white hover:bg-emerald-700">\n              <a href={exportHref}><Download className="mr-2 size-4" />Export Excel</a>\n            </Button>\n          </div>\n          <TeacherToolbar search={search} onSearch={setSearch} />\n        </div>\n      }
+      toolbar={
+        <div className="flex flex-col gap-3">
+          <div className="flex justify-end">
+            <Button asChild className="rounded-xl bg-emerald-600 text-white hover:bg-emerald-700">
+              <a href={exportHref}><Download className="mr-2 size-4" />Export Excel</a>
+            </Button>
+          </div>
+          <TeacherToolbar search={search} onSearch={setSearch} />
+        </div>
+      }
     />
   );
 }
