@@ -84,8 +84,8 @@ export default async function LeaveRequestsManagementPage({
         </div>
       </div>
 
-      <div className="mt-6 flex justify-end">
-        <a href={exportHref} className="inline-flex h-10 items-center gap-2 rounded-xl bg-emerald-600 px-4 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-700">
+      <div className="mt-6 flex justify-stretch sm:justify-end">
+        <a href={exportHref} className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 sm:w-auto px-4 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-700">
           <Download className="size-4" />Export Excel
         </a>
       </div>
@@ -153,7 +153,7 @@ function RequestList({ title, requests, schoolSlug }: { title: string; requests:
         return (
           <article key={request.id} className="relative overflow-hidden rounded-[24px] border border-slate-200/80 bg-white p-5 shadow-[0_16px_45px_rgba(15,23,42,0.07)] transition-all hover:-translate-y-0.5 hover:border-indigo-200 hover:shadow-[0_24px_55px_rgba(79,70,229,0.1)] sm:p-6">
             <div className={`absolute inset-y-0 left-0 w-1.5 ${request.status === "APPROVED" ? "bg-emerald-400" : request.status === "PENDING" ? "bg-amber-400" : request.status === "REJECTED" ? "bg-rose-400" : "bg-slate-300"}`} />
-            <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
               <div className="flex gap-4">
                 <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-50 to-violet-100 font-black text-indigo-700 ring-1 ring-indigo-100">{studentName.split(" ").slice(0,2).map((part) => part[0]).join("")}</div>
                 <div>
