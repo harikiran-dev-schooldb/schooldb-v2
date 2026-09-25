@@ -20,6 +20,7 @@ export async function GET() {
   return apiHandler(async () => {
     const membership = await requireRole(["SUPER_ADMIN", "SCHOOL_ADMIN"]);
     const schoolId = membership.schoolId;
+    const now = new Date();
     const activeYear = await prisma.academicYear.findFirst({
       where: { schoolId, active: true },
       orderBy: { startDate: "desc" },
@@ -27,7 +28,8 @@ export async function GET() {
     });
 
     const [students, teachers, classes, attendanceSessionsToday, pendingLeaveRequests,
-      openTickets, inProgressTickets, urgentTickets, parentQueries, recentTickets] = await Promise.all([
+      openTickets, inProgressTickets, urgentTickets, parentQueries, recentTickets,
+      announcements, unreadAnnouncements, upcomingEvents] = await Promise.all([
       prisma.student.count({ where: { schoolId, status: "ACTIVE" } }),
       prisma.teacher.count({ where: { schoolId, active: true } }),
       prisma.class.count({ where: { schoolId, active: true } }),
@@ -59,6 +61,48 @@ export async function GET() {
           createdAt: true,
         },
       }),
+      prisma.announcement.findMany({
+        where: {
+          schoolId,
+          archived: false,
+          publishedAt: { lte: now },
+          OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+        },
+        orderBy: [{ priority: "desc" }, { publishedAt: "desc" }],
+        take: 4,
+        select: {
+          id: true,
+          title: true,
+          body: true,
+          category: true,
+          priority: true,
+          targetLabel: true,
+          publishedAt: true,
+          reads: { where: { userId: membership.userId }, select: { id: true } },
+        },
+      }),
+      prisma.announcement.count({
+        where: {
+          schoolId,
+          archived: false,
+          publishedAt: { lte: now },
+          OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+          reads: { none: { userId: membership.userId } },
+        },
+      }),
+      prisma.schoolCalendarEvent.findMany({
+        where: { schoolId, archived: false, endDate: { gte: schoolDate() } },
+        orderBy: [{ startDate: "asc" }, { title: "asc" }],
+        take: 4,
+        select: {
+          id: true,
+          title: true,
+          category: true,
+          startDate: true,
+          endDate: true,
+          targetLabel: true,
+        },
+      }),
     ]);
 
     return ApiResponse.success({
@@ -73,6 +117,12 @@ export async function GET() {
       urgentTickets,
       parentQueries,
       recentTickets,
+      unreadAnnouncements,
+      announcements: announcements.map(({ reads, ...announcement }) => ({
+        ...announcement,
+        read: reads.length > 0,
+      })),
+      upcomingEvents,
     });
   });
 }
