@@ -115,6 +115,7 @@ model School {
   supportTickets        SupportTicket[]
   supportTicketMessages SupportTicketMessage[]
   supportTicketActivities SupportTicketActivity[]
+  supportTicketReads      SupportTicketRead[]
   androidAppBuilds       AndroidAppBuild[]
 }
 
@@ -170,6 +171,7 @@ model User {
   assignedSupportTickets SupportTicket[]      @relation("SupportTicketAssignee")
   supportTicketMessages SupportTicketMessage[]
   supportTicketActivities SupportTicketActivity[]
+  supportTicketReads      SupportTicketRead[]
   androidAppBuilds       AndroidAppBuild[]
 
   @@index([phone])
@@ -1833,6 +1835,7 @@ model SupportTicket {
   assignedTo  User?                 @relation("SupportTicketAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
   messages    SupportTicketMessage[]
   activities  SupportTicketActivity[]
+  reads       SupportTicketRead[]
 
   @@unique([schoolId, ticketNo])
   @@index([schoolId, status, createdAt(sort: Desc)])
@@ -1840,6 +1843,21 @@ model SupportTicket {
   @@index([schoolId, source, createdAt(sort: Desc)])
   @@index([schoolId, assignedToId])
   @@index([schoolId, studentId])
+}
+
+model SupportTicketRead {
+  id        String        @id @default(cuid())
+  schoolId  String
+  ticketId  String
+  userId    String
+  readAt    DateTime      @default(now())
+  school    School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  ticket    SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([ticketId, userId])
+  @@index([schoolId, userId, readAt])
+  @@index([userId, readAt])
 }
 
 model SupportTicketActivity {
