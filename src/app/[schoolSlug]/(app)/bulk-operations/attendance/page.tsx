@@ -108,7 +108,7 @@ export default function BulkAttendancePage() {
     if (inputRef.current) inputRef.current.value = "";
   }
 
-  return <div className="space-y-8 pb-12">
+  return <div className="space-y-6 p-4 pb-12 sm:p-6">
     <PageHeader eyebrow="Bulk Operations" title="Bulk Attendance" description="Import historical absentee attendance using admission number and date." action={<Button variant="outline" onClick={downloadTemplate}><Download className="size-4" />Download Template</Button>} />
     <Card className="premium-card overflow-hidden rounded-2xl border-0">
       <CardHeader className="border-b border-border/60 px-6 py-5"><div className="flex items-center gap-3"><div className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><CalendarCheck className="size-5" /></div><div><CardTitle>Absentee attendance import</CardTitle><p className="mt-1 text-xs text-muted-foreground">CSV columns: admissionNo, date. Every uploaded row is treated as ABSENT. Maximum {MAX_ROWS.toLocaleString()} rows per file.</p></div></div></CardHeader>
