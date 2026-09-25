@@ -9,6 +9,7 @@ import { apiHandler } from "@/lib/api";
 import { ApiError } from "@/lib/errors";
 import { prisma } from "@/lib/prisma";
 import { ApiResponse } from "@/lib/response";
+import { notifyLeaveRequestSubmitted } from "@/features/notifications/events";
 import { requireStudentAccess } from "@/lib/student-access";
 import { z } from "zod";
 
@@ -351,6 +352,9 @@ export async function POST(
         endDate,
         reason: parsed.data.reason,
       },
+    });
+    await notifyLeaveRequestSubmitted(created.id, context.membership.schoolId).catch((error) => {
+      console.error("Unable to create leave request notification", error);
     });
     return ApiResponse.success({ id: created.id }, "Leave request submitted.", 201);
   });

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { requireRole, requireTeacherClassSection } from "@/lib/auth";
+import { notifyLeaveRequestDecided, notifyLeaveRequestSubmitted } from "@/features/notifications/events";
 import { prisma } from "@/lib/prisma";
 import { requireStudentAccess } from "@/lib/student-access";
 
@@ -69,7 +70,7 @@ export async function createLeaveRequest(
     return { error: "This student already has a pending or approved request for these dates.", success: false };
   }
 
-  await prisma.leaveRequest.create({
+  const created = await prisma.leaveRequest.create({
     data: {
       schoolId: context.membership.schoolId,
       studentId,
@@ -82,6 +83,10 @@ export async function createLeaveRequest(
       endTime: parsed.data.endTime || null,
       reason: parsed.data.reason,
     },
+  });
+
+  await notifyLeaveRequestSubmitted(created.id, context.membership.schoolId).catch((error) => {
+    console.error("Unable to create leave request notification", error);
   });
 
   revalidatePath(`/${schoolSlug}/my/${studentId}/leave-requests`);
@@ -151,6 +156,10 @@ export async function decideLeaveRequest(
     },
   });
   if (updated.count !== 1) return { error: "This request was already updated. Refresh the page.", success: false };
+
+  await notifyLeaveRequestDecided(requestId, membership.schoolId).catch((error) => {
+    console.error("Unable to create leave decision notification", error);
+  });
 
   revalidatePath(`/${schoolSlug}/leave-requests`);
   revalidatePath(`/${schoolSlug}/my`, "layout");

@@ -137,3 +137,69 @@ export async function notifyAttendanceLocked(sessionId: string, schoolId: string
 
   return { present, absent, late, leave, total: session.records.length };
 }
+
+function leaveDate(value: Date) {
+  return value.toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+}
+
+export async function notifyLeaveRequestSubmitted(requestId: string, schoolId: string) {
+  const request = await prisma.leaveRequest.findFirst({
+    where: { id: requestId, schoolId, status: "PENDING" },
+    select: {
+      id: true,
+      startDate: true,
+      endDate: true,
+      student: { select: { fullName: true, admissionNo: true } },
+      enrollment: {
+        select: {
+          class: { select: { name: true } },
+          section: { select: { name: true } },
+        },
+      },
+    },
+  });
+  if (!request) return null;
+
+  const studentName = request.student.fullName?.trim() || request.student.admissionNo;
+  return createEventNotification({
+    schoolId,
+    title: "New leave request",
+    body: `${studentName} · ${request.enrollment.class.name} ${request.enrollment.section.name} · ${leaveDate(request.startDate)} to ${leaveDate(request.endDate)}.`,
+    category: "LEAVE_REQUEST",
+    targetType: "ADMIN",
+    targetId: request.id,
+    targetLabel: "School administrators",
+  });
+}
+
+export async function notifyLeaveRequestDecided(requestId: string, schoolId: string) {
+  const request = await prisma.leaveRequest.findFirst({
+    where: { id: requestId, schoolId, status: { in: ["APPROVED", "REJECTED"] } },
+    select: {
+      status: true,
+      studentId: true,
+      startDate: true,
+      endDate: true,
+      decisionNote: true,
+      student: { select: { fullName: true, admissionNo: true } },
+    },
+  });
+  if (!request) return null;
+
+  const approved = request.status === "APPROVED";
+  const note = request.decisionNote?.trim();
+  return createEventNotification({
+    schoolId,
+    title: approved ? "Leave request approved" : "Leave request rejected",
+    body: `${leaveDate(request.startDate)} to ${leaveDate(request.endDate)}${note ? ` · ${note}` : ""}`,
+    category: "LEAVE_REQUEST",
+    targetType: "STUDENT",
+    targetId: request.studentId,
+    targetLabel: request.student.fullName?.trim() || request.student.admissionNo,
+  });
+}

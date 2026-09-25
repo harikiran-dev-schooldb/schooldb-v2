@@ -27,6 +27,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.material3.Button
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -39,6 +40,7 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -58,6 +60,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.schooldb.mobile.network.ApiException
 import com.schooldb.mobile.network.AuthenticatedApiClient
 import com.composables.icons.lucide.ArrowLeft
+import com.composables.icons.lucide.Check
 import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.RefreshCw
 import com.composables.icons.lucide.Search
@@ -65,6 +68,7 @@ import com.composables.icons.lucide.X
 import java.io.IOException
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
+import org.json.JSONObject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -110,6 +114,8 @@ internal data class AdminSectionState(
     val pageSize: Int = 20,
     val loading: Boolean = true,
     val error: String? = null,
+    val savingId: String? = null,
+    val actionMessage: String? = null,
 )
 
 internal class AdminSectionViewModel : ViewModel() {
@@ -132,7 +138,7 @@ internal class AdminSectionViewModel : ViewModel() {
                         cacheTtlMillis = 120_000L, forceRefresh = forceRefresh)
                 }
                 val items = data.getJSONArray("rows")
-                mutableState.value = AdminSectionState(
+                mutableState.value = mutableState.value.copy(
                     rows = (0 until items.length()).map { index ->
                         val item = items.getJSONObject(index)
                         AdminListRow(
@@ -147,6 +153,7 @@ internal class AdminSectionViewModel : ViewModel() {
                     page = data.optInt("page", page),
                     pageSize = data.optInt("pageSize", 20),
                     loading = false,
+                    error = null,
                 )
             } catch (error: Exception) {
                 mutableState.value = mutableState.value.copy(
@@ -155,6 +162,51 @@ internal class AdminSectionViewModel : ViewModel() {
                         is ApiException -> error.message
                         is IOException -> "Could not reach SchoolDB. Check your connection."
                         else -> "Could not load this page."
+                    },
+                )
+            }
+        }
+    }
+
+    fun decideLeave(
+        requestId: String,
+        decision: String,
+        note: String,
+        page: Int,
+        query: String,
+    ) {
+        if (mutableState.value.savingId != null) return
+        mutableState.value = mutableState.value.copy(
+            savingId = requestId,
+            error = null,
+            actionMessage = null,
+        )
+        viewModelScope.launch {
+            try {
+                withContext(Dispatchers.IO) {
+                    api.post(
+                        "api/v1/mobile/admin/leave/$requestId/decision",
+                        JSONObject()
+                            .put("decision", decision)
+                            .put("decisionNote", note.trim()),
+                    )
+                }
+                mutableState.value = mutableState.value.copy(
+                    savingId = null,
+                    actionMessage = if (decision == "APPROVED") {
+                        "Leave request approved. A parent and student notification was created."
+                    } else {
+                        "Leave request rejected. A parent and student notification was created."
+                    },
+                )
+                load("leave", page, query, forceRefresh = true)
+            } catch (error: Exception) {
+                mutableState.value = mutableState.value.copy(
+                    savingId = null,
+                    error = when (error) {
+                        is ApiException -> error.message
+                        is IOException -> "Could not reach SchoolDB. Check your connection."
+                        else -> "Could not update this leave request."
                     },
                 )
             }
@@ -175,6 +227,9 @@ fun AdminSectionScreen(
     val title = sectionTitles[section] ?: "School data"
     var query by rememberSaveable(section) { mutableStateOf("") }
     var statusFilter by rememberSaveable(section) { mutableStateOf("ALL") }
+    var decisionRequest by rememberSaveable(section) { mutableStateOf<String?>(null) }
+    var decisionType by rememberSaveable(section) { mutableStateOf("APPROVED") }
+    var decisionNote by rememberSaveable(section) { mutableStateOf("") }
     val statuses = state.rows.map { it.status }.filter(String::isNotBlank).distinct().sorted()
     val visibleRows = if (statusFilter == "ALL") state.rows else state.rows.filter { it.status == statusFilter }
     BackHandler(onBack = onBack)
@@ -182,6 +237,59 @@ fun AdminSectionScreen(
         delay(if (query.isBlank()) 0 else 350)
         statusFilter = "ALL"
         viewModel.load(section, 1, query)
+    }
+
+    if (decisionRequest != null) {
+        val approving = decisionType == "APPROVED"
+        AlertDialog(
+            onDismissRequest = {
+                if (state.savingId == null) decisionRequest = null
+            },
+            title = { Text(if (approving) "Approve leave?" else "Reject leave?") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        if (approving) "Add a short approval note for the parent."
+                        else "Explain the reason so the parent knows what to do next.",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    OutlinedTextField(
+                        value = decisionNote,
+                        onValueChange = { decisionNote = it.take(1000) },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Decision note") },
+                        minLines = 2,
+                        maxLines = 5,
+                        shape = RoundedCornerShape(16.dp),
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        decisionRequest?.let {
+                            viewModel.decideLeave(it, decisionType, decisionNote, state.page, query)
+                        }
+                        decisionRequest = null
+                        decisionNote = ""
+                    },
+                    enabled = decisionNote.trim().length >= 3 && state.savingId == null,
+                ) {
+                    if (state.savingId != null) {
+                        CircularProgressIndicator(Modifier.width(18.dp).height(18.dp), strokeWidth = 2.dp)
+                    } else {
+                        Text(if (approving) "Approve" else "Reject")
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { decisionRequest = null },
+                    enabled = state.savingId == null,
+                ) { Text("Cancel") }
+            },
+            shape = RoundedCornerShape(28.dp),
+        )
     }
 
     Scaffold(containerColor = MaterialTheme.colorScheme.background, topBar = {
@@ -260,6 +368,24 @@ fun AdminSectionScreen(
                         style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
+                state.actionMessage?.let { message ->
+                    item {
+                        Surface(
+                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.72f),
+                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                            shape = RoundedCornerShape(16.dp),
+                        ) {
+                            Row(
+                                Modifier.fillMaxWidth().padding(14.dp),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Icon(Lucide.Check, contentDescription = null)
+                                Text(message, style = MaterialTheme.typography.bodyMedium)
+                            }
+                        }
+                    }
+                }
                 if (visibleRows.isEmpty()) item {
                     Text(if (query.isBlank() && statusFilter == "ALL") "No records yet" else "No matching records",
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -299,6 +425,42 @@ fun AdminSectionScreen(
                                 Spacer(Modifier.height(7.dp))
                                 Text(row.detail, style = MaterialTheme.typography.bodyMedium,
                                     maxLines = 3, overflow = TextOverflow.Ellipsis)
+                            }
+                            if (section == "leave" && row.status == "PENDING") {
+                                Spacer(Modifier.height(14.dp))
+                                Row(
+                                    Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                ) {
+                                    OutlinedButton(
+                                        onClick = {
+                                            decisionRequest = row.id
+                                            decisionType = "REJECTED"
+                                            decisionNote = ""
+                                        },
+                                        modifier = Modifier.weight(1f),
+                                        enabled = state.savingId == null,
+                                        shape = RoundedCornerShape(14.dp),
+                                    ) {
+                                        Icon(Lucide.X, contentDescription = null)
+                                        Spacer(Modifier.width(7.dp))
+                                        Text("Reject")
+                                    }
+                                    Button(
+                                        onClick = {
+                                            decisionRequest = row.id
+                                            decisionType = "APPROVED"
+                                            decisionNote = ""
+                                        },
+                                        modifier = Modifier.weight(1f),
+                                        enabled = state.savingId == null,
+                                        shape = RoundedCornerShape(14.dp),
+                                    ) {
+                                        Icon(Lucide.Check, contentDescription = null)
+                                        Spacer(Modifier.width(7.dp))
+                                        Text("Approve")
+                                    }
+                                }
                             }
                         }
                     }
