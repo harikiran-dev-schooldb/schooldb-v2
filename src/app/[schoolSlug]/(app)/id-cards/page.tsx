@@ -91,7 +91,7 @@ export default async function IdCardsPage({ params, searchParams }: Props) {
     : DEFAULT_ID_CARD_SETTING;
 
   return (
-    <div className="space-y-7 pb-12">
+    <div className="space-y-6 p-4 pb-12 sm:p-6">
       <PageHeader
         eyebrow="Student Services"
         title="Student ID Cards"
