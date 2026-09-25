@@ -186,7 +186,7 @@ export function ToppersPage({ schoolSlug }: Props) {
   }
 
   return (
-    <div className="space-y-7">
+    <div className="space-y-6 p-4 pb-10 sm:p-6">
       <PageHeader
         eyebrow="Academic Performance"
         title="Class Toppers"
