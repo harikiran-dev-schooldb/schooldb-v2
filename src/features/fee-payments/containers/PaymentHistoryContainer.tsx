@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-import { AlertCircle, CreditCard, Loader2, RefreshCw } from "lucide-react";
+import { AlertCircle, CreditCard, Download, Loader2, RefreshCw } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -227,6 +227,16 @@ export function PaymentHistoryContainer({ params }: Props) {
     void loadPayments(filters, 1);
   }
 
+  function exportExcel() {
+    if (!schoolSlug) return;
+    const query = new URLSearchParams();
+    if (filters.search.trim()) query.set("search", filters.search.trim());
+    if (filters.paymentMode) query.set("paymentMode", filters.paymentMode);
+    if (filters.fromDate) query.set("fromDate", filters.fromDate);
+    if (filters.toDate) query.set("toDate", filters.toDate);
+    window.location.href = `/api/v1/reports/${schoolSlug}/fees/payments${query.size ? `?${query.toString()}` : ""}`;
+  }
+
   function clearFilters() {
     setFilters(EMPTY_FILTERS);
 
@@ -331,17 +341,16 @@ export function PaymentHistoryContainer({ params }: Props) {
           </div>
         </div>
 
-        <Button
-          variant="outline"
-          className="rounded-xl"
-          onClick={() => void loadPayments()}
-          disabled={loading}
-        >
-          <RefreshCw
-            className={`mr-2 size-4 ${loading ? "animate-spin" : ""}`}
-          />
-          Refresh
-        </Button>
+        <div className="flex gap-2">
+          <Button className="rounded-xl bg-emerald-600 text-white hover:bg-emerald-700" onClick={exportExcel} disabled={!schoolSlug || loading}>
+            <Download className="mr-2 size-4" />
+            Export Excel
+          </Button>
+          <Button variant="outline" className="rounded-xl" onClick={() => void loadPayments()} disabled={loading}>
+            <RefreshCw className={`mr-2 size-4 ${loading ? "animate-spin" : ""}`} />
+            Refresh
+          </Button>
+        </div>
       </div>
 
       {/* Summary */}
