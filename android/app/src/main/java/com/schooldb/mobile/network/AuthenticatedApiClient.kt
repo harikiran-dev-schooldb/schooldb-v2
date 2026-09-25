@@ -7,12 +7,26 @@ import com.clerk.api.network.serialization.onSuccess
 import com.schooldb.mobile.BuildConfig
 import java.net.HttpURLConnection
 import java.net.URL
+import java.io.IOException
 import org.json.JSONObject
 
 class AuthenticatedApiClient(
     private val baseUrl: String = BuildConfig.API_BASE_URL,
 ) {
-    suspend fun get(path: String): JSONObject = request("GET", path)
+    suspend fun get(
+        path: String,
+        cacheTtlMillis: Long = 0L,
+        forceRefresh: Boolean = false,
+    ): JSONObject {
+        if (cacheTtlMillis <= 0L) return request("GET", path)
+        val cacheKey = "${SchoolContext.schoolSlug()}|$path"
+        if (!forceRefresh) ApiResponseCache.read(cacheKey, cacheTtlMillis)?.let { return it }
+        return try {
+            request("GET", path).also { ApiResponseCache.write(cacheKey, it) }
+        } catch (error: IOException) {
+            ApiResponseCache.readStale(cacheKey) ?: throw error
+        }
+    }
 
     suspend fun post(path: String, body: JSONObject): JSONObject = request("POST", path, body)
 

@@ -28,8 +28,10 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -85,12 +87,15 @@ internal class AdminNotificationsViewModel : ViewModel() {
     private val mutableState = MutableStateFlow(AdminNotificationsState())
     val state = mutableState.asStateFlow()
 
-    fun load() {
+    fun load(forceRefresh: Boolean = false) {
         if (mutableState.value.loading && mutableState.value.items.isNotEmpty()) return
         mutableState.value = mutableState.value.copy(loading = true, error = null)
         viewModelScope.launch {
             try {
-                val data = withContext(Dispatchers.IO) { api.get("api/v1/mobile/admin/notifications") }
+                val data = withContext(Dispatchers.IO) {
+                    api.get("api/v1/mobile/admin/notifications", cacheTtlMillis = 120_000L,
+                        forceRefresh = forceRefresh)
+                }
                 val rows = data.getJSONArray("items")
                 mutableState.value = AdminNotificationsState(
                     items = (0 until rows.length()).map { index ->
@@ -141,6 +146,7 @@ internal class AdminNotificationsViewModel : ViewModel() {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AdminNotificationsScreen(onBack: () -> Unit) {
     val viewModel: AdminNotificationsViewModel = viewModel()
@@ -162,7 +168,8 @@ fun AdminNotificationsScreen(onBack: () -> Unit) {
                             Icon(Lucide.ArrowLeft, contentDescription = "Back")
                         }
                     }
-                    Surface(onClick = viewModel::load, enabled = !state.loading, shape = CircleShape,
+                    Surface(onClick = { viewModel.load(forceRefresh = true) }, enabled = !state.loading,
+                        shape = CircleShape,
                         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.78f)) {
                         Box(Modifier.padding(11.dp), contentAlignment = Alignment.Center) {
                             Icon(Lucide.RefreshCw, contentDescription = "Refresh announcements")
@@ -178,11 +185,16 @@ fun AdminNotificationsScreen(onBack: () -> Unit) {
             }
         },
     ) { padding ->
+        PullToRefreshBox(
+            isRefreshing = state.loading && state.items.isNotEmpty(),
+            onRefresh = { viewModel.load(forceRefresh = true) },
+            modifier = Modifier.fillMaxSize().padding(padding),
+        ) {
         if (state.loading && state.items.isEmpty()) {
-            AdminNotificationsSkeleton(Modifier.padding(padding))
+            AdminNotificationsSkeleton()
         } else {
             LazyColumn(
-                modifier = Modifier.fillMaxSize().padding(padding),
+                modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(18.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
@@ -249,6 +261,7 @@ fun AdminNotificationsScreen(onBack: () -> Unit) {
                     Text(message, color = MaterialTheme.colorScheme.error)
                 } }
             }
+        }
         }
     }
 }

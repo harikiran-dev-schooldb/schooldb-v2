@@ -8,6 +8,8 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,15 +28,23 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -50,10 +60,15 @@ import com.schooldb.mobile.network.AuthenticatedApiClient
 import com.composables.icons.lucide.ArrowLeft
 import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.RefreshCw
+import com.composables.icons.lucide.Search
+import com.composables.icons.lucide.X
 import java.io.IOException
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -102,12 +117,19 @@ internal class AdminSectionViewModel : ViewModel() {
     private val mutableState = MutableStateFlow(AdminSectionState())
     val state = mutableState.asStateFlow()
 
-    fun load(section: String, page: Int = mutableState.value.page) {
+    fun load(
+        section: String,
+        page: Int = mutableState.value.page,
+        query: String = "",
+        forceRefresh: Boolean = false,
+    ) {
         mutableState.value = mutableState.value.copy(loading = true, error = null)
         viewModelScope.launch {
             try {
                 val data = withContext(Dispatchers.IO) {
-                    api.get("api/v1/mobile/admin/sections?section=$section&page=$page")
+                    val encoded = URLEncoder.encode(query.trim(), StandardCharsets.UTF_8.toString())
+                    api.get("api/v1/mobile/admin/sections?section=$section&page=$page&q=$encoded",
+                        cacheTtlMillis = 120_000L, forceRefresh = forceRefresh)
                 }
                 val items = data.getJSONArray("rows")
                 mutableState.value = AdminSectionState(
@@ -140,13 +162,22 @@ internal class AdminSectionViewModel : ViewModel() {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AdminSectionScreen(section: String, onBack: () -> Unit, onTicket: (String) -> Unit) {
     val viewModel: AdminSectionViewModel = viewModel(key = "admin-section-$section")
     val state by viewModel.state.collectAsStateWithLifecycle()
     val title = sectionTitles[section] ?: "School data"
+    var query by rememberSaveable(section) { mutableStateOf("") }
+    var statusFilter by rememberSaveable(section) { mutableStateOf("ALL") }
+    val statuses = state.rows.map { it.status }.filter(String::isNotBlank).distinct().sorted()
+    val visibleRows = if (statusFilter == "ALL") state.rows else state.rows.filter { it.status == statusFilter }
     BackHandler(onBack = onBack)
-    LaunchedEffect(section) { viewModel.load(section, 1) }
+    LaunchedEffect(section, query) {
+        delay(if (query.isBlank()) 0 else 350)
+        statusFilter = "ALL"
+        viewModel.load(section, 1, query)
+    }
 
     Scaffold(containerColor = MaterialTheme.colorScheme.background, topBar = {
         Column(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 18.dp, vertical = 10.dp)) {
@@ -157,7 +188,8 @@ fun AdminSectionScreen(section: String, onBack: () -> Unit, onTicket: (String) -
                         Icon(Lucide.ArrowLeft, contentDescription = "Back")
                     }
                 }
-                Surface(onClick = { viewModel.load(section) }, enabled = !state.loading,
+                Surface(onClick = { viewModel.load(section, state.page, query, forceRefresh = true) },
+                    enabled = !state.loading,
                     shape = RoundedCornerShape(50),
                     color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f)) {
                     Box(Modifier.padding(11.dp), contentAlignment = Alignment.Center) {
@@ -173,26 +205,61 @@ fun AdminSectionScreen(section: String, onBack: () -> Unit, onTicket: (String) -
                 style = MaterialTheme.typography.bodyMedium)
         }
     }) { padding ->
+        PullToRefreshBox(
+            isRefreshing = state.loading && state.rows.isNotEmpty(),
+            onRefresh = { viewModel.load(section, state.page, query, forceRefresh = true) },
+            modifier = Modifier.fillMaxSize().padding(padding),
+        ) {
         if (state.loading && state.rows.isEmpty()) {
-            AdminSectionSkeleton(Modifier.padding(padding))
+            AdminSectionSkeleton()
         } else if (state.error != null && state.rows.isEmpty()) {
-            Column(Modifier.fillMaxSize().padding(padding).padding(24.dp),
+            Column(Modifier.fillMaxSize().padding(24.dp),
                 verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(state.error ?: "Could not load", color = MaterialTheme.colorScheme.error)
                 Spacer(Modifier.height(12.dp))
-                Button(onClick = { viewModel.load(section) }) { Text("Try again") }
+                Button(onClick = { viewModel.load(section, 1, query, forceRefresh = true) }) { Text("Try again") }
             }
         } else {
-            LazyColumn(Modifier.fillMaxSize().padding(padding),
+            LazyColumn(Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 item {
-                    Text("${state.total} records", style = MaterialTheme.typography.labelLarge,
+                    OutlinedTextField(
+                        value = query,
+                        onValueChange = { query = it.take(100) },
+                        modifier = Modifier.fillMaxWidth(),
+                        placeholder = { Text("Search $title") },
+                        leadingIcon = { Icon(Lucide.Search, contentDescription = null) },
+                        trailingIcon = {
+                            if (query.isNotEmpty()) IconButton(onClick = { query = "" }) {
+                                Icon(Lucide.X, contentDescription = "Clear search")
+                            }
+                        },
+                        singleLine = true,
+                        shape = RoundedCornerShape(18.dp),
+                    )
+                }
+                if (statuses.size > 1) item {
+                    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf("ALL") .plus(statuses).forEach { status ->
+                            FilterChip(
+                                selected = statusFilter == status,
+                                onClick = { statusFilter = status },
+                                label = { Text(status.replace('_', ' ')) },
+                            )
+                        }
+                    }
+                }
+                item {
+                    Text(if (statusFilter == "ALL") "${state.total} records" else "${visibleRows.size} shown",
+                        style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                if (state.rows.isEmpty()) item {
-                    Text("No records yet", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (visibleRows.isEmpty()) item {
+                    Text(if (query.isBlank() && statusFilter == "ALL") "No records yet" else "No matching records",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                items(state.rows, key = { it.id }) { row ->
+                items(visibleRows, key = { it.id }) { row ->
                     Surface(modifier = if (section == "queries") Modifier.clickable { onTicket(row.id) } else Modifier,
                         color = MaterialTheme.colorScheme.surface,
                         tonalElevation = 1.dp,
@@ -229,17 +296,18 @@ fun AdminSectionScreen(section: String, onBack: () -> Unit, onTicket: (String) -
                 item {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically) {
-                        OutlinedButton(onClick = { viewModel.load(section, state.page - 1) },
+                        OutlinedButton(onClick = { viewModel.load(section, state.page - 1, query) },
                             enabled = !state.loading && state.page > 1) { Text("Previous") }
                         Text("Page ${state.page} of ${((state.total + state.pageSize - 1) / state.pageSize).coerceAtLeast(1)}",
                             style = MaterialTheme.typography.bodySmall)
-                        OutlinedButton(onClick = { viewModel.load(section, state.page + 1) },
+                        OutlinedButton(onClick = { viewModel.load(section, state.page + 1, query) },
                             enabled = !state.loading && state.page * state.pageSize < state.total) { Text("Next") }
                     }
                 }
                 if (state.loading) item { CircularProgressIndicator() }
                 state.error?.let { message -> item { Text(message, color = MaterialTheme.colorScheme.error) } }
             }
+        }
         }
     }
 }

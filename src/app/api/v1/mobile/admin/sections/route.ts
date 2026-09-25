@@ -16,11 +16,14 @@ export async function GET(request: Request) {
     const section = searchParams.get("section") ?? "";
     if (!VALID_SECTIONS.has(section)) return ApiResponse.error("Unknown admin section.", 400);
     const page = Math.max(1, Math.min(1000, Number.parseInt(searchParams.get("page") ?? "1", 10) || 1));
+    const query = (searchParams.get("q") ?? "").trim().slice(0, 100);
+    const text = query ? { contains: query, mode: "insensitive" as const } : undefined;
     const skip = (page - 1) * PAGE_SIZE;
     const schoolId = membership.schoolId;
 
     if (section === "students") {
-      const where = { schoolId, status: "ACTIVE" as const };
+      const where = { schoolId, status: "ACTIVE" as const,
+        ...(text ? { OR: [{ fullName: text }, { admissionNo: text }] } : {}) };
       const [total, students] = await Promise.all([
         prisma.student.count({ where }),
         prisma.student.findMany({ where, orderBy: { fullName: "asc" }, skip, take: PAGE_SIZE,
@@ -38,7 +41,8 @@ export async function GET(request: Request) {
     }
 
     if (section === "teachers") {
-      const where = { schoolId, active: true };
+      const where = { schoolId, active: true,
+        ...(text ? { OR: [{ fullName: text }, { employeeId: text }, { designation: text }] } : {}) };
       const [total, teachers] = await Promise.all([
         prisma.teacher.count({ where }),
         prisma.teacher.findMany({ where, orderBy: { fullName: "asc" }, skip, take: PAGE_SIZE,
@@ -50,7 +54,8 @@ export async function GET(request: Request) {
     }
 
     if (section === "classes") {
-      const where = { schoolId, active: true };
+      const where = { schoolId, active: true,
+        ...(text ? { OR: [{ name: text }, { code: text }] } : {}) };
       const [total, classes] = await Promise.all([
         prisma.class.count({ where }),
         prisma.class.findMany({ where, orderBy: [{ displayOrder: "asc" }, { name: "asc" }], skip, take: PAGE_SIZE,
@@ -64,7 +69,9 @@ export async function GET(request: Request) {
     }
 
     if (section === "attendance") {
-      const where = { schoolId };
+      const where = { schoolId, ...(text ? { OR: [
+        { class: { name: text } }, { section: { name: text } },
+      ] } : {}) };
       const [total, sessions] = await Promise.all([
         prisma.attendanceSession.count({ where }),
         prisma.attendanceSession.findMany({ where,
@@ -82,7 +89,11 @@ export async function GET(request: Request) {
     }
 
     if (section === "fees") {
-      const where = { schoolId, status: "SUCCESS" as const };
+      const where = { schoolId, status: "SUCCESS" as const,
+        ...(text ? { OR: [
+          { receiptNo: text },
+          { studentEnrollment: { student: { OR: [{ fullName: text }, { admissionNo: text }] } } },
+        ] } : {}) };
       const [total, payments] = await Promise.all([
         prisma.feePayment.count({ where }),
         prisma.feePayment.findMany({ where, orderBy: { paymentDate: "desc" }, skip, take: PAGE_SIZE,
@@ -98,7 +109,9 @@ export async function GET(request: Request) {
     }
 
     if (section === "leave") {
-      const where = { schoolId };
+      const where = { schoolId, ...(text ? { OR: [
+        { reason: text }, { student: { OR: [{ fullName: text }, { admissionNo: text }] } },
+      ] } : {}) };
       const [total, requests] = await Promise.all([
         prisma.leaveRequest.count({ where }),
         prisma.leaveRequest.findMany({ where, orderBy: [{ status: "desc" }, { createdAt: "desc" }],
@@ -115,7 +128,14 @@ export async function GET(request: Request) {
     }
 
     if (section === "timetable") {
-      const where = { schoolId, active: true, academicYear: { active: true } };
+      const where = { schoolId, active: true, academicYear: { active: true },
+        ...(text ? { OR: [
+          { period: { name: text } },
+          { teacherAllocation: { subject: { name: text } } },
+          { teacherAllocation: { teacher: { fullName: text } } },
+          { teacherAllocation: { class: { name: text } } },
+          { teacherAllocation: { section: { name: text } } },
+        ] } : {}) };
       const [total, entries] = await Promise.all([
         prisma.timetable.count({ where }),
         prisma.timetable.findMany({ where,
@@ -136,7 +156,7 @@ export async function GET(request: Request) {
     }
 
     if (section === "exams") {
-      const where = { schoolId, active: true };
+      const where = { schoolId, active: true, ...(text ? { name: text } : {}) };
       const [total, exams] = await Promise.all([
         prisma.exam.count({ where }),
         prisma.exam.findMany({ where, orderBy: [{ startDate: "desc" }, { createdAt: "desc" }],
@@ -153,7 +173,9 @@ export async function GET(request: Request) {
     }
 
     if (section === "calendar") {
-      const where = { schoolId, archived: false };
+      const where = { schoolId, archived: false, ...(text ? { OR: [
+        { title: text }, { description: text }, { targetLabel: text },
+      ] } : {}) };
       const [total, events] = await Promise.all([
         prisma.schoolCalendarEvent.count({ where }),
         prisma.schoolCalendarEvent.findMany({ where, orderBy: [{ startDate: "desc" }, { title: "asc" }],
@@ -171,6 +193,12 @@ export async function GET(request: Request) {
       const where = {
         status: { in: ["PENDING" as const, "PARTIAL" as const] },
         studentFeeItem: { studentFee: { schoolId } },
+        ...(text ? { OR: [
+          { name: text },
+          { studentFeeItem: { studentFee: { studentEnrollment: { student: {
+            OR: [{ fullName: text }, { admissionNo: text }],
+          } } } } },
+        ] } : {}),
       };
       const [total, installments] = await Promise.all([
         prisma.studentFeeInstallment.count({ where }),
@@ -207,7 +235,10 @@ export async function GET(request: Request) {
     }
 
     if (section === "admissions") {
-      const where = { schoolId };
+      const where = { schoolId, ...(text ? { OR: [
+        { studentName: text }, { applicationNo: text },
+        { applyingClass: { name: text } }, { preferredSection: { name: text } },
+      ] } : {}) };
       const [total, applications] = await Promise.all([
         prisma.admissionApplication.count({ where }),
         prisma.admissionApplication.findMany({ where, orderBy: { submittedAt: "desc" }, skip, take: PAGE_SIZE,
@@ -221,7 +252,9 @@ export async function GET(request: Request) {
           status: item.status })) });
     }
 
-    const where = { schoolId, source: "PARENT_QR" };
+    const where = { schoolId, source: "PARENT_QR", ...(text ? { OR: [
+      { subject: text }, { ticketNo: text }, { description: text },
+    ] } : {}) };
     const [total, queries] = await Promise.all([
       prisma.supportTicket.count({ where }),
       prisma.supportTicket.findMany({ where, orderBy: { createdAt: "desc" }, skip, take: PAGE_SIZE,

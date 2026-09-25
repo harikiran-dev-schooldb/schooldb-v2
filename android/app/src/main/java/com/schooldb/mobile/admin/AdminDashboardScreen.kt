@@ -42,6 +42,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -188,12 +189,15 @@ internal class AdminDashboardViewModel : ViewModel() {
     private val mutableState = MutableStateFlow(AdminUiState())
     val state = mutableState.asStateFlow()
 
-    fun refresh() {
+    fun refresh(forceRefresh: Boolean = false) {
         if (mutableState.value.loading && mutableState.value.dashboard != null) return
         mutableState.value = mutableState.value.copy(loading = true, error = null)
         viewModelScope.launch {
             try {
-                val data = withContext(Dispatchers.IO) { api.get("api/v1/mobile/admin/dashboard") }
+                val data = withContext(Dispatchers.IO) {
+                    api.get("api/v1/mobile/admin/dashboard", cacheTtlMillis = 120_000L,
+                        forceRefresh = forceRefresh)
+                }
                 val rows = data.getJSONArray("recentTickets")
                 val announcementRows = data.optJSONArray("announcements")
                 val eventRows = data.optJSONArray("upcomingEvents")
@@ -261,12 +265,15 @@ internal class AdminDashboardViewModel : ViewModel() {
         }
     }
 
-    fun loadReport() {
+    fun loadReport(forceRefresh: Boolean = false) {
         if (mutableState.value.reportLoading) return
         mutableState.value = mutableState.value.copy(reportLoading = true, reportError = null)
         viewModelScope.launch {
             try {
-                val data = withContext(Dispatchers.IO) { api.get("api/v1/mobile/admin/reports") }
+                val data = withContext(Dispatchers.IO) {
+                    api.get("api/v1/mobile/admin/reports", cacheTtlMillis = 300_000L,
+                        forceRefresh = forceRefresh)
+                }
                 val report = if (!data.optBoolean("available")) AdminReport(available = false) else {
                     val scope = data.getJSONObject("scope")
                     val students = data.getJSONObject("students")
@@ -346,7 +353,7 @@ fun AdminDashboardScreen(
     if (showAnnouncements) {
         AdminNotificationsScreen(onBack = {
             showAnnouncements = false
-            viewModel.refresh()
+            viewModel.refresh(forceRefresh = true)
         })
         return
     }
@@ -412,7 +419,10 @@ fun AdminDashboardScreen(
                     }
                     Spacer(Modifier.width(8.dp))
                     PremiumIconButton(
-                        onClick = { if (selectedTab == "Reports") viewModel.loadReport() else viewModel.refresh() },
+                        onClick = {
+                            if (selectedTab == "Reports") viewModel.loadReport(forceRefresh = true)
+                            else viewModel.refresh(forceRefresh = true)
+                        },
                         enabled = if (selectedTab == "Reports") !state.reportLoading else !state.loading,
                     ) {
                         Icon(Lucide.RefreshCw, contentDescription = "Refresh dashboard",
@@ -440,9 +450,17 @@ fun AdminDashboardScreen(
         },
     ) { padding ->
         val dashboard = state.dashboard
+        PullToRefreshBox(
+            isRefreshing = if (selectedTab == "Reports") state.reportLoading else state.loading,
+            onRefresh = {
+                if (selectedTab == "Reports") viewModel.loadReport(forceRefresh = true)
+                else viewModel.refresh(forceRefresh = true)
+            },
+            modifier = Modifier.fillMaxSize(),
+        ) {
         Crossfade(targetState = selectedTab, animationSpec = tween(220), label = "admin-tabs") { tab ->
             if (tab == "Reports") {
-                ReportsTab(state, Modifier.padding(padding), viewModel::loadReport)
+                ReportsTab(state, Modifier.padding(padding)) { viewModel.loadReport(forceRefresh = true) }
             } else if (tab == "More") {
                 MoreTab(Modifier.padding(padding), onSection = { selectedSection = it })
             } else if (dashboard == null && state.loading) {
@@ -469,6 +487,7 @@ fun AdminDashboardScreen(
                     onAnnouncements = { showAnnouncements = true },
                 )
             }
+        }
         }
     }
 }
