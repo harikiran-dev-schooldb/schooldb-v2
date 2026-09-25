@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 
-type Status = "PRESENT" | "ABSENT";
+type Status = "PRESENT" | "ABSENT" | "EXEMPTED";
 
 type Schedule = {
   id: string;
@@ -164,7 +164,7 @@ export function BulkExamMarksPage({ schoolSlug, examId }: Props) {
               [scheduleId]: {
                 ...(student.marks[scheduleId] ?? { marksObtained: "", remarks: "" }),
                 status,
-                marksObtained: status === "ABSENT" ? "" : student.marks[scheduleId]?.marksObtained ?? "",
+                marksObtained: status !== "PRESENT" ? "" : student.marks[scheduleId]?.marksObtained ?? "",
               },
             },
           }
@@ -178,7 +178,7 @@ export function BulkExamMarksPage({ schoolSlug, examId }: Props) {
       const maxMarks = Number(schedule.maxMarks);
       for (const student of students) {
         const mark = student.marks[schedule.id];
-        if (!mark || mark.status === "ABSENT" || mark.marksObtained === "") continue;
+        if (!mark || mark.status !== "PRESENT" || mark.marksObtained === "") continue;
         const value = Number(mark.marksObtained);
         if (!Number.isFinite(value) || value < 0 || value > maxMarks) {
           toast.error(`${student.student.admissionNo} · ${schedule.subject.name}: marks must be between 0 and ${maxMarks}.`);
@@ -200,7 +200,7 @@ export function BulkExamMarksPage({ schoolSlug, examId }: Props) {
                 const mark = student.marks[schedule.id];
                 return {
                   studentEnrollmentId: student.studentEnrollmentId,
-                  marksObtained: !mark || mark.status === "ABSENT" || mark.marksObtained === "" ? null : Number(mark.marksObtained),
+                  marksObtained: !mark || mark.status !== "PRESENT" || mark.marksObtained === "" ? null : Number(mark.marksObtained),
                   status: mark?.status ?? "PRESENT",
                   remarks: mark?.remarks || null,
                 };
@@ -283,8 +283,8 @@ export function BulkExamMarksPage({ schoolSlug, examId }: Props) {
                   {subjects.map((schedule) => {
                     const mark = student.marks[schedule.id] ?? { marksObtained: "", status: "PRESENT" as Status, remarks: "" };
                     return <td key={schedule.id} className="border-r p-2"><div className="flex min-w-[125px] gap-2">
-                      <Input type="number" min="0" max={Number(schedule.maxMarks)} step="0.01" value={mark.marksObtained} disabled={saving || mark.status === "ABSENT"} onChange={(event) => updateMark(student.studentEnrollmentId, schedule.id, event.target.value)} placeholder="Marks" className="w-20" />
-                      <Button type="button" variant={mark.status === "ABSENT" ? "destructive" : "outline"} size="sm" disabled={saving} onClick={() => updateStatus(student.studentEnrollmentId, schedule.id, mark.status === "ABSENT" ? "PRESENT" : "ABSENT")} title="Toggle absent">{mark.status === "ABSENT" ? "AB" : "P"}</Button>
+                      <Input type="number" min="0" max={Number(schedule.maxMarks)} step="0.01" value={mark.marksObtained} disabled={saving || mark.status !== "PRESENT"} onChange={(event) => updateMark(student.studentEnrollmentId, schedule.id, event.target.value)} placeholder="Marks" className="w-20" />
+                      <Button type="button" variant={mark.status !== "PRESENT" ? "destructive" : "outline"} size="sm" disabled={saving} onClick={() => updateStatus(student.studentEnrollmentId, schedule.id, mark.status !== "PRESENT" ? "PRESENT" : "ABSENT")} title="Toggle absent">{mark.status !== "PRESENT" ? "AB" : "P"}</Button>
                     </div></td>;
                   })}
                 </tr>)}</tbody>
