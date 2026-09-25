@@ -614,7 +614,7 @@ export default function StudentPromotionPage() {
     targetSections.find((item) => item.id === toSectionId)?.label ?? "—";
 
   return (
-    <div className="space-y-8 pb-12">
+    <div className="space-y-6 p-4 pb-12 sm:p-6">
       <PageHeader
         eyebrow="Bulk Operations"
         title="Year-end Promotion"
