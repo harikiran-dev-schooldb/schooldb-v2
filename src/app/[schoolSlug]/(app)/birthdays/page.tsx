@@ -178,6 +178,8 @@ export default function BirthdaysPage() {
   }
 
   useEffect(() => {
+    // Initial client-side fetch. The async loader owns the loading/data state updates.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void load();
   }, []);
 
@@ -268,7 +270,7 @@ export default function BirthdaysPage() {
         <>
           <section>
             <div className="mb-3">
-              <h2 className="text-lg font-bold">Today's Birthdays</h2>
+              <h2 className="text-lg font-bold">Today&apos;s Birthdays</h2>
               <p className="text-sm text-muted-foreground">
                 Students celebrating today.
               </p>
