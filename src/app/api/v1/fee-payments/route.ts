@@ -46,6 +46,7 @@ export async function GET(req: Request) {
     const search = searchParams.get("search")?.trim() || undefined;
     const paymentMode = searchParams.get("paymentMode") || undefined;
     const academicYearId = searchParams.get("academicYearId") || undefined;
+    const installmentName = searchParams.get("installmentName") || undefined;
     const fromDate = searchParams.get("fromDate") || undefined;
     const toDate = searchParams.get("toDate") || undefined;
     const page = Math.max(1, Number(searchParams.get("page")) || 1);
@@ -74,6 +75,7 @@ export async function GET(req: Request) {
           }
         : {}),
       ...(academicYearId ? { studentEnrollment: { academicYearId } } : {}),
+      ...(installmentName ? { allocations: { some: { studentFeeInstallment: { name: installmentName } } } } : {}),
       ...(search
         ? {
             OR: [
