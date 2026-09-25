@@ -123,7 +123,7 @@ export function AttendanceRankingPage({ schoolSlug }: Props) {
   const podium = data?.toppers.filter((student) => student.rank <= 3) ?? [];
 
   return (
-    <div className="space-y-7 pb-10">
+    <div className="space-y-6 p-4 pb-10 sm:p-6">
       <PageHeader
         eyebrow="Attendance Performance"
         title="Attendance Ranking"
