@@ -167,7 +167,7 @@ export function LowAttendanceReport({ schoolSlug }: Props) {
       Number(threshold) > 100);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-4 pb-10 sm:p-6">
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-start gap-3">
@@ -204,7 +204,7 @@ export function LowAttendanceReport({ schoolSlug }: Props) {
           </div>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
           <AcademicYearSelect
             value={academicYearId}
             onChange={setAcademicYearId}
