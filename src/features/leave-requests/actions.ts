@@ -10,8 +10,11 @@ import { requireStudentAccess } from "@/lib/student-access";
 export type LeaveActionState = { error: string; success: boolean };
 
 const requestSchema = z.object({
+  requestType: z.enum(["LEAVE", "LATE_ARRIVAL", "EARLY_DEPARTURE", "HALF_DAY", "PERMISSION"]).default("LEAVE"),
   startDate: z.string().min(1),
   endDate: z.string().min(1),
+  startTime: z.string().optional(),
+  endTime: z.string().optional(),
   reason: z.string().trim().min(5).max(2000),
 });
 
@@ -38,6 +41,11 @@ export async function createLeaveRequest(
   const startDate = dateAtUtcMidnight(parsed.data.startDate);
   const endDate = dateAtUtcMidnight(parsed.data.endDate);
   const durationDays = Math.floor((endDate.getTime() - startDate.getTime()) / 86_400_000) + 1;
+  const timedRequest = ["LATE_ARRIVAL", "EARLY_DEPARTURE", "PERMISSION"].includes(parsed.data.requestType);
+
+  if (timedRequest && !parsed.data.startTime && !parsed.data.endTime) {
+    return { error: "Enter the applicable permission time.", success: false };
+  }
 
   if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime()) || endDate < startDate) {
     return { error: "The end date must be the same as or later than the start date.", success: false };
@@ -67,8 +75,11 @@ export async function createLeaveRequest(
       studentId,
       enrollmentId: context.enrollment.id,
       requestedBy: context.membership.userId,
+      requestType: parsed.data.requestType,
       startDate,
       endDate,
+      startTime: parsed.data.startTime || null,
+      endTime: parsed.data.endTime || null,
       reason: parsed.data.reason,
     },
   });
