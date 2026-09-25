@@ -131,9 +131,9 @@ export function PaymentHistoryFilters({
       {/* ================================================================ */}
 
       <CardContent className="p-5 md:p-6">
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-7">
+        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-[minmax(260px,2fr)_minmax(170px,1fr)_minmax(180px,1fr)_minmax(155px,1fr)_minmax(155px,1fr)_auto] xl:items-center">
           {/* Search */}
-          <div className="relative xl:col-span-2">
+          <div className="relative min-w-0">
             <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
 
             <Input
@@ -227,7 +227,7 @@ export function PaymentHistoryFilters({
           <Button
             onClick={onSearch}
             disabled={loading}
-            className="h-10 rounded-xl px-5"
+            className="h-10 w-full rounded-xl px-5 xl:w-auto"
           >
             {loading ? (
               <>
