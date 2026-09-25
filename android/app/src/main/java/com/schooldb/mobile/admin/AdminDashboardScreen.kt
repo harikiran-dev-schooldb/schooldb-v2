@@ -1,6 +1,12 @@
 package com.schooldb.mobile.admin
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
@@ -20,6 +26,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.ui.draw.clip
@@ -39,7 +46,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -53,6 +59,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -369,23 +377,28 @@ fun AdminDashboardScreen(
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
-            PremiumAdminNavigation(selectedTab = selectedTab, onSelect = { selectedTab = it })
+            PremiumAdminNavigation(
+                selectedTab = selectedTab,
+                homeBadge = state.dashboard?.unreadAnnouncements ?: 0,
+                queriesBadge = state.dashboard?.let { it.openTickets + it.inProgressTickets } ?: 0,
+                onSelect = { selectedTab = it },
+            )
         },
         topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(when (selectedTab) {
-                            "Reports" -> "Reports & Analytics"
-                            "Queries" -> "Queries"
-                            "More" -> "School tools"
-                            else -> "School Command Center"
-                        }, fontWeight = FontWeight.Bold)
-                        Text(school.schoolName, style = MaterialTheme.typography.bodySmall,
+            Column(
+                Modifier.fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.background)
+                    .statusBarsPadding()
+                    .padding(start = 20.dp, end = 14.dp, top = 12.dp, bottom = 10.dp),
+            ) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(school.schoolName.uppercase(), fontSize = 10.sp,
+                            letterSpacing = 1.3.sp, fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("SchoolDB", style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold)
                     }
-                },
-                actions = {
                     if (selectedTab == "Home") {
                         PremiumIconButton(onClick = { showAnnouncements = true }) {
                             BadgedBox(badge = {
@@ -397,7 +410,7 @@ fun AdminDashboardScreen(
                             }
                         }
                     }
-                    Spacer(Modifier.width(7.dp))
+                    Spacer(Modifier.width(8.dp))
                     PremiumIconButton(
                         onClick = { if (selectedTab == "Reports") viewModel.loadReport() else viewModel.refresh() },
                         enabled = if (selectedTab == "Reports") !state.reportLoading else !state.loading,
@@ -405,50 +418,57 @@ fun AdminDashboardScreen(
                         Icon(Lucide.RefreshCw, contentDescription = "Refresh dashboard",
                             modifier = Modifier.size(20.dp))
                     }
-                    Spacer(Modifier.width(7.dp))
+                    Spacer(Modifier.width(8.dp))
                     Surface(onClick = onSwitchAccount, modifier = Modifier.size(42.dp), shape = CircleShape,
-                        color = MaterialTheme.colorScheme.primary) {
+                        color = MaterialTheme.colorScheme.onSurface) {
                         Box(contentAlignment = Alignment.Center) {
                             Text(school.userName.trim().take(1).uppercase().ifBlank { "S" },
-                                color = MaterialTheme.colorScheme.onPrimary,
+                                color = MaterialTheme.colorScheme.surface,
                                 fontWeight = FontWeight.Bold)
                         }
                     }
-                    Spacer(Modifier.width(12.dp))
-                },
-            )
+                }
+                Spacer(Modifier.height(12.dp))
+                Text(when (selectedTab) {
+                    "Reports" -> "Reports"
+                    "Queries" -> "Queries"
+                    "More" -> "School tools"
+                    else -> "Overview"
+                }, fontSize = 32.sp, lineHeight = 36.sp, fontWeight = FontWeight.ExtraBold,
+                    letterSpacing = (-0.6).sp)
+            }
         },
     ) { padding ->
         val dashboard = state.dashboard
-        if (selectedTab == "Reports") {
-            ReportsTab(state, Modifier.padding(padding), viewModel::loadReport)
-        } else if (selectedTab == "More") {
-            MoreTab(Modifier.padding(padding), onSection = { selectedSection = it })
-        } else if (dashboard == null && state.loading) {
-            Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
+        Crossfade(targetState = selectedTab, animationSpec = tween(220), label = "admin-tabs") { tab ->
+            if (tab == "Reports") {
+                ReportsTab(state, Modifier.padding(padding), viewModel::loadReport)
+            } else if (tab == "More") {
+                MoreTab(Modifier.padding(padding), onSection = { selectedSection = it })
+            } else if (dashboard == null && state.loading) {
+                AdminDashboardSkeleton(Modifier.padding(padding))
+            } else if (dashboard == null) {
+                Column(Modifier.fillMaxSize().padding(padding).padding(24.dp),
+                    verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(state.error ?: "Dashboard is unavailable", style = MaterialTheme.typography.titleMedium)
+                    Spacer(Modifier.height(12.dp))
+                    Button(onClick = viewModel::refresh) { Text("Try again") }
+                }
+            } else if (tab == "Queries") {
+                QueriesTab(dashboard, Modifier.padding(padding),
+                    onTicket = { selectedTicket = it }, onAllQueries = { selectedSection = "queries" })
+            } else {
+                AdminHomeTab(
+                    school = school,
+                    dashboard = dashboard,
+                    state = state,
+                    modifier = Modifier.padding(padding),
+                    onSection = { selectedSection = it },
+                    onQueries = { selectedTab = "Queries" },
+                    onTicket = { selectedTicket = it },
+                    onAnnouncements = { showAnnouncements = true },
+                )
             }
-        } else if (dashboard == null) {
-            Column(Modifier.fillMaxSize().padding(padding).padding(24.dp),
-                verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(state.error ?: "Dashboard is unavailable", style = MaterialTheme.typography.titleMedium)
-                Spacer(Modifier.height(12.dp))
-                Button(onClick = viewModel::refresh) { Text("Try again") }
-            }
-        } else if (selectedTab == "Queries") {
-            QueriesTab(dashboard, Modifier.padding(padding),
-                onTicket = { selectedTicket = it }, onAllQueries = { selectedSection = "queries" })
-        } else {
-            AdminHomeTab(
-                school = school,
-                dashboard = dashboard,
-                state = state,
-                modifier = Modifier.padding(padding),
-                onSection = { selectedSection = it },
-                onQueries = { selectedTab = "Queries" },
-                onTicket = { selectedTicket = it },
-                onAnnouncements = { showAnnouncements = true },
-            )
         }
     }
 }
@@ -462,41 +482,46 @@ private data class AdminNavDestination(
 @Composable
 private fun PremiumAdminNavigation(
     selectedTab: String,
+    homeBadge: Int,
+    queriesBadge: Int,
     onSelect: (String) -> Unit,
 ) {
+    val haptic = LocalHapticFeedback.current
     val darkTheme = MaterialTheme.colorScheme.background.luminance() < 0.5f
     val dockColors = if (darkTheme) {
-        listOf(Color(0xFF192136), Color(0xFF11182B), Color(0xFF1B172E))
+        listOf(Color(0xEE454547), Color(0xF52D2D30), Color(0xF23A3A3D))
     } else {
-        listOf(Color.White, Color(0xFFF0F3FF), Color(0xFFF8F4FF))
+        listOf(Color(0xF8FFFFFF), Color(0xF3F4F6FF), Color(0xF8FFFFFF))
     }
-    val dockBorder = if (darkTheme) Color.White.copy(alpha = 0.12f) else Color.White.copy(alpha = 0.94f)
-    val inactiveColor = MaterialTheme.colorScheme.onSurfaceVariant
-    val selectedLabelColor = if (darkTheme) MaterialTheme.colorScheme.primary else Color(0xFF4F46E5)
+    val dockBorder = if (darkTheme) Color.White.copy(alpha = 0.16f)
+        else Color.White.copy(alpha = 0.96f)
+    val inactiveColor = if (darkTheme) Color.White.copy(alpha = 0.72f) else Color(0xFF667085)
+    val selectedColor = if (darkTheme) Color(0xF0121213) else Color(0xFFE1E9FF)
+    val selectedIconColor = if (darkTheme) Color.White else Color(0xFF3154D9)
     val items = listOf(
         AdminNavDestination("Home", "Home", Lucide.House),
         AdminNavDestination("Reports", "Reports", Lucide.ChartNoAxesColumnIncreasing),
         AdminNavDestination("Queries", "Queries", Lucide.MessageSquareText),
         AdminNavDestination("More", "More", Lucide.LayoutGrid),
     )
-    Surface(color = MaterialTheme.colorScheme.background) {
+    Box(Modifier.fillMaxWidth()) {
         Surface(
             modifier = Modifier
                 .navigationBarsPadding()
-                .padding(horizontal = 13.dp, vertical = 5.dp)
+                .padding(horizontal = 14.dp, vertical = 7.dp)
                 .shadow(
-                    elevation = 14.dp,
-                    shape = RoundedCornerShape(27.dp),
-                    ambientColor = Color(0xFF1E293B).copy(alpha = 0.15f),
-                    spotColor = Color(0xFF4F46E5).copy(alpha = 0.16f),
+                    elevation = 18.dp,
+                    shape = RoundedCornerShape(31.dp),
+                    ambientColor = Color.Black.copy(alpha = 0.30f),
+                    spotColor = Color.Black.copy(alpha = 0.38f),
                 ),
-            shape = RoundedCornerShape(27.dp),
+            shape = RoundedCornerShape(31.dp),
             color = Color.Transparent,
             border = BorderStroke(1.dp, dockBorder),
         ) {
             Box(
                 modifier = Modifier.fillMaxWidth()
-                    .clip(RoundedCornerShape(27.dp))
+                    .clip(RoundedCornerShape(31.dp))
                     .background(
                         Brush.linearGradient(
                             dockColors,
@@ -504,77 +529,67 @@ private fun PremiumAdminNavigation(
                     ),
             ) {
                 Box(
-                    Modifier.fillMaxWidth().height(20.dp).align(Alignment.TopCenter)
+                    Modifier.fillMaxWidth().height(24.dp).align(Alignment.TopCenter)
                         .background(
                             Brush.verticalGradient(
                                 listOf(
-                                    Color.White.copy(alpha = if (darkTheme) 0.08f else 0.92f),
+                                    Color.White.copy(alpha = 0.13f),
                                     Color.Transparent,
                                 ),
                             ),
                         ),
                 )
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 7.dp, vertical = 5.dp),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 5.dp, vertical = 5.dp),
                 ) {
                     items.forEach { item ->
                         val selected = selectedTab == item.key
-                        Column(
+                        val badge = when (item.key) {
+                            "Home" -> homeBadge
+                            "Queries" -> queriesBadge
+                            else -> 0
+                        }
+                        Box(
                             modifier = Modifier
                                 .weight(1f)
-                                .clickable { onSelect(item.key) }
-                                .padding(vertical = 0.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                        ) {
-                            val selectedModifier = if (selected) {
-                                Modifier
+                                .clip(RoundedCornerShape(25.dp))
+                                .then(if (selected) Modifier
                                     .shadow(
                                         elevation = 8.dp,
-                                        shape = CircleShape,
-                                        ambientColor = Color(0xFF4F46E5).copy(alpha = 0.24f),
-                                        spotColor = Color(0xFF7C3AED).copy(alpha = 0.30f),
+                                        shape = RoundedCornerShape(25.dp),
+                                        ambientColor = Color(0xFF3154D9).copy(alpha = 0.18f),
+                                        spotColor = Color(0xFF3154D9).copy(alpha = 0.22f),
                                     )
-                                    .clip(CircleShape)
-                                    .background(
-                                        Brush.linearGradient(
-                                            listOf(Color(0xFF4F6EF7), Color(0xFF6D4DE8)),
-                                        ),
-                                    )
-                            } else {
-                                Modifier.background(Color.Transparent, CircleShape)
-                            }
-                            Box(
-                                modifier = Modifier.size(38.dp).then(selectedModifier),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                if (selected) {
-                                    Box(
-                                        Modifier.fillMaxWidth().height(18.dp).align(Alignment.TopCenter)
-                                            .background(
-                                                Brush.verticalGradient(
-                                                    listOf(Color.White.copy(alpha = 0.32f), Color.Transparent),
-                                                ),
-                                            ),
-                                    )
-                                    Box(
-                                        Modifier.size(23.dp).align(Alignment.TopEnd)
-                                            .background(Color.White.copy(alpha = 0.08f), CircleShape),
-                                    )
+                                    .background(selectedColor) else Modifier)
+                                .clickable {
+                                    if (!selected) {
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        onSelect(item.key)
+                                    }
                                 }
+                                .padding(vertical = 11.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            if (selected) {
+                                Box(
+                                    Modifier.fillMaxWidth().height(18.dp).align(Alignment.TopCenter)
+                                        .background(
+                                            Brush.verticalGradient(
+                                                listOf(Color.White.copy(alpha = 0.14f), Color.Transparent),
+                                            ),
+                                        ),
+                                )
+                            }
+                            BadgedBox(badge = {
+                                if (badge > 0) Badge { Text(if (badge > 99) "99+" else badge.toString()) }
+                            }) {
                                 Icon(
                                     imageVector = item.icon,
                                     contentDescription = item.label,
-                                    tint = if (selected) Color.White else inactiveColor,
-                                    modifier = Modifier.size(20.dp),
+                                    tint = if (selected) selectedIconColor else inactiveColor,
+                                    modifier = Modifier.size(25.dp),
                                 )
                             }
-                            Spacer(Modifier.height(1.dp))
-                            Text(
-                                text = item.label,
-                                fontSize = 9.sp,
-                                fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
-                                color = if (selected) selectedLabelColor else inactiveColor,
-                            )
                         }
                     }
                 }
@@ -594,10 +609,75 @@ private fun PremiumIconButton(
         onClick = onClick,
         enabled = enabled,
         shape = CircleShape,
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.85f)),
+        color = if (MaterialTheme.colorScheme.background.luminance() < 0.5f)
+            Color(0xFF272729) else Color(0xFFEAF1FF),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f)),
     ) {
         Box(contentAlignment = Alignment.Center) { content() }
+    }
+}
+
+@Composable
+private fun AdminDashboardSkeleton(modifier: Modifier = Modifier) {
+    val transition = rememberInfiniteTransition(label = "dashboard-skeleton")
+    val pulse by transition.animateFloat(
+        initialValue = 0.42f,
+        targetValue = 0.82f,
+        animationSpec = infiniteRepeatable(tween(850), repeatMode = RepeatMode.Reverse),
+        label = "dashboard-skeleton-pulse",
+    )
+    val fill = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = pulse)
+    LazyColumn(
+        modifier = modifier.fillMaxSize(),
+        contentPadding = PaddingValues(horizontal = 18.dp, vertical = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        item { Box(Modifier.fillMaxWidth().height(238.dp).clip(RoundedCornerShape(28.dp)).background(fill)) }
+        item { Box(Modifier.fillMaxWidth().height(82.dp).clip(RoundedCornerShape(20.dp)).background(fill)) }
+        item { Box(Modifier.width(130.dp).height(24.dp).clip(RoundedCornerShape(12.dp)).background(fill)) }
+        item {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                repeat(4) {
+                    Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                        Box(Modifier.size(50.dp).clip(RoundedCornerShape(16.dp)).background(fill))
+                        Spacer(Modifier.height(8.dp))
+                        Box(Modifier.fillMaxWidth().height(12.dp).clip(RoundedCornerShape(6.dp)).background(fill))
+                    }
+                }
+            }
+        }
+        item { Box(Modifier.width(190.dp).height(24.dp).clip(RoundedCornerShape(12.dp)).background(fill)) }
+        item {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                repeat(3) {
+                    Box(Modifier.weight(1f).height(84.dp).clip(RoundedCornerShape(18.dp)).background(fill))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AdminReportSkeleton(modifier: Modifier = Modifier) {
+    val transition = rememberInfiniteTransition(label = "report-skeleton")
+    val pulse by transition.animateFloat(
+        initialValue = 0.42f,
+        targetValue = 0.82f,
+        animationSpec = infiniteRepeatable(tween(850), repeatMode = RepeatMode.Reverse),
+        label = "report-skeleton-pulse",
+    )
+    val fill = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = pulse)
+    LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(18.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        item { Box(Modifier.fillMaxWidth().height(190.dp).clip(RoundedCornerShape(24.dp)).background(fill)) }
+        items(3) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                repeat(2) {
+                    Box(Modifier.weight(1f).height(88.dp).clip(RoundedCornerShape(18.dp)).background(fill))
+                }
+            }
+        }
+        item { Box(Modifier.fillMaxWidth().height(210.dp).clip(RoundedCornerShape(20.dp)).background(fill)) }
     }
 }
 
@@ -612,6 +692,7 @@ private fun AdminHomeTab(
     onTicket: (String) -> Unit,
     onAnnouncements: () -> Unit,
 ) {
+    val haptic = LocalHapticFeedback.current
     val greeting = when (java.time.LocalTime.now().hour) {
         in 5..11 -> "Good morning"
         in 12..16 -> "Good afternoon"
@@ -619,9 +700,9 @@ private fun AdminHomeTab(
     }
     val darkTheme = MaterialTheme.colorScheme.background.luminance() < 0.5f
     val heroColors = if (darkTheme) {
-        listOf(Color(0xFF151D31), Color(0xFF181A32), Color(0xFF211832))
+        listOf(Color(0xFF171719), Color(0xFF202024))
     } else {
-        listOf(Color.White, Color(0xFFF1F3FF), Color(0xFFF8F1FF))
+        listOf(Color.White, Color(0xFFF6F6F8))
     }
     val heroTitleColor = MaterialTheme.colorScheme.onSurface
     val heroBodyColor = MaterialTheme.colorScheme.onSurfaceVariant
@@ -645,14 +726,6 @@ private fun AdminHomeTab(
                     .clip(heroShape)
                     .background(Brush.linearGradient(heroColors)),
             ) {
-                Box(
-                    Modifier.size(180.dp).align(Alignment.TopEnd)
-                        .background(Color(0xFF8B5CF6).copy(alpha = 0.06f), CircleShape),
-                )
-                Box(
-                    Modifier.size(130.dp).align(Alignment.BottomStart)
-                        .background(Color(0xFF3B82F6).copy(alpha = 0.05f), CircleShape),
-                )
                 Column(Modifier.fillMaxWidth().padding(20.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -702,7 +775,10 @@ private fun AdminHomeTab(
             val hasUrgent = dashboard.urgentTickets > 0
             val hasLeave = dashboard.pendingLeaveRequests > 0
             Card(
-                onClick = { if (hasUrgent) onQueries() else if (hasLeave) onSection("leave") else onAnnouncements() },
+                onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    if (hasUrgent) onQueries() else if (hasLeave) onSection("leave") else onAnnouncements()
+                },
                 shape = RoundedCornerShape(20.dp),
                 colors = CardDefaults.cardColors(
                     containerColor = if (hasUrgent) urgentCardColor
@@ -747,7 +823,10 @@ private fun AdminHomeTab(
                     AdminTool("Fees", Lucide.WalletCards, "fees", listOf(Color(0xFF34C989), Color(0xFF149669))),
                     AdminTool("Leave", Lucide.ClipboardCheck, "leave", listOf(Color(0xFFF2B641), Color(0xFFD58A18))),
                 ).forEach { tool ->
-                    Surface(onClick = { onSection(tool.destination) }, modifier = Modifier.width(92.dp),
+                    Surface(onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        onSection(tool.destination)
+                    }, modifier = Modifier.width(92.dp),
                         shape = RoundedCornerShape(18.dp), color = Color.Transparent) {
                         Column(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 8.dp),
                             horizontalAlignment = Alignment.CenterHorizontally) {
@@ -927,12 +1006,15 @@ private fun AdminMetric(label: String, value: Int, modifier: Modifier = Modifier
 private fun ReportsTab(state: AdminUiState, modifier: Modifier, onRetry: () -> Unit) {
     val report = state.report
     if (report == null) {
-        Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            if (state.reportLoading || state.reportError == null) CircularProgressIndicator()
-            else Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        if (state.reportLoading || state.reportError == null) {
+            AdminReportSkeleton(modifier)
+        } else {
+            Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(state.reportError, color = MaterialTheme.colorScheme.error)
                 Spacer(Modifier.height(12.dp))
                 Button(onClick = onRetry) { Text("Try again") }
+                }
             }
         }
         return
@@ -1121,7 +1203,11 @@ private data class AdminTool(
 
 @Composable
 private fun AdminToolTile(tool: AdminTool, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    Surface(onClick = onClick, modifier = modifier.aspectRatio(1.05f),
+    val haptic = LocalHapticFeedback.current
+    Surface(onClick = {
+        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+        onClick()
+    }, modifier = modifier.aspectRatio(1.05f),
         shape = RoundedCornerShape(20.dp), color = Color.Transparent) {
         Column(Modifier.fillMaxSize().padding(horizontal = 6.dp, vertical = 7.dp),
             verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {

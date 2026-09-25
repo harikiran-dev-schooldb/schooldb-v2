@@ -1,6 +1,12 @@
 package com.schooldb.mobile.admin
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,26 +17,26 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -41,12 +47,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.schooldb.mobile.network.ApiException
 import com.schooldb.mobile.network.AuthenticatedApiClient
+import com.composables.icons.lucide.ArrowLeft
+import com.composables.icons.lucide.Lucide
 import java.io.IOException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -152,7 +161,6 @@ internal class AdminTicketViewModel : ViewModel() {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AdminTicketScreen(id: String, onBack: () -> Unit) {
     val viewModel: AdminTicketViewModel = viewModel(key = "admin-ticket-$id")
@@ -161,19 +169,25 @@ fun AdminTicketScreen(id: String, onBack: () -> Unit) {
     BackHandler(onBack = onBack)
     LaunchedEffect(id) { viewModel.load(id) }
 
-    Scaffold(topBar = {
-        TopAppBar(title = { Text(state.ticket?.number ?: "Ticket", fontWeight = FontWeight.Bold) },
-            navigationIcon = {
-                IconButton(onClick = onBack) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+    Scaffold(containerColor = MaterialTheme.colorScheme.background, topBar = {
+        Column(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 18.dp, vertical = 10.dp)) {
+            Surface(onClick = onBack, shape = CircleShape,
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.78f)) {
+                Box(Modifier.size(46.dp), contentAlignment = Alignment.Center) {
+                    Icon(Lucide.ArrowLeft, contentDescription = "Back")
                 }
-            })
+            }
+            Spacer(Modifier.height(14.dp))
+            Text("Support ticket", fontSize = 32.sp, lineHeight = 36.sp,
+                letterSpacing = (-0.5).sp, fontWeight = FontWeight.ExtraBold)
+            Text(state.ticket?.number ?: "Loading ticket",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
     }) { padding ->
         val ticket = state.ticket
         if (ticket == null && state.loading) {
-            Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
+            AdminTicketSkeleton(Modifier.padding(padding))
         } else if (ticket == null) {
             Column(Modifier.fillMaxSize().padding(padding).padding(24.dp),
                 verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
@@ -233,6 +247,26 @@ fun AdminTicketScreen(id: String, onBack: () -> Unit) {
                 state.error?.let { message -> item { Text(message, color = MaterialTheme.colorScheme.error) } }
             }
         }
+    }
+}
+
+@Composable
+private fun AdminTicketSkeleton(modifier: Modifier = Modifier) {
+    val transition = rememberInfiniteTransition(label = "ticket-skeleton")
+    val pulse by transition.animateFloat(
+        initialValue = 0.42f,
+        targetValue = 0.82f,
+        animationSpec = infiniteRepeatable(tween(850), repeatMode = RepeatMode.Reverse),
+        label = "ticket-skeleton-pulse",
+    )
+    val fill = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = pulse)
+    LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(18.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        item { Box(Modifier.fillMaxWidth().height(136.dp).clip(RoundedCornerShape(20.dp)).background(fill)) }
+        items(3) {
+            Box(Modifier.fillMaxWidth().height(92.dp).clip(RoundedCornerShape(16.dp)).background(fill))
+        }
+        item { Box(Modifier.fillMaxWidth(0.42f).height(22.dp).clip(RoundedCornerShape(11.dp)).background(fill)) }
     }
 }
 

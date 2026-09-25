@@ -17,7 +17,7 @@ import androidx.compose.ui.unit.sp
 
 private val RoyalBlue = Color(0xFF3154D9)
 private val ElectricViolet = Color(0xFF7557E8)
-private val Midnight = Color(0xFF10172A)
+private val Midnight = Color(0xFF1C1C1E)
 private val Ink = Color(0xFF172033)
 private val Mist = Color(0xFFF5F7FC)
 private val Ice = Color(0xFFE8EEFF)
@@ -44,23 +44,23 @@ private val LightColors = lightColorScheme(
 )
 
 private val DarkColors = darkColorScheme(
-    primary = Color(0xFFAEC1FF),
-    onPrimary = Color(0xFF09266F),
-    primaryContainer = Color(0xFF263D91),
-    onPrimaryContainer = Color(0xFFE2E8FF),
-    secondary = Color(0xFFC9B8FF),
-    onSecondary = Color(0xFF332169),
-    secondaryContainer = Color(0xFF49368A),
-    onSecondaryContainer = Color(0xFFECE5FF),
+    primary = Color(0xFF6EA8FF),
+    onPrimary = Color(0xFF071A38),
+    primaryContainer = Color(0xFF163B6D),
+    onPrimaryContainer = Color(0xFFDCE9FF),
+    secondary = Color(0xFFB9A7FF),
+    onSecondary = Color(0xFF2D205F),
+    secondaryContainer = Color(0xFF433677),
+    onSecondaryContainer = Color(0xFFECE7FF),
     tertiary = Color(0xFF72D8CF),
-    background = Color(0xFF0B1020),
-    onBackground = Color(0xFFE8EBF4),
+    background = Color(0xFF080808),
+    onBackground = Color(0xFFF5F5F7),
     surface = Midnight,
-    onSurface = Color(0xFFE8EBF4),
-    surfaceVariant = Color(0xFF20283A),
-    onSurfaceVariant = Color(0xFFBDC5D8),
-    outline = Color(0xFF596278),
-    outlineVariant = Color(0xFF323B50),
+    onSurface = Color(0xFFF5F5F7),
+    surfaceVariant = Color(0xFF272729),
+    onSurfaceVariant = Color(0xFFAAAAAF),
+    outline = Color(0xFF5B5B60),
+    outlineVariant = Color(0xFF353538),
 )
 
 private val PremiumTypography = Typography(

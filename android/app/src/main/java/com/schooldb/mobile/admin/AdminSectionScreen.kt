@@ -1,8 +1,13 @@
 package com.schooldb.mobile.admin
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,22 +18,20 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -37,6 +40,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
@@ -136,7 +140,6 @@ internal class AdminSectionViewModel : ViewModel() {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AdminSectionScreen(section: String, onBack: () -> Unit, onTicket: (String) -> Unit) {
     val viewModel: AdminSectionViewModel = viewModel(key = "admin-section-$section")
@@ -145,23 +148,33 @@ fun AdminSectionScreen(section: String, onBack: () -> Unit, onTicket: (String) -
     BackHandler(onBack = onBack)
     LaunchedEffect(section) { viewModel.load(section, 1) }
 
-    Scaffold(topBar = {
-        TopAppBar(title = { Text(title, fontWeight = FontWeight.Bold) },
-            navigationIcon = {
-                IconButton(onClick = onBack) {
-                    Icon(Lucide.ArrowLeft, contentDescription = "Back")
+    Scaffold(containerColor = MaterialTheme.colorScheme.background, topBar = {
+        Column(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 18.dp, vertical = 10.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Surface(onClick = onBack, shape = RoundedCornerShape(50),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f)) {
+                    Box(Modifier.padding(11.dp), contentAlignment = Alignment.Center) {
+                        Icon(Lucide.ArrowLeft, contentDescription = "Back")
+                    }
                 }
-            },
-            actions = {
-                IconButton(onClick = { viewModel.load(section) }, enabled = !state.loading) {
-                    Icon(Lucide.RefreshCw, contentDescription = "Refresh $title")
+                Surface(onClick = { viewModel.load(section) }, enabled = !state.loading,
+                    shape = RoundedCornerShape(50),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f)) {
+                    Box(Modifier.padding(11.dp), contentAlignment = Alignment.Center) {
+                        Icon(Lucide.RefreshCw, contentDescription = "Refresh $title")
+                    }
                 }
-            })
+            }
+            Spacer(Modifier.height(14.dp))
+            Text(title, fontSize = 32.sp, lineHeight = 36.sp,
+                letterSpacing = (-0.5).sp, fontWeight = FontWeight.ExtraBold)
+            Text(sectionDescriptions[section] ?: "School records in this section",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodyMedium)
+        }
     }) { padding ->
         if (state.loading && state.rows.isEmpty()) {
-            Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
+            AdminSectionSkeleton(Modifier.padding(padding))
         } else if (state.error != null && state.rows.isEmpty()) {
             Column(Modifier.fillMaxSize().padding(padding).padding(24.dp),
                 verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
@@ -173,19 +186,17 @@ fun AdminSectionScreen(section: String, onBack: () -> Unit, onTicket: (String) -
             LazyColumn(Modifier.fillMaxSize().padding(padding),
                 contentPadding = PaddingValues(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 item {
-                    Text("$title · ${state.total}", style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold)
-                    Text(sectionDescriptions[section] ?: "School records in this section",
+                    Text("${state.total} records", style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 if (state.rows.isEmpty()) item {
                     Text("No records yet", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 items(state.rows, key = { it.id }) { row ->
-                    Card(modifier = if (section == "queries") Modifier.clickable { onTicket(row.id) } else Modifier,
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f)),
-                        shape = RoundedCornerShape(16.dp)) {
+                    Surface(modifier = if (section == "queries") Modifier.clickable { onTicket(row.id) } else Modifier,
+                        color = MaterialTheme.colorScheme.surface,
+                        tonalElevation = 1.dp,
+                        shape = RoundedCornerShape(18.dp)) {
                         Column(Modifier.fillMaxWidth().padding(17.dp)) {
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                 Text(row.title, modifier = Modifier.weight(1f), fontWeight = FontWeight.Bold,
@@ -228,6 +239,33 @@ fun AdminSectionScreen(section: String, onBack: () -> Unit, onTicket: (String) -
                 }
                 if (state.loading) item { CircularProgressIndicator() }
                 state.error?.let { message -> item { Text(message, color = MaterialTheme.colorScheme.error) } }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AdminSectionSkeleton(modifier: Modifier = Modifier) {
+    val transition = rememberInfiniteTransition(label = "section-skeleton")
+    val pulse by transition.animateFloat(
+        initialValue = 0.42f,
+        targetValue = 0.82f,
+        animationSpec = infiniteRepeatable(tween(850), repeatMode = RepeatMode.Reverse),
+        label = "section-skeleton-pulse",
+    )
+    val fill = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = pulse)
+    LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(18.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        item { Box(Modifier.width(100.dp).height(16.dp).clip(RoundedCornerShape(8.dp)).background(fill)) }
+        items(6) {
+            Column(Modifier.fillMaxWidth().height(104.dp).clip(RoundedCornerShape(18.dp))
+                .background(fill).padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Box(Modifier.fillMaxWidth(0.62f).height(15.dp).clip(RoundedCornerShape(7.dp))
+                    .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.10f)))
+                Box(Modifier.fillMaxWidth(0.42f).height(12.dp).clip(RoundedCornerShape(6.dp))
+                    .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)))
+                Box(Modifier.fillMaxWidth(0.78f).height(12.dp).clip(RoundedCornerShape(6.dp))
+                    .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)))
             }
         }
     }
