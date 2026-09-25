@@ -341,10 +341,12 @@ fun AdminDashboardScreen(
     var selectedTab by rememberSaveable(school.schoolSlug) { mutableStateOf("Home") }
     var selectedSection by rememberSaveable(school.schoolSlug) { mutableStateOf<String?>(null) }
     var selectedTicket by rememberSaveable(school.schoolSlug) { mutableStateOf<String?>(null) }
+    var selectedStudent by rememberSaveable(school.schoolSlug) { mutableStateOf<String?>(null) }
     var showAnnouncements by rememberSaveable(school.schoolSlug) { mutableStateOf(false) }
-    BackHandler(enabled = selectedSection != null || selectedTicket != null || showAnnouncements) {
+    BackHandler(enabled = selectedSection != null || selectedTicket != null || selectedStudent != null || showAnnouncements) {
         when {
             selectedTicket != null -> selectedTicket = null
+            selectedStudent != null -> selectedStudent = null
             selectedSection != null -> selectedSection = null
             else -> showAnnouncements = false
         }
@@ -361,8 +363,17 @@ fun AdminDashboardScreen(
         AdminTicketScreen(ticketId, onBack = { selectedTicket = null })
         return
     }
+    selectedStudent?.let { studentId ->
+        AdminStudentScreen(studentId, onBack = { selectedStudent = null })
+        return
+    }
     selectedSection?.let { section ->
-        AdminSectionScreen(section, onBack = { selectedSection = null }, onTicket = { selectedTicket = it })
+        AdminSectionScreen(
+            section,
+            onBack = { selectedSection = null },
+            onTicket = { selectedTicket = it },
+            onStudent = { selectedStudent = it },
+        )
         return
     }
 

@@ -164,7 +164,12 @@ internal class AdminSectionViewModel : ViewModel() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AdminSectionScreen(section: String, onBack: () -> Unit, onTicket: (String) -> Unit) {
+fun AdminSectionScreen(
+    section: String,
+    onBack: () -> Unit,
+    onTicket: (String) -> Unit,
+    onStudent: (String) -> Unit,
+) {
     val viewModel: AdminSectionViewModel = viewModel(key = "admin-section-$section")
     val state by viewModel.state.collectAsStateWithLifecycle()
     val title = sectionTitles[section] ?: "School data"
@@ -260,7 +265,12 @@ fun AdminSectionScreen(section: String, onBack: () -> Unit, onTicket: (String) -
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 items(visibleRows, key = { it.id }) { row ->
-                    Surface(modifier = if (section == "queries") Modifier.clickable { onTicket(row.id) } else Modifier,
+                    val rowModifier = when (section) {
+                        "queries" -> Modifier.clickable { onTicket(row.id) }
+                        "students" -> Modifier.clickable { onStudent(row.id) }
+                        else -> Modifier
+                    }
+                    Surface(modifier = rowModifier,
                         color = MaterialTheme.colorScheme.surface,
                         tonalElevation = 1.dp,
                         shape = RoundedCornerShape(18.dp)) {
@@ -313,7 +323,7 @@ fun AdminSectionScreen(section: String, onBack: () -> Unit, onTicket: (String) -
 }
 
 @Composable
-private fun AdminSectionSkeleton(modifier: Modifier = Modifier) {
+internal fun AdminSectionSkeleton(modifier: Modifier = Modifier) {
     val transition = rememberInfiniteTransition(label = "section-skeleton")
     val pulse by transition.animateFloat(
         initialValue = 0.42f,
