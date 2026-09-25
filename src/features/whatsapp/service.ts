@@ -401,6 +401,8 @@ export async function queueParentQueryWhatsappUpdate(input: {
   parentName: string | null;
   status: string;
   eventKey: string;
+  title?: string;
+  message?: string;
 }) {
   if (process.env.META_WA_AUTOMATION_ENABLED !== "true" || !input.phone)
     return null;
@@ -424,11 +426,10 @@ export async function queueParentQueryWhatsappUpdate(input: {
     CLOSED: "Closed",
     REOPENED: "Reopened for further review",
   };
-  const title =
-    input.status === "OPEN"
+  const title = input.title ?? (input.status === "OPEN"
       ? "Parent query received"
-      : `Parent query ${input.status.toLowerCase().replaceAll("_", " ")}`;
-  const message = statusText[input.status] || input.status.replaceAll("_", " ");
+      : `Parent query ${input.status.toLowerCase().replaceAll("_", " ")}`);
+  const message = input.message ?? statusText[input.status] ?? input.status.replaceAll("_", " ");
   const automationKey = `parent-query-v2:${input.ticketId}:${input.eventKey}`;
 
   try {
@@ -499,8 +500,10 @@ export async function queueParentQueryWhatsappReply(input: {
     ticketNo: input.ticketNo,
     phone: input.phone,
     parentName: input.parentName,
-    status: input.reply.trim().slice(0, 500),
+    status: "REPLY",
     eventKey: `reply:${input.messageId}`,
+    title: "School reply to parent query",
+    message: input.reply.trim().slice(0, 500),
   });
 }
 
