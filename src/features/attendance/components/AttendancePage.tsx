@@ -34,6 +34,7 @@ type AcademicYearOption = {
   id: string;
   label: string;
   attendanceMode: AttendanceMode;
+  active?: boolean;
 };
 
 type TimetableOption = {
@@ -129,7 +130,7 @@ export function AttendancePage({ schoolSlug }: Props) {
 
         setAcademicYears(options);
 
-        const activeYear = options[0];
+        const activeYear = options.find((year) => year.active);
 
         if (activeYear) {
           setAcademicYearId(activeYear.id);
