@@ -400,6 +400,7 @@ model Student {
   @@index([schoolId, fullName])
   @@index([schoolId, phone])
   @@index([schoolId, status, createdAt])
+  @@index([schoolId, requestType, startDate])
 }
 
 model House {
@@ -925,6 +926,14 @@ model LibraryLoan {
   @@index([teacherId, returnedAt])
 }
 
+enum LeaveRequestType {
+  LEAVE
+  LATE_ARRIVAL
+  EARLY_DEPARTURE
+  HALF_DAY
+  PERMISSION
+}
+
 model LeaveRequest {
   id           String            @id @default(cuid())
   schoolId     String
@@ -934,6 +943,9 @@ model LeaveRequest {
   startDate    DateTime          @db.Date
   endDate      DateTime          @db.Date
   reason       String
+  requestType  LeaveRequestType  @default(LEAVE)
+  startTime    String?
+  endTime      String?
   status       String            @default("PENDING")
   decisionNote String?
   decidedBy    String?
