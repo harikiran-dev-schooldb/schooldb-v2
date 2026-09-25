@@ -139,7 +139,7 @@ export function AttendanceHistory({ schoolSlug }: Props) {
     Boolean(date);
 
   return (
-    <div className="min-h-screen space-y-6 pb-10">
+    <div className="min-h-screen space-y-6 p-4 pb-10 sm:p-6">
       {/* ================================================================ */}
       {/* Header */}
       {/* ================================================================ */}
