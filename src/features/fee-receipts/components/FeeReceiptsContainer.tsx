@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { AlertCircle, Loader2, RefreshCw } from "lucide-react";
 
 import { FeeReceiptsTable, type PaymentRow } from "./FeeReceiptsTable";
 import { FeeReceiptsSummary } from "./FeeReceiptsSummary";
@@ -195,7 +196,7 @@ export function FeeReceiptsContainer({ schoolSlug }: Props) {
 
   if (loading && !data) {
     return (
-      <div className="text-sm text-muted-foreground">Loading receipts...</div>
+      <div className="flex min-h-64 flex-col items-center justify-center text-center"><div className="flex size-14 items-center justify-center rounded-2xl bg-primary/10"><Loader2 className="size-6 animate-spin text-primary" /></div><h3 className="mt-4 font-semibold">Loading fee receipts</h3><p className="mt-1 text-sm text-muted-foreground">Retrieving payment and receipt records...</p></div>
     );
   }
 
@@ -205,11 +206,11 @@ export function FeeReceiptsContainer({ schoolSlug }: Props) {
 
   if (error && !data) {
     return (
-      <Card>
-        <CardContent className="p-6">
-          <p className="text-sm text-destructive">{error}</p>
+      <Card className="rounded-2xl border-destructive/20">
+        <CardContent className="flex min-h-64 flex-col items-center justify-center p-6 text-center">
+          <div className="flex size-14 items-center justify-center rounded-2xl bg-destructive/10"><AlertCircle className="size-6 text-destructive" /></div><h3 className="mt-4 font-semibold">Unable to load fee receipts</h3><p className="mt-2 max-w-md text-sm text-muted-foreground">{error}</p>
 
-          <Button className="mt-4" onClick={() => void loadPayments()}>
+          <Button className="mt-5 rounded-xl" onClick={() => void loadPayments()}><RefreshCw className="mr-2 size-4" />
             Try Again
           </Button>
         </CardContent>
@@ -248,7 +249,7 @@ export function FeeReceiptsContainer({ schoolSlug }: Props) {
         loading={loading}
       />
 
-      {error && <p className="text-sm text-destructive">{error}</p>}
+      {error && <div className="flex items-center gap-2 rounded-xl border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive"><AlertCircle className="size-4 shrink-0" />{error}</div>}
 
       <FeeReceiptsTable schoolSlug={schoolSlug} rows={data.rows} />
 
