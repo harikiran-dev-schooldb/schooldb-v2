@@ -13,7 +13,7 @@ type PremiumSignInProps = {
 };
 
 export function PremiumSignIn({ schoolSlug }: PremiumSignInProps) {
-  const dashboardUrl = schoolSlug ? `/${schoolSlug}` : "/";
+  const dashboardUrl = schoolSlug ? `/${schoolSlug}` : "/choose-school";
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-slate-50">

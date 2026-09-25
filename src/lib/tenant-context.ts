@@ -20,6 +20,7 @@ const PUBLIC_PATH_PATTERNS = [
   /^\/$/,
   /^\/(?:account-deletion|about|contact|privacy-policy|refund-policy|terms)\/?$/,
   /^\/marketing(?:\/.*)?$/,
+  /^\/choose-school\/?$/,
   /^\/login(?:\/.*)?$/,
   /^\/register(?:\/.*)?$/,
   /^\/onboarding\/?$/,
