@@ -5,7 +5,7 @@ import { ClipboardList, Settings2 } from "lucide-react";
 
 export default function FeePlanPage() {
   return (
-    <div className="space-y-8 pb-10">
+    <div className="space-y-6 pb-10">
       {/* ================================================================ */}
       {/* PAGE HEADER                                                       */}
       {/* ================================================================ */}
@@ -20,7 +20,7 @@ export default function FeePlanPage() {
       {/* MODULE BANNER                                                     */}
       {/* ================================================================ */}
 
-      <section className="premium-card relative overflow-hidden rounded-3xl border-0 bg-gradient-to-br from-indigo-50 via-white to-blue-50 px-6 py-6 shadow-[0_8px_30px_rgba(15,23,42,0.05)] md:px-8 md:py-7">
+      <section className="premium-card relative overflow-hidden rounded-3xl border-0 bg-gradient-to-br from-indigo-50 via-white to-blue-50 px-5 py-5 sm:px-6 sm:py-6 shadow-[0_8px_30px_rgba(15,23,42,0.05)] md:px-8 md:py-7">
         {/* Decorative light glows */}
         <div className="pointer-events-none absolute -right-16 -top-20 size-64 rounded-full bg-indigo-400/10 blur-3xl" />
 
@@ -50,7 +50,7 @@ export default function FeePlanPage() {
           </div>
 
           {/* Feature indicator */}
-          <div className="flex w-fit items-center gap-3 rounded-2xl border border-indigo-100 bg-white/80 px-4 py-3 shadow-sm backdrop-blur-xl">
+          <div className="flex w-full items-center gap-3 rounded-2xl sm:w-fit border border-indigo-100 bg-white/80 px-4 py-3 shadow-sm backdrop-blur-xl">
             <div className="flex size-9 items-center justify-center rounded-xl bg-indigo-50">
               <Settings2 className="size-4 text-indigo-600" />
             </div>
