@@ -45,6 +45,7 @@ type Props = {
 type PaymentFilters = {
   search: string;
   paymentMode: string;
+  installmentName: string;
   fromDate: string;
   toDate: string;
 };
@@ -52,6 +53,7 @@ type PaymentFilters = {
 const EMPTY_FILTERS: PaymentFilters = {
   search: "",
   paymentMode: "",
+  installmentName: "",
   fromDate: "",
   toDate: "",
 };
@@ -70,6 +72,7 @@ export function PaymentHistoryContainer({ params }: Props) {
   const [error, setError] = useState<string | null>(null);
 
   const [filters, setFilters] = useState<PaymentFilters>(EMPTY_FILTERS);
+  const [installmentOptions, setInstallmentOptions] = useState<string[]>([]);
 
   const [selectedPayment, setSelectedPayment] = useState<PaymentRow | null>(
     null,
@@ -119,6 +122,8 @@ export function PaymentHistoryContainer({ params }: Props) {
     if (currentFilters.paymentMode) {
       queryParams.set("paymentMode", currentFilters.paymentMode);
     }
+
+    if (currentFilters.installmentName) queryParams.set("installmentName", currentFilters.installmentName);
 
     if (currentFilters.fromDate) {
       queryParams.set("fromDate", currentFilters.fromDate);
@@ -212,6 +217,13 @@ export function PaymentHistoryContainer({ params }: Props) {
     };
   }, []);
 
+  useEffect(() => {
+    fetch("/api/v1/fee-payments/installment-options", { cache: "no-store" })
+      .then((response) => response.json())
+      .then((result) => { if (result.success && Array.isArray(result.data)) setInstallmentOptions(result.data); })
+      .catch(() => undefined);
+  }, []);
+
   /* ------------------------------------------------------------------------ */
   /* Filters                                                                  */
   /* ------------------------------------------------------------------------ */
@@ -232,6 +244,7 @@ export function PaymentHistoryContainer({ params }: Props) {
     const query = new URLSearchParams();
     if (filters.search.trim()) query.set("search", filters.search.trim());
     if (filters.paymentMode) query.set("paymentMode", filters.paymentMode);
+    if (filters.installmentName) query.set("installmentName", filters.installmentName);
     if (filters.fromDate) query.set("fromDate", filters.fromDate);
     if (filters.toDate) query.set("toDate", filters.toDate);
     window.location.href = `/api/v1/reports/${schoolSlug}/fees/payments${query.size ? `?${query.toString()}` : ""}`;
@@ -365,11 +378,14 @@ export function PaymentHistoryContainer({ params }: Props) {
       <PaymentHistoryFilters
         search={filters.search}
         paymentMode={filters.paymentMode}
+        installmentName={filters.installmentName}
+        installmentOptions={installmentOptions}
         fromDate={filters.fromDate}
         toDate={filters.toDate}
         loading={loading}
         onSearchChange={(value) => updateFilter("search", value)}
         onPaymentModeChange={(value) => updateFilter("paymentMode", value)}
+        onInstallmentNameChange={(value) => updateFilter("installmentName", value)}
         onFromDateChange={(value) => updateFilter("fromDate", value)}
         onToDateChange={(value) => updateFilter("toDate", value)}
         onSearch={handleSearch}
