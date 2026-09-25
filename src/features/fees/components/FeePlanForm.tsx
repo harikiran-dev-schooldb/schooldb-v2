@@ -20,6 +20,7 @@ import { refreshTable } from "@/lib/table-event";
 type AcademicYear = {
   id: string;
   name: string;
+  active: boolean;
 };
 
 type SchoolClass = {
@@ -134,7 +135,18 @@ export function FeePlanForm({ mode, feePlanId, onSuccess }: Props) {
           ]);
 
         if (academicYearResult.success) {
-          setAcademicYears(academicYearResult.data?.data ?? []);
+          const years = (academicYearResult.data?.data ?? []) as AcademicYear[];
+          setAcademicYears(years);
+
+          if (mode === "create" && !form.getValues("academicYearId")) {
+            const activeYear = years.find((year) => year.active);
+
+            if (activeYear) {
+              form.setValue("academicYearId", activeYear.id, {
+                shouldValidate: true,
+              });
+            }
+          }
         }
 
         if (classResult.success) {
@@ -154,7 +166,7 @@ export function FeePlanForm({ mode, feePlanId, onSuccess }: Props) {
     }
 
     void loadData();
-  }, []);
+  }, [form, mode]);
 
   /*
    * Load existing fee plan in edit mode.
