@@ -38,7 +38,8 @@ export const academicYearRepository = {
       select: {
         id: true,
         name: true,
-        attendanceMode: true
+        attendanceMode: true,
+        active: true,
       },
 
       orderBy: {
