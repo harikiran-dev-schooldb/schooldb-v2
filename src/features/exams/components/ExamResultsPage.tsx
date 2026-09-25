@@ -235,7 +235,6 @@ export function ExamResultsPage({ schoolSlug, examId }: Props) {
 
         <div className="flex gap-2">
           <Button
-            className="bg-emerald-600 text-white hover:bg-emerald-700"
             disabled={!selectedClassId || loading}
             onClick={() => {
               const params = new URLSearchParams({ classId: selectedClassId });

@@ -91,7 +91,7 @@ export function StudentToolbar({
 
         <Button
           asChild
-          className="h-10 w-full rounded-xl bg-emerald-600 px-4 text-white shadow-sm hover:bg-emerald-700 sm:w-auto"
+          className="h-10 w-full px-4 sm:w-auto"
         >
           <a href={exportHref}>
             <Download className="size-4" />

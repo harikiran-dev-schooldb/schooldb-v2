@@ -3,9 +3,11 @@ import { CalendarClock, CalendarDays, CircleCheckBig, Clock3, Download, MessageS
 
 import { PageContainer, PageHeader } from "@/components/common/layout";
 import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
 import { LeaveDecisionControl } from "@/features/leave-requests/LeaveDecisionControl";
 import { leaveRequestFilterOptions, listStaffLeaveRequests } from "@/features/leave-requests/service";
 import { formatDate } from "@/lib/self-service-format";
+import { cn } from "@/lib/utils";
 
 const statusStyle: Record<string, string> = {
   PENDING: "border-amber-200 bg-amber-50 text-amber-800",
@@ -85,7 +87,7 @@ export default async function LeaveRequestsManagementPage({
       </div>
 
       <div className="mt-6 flex justify-stretch sm:justify-end">
-        <a href={exportHref} className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 sm:w-auto px-4 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-700">
+        <a href={exportHref} className={cn(buttonVariants(), "w-full sm:w-auto")}>
           <Download className="size-4" />Export Excel
         </a>
       </div>

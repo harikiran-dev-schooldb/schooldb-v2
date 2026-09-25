@@ -5,6 +5,7 @@ const RESERVED_PATH_SEGMENTS = new Set([
   "about",
   "api",
   "contact",
+  "choose-school",
   "login",
   "marketing",
   "onboarding",

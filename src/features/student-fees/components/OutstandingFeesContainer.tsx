@@ -220,7 +220,7 @@ export function OutstandingFeesContainer({
       <OutstandingFeesSummary summary={data.summary} />
 
       <div className="flex flex-wrap justify-end gap-2">
-        <Button asChild className="rounded-xl bg-emerald-600 text-white hover:bg-emerald-700">
+        <Button asChild>
           <a href={`/api/v1/reports/${schoolSlug}/fees/outstanding?${new URLSearchParams({
             ...(search.trim() ? { search: search.trim() } : {}),
             ...(classId ? { classId } : {}),

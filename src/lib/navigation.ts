@@ -186,6 +186,7 @@ export const navigation: NavigationItem[] = [
     children: [
       { title: "Notifications", href: "notifications", roles: ADMIN_ROLES },
       { title: "Queries", href: "queries", roles: STAFF_ROLES },
+      { title: "Parent Queries", href: "parent-queries", roles: ADMIN_ROLES },
       { title: "WhatsApp Messages", href: "whatsapp", roles: ADMIN_ROLES },
     ],
   },

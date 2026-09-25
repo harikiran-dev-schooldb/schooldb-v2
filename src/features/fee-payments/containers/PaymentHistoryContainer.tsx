@@ -354,7 +354,7 @@ export function PaymentHistoryContainer({ params }: Props) {
         </div>
 
         <div className="flex flex-wrap gap-2 sm:justify-end">
-          <Button asChild={!(!schoolSlug || loading)} className="rounded-xl bg-emerald-600 text-white hover:bg-emerald-700" disabled={!schoolSlug || loading}>
+          <Button asChild={!(!schoolSlug || loading)} disabled={!schoolSlug || loading}>
             {schoolSlug && !loading ? <a href={exportHref}><Download className="mr-2 size-4" />Export Excel</a> : <span><Download className="mr-2 size-4" />Export Excel</span>}
           </Button>
           <Button variant="outline" className="rounded-xl" onClick={() => void loadPayments()} disabled={loading}>

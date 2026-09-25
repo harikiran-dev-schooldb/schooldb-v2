@@ -216,7 +216,7 @@ export default function ClassSubjectsPage() {
         </CardHeader>
 
         <CardContent className="p-6">
-          <div className="grid gap-5 md:grid-cols-3">
+          <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-[repeat(3,minmax(0,1fr))_auto] lg:items-end">
             {/* Academic Year */}
             <Field label="Academic Year">
               <RemoteCombobox
@@ -255,14 +255,12 @@ export default function ClassSubjectsPage() {
                 onChange={setSubjectId}
               />
             </Field>
-          </div>
 
-          <div className="mt-5 flex justify-end border-t border-border/60 pt-5">
             <Button
               type="button"
               onClick={() => void addSubject()}
               disabled={saving || !academicYearId || !classId || !subjectId}
-              className="rounded-xl"
+              className="w-full px-5 lg:w-auto"
             >
               {saving ? (
                 <Loader2 className="size-4 animate-spin" />

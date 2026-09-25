@@ -213,8 +213,8 @@ export function TransportManager({
             <Metric icon={UsersRound} value={occupiedSeats} label="Students" />
           </div>
         </div>
-        <div className="relative mt-6 flex flex-wrap items-center gap-2 border-t border-white/10 pt-5 text-xs text-indigo-100">
-          <ShieldCheck className="size-4 text-emerald-300" />{" "}
+        <div className="relative mt-6 flex flex-wrap items-center gap-2 border-t border-indigo-100 pt-5 text-xs font-medium text-slate-500">
+          <ShieldCheck className="size-4 text-emerald-600" />{" "}
           {totalSeats
             ? `${Math.max(totalSeats - occupiedSeats, 0)} of ${totalSeats} seats available`
             : "Add a vehicle to begin capacity tracking"}
@@ -222,7 +222,7 @@ export function TransportManager({
       </section>
 
       <div className="flex flex-wrap justify-end gap-2">
-        <Button asChild className="rounded-xl bg-emerald-600 text-white hover:bg-emerald-700"><a href={`/api/v1/reports/${params.schoolSlug}/transport?report=fleet`}><Download className="size-4" />Fleet Excel</a></Button>
+        <Button asChild><a href={`/api/v1/reports/${params.schoolSlug}/transport?report=fleet`}><Download className="size-4" />Fleet Excel</a></Button>
         <Button asChild variant="outline" className="rounded-xl"><a href={`/api/v1/reports/${params.schoolSlug}/transport?report=routes`}><Download className="size-4" />Routes Excel</a></Button>
         <Button asChild variant="outline" className="rounded-xl"><a href={`/api/v1/reports/${params.schoolSlug}/transport?report=students`}><Download className="size-4" />Students Excel</a></Button>
       </div>
@@ -742,10 +742,10 @@ function Metric({
   label: string;
 }) {
   return (
-    <div className="rounded-2xl border border-white/15 bg-white/10 p-4 backdrop-blur-sm">
+    <div className="rounded-2xl border border-white/80 bg-white/70 p-4 shadow-sm backdrop-blur-sm">
       <Icon className="size-5 text-indigo-600" />
-      <p className="mt-3 text-3xl font-black">{value}</p>
-      <p className="text-xs font-semibold text-indigo-100">{label}</p>
+      <p className="mt-3 text-3xl font-black text-slate-950">{value}</p>
+      <p className="text-xs font-semibold text-slate-500">{label}</p>
     </div>
   );
 }

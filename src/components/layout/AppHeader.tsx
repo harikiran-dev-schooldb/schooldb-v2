@@ -2,6 +2,7 @@
 
 import {
   Bell,
+  Building2,
   ChevronDown,
   LogOut,
   Menu,
@@ -159,6 +160,14 @@ export function AppHeader({ onMenuClick }: Props) {
               </DropdownMenuItem>
 
               <DropdownMenuSeparator />
+
+              <DropdownMenuItem
+                className="cursor-pointer rounded-xl py-2.5"
+                onClick={() => router.push("/choose-school")}
+              >
+                <Building2 className="mr-2 size-4" />
+                Change school
+              </DropdownMenuItem>
 
               <DropdownMenuItem
                 className="cursor-pointer rounded-xl py-2.5"

@@ -205,7 +205,7 @@ export function FeeDashboardContainer() {
             Export Term Summary
           </a>
         </Button>
-        <Button asChild className="w-full rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 sm:w-auto">
+        <Button asChild className="w-full sm:w-auto">
           <a href={`/api/v1/reports/${params.schoolSlug}/fees/collection-summary${academicYearId ? `?academicYearId=${encodeURIComponent(academicYearId)}` : ""}`}>
             <Download className="mr-2 size-4" />
             Export Collection Summary

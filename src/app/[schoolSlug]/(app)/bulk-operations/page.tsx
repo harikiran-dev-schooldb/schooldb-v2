@@ -191,28 +191,28 @@ export default function BulkOperationsPage() {
       {/* HERO                                                             */}
       {/* ================================================================ */}
 
-      <section className="relative overflow-hidden rounded-3xl border border-slate-800 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 px-6 py-7 text-white shadow-2xl shadow-slate-900/15 md:px-8">
+      <section className="relative overflow-hidden rounded-3xl border border-indigo-100 bg-gradient-to-br from-white via-indigo-50/60 to-violet-50/60 px-6 py-6 shadow-[0_16px_45px_rgba(15,23,42,0.06)] md:px-8">
         {/* Decorative glows */}
 
-        <div className="pointer-events-none absolute -right-20 -top-20 size-72 rounded-full bg-teal-400/10 blur-3xl" />
+        <div className="pointer-events-none absolute -right-20 -top-20 size-72 rounded-full bg-violet-400/10 blur-3xl" />
 
-        <div className="pointer-events-none absolute -bottom-24 left-1/3 size-64 rounded-full bg-blue-500/10 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-24 left-1/3 size-64 rounded-full bg-indigo-400/10 blur-3xl" />
 
         {/* Content */}
 
         <div className="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
           <div className="min-w-0">
-            <div className="inline-flex items-center rounded-full border border-teal-300/15 bg-teal-300/10 px-3 py-1">
-              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-teal-300">
+            <div className="inline-flex items-center rounded-full border border-primary/15 bg-primary/[0.07] px-3 py-1">
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary">
                 SchoolDB Import Center
               </p>
             </div>
 
-            <h2 className="mt-3 text-2xl font-bold tracking-[-0.03em] text-white md:text-3xl">
+            <h2 className="mt-3 text-2xl font-bold tracking-[-0.03em] text-foreground md:text-3xl">
               Move school data in minutes.
             </h2>
 
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300">
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
               Use templates, validate before writing to the database, review
               errors, and keep existing school records safe.
             </p>
@@ -220,12 +220,12 @@ export default function BulkOperationsPage() {
 
           {/* Workflow */}
 
-          <div className="shrink-0 rounded-2xl border border-white/10 bg-white/[0.07] px-5 py-4 shadow-xl shadow-black/10 backdrop-blur-xl">
-            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">
+          <div className="shrink-0 rounded-2xl border border-white/80 bg-white/75 px-5 py-4 shadow-sm backdrop-blur-xl">
+            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
               Workflow
             </p>
 
-            <p className="mt-1 text-sm font-semibold text-white">
+            <p className="mt-1 text-sm font-semibold text-foreground">
               Template → Validate → Review → Import
             </p>
           </div>
@@ -236,7 +236,7 @@ export default function BulkOperationsPage() {
       {/* OPERATIONS                                                       */}
       {/* ================================================================ */}
 
-      <section className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {operations.map((operation) => {
           const Icon = operation.icon;
 
@@ -245,12 +245,12 @@ export default function BulkOperationsPage() {
               key={operation.title}
               className="premium-card group overflow-hidden rounded-2xl border-0 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
             >
-              <CardContent className="flex h-full min-h-[220px] flex-col p-5">
+              <CardContent className="flex h-full min-h-[172px] flex-col p-4">
                 {/* Icon + Status */}
 
                 <div className="flex items-start justify-between gap-3">
-                  <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary transition-transform duration-300 group-hover:scale-105">
-                    <Icon className="size-5" />
+                  <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary transition-transform duration-300 group-hover:scale-105">
+                    <Icon className="size-4" />
                   </div>
 
                   {operation.status && (
@@ -265,13 +265,13 @@ export default function BulkOperationsPage() {
 
                 {/* Title */}
 
-                <h3 className="mt-5 text-base font-bold tracking-tight">
+                <h3 className="mt-3 text-sm font-bold tracking-tight">
                   {operation.title}
                 </h3>
 
                 {/* Description */}
 
-                <p className="mt-2 flex-1 text-xs leading-5 text-muted-foreground">
+                <p className="mt-1.5 flex-1 text-xs leading-[1.15rem] text-muted-foreground">
                   {operation.description}
                 </p>
 
@@ -279,7 +279,7 @@ export default function BulkOperationsPage() {
 
                 <Link
                   href={operation.href}
-                  className="mt-5 inline-flex w-fit items-center gap-2 text-sm font-semibold text-primary transition-colors hover:text-primary/80"
+                  className="mt-3 inline-flex w-fit items-center gap-2 text-xs font-semibold text-primary transition-colors hover:text-primary/80"
                 >
                   Open import
                   <ArrowRight className="size-4 transition-transform duration-300 group-hover:translate-x-1" />

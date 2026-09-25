@@ -23,6 +23,7 @@ import {
   ClassSelect,
   SectionSelect,
 } from "@/components/common/select";
+import { Button } from "@/components/ui/button";
 
 type Props = {
   schoolSlug: string;
@@ -213,9 +214,9 @@ export function ClassAttendanceReport({ schoolSlug }: Props) {
 
           {data && (
             <div className="flex flex-wrap items-center gap-3">
-              <button type="button" onClick={exportExcel} className="inline-flex h-11 items-center gap-2 rounded-xl bg-emerald-600 px-4 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-700">
+              <Button type="button" size="lg" onClick={exportExcel}>
                 <Download className="h-4 w-4" />Export Excel
-              </button>
+              </Button>
               <div className="flex items-center gap-3 rounded-xl border bg-muted/30 px-4 py-3">
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-background shadow-sm">
                 <Users className="h-4 w-4 text-primary" />
