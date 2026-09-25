@@ -11,7 +11,7 @@ export default async function ReceiptsPage({ params }: Props) {
   const { schoolSlug } = await params;
 
   return (
-    <div className="space-y-8 pb-10">
+    <div className="space-y-6 p-4 pb-10 sm:p-6">
       {/* ================================================================ */}
       {/* PAGE HEADER                                                       */}
       {/* ================================================================ */}
@@ -31,7 +31,7 @@ export default async function ReceiptsPage({ params }: Props) {
           </div>
         </div>
 
-        <div className="flex w-fit items-center gap-2 rounded-xl border border-border/60 bg-card px-3 py-2 shadow-sm">
+        <div className="flex w-full items-center gap-2 rounded-xl sm:w-fit border border-border/60 bg-card px-3 py-2 shadow-sm">
           <CreditCard className="size-4 text-primary" />
 
           <span className="text-xs font-medium text-muted-foreground">
