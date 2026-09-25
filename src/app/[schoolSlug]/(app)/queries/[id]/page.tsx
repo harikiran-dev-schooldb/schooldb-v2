@@ -56,7 +56,7 @@ export default async function QueryDetailPage({
           id: true,
           body: true,
           createdAt: true,
-          author: { select: { id: true, firstName: true, lastName: true } },
+          author: { select: { id: true, firstName: true, lastName: true, memberships: { where: { schoolId: membership.schoolId, isActive: true }, select: { role: true }, take: 1 } } },
         },
       },
     },
@@ -124,7 +124,7 @@ export default async function QueryDetailPage({
               {ticket.messages.length === 0 && <p className="text-sm text-slate-500">No replies yet.</p>}
               {ticket.messages.map((message) => {
                 const author = [message.author.firstName, message.author.lastName].filter(Boolean).join(" ") || "School user";
-                const fromAdmin = message.author.id === membership.userId;
+                const fromAdmin = message.author.memberships.some((item) => ["SUPER_ADMIN", "SCHOOL_ADMIN"].includes(item.role));
                 return (
                   <div key={message.id} className={`rounded-xl p-4 ${fromAdmin ? "bg-indigo-50" : "bg-slate-50"}`}>
                     <div className="flex flex-wrap justify-between gap-2 text-xs text-slate-500">
