@@ -75,8 +75,7 @@ export default async function QueriesPage({ params, searchParams }: { params: Pa
     prisma.supportTicket.findMany({
       where,
       orderBy: { createdAt: "desc" },
-      skip: (page - 1) * pageSize,
-      take: pageSize,
+      ...(unreadOnly ? {} : { skip: (page - 1) * pageSize, take: pageSize }),
       select: {
         id: true,
         ticketNo: true,
@@ -100,8 +99,9 @@ export default async function QueriesPage({ params, searchParams }: { params: Pa
     prisma.supportTicket.findMany({ where: { schoolId: membership.schoolId }, distinct: ["source"], select: { source: true }, orderBy: { source: "asc" } }),
   ]);
 
-  const tickets = unreadOnly ? rawTickets.filter((ticket) => !ticket.reads[0] || ticket.updatedAt > ticket.reads[0].readAt) : rawTickets;
-  const total = unreadOnly ? tickets.length : totalBase;
+  const unreadTickets = unreadOnly ? rawTickets.filter((ticket) => !ticket.reads[0] || ticket.updatedAt > ticket.reads[0].readAt) : [];
+  const total = unreadOnly ? unreadTickets.length : totalBase;
+  const tickets = unreadOnly ? unreadTickets.slice((page - 1) * pageSize, page * pageSize) : rawTickets;
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
