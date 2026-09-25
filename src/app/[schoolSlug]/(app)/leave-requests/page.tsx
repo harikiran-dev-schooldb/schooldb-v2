@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CalendarClock, CalendarDays, CircleCheckBig, Clock3, MessageSquareText, Sparkles } from "lucide-react";
+import { CalendarClock, CalendarDays, CircleCheckBig, Clock3, Download, MessageSquareText, Sparkles } from "lucide-react";
 
 import { PageContainer, PageHeader } from "@/components/common/layout";
 import { Badge } from "@/components/ui/badge";
@@ -60,6 +60,13 @@ export default async function LeaveRequestsManagementPage({
   const requests = selectedType === "ALL" ? allRequests : allRequests.filter((request) => request.requestType === selectedType);
   const pending = requests.filter((request) => request.status === "PENDING");
   const completed = requests.filter((request) => request.status !== "PENDING");
+  const exportQuery = new URLSearchParams();
+  if (selectedType !== "ALL") exportQuery.set("type", selectedType);
+  if (query.classId) exportQuery.set("classId", query.classId);
+  if (query.sectionId) exportQuery.set("sectionId", query.sectionId);
+  if (query.from) exportQuery.set("from", query.from);
+  if (query.to) exportQuery.set("to", query.to);
+  const exportHref = `/api/v1/reports/${schoolSlug}/leave-permissions${exportQuery.size ? `?${exportQuery.toString()}` : ""}`;
 
   return (
     <PageContainer>
@@ -77,7 +84,13 @@ export default async function LeaveRequestsManagementPage({
         </div>
       </div>
 
-      <form className="mt-6 grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:grid-cols-2 lg:grid-cols-5">
+      <div className="mt-6 flex justify-end">
+        <a href={exportHref} className="inline-flex h-10 items-center gap-2 rounded-xl bg-emerald-600 px-4 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-700">
+          <Download className="size-4" />Export Excel
+        </a>
+      </div>
+
+      <form className="mt-3 grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:grid-cols-2 lg:grid-cols-5">
         {selectedType !== "ALL" && <input type="hidden" name="type" value={selectedType} />}
         <label className="grid gap-1.5 text-xs font-bold text-slate-600">Class
           <select name="classId" defaultValue={query.classId ?? ""} className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-800">
