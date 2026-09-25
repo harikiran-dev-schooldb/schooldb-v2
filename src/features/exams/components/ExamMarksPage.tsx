@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ClassSelect, SectionSelect } from "@/components/common/select";
 import { Input } from "@/components/ui/input";
 
-type Status = "PRESENT" | "ABSENT";
+type Status = "PRESENT" | "ABSENT" | "EXEMPTED";
 
 type Schedule = {
   id: string;
@@ -276,7 +276,7 @@ export function ExamMarksPage({ schoolSlug, examId }: Props) {
                   ...student.marks[scheduleId],
                   status,
                   marksObtained:
-                    status === "ABSENT"
+                    status !== "PRESENT"
                       ? ""
                       : (student.marks[scheduleId]?.marksObtained ?? ""),
                 },
@@ -296,7 +296,7 @@ export function ExamMarksPage({ schoolSlug, examId }: Props) {
       for (const student of students) {
         const mark = student.marks[schedule.id];
 
-        if (!mark || mark.status === "ABSENT" || mark.marksObtained === "") {
+        if (!mark || mark.status !== "PRESENT" || mark.marksObtained === "") {
           continue;
         }
 
@@ -334,7 +334,7 @@ export function ExamMarksPage({ schoolSlug, examId }: Props) {
 
                     marksObtained:
                       !mark ||
-                      mark.status === "ABSENT" ||
+                      mark.status !== "PRESENT" ||
                       mark.marksObtained === ""
                         ? null
                         : Number(mark.marksObtained),
@@ -540,7 +540,7 @@ export function ExamMarksPage({ schoolSlug, examId }: Props) {
                                 max={Number(schedule.maxMarks)}
                                 step="0.01"
                                 value={mark.marksObtained}
-                                disabled={saving || mark.status === "ABSENT"}
+                                disabled={saving || mark.status !== "PRESENT"}
                                 onChange={(event) =>
                                   updateMark(
                                     student.studentEnrollmentId,
@@ -565,7 +565,7 @@ export function ExamMarksPage({ schoolSlug, examId }: Props) {
                               >
                                 <option value="PRESENT">Present</option>
 
-                                <option value="ABSENT">Absent</option>
+                                <option value="ABSENT">Absent</option>\n\n                                <option value="EXEMPTED">Exempted</option>
                               </select>
                             </div>
                           </td>
