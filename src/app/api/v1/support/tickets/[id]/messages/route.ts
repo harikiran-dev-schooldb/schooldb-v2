@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { ApiResponse } from "@/lib/response";
 import { supportActor, visibleTicket } from "@/lib/support-tickets";
 import { sendSupportPush, supportAdminUserIds } from "@/lib/support-push";
+import { queueParentQueryWhatsappReply } from "@/features/whatsapp/service";
 
 type Context = { params: Promise<{ id: string }> };
 const inputSchema = z.object({
@@ -58,6 +59,18 @@ export async function POST(request: Request, context: Context) {
       ticketId: ticket.id,
       ticketNo: ticket.ticketNo,
     }).catch((error) => console.error("Support push failed", error));
+
+    if (!input.data.isInternal && ticket.source === "PARENT_QR" && ticket.parentPhone) {
+      await queueParentQueryWhatsappReply({
+        schoolId: actor.schoolId,
+        ticketId: ticket.id,
+        ticketNo: ticket.ticketNo,
+        phone: ticket.parentPhone,
+        parentName: ticket.parentName,
+        reply: input.data.body,
+        messageId: message.id,
+      }).catch((error) => console.error("Parent query WhatsApp reply failed", error));
+    }
 
     return ApiResponse.success(
       message,
