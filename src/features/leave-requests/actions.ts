@@ -39,7 +39,7 @@ export async function createLeaveRequest(
   }
 
   const startDate = dateAtUtcMidnight(parsed.data.startDate);
-  const endDate = dateAtUtcMidnight(parsed.data.endDate);
+  const endDate = dateAtUtcMidnight(parsed.data.requestType === "LEAVE" ? parsed.data.endDate : parsed.data.startDate);
   const durationDays = Math.floor((endDate.getTime() - startDate.getTime()) / 86_400_000) + 1;
   const timedRequest = ["LATE_ARRIVAL", "EARLY_DEPARTURE", "PERMISSION"].includes(parsed.data.requestType);
 
