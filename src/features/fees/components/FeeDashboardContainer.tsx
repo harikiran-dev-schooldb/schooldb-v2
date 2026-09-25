@@ -1,7 +1,8 @@
 "use client";
 
-import { AlertCircle, BarChart3, RefreshCw, WalletCards } from "lucide-react";
+import { AlertCircle, BarChart3, Download, RefreshCw, WalletCards } from "lucide-react";
 import { useState } from "react";
+import { useParams } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -16,6 +17,7 @@ import { InstallmentStatusCard } from "./InstallmentStatusCard";
 import { RecentPaymentsTable } from "./RecentPaymentsTable";
 
 export function FeeDashboardContainer() {
+  const params = useParams<{ schoolSlug: string }>();
   const [academicYearId, setAcademicYearId] = useState("");
 
   const { data, loading, error, reload } = useFeeDashboard(academicYearId);
@@ -195,6 +197,8 @@ export function FeeDashboardContainer() {
         academicYearId={academicYearId}
         onAcademicYearChange={setAcademicYearId}
       />
+
+      <div className="flex justify-end"><Button asChild className="rounded-xl bg-emerald-600 text-white hover:bg-emerald-700"><a href={`/api/v1/reports/${params.schoolSlug}/fees/term-summary${academicYearId ? `?academicYearId=${encodeURIComponent(academicYearId)}` : ""}`}><Download className="mr-2 size-4" />Fee Term Summary Excel</a></Button></div>
 
       <FeeCollectionCards
         today={collection.today}
