@@ -81,7 +81,7 @@ function StudentCard({
 
   return (
     <Link href={`students/${student.id}`} className="group block h-full">
-      <Card className="relative h-full overflow-hidden rounded-2xl border border-violet-100 bg-gradient-to-br from-white via-white to-violet-50/45 shadow-[0_8px_24px_rgba(15,23,42,0.04)] transition-all duration-200 before:absolute before:inset-x-0 before:top-0 before:h-1 before:bg-gradient-to-r before:from-violet-500 before:via-fuchsia-400 before:to-amber-300 group-hover:-translate-y-0.5 group-hover:border-violet-200 group-hover:shadow-[0_16px_36px_rgba(124,58,237,0.12)]">
+      <Card className="h-full overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_8px_24px_rgba(15,23,42,0.04)] transition-all duration-200 group-hover:-translate-y-0.5 group-hover:border-indigo-200 group-hover:shadow-[0_14px_32px_rgba(79,70,229,0.10)]">
         <CardContent className="flex items-center gap-4 p-4 sm:p-5">
           {student.imageUrl ? (
             <img
@@ -90,7 +90,7 @@ function StudentCard({
               className="size-14 rounded-2xl object-cover ring-1 ring-slate-200"
             />
           ) : (
-            <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-100 via-fuchsia-50 to-amber-50 text-xl font-bold text-violet-700 ring-1 ring-violet-100">
+            <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-50 to-violet-100 text-xl font-bold text-indigo-700 ring-1 ring-indigo-100">
               {student.fullName?.charAt(0) || "S"}
             </div>
           )}
@@ -101,7 +101,7 @@ function StudentCard({
                 {student.fullName || "Unnamed Student"}
               </p>
               {showDate && (
-                <Badge variant="outline" className="rounded-full border-fuchsia-100 bg-fuchsia-50/80 text-[10px] font-bold text-fuchsia-700">{birthdayDate(student)}</Badge>
+                <Badge variant="outline" className="rounded-full border-indigo-100 bg-indigo-50/70 text-[10px] font-bold text-indigo-700">{birthdayDate(student)}</Badge>
               )}
             </div>
 
@@ -138,7 +138,7 @@ function StudentCard({
                 event.stopPropagation();
                 onWish(student);
               }}
-              className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl border border-violet-200 bg-gradient-to-r from-violet-600 to-indigo-600 px-3 text-xs font-bold text-white shadow-sm transition-all hover:from-violet-700 hover:to-indigo-700 hover:shadow-md disabled:opacity-50"
+              className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl border border-indigo-100 bg-indigo-50 px-3 text-xs font-bold text-indigo-700 transition-colors hover:bg-indigo-100 disabled:opacity-50"
             >
               {sending ? (
                 <Loader2 className="size-3.5 animate-spin" />
@@ -149,7 +149,7 @@ function StudentCard({
             </button>
           )}
 
-          {!onWish && <ChevronRight className="size-4 shrink-0 text-slate-300 transition-transform group-hover:translate-x-0.5 group-hover:text-fuchsia-500" />}
+          {!onWish && <ChevronRight className="size-4 shrink-0 text-slate-300 transition-transform group-hover:translate-x-0.5 group-hover:text-indigo-500" />}
         </CardContent>
       </Card>
     </Link>
@@ -222,13 +222,13 @@ export default function BirthdaysPage() {
         description="Today's celebrations and upcoming student birthdays."
       />
 
-      <section className="relative overflow-hidden rounded-3xl border border-violet-100 bg-gradient-to-br from-white via-violet-50/70 to-amber-50/50 px-5 py-6 shadow-[0_16px_45px_rgba(15,23,42,0.06)] sm:px-6 md:px-8 md:py-7">
-        <div className="pointer-events-none absolute -right-20 -top-24 size-72 rounded-full bg-fuchsia-400/15 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-24 left-1/3 size-64 rounded-full bg-amber-300/20 blur-3xl" />
+      <section className="relative overflow-hidden rounded-3xl border border-indigo-100 bg-gradient-to-br from-white via-indigo-50/60 to-violet-50/60 px-5 py-6 shadow-[0_16px_45px_rgba(15,23,42,0.06)] sm:px-6 md:px-8 md:py-7">
+        <div className="pointer-events-none absolute -right-20 -top-24 size-72 rounded-full bg-violet-400/10 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-24 left-1/3 size-64 rounded-full bg-blue-400/10 blur-3xl" />
 
         <div className="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-start gap-4">
-            <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-600 via-fuchsia-500 to-amber-400 text-white shadow-[0_10px_25px_rgba(168,85,247,0.24)]">
+            <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-600 to-violet-600 text-white shadow-[0_10px_25px_rgba(79,70,229,0.20)]">
               <PartyPopper className="size-6" />
             </div>
             <div>
@@ -247,8 +247,8 @@ export default function BirthdaysPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3 rounded-2xl border border-violet-100 bg-white/90 px-4 py-3 shadow-[0_10px_30px_rgba(79,70,229,0.06)]">
-            <div className="flex size-10 items-center justify-center rounded-xl bg-gradient-to-br from-violet-50 to-amber-50 text-violet-600 ring-1 ring-violet-100">
+          <div className="flex items-center gap-3 rounded-2xl border border-indigo-100 bg-white/85 px-4 py-3 shadow-[0_10px_30px_rgba(79,70,229,0.06)]">
+            <div className="flex size-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 ring-1 ring-indigo-100">
               <Cake className="size-4" />
             </div>
             <div>
