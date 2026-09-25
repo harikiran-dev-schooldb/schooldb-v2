@@ -176,7 +176,28 @@ export function PaymentHistoryFilters({
             </Select>
           </div>
 
-          <div>\n            <Select value={installmentName || "ALL"} onValueChange={(value) => onInstallmentNameChange(value === "ALL" ? "" : value)}>\n              <SelectTrigger className="h-10 rounded-xl border-border/70 bg-background shadow-none"><SelectValue placeholder="Installment / Term" /></SelectTrigger>\n              <SelectContent><SelectItem value="ALL">All Installments</SelectItem>{installmentOptions.map((name) => <SelectItem key={name} value={name}>{name}</SelectItem>)}</SelectContent>\n            </Select>\n          </div>\n\n          {/* From Date */}
+          <div>
+            <Select
+              value={installmentName || "ALL"}
+              onValueChange={(value) =>
+                onInstallmentNameChange(value === "ALL" ? "" : value)
+              }
+            >
+              <SelectTrigger className="h-10 rounded-xl border-border/70 bg-background shadow-none">
+                <SelectValue placeholder="Installment / Term" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">All Installments</SelectItem>
+                {installmentOptions.map((name) => (
+                  <SelectItem key={name} value={name}>
+                    {name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* From Date */}
           <div className="relative">
             <CalendarDays className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
 
