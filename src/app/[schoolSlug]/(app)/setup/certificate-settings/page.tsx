@@ -17,7 +17,7 @@ export default async function CertificateSettingsPage({ params }: Props) {
   });
 
   return (
-    <div className="space-y-7 pb-12">
+    <div className="space-y-6 p-4 pb-12 sm:p-6">
       <PageHeader eyebrow="School Setup" title="Certificate Settings" description="Customize the official wording and signatory shown on student certificates." />
       <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-950 via-indigo-950 to-violet-950 px-6 py-7 text-white shadow-2xl shadow-indigo-950/15 md:px-8">
         <div className="absolute -right-16 -top-20 size-64 rounded-full bg-cyan-400/10 blur-3xl" />
