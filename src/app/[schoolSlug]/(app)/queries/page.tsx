@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, Search } from "lucide-react";
+import { ArrowRight, MessageSquareText, Search, Sparkles } from "lucide-react";
 import { notFound } from "next/navigation";
 import type { Prisma } from "@/generated/prisma/client";
 import { requireMembership } from "@/lib/auth";
@@ -107,12 +107,20 @@ export default async function QueriesPage({ params, searchParams }: { params: Pa
 
   return (
     <div className="space-y-6 p-4 sm:p-6">
-      <div>
-        <p className="text-sm font-semibold text-indigo-700">School Support</p>
-        <h1 className="mt-1 text-2xl font-bold text-slate-950">Queries</h1>
-        <p className="mt-2 text-sm text-slate-600">
-          All support queries from the School Support Android app and parent query channels.
-        </p>
+      <div className="flex items-start gap-4">
+        <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600 ring-1 ring-indigo-100">
+          <MessageSquareText className="size-5" />
+        </div>
+        <div>
+          <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.18em] text-indigo-600">
+            <Sparkles className="size-3" />
+            School Support
+          </div>
+          <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-950">Queries</h1>
+          <p className="mt-1 text-sm text-slate-600">
+            Review support queries from the School Support app and parent query channels.
+          </p>
+        </div>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-3">
@@ -131,7 +139,7 @@ export default async function QueriesPage({ params, searchParams }: { params: Pa
       </div>
 
       <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-        <form action={`/${schoolSlug}/queries`} className="grid gap-2 md:grid-cols-[minmax(0,1fr)_auto_auto_auto_auto]">
+        <form action={`/${schoolSlug}/queries`} className="grid gap-3 sm:grid-cols-2 xl:grid-cols-[auto_auto_auto_minmax(260px,1fr)_auto]">
           {status !== "ALL" && <input type="hidden" name="status" value={status} />}
           <select name="priority" defaultValue={priority} aria-label="Filter by priority" className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm"><option value="ALL">All priorities</option><option value="URGENT">Urgent</option><option value="HIGH">High</option><option value="NORMAL">Normal</option><option value="LOW">Low</option></select>
           <select name="source" defaultValue={source} aria-label="Filter by source" className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm"><option value="ALL">All sources</option>{sources.map((item) => <option key={item.source} value={item.source}>{item.source.replaceAll("_", " ")}</option>)}</select>
@@ -177,7 +185,7 @@ export default async function QueriesPage({ params, searchParams }: { params: Pa
               <Link
                 key={ticket.id}
                 href={`/${schoolSlug}/queries/${ticket.id}`}
-                className="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm hover:border-indigo-300 hover:shadow-md"
+                className="flex flex-col gap-4 rounded-2xl sm:flex-row sm:items-center sm:justify-between border border-slate-200 bg-white p-5 shadow-sm hover:border-indigo-300 hover:shadow-md"
               >
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-500">
