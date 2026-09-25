@@ -421,7 +421,7 @@ export function StudentFeeLedger({ studentFeeIds }: Props) {
 
   if (loading) {
     return (
-      <div className="space-y-6 py-2">
+      <div className="space-y-6 p-4 sm:p-6">
         <div className="h-64 animate-pulse rounded-[2rem] border border-slate-200 bg-slate-100" />
 
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -478,7 +478,7 @@ export function StudentFeeLedger({ studentFeeIds }: Props) {
   /* ====================================================================== */
 
   return (
-    <div className="space-y-6 pb-8">
+    <div className="space-y-6 p-4 pb-8 sm:p-6">
       {/* ================================================================== */}
       {/* STUDENT FINANCIAL HERO                                             */}
       {/* ================================================================== */}
@@ -536,9 +536,9 @@ export function StudentFeeLedger({ studentFeeIds }: Props) {
               </div>
             </div>
 
-            <div className="flex flex-col gap-3 sm:flex-row xl:justify-end">
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap xl:justify-end">
               {studentFeeIds.length === 1 && (
-                <Button asChild variant="outline" className="rounded-xl border-emerald-200 bg-emerald-50 text-emerald-700 shadow-sm hover:bg-emerald-100">
+                <Button asChild variant="outline" className="w-full rounded-xl border-emerald-200 bg-emerald-50 text-emerald-700 shadow-sm hover:bg-emerald-100 sm:w-auto">
                   <a href={`/api/v1/reports/${params.schoolSlug}/fees/students/${studentFeeIds[0]}/ledger`}>
                     <Download className="mr-2 size-4" />
                     Export Ledger
@@ -548,7 +548,7 @@ export function StudentFeeLedger({ studentFeeIds }: Props) {
 
               <Button
                 variant="outline"
-                className="rounded-xl border-slate-200 bg-white shadow-sm hover:bg-slate-50"
+                className="w-full rounded-xl border-slate-200 bg-white shadow-sm hover:bg-slate-50 sm:w-auto"
                 onClick={() => void loadLedgers()}
                 disabled={loading}
               >
@@ -559,7 +559,7 @@ export function StudentFeeLedger({ studentFeeIds }: Props) {
               <Button
                 disabled={unpaidInstallments.length === 0}
                 onClick={openPaymentDialog}
-                className="rounded-xl bg-slate-950 px-5 shadow-lg shadow-slate-900/15 transition-all hover:-translate-y-0.5 hover:bg-slate-800"
+                className="w-full rounded-xl bg-slate-950 px-5 shadow-lg shadow-slate-900/15 transition-all hover:-translate-y-0.5 hover:bg-slate-800 sm:w-auto"
               >
                 <CreditCard className="mr-2 size-4" />
                 Record Payment
