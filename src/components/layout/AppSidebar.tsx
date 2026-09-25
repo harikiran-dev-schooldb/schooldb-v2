@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import {
   Building2,
   ChevronDown,
@@ -79,6 +79,29 @@ export function AppSidebar({ mobile = false, onNavigate }: Props) {
   const collapsed = mobile ? false : storedCollapsed;
 
   const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({});
+  const [unreadQueries, setUnreadQueries] = useState(0);
+
+  useEffect(() => {
+    if (!["SUPER_ADMIN", "SCHOOL_ADMIN", "TEACHER", "ACCOUNTANT", "RECEPTIONIST"].includes(role)) return;
+
+    const controller = new AbortController();
+
+    fetch(`/api/v1/support/tickets/unread?schoolSlug=${encodeURIComponent(school.slug)}`, {
+      cache: "no-store",
+      signal: controller.signal,
+    })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data: { count?: number } | null) => {
+        if (typeof data?.count === "number") setUnreadQueries(data.count);
+      })
+      .catch((error: unknown) => {
+        if (!(error instanceof DOMException && error.name === "AbortError")) {
+          console.error("Unable to load unread query count", error);
+        }
+      });
+
+    return () => controller.abort();
+  }, [pathname, role, school.slug]);
 
   const visibleNavigation = useMemo(
     () =>
@@ -488,6 +511,12 @@ export function AppSidebar({ mobile = false, onNavigate }: Props) {
                                   <span className="truncate">
                                     {child.title}
                                   </span>
+
+                                  {child.href === "queries" && unreadQueries > 0 && (
+                                    <span className="ml-auto min-w-5 rounded-full bg-rose-100 px-1.5 py-0.5 text-center text-[10px] font-bold text-rose-700">
+                                      {unreadQueries > 99 ? "99+" : unreadQueries}
+                                    </span>
+                                  )}
                                 </Link>
                               );
                             })}
