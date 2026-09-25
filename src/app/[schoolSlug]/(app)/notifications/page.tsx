@@ -6,6 +6,7 @@ import { PublicationStatusControl } from "@/features/audiences/PublicationStatus
 import { setAnnouncementArchived } from "@/features/notifications/actions";
 import { Badge } from "@/components/ui/badge";
 import { formatDate } from "@/lib/self-service-format";
+import { BellRing } from "lucide-react";
 
 export default async function NotificationsPage({ params }: { params: Promise<{ schoolSlug: string }> }) {
   const { schoolSlug } = await params;
@@ -27,10 +28,18 @@ export default async function NotificationsPage({ params }: { params: Promise<{ 
         academicYearId={academicYear?.id ?? null}
       />
       <div className="mt-8 space-y-4">
-        <h2 className="text-lg font-bold">Recent announcements <span className="text-sm font-normal text-muted-foreground">(latest 100)</span></h2>
+        <div className="flex items-center gap-3">
+          <div className="flex size-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 ring-1 ring-indigo-100">
+            <BellRing className="size-4" />
+          </div>
+          <div>
+            <h2 className="text-lg font-bold">Recent announcements</h2>
+            <p className="text-xs text-muted-foreground">Showing the latest 100 school notices.</p>
+          </div>
+        </div>
         {announcements.length === 0 && <p className="rounded-2xl border p-8 text-center text-muted-foreground">No announcements yet. Create your first notice above.</p>}
         {announcements.map((item) => (
-          <article key={item.id} className="space-y-3 rounded-2xl border bg-card p-5">
+          <article key={item.id} className="space-y-3 rounded-2xl border border-slate-200/80 bg-card p-4 shadow-sm transition-shadow hover:shadow-md sm:p-5">
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant={item.priority === "URGENT" ? "destructive" : "secondary"}>{item.priority}</Badge>
               <Badge variant="outline">{item.category}</Badge>
