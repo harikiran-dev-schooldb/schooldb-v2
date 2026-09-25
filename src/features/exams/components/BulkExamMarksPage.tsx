@@ -135,8 +135,16 @@ export function BulkExamMarksPage({ schoolSlug, examId }: Props) {
     }
   }, [classId, sectionId, subjects]);
 
-  useEffect(() => { void loadExam(); }, [loadExam]);
-  useEffect(() => { void loadStudents(); }, [loadStudents]);
+  useEffect(() => {
+    // Initial exam metadata fetch.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void loadExam();
+  }, [loadExam]);
+  useEffect(() => {
+    // Reload marks whenever the selected class/section schedules change.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void loadStudents();
+  }, [loadStudents]);
 
   function updateMark(studentEnrollmentId: string, scheduleId: string, value: string) {
     setStudents((current) => current.map((student) =>
