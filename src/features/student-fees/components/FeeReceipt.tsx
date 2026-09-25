@@ -248,7 +248,7 @@ export function FeeReceipt({ paymentId }: Props) {
     <>
       {/* TOP ACTION BAR */}
       <div className="print:hidden sticky top-0 z-20 border-b border-slate-200 bg-white/90 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-4xl items-center justify-between px-6 py-4">
+        <div className="mx-auto flex max-w-4xl flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <div>
             <p className="text-[10px] font-bold tracking-[0.18em] text-slate-400 uppercase">
               SchoolDB Finance
@@ -259,7 +259,7 @@ export function FeeReceipt({ paymentId }: Props) {
 
           <Button
             onClick={() => window.print()}
-            className="rounded-xl bg-slate-950 px-5 shadow-lg shadow-slate-900/15 hover:bg-slate-800"
+            className="w-full rounded-xl bg-slate-950 px-5 shadow-lg shadow-slate-900/15 hover:bg-slate-800 sm:w-auto"
           >
             <Printer className="mr-2 size-4" />
             Print Receipt
@@ -402,8 +402,8 @@ export function FeeReceipt({ paymentId }: Props) {
                 </span>
               </div>
 
-              <div className="overflow-hidden rounded-2xl border border-slate-200">
-                <table className="w-full text-sm">
+              <div className="overflow-x-auto rounded-2xl border border-slate-200">
+                <table className="w-full min-w-[560px] text-sm">
                   <thead>
                     <tr className="bg-slate-50">
                       <th className="px-4 py-3.5 text-left text-[10px] font-bold tracking-[0.14em] text-slate-400 uppercase">
