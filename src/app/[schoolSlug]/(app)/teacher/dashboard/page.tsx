@@ -68,7 +68,7 @@ export default async function TeacherDashboardPage({
   ];
 
   return (
-    <div className="space-y-7">
+    <div className="space-y-6 p-4 pb-10 sm:p-6">
       <section className="relative overflow-hidden rounded-3xl border border-indigo-100 bg-gradient-to-br from-white via-indigo-50/60 to-violet-50/60 p-6 shadow-sm sm:p-8">
         <div className="absolute -right-20 -top-20 size-56 rounded-full bg-violet-200/30 blur-3xl" />
         <div className="relative">
