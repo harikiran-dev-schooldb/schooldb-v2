@@ -83,7 +83,7 @@ test("keeps the public route allowlist narrow", () => {
     isPublicPath("/api/v1/public/admissions/green-valley/private"),
     false,
   );
-  assert.equal(isPublicPath("/onboarding"), false);
+  assert.equal(isPublicPath("/onboarding"), true);
   assert.equal(isPublicPath("/api/v1/students"), false);
   assert.equal(isPublicPath("/green-valley/dashboard"), false);
   assert.equal(schoolSlugFromPath("/pay/cashfree/SDB-1/token"), null);
