@@ -27,11 +27,12 @@ export default async function NotificationInbox({ params, searchParams }: {
   const base = `/${schoolSlug}/my/notifications`;
   return (
     <SelfServicePage title="Notifications" description="School updates for you and your linked students.">
-      <section className="relative overflow-hidden rounded-[30px] bg-[#080b16] p-6 text-white shadow-[0_26px_70px_rgba(15,23,42,0.22)] sm:p-8">
-        <div className="pointer-events-none absolute -right-16 -top-20 size-56 rounded-full bg-indigo-500/25 blur-3xl" />
+      <section className="relative overflow-hidden rounded-[30px] border border-indigo-200/70 bg-gradient-to-br from-white via-indigo-50/80 to-violet-100/70 p-6 text-slate-950 shadow-[0_26px_70px_rgba(79,70,229,0.1)] sm:p-8">
+        <div className="pointer-events-none absolute -right-16 -top-20 size-56 rounded-full bg-indigo-300/25 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-24 left-1/3 size-56 rounded-full bg-violet-300/20 blur-3xl" />
         <div className="relative flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
-          <div><p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-indigo-200"><Sparkles className="size-4" />School updates</p><h2 className="mt-3 text-3xl font-black tracking-[-0.04em]">Stay in the loop</h2><p className="mt-2 text-sm text-slate-300">Announcements, reminders, and important school messages.</p></div>
-          <div className="rounded-2xl border border-white/10 bg-white/[0.07] px-4 py-3 text-sm text-slate-300 backdrop-blur-xl"><span className="font-black text-white">{total}</span> updates</div>
+          <div><p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-indigo-600"><Sparkles className="size-4" />School updates</p><h2 className="mt-3 text-3xl font-black tracking-[-0.04em]">Stay in the loop</h2><p className="mt-2 text-sm text-slate-600">Announcements, reminders, and important school messages.</p></div>
+          <div className="rounded-2xl border border-white/80 bg-white/75 px-4 py-3 text-sm text-slate-600 shadow-sm backdrop-blur-xl"><span className="font-black text-slate-950">{total}</span> updates</div>
         </div>
       </section>
       <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-border/60 bg-card/80 p-2">

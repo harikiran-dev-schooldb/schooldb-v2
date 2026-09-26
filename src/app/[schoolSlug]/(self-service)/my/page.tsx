@@ -19,15 +19,16 @@ export default async function StudentPickerPage({
 
   return (
     <section className="space-y-6">
-      <div className="relative overflow-hidden rounded-[32px] bg-[#080b16] p-7 text-white shadow-[0_28px_80px_rgba(15,23,42,0.22)] sm:p-9">
-        <div className="pointer-events-none absolute -right-20 -top-24 size-72 rounded-full bg-indigo-500/25 blur-3xl" />
+      <div className="relative overflow-hidden rounded-[32px] border border-indigo-200/70 bg-gradient-to-br from-white via-indigo-50/80 to-violet-100/70 p-7 text-slate-950 shadow-[0_28px_80px_rgba(79,70,229,0.1)] sm:p-9">
+        <div className="pointer-events-none absolute -right-20 -top-24 size-72 rounded-full bg-indigo-300/25 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-28 left-1/3 size-72 rounded-full bg-violet-300/20 blur-3xl" />
         <div className="relative">
-          <span className="flex size-12 items-center justify-center rounded-2xl border border-white/10 bg-white/10 backdrop-blur-xl">
-            <GraduationCap className="size-6 text-indigo-200" />
+          <span className="flex size-12 items-center justify-center rounded-2xl border border-white/80 bg-white/75 text-indigo-600 shadow-sm backdrop-blur-xl">
+            <GraduationCap className="size-6" />
           </span>
-          <p className="mt-6 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-indigo-200"><Sparkles className="size-3.5" /> Student space</p>
+          <p className="mt-6 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-indigo-600"><Sparkles className="size-3.5" /> Student space</p>
           <h1 className="mt-3 text-3xl font-black tracking-[-0.045em] sm:text-4xl">Choose a student</h1>
-          <p className="mt-3 max-w-xl text-sm leading-6 text-slate-300">
+          <p className="mt-3 max-w-xl text-sm leading-6 text-slate-600">
             Open the student dashboard for attendance, homework, fees, exams, results, and school updates.
           </p>
         </div>

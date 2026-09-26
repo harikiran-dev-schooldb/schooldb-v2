@@ -52,15 +52,15 @@ export default async function StudentReportCardPage({
               key={result.id}
               className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.09)] print:break-after-page print:rounded-none print:border-black print:shadow-none"
             >
-              <header className="relative overflow-hidden bg-gradient-to-r from-indigo-700 via-violet-700 to-blue-700 px-6 py-8 text-white print:border-b-2 print:border-black print:bg-white print:text-black sm:px-10">
-                <div className="absolute -right-12 -top-16 size-48 rounded-full bg-white/10 blur-2xl print:hidden" />
+              <header className="relative overflow-hidden border-b border-indigo-100 bg-gradient-to-br from-white via-indigo-50/80 to-violet-100/70 px-6 py-8 text-slate-950 print:border-b-2 print:border-black print:bg-white print:text-black sm:px-10">
+                <div className="absolute -right-12 -top-16 size-48 rounded-full bg-indigo-300/20 blur-2xl print:hidden" />
                 <div className="relative flex flex-wrap items-center justify-between gap-5">
                   <div className="flex items-center gap-4">
-                    <span className="flex size-14 items-center justify-center rounded-2xl bg-white/15 ring-1 ring-white/20 print:border print:border-black print:bg-white">
+                    <span className="flex size-14 items-center justify-center rounded-2xl bg-white/75 text-indigo-600 shadow-sm ring-1 ring-indigo-200 print:border print:border-black print:bg-white">
                       <GraduationCap className="size-7" />
                     </span>
                     <div>
-                      <p className="text-xs font-bold uppercase tracking-[0.2em] text-indigo-100 print:text-black">
+                      <p className="text-xs font-bold uppercase tracking-[0.2em] text-indigo-600 print:text-black">
                         Official academic report
                       </p>
                       <h2 className="mt-1 text-2xl font-black tracking-[-0.03em]">{membership.school.name}</h2>
@@ -68,7 +68,7 @@ export default async function StudentReportCardPage({
                   </div>
                   <div className="text-left sm:text-right">
                     <p className="text-lg font-bold">{result.name}</p>
-                    <p className="mt-1 text-sm text-indigo-100 print:text-black">
+                    <p className="mt-1 text-sm text-slate-600 print:text-black">
                       {enrollment?.academicYear.name}
                     </p>
                   </div>

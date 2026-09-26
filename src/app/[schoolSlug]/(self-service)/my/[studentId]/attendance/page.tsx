@@ -51,30 +51,31 @@ export default async function StudentAttendancePage({
     >
       {report ? (
         <>
-          <section className="relative overflow-hidden rounded-[30px] bg-[#080b16] p-6 text-white shadow-[0_26px_70px_rgba(15,23,42,0.22)] sm:p-8">
-            <div className="pointer-events-none absolute -right-20 -top-24 size-64 rounded-full bg-emerald-500/20 blur-3xl" />
+          <section className="relative overflow-hidden rounded-[30px] border border-indigo-200/70 bg-gradient-to-br from-white via-indigo-50/80 to-emerald-100/65 p-6 text-slate-950 shadow-[0_26px_70px_rgba(79,70,229,0.1)] sm:p-8">
+            <div className="pointer-events-none absolute -right-20 -top-24 size-64 rounded-full bg-emerald-300/25 blur-3xl" />
+            <div className="pointer-events-none absolute -bottom-24 left-1/3 size-64 rounded-full bg-indigo-300/20 blur-3xl" />
             <div className="relative grid gap-7 lg:grid-cols-[auto_1fr] lg:items-center">
               <div className="flex items-center gap-5">
-                <div className="grid size-24 place-items-center rounded-full bg-[conic-gradient(#34d399_var(--attendance-angle),rgba(255,255,255,0.1)_0)] p-2" style={{ "--attendance-angle": `${Math.min(report.summary.attendancePercentage, 100) * 3.6}deg` } as CSSProperties}>
-                  <div className="grid size-full place-items-center rounded-full bg-[#111525] text-2xl font-black">{report.summary.attendancePercentage}%</div>
+                <div className="grid size-24 place-items-center rounded-full bg-[conic-gradient(#10b981_var(--attendance-angle),rgba(99,102,241,0.12)_0)] p-2" style={{ "--attendance-angle": `${Math.min(report.summary.attendancePercentage, 100) * 3.6}deg` } as CSSProperties}>
+                  <div className="grid size-full place-items-center rounded-full bg-white text-2xl font-black text-slate-950">{report.summary.attendancePercentage}%</div>
                 </div>
                 <div>
-                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-300">Academic year attendance</p>
+                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-700">Academic year attendance</p>
                   <h3 className="mt-2 text-2xl font-black tracking-[-0.035em]">{report.summary.present} sessions present</h3>
-                  <p className="mt-1 text-sm text-slate-400">Across {report.summary.total} recorded sessions</p>
+                  <p className="mt-1 text-sm text-slate-600">Across {report.summary.total} recorded sessions</p>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                 {[
-                  { label: "Present", value: report.summary.present, icon: CheckCircle2, color: "text-emerald-300" },
-                  { label: "Absent", value: report.summary.absent, icon: CalendarCheck2, color: "text-rose-300" },
-                  { label: "Late", value: report.summary.late, icon: Clock3, color: "text-amber-300" },
-                  { label: "Leave", value: report.summary.leave, icon: ShieldCheck, color: "text-blue-300" },
+                  { label: "Present", value: report.summary.present, icon: CheckCircle2, color: "text-emerald-600" },
+                  { label: "Absent", value: report.summary.absent, icon: CalendarCheck2, color: "text-rose-600" },
+                  { label: "Late", value: report.summary.late, icon: Clock3, color: "text-amber-600" },
+                  { label: "Leave", value: report.summary.leave, icon: ShieldCheck, color: "text-blue-600" },
                 ].map(({ label, value, icon: Icon, color }) => (
-                  <div key={label} className="rounded-2xl border border-white/10 bg-white/[0.06] p-4 backdrop-blur-xl">
+                  <div key={label} className="rounded-2xl border border-white/80 bg-white/70 p-4 shadow-sm backdrop-blur-xl">
                     <Icon className={`size-4 ${color}`} />
                     <p className="mt-3 text-2xl font-black">{value}</p>
-                    <p className="mt-1 text-xs text-slate-400">{label}</p>
+                    <p className="mt-1 text-xs text-slate-500">{label}</p>
                   </div>
                 ))}
               </div>

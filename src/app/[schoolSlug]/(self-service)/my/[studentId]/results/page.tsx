@@ -38,17 +38,18 @@ export default async function StudentResultsPage({
     <SelfServicePage title="Results" description="Marks from completed examinations for the active enrollment.">
       {results.length ? (
         <>
-          <section className="relative overflow-hidden rounded-[30px] bg-gradient-to-br from-[#17102d] via-[#241449] to-[#38216b] p-6 text-white shadow-[0_26px_70px_rgba(46,16,101,0.22)] sm:p-8">
-            <div className="pointer-events-none absolute -right-20 -top-24 size-64 rounded-full bg-fuchsia-400/20 blur-3xl" />
+          <section className="relative overflow-hidden rounded-[30px] border border-indigo-200/70 bg-gradient-to-br from-white via-violet-50/80 to-fuchsia-100/70 p-6 text-slate-950 shadow-[0_26px_70px_rgba(79,70,229,0.1)] sm:p-8">
+            <div className="pointer-events-none absolute -right-20 -top-24 size-64 rounded-full bg-fuchsia-300/25 blur-3xl" />
+            <div className="pointer-events-none absolute -bottom-24 left-1/3 size-64 rounded-full bg-violet-300/20 blur-3xl" />
             <div className="relative flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-violet-200"><Sparkles className="size-4" />Academic progress</p>
+                <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-violet-700"><Sparkles className="size-4" />Academic progress</p>
                 <h3 className="mt-4 text-3xl font-black tracking-[-0.04em]">Your results, at a glance</h3>
-                <p className="mt-2 text-sm text-violet-100/75">{results.length} completed examination{results.length === 1 ? "" : "s"} in your active academic year.</p>
+                <p className="mt-2 text-sm text-slate-600">{results.length} completed examination{results.length === 1 ? "" : "s"} in your active academic year.</p>
               </div>
-              <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.08] p-4 backdrop-blur-xl">
-                <Award className="size-5 text-amber-300" />
-                <div><p className="text-xs text-violet-100/70">Latest percentage</p><p className="text-2xl font-black">{results[0].percentage}%</p></div>
+              <div className="flex items-center gap-3 rounded-2xl border border-white/80 bg-white/70 p-4 shadow-sm backdrop-blur-xl">
+                <Award className="size-5 text-amber-600" />
+                <div><p className="text-xs text-slate-500">Latest percentage</p><p className="text-2xl font-black text-slate-950">{results[0].percentage}%</p></div>
               </div>
             </div>
           </section>

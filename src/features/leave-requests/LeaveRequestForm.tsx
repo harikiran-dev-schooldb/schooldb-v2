@@ -42,15 +42,15 @@ export function LeaveRequestForm({ schoolSlug, studentId }: { schoolSlug: string
 
   return (
     <form ref={formRef} action={action} onSubmit={() => setConfirmationOpen(false)} className="relative overflow-hidden rounded-[28px] border border-border/60 bg-card/95 shadow-[0_24px_70px_rgba(79,70,229,0.12)]">
-      <div className="relative overflow-hidden bg-gradient-to-br from-indigo-600 via-violet-600 to-blue-600 px-5 py-6 text-white sm:px-7">
-        <div className="pointer-events-none absolute -right-10 -top-16 size-40 rounded-full bg-white/15 blur-2xl" />
+      <div className="relative overflow-hidden border-b border-indigo-100 bg-gradient-to-br from-white via-indigo-50 to-violet-100 px-5 py-6 text-slate-950 sm:px-7">
+        <div className="pointer-events-none absolute -right-10 -top-16 size-40 rounded-full bg-indigo-300/20 blur-2xl" />
         <div className="pointer-events-none absolute -bottom-16 left-1/3 size-36 rounded-full bg-cyan-300/20 blur-2xl" />
         <div className="relative flex items-start gap-4">
-          <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-white/15 ring-1 ring-white/25 backdrop-blur-sm"><CalendarRange className="size-6" /></div>
+          <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-indigo-500/10 text-indigo-600 ring-1 ring-indigo-200 backdrop-blur-sm"><CalendarRange className="size-6" /></div>
           <div>
-            <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.18em] text-indigo-100"><Sparkles className="size-3.5" />Quick request</div>
+            <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.18em] text-indigo-600"><Sparkles className="size-3.5" />Quick request</div>
             <h2 className="mt-2 text-xl font-bold tracking-[-0.02em]">Leave & permission request</h2>
-            <p className="mt-1.5 text-sm leading-6 text-indigo-100">Tell the school whether the student needs leave, late arrival, early departure, half day or short permission.</p>
+            <p className="mt-1.5 text-sm leading-6 text-slate-600">Tell the school whether the student needs leave, late arrival, early departure, half day or short permission.</p>
           </div>
         </div>
       </div>

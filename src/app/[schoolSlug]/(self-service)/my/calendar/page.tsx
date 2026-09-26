@@ -27,9 +27,10 @@ export default async function StudentCalendarPage({ params }: { params: Promise<
         <SelfServiceEmptyState icon={CalendarDays} title="No calendar events" description="Holidays, exams, meetings, and deadlines will appear here." />
       ) : (
         <div className="space-y-8">
-          <section className="relative overflow-hidden rounded-[30px] bg-gradient-to-br from-[#091b2f] via-[#10335a] to-[#184e77] p-6 text-white shadow-[0_26px_70px_rgba(15,23,42,0.2)] sm:p-8">
-            <div className="pointer-events-none absolute -right-20 -top-24 size-64 rounded-full bg-cyan-400/20 blur-3xl" />
-            <div className="relative flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between"><div><p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-cyan-200"><Sparkles className="size-4" />School calendar</p><h2 className="mt-3 text-3xl font-black tracking-[-0.04em]">Plan your weeks</h2><p className="mt-2 text-sm text-blue-100/75">Keep holidays, exams, meetings, and deadlines close.</p></div><div className="rounded-2xl border border-white/10 bg-white/[0.08] px-4 py-3 backdrop-blur-xl"><p className="text-xs text-blue-100/70">Upcoming</p><p className="mt-1 text-2xl font-black">{upcoming.length}</p></div></div>
+          <section className="relative overflow-hidden rounded-[30px] border border-indigo-200/70 bg-gradient-to-br from-white via-indigo-50/80 to-cyan-100/70 p-6 text-slate-950 shadow-[0_26px_70px_rgba(79,70,229,0.1)] sm:p-8">
+            <div className="pointer-events-none absolute -right-20 -top-24 size-64 rounded-full bg-cyan-300/25 blur-3xl" />
+            <div className="pointer-events-none absolute -bottom-24 left-1/3 size-64 rounded-full bg-indigo-300/20 blur-3xl" />
+            <div className="relative flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between"><div><p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-indigo-600"><Sparkles className="size-4" />School calendar</p><h2 className="mt-3 text-3xl font-black tracking-[-0.04em]">Plan your weeks</h2><p className="mt-2 text-sm text-slate-600">Keep holidays, exams, meetings, and deadlines close.</p></div><div className="rounded-2xl border border-white/80 bg-white/75 px-4 py-3 shadow-sm backdrop-blur-xl"><p className="text-xs text-slate-500">Upcoming</p><p className="mt-1 text-2xl font-black text-slate-950">{upcoming.length}</p></div></div>
           </section>
           <EventList title="Upcoming" events={upcoming} />
           {recent.length > 0 && <EventList title="Recent" events={recent} />}

@@ -57,11 +57,12 @@ export default async function StudentTransportPage({ params }: { params: Promise
         <Card><CardContent className="p-0"><SelfServiceEmptyState icon={BusFront} title="No active transport assignment" description="Your school transport details will appear here after the office assigns a route and boarding stop." className="min-h-64" /></CardContent></Card>
       ) : (
         <div className="space-y-5">
-          <section className="relative overflow-hidden rounded-[28px] bg-gradient-to-br from-slate-950 via-indigo-950 to-blue-900 p-6 text-white shadow-[0_26px_65px_rgba(30,41,99,0.22)] sm:p-8">
-            <div className="pointer-events-none absolute -right-16 -top-20 size-64 rounded-full bg-cyan-400/20 blur-3xl" />
+          <section className="relative overflow-hidden rounded-[28px] border border-indigo-200/70 bg-gradient-to-br from-white via-indigo-50/80 to-cyan-100/70 p-6 text-slate-950 shadow-[0_26px_65px_rgba(79,70,229,0.1)] sm:p-8">
+            <div className="pointer-events-none absolute -right-16 -top-20 size-64 rounded-full bg-cyan-300/25 blur-3xl" />
+            <div className="pointer-events-none absolute -bottom-24 left-1/3 size-64 rounded-full bg-indigo-300/20 blur-3xl" />
             <div className="relative flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
-              <div><p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-cyan-200"><Navigation className="size-4" />Your daily journey</p><h2 className="mt-3 text-3xl font-black tracking-[-0.04em]">{assignment.route.name}</h2><div className="mt-3 flex flex-wrap gap-2"><Badge className="border-white/20 bg-white/10 text-white">{assignment.route.code}</Badge><Badge className="border-white/20 bg-white/10 text-white">{assignment.pickupEnabled && assignment.dropEnabled ? "Pickup & drop" : assignment.pickupEnabled ? "Pickup only" : "Drop only"}</Badge></div></div>
-              <div className="rounded-2xl border border-white/15 bg-white/10 p-4 backdrop-blur-sm"><p className="text-xs font-semibold text-indigo-100">Boarding stop</p><p className="mt-1 text-xl font-black">{assignment.stop.name}</p></div>
+              <div><p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-indigo-600"><Navigation className="size-4" />Your daily journey</p><h2 className="mt-3 text-3xl font-black tracking-[-0.04em]">{assignment.route.name}</h2><div className="mt-3 flex flex-wrap gap-2"><Badge className="border-indigo-200 bg-white/70 text-indigo-700">{assignment.route.code}</Badge><Badge className="border-indigo-200 bg-white/70 text-indigo-700">{assignment.pickupEnabled && assignment.dropEnabled ? "Pickup & drop" : assignment.pickupEnabled ? "Pickup only" : "Drop only"}</Badge></div></div>
+              <div className="rounded-2xl border border-white/80 bg-white/70 p-4 shadow-sm backdrop-blur-sm"><p className="text-xs font-semibold text-slate-500">Boarding stop</p><p className="mt-1 text-xl font-black text-slate-950">{assignment.stop.name}</p></div>
             </div>
           </section>
 

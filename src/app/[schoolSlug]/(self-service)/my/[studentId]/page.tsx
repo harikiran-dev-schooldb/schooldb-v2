@@ -122,19 +122,19 @@ export default async function StudentOverviewPage({
 
   return (
     <div className="space-y-6">
-      <section className="relative overflow-hidden rounded-[32px] bg-[#080b16] p-6 text-white shadow-[0_28px_80px_rgba(15,23,42,0.24)] sm:p-8 lg:p-10">
-        <div className="pointer-events-none absolute -right-24 -top-28 size-80 rounded-full bg-indigo-500/25 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-40 left-1/3 size-80 rounded-full bg-violet-600/20 blur-3xl" />
+      <section className="relative overflow-hidden rounded-[32px] border border-indigo-200/70 bg-gradient-to-br from-white via-indigo-50/80 to-violet-100/70 p-6 text-slate-950 shadow-[0_28px_80px_rgba(79,70,229,0.1)] sm:p-8 lg:p-10">
+        <div className="pointer-events-none absolute -right-24 -top-28 size-80 rounded-full bg-indigo-300/25 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-40 left-1/3 size-80 rounded-full bg-violet-300/20 blur-3xl" />
         <div className="relative grid gap-8 lg:grid-cols-[1fr_auto] lg:items-end">
           <div>
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.07] px-3 py-1.5 text-xs font-bold text-indigo-100 backdrop-blur-xl">
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/80 bg-white/75 px-3 py-1.5 text-xs font-bold text-indigo-700 shadow-sm backdrop-blur-xl">
               <Sparkles className="size-3.5" />
               {enrollment?.academicYear.name || "Student workspace"}
             </div>
             <h1 className="mt-5 max-w-2xl text-3xl font-black tracking-[-0.045em] sm:text-4xl lg:text-5xl">
               {dayGreeting()}, {firstName}.
             </h1>
-            <p className="mt-3 max-w-xl text-base leading-7 text-slate-300">
+            <p className="mt-3 max-w-xl text-base leading-7 text-slate-600">
               {enrollment
                 ? `${enrollment.class.name}, Section ${enrollment.section.name}. Here is what needs your attention today.`
                 : "Your active enrollment will appear here once it is assigned."}
@@ -143,27 +143,27 @@ export default async function StudentOverviewPage({
               <Link href={`${base}/homework`} className="inline-flex h-11 items-center gap-2 rounded-xl bg-white px-4 text-sm font-bold text-slate-950 transition hover:bg-indigo-50">
                 View homework <ArrowRight className="size-4" />
               </Link>
-              <Link href={`${base}/timetable`} className="inline-flex h-11 items-center gap-2 rounded-xl border border-white/15 bg-white/[0.07] px-4 text-sm font-bold text-white backdrop-blur-xl transition hover:bg-white/15">
+              <Link href={`${base}/timetable`} className="inline-flex h-11 items-center gap-2 rounded-xl border border-indigo-200 bg-white/70 px-4 text-sm font-bold text-indigo-700 shadow-sm backdrop-blur-xl transition hover:bg-white">
                 Today&apos;s timetable
               </Link>
             </div>
           </div>
 
-          <div className="flex items-center gap-4 rounded-[24px] border border-white/10 bg-white/[0.07] p-4 backdrop-blur-xl sm:min-w-64">
+          <div className="flex items-center gap-4 rounded-[24px] border border-white/80 bg-white/70 p-4 shadow-sm backdrop-blur-xl sm:min-w-64">
             <div
               className="grid size-20 shrink-0 place-items-center rounded-full"
-              style={{ background: `conic-gradient(#818cf8 ${Math.min(attendancePercentage, 100) * 3.6}deg, rgba(255,255,255,0.12) 0deg)` }}
+              style={{ background: `conic-gradient(#6366f1 ${Math.min(attendancePercentage, 100) * 3.6}deg, rgba(99,102,241,0.12) 0deg)` }}
             >
-              <div className="grid size-16 place-items-center rounded-full bg-[#111525]">
+              <div className="grid size-16 place-items-center rounded-full bg-white">
                 <span className="text-xl font-black">{attendancePercentage}%</span>
               </div>
             </div>
             <div>
-              <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">Attendance</p>
-              <p className="mt-1 text-sm font-semibold text-white">
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Attendance</p>
+              <p className="mt-1 text-sm font-semibold text-slate-950">
                 {attendance?.summary.total ? `${attendance.summary.present} of ${attendance.summary.total} present` : "No sessions yet"}
               </p>
-              <Link href={`${base}/attendance`} className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-indigo-300">
+              <Link href={`${base}/attendance`} className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-indigo-600">
                 Open record <ChevronRight className="size-3.5" />
               </Link>
             </div>
