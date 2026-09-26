@@ -20,7 +20,13 @@ export default clerkMiddleware(async (auth, req) => {
    * still runs, so each route can verify its Clerk or one-time Bearer token.
    */
   if (!isPublicPath(pathname) && !isSupportApi && !isAndroidBuildWorkerApi) {
-    await auth.protect();
+    if (pathname.startsWith("/api/")) {
+      await auth.protect();
+    } else {
+      await auth.protect({
+        unauthenticatedUrl: new URL("/choose-school", req.url).toString(),
+      });
+    }
   }
 
   const requestHeaders = new Headers(req.headers);

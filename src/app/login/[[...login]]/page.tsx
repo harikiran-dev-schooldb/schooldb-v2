@@ -1,5 +1,5 @@
-import { PremiumSignIn } from "@/features/auth/components/PremiumSignIn";
+import { redirect } from "next/navigation";
 
 export default function LoginPage() {
-  return <PremiumSignIn />;
+  redirect("/choose-school");
 }

@@ -35,6 +35,7 @@ test("keeps the public route allowlist narrow", () => {
     assert.equal(schoolSlugFromPath(path), null);
   }
   assert.equal(isPublicPath("/login/SignIn_clerk_catchall_check_123"), true);
+  assert.equal(isPublicPath("/choose-school"), true);
   assert.equal(isPublicPath("/green-valley/login"), true);
   assert.equal(isPublicPath("/green-valley/apply"), true);
   assert.equal(isPublicPath("/green-valley/parent-query"), true);
