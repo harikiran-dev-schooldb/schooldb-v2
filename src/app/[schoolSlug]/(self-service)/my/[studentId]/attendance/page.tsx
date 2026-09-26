@@ -1,9 +1,8 @@
-import { CalendarCheck2 } from "lucide-react";
+import { CalendarCheck2, CheckCircle2, Clock3, ShieldCheck } from "lucide-react";
 
 import {
   SelfServiceEmptyState,
   SelfServicePage,
-  SelfServiceStatCard,
 } from "@/components/self-service/SelfServicePage";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -52,20 +51,41 @@ export default async function StudentAttendancePage({
     >
       {report ? (
         <>
-          <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
-            {[
-              ["Attendance", `${report.summary.attendancePercentage}%`],
-              ["Sessions", report.summary.total],
-              ["Present", report.summary.present],
-              ["Absent", report.summary.absent],
-              ["Late", report.summary.late],
-              ["Leave", report.summary.leave],
-            ].map(([label, value]) => (
-              <SelfServiceStatCard key={label} label={String(label)} value={value} />
-            ))}
-          </div>
+          <section className="relative overflow-hidden rounded-[30px] bg-[#080b16] p-6 text-white shadow-[0_26px_70px_rgba(15,23,42,0.22)] sm:p-8">
+            <div className="pointer-events-none absolute -right-20 -top-24 size-64 rounded-full bg-emerald-500/20 blur-3xl" />
+            <div className="relative grid gap-7 lg:grid-cols-[auto_1fr] lg:items-center">
+              <div className="flex items-center gap-5">
+                <div className="grid size-24 place-items-center rounded-full bg-[conic-gradient(#34d399_var(--attendance-angle),rgba(255,255,255,0.1)_0)] p-2" style={{ "--attendance-angle": `${Math.min(report.summary.attendancePercentage, 100) * 3.6}deg` } as CSSProperties}>
+                  <div className="grid size-full place-items-center rounded-full bg-[#111525] text-2xl font-black">{report.summary.attendancePercentage}%</div>
+                </div>
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-300">Academic year attendance</p>
+                  <h3 className="mt-2 text-2xl font-black tracking-[-0.035em]">{report.summary.present} sessions present</h3>
+                  <p className="mt-1 text-sm text-slate-400">Across {report.summary.total} recorded sessions</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                {[
+                  ["Present", report.summary.present, CheckCircle2, "text-emerald-300"],
+                  ["Absent", report.summary.absent, CalendarCheck2, "text-rose-300"],
+                  ["Late", report.summary.late, Clock3, "text-amber-300"],
+                  ["Leave", report.summary.leave, ShieldCheck, "text-blue-300"],
+                ].map(([label, value, Icon, color]) => (
+                  <div key={String(label)} className="rounded-2xl border border-white/10 bg-white/[0.06] p-4 backdrop-blur-xl">
+                    <Icon className={`size-4 ${color}`} />
+                    <p className="mt-3 text-2xl font-black">{String(value)}</p>
+                    <p className="mt-1 text-xs text-slate-400">{String(label)}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
 
-          <Card>
+          <Card className="overflow-hidden rounded-[26px] border-border/60 bg-card/90 shadow-[0_18px_50px_rgba(15,23,42,0.06)]">
+            <div className="border-b border-border/60 px-5 py-5 sm:px-6">
+              <h3 className="font-black tracking-[-0.02em]">Attendance history</h3>
+              <p className="mt-1 text-sm text-muted-foreground">Every recorded school session in the active academic year.</p>
+            </div>
             <CardContent className="p-0">
               <Table>
                 <TableHeader>
@@ -118,3 +138,4 @@ export default async function StudentAttendancePage({
     </SelfServicePage>
   );
 }
+import type { CSSProperties } from "react";

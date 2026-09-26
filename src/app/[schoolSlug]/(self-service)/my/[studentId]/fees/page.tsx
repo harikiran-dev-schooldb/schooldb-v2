@@ -1,9 +1,8 @@
-import { CreditCard } from "lucide-react";
+import { CheckCircle2, CreditCard, IndianRupee, WalletCards } from "lucide-react";
 
 import {
   SelfServiceEmptyState,
   SelfServicePage,
-  SelfServiceStatCard,
 } from "@/components/self-service/SelfServicePage";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -56,18 +55,30 @@ export default async function StudentFeesPage({
         outstanding: installment.outstanding,
       })),
   );
+  const paidPercentage = summary.payable > 0
+    ? Math.min(100, Math.round((summary.paid / summary.payable) * 100))
+    : 0;
 
   return (
     <SelfServicePage title="Fees" description="Fee plans, installments, and successful payments.">
-      <div className="grid gap-3 sm:grid-cols-3">
-        {[
-          ["Total payable", formatCurrency(summary.payable)],
-          ["Paid", formatCurrency(summary.paid)],
-          ["Outstanding", formatCurrency(summary.outstanding)],
-        ].map(([label, value]) => (
-          <SelfServiceStatCard key={label} label={label} value={value} />
-        ))}
-      </div>
+      <section className="relative overflow-hidden rounded-[30px] bg-gradient-to-br from-[#081322] via-[#0b1b35] to-[#102a4f] p-6 text-white shadow-[0_26px_70px_rgba(15,23,42,0.22)] sm:p-8">
+        <div className="pointer-events-none absolute -right-20 -top-24 size-64 rounded-full bg-blue-400/20 blur-3xl" />
+        <div className="relative grid gap-7 lg:grid-cols-[1fr_auto] lg:items-end">
+          <div>
+            <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-blue-200"><WalletCards className="size-4" />Fee account</p>
+            <p className="mt-4 text-sm text-slate-300">Outstanding balance</p>
+            <h3 className="mt-1 text-4xl font-black tracking-[-0.045em] sm:text-5xl">{formatCurrency(summary.outstanding)}</h3>
+            <div className="mt-6 max-w-xl">
+              <div className="flex justify-between text-xs font-semibold text-slate-300"><span>{paidPercentage}% paid</span><span>{formatCurrency(summary.paid)} received</span></div>
+              <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-gradient-to-r from-cyan-400 to-blue-400" style={{ width: `${paidPercentage}%` }} /></div>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3 sm:min-w-80">
+            <div className="rounded-2xl border border-white/10 bg-white/[0.07] p-4 backdrop-blur-xl"><IndianRupee className="size-4 text-blue-300" /><p className="mt-3 text-lg font-black">{formatCurrency(summary.payable)}</p><p className="mt-1 text-xs text-slate-400">Total payable</p></div>
+            <div className="rounded-2xl border border-white/10 bg-white/[0.07] p-4 backdrop-blur-xl"><CheckCircle2 className="size-4 text-emerald-300" /><p className="mt-3 text-lg font-black">{formatCurrency(summary.paid)}</p><p className="mt-1 text-xs text-slate-400">Paid so far</p></div>
+          </div>
+        </div>
+      </section>
 
       {outstandingInstallments.length ? (
         <OnlineFeeCheckout
@@ -79,7 +90,7 @@ export default async function StudentFeesPage({
 
       {ledgers.length ? (
         ledgers.map((ledger) => (
-          <Card key={ledger.studentFee.id}>
+          <Card key={ledger.studentFee.id} className="overflow-hidden rounded-[26px] border-border/60 bg-card/90 shadow-[0_18px_50px_rgba(15,23,42,0.06)]">
             <CardHeader>
               <CardTitle>{ledger.studentFee.feePlan.name}</CardTitle>
               <p className="text-sm text-muted-foreground">{ledger.academicYear.name}</p>
