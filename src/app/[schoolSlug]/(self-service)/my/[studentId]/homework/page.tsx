@@ -27,10 +27,10 @@ export default async function StudentHomeworkPage({
             const overdue = item.dueDate ? item.dueDate.getTime() < now.getTime() : false;
 
             return (
-              <Card key={item.id} className="border-white/80 bg-white/90 shadow-[0_16px_42px_rgba(15,23,42,0.05)]">
+              <Card key={item.id} className="rounded-[24px] border-border/60 bg-card/90 shadow-[0_16px_42px_rgba(15,23,42,0.05)]">
                 <CardHeader>
                   <div className="flex items-start justify-between gap-4">
-                    <span className="flex size-11 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-50 to-violet-100 text-indigo-600 ring-1 ring-indigo-100">
+                    <span className="flex size-11 items-center justify-center rounded-2xl bg-indigo-500/10 text-indigo-600 ring-1 ring-indigo-500/10 dark:text-indigo-400">
                       <BookOpenCheck className="size-5" />
                     </span>
                     <Badge variant={overdue ? "destructive" : item.dueDate ? "warning" : "outline"}>

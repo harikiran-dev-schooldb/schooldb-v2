@@ -18,7 +18,7 @@ export function SelfServiceHeader({
   unreadCount: number;
 }) {
   return (
-    <header className="sticky top-0 z-40 border-b border-white/70 bg-background/85 shadow-[0_1px_20px_rgba(15,23,42,0.04)] backdrop-blur-xl print:hidden">
+    <header className="sticky top-0 z-40 border-b border-border/60 bg-background/85 shadow-[0_1px_20px_rgba(15,23,42,0.04)] backdrop-blur-xl print:hidden">
       <div className="mx-auto flex h-[72px] max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         <Link href={`/${schoolSlug}/my`} className="flex items-center gap-3">
           <span className="relative flex size-11 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-600 via-violet-600 to-blue-600 text-white shadow-[0_10px_24px_rgba(79,70,229,0.28)]">

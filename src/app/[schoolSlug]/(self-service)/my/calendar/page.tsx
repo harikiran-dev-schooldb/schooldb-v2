@@ -39,9 +39,9 @@ function EventList({ title, events }: { title: string; events: Awaited<ReturnTyp
   return (
     <section className="space-y-3">
       <h2 className="text-lg font-bold">{title}</h2>
-      {events.length === 0 && <p className="rounded-2xl border bg-white/80 p-6 text-sm text-muted-foreground">Nothing scheduled.</p>}
+      {events.length === 0 && <p className="rounded-2xl border border-border/60 bg-card/80 p-6 text-sm text-muted-foreground">Nothing scheduled.</p>}
       {events.map((event) => (
-        <article key={event.id} className="flex gap-4 rounded-2xl border border-white/80 bg-white/90 p-5 shadow-[0_14px_38px_rgba(15,23,42,0.05)]">
+        <article key={event.id} className="flex gap-4 rounded-[22px] border border-border/60 bg-card/90 p-5 shadow-[0_14px_38px_rgba(15,23,42,0.05)]">
           <div className="flex size-14 shrink-0 flex-col items-center justify-center rounded-2xl bg-indigo-50 text-indigo-700"><span className="text-[10px] font-bold uppercase">{event.startDate.toLocaleDateString("en-IN", { month: "short", timeZone: "UTC" })}</span><span className="text-xl font-black">{event.startDate.getUTCDate()}</span></div>
           <div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><h3 className="font-bold">{event.title}</h3><Badge className={categoryStyle[event.category]}>{event.category.replaceAll("_", " ")}</Badge></div><p className="mt-1 text-xs text-muted-foreground">{formatDate(event.startDate)}{event.endDate.getTime() !== event.startDate.getTime() ? ` – ${formatDate(event.endDate)}` : ""} · {event.targetLabel}</p>{event.description && <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">{event.description}</p>}</div>
         </article>

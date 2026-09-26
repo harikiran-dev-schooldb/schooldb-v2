@@ -41,7 +41,7 @@ export function LeaveRequestForm({ schoolSlug, studentId }: { schoolSlug: string
   const isTimed = requestType === "LATE_ARRIVAL" || requestType === "EARLY_DEPARTURE" || requestType === "PERMISSION";
 
   return (
-    <form ref={formRef} action={action} onSubmit={() => setConfirmationOpen(false)} className="relative overflow-hidden rounded-[28px] border border-indigo-200/70 bg-white/95 shadow-[0_24px_70px_rgba(79,70,229,0.12)]">
+    <form ref={formRef} action={action} onSubmit={() => setConfirmationOpen(false)} className="relative overflow-hidden rounded-[28px] border border-border/60 bg-card/95 shadow-[0_24px_70px_rgba(79,70,229,0.12)]">
       <div className="relative overflow-hidden bg-gradient-to-br from-indigo-600 via-violet-600 to-blue-600 px-5 py-6 text-white sm:px-7">
         <div className="pointer-events-none absolute -right-10 -top-16 size-40 rounded-full bg-white/15 blur-2xl" />
         <div className="pointer-events-none absolute -bottom-16 left-1/3 size-36 rounded-full bg-cyan-300/20 blur-2xl" />
@@ -60,9 +60,9 @@ export function LeaveRequestForm({ schoolSlug, studentId }: { schoolSlug: string
           <legend className="mb-3 text-sm font-semibold">Request type</legend>
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
             {requestTypes.map((type) => (
-              <label key={type.value} className={`cursor-pointer rounded-2xl border p-3 transition ${requestType === type.value ? "border-indigo-400 bg-indigo-50 ring-2 ring-indigo-100" : "border-slate-200 bg-white hover:border-indigo-200"}`}>
+              <label key={type.value} className={`cursor-pointer rounded-2xl border p-3 transition ${requestType === type.value ? "border-indigo-400 bg-indigo-500/10 ring-2 ring-indigo-500/10" : "border-border bg-background/70 hover:border-indigo-400/50"}`}>
                 <input type="radio" name="requestType" value={type.value} checked={requestType === type.value} onChange={() => setRequestType(type.value)} className="sr-only" />
-                <span className="block text-sm font-bold text-slate-900">{type.label}</span>
+                <span className="block text-sm font-bold text-foreground">{type.label}</span>
                 <span className="mt-1 block text-xs leading-4 text-muted-foreground">{type.description}</span>
               </label>
             ))}
@@ -71,13 +71,13 @@ export function LeaveRequestForm({ schoolSlug, studentId }: { schoolSlug: string
 
         <label className="grid gap-2 text-sm font-semibold">
           {isLeave ? "From" : "Date"}
-          <Input name="startDate" type="date" required className="h-12 rounded-2xl border-slate-200 bg-slate-50/80 px-4 shadow-inner shadow-slate-100 focus:bg-white" />
+          <Input name="startDate" type="date" required className="h-12 rounded-2xl border-border bg-background/70 px-4" />
         </label>
 
         {isLeave ? (
           <label className="grid gap-2 text-sm font-semibold">
             To
-            <Input name="endDate" type="date" required className="h-12 rounded-2xl border-slate-200 bg-slate-50/80 px-4 shadow-inner shadow-slate-100 focus:bg-white" />
+            <Input name="endDate" type="date" required className="h-12 rounded-2xl border-border bg-background/70 px-4" />
           </label>
         ) : (
           <input type="hidden" name="endDate" value="" />
@@ -87,12 +87,12 @@ export function LeaveRequestForm({ schoolSlug, studentId }: { schoolSlug: string
           <>
             <label className="grid gap-2 text-sm font-semibold">
               <span className="flex items-center gap-2"><Clock3 className="size-4 text-indigo-500" />{requestType === "EARLY_DEPARTURE" ? "Departure time" : requestType === "LATE_ARRIVAL" ? "Expected arrival time" : "From time"}</span>
-              <Input name="startTime" type="time" required className="h-12 rounded-2xl border-slate-200 bg-slate-50/80 px-4 shadow-inner shadow-slate-100 focus:bg-white" />
+              <Input name="startTime" type="time" required className="h-12 rounded-2xl border-border bg-background/70 px-4" />
             </label>
             {requestType === "PERMISSION" && (
               <label className="grid gap-2 text-sm font-semibold">
                 To time
-                <Input name="endTime" type="time" required className="h-12 rounded-2xl border-slate-200 bg-slate-50/80 px-4 shadow-inner shadow-slate-100 focus:bg-white" />
+                <Input name="endTime" type="time" required className="h-12 rounded-2xl border-border bg-background/70 px-4" />
               </label>
             )}
           </>
@@ -100,13 +100,13 @@ export function LeaveRequestForm({ schoolSlug, studentId }: { schoolSlug: string
 
         <label className="grid gap-2 text-sm font-semibold sm:col-span-2">
           Reason
-          <Textarea name="reason" required minLength={5} maxLength={2000} className="min-h-32 rounded-2xl border-slate-200 bg-slate-50/80 px-4 shadow-inner shadow-slate-100 focus:bg-white" placeholder="For example: medical appointment, family requirement…" />
+          <Textarea name="reason" required minLength={5} maxLength={2000} className="min-h-32 rounded-2xl border-border bg-background/70 px-4" placeholder="For example: medical appointment, family requirement…" />
         </label>
 
         {state.error && <p role="alert" className="text-sm font-medium text-destructive sm:col-span-2">{state.error}</p>}
         {state.success && <p role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700 sm:col-span-2">Request submitted for school review.</p>}
 
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-5 sm:col-span-2">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border/60 pt-5 sm:col-span-2">
           <p className="text-xs leading-5 text-muted-foreground">The school will notify you after reviewing this request.</p>
           <Button type="button" size="lg" className="rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 px-6 shadow-[0_10px_24px_rgba(79,70,229,0.24)] hover:from-indigo-700 hover:to-violet-700" disabled={pending} onClick={() => { if (formRef.current?.reportValidity()) setConfirmationOpen(true); }}>
             <Send className="size-4" />{pending ? "Submitting…" : "Submit request"}

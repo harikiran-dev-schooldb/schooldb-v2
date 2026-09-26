@@ -40,7 +40,7 @@ export default async function StudentTimetablePage({
 
   return (
     <SelfServicePage title="Class timetable" description="The active weekly timetable for this class and section.">
-      <Card className="overflow-hidden border-white/80 bg-white/90 shadow-[0_18px_50px_rgba(15,23,42,0.06)]">
+      <Card className="overflow-hidden rounded-[26px] border-border/60 bg-card/90 shadow-[0_18px_50px_rgba(15,23,42,0.06)]">
         <CardContent className="p-0">
           {entries.length ? (
             <Table>
@@ -55,7 +55,7 @@ export default async function StudentTimetablePage({
               <TableBody>
                 {periods.map((period) => (
                   <TableRow key={period.id}>
-                    <TableCell className="sticky left-0 z-10 bg-white/95">
+                    <TableCell className="sticky left-0 z-10 bg-card/95">
                       <p className="font-bold">{period.name}</p>
                       <p className="mt-1 text-[11px] text-muted-foreground">
                         {period.startTime} – {period.endTime}
@@ -67,7 +67,7 @@ export default async function StudentTimetablePage({
                       return (
                         <TableCell key={day} className="min-w-36 align-top">
                           {entry ? (
-                            <div className="rounded-xl border border-indigo-100 bg-gradient-to-br from-indigo-50/80 to-violet-50/80 p-3">
+                            <div className="rounded-xl border border-indigo-500/15 bg-indigo-500/[0.06] p-3">
                               <p className="font-bold text-indigo-950">{entry.teacherAllocation.subject.name}</p>
                               <p className="mt-1 text-xs text-indigo-700/70">{entry.teacherAllocation.teacher.fullName}</p>
                             </div>

@@ -1,36 +1,7 @@
-"use client";
-
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import {
-  BookOpenCheck,
-  CalendarCheck2,
-  CalendarDays,
-  CalendarClock,
-  ClipboardList,
-  CreditCard,
-  LayoutDashboard,
-  ScrollText,
-  Trophy,
-  BusFront,
-  LibraryBig,
-} from "lucide-react";
+import { Home, Sparkles } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
-
-const links = [
-  { href: "", label: "Overview", icon: LayoutDashboard },
-  { href: "/attendance", label: "Attendance", icon: CalendarCheck2 },
-  { href: "/fees", label: "Fees", icon: CreditCard },
-  { href: "/exams", label: "Exams", icon: ClipboardList },
-  { href: "/results", label: "Results", icon: Trophy },
-  { href: "/timetable", label: "Timetable", icon: CalendarDays },
-  { href: "/homework", label: "Homework", icon: BookOpenCheck },
-  { href: "/transport", label: "Transport", icon: BusFront },
-  { href: "/library", label: "Library", icon: LibraryBig },
-  { href: "/report-card", label: "Report card", icon: ScrollText },
-  { href: "/leave-requests", label: "Leave requests", icon: CalendarClock },
-];
 
 export function StudentContextHeader({
   schoolSlug,
@@ -41,6 +12,7 @@ export function StudentContextHeader({
     id: string;
     fullName: string | null;
     admissionNo: string;
+    imageUrl?: string | null;
     relationship: string | null;
     enrollments: Array<{
       class: { name: string };
@@ -51,7 +23,6 @@ export function StudentContextHeader({
 }) {
   const base = `/${schoolSlug}/my/${student.id}`;
   const enrollment = student.enrollments[0];
-  const pathname = usePathname();
   const initials = (student.fullName || "Student")
     .split(" ")
     .slice(0, 2)
@@ -59,49 +30,49 @@ export function StudentContextHeader({
     .join("");
 
   return (
-    <div className="space-y-5 print:hidden">
-      <div className="relative overflow-hidden rounded-[28px] border border-indigo-200/60 bg-gradient-to-br from-white via-indigo-50/70 to-violet-50/80 p-5 shadow-[0_20px_60px_rgba(79,70,229,0.09)] sm:p-7">
-        <div className="pointer-events-none absolute -right-16 -top-20 size-52 rounded-full bg-violet-300/20 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-20 left-1/3 size-48 rounded-full bg-blue-300/20 blur-3xl" />
-        <div className="relative flex flex-wrap items-center gap-4">
-          <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-600 to-violet-600 text-lg font-black text-white shadow-[0_10px_28px_rgba(79,70,229,0.24)]">
-            {initials}
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-2xl font-bold tracking-[-0.03em] sm:text-3xl">
-                {student.fullName || "Student"}
-              </h1>
-              {student.relationship && student.relationship !== "Self" && (
-                <Badge variant="outline">{student.relationship}</Badge>
-              )}
-            </div>
-            <p className="mt-1.5 text-sm font-medium text-muted-foreground">
-              Admission {student.admissionNo}
-              {enrollment
-                ? ` · ${enrollment.class.name} ${enrollment.section.name} · ${enrollment.academicYear.name}`
-                : " · No active enrollment"}
-            </p>
-          </div>
+    <section className="flex flex-col gap-4 rounded-[26px] border border-border/60 bg-card/90 p-4 shadow-[0_18px_55px_rgba(15,23,42,0.06)] backdrop-blur-xl sm:flex-row sm:items-center sm:p-5 print:hidden">
+      <div className="flex min-w-0 flex-1 items-center gap-4">
+        <div
+          className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-600 via-violet-600 to-blue-600 bg-cover bg-center font-black text-white shadow-[0_10px_26px_rgba(79,70,229,0.25)]"
+          style={student.imageUrl ? { backgroundImage: `url(${JSON.stringify(student.imageUrl)})` } : undefined}
+          role={student.imageUrl ? "img" : undefined}
+          aria-label={student.imageUrl ? `${student.fullName || "Student"} profile photo` : undefined}
+        >
+          {!student.imageUrl && initials}
         </div>
 
-        <nav className="relative mt-6 flex gap-2 overflow-x-auto border-t border-indigo-100/80 pt-4" aria-label="Student sections">
-          {links.map(({ href, label, icon: Icon }) => (
-            <Link
-              key={label}
-              href={`${base}${href}`}
-              className={`inline-flex shrink-0 items-center gap-2 rounded-xl border px-3 py-2 text-sm font-semibold transition-all ${
-                pathname === `${base}${href}`
-                  ? "border-indigo-200 bg-indigo-600 text-white shadow-[0_8px_18px_rgba(79,70,229,0.22)]"
-                  : "border-white/80 bg-white/75 text-muted-foreground shadow-sm hover:border-indigo-200 hover:bg-white hover:text-indigo-700"
-              }`}
-            >
-              <Icon className="size-4" />
-              {label}
-            </Link>
-          ))}
-        </nav>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="truncate text-base font-bold tracking-[-0.02em] text-foreground">
+              {student.fullName || "Student"}
+            </p>
+            {student.relationship && student.relationship !== "Self" && (
+              <Badge variant="outline" className="rounded-full">
+                {student.relationship}
+              </Badge>
+            )}
+          </div>
+          <p className="mt-1 truncate text-sm text-muted-foreground">
+            {enrollment
+              ? `${enrollment.class.name} · Section ${enrollment.section.name} · ${enrollment.academicYear.name}`
+              : "No active enrollment"}
+          </p>
+        </div>
       </div>
-    </div>
+
+      <div className="flex items-center gap-2">
+        <span className="hidden rounded-xl bg-muted/60 px-3 py-2 text-xs font-semibold text-muted-foreground sm:inline-flex">
+          Admission {student.admissionNo}
+        </span>
+        <Link
+          href={base}
+          className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-xl bg-foreground px-4 text-sm font-bold text-background shadow-sm transition hover:opacity-90 sm:flex-none"
+        >
+          <Home className="size-4" />
+          Dashboard
+          <Sparkles className="size-3.5 opacity-70" />
+        </Link>
+      </div>
+    </section>
   );
 }
