@@ -66,15 +66,15 @@ export default async function StudentAttendancePage({
               </div>
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                 {[
-                  ["Present", report.summary.present, CheckCircle2, "text-emerald-300"],
-                  ["Absent", report.summary.absent, CalendarCheck2, "text-rose-300"],
-                  ["Late", report.summary.late, Clock3, "text-amber-300"],
-                  ["Leave", report.summary.leave, ShieldCheck, "text-blue-300"],
-                ].map(([label, value, Icon, color]) => (
-                  <div key={String(label)} className="rounded-2xl border border-white/10 bg-white/[0.06] p-4 backdrop-blur-xl">
+                  { label: "Present", value: report.summary.present, icon: CheckCircle2, color: "text-emerald-300" },
+                  { label: "Absent", value: report.summary.absent, icon: CalendarCheck2, color: "text-rose-300" },
+                  { label: "Late", value: report.summary.late, icon: Clock3, color: "text-amber-300" },
+                  { label: "Leave", value: report.summary.leave, icon: ShieldCheck, color: "text-blue-300" },
+                ].map(({ label, value, icon: Icon, color }) => (
+                  <div key={label} className="rounded-2xl border border-white/10 bg-white/[0.06] p-4 backdrop-blur-xl">
                     <Icon className={`size-4 ${color}`} />
-                    <p className="mt-3 text-2xl font-black">{String(value)}</p>
-                    <p className="mt-1 text-xs text-slate-400">{String(label)}</p>
+                    <p className="mt-3 text-2xl font-black">{value}</p>
+                    <p className="mt-1 text-xs text-slate-400">{label}</p>
                   </div>
                 ))}
               </div>

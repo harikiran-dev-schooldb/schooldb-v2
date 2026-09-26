@@ -68,8 +68,8 @@ export default async function StudentTimetablePage({
                         <TableCell key={day} className="min-w-36 align-top">
                           {entry ? (
                             <div className="rounded-xl border border-indigo-500/15 bg-indigo-500/[0.06] p-3">
-                              <p className="font-bold text-indigo-950">{entry.teacherAllocation.subject.name}</p>
-                              <p className="mt-1 text-xs text-indigo-700/70">{entry.teacherAllocation.teacher.fullName}</p>
+                              <p className="font-bold text-indigo-900 dark:text-indigo-200">{entry.teacherAllocation.subject.name}</p>
+                              <p className="mt-1 text-xs text-indigo-700/70 dark:text-indigo-200/70">{entry.teacherAllocation.teacher.fullName}</p>
                             </div>
                           ) : (
                             <span className="text-muted-foreground/50">—</span>

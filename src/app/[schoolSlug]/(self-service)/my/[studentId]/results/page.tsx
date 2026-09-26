@@ -1,4 +1,4 @@
-import { Trophy } from "lucide-react";
+import { Award, Sparkles, Trophy } from "lucide-react";
 
 import { SelfServiceEmptyState, SelfServicePage } from "@/components/self-service/SelfServicePage";
 import { Badge } from "@/components/ui/badge";
@@ -37,8 +37,23 @@ export default async function StudentResultsPage({
   return (
     <SelfServicePage title="Results" description="Marks from completed examinations for the active enrollment.">
       {results.length ? (
-        results.map((result) => (
-          <Card key={result.id}>
+        <>
+          <section className="relative overflow-hidden rounded-[30px] bg-gradient-to-br from-[#17102d] via-[#241449] to-[#38216b] p-6 text-white shadow-[0_26px_70px_rgba(46,16,101,0.22)] sm:p-8">
+            <div className="pointer-events-none absolute -right-20 -top-24 size-64 rounded-full bg-fuchsia-400/20 blur-3xl" />
+            <div className="relative flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-violet-200"><Sparkles className="size-4" />Academic progress</p>
+                <h3 className="mt-4 text-3xl font-black tracking-[-0.04em]">Your results, at a glance</h3>
+                <p className="mt-2 text-sm text-violet-100/75">{results.length} completed examination{results.length === 1 ? "" : "s"} in your active academic year.</p>
+              </div>
+              <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.08] p-4 backdrop-blur-xl">
+                <Award className="size-5 text-amber-300" />
+                <div><p className="text-xs text-violet-100/70">Latest percentage</p><p className="text-2xl font-black">{results[0].percentage}%</p></div>
+              </div>
+            </div>
+          </section>
+          {results.map((result) => (
+          <Card key={result.id} className="rounded-[26px] border-border/60 bg-card/90 shadow-[0_18px_50px_rgba(15,23,42,0.06)]">
             <CardHeader>
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
@@ -91,7 +106,8 @@ export default async function StudentResultsPage({
               </div>
             </CardContent>
           </Card>
-        ))
+          ))}
+        </>
       ) : (
         <Card>
           <CardContent className="p-0">
