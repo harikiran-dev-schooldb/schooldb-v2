@@ -1,55 +1,36 @@
+"use client";
+
 import Image from "next/image";
-import Link from "next/link";
-import { ArrowRight, Building2, School, ShieldCheck } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { type FormEvent, useState } from "react";
+import { ArrowRight, Link2, ShieldCheck } from "lucide-react";
 
-import { prisma } from "@/lib/prisma";
-import { syncUser } from "@/lib/sync-user";
+const SCHOOL_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
-function formatRole(role: string) {
-  return role
-    .replaceAll("_", " ")
-    .toLowerCase()
-    .replace(/\b\w/g, (letter) => letter.toUpperCase());
-}
+export default function ChooseSchoolPage() {
+  const router = useRouter();
+  const [schoolSlug, setSchoolSlug] = useState("");
+  const [error, setError] = useState("");
 
-export default async function ChooseSchoolPage() {
-  const user = await syncUser();
-  const schools: Array<{
-    id: string;
-    name: string;
-    slug: string;
-    logo: string | null;
-    role: string | null;
-  }> = user
-    ? user.memberships.map((membership) => ({
-        id: membership.school.id,
-        name: membership.school.name,
-        slug: membership.school.slug,
-        logo: membership.school.logo,
-        role: membership.role,
-      }))
-    : (
-        await prisma.school.findMany({
-          orderBy: { name: "asc" },
-          select: {
-            id: true,
-            name: true,
-            slug: true,
-            logo: true,
-          },
-        })
-      ).map((school) => ({ ...school, role: null }));
-  const name = user
-    ? [user.firstName, user.lastName].filter(Boolean).join(" ") ||
-      "SchoolDB user"
-    : null;
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    const slug = schoolSlug.trim().toLowerCase().replace(/^\/+|\/+$/g, "");
+
+    if (!SCHOOL_SLUG_PATTERN.test(slug)) {
+      setError("Enter a valid school slug, such as demo-school.");
+      return;
+    }
+
+    router.push(`/${slug}/login`);
+  };
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-gradient-to-br from-slate-50 via-indigo-50/70 to-violet-50 px-4 py-8 sm:py-12">
+    <main className="relative flex min-h-screen items-center overflow-hidden bg-gradient-to-br from-slate-50 via-indigo-50/70 to-violet-50 px-4 py-8 sm:py-12">
       <div className="pointer-events-none absolute -left-32 -top-32 size-96 rounded-full bg-indigo-300/15 blur-3xl" />
       <div className="pointer-events-none absolute -bottom-32 -right-32 size-96 rounded-full bg-violet-300/15 blur-3xl" />
 
-      <div className="relative mx-auto w-full max-w-3xl">
+      <div className="relative mx-auto w-full max-w-lg">
         <header className="text-center">
           <Image
             src="/pwa-192.png"
@@ -63,75 +44,76 @@ export default async function ChooseSchoolPage() {
             SchoolDB mobile workspace
           </p>
           <h1 className="mt-2 text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
-            Choose your school
+            Enter your school slug
           </h1>
-          <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-muted-foreground">
-            {name
-              ? `Welcome, ${name}. Select the school workspace you want to open.`
-              : "Select your school to continue with WhatsApp OTP or staff sign-in."}
+          <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-muted-foreground">
+            Use the unique name from your school&apos;s SchoolDB address to open
+            its secure login page.
           </p>
         </header>
 
-        {schools.length ? (
-          <section className="mt-8 grid gap-4 sm:grid-cols-2">
-            {schools.map((school) => (
-              <Link
-                key={school.id}
-                href={user ? `/${school.slug}` : `/${school.slug}/login`}
-                className="group rounded-3xl border border-white/80 bg-white/90 p-5 shadow-[0_16px_45px_rgba(15,23,42,0.07)] backdrop-blur-xl transition duration-300 hover:-translate-y-1 hover:border-primary/20 hover:shadow-xl"
-              >
-                <div className="flex items-start gap-4">
-                  <div className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-primary/10 text-primary ring-1 ring-primary/10">
-                    {school.logo ? (
-                      <span
-                        role="img"
-                        aria-label={`${school.name} logo`}
-                        className="size-full bg-cover bg-center"
-                        style={{
-                          backgroundImage: `url(${JSON.stringify(school.logo)})`,
-                        }}
-                      />
-                    ) : (
-                      <School className="size-5" />
-                    )}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <h2 className="truncate text-base font-bold text-foreground">
-                      {school.name}
-                    </h2>
-                    {school.role ? (
-                      <p className="mt-1 text-xs font-semibold text-primary">
-                        {formatRole(school.role)}
-                      </p>
-                    ) : null}
-                    <div className="mt-4 flex items-center justify-between gap-3 text-xs text-muted-foreground">
-                      <span className="inline-flex items-center gap-1.5">
-                        <ShieldCheck className="size-3.5 text-emerald-600" />
-                        {user ? "Active workspace" : "Secure school login"}
-                      </span>
-                      <span className="inline-flex items-center gap-1 font-bold text-primary">
-                        {user ? "Open" : "Continue"}{" "}
-                        <ArrowRight className="size-3.5 transition group-hover:translate-x-1" />
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </section>
-        ) : (
-          <section className="mt-8 rounded-3xl border border-white/80 bg-white/90 p-8 text-center shadow-xl backdrop-blur-xl">
-            <div className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-              <Building2 className="size-6" />
-            </div>
-            <h2 className="mt-4 font-bold">No active school found</h2>
-            <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              {user
-                ? "Ask your school administrator to add this account to the school workspace."
-                : "No schools are available yet. Please contact SchoolDB support."}
+        <form
+          onSubmit={handleSubmit}
+          className="mt-8 rounded-3xl border border-white/80 bg-white/90 p-6 shadow-[0_16px_45px_rgba(15,23,42,0.08)] backdrop-blur-xl sm:p-8"
+        >
+          <label
+            htmlFor="school-slug"
+            className="text-sm font-bold text-foreground"
+          >
+            School slug
+          </label>
+          <div className="mt-3 flex items-center overflow-hidden rounded-2xl border border-border bg-background shadow-sm transition focus-within:border-primary/50 focus-within:ring-4 focus-within:ring-primary/10">
+            <span className="flex h-14 items-center gap-2 border-r border-border bg-muted/60 px-4 text-sm text-muted-foreground">
+              <Link2 className="size-4" />
+              /
+            </span>
+            <input
+              id="school-slug"
+              name="schoolSlug"
+              value={schoolSlug}
+              onChange={(event) => {
+                setSchoolSlug(event.target.value);
+                if (error) setError("");
+              }}
+              placeholder="demo-school"
+              autoCapitalize="none"
+              autoComplete="organization"
+              autoCorrect="off"
+              spellCheck={false}
+              aria-invalid={Boolean(error)}
+              aria-describedby={error ? "school-slug-error" : undefined}
+              className="h-14 min-w-0 flex-1 bg-transparent px-4 text-base font-semibold text-foreground outline-none placeholder:font-normal placeholder:text-muted-foreground/60"
+              autoFocus
+            />
+            <span className="hidden pr-4 text-sm text-muted-foreground sm:inline">
+              /login
+            </span>
+          </div>
+
+          {error ? (
+            <p id="school-slug-error" className="mt-2 text-sm text-destructive">
+              {error}
             </p>
-          </section>
-        )}
+          ) : (
+            <p className="mt-2 text-xs leading-5 text-muted-foreground">
+              Example: for /demo-school/login, enter demo-school.
+            </p>
+          )}
+
+          <button
+            type="submit"
+            disabled={!schoolSlug.trim()}
+            className="group mt-6 flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 px-5 text-sm font-bold text-white shadow-[0_14px_32px_rgba(15,23,42,0.2)] transition hover:-translate-y-0.5 hover:bg-indigo-600 hover:shadow-[0_18px_38px_rgba(79,70,229,0.25)] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0"
+          >
+            Continue to school login
+            <ArrowRight className="size-4 opacity-70 transition-transform group-hover:translate-x-1" />
+          </button>
+
+          <p className="mt-5 flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
+            <ShieldCheck className="size-3.5 text-emerald-600" />
+            You&apos;ll sign in securely on your school&apos;s page.
+          </p>
+        </form>
       </div>
     </main>
   );
