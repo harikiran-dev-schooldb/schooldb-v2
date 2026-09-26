@@ -1,5 +1,8 @@
 {
   "buildCommand": "npm run vercel-build",
+  "git": {
+    "deploymentEnabled": false
+  },
   "crons": [
     {
       "path": "/api/cron/whatsapp",
