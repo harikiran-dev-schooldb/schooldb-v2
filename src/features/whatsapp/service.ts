@@ -268,6 +268,9 @@ function automatedTemplateName(sourceType: AutomatedAlertInput["sourceType"]) {
 }
 
 export async function queueAutomatedWhatsappAlert(input: AutomatedAlertInput) {
+  if (["HOMEWORK", "RESULT", "FEE_DUE"].includes(input.sourceType)) {
+    return null;
+  }
   if (
     process.env.META_WA_AUTOMATION_ENABLED !== "true" ||
     input.studentIds.length === 0

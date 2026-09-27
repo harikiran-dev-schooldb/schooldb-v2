@@ -50,7 +50,7 @@ export function ManualFeeReminderButton({ schoolSlug, filters }: Props) {
         toast.info(
           result.recentlyRemindedCount > 0
             ? "All eligible recipients were reminded in the last 24 hours."
-            : "No overdue students with WhatsApp consent and a valid number were found.",
+            : "No students with overdue fees were found.",
         );
         return;
       }
@@ -71,15 +71,9 @@ export function ManualFeeReminderButton({ schoolSlug, filters }: Props) {
       setSending(true);
       const result = await sendFeeRemindersAction(schoolSlug, filters);
       setOpen(false);
-      if (result.remaining > 0) {
-        toast.success(
-          `${result.processed} reminders processed; ${result.remaining} remain queued in WhatsApp.`,
-        );
-      } else {
-        toast.success(
-          `Fee reminders processed for ${result.recipientCount} recipient${result.recipientCount === 1 ? "" : "s"}.`,
-        );
-      }
+      toast.success(
+        `App reminders sent for ${result.recipientCount} student${result.recipientCount === 1 ? "" : "s"}.`,
+      );
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Unable to send fee reminders.",
@@ -123,15 +117,15 @@ export function ManualFeeReminderButton({ schoolSlug, filters }: Props) {
                   </p>
                   {preview && (
                     <div className="grid grid-cols-2 gap-2 rounded-xl border border-border/60 bg-background/80 p-3 text-foreground">
-                      <span>{preview.recipientCount} WhatsApp recipients</span>
+                      <span>{preview.recipientCount} app recipients</span>
                       <span>{preview.installmentCount} overdue installments</span>
                       <span>{currency.format(preview.outstandingAmount)} outstanding</span>
                       <span>{preview.recentlyRemindedCount} recently skipped</span>
                     </div>
                   )}
                   <p>
-                    Numbers successfully reminded within the last 24 hours are
-                    skipped. The weekly Monday reminder remains enabled.
+                    Students reminded within the last 24 hours are skipped.
+                    Reminders are sent only when you press this button.
                   </p>
                 </div>
               </AlertDialogDescription>

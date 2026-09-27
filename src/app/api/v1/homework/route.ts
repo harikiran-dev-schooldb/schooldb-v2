@@ -11,6 +11,7 @@ import { homeworkSchema } from "@/features/homework/schemas/homework.schema";
 import { homeworkService } from "@/features/homework/services/homework.service";
 import { recordAuditLog } from "@/lib/audit";
 import { prisma } from "@/lib/prisma";
+import { notifyHomeworkPublished } from "@/features/notifications/events";
 
 export async function GET(req: Request) {
   return apiHandler(async () => {
@@ -50,6 +51,9 @@ export async function POST(req: Request) {
     await requireTeacherClassSection(body.classId, body.sectionId || undefined);
 
     const item = await homeworkService.create(tenant.schoolId, body);
+    if (item.active) {
+      await notifyHomeworkPublished(item.id, tenant.schoolId);
+    }
     await recordAuditLog({
       actor: tenant,
       module: "HOMEWORK",

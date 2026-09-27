@@ -1,10 +1,4 @@
-import { randomUUID } from "node:crypto";
-
-import { normalizeIndianMobile } from "@/features/auth/otp";
-import {
-  createWhatsappCampaign,
-  processWhatsappCampaignBatch,
-} from "@/features/whatsapp/service";
+import { sendAnnouncementPush } from "@/features/notifications/push";
 import { prisma } from "@/lib/prisma";
 
 export type FeeReminderFilters = {
@@ -33,25 +27,6 @@ function indiaDateKey(value = new Date()) {
   }).format(value);
 }
 
-function preferredPhone(student: {
-  fatherPhone: string | null;
-  motherPhone: string | null;
-  guardianPhone: string | null;
-  phone: string | null;
-}) {
-  for (const value of [
-    student.fatherPhone,
-    student.motherPhone,
-    student.guardianPhone,
-    student.phone,
-  ]) {
-    if (!value) continue;
-    const phone = normalizeIndianMobile(value);
-    if (phone) return phone;
-  }
-  return null;
-}
-
 async function resolveFeeReminderAudience(
   schoolId: string,
   filters: FeeReminderFilters,
@@ -75,7 +50,6 @@ async function resolveFeeReminderAudience(
             ...(filters.sectionId ? { sectionId: filters.sectionId } : {}),
             student: {
               status: "ACTIVE",
-              whatsappOptIn: true,
               ...(filters.search
                 ? {
                     OR: [
@@ -113,10 +87,8 @@ async function resolveFeeReminderAudience(
                   student: {
                     select: {
                       id: true,
-                      phone: true,
-                      fatherPhone: true,
-                      motherPhone: true,
-                      guardianPhone: true,
+                      fullName: true,
+                      admissionNo: true,
                     },
                   },
                 },
@@ -128,36 +100,38 @@ async function resolveFeeReminderAudience(
     },
   });
 
-  const byPhone = new Map<string, { studentId: string }>();
-  const studentIds = new Set<string>();
+  const students = new Map<string, { studentId: string; name: string }>();
   for (const row of rows) {
     const student = row.studentFeeItem.studentFee.studentEnrollment.student;
-    const phone = preferredPhone(student);
-    if (!phone) continue;
-    studentIds.add(student.id);
-    if (!byPhone.has(phone)) byPhone.set(phone, { studentId: student.id });
+    if (!students.has(student.id)) {
+      students.set(student.id, {
+        studentId: student.id,
+        name: student.fullName?.trim() || student.admissionNo,
+      });
+    }
   }
 
-  const phones = [...byPhone.keys()];
-  const recentRecipients = phones.length
-    ? await prisma.whatsappRecipient.findMany({
+  const studentIds = [...students.keys()];
+  const recentRecipients = studentIds.length
+    ? await prisma.announcement.findMany({
         where: {
           schoolId,
-          phone: { in: phones },
+          category: "FEE_REMINDER",
+          targetType: "STUDENT",
+          targetId: { in: studentIds },
           createdAt: {
             gte: new Date(now.getTime() - RECENT_REMINDER_WINDOW_MS),
           },
-          status: { in: ["SENT", "DELIVERED", "READ"] },
-          campaign: { sourceType: "FEE_DUE" },
         },
-        select: { phone: true },
-        distinct: ["phone"],
+        select: { targetId: true },
+        distinct: ["targetId"],
       })
     : [];
-  const recentPhones = new Set(recentRecipients.map((item) => item.phone));
-  const eligiblePhones = phones.filter((phone) => !recentPhones.has(phone));
-  const eligibleStudentIds = eligiblePhones.map(
-    (phone) => byPhone.get(phone)!.studentId,
+  const recentlyRemindedIds = new Set(
+    recentRecipients.flatMap((item) => item.targetId ? [item.targetId] : []),
+  );
+  const eligibleStudentIds = studentIds.filter(
+    (studentId) => !recentlyRemindedIds.has(studentId),
   );
   const eligibleStudentIdSet = new Set(eligibleStudentIds);
   const eligibleRows = rows.filter((row) =>
@@ -167,11 +141,11 @@ async function resolveFeeReminderAudience(
   );
 
   return {
-    studentIds: eligibleStudentIds,
+    recipients: eligibleStudentIds.map((studentId) => students.get(studentId)!),
     installmentNames: [...new Set(eligibleRows.map((row) => row.name))],
     preview: {
-      recipientCount: eligiblePhones.length,
-      studentCount: studentIds.size,
+      recipientCount: eligibleStudentIds.length,
+      studentCount: studentIds.length,
       installmentCount: eligibleRows.length,
       outstandingAmount: eligibleRows.reduce(
         (total, row) =>
@@ -179,7 +153,7 @@ async function resolveFeeReminderAudience(
           Math.max(0, Number(row.payableAmount) - Number(row.paidAmount)),
         0,
       ),
-      recentlyRemindedCount: recentPhones.size,
+      recentlyRemindedCount: recentlyRemindedIds.size,
     } satisfies FeeReminderPreview,
   };
 }
@@ -205,46 +179,44 @@ export async function sendManualFeeReminders(input: {
     throw new Error(
       audience.preview.recentlyRemindedCount > 0
         ? "All eligible recipients were reminded within the last 24 hours."
-        : "No overdue students with WhatsApp consent and a valid mobile number were found.",
+        : "No students with overdue fees were found for the selected filters.",
     );
-  }
-
-  const templateName =
-    process.env.META_WA_FEE_REMINDER_TEMPLATE ||
-    process.env.META_WA_ANNOUNCEMENT_TEMPLATE;
-  if (!templateName) {
-    throw new Error("The WhatsApp fee-reminder template is not configured.");
   }
 
   const message =
     audience.installmentNames.length === 1
       ? `${audience.installmentNames[0]} is overdue. Please review the outstanding fee in SchoolDB or contact the school office.`
       : "One or more fee installments are overdue. Please review outstanding fees in SchoolDB or contact the school office.";
-  const reminderId = randomUUID();
-  const campaign = await createWhatsappCampaign({
-    schoolId: input.schoolId,
-    createdBy: input.createdBy,
-    title: "Fee payment reminder",
-    message,
-    targetType: "SCHOOL",
-    targetId: "",
-    targetLabel: "Filtered students with overdue fees",
-    studentIds: audience.studentIds,
-    scheduledAt: new Date(),
-    templateName,
-    automatic: true,
-    automationKey: `fee-due:manual:${reminderId}`,
-    sourceType: "FEE_DUE",
-    sourceId: reminderId,
-  });
-  const delivery = await processWhatsappCampaignBatch(
-    input.schoolId,
-    campaign.id,
-  );
+  let sentCount = 0;
+  let failedCount = 0;
+  const notificationIds: string[] = [];
+  for (const recipient of audience.recipients) {
+    const announcement = await prisma.announcement.create({
+      data: {
+        schoolId: input.schoolId,
+        createdBy: input.createdBy,
+        title: "Fee payment reminder",
+        body: message,
+        category: "FEE_REMINDER",
+        priority: "IMPORTANT",
+        targetType: "STUDENT",
+        targetId: recipient.studentId,
+        targetLabel: recipient.name,
+        publishedAt: new Date(),
+      },
+    });
+    notificationIds.push(announcement.id);
+    const delivery = await sendAnnouncementPush(announcement);
+    sentCount += delivery.sent;
+    failedCount += delivery.failed;
+  }
 
   return {
-    campaignId: campaign.id,
-    recipientCount: campaign.recipientCount,
-    ...delivery,
+    notificationIds,
+    recipientCount: audience.recipients.length,
+    processed: audience.recipients.length,
+    sentCount,
+    failedCount,
+    remaining: 0,
   };
 }

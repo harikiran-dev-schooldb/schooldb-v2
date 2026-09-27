@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireCurrentTeacher, requireRole } from "@/lib/auth";
 import { apiHandler } from "@/lib/api";
 import { recordAuditLog } from "@/lib/audit";
+import { notifyHomeworkPublished } from "@/features/notifications/events";
 import { prisma } from "@/lib/prisma";
 import { ApiResponse } from "@/lib/response";
 import { validateBody } from "@/lib/validation";
@@ -139,6 +140,8 @@ export async function POST(req: Request) {
       },
       select: { id: true, title: true },
     });
+
+    await notifyHomeworkPublished(item.id, membership.schoolId);
 
     await recordAuditLog({
       actor: membership,

@@ -51,12 +51,7 @@ export async function notificationContext(schoolSlug: string) {
   const visibility = notificationVisibility(membership.schoolId, students);
   return {
     membership,
-    where: {
-      ...visibility,
-      ...(membership.role === "PARENT"
-        ? { category: { not: "BIRTHDAY" } }
-        : {}),
-    },
+    where: visibility,
   };
 }
 

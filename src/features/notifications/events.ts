@@ -18,8 +18,190 @@ async function createEventNotification(input: {
       publishedAt: new Date(),
     },
   });
-  void sendAnnouncementPush(announcement);
+  await sendAnnouncementPush(announcement);
   return announcement;
+}
+
+function indiaDateKey(value = new Date()) {
+  return new Intl.DateTimeFormat("en-CA", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    timeZone: "Asia/Kolkata",
+  }).format(value);
+}
+
+function indiaDayBounds(value = new Date()) {
+  const [year, month, day] = indiaDateKey(value).split("-").map(Number);
+  const start = new Date(Date.UTC(year, month - 1, day) - 5.5 * 60 * 60 * 1000);
+  return { start, end: new Date(start.getTime() + 24 * 60 * 60 * 1000) };
+}
+
+function formatDate(value: Date) {
+  return new Intl.DateTimeFormat("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    timeZone: "Asia/Kolkata",
+  }).format(value);
+}
+
+export async function notifyHomeworkPublished(homeworkId: string, schoolId: string) {
+  const homework = await prisma.homework.findFirst({
+    where: { id: homeworkId, schoolId, active: true },
+    select: {
+      id: true,
+      title: true,
+      assignedDate: true,
+      dueDate: true,
+      classId: true,
+      sectionId: true,
+      class: { select: { name: true } },
+      section: { select: { name: true } },
+      subject: { select: { name: true } },
+    },
+  });
+  if (!homework) return null;
+
+  const targetType = homework.sectionId ? "SECTION" : "CLASS";
+  const targetId = homework.sectionId ?? homework.classId;
+  const targetLabel = homework.section
+    ? `${homework.class.name} - ${homework.section.name}`
+    : homework.class.name;
+  const title = `New homework: ${homework.title}`;
+  const body = [
+    homework.subject?.name,
+    homework.dueDate ? `Due ${formatDate(homework.dueDate)}` : null,
+  ].filter(Boolean).join(" · ") || "Open SchoolDB to view the homework.";
+
+  const existing = await prisma.announcement.findFirst({
+    where: {
+      schoolId,
+      category: "HOMEWORK",
+      targetType,
+      targetId,
+      title,
+      body,
+      createdBy: "SYSTEM",
+      publishedAt: { gte: homework.assignedDate },
+    },
+    select: { id: true },
+  });
+  if (existing) return existing;
+
+  return createEventNotification({
+    schoolId,
+    title,
+    body,
+    category: "HOMEWORK",
+    targetType,
+    targetId,
+    targetLabel,
+  });
+}
+
+export async function notifyExamResultsPublished(examId: string, schoolId: string) {
+  const exam = await prisma.exam.findFirst({
+    where: { id: examId, schoolId, status: "COMPLETED", active: true },
+    select: {
+      name: true,
+      schedules: {
+        select: {
+          classId: true,
+          sectionId: true,
+          class: { select: { name: true } },
+          section: { select: { name: true } },
+        },
+      },
+    },
+  });
+  if (!exam) return [];
+
+  const scopes = [...new Map(exam.schedules.map((schedule) => [
+    `${schedule.classId}:${schedule.sectionId ?? "all"}`,
+    schedule,
+  ])).values()];
+  const notifications = [];
+  for (const scope of scopes) {
+    const targetType = scope.sectionId ? "SECTION" : "CLASS";
+    const targetId = scope.sectionId ?? scope.classId;
+    const targetLabel = scope.section
+      ? `${scope.class.name} - ${scope.section.name}`
+      : scope.class.name;
+    const title = `${exam.name} results published`;
+    const body = "Results are now available. Open SchoolDB to view the result and report card.";
+    const existing = await prisma.announcement.findFirst({
+      where: {
+        schoolId,
+        category: "EXAM",
+        targetType,
+        targetId,
+        title,
+        createdBy: "SYSTEM",
+      },
+      select: { id: true },
+    });
+    if (existing) {
+      notifications.push(existing);
+      continue;
+    }
+    notifications.push(await createEventNotification({
+      schoolId,
+      title,
+      body,
+      category: "EXAM",
+      targetType,
+      targetId,
+      targetLabel,
+    }));
+  }
+  return notifications;
+}
+
+export async function notifyDailyBirthdays(now = new Date()) {
+  const dateKey = indiaDateKey(now);
+  const [, month, day] = dateKey.split("-").map(Number);
+  const { start, end } = indiaDayBounds(now);
+  const students = await prisma.student.findMany({
+    where: { status: "ACTIVE", enrollments: { some: { active: true } } },
+    select: { id: true, schoolId: true, fullName: true, admissionNo: true, dob: true },
+  });
+  const birthdays = students.filter((student) => {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      month: "numeric",
+      day: "numeric",
+      timeZone: "Asia/Kolkata",
+    }).formatToParts(student.dob);
+    return Number(parts.find((part) => part.type === "month")?.value) === month
+      && Number(parts.find((part) => part.type === "day")?.value) === day;
+  });
+
+  let created = 0;
+  for (const student of birthdays) {
+    const existing = await prisma.announcement.findFirst({
+      where: {
+        schoolId: student.schoolId,
+        category: "BIRTHDAY",
+        targetType: "STUDENT",
+        targetId: student.id,
+        createdAt: { gte: start, lt: end },
+      },
+      select: { id: true },
+    });
+    if (existing) continue;
+    const name = student.fullName?.trim() || student.admissionNo;
+    await createEventNotification({
+      schoolId: student.schoolId,
+      title: "🎂 Happy Birthday!",
+      body: `Happy Birthday, ${name}! 🎉 Wishing you happiness, good health, learning and success. Best wishes from your school.`,
+      category: "BIRTHDAY",
+      targetType: "STUDENT",
+      targetId: student.id,
+      targetLabel: name,
+    });
+    created += 1;
+  }
+  return { matched: birthdays.length, created };
 }
 
 export async function notifyFeePayment(paymentId: string, schoolId: string) {

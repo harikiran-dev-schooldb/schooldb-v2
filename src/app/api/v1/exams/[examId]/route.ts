@@ -4,9 +4,8 @@ import { ApiResponse } from "@/lib/response";
 
 import { examService } from "@/features/exams/services/exam.service";
 import { updateExamSchema } from "@/features/exams/schemas/exam.schema";
-import { after } from "next/server";
-import { processAutomatedCampaign, queueResultsPublishedAlert } from "@/features/whatsapp/automation";
 import { recordAuditLog } from "@/lib/audit";
+import { notifyExamResultsPublished } from "@/features/notifications/events";
 
 type RouteContext = {
   params: Promise<{
@@ -103,8 +102,7 @@ export async function PATCH(
     }
 
     if (parsed.data.status === "COMPLETED") {
-      const campaign = await queueResultsPublishedAlert(tenant.schoolId, exam.id);
-      if (campaign) after(() => processAutomatedCampaign(campaign.id));
+      await notifyExamResultsPublished(exam.id, tenant.schoolId);
     }
 
     await recordAuditLog({

@@ -53,9 +53,9 @@ export async function sendFeeRemindersAction(
     actor: membership,
     module: "FEES",
     action: "SEND",
-    entityType: "FEE_DUE_WHATSAPP_CAMPAIGN",
-    entityId: result.campaignId,
-    summary: `Manually triggered overdue-fee reminders for ${result.recipientCount} recipient${result.recipientCount === 1 ? "" : "s"}.`,
+    entityType: "FEE_DUE_APP_NOTIFICATION",
+    entityId: result.notificationIds[0],
+    summary: `Sent overdue-fee app notifications for ${result.recipientCount} student${result.recipientCount === 1 ? "" : "s"}.`,
     metadata: {
       recipientCount: result.recipientCount,
       processed: result.processed,
@@ -65,6 +65,6 @@ export async function sendFeeRemindersAction(
     },
   });
   revalidatePath(`/${schoolSlug}/fees/outstanding`);
-  revalidatePath(`/${schoolSlug}/whatsapp`);
+  revalidatePath(`/${schoolSlug}`, "layout");
   return result;
 }

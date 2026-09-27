@@ -1,8 +1,8 @@
 import {
   processReadyAutomatedCampaigns,
   queueDailyBirthdayWishes,
-  queueDailyFeeDueAlerts,
 } from "@/features/whatsapp/automation";
+import { notifyDailyBirthdays } from "@/features/notifications/events";
 
 export const maxDuration = 60;
 
@@ -12,13 +12,13 @@ export async function GET(request: Request) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const appBirthdays = await notifyDailyBirthdays();
   const birthdayCampaigns = await queueDailyBirthdayWishes();
-  const feeCampaigns = await queueDailyFeeDueAlerts();
   const processed = await processReadyAutomatedCampaigns();
   return Response.json({
     ok: true,
+    appBirthdayNotifications: appBirthdays,
     birthdayCampaignsQueued: birthdayCampaigns.length,
-    feeCampaignsQueued: feeCampaigns.length,
     campaignsProcessed: processed.filter(Boolean).length,
   });
 }

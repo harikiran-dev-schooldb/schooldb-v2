@@ -7,6 +7,7 @@ import { z } from "zod";
 import { homeworkSchema } from "@/features/homework/schemas/homework.schema";
 import { homeworkService } from "@/features/homework/services/homework.service";
 import { recordAuditLog } from "@/lib/audit";
+import { notifyHomeworkPublished } from "@/features/notifications/events";
 
 type Props = {
   params: Promise<{
@@ -77,6 +78,10 @@ export async function PATCH(
       tenant.schoolId,
       body.active,
     );
+
+    if (body.active) {
+      await notifyHomeworkPublished(item.id, tenant.schoolId);
+    }
 
     await recordAuditLog({
       actor: tenant,
