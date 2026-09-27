@@ -1,7 +1,6 @@
 package com.schooldb.mobile.family
 
 import android.content.Intent
-import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -57,6 +56,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import java.text.NumberFormat
@@ -1608,7 +1608,7 @@ private fun TransportContact(label: String, name: String, phone: String?) {
         }
         if (!phone.isNullOrBlank()) {
             OutlinedButton(onClick = {
-                context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:+91$phone")))
+                context.startActivity(Intent(Intent.ACTION_DIAL, "tel:+91$phone".toUri()))
             }) {
                 Icon(Icons.Outlined.Phone, contentDescription = null, modifier = Modifier.size(17.dp))
                 Spacer(Modifier.width(6.dp))

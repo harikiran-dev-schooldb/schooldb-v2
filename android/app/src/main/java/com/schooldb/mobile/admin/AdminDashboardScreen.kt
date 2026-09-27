@@ -78,9 +78,14 @@ import com.schooldb.mobile.teacher.MobileContext
 import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.Activity
 import com.composables.icons.lucide.ArrowRight
+import com.composables.icons.lucide.BadgeIndianRupee
 import com.composables.icons.lucide.Bell
+import com.composables.icons.lucide.BookOpenCheck
+import com.composables.icons.lucide.BriefcaseBusiness
 import com.composables.icons.lucide.CalendarCheck
+import com.composables.icons.lucide.CalendarClock
 import com.composables.icons.lucide.CalendarDays
+import com.composables.icons.lucide.CalendarRange
 import com.composables.icons.lucide.ChartNoAxesColumnIncreasing
 import com.composables.icons.lucide.CircleAlert
 import com.composables.icons.lucide.ClipboardCheck
@@ -90,9 +95,11 @@ import com.composables.icons.lucide.LayoutGrid
 import com.composables.icons.lucide.Megaphone
 import com.composables.icons.lucide.MessageSquareText
 import com.composables.icons.lucide.RefreshCw
+import com.composables.icons.lucide.ReceiptIndianRupee
 import com.composables.icons.lucide.School
 import com.composables.icons.lucide.Sparkles
-import com.composables.icons.lucide.Users
+import com.composables.icons.lucide.UserRoundPlus
+import com.composables.icons.lucide.UserRoundSearch
 import com.composables.icons.lucide.WalletCards
 import java.io.IOException
 import kotlinx.coroutines.Dispatchers
@@ -393,14 +400,14 @@ fun AdminDashboardScreen(
         }
     }
 
+    val darkTheme = MaterialTheme.colorScheme.background.luminance() < 0.5f
     Scaffold(
-        containerColor = if (selectedTab == "More") Color(0xFF060A13) else MaterialTheme.colorScheme.background,
+        containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
             PremiumAdminNavigation(
                 selectedTab = selectedTab,
                 homeBadge = state.dashboard?.unreadAnnouncements ?: 0,
                 queriesBadge = state.dashboard?.let { it.openTickets + it.inProgressTickets } ?: 0,
-                commandMode = selectedTab == "More",
                 onSelect = { selectedTab = it },
             )
         },
@@ -408,7 +415,7 @@ fun AdminDashboardScreen(
             val commandMode = selectedTab == "More"
             Column(
                 Modifier.fillMaxWidth()
-                    .background(if (commandMode) Color(0xFF060A13) else MaterialTheme.colorScheme.background)
+                    .background(MaterialTheme.colorScheme.background)
                     .statusBarsPadding()
                     .padding(start = 20.dp, end = 14.dp, top = 12.dp, bottom = 10.dp),
             ) {
@@ -416,10 +423,10 @@ fun AdminDashboardScreen(
                     Column(Modifier.weight(1f)) {
                         Text(school.schoolName.uppercase(), fontSize = 10.sp,
                             letterSpacing = 1.3.sp, fontWeight = FontWeight.Bold,
-                            color = if (commandMode) Color(0xFF8F9BB3) else MaterialTheme.colorScheme.onSurfaceVariant)
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Text("SchoolDB", style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
-                            color = if (commandMode) Color.White else MaterialTheme.colorScheme.onSurface)
+                            color = MaterialTheme.colorScheme.onSurface)
                     }
                     if (selectedTab == "Home") {
                         PremiumIconButton(onClick = { showAnnouncements = true }) {
@@ -434,7 +441,7 @@ fun AdminDashboardScreen(
                     }
                     Spacer(Modifier.width(8.dp))
                     PremiumIconButton(
-                        dark = commandMode,
+                        dark = commandMode && darkTheme,
                         onClick = {
                             if (selectedTab == "Reports") viewModel.loadReport(forceRefresh = true)
                             else viewModel.refresh(forceRefresh = true)
@@ -462,7 +469,7 @@ fun AdminDashboardScreen(
                     else -> "Overview"
                 }, fontSize = 32.sp, lineHeight = 36.sp, fontWeight = FontWeight.ExtraBold,
                     letterSpacing = (-0.6).sp,
-                    color = if (commandMode) Color.White else MaterialTheme.colorScheme.onBackground)
+                    color = MaterialTheme.colorScheme.onBackground)
             }
         },
     ) { padding ->
@@ -520,11 +527,10 @@ private fun PremiumAdminNavigation(
     selectedTab: String,
     homeBadge: Int,
     queriesBadge: Int,
-    commandMode: Boolean = false,
     onSelect: (String) -> Unit,
 ) {
     val haptic = LocalHapticFeedback.current
-    val darkTheme = commandMode || MaterialTheme.colorScheme.background.luminance() < 0.5f
+    val darkTheme = MaterialTheme.colorScheme.background.luminance() < 0.5f
     val dockColors = if (darkTheme) {
         listOf(Color(0xEE454547), Color(0xF52D2D30), Color(0xF23A3A3D))
     } else {
@@ -649,6 +655,8 @@ private fun PremiumIconButton(
         shape = CircleShape,
         color = if (dark || MaterialTheme.colorScheme.background.luminance() < 0.5f)
             Color(0xFF272729) else Color(0xFFEAF1FF),
+        contentColor = if (dark || MaterialTheme.colorScheme.background.luminance() < 0.5f)
+            Color.White else MaterialTheme.colorScheme.onSurface,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f)),
     ) {
         Box(contentAlignment = Alignment.Center) { content() }
@@ -1198,29 +1206,41 @@ private fun QueriesTab(dashboard: AdminDashboard, modifier: Modifier,
 }
 
 @Composable
-private fun MoreTab(school: MobileContext, modifier: Modifier, onSection: (String) -> Unit) {
+private fun MoreTab(
+    school: MobileContext,
+    dashboard: AdminDashboard?,
+    modifier: Modifier,
+    onSection: (String) -> Unit,
+) {
+    val darkTheme = MaterialTheme.colorScheme.background.luminance() < 0.5f
     val tools = listOf(
         AdminTool("Attendance", "LIVE OPERATIONS", "Sessions, absences and daily status", Lucide.CalendarCheck, "attendance", listOf(Color(0xFF16C7A5), Color(0xFF087E70))),
-        AdminTool("Students", "PEOPLE", "Profiles, enrollment and records", Lucide.GraduationCap, "students", listOf(Color(0xFF5A83FF), Color(0xFF3154D9))),
-        AdminTool("Teachers", "TEAM", "Faculty directory and allocations", Lucide.Users, "teachers", listOf(Color(0xFFC576F0), Color(0xFF7A42CB))),
+        AdminTool("Students", "PEOPLE", "Profiles, enrollment and records", Lucide.UserRoundSearch, "students", listOf(Color(0xFF5A83FF), Color(0xFF3154D9))),
+        AdminTool("Teachers", "TEAM", "Faculty directory and allocations", Lucide.BriefcaseBusiness, "teachers", listOf(Color(0xFFC576F0), Color(0xFF7A42CB))),
         AdminTool("Classes", "ACADEMICS", "Classes, sections and strength", Lucide.School, "classes", listOf(Color(0xFFFFA45B), Color(0xFFE2632F))),
-        AdminTool("Fees", "FINANCE", "Payments and outstanding balances", Lucide.WalletCards, "fees", listOf(Color(0xFF48D59B), Color(0xFF0A9367))),
+        AdminTool("Fees", "FINANCE", "Payments and outstanding balances", Lucide.BadgeIndianRupee, "fees", listOf(Color(0xFF48D59B), Color(0xFF0A9367))),
         AdminTool("Leave", "APPROVALS", "Review requests that need action", Lucide.ClipboardCheck, "leave", listOf(Color(0xFFFFC857), Color(0xFFDA8616))),
-        AdminTool("Timetable", "PLANNING", "The live academic schedule", Lucide.CalendarDays, "timetable", listOf(Color(0xFF70A0FF), Color(0xFF4354C9))),
-        AdminTool("Exams", "ASSESSMENT", "Schedules, marks and results", Lucide.GraduationCap, "exams", listOf(Color(0xFFA982F3), Color(0xFF6638C5))),
-        AdminTool("Calendar", "SCHOOL LIFE", "Events, holidays and milestones", Lucide.CalendarCheck, "calendar", listOf(Color(0xFFF17D9E), Color(0xFFC93466))),
-        AdminTool("Fee collection", "COLLECTIONS", "Pending installments and follow-up", Lucide.WalletCards, "fee-collection", listOf(Color(0xFF3CD4B0), Color(0xFF057E69))),
-        AdminTool("Admissions", "GROWTH", "New applications and onboarding", Lucide.Users, "admissions", listOf(Color(0xFF56BCEB), Color(0xFF2568C7))),
+        AdminTool("Timetable", "PLANNING", "The live academic schedule", Lucide.CalendarClock, "timetable", listOf(Color(0xFF70A0FF), Color(0xFF4354C9))),
+        AdminTool("Exams", "ASSESSMENT", "Schedules, marks and results", Lucide.BookOpenCheck, "exams", listOf(Color(0xFFA982F3), Color(0xFF6638C5))),
+        AdminTool("Calendar", "SCHOOL LIFE", "Events, holidays and milestones", Lucide.CalendarRange, "calendar", listOf(Color(0xFFF17D9E), Color(0xFFC93466))),
+        AdminTool("Fee collection", "COLLECTIONS", "Pending installments and follow-up", Lucide.ReceiptIndianRupee, "fee-collection", listOf(Color(0xFF3CD4B0), Color(0xFF057E69))),
+        AdminTool("Admissions", "GROWTH", "New applications and onboarding", Lucide.UserRoundPlus, "admissions", listOf(Color(0xFF56BCEB), Color(0xFF2568C7))),
     )
     val byId = tools.associateBy { it.destination }
     LazyColumn(
-        modifier.fillMaxSize(),
+        modifier.fillMaxSize().background(
+            Brush.verticalGradient(
+                if (darkTheme) listOf(Color(0xFF060A13), Color(0xFF09101D), Color(0xFF060A13))
+                else listOf(Color(0xFFF8FAFF), Color(0xFFEEF3FC), Color(0xFFF8FAFF)),
+            ),
+        ),
         contentPadding = PaddingValues(horizontal = 18.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         item {
-            SchoolCommandHero(school, tools.size)
+            SchoolCommandHero(school, dashboard, tools.size)
         }
+        item { DecisionCommandPanel(dashboard, onSection) }
         item { PremiumSectionTitle("Today’s essentials", "Fast access to the work that moves your school") }
         item { FeaturedAdminTool(byId.getValue("attendance"), onSection) }
         item {
@@ -1261,14 +1281,12 @@ private data class AdminTool(
 )
 
 @Composable
-private fun SchoolCommandHero(school: MobileContext, toolCount: Int) {
-    val dark = MaterialTheme.colorScheme.background.luminance() < .5f
+private fun SchoolCommandHero(school: MobileContext, dashboard: AdminDashboard?, toolCount: Int) {
     val shape = RoundedCornerShape(30.dp)
     Box(
         Modifier.fillMaxWidth().shadow(20.dp, shape, ambientColor = Color(0xFF5747E8).copy(alpha = .22f),
             spotColor = Color(0xFF5747E8).copy(alpha = .25f)).clip(shape)
-            .background(Brush.linearGradient(if (dark) listOf(Color(0xFF17132E), Color(0xFF292052), Color(0xFF163C58))
-            else listOf(Color(0xFF171C4E), Color(0xFF4432A4), Color(0xFF126D83)))),
+            .background(Brush.linearGradient(listOf(Color(0xFF111629), Color(0xFF312166), Color(0xFF0D5466)))),
     ) {
         Box(Modifier.size(190.dp).align(Alignment.TopEnd).offset(x = 62.dp, y = (-70).dp)
             .background(Color(0xFF8BCBFF).copy(alpha = .17f), CircleShape))
@@ -1281,16 +1299,119 @@ private fun SchoolCommandHero(school: MobileContext, toolCount: Int) {
                     fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.3.sp)
             }
             Spacer(Modifier.height(24.dp))
-            Text("Everything your school needs,\nin one beautiful place.", color = Color.White,
+            Text("See clearly.\nLead decisively.", color = Color.White,
                 fontSize = 27.sp, lineHeight = 32.sp, fontWeight = FontWeight.ExtraBold,
                 letterSpacing = (-.4).sp)
             Text(school.schoolName, Modifier.padding(top = 10.dp), color = Color.White.copy(alpha = .72f),
                 fontSize = 13.sp, fontWeight = FontWeight.Medium)
             Spacer(Modifier.height(22.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-                CommandHeroChip("$toolCount workspaces")
-                CommandHeroChip("Live & connected")
+                CommandHeroChip("${dashboard?.students ?: 0} students")
+                CommandHeroChip("$toolCount controls")
             }
+        }
+    }
+}
+
+@Composable
+private fun DecisionCommandPanel(dashboard: AdminDashboard?, onSection: (String) -> Unit) {
+    val darkTheme = MaterialTheme.colorScheme.background.luminance() < 0.5f
+    val pendingLeave = dashboard?.pendingLeaveRequests ?: 0
+    val supportAttention = dashboard?.let { it.urgentTickets + it.openTickets + it.inProgressTickets } ?: 0
+    val unread = dashboard?.unreadAnnouncements ?: 0
+    val totalAttention = pendingLeave + supportAttention
+    val shape = RoundedCornerShape(27.dp)
+    Surface(
+        modifier = Modifier.fillMaxWidth().shadow(16.dp, shape,
+            ambientColor = Color.Black.copy(alpha = if (darkTheme) .45f else .10f)),
+        shape = shape,
+        color = Color.Transparent,
+        border = BorderStroke(1.dp, if (darkTheme) Color.White.copy(alpha = .11f)
+            else Color(0xFFD5DDEA)),
+    ) {
+        Box(
+            Modifier.fillMaxWidth().background(
+                Brush.linearGradient(if (darkTheme)
+                    listOf(Color(0xFF182133), Color(0xFF101725), Color(0xFF101B28))
+                else listOf(Color(0xFFFFFFFF), Color(0xFFF2F6FD), Color(0xFFEAF1FA))),
+            ),
+        ) {
+            Box(
+                Modifier.fillMaxWidth().height(50.dp).align(Alignment.TopCenter)
+                    .background(Brush.verticalGradient(listOf(
+                        if (darkTheme) Color.White.copy(alpha = .08f) else Color.White.copy(alpha = .80f),
+                        Color.Transparent,
+                    ))),
+            )
+            Column(Modifier.fillMaxWidth().padding(18.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Surface(
+                        shape = CircleShape,
+                        color = if (totalAttention == 0) Color(0xFF15C993).copy(alpha = .16f)
+                            else Color(0xFFFFB84D).copy(alpha = .16f),
+                        border = BorderStroke(1.dp, if (totalAttention == 0) Color(0xFF15C993).copy(alpha = .35f)
+                            else Color(0xFFFFB84D).copy(alpha = .35f)),
+                    ) {
+                        Icon(
+                            if (totalAttention == 0) Lucide.Activity else Lucide.CircleAlert,
+                            null,
+                            tint = if (totalAttention == 0) Color(0xFF4CE0B3) else Color(0xFFFFC766),
+                            modifier = Modifier.padding(10.dp).size(20.dp),
+                        )
+                    }
+                    Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
+                        Text("DECISION DECK", color = Color(0xFF7F91B2), fontSize = 9.sp,
+                            fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp)
+                        Text(if (totalAttention == 0) "All systems clear" else "$totalAttention items need attention",
+                            color = if (darkTheme) Color.White else Color(0xFF152033),
+                            fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
+                    }
+                    Surface(shape = RoundedCornerShape(50.dp),
+                        color = if (darkTheme) Color.White.copy(alpha = .07f) else Color(0xFFE4F7F0)) {
+                        Text("LIVE", Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                            color = Color(0xFF72E6C0), fontSize = 9.sp, fontWeight = FontWeight.ExtraBold,
+                            letterSpacing = 1.sp)
+                    }
+                }
+                Spacer(Modifier.height(16.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+                    DecisionSignal("Approvals", pendingLeave, Color(0xFFFFBE55), Modifier.weight(1f)) {
+                        onSection("leave")
+                    }
+                    DecisionSignal("Support", supportAttention, Color(0xFF9B86FF), Modifier.weight(1f)) {
+                        onSection("queries")
+                    }
+                    DecisionSignal("Unread", unread, Color(0xFF51C7F2), Modifier.weight(1f), onClick = null)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DecisionSignal(
+    label: String,
+    value: Int,
+    accent: Color,
+    modifier: Modifier = Modifier,
+    onClick: (() -> Unit)?,
+) {
+    val darkTheme = MaterialTheme.colorScheme.background.luminance() < 0.5f
+    Surface(
+        onClick = { onClick?.invoke() },
+        enabled = onClick != null,
+        modifier = modifier,
+        shape = RoundedCornerShape(18.dp),
+        color = if (darkTheme) Color.White.copy(alpha = .055f) else Color.White.copy(alpha = .72f),
+        border = BorderStroke(1.dp, if (darkTheme) Color.White.copy(alpha = .075f)
+            else Color(0xFFD8E0ED)),
+    ) {
+        Column(Modifier.padding(horizontal = 12.dp, vertical = 12.dp)) {
+            Text(value.toString(), color = if (value > 0) accent
+                else if (darkTheme) Color.White else Color(0xFF172033),
+                fontSize = 22.sp, fontWeight = FontWeight.Black)
+            Text(label, color = if (darkTheme) Color(0xFFA1ACC0) else Color(0xFF667085),
+                fontSize = 10.sp, fontWeight = FontWeight.Medium)
         }
     }
 }
@@ -1305,11 +1426,12 @@ private fun CommandHeroChip(label: String) {
 
 @Composable
 private fun PremiumSectionTitle(title: String, subtitle: String) {
+    val darkTheme = MaterialTheme.colorScheme.background.luminance() < 0.5f
     Column(Modifier.padding(top = 6.dp, bottom = 1.dp)) {
         Text(title, fontSize = 19.sp, fontWeight = FontWeight.ExtraBold,
-            color = MaterialTheme.colorScheme.onBackground, letterSpacing = (-.2).sp)
+            color = if (darkTheme) Color.White else Color(0xFF121A2A), letterSpacing = (-.2).sp)
         Text(subtitle, Modifier.padding(top = 2.dp), fontSize = 12.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant)
+            color = if (darkTheme) Color(0xFF8F9BB3) else Color(0xFF68758C))
     }
 }
 
@@ -1344,24 +1466,41 @@ private fun FeaturedAdminTool(tool: AdminTool, onSection: (String) -> Unit) {
 @Composable
 private fun PremiumAdminTool(tool: AdminTool, modifier: Modifier = Modifier, onSection: (String) -> Unit) {
     val haptic = LocalHapticFeedback.current
+    val darkTheme = MaterialTheme.colorScheme.background.luminance() < 0.5f
     val shape = RoundedCornerShape(24.dp)
-    Card(onClick = { haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove); onSection(tool.destination) },
+    Surface(onClick = { haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove); onSection(tool.destination) },
         modifier = modifier.height(174.dp).shadow(10.dp, shape, ambientColor = tool.colors.last().copy(alpha = .09f)),
-        shape = shape, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = .7f))) {
-        Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.SpaceBetween) {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
-                GlossyLucideIcon(tool.icon, tool.colors, 48.dp)
-                Spacer(Modifier.weight(1f))
-                Icon(Lucide.ArrowRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = .55f),
-                    modifier = Modifier.size(18.dp))
-            }
-            Column {
-                Text(tool.eyebrow, color = tool.colors.last(), fontSize = 8.sp, fontWeight = FontWeight.Bold,
-                    letterSpacing = .9.sp)
-                Text(tool.label, Modifier.padding(top = 3.dp), fontSize = 16.sp, fontWeight = FontWeight.ExtraBold)
-                Text(tool.description, Modifier.padding(top = 3.dp), maxLines = 2, overflow = TextOverflow.Ellipsis,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp, lineHeight = 14.sp)
+        shape = shape, color = Color.Transparent,
+        border = BorderStroke(1.dp, if (darkTheme) Color.White.copy(alpha = .10f)
+            else Color(0xFFD7DFEC))) {
+        Box(Modifier.fillMaxSize().background(
+            Brush.linearGradient(if (darkTheme) listOf(Color(0xFF172133), Color(0xFF0D1420))
+            else listOf(Color.White, Color(0xFFF0F4FA))),
+        )) {
+            Box(Modifier.fillMaxWidth().height(48.dp).align(Alignment.TopCenter)
+                .background(Brush.verticalGradient(listOf(
+                    Color.White.copy(alpha = if (darkTheme) .08f else .92f), Color.Transparent,
+                ))))
+            Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.SpaceBetween) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
+                    GlossyLucideIcon(tool.icon, tool.colors, 48.dp)
+                    Spacer(Modifier.weight(1f))
+                    Icon(Lucide.ArrowRight, null,
+                        tint = if (darkTheme) Color(0xFF7E8AA2) else Color(0xFF8793A8),
+                        modifier = Modifier.size(18.dp))
+                }
+                Column {
+                    Text(tool.eyebrow, color = if (darkTheme) tool.colors.first() else tool.colors.last(),
+                        fontSize = 8.sp, fontWeight = FontWeight.Bold,
+                        letterSpacing = .9.sp)
+                    Text(tool.label, Modifier.padding(top = 3.dp),
+                        color = if (darkTheme) Color.White else Color(0xFF172033),
+                        fontSize = 16.sp, fontWeight = FontWeight.ExtraBold)
+                    Text(tool.description, Modifier.padding(top = 3.dp), maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        color = if (darkTheme) Color(0xFF9AA6BB) else Color(0xFF667085), fontSize = 10.sp,
+                        lineHeight = 14.sp)
+                }
             }
         }
     }
@@ -1370,23 +1509,39 @@ private fun PremiumAdminTool(tool: AdminTool, modifier: Modifier = Modifier, onS
 @Composable
 private fun WideAdminTool(tool: AdminTool, onSection: (String) -> Unit) {
     val haptic = LocalHapticFeedback.current
+    val darkTheme = MaterialTheme.colorScheme.background.luminance() < 0.5f
     val shape = RoundedCornerShape(22.dp)
-    Card(onClick = { haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove); onSection(tool.destination) },
+    Surface(onClick = { haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove); onSection(tool.destination) },
         modifier = Modifier.fillMaxWidth(), shape = shape,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = .72f))) {
-        Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-            GlossyLucideIcon(tool.icon, tool.colors, 49.dp)
-            Column(Modifier.weight(1f).padding(horizontal = 14.dp)) {
-                Text(tool.eyebrow, color = tool.colors.last(), fontSize = 8.sp, fontWeight = FontWeight.Bold,
-                    letterSpacing = .9.sp)
-                Text(tool.label, fontSize = 15.sp, fontWeight = FontWeight.ExtraBold)
-                Text(tool.description, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp,
-                    maxLines = 1, overflow = TextOverflow.Ellipsis)
-            }
-            Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surfaceVariant) {
-                Icon(Lucide.ArrowRight, null, modifier = Modifier.padding(9.dp).size(17.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        color = Color.Transparent, border = BorderStroke(1.dp,
+            if (darkTheme) Color.White.copy(alpha = .10f) else Color(0xFFD7DFEC))) {
+        Box(Modifier.fillMaxWidth().background(
+            Brush.linearGradient(if (darkTheme) listOf(Color(0xFF151F30), Color(0xFF0B121E))
+            else listOf(Color.White, Color(0xFFF0F4FA))),
+        )) {
+            Box(Modifier.fillMaxWidth().height(34.dp).align(Alignment.TopCenter)
+                .background(Brush.verticalGradient(listOf(
+                    Color.White.copy(alpha = if (darkTheme) .07f else .90f), Color.Transparent,
+                ))))
+            Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                GlossyLucideIcon(tool.icon, tool.colors, 49.dp)
+                Column(Modifier.weight(1f).padding(horizontal = 14.dp)) {
+                    Text(tool.eyebrow, color = if (darkTheme) tool.colors.first() else tool.colors.last(),
+                        fontSize = 8.sp, fontWeight = FontWeight.Bold,
+                        letterSpacing = .9.sp)
+                    Text(tool.label, color = if (darkTheme) Color.White else Color(0xFF172033),
+                        fontSize = 15.sp, fontWeight = FontWeight.ExtraBold)
+                    Text(tool.description,
+                        color = if (darkTheme) Color(0xFF9AA6BB) else Color(0xFF667085), fontSize = 10.sp,
+                        maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+                Surface(shape = CircleShape,
+                    color = if (darkTheme) Color.White.copy(alpha = .07f) else Color(0xFFE7EDF6),
+                    border = BorderStroke(1.dp, if (darkTheme) Color.White.copy(alpha = .08f)
+                        else Color(0xFFD7DFEC))) {
+                    Icon(Lucide.ArrowRight, null, modifier = Modifier.padding(9.dp).size(17.dp),
+                        tint = if (darkTheme) Color(0xFFB4BED0) else Color(0xFF657187))
+                }
             }
         }
     }
@@ -1398,30 +1553,30 @@ private fun GlossyLucideIcon(
     colors: List<Color>,
     size: androidx.compose.ui.unit.Dp,
 ) {
-    val shape = RoundedCornerShape(size * 0.30f)
-    Box(
-        modifier = Modifier
-            .size(size)
-            .shadow(8.dp, shape, ambientColor = colors.last().copy(alpha = 0.22f),
-                spotColor = colors.last().copy(alpha = 0.28f))
-            .clip(shape)
-            .background(Brush.linearGradient(colors)),
-        contentAlignment = Alignment.Center,
+    val darkTheme = MaterialTheme.colorScheme.background.luminance() < 0.5f
+    val shape = RoundedCornerShape(size * 0.34f)
+    Surface(
+        modifier = Modifier.size(size).shadow(7.dp, shape,
+            ambientColor = colors.last().copy(alpha = if (darkTheme) .22f else .12f),
+            spotColor = colors.last().copy(alpha = if (darkTheme) .26f else .14f)),
+        shape = shape,
+        color = Color.Transparent,
+        border = BorderStroke(1.dp, if (darkTheme) colors.first().copy(alpha = .42f)
+            else colors.first().copy(alpha = .28f)),
     ) {
         Box(
-            Modifier.fillMaxWidth().height(size * 0.46f).align(Alignment.TopCenter)
-                .background(Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.28f), Color.Transparent))),
-        )
-        Box(
-            Modifier.size(size * 0.62f).align(Alignment.TopEnd)
-                .background(Color.White.copy(alpha = 0.08f), CircleShape),
-        )
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = Color.White,
-            modifier = Modifier.size(size * 0.46f),
-        )
+            Modifier.fillMaxSize().background(
+                Brush.linearGradient(if (darkTheme)
+                    listOf(colors.first().copy(alpha = .46f), colors.last().copy(alpha = .25f))
+                else listOf(Color.White, colors.first().copy(alpha = .16f))),
+            ),
+            contentAlignment = Alignment.Center,
+        ) {
+            Box(Modifier.fillMaxWidth().height(size * .42f).align(Alignment.TopCenter)
+                .background(Brush.verticalGradient(listOf(Color.White.copy(alpha = .38f), Color.Transparent))))
+            Icon(imageVector = icon, contentDescription = null,
+                tint = if (darkTheme) Color.White else colors.last(), modifier = Modifier.size(size * .44f))
+        }
     }
 }
 

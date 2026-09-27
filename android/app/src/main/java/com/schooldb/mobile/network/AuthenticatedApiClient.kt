@@ -57,14 +57,11 @@ class AuthenticatedApiClient(
             }
             val stream = if (status in 200..299) connection.inputStream else connection.errorStream
             val payload = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
-            val json = if (payload.isBlank()) JSONObject() else JSONObject(payload)
-            if (status !in 200..299) {
-                val message = json.optString("message")
-                    .ifBlank { json.optString("error") }
-                    .ifBlank { "SchoolDB request failed (HTTP $status)." }
-                throw ApiException(message)
-            }
-            json.getJSONObject("data")
+            ApiResponseParser.parse(
+                payload = payload,
+                status = status,
+                contentType = connection.contentType,
+            )
         } finally {
             connection.disconnect()
         }

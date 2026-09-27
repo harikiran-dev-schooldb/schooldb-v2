@@ -6,12 +6,14 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.os.Build
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
+import androidx.core.content.edit
 import com.google.firebase.messaging.FirebaseMessaging
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
@@ -32,28 +34,27 @@ object PushNotificationManager {
     private const val INSTALLATION_ID = "installation_id"
     private const val TAG = "SchoolDbPush"
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private var appContext: Context? = null
+    private var sharedPreferences: SharedPreferences? = null
 
     fun isConfigured() = BuildConfig.FIREBASE_CONFIGURED
 
     fun initialize(context: Context) {
-        appContext = context.applicationContext
+        sharedPreferences = context.applicationContext
+            .getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
         createChannel(context)
     }
 
     private fun createChannel(context: Context) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                CHANNEL_ID,
-                "School updates",
-                NotificationManager.IMPORTANCE_HIGH,
-            ).apply {
-                description = "Announcements, attendance, homework, fees, and school alerts"
-                enableVibration(true)
-                setShowBadge(true)
-            }
-            context.getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
+        val channel = NotificationChannel(
+            CHANNEL_ID,
+            "School updates",
+            NotificationManager.IMPORTANCE_HIGH,
+        ).apply {
+            description = "Announcements, attendance, homework, fees, and school alerts"
+            enableVibration(true)
+            setShowBadge(true)
         }
+        context.getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
     }
 
     fun shouldRequestPermission(context: Context): Boolean =
@@ -62,7 +63,9 @@ object PushNotificationManager {
             !context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE).getBoolean(PERMISSION_ASKED, false)
 
     fun markPermissionRequested(context: Context) {
-        context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE).edit().putBoolean(PERMISSION_ASKED, true).apply()
+        context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE).edit {
+            putBoolean(PERMISSION_ASKED, true)
+        }
     }
 
     fun permissionWasRequested(context: Context): Boolean =
@@ -71,9 +74,7 @@ object PushNotificationManager {
 
     fun registerCurrentDevice() {
         if (!isConfigured()) return
-        val savedInstallationId = appContext
-            ?.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
-            ?.getString(INSTALLATION_ID, null)
+        val savedInstallationId = sharedPreferences?.getString(INSTALLATION_ID, null)
         if (!savedInstallationId.isNullOrBlank()) {
             registerInstallation(savedInstallationId)
         }
@@ -85,10 +86,7 @@ object PushNotificationManager {
 
     fun registerInstallation(installationId: String) {
         if (!isConfigured() || installationId.isBlank()) return
-        appContext?.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
-            ?.edit()
-            ?.putString(INSTALLATION_ID, installationId)
-            ?.apply()
+        sharedPreferences?.edit { putString(INSTALLATION_ID, installationId) }
         scope.launch {
             runCatching {
                 AuthenticatedApiClient().post(
@@ -107,9 +105,7 @@ object PushNotificationManager {
 
     suspend fun unregisterCurrentDevice() {
         if (!isConfigured()) return
-        val installationId = appContext
-            ?.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
-            ?.getString(INSTALLATION_ID, null)
+        val installationId = sharedPreferences?.getString(INSTALLATION_ID, null)
             ?: return
         runCatching {
             AuthenticatedApiClient().delete(
@@ -121,8 +117,11 @@ object PushNotificationManager {
 }
 
 class SchoolDbMessagingService : FirebaseMessagingService() {
+    @Suppress("DEPRECATION")
+    @Deprecated("Required by Firebase for legacy token rotation callbacks")
     override fun onNewToken(token: String) {
-        // Re-register when Firebase rotates a token while the user remains signed in.
+        // FCM still emits this callback for token rotation. Registration uses
+        // the installation ID delivered by onRegistered.
         PushNotificationManager.registerCurrentDevice()
     }
 

@@ -1,6 +1,8 @@
 package com.schooldb.mobile.preferences
 
 import android.content.Context
+import android.content.SharedPreferences
+import androidx.core.content.edit
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -28,32 +30,33 @@ object AppPreferences {
     private const val KEY_NOTICE_BADGES = "show_notice_badges"
     private const val KEY_START_TAB = "start_tab"
 
-    private lateinit var context: Context
+    private lateinit var sharedPreferences: SharedPreferences
     private val mutableState = MutableStateFlow(AppPreferenceState())
     val state: StateFlow<AppPreferenceState> = mutableState.asStateFlow()
 
     fun initialize(applicationContext: Context) {
-        context = applicationContext.applicationContext
+        sharedPreferences = applicationContext.applicationContext
+            .getSharedPreferences(FILE_NAME, Context.MODE_PRIVATE)
         mutableState.value = read()
     }
 
     fun setTheme(value: ThemePreference) {
-        preferences().edit().putString(KEY_THEME, value.name).apply()
+        preferences().edit { putString(KEY_THEME, value.name) }
         mutableState.value = mutableState.value.copy(theme = value)
     }
 
     fun setNoticeBadges(value: Boolean) {
-        preferences().edit().putBoolean(KEY_NOTICE_BADGES, value).apply()
+        preferences().edit { putBoolean(KEY_NOTICE_BADGES, value) }
         mutableState.value = mutableState.value.copy(showNoticeBadges = value)
     }
 
     fun setStartTab(value: StartTabPreference) {
-        preferences().edit().putString(KEY_START_TAB, value.name).apply()
+        preferences().edit { putString(KEY_START_TAB, value.name) }
         mutableState.value = mutableState.value.copy(startTab = value)
     }
 
     fun reset() {
-        preferences().edit().clear().apply()
+        preferences().edit { clear() }
         mutableState.value = AppPreferenceState()
     }
 
@@ -70,6 +73,5 @@ object AppPreferences {
         )
     }
 
-    private fun preferences() =
-        context.getSharedPreferences(FILE_NAME, Context.MODE_PRIVATE)
+    private fun preferences() = sharedPreferences
 }
