@@ -10,7 +10,7 @@ type RouteContext = {
   }>;
 };
 
-type ResultStatus = "PASS" | "FAIL" | "ABSENT" | "EXEMPTED";
+type ResultStatus = "PENDING" | "PASS" | "FAIL" | "ABSENT" | "EXEMPTED";
 
 export async function GET(
   _request: Request,
@@ -155,69 +155,107 @@ export async function GET(
     }
 
     /* ------------------------------------------------------------------ */
+    /* APPLICABLE EXAM SCHEDULES                                          */
+    /*                                                                    */
+    /* Results are calculated ONLY from ExamSchedule rows that apply to   */
+    /* this student's class/section. ClassSubject is not part of result   */
+    /* calculation. A section-specific schedule overrides an all-sections */
+    /* schedule for the same subject.                                     */
+    /* ------------------------------------------------------------------ */
+
+    const schedules = await prisma.examSchedule.findMany({
+      where: {
+        schoolId: tenant.schoolId,
+        examId: exam.id,
+        classId: enrollment.class.id,
+        OR: [
+          { sectionId: enrollment.section.id },
+          { sectionId: null },
+        ],
+      },
+      select: {
+        id: true,
+        sectionId: true,
+        examDate: true,
+        maxMarks: true,
+        passMarks: true,
+        subject: {
+          select: {
+            id: true,
+            name: true,
+            code: true,
+          },
+        },
+      },
+      orderBy: [
+        { examDate: "asc" },
+        { subject: { name: "asc" } },
+      ],
+    });
+
+    const sectionSpecificSubjectIds = new Set(
+      schedules
+        .filter((schedule) => schedule.sectionId === enrollment.section.id)
+        .map((schedule) => schedule.subject.id),
+    );
+
+    const applicableSchedules = schedules.filter(
+      (schedule) =>
+        schedule.sectionId !== null ||
+        !sectionSpecificSubjectIds.has(schedule.subject.id),
+    );
+
+    /* ------------------------------------------------------------------ */
     /* STUDENT MARKS                                                      */
     /* ------------------------------------------------------------------ */
 
-    const marks =
-      await prisma.studentExamMark.findMany({
-        where: {
-          schoolId: tenant.schoolId,
-
-          studentEnrollmentId: enrollment.id,
-
-          examSchedule: {
-            examId: exam.id,
-          },
-        },
-
-        include: {
-          examSchedule: {
-            select: {
-              id: true,
-              examDate: true,
-              maxMarks: true,
-              passMarks: true,
-
-              subject: {
-                select: {
-                  id: true,
-                  name: true,
-                  code: true,
-                },
-              },
+    const marks = applicableSchedules.length
+      ? await prisma.studentExamMark.findMany({
+          where: {
+            schoolId: tenant.schoolId,
+            studentEnrollmentId: enrollment.id,
+            examScheduleId: {
+              in: applicableSchedules.map((schedule) => schedule.id),
             },
           },
-        },
-
-        orderBy: {
-          examSchedule: {
-            examDate: "asc",
+          select: {
+            examScheduleId: true,
+            marksObtained: true,
+            status: true,
+            remarks: true,
           },
-        },
-      });
+        })
+      : [];
+
+    const markByScheduleId = new Map(
+      marks.map((mark) => [mark.examScheduleId, mark]),
+    );
 
     /* ------------------------------------------------------------------ */
     /* SUBJECT RESULTS                                                    */
     /* ------------------------------------------------------------------ */
 
-    const subjects = marks.map((mark) => {
-      const maxMarks = Number(
-        mark.examSchedule.maxMarks,
-      );
+    const subjects = applicableSchedules.map((schedule) => {
+      const mark = markByScheduleId.get(schedule.id);
+
+      const maxMarks = Number(schedule.maxMarks);
 
       const passMarks =
-        mark.examSchedule.passMarks !== null
-          ? Number(mark.examSchedule.passMarks)
+        schedule.passMarks !== null
+          ? Number(schedule.passMarks)
           : null;
 
       const marksObtained =
-        mark.marksObtained !== null
+        mark?.marksObtained !== null &&
+        mark?.marksObtained !== undefined
           ? Number(mark.marksObtained)
           : null;
 
       let resultStatus: ResultStatus;
 
-      if (mark.status === "ABSENT") {
+      if (!mark) {
+        resultStatus = "PENDING";
+      } else if (mark.status === "ABSENT") {
         resultStatus = "ABSENT";
       } else if (mark.status === "EXEMPTED") {
         resultStatus = "EXEMPTED";
@@ -232,25 +270,25 @@ export async function GET(
       }
 
       return {
-        scheduleId: mark.examSchedule.id,
+        scheduleId: schedule.id,
 
-        subject: mark.examSchedule.subject,
+        subject: schedule.subject,
 
         class: enrollment.class,
 
         section: enrollment.section,
 
-        examDate: mark.examSchedule.examDate,
+        examDate: schedule.examDate,
 
         maxMarks,
         passMarks,
         marksObtained,
 
-        status: mark.status,
+        status: mark?.status ?? "PENDING",
 
         resultStatus,
 
-        remarks: mark.remarks,
+        remarks: mark?.remarks ?? null,
       };
     });
 
@@ -378,18 +416,28 @@ export async function GET(
         subject.resultStatus === "FAIL",
     );
 
+    /*
+     * Every scheduled subject contributes to the maximum marks unless it is
+     * explicitly exempted. Missing marks remain PENDING and must not make the
+     * student appear to have a completed result.
+     */
     const totalMaxMarks =
-      gradedSubjects.reduce(
+      subjects.reduce(
         (total, subject) =>
-          total + subject.maxMarks,
+          subject.resultStatus === "EXEMPTED"
+            ? total
+            : total + subject.maxMarks,
         0,
       );
 
     const totalObtained =
-      gradedSubjects.reduce(
+      subjects.reduce(
         (total, subject) =>
           total +
-          (subject.marksObtained ?? 0),
+          (subject.resultStatus === "PASS" ||
+          subject.resultStatus === "FAIL"
+            ? subject.marksObtained ?? 0
+            : 0),
         0,
       );
 
@@ -417,6 +465,12 @@ export async function GET(
           subject.resultStatus === "EXEMPTED",
       ).length;
 
+    const pendingSubjects =
+      subjects.filter(
+        (subject) =>
+          subject.resultStatus === "PENDING",
+      ).length;
+
     const percentage =
       totalMaxMarks > 0
         ? Number(
@@ -429,19 +483,21 @@ export async function GET(
         : 0;
 
     /*
+     * Only subjects in ExamSchedule are considered.
+     *
+     * A scheduled subject without a mark is PENDING.
      * EXEMPTED subjects do not fail the student.
-     *
      * ABSENT subjects do fail the overall result.
-     *
-     * A student with no marks cannot be declared PASS.
      */
     const overallStatus =
       subjects.length === 0
         ? "NO_RESULT"
-        : failedSubjects > 0 ||
-            absentSubjects > 0
-          ? "FAIL"
-          : "PASS";
+        : pendingSubjects > 0
+          ? "PENDING"
+          : failedSubjects > 0 ||
+              absentSubjects > 0
+            ? "FAIL"
+            : "PASS";
 
     /* ------------------------------------------------------------------ */
     /* RESPONSE                                                           */
@@ -484,6 +540,8 @@ export async function GET(
           absentSubjects,
 
           exemptedSubjects,
+
+          pendingSubjects,
 
           totalObtained,
 
