@@ -1,3 +1,5 @@
+import { mapWithConcurrency } from "@/features/notifications/batch";
+import { notificationDedupeKey } from "@/features/notifications/dedupe";
 import { sendAnnouncementPush } from "@/features/notifications/push";
 import { prisma } from "@/lib/prisma";
 
@@ -187,34 +189,67 @@ export async function sendManualFeeReminders(input: {
     audience.installmentNames.length === 1
       ? `${audience.installmentNames[0]} is overdue. Please review the outstanding fee in SchoolDB or contact the school office.`
       : "One or more fee installments are overdue. Please review outstanding fees in SchoolDB or contact the school office.";
-  let sentCount = 0;
-  let failedCount = 0;
-  const notificationIds: string[] = [];
-  for (const recipient of audience.recipients) {
-    const announcement = await prisma.announcement.create({
-      data: {
-        schoolId: input.schoolId,
-        createdBy: input.createdBy,
-        title: "Fee payment reminder",
-        body: message,
-        category: "FEE_REMINDER",
-        priority: "IMPORTANT",
-        targetType: "STUDENT",
-        targetId: recipient.studentId,
-        targetLabel: recipient.name,
-        publishedAt: new Date(),
-      },
-    });
-    notificationIds.push(announcement.id);
-    const delivery = await sendAnnouncementPush(announcement);
-    sentCount += delivery.sent;
-    failedCount += delivery.failed;
-  }
+  const reminderDate = indiaDateKey();
+  const deliveries = await mapWithConcurrency(
+    audience.recipients,
+    10,
+    async (recipient) => {
+      try {
+        const announcement = await prisma.announcement.create({
+          data: {
+            schoolId: input.schoolId,
+            createdBy: input.createdBy,
+            title: "Fee payment reminder",
+            body: message,
+            category: "FEE_REMINDER",
+            priority: "IMPORTANT",
+            targetType: "STUDENT",
+            targetId: recipient.studentId,
+            targetLabel: recipient.name,
+            sourceType: "FEE_REMINDER",
+            sourceId: recipient.studentId,
+            dedupeKey: notificationDedupeKey.feeReminder(
+              recipient.studentId,
+              reminderDate,
+            ),
+            publishedAt: new Date(),
+          },
+        });
+        const delivery = await sendAnnouncementPush(announcement);
+        return {
+          notificationId: announcement.id,
+          sent: delivery.sent,
+          failed: delivery.failed,
+          processingFailed: false,
+        };
+      } catch (error) {
+        console.error("Unable to process fee reminder notification.", {
+          schoolId: input.schoolId,
+          studentId: recipient.studentId,
+          error,
+        });
+        return {
+          notificationId: null,
+          sent: 0,
+          failed: 0,
+          processingFailed: true,
+        };
+      }
+    },
+  );
+
+  const notificationIds = deliveries.flatMap((item) =>
+    item.notificationId ? [item.notificationId] : [],
+  );
+  const sentCount = deliveries.reduce((total, item) => total + item.sent, 0);
+  const failedCount =
+    deliveries.reduce((total, item) => total + item.failed, 0) +
+    deliveries.filter((item) => item.processingFailed).length;
 
   return {
     notificationIds,
     recipientCount: audience.recipients.length,
-    processed: audience.recipients.length,
+    processed: deliveries.length,
     sentCount,
     failedCount,
     remaining: 0,

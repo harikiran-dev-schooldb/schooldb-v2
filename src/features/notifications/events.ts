@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { sendAnnouncementPush } from "./push";
+import { notificationDedupeKey } from "./dedupe";
 
 async function createEventNotification(input: {
   schoolId: string;
@@ -9,17 +10,43 @@ async function createEventNotification(input: {
   targetType: "SCHOOL" | "CLASS" | "SECTION" | "STUDENT" | "ADMIN";
   targetId: string | null;
   targetLabel: string;
+  sourceType?: string;
+  sourceId?: string;
+  dedupeKey?: string;
 }) {
-  const announcement = await prisma.announcement.create({
-    data: {
-      ...input,
-      priority: "NORMAL",
-      createdBy: "SYSTEM",
-      publishedAt: new Date(),
-    },
-  });
-  await sendAnnouncementPush(announcement);
-  return announcement;
+  if (input.dedupeKey) {
+    const existing = await prisma.announcement.findUnique({
+      where: { dedupeKey: input.dedupeKey },
+    });
+    if (existing) return existing;
+  }
+
+  try {
+    const announcement = await prisma.announcement.create({
+      data: {
+        ...input,
+        priority: "NORMAL",
+        createdBy: "SYSTEM",
+        publishedAt: new Date(),
+      },
+    });
+    await sendAnnouncementPush(announcement);
+    return announcement;
+  } catch (error) {
+    if (
+      input.dedupeKey &&
+      error &&
+      typeof error === "object" &&
+      "code" in error &&
+      error.code === "P2002"
+    ) {
+      const duplicate = await prisma.announcement.findUnique({
+        where: { dedupeKey: input.dedupeKey },
+      });
+      if (duplicate) return duplicate;
+    }
+    throw error;
+  }
 }
 
 function indiaDateKey(value = new Date()) {
@@ -97,6 +124,9 @@ export async function notifyHomeworkPublished(homeworkId: string, schoolId: stri
     targetType,
     targetId,
     targetLabel,
+    sourceType: "HOMEWORK",
+    sourceId: homework.id,
+    dedupeKey: notificationDedupeKey.homeworkPublished(homework.id),
   });
 }
 
@@ -153,6 +183,13 @@ export async function notifyExamResultsPublished(examId: string, schoolId: strin
       targetType,
       targetId,
       targetLabel,
+      sourceType: "EXAM",
+      sourceId: examId,
+      dedupeKey: notificationDedupeKey.examResultsPublished(
+        examId,
+        targetType,
+        targetId,
+      ),
     }));
   }
   return notifications;
@@ -198,6 +235,9 @@ export async function notifyDailyBirthdays(now = new Date()) {
       targetType: "STUDENT",
       targetId: student.id,
       targetLabel: name,
+      sourceType: "BIRTHDAY",
+      sourceId: student.id,
+      dedupeKey: notificationDedupeKey.birthday(student.id, dateKey),
     });
     created += 1;
   }
@@ -245,6 +285,9 @@ export async function notifyFeePayment(paymentId: string, schoolId: string) {
     targetType: "STUDENT",
     targetId: payment.studentEnrollment.studentId,
     targetLabel: name,
+    sourceType: "FEE_PAYMENT",
+    sourceId: payment.id,
+    dedupeKey: notificationDedupeKey.feePayment(payment.id),
   });
 }
 
@@ -289,6 +332,9 @@ export async function notifyAttendanceLocked(sessionId: string, schoolId: string
       targetType: "ADMIN",
       targetId: session.id,
       targetLabel: "School administrators",
+      sourceType: "ATTENDANCE_SESSION",
+      sourceId: session.id,
+      dedupeKey: notificationDedupeKey.attendanceSummary(session.id),
     });
   }
 
@@ -314,6 +360,9 @@ export async function notifyAttendanceLocked(sessionId: string, schoolId: string
       targetType: "STUDENT",
       targetId: studentId,
       targetLabel: "Student",
+      sourceType: "ATTENDANCE_SESSION",
+      sourceId: session.id,
+      dedupeKey: notificationDedupeKey.attendanceAbsent(session.id, studentId),
     });
   }
 
@@ -356,6 +405,9 @@ export async function notifyLeaveRequestSubmitted(requestId: string, schoolId: s
     targetType: "ADMIN",
     targetId: request.id,
     targetLabel: "School administrators",
+    sourceType: "LEAVE_REQUEST",
+    sourceId: request.id,
+    dedupeKey: notificationDedupeKey.leaveSubmitted(request.id),
   });
 }
 
@@ -383,5 +435,8 @@ export async function notifyLeaveRequestDecided(requestId: string, schoolId: str
     targetType: "STUDENT",
     targetId: request.studentId,
     targetLabel: request.student.fullName?.trim() || request.student.admissionNo,
+    sourceType: "LEAVE_REQUEST",
+    sourceId: requestId,
+    dedupeKey: notificationDedupeKey.leaveDecided(requestId, request.status),
   });
 }
