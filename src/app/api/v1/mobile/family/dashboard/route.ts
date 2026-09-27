@@ -18,13 +18,14 @@ export async function GET() {
     );
 
     const [attendance, homework, installments, marks] = await Promise.all([
-      prisma.attendance.findMany({
+      prisma.attendance.groupBy({
+        by: ["studentId", "status"],
         where: {
           schoolId: membership.schoolId,
           studentId: { in: studentIds },
           session: { academicYear: { active: true } },
         },
-        select: { studentId: true, status: true },
+        _count: { _all: true },
       }),
       enrollmentTargets.length > 0 ? prisma.homework.findMany({
         where: {
@@ -88,9 +89,13 @@ export async function GET() {
       students: students.map((student) => {
         const enrollment = student.enrollments[0] ?? null;
         const records = attendance.filter((item) => item.studentId === student.id);
-        const attended = records.filter((item) =>
-          ["PRESENT", "LATE"].includes(item.status),
-        ).length;
+        const attended = records
+          .filter((item) => ["PRESENT", "LATE"].includes(item.status))
+          .reduce((total, item) => total + item._count._all, 0);
+        const attendanceTotal = records.reduce(
+          (total, item) => total + item._count._all,
+          0,
+        );
         const studentHomework = enrollment
           ? homework.filter(
               (item) =>
@@ -132,10 +137,10 @@ export async function GET() {
             : null,
           attendance: {
             attended,
-            total: records.length,
+            total: attendanceTotal,
             percentage:
-              records.length > 0
-                ? Math.round((attended / records.length) * 1000) / 10
+              attendanceTotal > 0
+                ? Math.round((attended / attendanceTotal) * 1000) / 10
                 : null,
           },
           pendingHomeworkCount: studentHomework.length,

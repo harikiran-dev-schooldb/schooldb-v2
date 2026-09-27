@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { z } from "zod";
 
 import type { AudienceType } from "@/features/audiences/types";
 import { recordAuditLog } from "@/lib/audit";
@@ -9,23 +8,15 @@ import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 import {
-  createWhatsappCampaign,
   getWhatsappEligibleRecipientCount,
   processWhatsappCampaignBatch,
 } from "./service";
+import { isManualWhatsappAnnouncementAllowed } from "./policy";
 
 export type WhatsappActionState = {
   error: string;
   success: string;
 };
-
-const campaignSchema = z.object({
-  title: z.string().trim().min(3).max(120),
-  message: z.string().trim().min(3).max(900),
-  targetType: z.enum(["SCHOOL", "CLASS", "SECTION", "STUDENT"]),
-  targetId: z.string().trim().max(100),
-  scheduledAt: z.string(),
-});
 
 /**
  * Returns the number of opted-in and eligible WhatsApp recipients
@@ -56,89 +47,21 @@ export async function getWhatsappRecipientPreview(
 export async function queueWhatsappCampaign(
   schoolSlug: string,
   _state: WhatsappActionState,
-  form: FormData,
+  _form: FormData,
 ): Promise<WhatsappActionState> {
-  const membership = await requireRole(
+  void _state;
+  void _form;
+  await requireRole(
     ["SUPER_ADMIN", "SCHOOL_ADMIN"],
     schoolSlug,
   );
-
-  const parsed = campaignSchema.safeParse(Object.fromEntries(form));
-
-  if (!parsed.success) {
-    return {
-      error: "Complete the message and choose a valid audience.",
-      success: "",
-    };
+  if (isManualWhatsappAnnouncementAllowed()) {
+    throw new Error("Manual WhatsApp announcements require an explicit policy change.");
   }
-
-  const {
-    title,
-    message,
-    targetType,
-    targetId,
-    scheduledAt: scheduledAtValue,
-  } = parsed.data;
-
-  const templateName =
-    process.env.META_WA_ANNOUNCEMENT_TEMPLATE || "school_announcement";
-
-  const scheduledAt = scheduledAtValue
-    ? new Date(scheduledAtValue)
-    : new Date();
-
-  if (Number.isNaN(scheduledAt.getTime())) {
-    return {
-      error: "Choose a valid sending time.",
-      success: "",
-    };
-  }
-
-  try {
-    const campaign = await createWhatsappCampaign({
-      schoolId: membership.schoolId,
-      createdBy: membership.userId,
-      title,
-      message,
-      targetType,
-      targetId,
-      scheduledAt,
-      templateName,
-    });
-
-    await recordAuditLog({
-      actor: membership,
-      module: "COMMUNICATION",
-      action: "CREATE",
-      entityType: "WHATSAPP_CAMPAIGN",
-      entityId: campaign.id,
-      summary: `Queued WhatsApp campaign “${title}” for ${campaign.recipientCount} recipient${
-        campaign.recipientCount === 1 ? "" : "s"
-      }.`,
-      metadata: {
-        recipientCount: campaign.recipientCount,
-        targetType,
-        targetId,
-      },
-    });
-
-    revalidatePath(`/${schoolSlug}/whatsapp`);
-
-    return {
-      error: "",
-      success: `Campaign queued for ${campaign.recipientCount} eligible WhatsApp recipient${
-        campaign.recipientCount === 1 ? "" : "s"
-      }.`,
-    };
-  } catch (error) {
-    return {
-      error:
-        error instanceof Error
-          ? error.message
-          : "Unable to queue this campaign.",
-      success: "",
-    };
-  }
+  return {
+    error: "Manual WhatsApp announcements are disabled. Use in-app announcements instead.",
+    success: "",
+  };
 }
 
 /**
@@ -152,6 +75,12 @@ export async function processWhatsappCampaign(
     ["SUPER_ADMIN", "SCHOOL_ADMIN"],
     schoolSlug,
   );
+
+  const campaign = await prisma.whatsappCampaign.findFirst({
+    where: { id: campaignId, schoolId: membership.schoolId, automatic: true },
+    select: { id: true },
+  });
+  if (!campaign) throw new Error("Only automatic operational alerts can be sent through WhatsApp.");
 
   await processWhatsappCampaignBatch(membership.schoolId, campaignId);
 
@@ -183,6 +112,7 @@ export async function retryFailedWhatsappCampaign(
     where: {
       id: campaignId,
       schoolId: membership.schoolId,
+      automatic: true,
       failedCount: {
         gt: 0,
       },

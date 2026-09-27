@@ -39,10 +39,10 @@ This checklist reflects features present in the application, not deployment conf
 ## Communication and services
 
 - [x] Announcements, audience targeting, and in-app notices
-- [x] WhatsApp campaigns, automation, retries, and delivery tracking
+- [x] Opted-in operational WhatsApp alerts, retries, and delivery tracking
 - [x] School calendar and leave requests
 - [x] Library and transport management
-- [ ] Push notifications
+- [x] Android and browser push notifications
 - [ ] Inventory and asset management
 
 ## Data and reporting

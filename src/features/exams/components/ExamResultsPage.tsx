@@ -239,7 +239,9 @@ export function ExamResultsPage({ schoolSlug, examId }: Props) {
             onClick={() => {
               const params = new URLSearchParams({ classId: selectedClassId });
               if (sectionId) params.set("sectionId", sectionId);
-              window.location.href = `/api/v1/reports/${schoolSlug}/exams/${examId}/results?${params.toString()}`;
+              const link = document.createElement("a");
+              link.href = `/api/v1/reports/${schoolSlug}/exams/${examId}/results?${params.toString()}`;
+              link.click();
             }}
           >
             <Download className="mr-2 size-4" />

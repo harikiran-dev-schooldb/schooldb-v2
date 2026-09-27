@@ -328,14 +328,6 @@ function formatDate(value: string) {
   }).format(new Date(value));
 }
 
-function titleCase(value: string) {
-  return value
-    .toLowerCase()
-    .split("_")
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
-}
-
 /* ==========================================================================
    DASHBOARD
    ========================================================================== */
@@ -495,8 +487,6 @@ export default function DashboardPage() {
     const academicYearId = data.academicYear?.id;
 
     const lowAttendance = data.lowAttendance ?? [];
-    const outstanding = data.outstanding ?? [];
-
     /* LOW ATTENDANCE */
 
     if (lowAttendance.length > 0 && academicYearId) {
@@ -594,7 +584,8 @@ export default function DashboardPage() {
     canReadFees,
     data.academicYear?.id,
     data.lowAttendance,
-    data.outstanding,
+    data.outstandingAmount,
+    data.outstandingCount,
     fees,
     school.slug,
   ]);

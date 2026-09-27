@@ -8,7 +8,6 @@ import {
   CheckCircle2,
   ClipboardList,
   ClipboardPenLine,
-  Clock3,
   MoreHorizontal,
   Pencil,
   Plus,

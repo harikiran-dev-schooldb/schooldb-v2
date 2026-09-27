@@ -1,4 +1,8 @@
+import { timingSafeEqual } from "node:crypto";
+import { auth } from "@clerk/nextjs/server";
+
 import { apiHandler } from "@/lib/api";
+import { ApiError } from "@/lib/errors";
 import { ApiResponse } from "@/lib/response";
 import { schoolOnboardingService } from "@/features/schools/services/school-onboarding.service";
 
@@ -13,6 +17,26 @@ export async function GET() {
 export async function POST(request: Request) {
   return apiHandler(async () => {
     const body = await request.json();
+    const { userId } = await auth();
+    if (!userId) throw new ApiError(401, "Sign in before completing initial setup.");
+
+    const configuredSecret = process.env.SCHOOLDB_BOOTSTRAP_SECRET?.trim() || "";
+    const providedSecret =
+      typeof body.bootstrapSecret === "string" ? body.bootstrapSecret.trim() : "";
+    if (!configuredSecret) {
+      throw new ApiError(
+        503,
+        "Initial setup is disabled until SCHOOLDB_BOOTSTRAP_SECRET is configured.",
+      );
+    }
+    const expected = Buffer.from(configuredSecret);
+    const provided = Buffer.from(providedSecret);
+    if (
+      expected.length !== provided.length ||
+      !timingSafeEqual(expected, provided)
+    ) {
+      throw new ApiError(403, "The initial setup secret is invalid.");
+    }
 
     const clerkUserId =
       typeof body.clerkUserId === "string" ? body.clerkUserId.trim() : "";
@@ -25,7 +49,14 @@ export async function POST(request: Request) {
     const slug = typeof body.slug === "string" ? body.slug.trim() : "";
 
     if (!clerkUserId) {
-      throw new Error("Clerk User ID is required.");
+      throw new ApiError(400, "Clerk User ID is required.");
+    }
+
+    if (clerkUserId !== userId) {
+      throw new ApiError(
+        403,
+        "The Clerk User ID must match the signed-in account.",
+      );
     }
 
     if (!email) {

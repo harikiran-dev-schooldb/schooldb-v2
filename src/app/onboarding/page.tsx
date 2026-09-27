@@ -28,6 +28,7 @@ export default function OnboardingPage() {
   const [email, setEmail] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
+  const [bootstrapSecret, setBootstrapSecret] = useState("");
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
   const [slugTouched, setSlugTouched] = useState(false);
@@ -108,6 +109,7 @@ export default function OnboardingPage() {
           email: email.trim(),
           firstName: firstName.trim(),
           lastName: lastName.trim(),
+          bootstrapSecret,
           name: name.trim(),
           slug: slug.trim(),
         }),
@@ -246,6 +248,14 @@ export default function OnboardingPage() {
                   </div>
 
                   <Field label="School Name" value={name} onChange={handleNameChange} placeholder="e.g. Kotak Salesian School" disabled={loading || success} />
+                  <Field
+                    label="Initial setup secret"
+                    value={bootstrapSecret}
+                    onChange={setBootstrapSecret}
+                    placeholder="Secret configured by the system owner"
+                    type="password"
+                    disabled={loading || success}
+                  />
 
                   <div className="space-y-2">
                     <label htmlFor="school-slug" className="text-xs font-semibold">School URL</label>
@@ -267,7 +277,7 @@ export default function OnboardingPage() {
 
                   <div className="flex gap-3">
                     <Button variant="outline" className="h-11 flex-1 rounded-xl" disabled={loading || success} onClick={() => setStep("admin")}>Back</Button>
-                    <Button className="h-11 flex-[2] rounded-xl" disabled={loading || success || !name.trim() || !slug.trim()} onClick={() => void createSchool()}>
+                    <Button className="h-11 flex-[2] rounded-xl" disabled={loading || success || !name.trim() || !slug.trim() || !bootstrapSecret.trim()} onClick={() => void createSchool()}>
                       {loading && <Loader2 className="size-4 animate-spin" />}
                       {loading ? "Creating..." : success ? "Setup Complete" : "Create SchoolDB Workspace"}
                     </Button>

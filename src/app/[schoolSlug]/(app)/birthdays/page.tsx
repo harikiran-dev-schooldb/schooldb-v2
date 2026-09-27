@@ -84,6 +84,8 @@ function StudentCard({
       <Card className="h-full overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_8px_24px_rgba(15,23,42,0.04)] transition-all duration-200 group-hover:-translate-y-0.5 group-hover:border-indigo-200 group-hover:shadow-[0_14px_32px_rgba(79,70,229,0.10)]">
         <CardContent className="flex items-center gap-4 p-4 sm:p-5">
           {student.imageUrl ? (
+            // URLs can come from each school's configured image provider.
+            // eslint-disable-next-line @next/next/no-img-element
             <img
               src={student.imageUrl}
               alt=""

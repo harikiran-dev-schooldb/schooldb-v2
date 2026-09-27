@@ -84,7 +84,8 @@ export default async function SystemHealthPage({
   const whatsappConfigured = Boolean(
     process.env.META_PHONE_NUMBER_ID &&
       process.env.META_WA_TOKEN &&
-      process.env.META_WA_ANNOUNCEMENT_TEMPLATE,
+      process.env.META_WA_ATTENDANCE_TEMPLATE &&
+      process.env.META_WA_BIRTHDAY_TEMPLATE,
   );
   const trackingConfigured = Boolean(
     process.env.META_APP_SECRET && process.env.META_WA_WEBHOOK_VERIFY_TOKEN,
@@ -119,8 +120,8 @@ export default async function SystemHealthPage({
     {
       name: "WhatsApp sending",
       detail: whatsappConfigured
-        ? "Cloud API and announcement template are configured"
-        : "Complete the Meta Cloud API settings",
+        ? "Cloud API, absentee and birthday templates are configured"
+        : "Complete the Meta Cloud API, absentee and birthday settings",
       status: whatsappConfigured ? "ready" : "attention",
     },
     {
@@ -134,7 +135,7 @@ export default async function SystemHealthPage({
       name: "Automatic alerts",
       detail:
         process.env.META_WA_AUTOMATION_ENABLED === "true"
-          ? "Attendance, homework, result and fee alerts are enabled"
+          ? "Opted-in families receive birthday and absentee WhatsApp alerts"
           : "Automation is currently disabled",
       status:
         process.env.META_WA_AUTOMATION_ENABLED === "true"

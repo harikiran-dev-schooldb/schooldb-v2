@@ -21,6 +21,7 @@ export function ParentQueryForm({ schoolSlug, classes }: { schoolSlug: string; c
   const [classId, setClassId] = useState("");
   const [sectionId, setSectionId] = useState("");
   const [studentQuery, setStudentQuery] = useState("");
+  const [parentPhone, setParentPhone] = useState("");
   const [student, setStudent] = useState<StudentOption | null>(null);
   const [students, setStudents] = useState<StudentOption[]>([]);
   const [searching, setSearching] = useState(false);
@@ -32,13 +33,18 @@ export function ParentQueryForm({ schoolSlug, classes }: { schoolSlug: string; c
   async function searchStudent() {
     setError("");
     setStudents([]);
-    if (!classId || !sectionId || studentQuery.trim().length < 3) {
-      setError("Select class and section, then enter at least three characters of the student name or admission number.");
+    if (!classId || !sectionId || !studentQuery.trim() || parentPhone.length !== 10) {
+      setError("Select class and section, then enter the full admission number and registered 10-digit mobile number.");
       return;
     }
     setSearching(true);
     try {
-      const query = new URLSearchParams({ classId, sectionId, q: studentQuery.trim() });
+      const query = new URLSearchParams({
+        classId,
+        sectionId,
+        admissionNo: studentQuery.trim(),
+        mobile: parentPhone,
+      });
       const response = await fetch(`/api/v1/public/support/${schoolSlug}/students?${query}`);
       const result: ApiResult<StudentOption[]> = await response.json();
       if (!response.ok || !result.success) throw new Error(result.message || "Student search failed.");
@@ -100,7 +106,7 @@ export function ParentQueryForm({ schoolSlug, classes }: { schoolSlug: string; c
     <form onSubmit={submit} className="space-y-6">
       <div>
         <h2 className="text-lg font-bold">Choose your child</h2>
-        <p className="mt-1 text-sm text-slate-600">Find the student in the current class and section.</p>
+        <p className="mt-1 text-sm text-slate-600">Verify the student using the admission number and a registered family mobile number.</p>
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
         <label className={labelClass}>Class
@@ -121,11 +127,11 @@ export function ParentQueryForm({ schoolSlug, classes }: { schoolSlug: string; c
         </label>
       </div>
       <div>
-        <label htmlFor="studentSearch" className={labelClass}>Student name or admission number</label>
+        <label htmlFor="studentSearch" className={labelClass}>Full admission number</label>
         <div className="mt-2 flex gap-2">
           <input id="studentSearch" value={studentQuery} onChange={(event) => {
             setStudentQuery(event.target.value); setStudent(null); setStudents([]);
-          }} className="min-w-0 flex-1 rounded-xl border border-slate-300 px-3 py-3 text-base outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100" placeholder="Enter at least 3 characters" maxLength={80} />
+          }} className="min-w-0 flex-1 rounded-xl border border-slate-300 px-3 py-3 text-base outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100" placeholder="Enter the complete admission number" maxLength={80} />
           <button type="button" onClick={searchStudent} disabled={searching || !sectionId} className="rounded-xl bg-indigo-600 px-4 font-semibold text-white disabled:opacity-50">
             {searching ? "Finding…" : "Find"}
           </button>
@@ -139,6 +145,23 @@ export function ParentQueryForm({ schoolSlug, classes }: { schoolSlug: string; c
           </button>)}
         </div>}
       </div>
+      <label className={labelClass}>Registered mobile number
+        <input
+          name="parentPhone"
+          required
+          value={parentPhone}
+          onChange={(event) => {
+            setParentPhone(event.target.value.replace(/\D/g, "").slice(-10));
+            setStudent(null);
+            setStudents([]);
+          }}
+          maxLength={10}
+          inputMode="numeric"
+          className={fieldClass}
+          autoComplete="tel"
+          placeholder="10-digit number registered with the school"
+        />
+      </label>
       <div className="border-t border-slate-200 pt-6">
         <h2 className="text-lg font-bold">Your query</h2>
       </div>
@@ -158,16 +181,13 @@ export function ParentQueryForm({ schoolSlug, classes }: { schoolSlug: string; c
         <label className={labelClass}>Your name <span className="font-normal text-slate-500">(optional)</span>
           <input name="parentName" maxLength={100} className={fieldClass} autoComplete="name" />
         </label>
-        <label className={labelClass}>WhatsApp mobile number <span className="font-normal text-slate-500">(optional)</span>
-          <input name="parentPhone" maxLength={20} inputMode="tel" className={fieldClass} autoComplete="tel" placeholder="10-digit Indian mobile number" />
-        </label>
       </div>
       <div className="hidden" aria-hidden="true"><label>Website <input name="website" tabIndex={-1} autoComplete="off" /></label></div>
       {error && <p role="alert" className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
       <button type="submit" disabled={submitting || !student} className="w-full rounded-xl bg-indigo-700 px-5 py-3.5 font-bold text-white hover:bg-indigo-800 disabled:opacity-50">
         {submitting ? "Submitting…" : "Send query to school"}
       </button>
-      <p className="text-center text-xs text-slate-500">If you add a number, the school will send WhatsApp updates when your query is received and as its status changes through resolution. The school may also contact you at that number.</p>
+      <p className="text-center text-xs text-slate-500">The registered number verifies the student and receives WhatsApp updates as the query moves through resolution.</p>
     </form>
   );
 }

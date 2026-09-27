@@ -10,6 +10,24 @@ const MIME_EXTENSIONS: Record<string, string> = {
   "image/webp": ".webp",
 };
 
+function detectedDocumentMime(buffer: Buffer): keyof typeof MIME_EXTENSIONS | null {
+  if (buffer.subarray(0, 5).toString("ascii") === "%PDF-") return "application/pdf";
+  if (buffer.length >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) {
+    return "image/jpeg";
+  }
+  if (buffer.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) {
+    return "image/png";
+  }
+  if (
+    buffer.length >= 12 &&
+    buffer.subarray(0, 4).toString("ascii") === "RIFF" &&
+    buffer.subarray(8, 12).toString("ascii") === "WEBP"
+  ) {
+    return "image/webp";
+  }
+  return null;
+}
+
 export const MAX_STUDENT_DOCUMENT_BYTES = 5 * 1024 * 1024;
 export const STUDENT_DOCUMENT_ACCEPT = Object.keys(MIME_EXTENSIONS);
 
@@ -73,13 +91,17 @@ async function savePrivateDocument(
   if (file.size <= 0 || file.size > MAX_STUDENT_DOCUMENT_BYTES) {
     throw new Error("Document must be smaller than 5 MB");
   }
+  const contents = Buffer.from(await file.arrayBuffer());
+  if (detectedDocumentMime(contents) !== file.type) {
+    throw new Error("The document contents do not match the selected file type");
+  }
 
   const storageKey = `${randomUUID()}${extension}`;
 
   if (hasBlobCredentials()) {
     const blob = await put(
       `${collection}/${storageKey}`,
-      Buffer.from(await file.arrayBuffer()),
+      contents,
       {
         access: "private",
         addRandomSuffix: false,
@@ -98,7 +120,7 @@ async function savePrivateDocument(
 
   const destination = storagePath(storageKey, collection);
   await mkdir(path.dirname(destination), { recursive: true });
-  await writeFile(destination, Buffer.from(await file.arrayBuffer()), {
+  await writeFile(destination, contents, {
     flag: "wx",
   });
   return storageKey;

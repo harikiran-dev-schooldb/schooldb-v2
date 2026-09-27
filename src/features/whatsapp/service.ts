@@ -5,6 +5,7 @@ import { resolveAudience } from "@/features/audiences/resolve";
 import type { AudienceType } from "@/features/audiences/types";
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
+import { isAutomatedWhatsappSourceAllowed } from "./policy";
 
 type CreateCampaignInput = {
   schoolId: string;
@@ -268,11 +269,11 @@ function automatedTemplateName(sourceType: AutomatedAlertInput["sourceType"]) {
     PROMOTION: process.env.META_WA_PROMOTION_TEMPLATE,
     BIRTHDAY: process.env.META_WA_BIRTHDAY_TEMPLATE,
   };
-  return templates[sourceType] || process.env.META_WA_ANNOUNCEMENT_TEMPLATE;
+  return templates[sourceType];
 }
 
 export async function queueAutomatedWhatsappAlert(input: AutomatedAlertInput) {
-  if (["HOMEWORK", "RESULT", "FEE_DUE"].includes(input.sourceType)) {
+  if (!isAutomatedWhatsappSourceAllowed(input.sourceType)) {
     return null;
   }
   if (
@@ -331,8 +332,7 @@ export async function queueAdmissionWhatsappUpdate(input: {
 
   const phone = normalizeIndianMobile(input.phone);
   const templateName =
-    process.env.META_WA_ADMISSION_TEMPLATE ||
-    process.env.META_WA_ANNOUNCEMENT_TEMPLATE;
+    process.env.META_WA_ADMISSION_TEMPLATE;
   if (!phone || !templateName) return null;
 
   const statusLabel = input.status.replaceAll("_", " ").toLowerCase();

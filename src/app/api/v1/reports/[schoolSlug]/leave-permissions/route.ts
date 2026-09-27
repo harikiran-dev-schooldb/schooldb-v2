@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { listStaffLeaveRequests } from "@/features/leave-requests/service";
+import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createSchoolReportWorkbook, reportDateRange, safeReportFilename } from "@/lib/reports/excel";
 
@@ -20,6 +21,10 @@ function dateText(date: Date) {
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ schoolSlug: string }> }) {
   const { schoolSlug } = await params;
+  const membership = await requireRole(
+    ["SUPER_ADMIN", "SCHOOL_ADMIN", "TEACHER"],
+    schoolSlug,
+  );
   const search = request.nextUrl.searchParams;
   const type = search.get("type") ?? "ALL";
   const from = search.get("from") || undefined;
@@ -27,7 +32,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   const classId = search.get("classId") || undefined;
   const sectionId = search.get("sectionId") || undefined;
 
-  const school = await prisma.school.findUnique({ where: { slug: schoolSlug }, select: { name: true } });
+  const school = await prisma.school.findFirst({
+    where: { id: membership.schoolId, slug: schoolSlug },
+    select: { name: true },
+  });
   if (!school) return NextResponse.json({ error: "School not found" }, { status: 404 });
 
   const allRows = await listStaffLeaveRequests(schoolSlug, { classId, sectionId, from, to });

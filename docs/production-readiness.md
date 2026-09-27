@@ -18,11 +18,13 @@ Configure the hosting provider's uptime monitor to request `/api/health`. A heal
 
 The default fixed window permits five send attempts per mobile number and 20 per source IP every ten minutes, scoped per school. The existing 30-second resend cooldown remains active. Adjust these limits only after reviewing real traffic.
 
-## Automatic WhatsApp alerts
+## Notifications and WhatsApp alerts
 
-Set `META_WA_AUTOMATION_ENABLED=true` only after the Meta credentials and WhatsApp templates have been configured. Attendance, homework, result, fee and promotion alerts use their matching `META_WA_*_TEMPLATE` setting. Add a specific template setting only after Meta marks that template approved; while it is absent, SchoolDB safely falls back to `META_WA_ANNOUNCEMENT_TEMPLATE`. Automatic alerts are sent only to active students whose **WhatsApp alerts approved** switch is enabled on the student form. Existing students remain opted out until the school records consent.
+Homework, exam-result, fee and general-announcement notifications are delivered through the SchoolDB Android/web app. Manual WhatsApp announcements are disabled. Fee reminders are started manually by an authorized administrator and are delivered only through the app.
 
-Attendance alerts are queued when attendance is locked, homework alerts when active homework is published, and result alerts when an exam is marked completed. The daily fee reminder runs at 9:00 AM India time through the Vercel cron in `vercel.json`. Configure a strong `CRON_SECRET` in production; Vercel sends it to the protected cron route as a bearer token.
+Set `META_WA_AUTOMATION_ENABLED=true` only after Meta credentials and the approved birthday and attendance templates are configured. WhatsApp attendance alerts are queued only for absent students when attendance is locked. Birthday WhatsApp wishes are queued by the daily cron only for active students whose **WhatsApp alerts approved** switch is enabled. Existing students remain opted out until the school records consent. Template-specific alerts do not fall back to a generic announcement template.
+
+The Vercel cron in `vercel.json` runs at 8:00 AM India time. Configure a strong `CRON_SECRET`; Vercel sends it to the protected cron route as a bearer token.
 
 For accurate delivery tracking, configure the Meta App webhook callback as `https://YOUR_DOMAIN/api/v1/public/whatsapp/webhook`, copy `META_WA_WEBHOOK_VERIFY_TOKEN` into Meta's verify-token field, and add the Meta App Secret as `META_APP_SECRET`. Subscribe the WhatsApp Business Account to the `messages` webhook field. The endpoint validates Meta's SHA-256 signature before accepting status events.
 

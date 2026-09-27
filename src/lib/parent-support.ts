@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 
+import { normalizeIndianMobile } from "@/features/auth/otp";
 import { prisma } from "@/lib/prisma";
 import { ApiError } from "@/lib/errors";
 import { sendSupportPush, supportAdminUserIds } from "@/lib/support-push";
@@ -36,14 +37,15 @@ export async function searchParentSupportStudents(input: {
   schoolSlug: string;
   classId: string;
   sectionId: string;
-  query: string;
+  admissionNo: string;
+  mobile: string;
 }) {
   const school = await prisma.school.findUnique({
     where: { slug: input.schoolSlug }, select: { id: true },
   });
   if (!school) throw new ApiError(404, "School not found.");
 
-  const enrollments = await prisma.studentEnrollment.findMany({
+  const enrollment = await prisma.studentEnrollment.findFirst({
     where: {
       schoolId: school.id,
       classId: input.classId,
@@ -53,21 +55,37 @@ export async function searchParentSupportStudents(input: {
       class: { active: true },
       section: { active: true },
       student: {
-        OR: [
-          { fullName: { contains: input.query, mode: "insensitive" } },
-          { admissionNo: { equals: input.query, mode: "insensitive" } },
-        ],
+        admissionNo: { equals: input.admissionNo, mode: "insensitive" },
       },
     },
-    select: { student: { select: { id: true, fullName: true, admissionNo: true } } },
-    take: 10,
-    orderBy: { student: { fullName: "asc" } },
+    select: {
+      student: {
+        select: {
+          id: true,
+          fullName: true,
+          admissionNo: true,
+          phone: true,
+          fatherPhone: true,
+          motherPhone: true,
+          guardianPhone: true,
+        },
+      },
+    },
   });
-  return enrollments.map(({ student }) => ({
+  if (!enrollment) return [];
+  const { student } = enrollment;
+  const verified = [
+    student.phone,
+    student.fatherPhone,
+    student.motherPhone,
+    student.guardianPhone,
+  ].some((phone) => normalizeIndianMobile(phone || "") === input.mobile);
+  if (!verified) return [];
+  return [{
     id: student.id,
     name: student.fullName || "Student",
     admissionHint: student.admissionNo.slice(-4),
-  }));
+  }];
 }
 
 export async function submitParentSupport(input: {
@@ -79,7 +97,7 @@ export async function submitParentSupport(input: {
   subject: string;
   description: string;
   parentName?: string;
-  parentPhone?: string;
+  parentPhone: string;
 }) {
   const school = await prisma.school.findUnique({
     where: { slug: input.schoolSlug }, select: { id: true },
@@ -97,9 +115,30 @@ export async function submitParentSupport(input: {
       class: { active: true },
       section: { active: true },
     },
-    select: { id: true },
+    select: {
+      id: true,
+      student: {
+        select: {
+          phone: true,
+          fatherPhone: true,
+          motherPhone: true,
+          guardianPhone: true,
+        },
+      },
+    },
   });
-  if (!enrollment) throw new ApiError(400, "Choose a student in the selected class and section.");
+  const verifiedPhone = enrollment && [
+    enrollment.student.phone,
+    enrollment.student.fatherPhone,
+    enrollment.student.motherPhone,
+    enrollment.student.guardianPhone,
+  ].some((phone) => normalizeIndianMobile(phone || "") === input.parentPhone);
+  if (!enrollment || !verifiedPhone) {
+    throw new ApiError(
+      400,
+      "The student details and registered mobile number could not be verified.",
+    );
+  }
 
   const ticket = await prisma.supportTicket.create({
     data: {
@@ -128,8 +167,7 @@ export async function submitParentSupport(input: {
   } catch (error) {
     console.error("Parent support push failed", error);
   }
-  if (input.parentPhone) {
-    await queueParentQueryWhatsappUpdate({
+  await queueParentQueryWhatsappUpdate({
       schoolId: school.id,
       ticketId: ticket.id,
       ticketNo: ticket.ticketNo,
@@ -137,7 +175,6 @@ export async function submitParentSupport(input: {
       parentName: input.parentName || null,
       status: "OPEN",
       eventKey: "created",
-    }).catch((error) => console.error("Parent query WhatsApp failed", error));
-  }
+  }).catch((error) => console.error("Parent query WhatsApp failed", error));
   return ticket;
 }

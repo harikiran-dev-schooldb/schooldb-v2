@@ -18,7 +18,7 @@ const inputSchema = z.object({
   subject: z.string().trim().min(3).max(160),
   description: z.string().trim().min(10).max(5000),
   parentName: z.string().trim().max(100).optional(),
-  parentPhone: z.string().trim().regex(/^[+0-9()\s-]{10,20}$/).optional().or(z.literal("")),
+  parentPhone: z.string().trim().regex(/^[+0-9()\s-]{10,20}$/),
   website: z.string().max(200).optional(),
 });
 
@@ -35,9 +35,15 @@ export async function POST(request: Request, { params }: Context) {
 
     const { website: _website, ...input } = parsed.data;
     void _website;
-    const parentPhone = input.parentPhone ? normalizeIndianMobile(input.parentPhone) : undefined;
-    if (input.parentPhone && !parentPhone) throw new ApiError(400, "Enter a valid Indian mobile number for WhatsApp updates.");
-    const ticket = await submitParentSupport({ schoolSlug, ...input, parentPhone: parentPhone || undefined });
+    const parentPhone = normalizeIndianMobile(input.parentPhone);
+    if (!parentPhone) {
+      throw new ApiError(400, "Enter the student's registered Indian mobile number.");
+    }
+    const ticket = await submitParentSupport({
+      schoolSlug,
+      ...input,
+      parentPhone: parentPhone.slice(-10),
+    });
     return ApiResponse.success({ ticketNo: ticket.ticketNo }, "Query submitted to the school.", 201);
   });
 }

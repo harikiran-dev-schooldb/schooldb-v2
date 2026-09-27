@@ -166,7 +166,9 @@ export function ClassAttendanceReport({ schoolSlug }: Props) {
     const params = new URLSearchParams({ academicYearId, classId, sectionId });
     if (fromDate) params.set("fromDate", fromDate);
     if (toDate) params.set("toDate", toDate);
-    window.location.href = `/api/v1/reports/${schoolSlug}/attendance/class?${params.toString()}`;
+    const link = document.createElement("a");
+    link.href = `/api/v1/reports/${schoolSlug}/attendance/class?${params.toString()}`;
+    link.click();
   }
 
   function openStudent(studentId: string) {

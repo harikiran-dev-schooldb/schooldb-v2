@@ -59,7 +59,7 @@ flowchart LR
 - **One platform, many schools** — tenant-aware routes, permissions, branding, and records.
 - **Role-based access** — tailored workspaces for super admins, school admins, teachers, staff, and students.
 - **Passwordless sign-in** — WhatsApp OTP authentication for registered mobile numbers.
-- **Automated communication** — approved Meta templates for announcements, homework, attendance, fees, and results.
+- **Controlled communication** — in-app notices for school updates, with opted-in WhatsApp delivery limited to operational flows such as OTP, absences and birthdays.
 - **Student self-service** — direct access to attendance, fees, results, exams, timetable, homework, notices, documents, and leave requests.
 - **Print-ready workflows** — customizable ID cards, certificates, receipts, and reports.
 - **Operational at scale** — paginated queries, database indexes, validation, rate limits, and queue-friendly message batches.
@@ -75,7 +75,7 @@ flowchart LR
 | **Fees & finance** | Plans, categories, collection, payments, outstanding balances, receipts, expenses and class/section filters |
 | **Timetable** | Periods, daily schedules, class timetables and teacher timetables |
 | **Academic work** | Homework, exams, marks, results and report cards |
-| **Communication** | In-app notifications, WhatsApp campaigns, delivery status, scheduling and audience targeting |
+| **Communication** | In-app notifications plus tracked WhatsApp OTP, absentee, birthday, admission and parent-query updates |
 | **School services** | Library, transport, calendar, leave requests and bulk imports |
 | **Documents** | Bonafide and study certificates, student ID cards, exports and print-ready layouts |
 
@@ -115,7 +115,7 @@ flowchart TB
 
 ## WhatsApp communication
 
-SchoolDB uses the Meta WhatsApp Cloud API for OTP delivery and school communication. Messages outside the customer-service window are sent through approved templates.
+SchoolDB uses the Meta WhatsApp Cloud API for OTP and selected opted-in operational alerts. Homework, results, fees and general announcements are delivered through the SchoolDB app.
 
 ```mermaid
 sequenceDiagram
@@ -140,13 +140,12 @@ sequenceDiagram
 Supported message flows include:
 
 - Login OTP
-- School announcements
-- Attendance alerts
-- Homework assignments
-- Exam result updates
-- Fee reminders
+- Absentee alerts
+- Birthday wishes
+- Admission updates
+- Parent-query status updates
 
-Audience targeting supports the whole school, a class, a class section, or an individual student. Campaigns can be queued, processed in batches, retried, and audited using provider delivery statuses.
+Operational messages are queued, processed in batches, retried, and audited using provider delivery statuses. Manual WhatsApp announcement campaigns are disabled.
 
 ## Access model
 
@@ -282,7 +281,7 @@ The complete reference lives in [`.env.example`](.env.example). Configuration is
 5. Enable automation only after the templates show an active status.
 6. Verify delivery with one test student before sending to a class or the whole school.
 
-Template names currently supported by configuration include OTP login, school announcements, attendance, homework, results, fees, and parent queries. A parent who supplies an Indian mobile number in the public query form receives a ticket receipt and WhatsApp updates when the ticket is assigned or its status changes. Set `META_WA_PARENT_QUERY_TEMPLATE` to an approved utility template with three body parameters: school name, ticket number, and status. Parent query updates are not sent through the announcement template, which may be classified as marketing. Delivery and failures are recorded in WhatsApp campaign recipients when the Meta webhook has the correct `META_APP_SECRET`.
+Template names currently supported by configuration include OTP login, attendance, birthday, admission, promotion and parent-query updates. The public parent-query form verifies the student's full admission number against a registered family mobile number before accepting a ticket. Set `META_WA_PARENT_QUERY_TEMPLATE` to an approved utility template with three body parameters: school name, ticket number, and status. Delivery and failures are recorded in WhatsApp campaign recipients when the Meta webhook has the correct `META_APP_SECRET`.
 
 ## Quality and performance
 

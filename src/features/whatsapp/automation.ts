@@ -4,6 +4,7 @@ import {
   processWhatsappCampaignBatch,
   queueAutomatedWhatsappAlert,
 } from "./service";
+import { isAutomatedWhatsappSourceAllowed } from "./policy";
 
 function formatDate(value: Date) {
   return new Intl.DateTimeFormat("en-IN", {
@@ -118,7 +119,7 @@ export async function processAutomatedCampaign(campaignId: string) {
     select: { id: true, schoolId: true, sourceType: true },
   });
   if (!campaign) return null;
-  if (["HOMEWORK", "RESULT", "FEE_DUE"].includes(campaign.sourceType ?? "")) {
+  if (!isAutomatedWhatsappSourceAllowed(campaign.sourceType ?? "")) {
     await prisma.$transaction([
       prisma.whatsappCampaign.update({
         where: { id: campaign.id },

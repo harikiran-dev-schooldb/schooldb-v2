@@ -32,11 +32,17 @@ export function StudentProfileHeader({ student }: Props) {
         <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
           <span>Admission No: {student.admissionNo}</span>
           <span>·</span>
-          {house ? <span className="inline-flex items-center gap-1.5 font-medium text-foreground">{house.iconUrl ? <img src={house.iconUrl} alt="" className="size-6 rounded object-contain" /> : <Shield className="size-5" style={{ color: house.color || "#64748b" }} />}{house.name}</span> : <span>—</span>}
+          {house ? <span className="inline-flex items-center gap-1.5 font-medium text-foreground">{house.iconUrl ? <HouseIcon src={house.iconUrl} /> : <Shield className="size-5" style={{ color: house.color || "#64748b" }} />}{house.name}</span> : <span>—</span>}
         </div>
 
         <Badge>{student.status}</Badge>
       </div>
     </div>
   );
+}
+
+function HouseIcon({ src }: { src: string }) {
+  // House emblems may use a school-managed external provider.
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img src={src} alt="" className="size-6 rounded object-contain" />;
 }

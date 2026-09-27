@@ -224,13 +224,13 @@ export async function POST(request: Request) {
     }
 
     const whatsappPayload = await whatsappResponse.text();
-    console.log("WHATSAPP OTP RESPONSE", {
-      status: whatsappResponse.status,
-      phone,
-      payload: whatsappPayload,
-    });
 
     if (!whatsappResponse.ok) {
+      console.error("WHATSAPP OTP DELIVERY FAILED", {
+        status: whatsappResponse.status,
+        phoneEnding: phone.slice(-4),
+        responseLength: whatsappPayload.length,
+      });
       await prisma.otpChallenge.deleteMany({
         where: { schoolId: school.id, phoneHash: hashedPhone, codeHash },
       });

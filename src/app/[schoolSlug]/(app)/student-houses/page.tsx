@@ -267,6 +267,8 @@ export default function StudentHousesPage() {
             <CardContent className="flex items-center gap-4 p-5">
               <div className="flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-xl border bg-background">
                 {h.iconUrl ? (
+                  // House emblems may use a school-managed external provider.
+                  // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={h.iconUrl}
                     alt={`${h.name} emblem`}
@@ -600,6 +602,8 @@ export default function StudentHousesPage() {
               <div className="flex gap-3">
                 <div className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border bg-muted/30">
                   {editIconUrl ? (
+                    // Preview arbitrary school-managed icon URLs before saving.
+                    // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={editIconUrl}
                       alt="House icon preview"
