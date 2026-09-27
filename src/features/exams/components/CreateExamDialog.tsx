@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 import { AcademicYearSelect } from "@/components/common/select";
+import { refreshTable } from "@/lib/table-event";
 
 type Props = {
   open: boolean;
@@ -82,6 +83,7 @@ export function CreateExamDialog({ open, onOpenChange, onSuccess }: Props) {
       }
 
       toast.success("Exam created successfully.");
+      refreshTable("exams");
 
       setAcademicYearId("");
       setName("");

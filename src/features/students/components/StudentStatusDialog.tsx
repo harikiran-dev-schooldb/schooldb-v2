@@ -25,6 +25,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { refreshTable } from "@/lib/table-event";
 
 import { StudentStatus } from "../constants/student-status";
 
@@ -62,6 +63,7 @@ export function StudentStatusDialog({ open, onOpenChange, studentId }: Props) {
       }
 
       toast.success("Student status updated successfully");
+      refreshTable("students");
       onOpenChange(false);
     } catch (error) {
       console.error(error);

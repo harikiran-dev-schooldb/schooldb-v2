@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ClassSelect, SectionSelect } from "@/components/common/select";
 import { Input } from "@/components/ui/input";
+import { refreshTable } from "@/lib/table-event";
 
 type Status = "PRESENT" | "ABSENT" | "EXEMPTED";
 
@@ -360,6 +361,7 @@ export function ExamMarksPage({ schoolSlug, examId }: Props) {
       );
 
       toast.success("Exam results saved successfully.");
+      refreshTable("exams");
       await loadStudents();
     } catch (error) {
       toast.error(

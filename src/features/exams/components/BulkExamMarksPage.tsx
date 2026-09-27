@@ -9,6 +9,7 @@ import { ClassSelect, SectionSelect } from "@/components/common/select";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { refreshTable } from "@/lib/table-event";
 
 type Status = "PRESENT" | "ABSENT" | "EXEMPTED";
 
@@ -214,6 +215,7 @@ export function BulkExamMarksPage({ schoolSlug, examId }: Props) {
         }
       }));
       toast.success("Bulk exam results saved successfully.");
+      refreshTable("exams");
       await loadStudents();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to save results.");

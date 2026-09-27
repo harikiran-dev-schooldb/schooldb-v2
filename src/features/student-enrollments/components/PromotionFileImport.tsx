@@ -30,6 +30,7 @@ import {
   postImportInBatches,
   type ImportProgress,
 } from "@/lib/batched-import";
+import { refreshTable } from "@/lib/table-event";
 import type {
   PromotionDecision,
   PromotionImportRow,
@@ -238,6 +239,7 @@ export function PromotionFileImport() {
         failureMessage: "Promotion import failed.",
       });
       setResult({ created: data.created, skipped: data.skipped });
+      refreshTable("enrollments", "students");
       setConfirmOpen(false);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Promotion import failed.");

@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { refreshTable } from "@/lib/table-event";
 
 type Props = { studentId: string; type: "BONAFIDE" | "STUDY" | "TRANSFER"; issueId?: string; cancelled?: boolean };
 
@@ -26,6 +27,7 @@ export function CertificateIssueActions({ studentId, type, issueId, cancelled = 
       const payload = await response.json() as { success?: boolean; message?: string; data?: { id: string } };
       if (!response.ok || !payload.success || !payload.data) throw new Error(payload.message || "Unable to issue certificate.");
       toast.success("Certificate issued and added to the register.");
+      refreshTable("certificate-register");
       setOpen(false);
       router.replace(`${pathname}?issueId=${payload.data.id}`);
       router.refresh();

@@ -12,6 +12,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { refreshTable } from "@/lib/table-event";
 
 type Installment = {
   id: string;
@@ -92,6 +93,7 @@ function ConcessionForm({
       }
 
       toast.success("Concession updated successfully.");
+      refreshTable("student-fees");
 
       onOpenChange(false);
 

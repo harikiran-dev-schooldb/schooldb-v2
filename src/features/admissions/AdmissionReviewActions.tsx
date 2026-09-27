@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { refreshTable } from "@/lib/table-event";
 
 type Status = "SUBMITTED" | "UNDER_REVIEW" | "APPROVED" | "WAITLISTED" | "REJECTED" | "CONVERTED" | "DRAFT";
 
@@ -29,6 +30,7 @@ export function AdmissionReviewActions({ id, status, sections, automaticNumberin
       const result = await response.json();
       if (!result.success) throw new Error(result.message || "Unable to update the application.");
       toast.success(result.message);
+      refreshTable("admissions", "students", "enrollments");
       router.refresh();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to update the application.");

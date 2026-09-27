@@ -36,6 +36,7 @@ import {
 import { EditExamScheduleDialog } from "@/features/exams/components/EditExamScheduleDialog";
 import { CreateExamScheduleDialog } from "./CreateExamScheduleDialog";
 import { ExamStatusControl } from "./ExamStatusControl";
+import { refreshTable } from "@/lib/table-event";
 
 type Exam = {
   id: string;
@@ -148,6 +149,7 @@ export function ExamDetailsPage({ schoolSlug, examId }: Props) {
         return;
       }
       toast.success("Exam schedule deleted successfully.");
+      refreshTable("exams");
       setDeleteScheduleOpen(false);
       setScheduleToDelete(null);
       await loadData();

@@ -12,6 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { formatCurrency } from "@/lib/self-service-format";
+import { refreshTable } from "@/lib/table-event";
 
 type Installment = {
   id: string;
@@ -129,6 +130,7 @@ function StaffQrFlow({
       if (next.status === "PAID" && !notifiedPaid.current) {
         notifiedPaid.current = true;
         toast.success("Payment verified and receipt created.");
+        refreshTable("student-fees", "fee-payments", "fee-receipts");
         onSuccess();
       }
     } catch (error) {

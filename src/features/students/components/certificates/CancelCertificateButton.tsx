@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { refreshTable } from "@/lib/table-event";
 
 export function CancelCertificateButton({ id, certificateNo }: { id: string; certificateNo: string }) {
   const router = useRouter();
@@ -24,6 +25,7 @@ export function CancelCertificateButton({ id, certificateNo }: { id: string; cer
       if (!response.ok || !payload.success) throw new Error(payload.message || "Unable to cancel certificate.");
       toast.success("Certificate cancelled. The register entry was retained.");
       setOpen(false);
+      refreshTable("certificate-register");
       router.refresh();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to cancel certificate.");

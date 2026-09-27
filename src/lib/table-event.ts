@@ -1,9 +1,11 @@
-export function refreshTable(name: string) {
-  window.dispatchEvent(
-    new CustomEvent("schooldb-table-refresh", {
-      detail: { name },
-    }),
-  );
+export function refreshTable(...names: string[]) {
+  for (const name of new Set(names)) {
+    window.dispatchEvent(
+      new CustomEvent("schooldb-table-refresh", {
+        detail: { name },
+      }),
+    );
+  }
 }
 
 export function subscribeTableRefresh(

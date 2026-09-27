@@ -15,6 +15,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { refreshTable } from "@/lib/table-event";
 
 export function ExamStatusControl({
   examId,
@@ -51,6 +52,7 @@ export function ExamStatusControl({
           ? "Results published and WhatsApp alerts queued."
           : "Exam schedule published.",
       );
+      refreshTable("exams");
       setNextStatus(null);
       await onUpdated();
     } catch {

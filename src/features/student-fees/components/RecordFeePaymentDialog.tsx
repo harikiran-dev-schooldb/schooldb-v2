@@ -34,6 +34,7 @@ import {
 } from "@/components/ui/select";
 
 import { toast } from "sonner";
+import { refreshTable } from "@/lib/table-event";
 
 /* -------------------------------------------------------------------------- */
 /* Types                                                                      */
@@ -475,6 +476,7 @@ function PaymentForm({
       }
 
       toast.success("Fee payment recorded successfully.");
+      refreshTable("student-fees", "fee-payments", "fee-receipts");
 
       const newPaymentId = result.data?.id;
 

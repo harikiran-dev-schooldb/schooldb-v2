@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { refreshTable } from "@/lib/table-event";
 
 import type { StudentProfileData } from "./StudentProfile";
 
@@ -98,6 +99,7 @@ export function StudentDocumentsTab({ student }: { student: StudentProfileData }
       const result = await response.json();
       if (!response.ok || !result.success) throw new Error(result.message || "Upload failed");
       toast.success("Document uploaded securely");
+      refreshTable("student-documents");
       setDialogOpen(false);
       setVisibleToFamily(false);
       setFileName("");
@@ -121,6 +123,7 @@ export function StudentDocumentsTab({ student }: { student: StudentProfileData }
       if (!response.ok || !result.success) throw new Error(result.message || "Update failed");
       setDocuments((current) => current.map((item) => item.id === document.id ? { ...item, visibleToFamily: visible } : item));
       toast.success(visible ? "Document shared with family" : "Family access removed");
+      refreshTable("student-documents");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Update failed");
     } finally {
@@ -137,6 +140,7 @@ export function StudentDocumentsTab({ student }: { student: StudentProfileData }
       setDocuments((current) => current.filter((item) => item.id !== document.id));
       setDocumentToDelete(null);
       toast.success("Document deleted");
+      refreshTable("student-documents");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Delete failed");
     } finally {

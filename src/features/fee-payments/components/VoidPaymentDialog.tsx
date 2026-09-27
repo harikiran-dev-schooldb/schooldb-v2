@@ -13,6 +13,7 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { refreshTable } from "@/lib/table-event";
 
 type VoidPaymentDialogProps = {
   open: boolean;
@@ -65,6 +66,7 @@ export function VoidPaymentDialog({
 
       onOpenChange(false);
 
+      refreshTable("fee-payments", "fee-receipts", "student-fees");
       onSuccess();
     } catch (error) {
       setError(

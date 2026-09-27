@@ -25,6 +25,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { refreshTable } from "@/lib/table-event";
 
 import { useAttendanceSession } from "../hooks/useAttendanceSession";
 import { AttendanceStatus } from "@/generated/prisma/enums";
@@ -356,6 +357,7 @@ export function MarkAttendance({ sessionId }: Props) {
           changes.length === 1 ? "record" : "records"
         } updated successfully.`,
       );
+      refreshTable("attendance");
 
       setOriginalStudents(students);
       setEditedStudents(students);
@@ -405,6 +407,7 @@ export function MarkAttendance({ sessionId }: Props) {
       }
 
       toast.success("Attendance session locked successfully.");
+      refreshTable("attendance");
 
       setEditing(false);
       setEditedStudents(null);

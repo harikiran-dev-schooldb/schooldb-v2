@@ -19,6 +19,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { refreshTable } from "@/lib/table-event";
 
 type StudentExamStatus = "PRESENT" | "ABSENT";
 
@@ -320,6 +321,7 @@ export function MarksEntryPage({ schoolSlug, examId, scheduleId }: Props) {
       }
 
       toast.success("Student marks saved successfully.");
+      refreshTable("exams");
 
       await loadData();
     } catch (error) {

@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { ClassSelect, SectionSelect } from "@/components/common/select";
 
 import { RemoteCombobox } from "@/components/common/combobox/RemoteCombobox";
+import { refreshTable } from "@/lib/table-event";
 
 type Props = {
   open: boolean;
@@ -210,6 +211,7 @@ export function CreateExamScheduleDialog({
       }
 
       toast.success("Exam schedule created successfully.");
+      refreshTable("exams");
 
       onOpenChange(false);
 

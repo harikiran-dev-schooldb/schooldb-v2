@@ -50,6 +50,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { refreshTable } from "@/lib/table-event";
 
 export type TransportDashboardData = {
   vehicles: Array<{
@@ -166,6 +167,7 @@ export function TransportManager({
       try {
         await saveTransport(action, { ...formObject(form), ...extra });
         toast.success("Transport details saved.");
+        refreshTable("transport");
         form.reset();
         router.refresh();
       } catch (error) {
@@ -701,6 +703,7 @@ export function TransportManager({
                                 assignmentId,
                               });
                               toast.success("Transport assignment ended.");
+                              refreshTable("transport");
                               router.refresh();
                             } catch (error) {
                               toast.error(

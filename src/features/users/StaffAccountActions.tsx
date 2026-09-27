@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { refreshTable } from "@/lib/table-event";
 
 export function CreateStaffAccountButton({ canCreateAdministrators }: { canCreateAdministrators: boolean }) {
   const router = useRouter();
@@ -31,6 +32,7 @@ export function CreateStaffAccountButton({ canCreateAdministrators }: { canCreat
       if (!response.ok || !result.success) throw new Error(result.message || "Unable to create account.");
       toast.success("Staff WhatsApp login created");
       setOpen(false);
+      refreshTable("staff-accounts");
       router.refresh();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to create account.");
@@ -77,6 +79,7 @@ export function StaffAccountStatusButton({ id, active }: { id: string; active: b
       const result = await response.json();
       if (!response.ok || !result.success) throw new Error(result.message || "Unable to update account.");
       toast.success(active ? "Account disabled" : "Account enabled");
+      refreshTable("staff-accounts");
       router.refresh();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to update account.");

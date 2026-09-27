@@ -7,6 +7,7 @@ import {
 } from "react";
 
 import { toast } from "sonner";
+import { subscribeTableRefresh } from "@/lib/table-event";
 
 export type AttendanceHistoryItem = {
   id: string;
@@ -143,6 +144,12 @@ export function useAttendanceHistory(
     window.clearTimeout(timeoutId);
   };
 }, [load]);
+
+  useEffect(() => {
+    return subscribeTableRefresh("attendance", () => {
+      void load();
+    });
+  }, [load]);
 
   return {
     data,

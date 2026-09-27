@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { CERTIFICATE_PLACEHOLDERS, DEFAULT_CERTIFICATE_SETTING } from "@/features/students/certificate-settings";
+import { refreshTable } from "@/lib/table-event";
 
 export type CertificateSettingValue = {
   headerSubtitle: string;
@@ -39,6 +40,7 @@ export function CertificateSettingsForm({ initialValue }: { initialValue: Certif
       const payload = (await response.json()) as { success?: boolean; message?: string };
       if (!response.ok || !payload.success) throw new Error(payload.message || "Unable to save certificate settings.");
       toast.success("Certificate wording saved for this school.");
+      refreshTable("certificate-register");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to save certificate settings.");
     } finally {

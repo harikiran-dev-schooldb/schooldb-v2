@@ -39,11 +39,6 @@ export const feePlanColumns: ColumnDef<FeePlan>[] = [
     header: "Fee Plan",
   },
   {
-    id: "academicYear",
-    header: "Academic Year",
-    cell: ({ row }) => row.original.academicYear?.name ?? "-",
-  },
-  {
     id: "classes",
     header: "Classes",
     cell: ({ row }) => {

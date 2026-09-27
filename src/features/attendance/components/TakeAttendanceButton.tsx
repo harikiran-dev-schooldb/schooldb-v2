@@ -7,6 +7,7 @@ import { ClipboardCheck } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { refreshTable } from "@/lib/table-event";
 
 type Props = {
   timetableId: string;
@@ -44,6 +45,7 @@ export function TakeAttendanceButton({ timetableId }: Props) {
         return;
       }
 
+      refreshTable("attendance");
       router.push(`/${schoolSlug}/attendance/session/${result.data.id}`);
     } catch {
       toast.error("Unable to open attendance.");

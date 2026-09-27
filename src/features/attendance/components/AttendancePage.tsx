@@ -26,6 +26,7 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 
 import { Button } from "@/components/ui/button";
+import { refreshTable } from "@/lib/table-event";
 import { BulkAbsenteeMarker } from "./BulkAbsenteeMarker";
 
 type AttendanceMode = "ONCE_DAILY" | "MORNING_AFTERNOON" | "EVERY_PERIOD";
@@ -256,6 +257,7 @@ export function AttendancePage({ schoolSlug }: Props) {
           sessionCount === 1 ? "" : "s"
         }.`,
       );
+      refreshTable("attendance");
     } catch {
       toast.error("Failed to mark full attendance.");
     } finally {
@@ -323,6 +325,7 @@ export function AttendancePage({ schoolSlug }: Props) {
         return;
       }
 
+      refreshTable("attendance");
       router.push(`/${schoolSlug}/attendance/session/${result.data.id}`);
     } catch {
       toast.error("Failed to create attendance session.");

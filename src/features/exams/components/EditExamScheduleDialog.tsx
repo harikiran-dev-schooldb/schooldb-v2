@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { ClassSelect, SectionSelect } from "@/components/common/select";
 
 import { RemoteCombobox } from "@/components/common/combobox/RemoteCombobox";
+import { refreshTable } from "@/lib/table-event";
 
 type ExamSchedule = {
   id: string;
@@ -233,6 +234,7 @@ export function EditExamScheduleDialog({
       }
 
       toast.success("Exam schedule updated successfully.");
+      refreshTable("exams");
 
       onOpenChange(false);
 

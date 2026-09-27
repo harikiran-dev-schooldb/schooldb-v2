@@ -3,7 +3,14 @@
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 
-type Status = "OPEN" | "ASSIGNED" | "IN_PROGRESS" | "WAITING" | "RESOLVED" | "CLOSED" | "REOPENED";
+type Status =
+  | "OPEN"
+  | "ASSIGNED"
+  | "IN_PROGRESS"
+  | "WAITING"
+  | "RESOLVED"
+  | "CLOSED"
+  | "REOPENED";
 type Result = { success: boolean; message: string };
 
 const statuses: { value: Status; label: string }[] = [
@@ -16,7 +23,11 @@ const statuses: { value: Status; label: string }[] = [
   { value: "REOPENED", label: "Reopened" },
 ];
 
-export function QueryActions({ ticketId, schoolSlug, status }: {
+export function QueryActions({
+  ticketId,
+  schoolSlug,
+  status,
+}: {
   ticketId: string;
   schoolSlug: string;
   status: Status;
@@ -30,11 +41,15 @@ export function QueryActions({ ticketId, schoolSlug, status }: {
   async function request(path: string, body: object, method: "POST" | "PATCH") {
     const response = await fetch(path, {
       method,
-      headers: { "Content-Type": "application/json", "x-school-slug": schoolSlug },
+      headers: {
+        "Content-Type": "application/json",
+        "x-school-slug": schoolSlug,
+      },
       body: JSON.stringify(body),
     });
     const result: Result = await response.json();
-    if (!response.ok || !result.success) throw new Error(result.message || "Could not save the change.");
+    if (!response.ok || !result.success)
+      throw new Error(result.message || "Could not save the change.");
     router.refresh();
   }
 
@@ -42,10 +57,16 @@ export function QueryActions({ ticketId, schoolSlug, status }: {
     setError("");
     setBusy(true);
     try {
-      await request(`/api/v1/support/tickets/${ticketId}`, { status: value }, "PATCH");
+      await request(
+        `/api/v1/support/tickets/${ticketId}`,
+        { status: value },
+        "PATCH",
+      );
       setSelectedStatus(value);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not update status.");
+      setError(
+        cause instanceof Error ? cause.message : "Could not update status.",
+      );
     } finally {
       setBusy(false);
     }
@@ -64,7 +85,9 @@ export function QueryActions({ ticketId, schoolSlug, status }: {
       );
       setReply("");
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not send reply.");
+      setError(
+        cause instanceof Error ? cause.message : "Could not send reply.",
+      );
     } finally {
       setBusy(false);
     }
@@ -73,7 +96,12 @@ export function QueryActions({ ticketId, schoolSlug, status }: {
   return (
     <div className="space-y-5">
       <div>
-        <label htmlFor="queryStatus" className="block text-sm font-semibold text-slate-800">Status</label>
+        <label
+          htmlFor="queryStatus"
+          className="block text-sm font-semibold text-slate-800"
+        >
+          Status
+        </label>
         <select
           id="queryStatus"
           value={selectedStatus}
@@ -81,13 +109,22 @@ export function QueryActions({ ticketId, schoolSlug, status }: {
           onChange={(event) => void updateStatus(event.target.value as Status)}
           className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm focus:border-indigo-600 focus:outline-none"
         >
-          {statuses.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+          {statuses.map((item) => (
+            <option key={item.value} value={item.value}>
+              {item.label}
+            </option>
+          ))}
         </select>
       </div>
 
       {status !== "CLOSED" ? (
         <form onSubmit={sendReply} className="space-y-3">
-          <label htmlFor="queryReply" className="block text-sm font-semibold text-slate-800">Reply</label>
+          <label
+            htmlFor="queryReply"
+            className="block text-sm font-semibold text-slate-800"
+          >
+            Reply
+          </label>
           <textarea
             id="queryReply"
             value={reply}
@@ -105,10 +142,16 @@ export function QueryActions({ ticketId, schoolSlug, status }: {
           </button>
         </form>
       ) : (
-        <p className="text-sm text-slate-500">Closed queries cannot receive replies.</p>
+        <p className="text-sm text-slate-500">
+          Closed queries cannot receive replies.
+        </p>
       )}
 
-      {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
+      {error && (
+        <p role="alert" className="text-sm text-red-700">
+          {error}
+        </p>
+      )}
     </div>
   );
 }

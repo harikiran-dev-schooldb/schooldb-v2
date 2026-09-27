@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { refreshTable } from "@/lib/table-event";
 
 import {
   AcademicYearSelect,
@@ -102,8 +103,7 @@ export function AttendanceHistory({ schoolSlug }: Props) {
       }
 
       alert(result?.message ?? "All attendance sessions have been locked.");
-
-      window.location.reload();
+      refreshTable("attendance");
     } catch (error) {
       alert(
         error instanceof Error

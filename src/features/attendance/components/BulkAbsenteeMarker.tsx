@@ -17,6 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { refreshTable } from "@/lib/table-event";
 
 type AttendanceMode = "ONCE_DAILY" | "MORNING_AFTERNOON" | "EVERY_PERIOD";
 type Scope = "SCHOOL" | "CLASS" | "SECTION";
@@ -203,6 +204,7 @@ export function BulkAbsenteeMarker({
       toast.success(
         `${result.data.studentCount} students marked absent across ${result.data.sessionCount} session${result.data.sessionCount === 1 ? "" : "s"}.`,
       );
+      refreshTable("attendance");
       setConfirmOpen(false);
       setRecordedAbsentIds((current) => [
         ...new Set([...current, ...submittedStudentIds]),
