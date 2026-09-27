@@ -129,13 +129,11 @@ export function NotificationMenu({ schoolSlug }: { schoolSlug: string }) {
     setPushEnabled(Boolean(localStorage.getItem(browserDeviceKey(schoolSlug))));
     void loadFeed();
     void rebindPush();
-    const interval = window.setInterval(loadFeed, 60_000);
     const refresh = () => {
       if (document.visibilityState === "visible") void loadFeed();
     };
     document.addEventListener("visibilitychange", refresh);
     return () => {
-      window.clearInterval(interval);
       document.removeEventListener("visibilitychange", refresh);
     };
   }, [loadFeed, rebindPush, schoolSlug]);
