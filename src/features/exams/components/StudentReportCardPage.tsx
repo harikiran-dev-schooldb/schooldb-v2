@@ -45,7 +45,7 @@ type SubjectResult = {
   marksObtained: number | null;
 
   status: string;
-  resultStatus: "PASS" | "FAIL" | "ABSENT";
+  resultStatus: "PENDING" | "PASS" | "FAIL" | "ABSENT" | "EXEMPTED";
 
   remarks: string | null;
 };
@@ -89,12 +89,14 @@ type StudentResultData = {
     passedSubjects: number;
     failedSubjects: number;
     absentSubjects: number;
+    exemptedSubjects: number;
+    pendingSubjects: number;
 
     totalObtained: number;
     totalMaxMarks: number;
 
     percentage: number;
-    status: "PASS" | "FAIL";
+    status: "NO_RESULT" | "PENDING" | "PASS" | "FAIL";
 
     attendance: AttendanceSummary;
   };
@@ -223,6 +225,7 @@ export function StudentReportCardPage({
   const sectionName = getSectionName(data.subjects);
 
   const isPass = data.summary.status === "PASS";
+  const isPending = data.summary.status === "PENDING";
 
   return (
     <div className="min-h-screen bg-muted/30 px-3 py-6 md:px-6 print:bg-white print:p-0">
@@ -423,7 +426,9 @@ export function StudentReportCardPage({
               className={`border-t p-4 text-center sm:border-t-0 lg:border-l print:border-black ${
                 isPass
                   ? "bg-emerald-50 print:bg-white"
-                  : "bg-red-50 print:bg-white"
+                  : isPending
+                    ? "bg-amber-50 print:bg-white"
+                    : "bg-red-50 print:bg-white"
               }`}
             >
               <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground print:text-black">
@@ -434,11 +439,15 @@ export function StudentReportCardPage({
                 className={`mt-2 flex items-center justify-center gap-2 text-xl font-bold ${
                   isPass
                     ? "text-emerald-700 print:text-black"
-                    : "text-red-700 print:text-black"
+                    : isPending
+                      ? "text-amber-700 print:text-black"
+                      : "text-red-700 print:text-black"
                 }`}
               >
                 {isPass ? (
                   <CheckCircle2 className="size-5 print:hidden" />
+                ) : isPending ? (
+                  <CalendarDays className="size-5 print:hidden" />
                 ) : (
                   <XCircle className="size-5 print:hidden" />
                 )}
@@ -526,7 +535,11 @@ export function StudentReportCardPage({
                     <td className="border-b px-3 py-3 text-center font-semibold print:border-black">
                       {subject.resultStatus === "ABSENT"
                         ? "ABSENT"
-                        : (subject.marksObtained ?? "—")}
+                        : subject.resultStatus === "EXEMPTED"
+                          ? "EXEMPTED"
+                          : subject.resultStatus === "PENDING"
+                            ? "—"
+                            : (subject.marksObtained ?? "—")}
                     </td>
 
                     <td className="border-b px-3 py-3 text-center print:border-black">
@@ -791,7 +804,11 @@ function AttendanceCell({
 /* RESULT STATUS                                                              */
 /* ========================================================================== */
 
-function ResultStatus({ status }: { status: "PASS" | "FAIL" | "ABSENT" }) {
+function ResultStatus({
+  status,
+}: {
+  status: "PENDING" | "PASS" | "FAIL" | "ABSENT" | "EXEMPTED";
+}) {
   if (status === "PASS") {
     return (
       <span className="font-semibold text-emerald-700 print:text-black">
@@ -800,10 +817,26 @@ function ResultStatus({ status }: { status: "PASS" | "FAIL" | "ABSENT" }) {
     );
   }
 
+  if (status === "PENDING") {
+    return (
+      <span className="font-semibold text-amber-700 print:text-black">
+        PENDING
+      </span>
+    );
+  }
+
   if (status === "ABSENT") {
     return (
       <span className="font-semibold text-amber-700 print:text-black">
         ABSENT
+      </span>
+    );
+  }
+
+  if (status === "EXEMPTED") {
+    return (
+      <span className="font-semibold text-sky-700 print:text-black">
+        EXEMPTED
       </span>
     );
   }
