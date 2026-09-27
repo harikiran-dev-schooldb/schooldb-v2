@@ -1890,6 +1890,20 @@ private fun ResultCard(item: FamilyResult) {
             )
             Text("${number(item.obtained)} of ${number(item.maximum)} marks",
                 Modifier.padding(top = 8.dp), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+            if (item.subjects.isNotEmpty()) {
+                Spacer(Modifier.height(12.dp))
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = .7f))
+                item.subjects.forEach { subject ->
+                    Row(Modifier.fillMaxWidth().padding(top = 9.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text(subject.subjectName, Modifier.weight(1f), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                        Text(
+                            if (subject.marksObtained == null) subject.status.lowercase().replaceFirstChar(Char::uppercase)
+                            else "${number(subject.marksObtained)} / ${number(subject.maxMarks)}",
+                            fontSize = 12.sp, color = statusColor(subject.status), fontWeight = FontWeight.Bold,
+                        )
+                    }
+                }
+            }
         }
     }
 }

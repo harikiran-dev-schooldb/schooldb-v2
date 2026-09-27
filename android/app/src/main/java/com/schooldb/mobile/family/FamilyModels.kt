@@ -81,6 +81,18 @@ data class FamilyFeeInstallment(
     val paidAmount: Double,
     val outstanding: Double,
     val status: String,
+    val subjects: List<FamilyResultSubject> = emptyList(),
+)
+
+data class FamilyResultSubject(
+    val id: String,
+    val subjectName: String,
+    val examDate: String,
+    val marksObtained: Double?,
+    val maxMarks: Double,
+    val passMarks: Double?,
+    val status: String,
+    val remarks: String?,
 )
 
 data class FamilyFeePayment(

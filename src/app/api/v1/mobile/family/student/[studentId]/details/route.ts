@@ -254,6 +254,16 @@ export async function GET(
         maximum: result.maximum,
         percentage: result.percentage,
         status: result.status,
+        subjects: result.subjects.map((subject) => ({
+          id: subject.id,
+          subjectName: subject.subject.name,
+          examDate: subject.examDate,
+          marksObtained: subject.marksObtained,
+          maxMarks: subject.maxMarks,
+          passMarks: subject.passMarks,
+          status: subject.status,
+          remarks: subject.remarks,
+        })),
       })),
       timetable: timetable
         .filter((entry) => entry.active && entry.teacherAllocation.active)

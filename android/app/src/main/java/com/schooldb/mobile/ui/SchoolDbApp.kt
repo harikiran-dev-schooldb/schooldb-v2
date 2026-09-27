@@ -1,8 +1,10 @@
 package com.schooldb.mobile.ui
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
+import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
@@ -39,6 +41,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -89,6 +92,7 @@ fun SchoolDbApp(
     val state by authViewModel.uiState.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
     var showAccountSwitcher by rememberSaveable { mutableStateOf(false) }
+    var showNotificationSettings by rememberSaveable { mutableStateOf(false) }
     var portalRefreshKey by rememberSaveable { mutableStateOf(0) }
     val context = LocalContext.current
     val notificationPermission = rememberLauncherForActivityResult(
@@ -113,6 +117,13 @@ fun SchoolDbApp(
             ) {
                 PushNotificationManager.registerCurrentDevice()
             }
+        }
+    }
+
+    LaunchedEffect(state.step) {
+        if (state.step == AuthStep.SignedIn && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            showNotificationSettings = PushNotificationManager.permissionWasRequested(context) &&
+                !androidx.core.app.NotificationManagerCompat.from(context).areNotificationsEnabled()
         }
     }
 
@@ -170,6 +181,25 @@ fun SchoolDbApp(
                 }
             }
         }
+    }
+
+    if (showNotificationSettings) {
+        AlertDialog(
+            onDismissRequest = { showNotificationSettings = false },
+            title = { Text("Notifications are disabled") },
+            text = { Text("Enable notifications in Android settings to receive attendance, homework, result and announcement alerts.") },
+            confirmButton = {
+                Button(onClick = {
+                    showNotificationSettings = false
+                    context.startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                        putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+                    })
+                }) { Text("Open settings") }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = { showNotificationSettings = false }) { Text("Not now") }
+            },
+        )
     }
 }
 

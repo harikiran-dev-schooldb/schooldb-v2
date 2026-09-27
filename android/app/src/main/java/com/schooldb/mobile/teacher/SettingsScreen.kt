@@ -1,5 +1,8 @@
 package com.schooldb.mobile.teacher
 
+import android.content.Intent
+import android.provider.Settings
+import androidx.core.app.NotificationManagerCompat
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -67,6 +70,8 @@ fun SettingsScreen(
     val preferences by AppPreferences.state.collectAsStateWithLifecycle()
     var showSignOutConfirmation by remember { mutableStateOf(false) }
     var showResetConfirmation by remember { mutableStateOf(false) }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val notificationsEnabled = NotificationManagerCompat.from(context).areNotificationsEnabled()
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -146,6 +151,26 @@ fun SettingsScreen(
                         checked = preferences.showNoticeBadges,
                         onCheckedChange = AppPreferences::setNoticeBadges,
                     )
+                    if (!notificationsEnabled) {
+                        SettingsDivider()
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(15.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Icon(Icons.Outlined.Notifications, contentDescription = null,
+                                tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(23.dp))
+                            Column(Modifier.weight(1f).padding(horizontal = 13.dp)) {
+                                Text("Push notifications are disabled", fontWeight = FontWeight.SemiBold)
+                                Text("Enable them in Android settings to receive school alerts.",
+                                    fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            TextButton(onClick = {
+                                context.startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                                    putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+                                })
+                            }) { Text("Enable") }
+                        }
+                    }
                 }
             }
 

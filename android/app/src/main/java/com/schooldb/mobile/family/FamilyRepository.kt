@@ -168,6 +168,22 @@ class FamilyRepository(
                         maximum = item.optDouble("maximum"),
                         percentage = item.optDouble("percentage"),
                         status = item.optString("status", "PENDING"),
+                        subjects = buildList {
+                            val subjects = item.optJSONArray("subjects") ?: JSONArray()
+                            repeat(subjects.length()) { subjectIndex ->
+                                val subject = subjects.getJSONObject(subjectIndex)
+                                add(FamilyResultSubject(
+                                    id = subject.getString("id"),
+                                    subjectName = subject.optString("subjectName", "Subject"),
+                                    examDate = subject.optString("examDate"),
+                                    marksObtained = if (subject.isNull("marksObtained")) null else subject.optDouble("marksObtained"),
+                                    maxMarks = subject.optDouble("maxMarks"),
+                                    passMarks = if (subject.isNull("passMarks")) null else subject.optDouble("passMarks"),
+                                    status = subject.optString("status", "PENDING"),
+                                    remarks = subject.optionalText("remarks"),
+                                ))
+                            }
+                        },
                     ),
                 )
             }

@@ -65,6 +65,10 @@ object PushNotificationManager {
         context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE).edit().putBoolean(PERMISSION_ASKED, true).apply()
     }
 
+    fun permissionWasRequested(context: Context): Boolean =
+        context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
+            .getBoolean(PERMISSION_ASKED, false)
+
     fun registerCurrentDevice() {
         if (!isConfigured()) return
         val savedInstallationId = appContext
@@ -117,6 +121,11 @@ object PushNotificationManager {
 }
 
 class SchoolDbMessagingService : FirebaseMessagingService() {
+    override fun onNewToken(token: String) {
+        // Re-register when Firebase rotates a token while the user remains signed in.
+        PushNotificationManager.registerCurrentDevice()
+    }
+
     override fun onRegistered(installationId: String) {
         PushNotificationManager.registerInstallation(installationId)
     }
