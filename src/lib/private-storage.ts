@@ -38,7 +38,10 @@ function storageRoot() {
   );
 }
 
-type PrivateDocumentCollection = "student-documents" | "admission-documents";
+type PrivateDocumentCollection =
+  | "student-documents"
+  | "admission-documents"
+  | "profile-image-requests";
 
 function hasBlobCredentials() {
   return Boolean(
@@ -70,10 +73,7 @@ function storagePath(
   if (!/^[a-f0-9-]+\.(?:pdf|jpg|png|webp)$/.test(storageKey)) {
     throw new Error("Invalid private storage key");
   }
-  const directory =
-    collection === "admission-documents"
-      ? path.join(storageRoot(), "admission-documents")
-      : path.join(storageRoot(), "student-documents");
+  const directory = path.join(storageRoot(), collection);
   return path.join(directory, storageKey);
 }
 
@@ -176,4 +176,67 @@ export async function deleteAdmissionDocumentFile(storageKey: string) {
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
   }
+}
+
+export const MAX_PROFILE_IMAGE_BYTES = 5 * 1024 * 1024;
+export const PROFILE_IMAGE_ACCEPT = ["image/jpeg", "image/png", "image/webp"];
+
+export async function validateProfileImageFile(file: File) {
+  if (!PROFILE_IMAGE_ACCEPT.includes(file.type)) {
+    throw new Error("Only JPG, PNG, and WebP images are allowed");
+  }
+  if (file.size <= 0 || file.size > MAX_PROFILE_IMAGE_BYTES) {
+    throw new Error("Profile image must be smaller than 5 MB");
+  }
+  const contents = Buffer.from(await file.arrayBuffer());
+  if (detectedDocumentMime(contents) !== file.type) {
+    throw new Error("The image contents do not match the selected file type");
+  }
+}
+
+export async function savePendingProfileImage(file: File) {
+  await validateProfileImageFile(file);
+  return savePrivateDocument(file, "profile-image-requests");
+}
+
+export function readPendingProfileImage(storageKey: string) {
+  return readPrivateDocument(storageKey, "profile-image-requests");
+}
+
+export async function deletePendingProfileImage(storageKey: string) {
+  if (isBlobStorageKey(storageKey)) {
+    await del(storageKey);
+    return;
+  }
+  try {
+    await unlink(storagePath(storageKey, "profile-image-requests"));
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  }
+}
+
+export async function savePublicProfileImage(
+  file: File,
+  pathname: string,
+) {
+  await validateProfileImageFile(file);
+  const extension = MIME_EXTENSIONS[file.type];
+  const contents = Buffer.from(await file.arrayBuffer());
+  if (!hasBlobCredentials()) {
+    throw new Error("Vercel Blob is not configured for profile images");
+  }
+  const blob = await put(`${pathname}-${randomUUID()}${extension}`, contents, {
+    access: "public",
+    addRandomSuffix: false,
+    contentType: file.type,
+    maximumSizeInBytes: MAX_PROFILE_IMAGE_BYTES,
+  });
+  return blob.url;
+}
+
+export async function deletePublishedProfileImage(url: string | null) {
+  if (!url || !isBlobStorageKey(url)) return;
+  const hostname = new URL(url).hostname;
+  if (!hostname.endsWith(".blob.vercel-storage.com")) return;
+  await del(url);
 }

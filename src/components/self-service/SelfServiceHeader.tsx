@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Bell, Building2, CalendarDays, GraduationCap, LogOut, Repeat2, Users } from "lucide-react";
+import { Bell, Building2, CalendarDays, GraduationCap, LogOut, Repeat2, Settings, Users } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -65,6 +65,11 @@ export function SelfServiceHeader({
             <Link href={`/${schoolSlug}/my/notifications`} aria-label={`Notifications, ${unreadCount} unread`}>
               <Bell className="size-4" />
               {unreadCount > 0 && <span className="absolute -right-1 -top-1 min-w-4 rounded-full bg-indigo-600 px-1 text-center text-[10px] font-bold text-white">{unreadCount > 99 ? "99+" : unreadCount}</span>}
+            </Link>
+          </Button>
+          <Button asChild variant="ghost" size="icon-sm">
+            <Link href={`/${schoolSlug}/my/settings`} aria-label="Account settings">
+              <Settings className="size-4" />
             </Link>
           </Button>
           <Button asChild variant="ghost" size="icon-sm">

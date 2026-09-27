@@ -12,7 +12,7 @@ import {
 import { useParams, useRouter } from "next/navigation";
 
 import { useSchool } from "@/contexts/school-context";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -100,6 +100,10 @@ export function AppHeader({ onMenuClick }: Props) {
                 className="h-auto gap-3 rounded-2xl px-2 py-1.5 hover:bg-card hover:shadow-sm"
               >
                 <Avatar className="size-9 border border-border bg-muted">
+                  <AvatarImage
+                    src={user.imageUrl ?? undefined}
+                    alt={`${user.firstName ?? "User"} profile`}
+                  />
                   <AvatarFallback className="bg-primary/10 text-xs font-bold text-primary">
                     {initials}
                   </AvatarFallback>
@@ -140,9 +144,7 @@ export function AppHeader({ onMenuClick }: Props) {
               {/* Profile */}
               <DropdownMenuItem
                 className="cursor-pointer rounded-xl py-2.5"
-                onClick={() => {
-                  // Add profile route later
-                }}
+                onClick={() => router.push(`/${schoolSlug}/settings`)}
               >
                 <User className="mr-2 size-4" />
                 Profile

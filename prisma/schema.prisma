@@ -55,68 +55,69 @@ model AcademicPeriod {
 }
 
 model School {
-  id                      String                       @id @default(cuid())
-  name                    String
-  slug                    String                       @unique
-  createdAt               DateTime                     @default(now())
-  updatedAt               DateTime                     @updatedAt
-  logo                    String?
-  academicPeriods         AcademicPeriod[]
-  academicYears           AcademicYear[]
-  admissionApplications   AdmissionApplication[]
-  admissionDocuments      AdmissionDocument[]
-  announcements           Announcement[]
-  attendance              Attendance[]
-  attendanceSessions      AttendanceSession[]
-  auditLogs               AuditLog[]
-  cashfreePaymentOrders   CashfreePaymentOrder[]
-  certificateIssues       CertificateIssue[]
-  classes                 Class[]
-  classSubjects           ClassSubject[]
-  exams                   Exam[]
-  examSchedules           ExamSchedule[]
-  expenses                Expense[]
-  feeCategories           FeeCategory[]
-  feePayments             FeePayment[]
-  feePlans                FeePlan[]
-  homeworks               Homework[]
-  leaveRequests           LeaveRequest[]
-  libraryBooks            LibraryBook[]
-  libraryCopies           LibraryBookCopy[]
-  libraryCategories       LibraryCategory[]
-  libraryLoans            LibraryLoan[]
-  memberships             Membership[]
-  otpChallenges           OtpChallenge[]
-  parentStudentLinks      ParentStudentLink[]
-  periods                 Period[]
-  pushDevices             PushDevice[]
-  admissionSetting        SchoolAdmissionSetting?
-  calendarEvents          SchoolCalendarEvent[]
-  certificateSetting      SchoolCertificateSetting?
-  idCardSetting           SchoolIdCardSetting?
-  students                Student[]
-  activities              StudentActivity[]
-  studentDocuments        StudentDocument[]
-  studentEnrollments      StudentEnrollment[]
-  studentExamMarks        StudentExamMark[]
-  studentFees             StudentFee[]
-  transportAssignments    StudentTransportAssignment[]
-  subjects                Subject[]
-  teachers                Teacher[]
-  teacherAllocations      TeacherAllocation[]
-  timetables              Timetable[]
-  transportRoutes         TransportRoute[]
-  transportStops          TransportStop[]
-  transportVehicles       TransportVehicle[]
-  whatsappCampaigns       WhatsappCampaign[]
-  whatsappRecipients      WhatsappRecipient[]
-  houses                  House[]
-  studentHouses           StudentHouse[]
-  supportTickets          SupportTicket[]
-  supportTicketMessages   SupportTicketMessage[]
-  supportTicketActivities SupportTicketActivity[]
-  supportTicketReads      SupportTicketRead[]
-  androidAppBuilds        AndroidAppBuild[]
+  id                          String                       @id @default(cuid())
+  name                        String
+  slug                        String                       @unique
+  createdAt                   DateTime                     @default(now())
+  updatedAt                   DateTime                     @updatedAt
+  logo                        String?
+  academicPeriods             AcademicPeriod[]
+  academicYears               AcademicYear[]
+  admissionApplications       AdmissionApplication[]
+  admissionDocuments          AdmissionDocument[]
+  announcements               Announcement[]
+  attendance                  Attendance[]
+  attendanceSessions          AttendanceSession[]
+  auditLogs                   AuditLog[]
+  cashfreePaymentOrders       CashfreePaymentOrder[]
+  certificateIssues           CertificateIssue[]
+  classes                     Class[]
+  classSubjects               ClassSubject[]
+  exams                       Exam[]
+  examSchedules               ExamSchedule[]
+  expenses                    Expense[]
+  feeCategories               FeeCategory[]
+  feePayments                 FeePayment[]
+  feePlans                    FeePlan[]
+  homeworks                   Homework[]
+  leaveRequests               LeaveRequest[]
+  libraryBooks                LibraryBook[]
+  libraryCopies               LibraryBookCopy[]
+  libraryCategories           LibraryCategory[]
+  libraryLoans                LibraryLoan[]
+  memberships                 Membership[]
+  otpChallenges               OtpChallenge[]
+  parentStudentLinks          ParentStudentLink[]
+  periods                     Period[]
+  pushDevices                 PushDevice[]
+  admissionSetting            SchoolAdmissionSetting?
+  calendarEvents              SchoolCalendarEvent[]
+  certificateSetting          SchoolCertificateSetting?
+  idCardSetting               SchoolIdCardSetting?
+  students                    Student[]
+  activities                  StudentActivity[]
+  studentDocuments            StudentDocument[]
+  studentEnrollments          StudentEnrollment[]
+  studentExamMarks            StudentExamMark[]
+  studentFees                 StudentFee[]
+  transportAssignments        StudentTransportAssignment[]
+  subjects                    Subject[]
+  teachers                    Teacher[]
+  teacherAllocations          TeacherAllocation[]
+  timetables                  Timetable[]
+  transportRoutes             TransportRoute[]
+  transportStops              TransportStop[]
+  transportVehicles           TransportVehicle[]
+  whatsappCampaigns           WhatsappCampaign[]
+  whatsappRecipients          WhatsappRecipient[]
+  houses                      House[]
+  studentHouses               StudentHouse[]
+  supportTickets              SupportTicket[]
+  supportTicketMessages       SupportTicketMessage[]
+  supportTicketActivities     SupportTicketActivity[]
+  supportTicketReads          SupportTicketRead[]
+  androidAppBuilds            AndroidAppBuild[]
+  studentProfileImageRequests StudentProfileImageRequest[]
 }
 
 model SchoolIdCardSetting {
@@ -152,28 +153,29 @@ model SchoolCertificateSetting {
 }
 
 model User {
-  id                         String                  @id @default(cuid())
-  clerkUserId                String                  @unique
-  email                      String                  @unique
-  firstName                  String?
-  lastName                   String?
-  createdAt                  DateTime                @default(now())
-  updatedAt                  DateTime                @updatedAt
-  imageUrl                   String?
-  phone                      String?
-  announcementReads          AnnouncementRead[]
-  auditLogs                  AuditLog[]
-  memberships                Membership[]
-  otpChallenges              OtpChallenge[]
-  parentStudentLinks         ParentStudentLink[]
-  pushDevices                PushDevice[]
-  createdSupportTickets      SupportTicket[]         @relation("SupportTicketCreator")
-  assignedSupportTickets     SupportTicket[]         @relation("SupportTicketAssignee")
-  supportTicketMessages      SupportTicketMessage[]
-  supportTicketActivities    SupportTicketActivity[]
-  supportTicketReads         SupportTicketRead[]
-  androidAppBuilds           AndroidAppBuild[]
-  performedStudentActivities StudentActivity[]       @relation("StudentActivityPerformer")
+  id                          String                       @id @default(cuid())
+  clerkUserId                 String                       @unique
+  email                       String                       @unique
+  firstName                   String?
+  lastName                    String?
+  createdAt                   DateTime                     @default(now())
+  updatedAt                   DateTime                     @updatedAt
+  imageUrl                    String?
+  phone                       String?
+  announcementReads           AnnouncementRead[]
+  auditLogs                   AuditLog[]
+  memberships                 Membership[]
+  otpChallenges               OtpChallenge[]
+  parentStudentLinks          ParentStudentLink[]
+  pushDevices                 PushDevice[]
+  createdSupportTickets       SupportTicket[]              @relation("SupportTicketCreator")
+  assignedSupportTickets      SupportTicket[]              @relation("SupportTicketAssignee")
+  supportTicketMessages       SupportTicketMessage[]
+  supportTicketActivities     SupportTicketActivity[]
+  supportTicketReads          SupportTicketRead[]
+  androidAppBuilds            AndroidAppBuild[]
+  performedStudentActivities  StudentActivity[]            @relation("StudentActivityPerformer")
+  studentProfileImageRequests StudentProfileImageRequest[]
 
   @@index([phone])
 }
@@ -325,14 +327,14 @@ model AuditLog {
 }
 
 model Student {
-  id                    String                 @id @default(cuid())
+  id                    String                      @id @default(cuid())
   admissionNo           String
   gender                Gender
   dob                   DateTime
   email                 String?
   schoolId              String
-  createdAt             DateTime               @default(now())
-  updatedAt             DateTime               @updatedAt
+  createdAt             DateTime                    @default(now())
+  updatedAt             DateTime                    @updatedAt
   address               String?
   allergies             String?
   alternatePhone        String?
@@ -358,7 +360,7 @@ model Student {
   guardianName          String?
   guardianPhone         String?
   guardianRelation      String?
-  hostelRequired        Boolean                @default(false)
+  hostelRequired        Boolean                     @default(false)
   imageUrl              String?
   joinedDate            DateTime?
   medicalConditions     String?
@@ -377,27 +379,28 @@ model Student {
   religion              Religion?
   remarks               String?
   state                 String?
-  status                StudentStatus          @default(ACTIVE)
+  status                StudentStatus               @default(ACTIVE)
   studentAadhar         String?
   subCaste              String?
-  transportRequired     Boolean                @default(false)
+  transportRequired     Boolean                     @default(false)
   username              String?
   statusChangedAt       DateTime?
   statusRemarks         String?
-  whatsappOptIn         Boolean                @default(false)
+  whatsappOptIn         Boolean                     @default(false)
   whatsappOptInAt       DateTime?
   admissionApplications AdmissionApplication[]
   attendance            Attendance[]
   certificateIssues     CertificateIssue[]
   leaveRequests         LeaveRequest[]
   parentLinks           ParentStudentLink[]
-  school                School                 @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  school                School                      @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   activities            StudentActivity[]
   documents             StudentDocument[]
   enrollments           StudentEnrollment[]
   whatsappRecipients    WhatsappRecipient[]
   houseAssignments      StudentHouse[]
   supportTickets        SupportTicket[]
+  profileImageRequest   StudentProfileImageRequest?
 
   @@unique([schoolId, admissionNo])
   @@index([schoolId])
@@ -405,6 +408,24 @@ model Student {
   @@index([schoolId, fullName])
   @@index([schoolId, phone])
   @@index([schoolId, status, createdAt])
+}
+
+model StudentProfileImageRequest {
+  id                String   @id @default(cuid())
+  schoolId          String
+  studentId         String   @unique
+  requestedByUserId String
+  storageKey        String
+  mimeType          String
+  originalName      String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  school            School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student           Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  requestedBy       User     @relation(fields: [requestedByUserId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId, createdAt])
+  @@index([requestedByUserId])
 }
 
 model House {

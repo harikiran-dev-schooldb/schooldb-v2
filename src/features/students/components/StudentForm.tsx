@@ -20,6 +20,9 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { refreshTable } from "@/lib/table-event";
+import { ManagedProfileImageUploader } from "@/features/settings/ManagedProfileImageUploader";
+import { canManageRosterProfileImages } from "@/features/settings/profile-image-policy";
+import { useSchool } from "@/contexts/school-context";
 
 import {
   createStudentSchema,
@@ -97,7 +100,6 @@ const defaultValues: StudentFormInput = {
 
 const identityFields: TextField[] = [
   { name: "joinedDate", label: "Joined Date", type: "date" },
-  { name: "imageUrl", label: "Profile Image URL (optional)", placeholder: "https://...", type: "url" },
 ];
 
 const identifierFields: TextField[] = [
@@ -223,6 +225,8 @@ function FormSection({
 }
 
 export function StudentForm({ mode, studentId, onSuccess }: Props) {
+  const { role } = useSchool();
+  const canManageProfileImages = canManageRosterProfileImages(role);
   const [loading, setLoading] = useState(false);
   const [loadingStudent, setLoadingStudent] = useState(
     mode === "edit" && Boolean(studentId),
@@ -236,6 +240,8 @@ export function StudentForm({ mode, studentId, onSuccess }: Props) {
   const gender = useWatch({ control: form.control, name: "gender" });
   const status = useWatch({ control: form.control, name: "status" });
   const admissionNo = useWatch({ control: form.control, name: "admissionNo" });
+  const fullName = useWatch({ control: form.control, name: "fullName" });
+  const imageUrl = useWatch({ control: form.control, name: "imageUrl" });
 
   function errorFor(name: keyof StudentFormInput) {
     return form.formState.errors[name]?.message as string | undefined;
@@ -359,7 +365,7 @@ export function StudentForm({ mode, studentId, onSuccess }: Props) {
           <FormField label="Date of Birth" required error={errorFor("dob")}>
             <Input type="date" className="h-11 bg-background" {...form.register("dob")} />
           </FormField>
-          {renderFields(identityFields.slice(0, 1))}
+          {renderFields(identityFields)}
           <FormField label="Student Status" required error={errorFor("status")}>
             <StudentStatusSelect
               value={status}
@@ -377,7 +383,27 @@ export function StudentForm({ mode, studentId, onSuccess }: Props) {
               aria-readonly="true"
             />
           </FormField>
-          {renderFields(identityFields.slice(1))}
+          {canManageProfileImages ? (
+            <div className="md:col-span-2">
+              {mode === "edit" && studentId ? (
+                <ManagedProfileImageUploader
+                  targetType="STUDENT"
+                  targetId={studentId}
+                  name={fullName || "Student"}
+                  imageUrl={imageUrl || null}
+                  onImageChange={(nextImageUrl) =>
+                    form.setValue("imageUrl", nextImageUrl ?? "", {
+                      shouldDirty: false,
+                    })
+                  }
+                />
+              ) : (
+                <p className="rounded-2xl border border-dashed border-border p-4 text-sm text-muted-foreground">
+                  Save the student first, then open Edit to upload a profile image.
+                </p>
+              )}
+            </div>
+          ) : null}
         </div>
       </FormSection>
 

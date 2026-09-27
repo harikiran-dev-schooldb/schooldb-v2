@@ -13,6 +13,9 @@ import { Input } from "@/components/ui/input";
 import { GenderSelect } from "@/components/common/select/GenderSelect";
 import { FormField, SubmitButton } from "@/components/common/forms";
 import { refreshTable } from "@/lib/table-event";
+import { ManagedProfileImageUploader } from "@/features/settings/ManagedProfileImageUploader";
+import { canManageRosterProfileImages } from "@/features/settings/profile-image-policy";
+import { useSchool } from "@/contexts/school-context";
 
 type Props = {
   mode: "create" | "edit";
@@ -34,7 +37,10 @@ const defaultValues: TeacherFormInput = {
 };
 
 export function TeacherForm({ mode, teacherId, onSuccess }: Props) {
+  const { role } = useSchool();
+  const canManageProfileImages = canManageRosterProfileImages(role);
   const [loading, setLoading] = useState(false);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
 
   const form = useForm<TeacherFormInput>({
     resolver: zodResolver(teacherSchema),
@@ -45,6 +51,7 @@ export function TeacherForm({ mode, teacherId, onSuccess }: Props) {
     control: form.control,
     name: "gender",
   });
+  const fullName = useWatch({ control: form.control, name: "fullName" });
 
   useEffect(() => {
     if (mode !== "edit" || !teacherId) return;
@@ -67,6 +74,7 @@ export function TeacherForm({ mode, teacherId, onSuccess }: Props) {
         }
 
         const teacher = result.data;
+        setImageUrl(teacher.imageUrl ?? null);
 
         form.reset({
           employeeId: teacher.employeeId ?? "",
@@ -223,6 +231,23 @@ export function TeacherForm({ mode, teacherId, onSuccess }: Props) {
               {...form.register("email")}
             />
           </FormField>
+          {canManageProfileImages ? (
+            <div className="md:col-span-2">
+              {mode === "edit" && teacherId ? (
+                <ManagedProfileImageUploader
+                  targetType="TEACHER"
+                  targetId={teacherId}
+                  name={fullName || "Teacher"}
+                  imageUrl={imageUrl}
+                  onImageChange={setImageUrl}
+                />
+              ) : (
+                <p className="rounded-2xl border border-dashed border-border p-4 text-sm text-muted-foreground">
+                  Save the teacher first, then open Edit to upload a profile image.
+                </p>
+              )}
+            </div>
+          ) : null}
         </div>
       </div>
 
