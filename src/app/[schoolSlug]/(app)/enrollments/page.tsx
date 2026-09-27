@@ -11,7 +11,9 @@ export default function EnrollmentsPage() {
         action={<AddStudentEnrollmentButton />}
       />
 
-      <section className="premium-card overflow-hidden rounded-3xl bg-white p-3 md:p-5">\n        <StudentEnrollmentTable />\n      </section>
+      <section className="premium-card overflow-hidden rounded-3xl bg-white p-3 md:p-5">
+        <StudentEnrollmentTable />{" "}
+      </section>
     </div>
   );
 }

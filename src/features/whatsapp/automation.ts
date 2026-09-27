@@ -57,48 +57,6 @@ export async function queueAttendanceSessionAlert(
   });
 }
 
-export async function queueHomeworkPublishedAlert(
-  schoolId: string,
-  homeworkId: string,
-) {
-  const homework = await prisma.homework.findFirst({
-    where: { id: homeworkId, schoolId, active: true },
-    select: {
-      id: true,
-      title: true,
-      dueDate: true,
-      academicYearId: true,
-      classId: true,
-      sectionId: true,
-      class: { select: { name: true } },
-      section: { select: { name: true } },
-    },
-  });
-  if (!homework) return null;
-
-  const enrollments = await prisma.studentEnrollment.findMany({
-    where: {
-      schoolId,
-      active: true,
-      classId: homework.classId,
-      ...(homework.sectionId ? { sectionId: homework.sectionId } : {}),
-      ...(homework.academicYearId ? { academicYearId: homework.academicYearId } : {}),
-    },
-    select: { studentId: true },
-  });
-  const classLabel = `${homework.class.name}${homework.section ? ` — ${homework.section.name}` : ""}`;
-  return queueAutomatedWhatsappAlert({
-    schoolId,
-    automationKey: `homework:${homework.id}:published`,
-    sourceType: "HOMEWORK",
-    sourceId: homework.id,
-    title: "New homework",
-    message: `${homework.title} was published for Class ${classLabel}${homework.dueDate ? ` and is due on ${formatDate(homework.dueDate)}` : ""}. Open SchoolDB to view the details.`,
-    studentIds: enrollments.map((enrollment) => enrollment.studentId),
-    targetLabel: `Class ${classLabel}`,
-  });
-}
-
 export async function queueResultsPublishedAlert(
   schoolId: string,
   examId: string,
@@ -282,9 +240,25 @@ export async function queueDailyFeeDueAlerts(now = new Date()) {
 export async function processAutomatedCampaign(campaignId: string) {
   const campaign = await prisma.whatsappCampaign.findFirst({
     where: { id: campaignId, automatic: true, status: { in: ["QUEUED", "SENDING", "PARTIAL", "FAILED"] } },
-    select: { id: true, schoolId: true },
+    select: { id: true, schoolId: true, sourceType: true },
   });
   if (!campaign) return null;
+  if (campaign.sourceType === "HOMEWORK") {
+    await prisma.$transaction([
+      prisma.whatsappCampaign.update({
+        where: { id: campaign.id },
+        data: { status: "CANCELLED" },
+      }),
+      prisma.whatsappRecipient.updateMany({
+        where: {
+          campaignId: campaign.id,
+          status: { in: ["QUEUED", "SENDING", "FAILED"] },
+        },
+        data: { status: "CANCELLED" },
+      }),
+    ]);
+    return null;
+  }
   try {
     return await processWhatsappCampaignBatch(campaign.schoolId, campaign.id);
   } catch (error) {

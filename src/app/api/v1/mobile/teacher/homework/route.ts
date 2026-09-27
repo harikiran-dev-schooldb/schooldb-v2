@@ -1,4 +1,3 @@
-import { after } from "next/server";
 import { z } from "zod";
 
 import { requireCurrentTeacher, requireRole } from "@/lib/auth";
@@ -7,10 +6,6 @@ import { recordAuditLog } from "@/lib/audit";
 import { prisma } from "@/lib/prisma";
 import { ApiResponse } from "@/lib/response";
 import { validateBody } from "@/lib/validation";
-import {
-  processAutomatedCampaign,
-  queueHomeworkPublishedAlert,
-} from "@/features/whatsapp/automation";
 
 export const publishHomeworkSchema = z.object({
   allocationId: z.string().min(1, "Class and subject are required."),
@@ -145,8 +140,6 @@ export async function POST(req: Request) {
       select: { id: true, title: true },
     });
 
-    const campaign = await queueHomeworkPublishedAlert(membership.schoolId, item.id);
-    if (campaign) after(() => processAutomatedCampaign(campaign.id));
     await recordAuditLog({
       actor: membership,
       module: "HOMEWORK",

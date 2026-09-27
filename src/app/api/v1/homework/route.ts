@@ -4,17 +4,11 @@ import {
   requireRole,
   requireCurrentTeacher,
   requireTeacherClassSection,
-  requireTenant,
 } from "@/lib/auth";
 import { validateBody } from "@/lib/validation";
-import { after } from "next/server";
 
 import { homeworkSchema } from "@/features/homework/schemas/homework.schema";
 import { homeworkService } from "@/features/homework/services/homework.service";
-import {
-  processAutomatedCampaign,
-  queueHomeworkPublishedAlert,
-} from "@/features/whatsapp/automation";
 import { recordAuditLog } from "@/lib/audit";
 import { prisma } from "@/lib/prisma";
 
@@ -56,13 +50,6 @@ export async function POST(req: Request) {
     await requireTeacherClassSection(body.classId, body.sectionId || undefined);
 
     const item = await homeworkService.create(tenant.schoolId, body);
-    if (item.active) {
-      const campaign = await queueHomeworkPublishedAlert(
-        tenant.schoolId,
-        item.id,
-      );
-      if (campaign) after(() => processAutomatedCampaign(campaign.id));
-    }
     await recordAuditLog({
       actor: tenant,
       module: "HOMEWORK",

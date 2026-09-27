@@ -90,14 +90,25 @@ export async function sendAnnouncementPush(announcement: PushAnnouncement) {
   try {
     const userIds = await audienceUserIds(announcement);
     if (userIds.length === 0) return { sent: 0, failed: 0, skipped: false };
-    const devices = await prisma.pushDevice.findMany({
-      where: {
-        schoolId: announcement.schoolId,
-        userId: { in: userIds },
-        enabled: true,
-      },
-      select: { id: true, installationId: true },
-    });
+    const [devices, school] = await Promise.all([
+      prisma.pushDevice.findMany({
+        where: {
+          schoolId: announcement.schoolId,
+          userId: { in: userIds },
+          enabled: true,
+        },
+        select: {
+          id: true,
+          installationId: true,
+          fcmToken: true,
+          platform: true,
+        },
+      }),
+      prisma.school.findUnique({
+        where: { id: announcement.schoolId },
+        select: { slug: true },
+      }),
+    ]);
 
     let sent = 0;
     let failed = 0;
@@ -107,20 +118,39 @@ export async function sendAnnouncementPush(announcement: PushAnnouncement) {
       const notificationBody = announcement.body.length > 500
         ? `${announcement.body.slice(0, 499)}…`
         : announcement.body;
-      const messages: Message[] = chunk.map((device) => ({
-        fid: device.installationId,
-        notification: { title: announcement.title, body: notificationBody },
-        data: {
+      const messages: Message[] = chunk.map((device) => {
+        const data = {
           announcementId: announcement.id,
           schoolId: announcement.schoolId,
           category: announcement.category,
           priority: announcement.priority,
-        },
-        android: {
-          priority: announcement.priority === "URGENT" ? "high" : "normal",
-          notification: { channelId: "school_updates", sound: "default" },
-        },
-      }));
+          link: school ? `/${school.slug}/notifications/open` : "/",
+        };
+        if (device.platform === "WEB" && device.fcmToken) {
+          return {
+            token: device.fcmToken,
+            notification: { title: announcement.title, body: notificationBody },
+            data,
+            webpush: {
+              notification: {
+                icon: "/pwa-192.png",
+                badge: "/pwa-192.png",
+                tag: `announcement-${announcement.id}`,
+              },
+              fcmOptions: { link: data.link },
+            },
+          };
+        }
+        return {
+          fid: device.installationId,
+          notification: { title: announcement.title, body: notificationBody },
+          data,
+          android: {
+            priority: announcement.priority === "URGENT" ? "high" : "normal",
+            notification: { channelId: "school_updates", sound: "default" },
+          },
+        };
+      });
       const result = await messaging.sendEach(messages);
       sent += result.successCount;
       failed += result.failureCount;

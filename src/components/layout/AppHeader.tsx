@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  Bell,
   Building2,
   ChevronDown,
   LogOut,
@@ -22,6 +21,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { NotificationMenu } from "@/features/notifications/NotificationMenu";
 
 function formatRole(role: string) {
   return role
@@ -87,18 +87,7 @@ export function AppHeader({ onMenuClick }: Props) {
             <Search className="size-[18px]" />
           </Button>
 
-          {/* Notifications */}
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            aria-label="Notifications"
-            className="relative rounded-xl text-muted-foreground transition-all hover:bg-card hover:text-foreground hover:shadow-sm"
-          >
-            <Bell className="size-[18px]" />
-
-            <span className="absolute right-2.5 top-2.5 size-2 rounded-full border-2 border-background bg-primary" />
-          </Button>
+          <NotificationMenu schoolSlug={schoolSlug} />
 
           <div className="mx-2 hidden h-7 w-px bg-border sm:block" />
 

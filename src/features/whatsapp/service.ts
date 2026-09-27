@@ -242,7 +242,6 @@ type AutomatedAlertInput = {
   automationKey: string;
   sourceType:
     | "ATTENDANCE"
-    | "HOMEWORK"
     | "RESULT"
     | "FEE_DUE"
     | "PROMOTION"
@@ -260,7 +259,6 @@ function automatedTemplateName(sourceType: AutomatedAlertInput["sourceType"]) {
     string | undefined
   > = {
     ATTENDANCE: process.env.META_WA_ATTENDANCE_TEMPLATE,
-    HOMEWORK: process.env.META_WA_HOMEWORK_TEMPLATE,
     RESULT: process.env.META_WA_RESULT_TEMPLATE,
     FEE_DUE: process.env.META_WA_FEE_REMINDER_TEMPLATE,
     PROMOTION: process.env.META_WA_PROMOTION_TEMPLATE,

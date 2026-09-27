@@ -153,5 +153,5 @@ export async function markAnnouncement(
       where: { announcementId: id, userId: membership.userId },
     });
   }
-  revalidatePath(`/${schoolSlug}/my`, "layout");
+  revalidatePath(`/${schoolSlug}`, "layout");
 }

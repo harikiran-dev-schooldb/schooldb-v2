@@ -3,11 +3,9 @@ import { ApiResponse } from "@/lib/response";
 import { requireRole, requireTenant } from "@/lib/auth";
 import { validateBody } from "@/lib/validation";
 import { z } from "zod";
-import { after } from "next/server";
 
 import { homeworkSchema } from "@/features/homework/schemas/homework.schema";
 import { homeworkService } from "@/features/homework/services/homework.service";
-import { processAutomatedCampaign, queueHomeworkPublishedAlert } from "@/features/whatsapp/automation";
 import { recordAuditLog } from "@/lib/audit";
 
 type Props = {
@@ -45,10 +43,6 @@ export async function PUT(
       tenant.schoolId,
       body,
     );
-    if (item.active) {
-      const campaign = await queueHomeworkPublishedAlert(tenant.schoolId, item.id);
-      if (campaign) after(() => processAutomatedCampaign(campaign.id));
-    }
 
     await recordAuditLog({
       actor: tenant,
@@ -83,10 +77,6 @@ export async function PATCH(
       tenant.schoolId,
       body.active,
     );
-    if (item.active) {
-      const campaign = await queueHomeworkPublishedAlert(tenant.schoolId, item.id);
-      if (campaign) after(() => processAutomatedCampaign(campaign.id));
-    }
 
     await recordAuditLog({
       actor: tenant,
