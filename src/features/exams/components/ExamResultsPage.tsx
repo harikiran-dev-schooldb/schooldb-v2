@@ -47,9 +47,9 @@ type Result = {
 
   percentage: number;
 
-  status: "PASS" | "FAIL";
+  status: "PENDING" | "PASS" | "FAIL";
 
-  rank: number;
+  rank: number | null;
 };
 
 type ExamResultData = {
@@ -618,7 +618,11 @@ function StatCard({
 /* RANK BADGE                                                                 */
 /* -------------------------------------------------------------------------- */
 
-function RankBadge({ rank }: { rank: number }) {
+function RankBadge({ rank }: { rank: number | null }) {
+  if (rank === null) {
+    return <span className="font-semibold text-muted-foreground">#</span>;
+  }
+
   if (rank === 1) {
     return (
       <div className="flex items-center gap-2 font-bold">
@@ -638,13 +642,19 @@ function RankBadge({ rank }: { rank: number }) {
 /* RESULT BADGE                                                               */
 /* -------------------------------------------------------------------------- */
 
-function ResultBadge({ status }: { status: "PASS" | "FAIL" }) {
+function ResultBadge({
+  status,
+}: {
+  status: "PENDING" | "PASS" | "FAIL";
+}) {
   return (
     <span
       className={
         status === "PASS"
           ? "inline-flex items-center rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold text-emerald-600"
-          : "inline-flex items-center rounded-full bg-destructive/10 px-2.5 py-1 text-xs font-semibold text-destructive"
+          : status === "PENDING"
+            ? "inline-flex items-center rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-semibold text-amber-700"
+            : "inline-flex items-center rounded-full bg-destructive/10 px-2.5 py-1 text-xs font-semibold text-destructive"
       }
     >
       {status}
