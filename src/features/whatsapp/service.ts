@@ -34,6 +34,10 @@ type WhatsappStudent = {
 };
 
 async function resolveCreatorFullName(fallback: string) {
+  // Scheduled automation has no signed-in Clerk user. Its creator is already
+  // known, so avoid calling auth() outside an interactive request context.
+  if (fallback === "SYSTEM") return fallback;
+
   try {
     const { userId } = await auth();
     if (!userId) return fallback;
