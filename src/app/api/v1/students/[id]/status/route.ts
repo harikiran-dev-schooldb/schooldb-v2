@@ -26,6 +26,7 @@ export async function PATCH(
       tenant.schoolId,
       data.status,
       data.remarks,
+      tenant.userId,
     );
 
     await recordAuditLog({

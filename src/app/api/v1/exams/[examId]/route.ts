@@ -102,7 +102,7 @@ export async function PATCH(
     }
 
     if (parsed.data.status === "COMPLETED") {
-      await notifyExamResultsPublished(exam.id, tenant.schoolId);
+      await notifyExamResultsPublished(exam.id, tenant.schoolId, tenant.userId);
     }
 
     await recordAuditLog({

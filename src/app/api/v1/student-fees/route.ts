@@ -43,6 +43,7 @@ export async function POST(req: Request) {
     const fee = await studentFeeService.assign(
       tenant.schoolId,
       body,
+      tenant.userId,
     );
 
     return ApiResponse.success(

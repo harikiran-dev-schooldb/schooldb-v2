@@ -342,8 +342,8 @@ export async function POST(
       throw new ApiError(409, "This student already has a pending or approved request for these dates.");
     }
 
-    const created = await prisma.leaveRequest.create({
-      data: {
+    const created = await prisma.$transaction(async (tx) => {
+      const leave = await tx.leaveRequest.create({ data: {
         schoolId: context.membership.schoolId,
         studentId,
         enrollmentId: context.enrollment.id,
@@ -351,7 +351,15 @@ export async function POST(
         startDate,
         endDate,
         reason: parsed.data.reason,
-      },
+      } });
+      await tx.studentActivity.create({ data: {
+        schoolId: context.membership.schoolId, studentId, enrollmentId: context.enrollment.id,
+        performedByUserId: context.membership.userId, type: "LEAVE_REQUEST_CREATED",
+        title: "Leave request submitted", description: parsed.data.reason,
+        sourceType: "LEAVE_REQUEST", sourceId: leave.id,
+        metadata: { requestId: leave.id, startDate: startDate.toISOString(), endDate: endDate.toISOString() },
+      } });
+      return leave;
     });
     await notifyLeaveRequestSubmitted(created.id, context.membership.schoolId).catch((error) => {
       console.error("Unable to create leave request notification", error);
@@ -382,6 +390,12 @@ export async function PUT(
     if (updated.count !== 1) {
       throw new ApiError(409, "This leave request can no longer be cancelled.");
     }
+    await prisma.studentActivity.create({ data: {
+      schoolId: context.membership.schoolId, studentId, enrollmentId: context.enrollment?.id,
+      performedByUserId: context.membership.userId, type: "LEAVE_REQUEST_UPDATED",
+      title: "Leave request cancelled", sourceType: "LEAVE_REQUEST_CANCELLED", sourceId: parsed.data.requestId,
+      metadata: { requestId: parsed.data.requestId, status: "CANCELLED" },
+    } });
     return ApiResponse.success({ id: parsed.data.requestId }, "Leave request cancelled.");
   });
 }

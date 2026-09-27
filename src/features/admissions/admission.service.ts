@@ -150,6 +150,7 @@ export async function convertAdmission(input: {
   sectionId: string;
   rollNo: number | null;
   changedBy: string;
+  performedByUserId: string;
 }) {
   const application = await prisma.admissionApplication.findFirst({
     where: { id: input.id, schoolId: input.schoolId },
@@ -231,7 +232,7 @@ export async function convertAdmission(input: {
       },
     });
     await tx.studentActivity.create({
-      data: { schoolId: input.schoolId, studentId: student.id, type: "STUDENT_CREATED", title: "Converted from online admission", description: `Application ${application.applicationNo} was approved and converted into a student profile.` },
+      data: { schoolId: input.schoolId, studentId: student.id, type: "STUDENT_CREATED", title: "Converted from online admission", description: `Application ${application.applicationNo} was approved and converted into a student profile.`, performedByUserId: input.performedByUserId },
     });
     await tx.admissionApplication.update({
       where: { id: application.id },

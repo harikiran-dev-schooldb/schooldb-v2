@@ -10,6 +10,7 @@ import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { recordAuditLog } from "@/lib/audit";
 import { notifyFeePayment } from "@/features/notifications/events";
+import { studentActivityService } from "@/features/students/services/student-activity.service";
 
 export async function POST(req: Request) {
   return apiHandler(async () => {
@@ -21,6 +22,18 @@ export async function POST(req: Request) {
     ]);
     const body = await validateBody(req, feePaymentSchema);
     const payment = await feePaymentService.create(tenant.schoolId, body);
+    await studentActivityService.create({
+      schoolId: tenant.schoolId,
+      studentId: payment.studentEnrollment.studentId,
+      enrollmentId: payment.studentEnrollmentId,
+      performedByUserId: tenant.userId,
+      type: "FEE_PAYMENT",
+      title: "Fee payment recorded",
+      description: `₹${Number(payment.amount).toLocaleString("en-IN")} received. Receipt: ${payment.receiptNo}.`,
+      sourceType: "FEE_PAYMENT",
+      sourceId: payment.id,
+      metadata: { receiptNo: payment.receiptNo, amount: Number(payment.amount), paymentMode: payment.paymentMode },
+    });
     await notifyFeePayment(payment.id, tenant.schoolId);
     await recordAuditLog({
       actor: tenant,

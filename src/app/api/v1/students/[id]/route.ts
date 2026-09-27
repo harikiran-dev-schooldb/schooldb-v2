@@ -22,7 +22,7 @@ export async function PUT(
     const data = createStudentSchema.parse(body);
     const { id } = await params;
 
-    const student = await studentService.update(id, tenant.schoolId, data);
+    const student = await studentService.update(id, tenant.schoolId, data, tenant.userId);
     await recordAuditLog({
       actor: tenant,
       module: "STUDENTS",

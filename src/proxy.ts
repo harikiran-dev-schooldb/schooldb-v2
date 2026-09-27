@@ -6,9 +6,28 @@ import {
   schoolSlugFromPath,
   schoolSlugFromSameOriginReferer,
 } from "@/lib/tenant-context";
+import {
+  isSchoolDbProductionHost,
+  SCHOOLDB_PRODUCTION_DOMAIN,
+} from "@/lib/production-domain";
 
 export default clerkMiddleware(async (auth, req) => {
   const pathname = req.nextUrl.pathname;
+
+  // Deployment URLs are useful for Vercel internally, but users and installed
+  // service workers must always use the canonical SchoolDB domain.
+  if (
+    req.nextUrl.hostname.toLowerCase().endsWith(".vercel.app")
+    && !isSchoolDbProductionHost(req.nextUrl.hostname)
+    && !pathname.startsWith("/api/")
+  ) {
+    const canonicalUrl = req.nextUrl.clone();
+    canonicalUrl.protocol = "https:";
+    canonicalUrl.hostname = SCHOOLDB_PRODUCTION_DOMAIN;
+    canonicalUrl.port = "";
+    return NextResponse.redirect(canonicalUrl, 308);
+  }
+
   const isSupportApi = pathname.startsWith("/api/v1/support/");
   const isAndroidBuildWorkerApi =
     /^\/api\/v1\/android-builds\/[^/]+\/(?:source|callback)$/.test(pathname);

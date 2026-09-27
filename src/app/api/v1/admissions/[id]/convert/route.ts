@@ -22,6 +22,7 @@ export async function POST(
       schoolId: actor.schoolId,
       ...input,
       changedBy,
+      performedByUserId: actor.userId,
     });
     await recordAuditLog({
       actor,

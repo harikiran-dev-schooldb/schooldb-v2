@@ -63,7 +63,7 @@ function sameDefinition(existing: string | undefined, current: string, label: st
   if (existing !== undefined && existing !== current) throw new Error(`Row ${rowNumber}: Conflicting ${label} details are repeated in this file.`);
 }
 
-export async function importTransportData(schoolId: string, input: unknown) {
+export async function importTransportData(schoolId: string, input: unknown, performedByUserId?: string) {
   if (!Array.isArray(input) || input.length === 0) throw new Error("No transport rows were provided.");
   if (input.length > MAX_ROWS) throw new Error(`Maximum ${MAX_ROWS} transport rows per import.`);
 
@@ -275,6 +275,22 @@ export async function importTransportData(schoolId: string, input: unknown) {
         await tx.student.updateMany({
           where: { schoolId, id: { in: [...new Set(toCreate.map((item) => item.studentId))] } },
           data: { transportRequired: true },
+        });
+        const activityBatchId = `transport-import:${Date.now()}`;
+        await tx.studentActivity.createMany({
+          data: toCreate.map((item) => ({
+            schoolId,
+            studentId: item.studentId,
+            enrollmentId: item.studentEnrollmentId,
+            performedByUserId,
+            type: "TRANSPORT_ASSIGNED" as const,
+            title: "Transport assigned",
+            description: "Student transport assignment was updated by bulk import.",
+            sourceType: "TRANSPORT_IMPORT",
+            sourceId: activityBatchId,
+            metadata: { routeId: item.routeId, stopId: item.stopId },
+          })),
+          skipDuplicates: true,
         });
         assignmentsCreated = toCreate.length;
       }

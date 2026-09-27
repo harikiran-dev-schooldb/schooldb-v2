@@ -100,11 +100,16 @@ export async function notifyHomeworkPublished(homeworkId: string, schoolId: stri
   });
 }
 
-export async function notifyExamResultsPublished(examId: string, schoolId: string) {
+export async function notifyExamResultsPublished(
+  examId: string,
+  schoolId: string,
+  performedByUserId?: string,
+) {
   const exam = await prisma.exam.findFirst({
     where: { id: examId, schoolId, status: "COMPLETED", active: true },
     select: {
       name: true,
+      academicYearId: true,
       schedules: {
         select: {
           classId: true,
@@ -154,6 +159,35 @@ export async function notifyExamResultsPublished(examId: string, schoolId: strin
       targetId,
       targetLabel,
     }));
+  }
+
+  const enrollments = await prisma.studentEnrollment.findMany({
+    where: {
+      schoolId,
+      academicYearId: exam.academicYearId,
+      active: true,
+      OR: scopes.map((scope) => ({
+        classId: scope.classId,
+        ...(scope.sectionId ? { sectionId: scope.sectionId } : {}),
+      })),
+    },
+    select: { id: true, studentId: true },
+  });
+  if (enrollments.length > 0) {
+    await prisma.studentActivity.createMany({
+      data: enrollments.map((enrollment) => ({
+        schoolId,
+        studentId: enrollment.studentId,
+        enrollmentId: enrollment.id,
+        type: "EXAM_RESULT_PUBLISHED" as const,
+        title: `${exam.name} result published`,
+        description: "The student's exam result and report card are now available.",
+        performedByUserId,
+        sourceType: "EXAM",
+        sourceId: examId,
+      })),
+      skipDuplicates: true,
+    });
   }
   return notifications;
 }
@@ -248,7 +282,11 @@ export async function notifyFeePayment(paymentId: string, schoolId: string) {
   });
 }
 
-export async function notifyAttendanceLocked(sessionId: string, schoolId: string) {
+export async function notifyAttendanceLocked(
+  sessionId: string,
+  schoolId: string,
+  performedByUserId?: string,
+) {
   const session = await prisma.attendanceSession.findFirst({
     where: { id: sessionId, schoolId, locked: true },
     select: {
@@ -260,6 +298,21 @@ export async function notifyAttendanceLocked(sessionId: string, schoolId: string
     },
   });
   if (!session) return null;
+
+  await prisma.studentActivity.createMany({
+    data: session.records.map((record) => ({
+      schoolId,
+      studentId: record.studentId,
+      type: "ATTENDANCE_MARKED" as const,
+      title: "Attendance finalized",
+      description: `${session.class.name} - ${session.section.name}: ${record.status.toLowerCase()}.`,
+      performedByUserId,
+      sourceType: "ATTENDANCE_SESSION",
+      sourceId: session.id,
+      metadata: { sessionId: session.id, status: record.status },
+    })),
+    skipDuplicates: true,
+  });
 
   const absentIds = session.records
     .filter((record) => record.status === "ABSENT")

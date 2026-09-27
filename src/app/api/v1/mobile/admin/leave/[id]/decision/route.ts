@@ -21,6 +21,10 @@ export async function POST(
     const membership = await requireRole(["SUPER_ADMIN", "SCHOOL_ADMIN"]);
     const { id } = await params;
     const input = await validateBody(request, decisionSchema);
+    const leave = await prisma.leaveRequest.findFirst({
+      where: { id, schoolId: membership.schoolId, status: "PENDING" },
+      select: { studentId: true, enrollmentId: true },
+    });
 
     const updated = await prisma.leaveRequest.updateMany({
       where: {
@@ -44,6 +48,13 @@ export async function POST(
         ? "This leave request has already been decided."
         : "Leave request not found.");
     }
+    if (leave) await prisma.studentActivity.create({ data: {
+      schoolId: membership.schoolId, studentId: leave.studentId, enrollmentId: leave.enrollmentId,
+      performedByUserId: membership.userId, type: "LEAVE_REQUEST_UPDATED",
+      title: `Leave request ${input.decision.toLowerCase()}`, description: input.decisionNote,
+      sourceType: "LEAVE_REQUEST_DECISION", sourceId: id,
+      metadata: { requestId: id, status: input.decision },
+    } });
 
     await notifyLeaveRequestDecided(id, membership.schoolId).catch((error) => {
       console.error("Unable to create leave decision notification", error);

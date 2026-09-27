@@ -77,7 +77,7 @@ export async function POST(request: Request) {
 
       targetSectionId: requiredString(body.targetSectionId, "Target section"),
       decision,
-    });
+    }, tenant.userId);
 
     await recordAuditLog({
       actor: tenant,

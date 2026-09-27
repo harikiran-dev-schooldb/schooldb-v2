@@ -36,6 +36,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
       id,
       tenant.schoolId,
       input,
+      tenant.userId,
     );
 
     return ApiResponse.success(enrollment);

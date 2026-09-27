@@ -167,7 +167,7 @@ export async function POST(request: Request) {
         await studentFeeService.assign(tenant.schoolId, {
           studentEnrollmentId: enrollment.id,
           feePlanId: plan.id,
-        });
+        }, tenant.userId);
         created += 1;
       } catch (error) {
         importErrors.push({

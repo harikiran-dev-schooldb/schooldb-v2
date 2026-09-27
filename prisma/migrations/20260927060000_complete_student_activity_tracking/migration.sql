@@ -1,0 +1,30 @@
+ALTER TYPE "StudentActivityType" ADD VALUE IF NOT EXISTS 'DOCUMENT_UPDATED';
+ALTER TYPE "StudentActivityType" ADD VALUE IF NOT EXISTS 'FEE_ASSIGNED';
+ALTER TYPE "StudentActivityType" ADD VALUE IF NOT EXISTS 'FEE_PAYMENT_VOIDED';
+ALTER TYPE "StudentActivityType" ADD VALUE IF NOT EXISTS 'EXAM_MARKS_UPDATED';
+ALTER TYPE "StudentActivityType" ADD VALUE IF NOT EXISTS 'EXAM_RESULT_PUBLISHED';
+ALTER TYPE "StudentActivityType" ADD VALUE IF NOT EXISTS 'LEAVE_REQUEST_CREATED';
+ALTER TYPE "StudentActivityType" ADD VALUE IF NOT EXISTS 'LEAVE_REQUEST_UPDATED';
+ALTER TYPE "StudentActivityType" ADD VALUE IF NOT EXISTS 'HOUSE_ASSIGNED';
+ALTER TYPE "StudentActivityType" ADD VALUE IF NOT EXISTS 'TRANSPORT_ASSIGNED';
+ALTER TYPE "StudentActivityType" ADD VALUE IF NOT EXISTS 'TRANSPORT_REMOVED';
+ALTER TYPE "StudentActivityType" ADD VALUE IF NOT EXISTS 'LIBRARY_BOOK_ISSUED';
+ALTER TYPE "StudentActivityType" ADD VALUE IF NOT EXISTS 'LIBRARY_BOOK_RETURNED';
+ALTER TYPE "StudentActivityType" ADD VALUE IF NOT EXISTS 'LIBRARY_BOOK_RENEWED';
+ALTER TYPE "StudentActivityType" ADD VALUE IF NOT EXISTS 'CERTIFICATE_ISSUED';
+ALTER TYPE "StudentActivityType" ADD VALUE IF NOT EXISTS 'CERTIFICATE_CANCELLED';
+
+ALTER TABLE "StudentActivity"
+  ADD COLUMN "performedByUserId" TEXT,
+  ADD COLUMN "sourceType" TEXT,
+  ADD COLUMN "sourceId" TEXT;
+
+ALTER TABLE "StudentActivity"
+  ADD CONSTRAINT "StudentActivity_performedByUserId_fkey"
+  FOREIGN KEY ("performedByUserId") REFERENCES "User"("id")
+  ON DELETE SET NULL ON UPDATE CASCADE;
+
+CREATE INDEX "StudentActivity_performedByUserId_idx" ON "StudentActivity"("performedByUserId");
+CREATE INDEX "StudentActivity_sourceType_sourceId_idx" ON "StudentActivity"("sourceType", "sourceId");
+CREATE UNIQUE INDEX "StudentActivity_studentId_type_sourceType_sourceId_key"
+  ON "StudentActivity"("studentId", "type", "sourceType", "sourceId");

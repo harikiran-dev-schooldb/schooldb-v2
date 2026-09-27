@@ -131,7 +131,7 @@ export async function createTransportStop(schoolId: string, value: unknown) {
   return prisma.transportStop.create({ data: { schoolId, ...input } });
 }
 
-export async function assignStudentTransport(schoolId: string, value: unknown) {
+export async function assignStudentTransport(schoolId: string, value: unknown, performedByUserId?: string) {
   const input = assignmentSchema.parse(value);
   const [enrollment, route] = await Promise.all([
     prisma.studentEnrollment.findFirst({
@@ -165,11 +165,18 @@ export async function assignStudentTransport(schoolId: string, value: unknown) {
       },
     });
     await tx.student.update({ where: { id: enrollment.studentId }, data: { transportRequired: true } });
+    await tx.studentActivity.create({ data: {
+      schoolId, studentId: enrollment.studentId, enrollmentId: enrollment.id,
+      performedByUserId, type: "TRANSPORT_ASSIGNED", title: "Transport assigned",
+      description: "Student transport route and stop were assigned.",
+      sourceType: "TRANSPORT_ASSIGNMENT", sourceId: assignment.id,
+      metadata: { assignmentId: assignment.id, routeId: input.routeId, stopId: input.stopId },
+    } });
     return assignment;
   });
 }
 
-export async function archiveTransportAssignment(schoolId: string, assignmentId: string) {
+export async function archiveTransportAssignment(schoolId: string, assignmentId: string, performedByUserId?: string) {
   const assignment = await prisma.studentTransportAssignment.findFirst({
     where: { id: assignmentId, schoolId, active: true },
     select: { id: true, studentEnrollment: { select: { studentId: true } } },
@@ -183,6 +190,13 @@ export async function archiveTransportAssignment(schoolId: string, assignmentId:
     if (remaining === 0) {
       await tx.student.update({ where: { id: assignment.studentEnrollment.studentId }, data: { transportRequired: false } });
     }
+    await tx.studentActivity.create({ data: {
+      schoolId, studentId: assignment.studentEnrollment.studentId,
+      performedByUserId, type: "TRANSPORT_REMOVED", title: "Transport assignment removed",
+      description: "The active transport assignment was archived.",
+      sourceType: "TRANSPORT_ARCHIVE", sourceId: assignment.id,
+      metadata: { assignmentId: assignment.id },
+    } });
     return { id: assignment.id, active: false };
   });
 }

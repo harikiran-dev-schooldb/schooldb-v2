@@ -144,6 +144,7 @@ export async function PUT(
           remarks: mark.remarks || null,
         }),
       ),
+      tenant.userId,
     );
 
     await recordAuditLog({

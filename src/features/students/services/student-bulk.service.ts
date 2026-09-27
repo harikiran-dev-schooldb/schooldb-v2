@@ -31,7 +31,7 @@ type ImportResult = {
 };
 
 export const studentBulkService = {
-  async import(schoolId: string, input: unknown) {
+  async import(schoolId: string, input: unknown, performedByUserId?: string) {
     const parsed = bulkStudentsSchema.parse(input);
     const results: ImportResult[] = [];
     const seen = new Set<string>();
@@ -287,6 +287,7 @@ export const studentBulkService = {
             type: "STUDENT_CREATED",
             title: "Student profile created",
             description: `Student ${student.admissionNo} — ${student.fullName} was added to SchoolDB.`,
+            performedByUserId,
           })),
         });
       }
@@ -330,6 +331,7 @@ export const studentBulkService = {
                 type: "ENROLLMENT_CREATED" as const,
                 title: "Student enrollment created",
                 description: `${student.fullName} enrolled in ${enrollment.className} — ${enrollment.sectionName} for ${enrollment.academicYearName}.`,
+                performedByUserId,
               },
             ];
           }),

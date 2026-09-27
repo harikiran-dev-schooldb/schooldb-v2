@@ -37,6 +37,13 @@ export async function PATCH(req: Request, { params }: Params) {
           },
         },
       },
+      include: {
+        studentFeeItem: {
+          include: {
+            studentFee: { include: { studentEnrollment: true } },
+          },
+        },
+      },
     });
 
     if (!installment) {
@@ -72,20 +79,27 @@ export async function PATCH(req: Request, { params }: Params) {
       status = "PENDING";
     }
 
-    const updated = await prisma.studentFeeInstallment.update({
-      where: {
-        id,
-        studentFeeItem: {
-          studentFee: {
-            schoolId: tenant.schoolId,
-          },
+    const updated = await prisma.$transaction(async (tx) => {
+      const saved = await tx.studentFeeInstallment.update({
+        where: { id },
+        data: { concession, payableAmount, status },
+      });
+      const enrollment = installment.studentFeeItem.studentFee.studentEnrollment;
+      await tx.studentActivity.create({
+        data: {
+          schoolId: tenant.schoolId,
+          studentId: enrollment.studentId,
+          enrollmentId: enrollment.id,
+          performedByUserId: tenant.userId,
+          type: "FEE_CONCESSION",
+          title: "Fee concession updated",
+          description: `${installment.name}: ₹${Number(installment.concession).toLocaleString("en-IN")} → ₹${concession.toLocaleString("en-IN")}.`,
+          sourceType: "FEE_INSTALLMENT_CONCESSION",
+          sourceId: `${id}:${Date.now()}`,
+          metadata: { installmentId: id, previousConcession: Number(installment.concession), concession },
         },
-      },
-      data: {
-        concession,
-        payableAmount,
-        status,
-      },
+      });
+      return saved;
     });
 
     return ApiResponse.success(updated, "Concession updated successfully.");

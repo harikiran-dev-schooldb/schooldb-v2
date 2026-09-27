@@ -1,5 +1,7 @@
-const CACHE_NAME = "schooldb-pwa-v2";
+const CACHE_NAME = "schooldb-pwa-v3";
 const OFFLINE_URL = "/offline";
+const HOSTNAME = self.location.hostname.toLowerCase();
+const ALLOWED_HOST = HOSTNAME === "schooldb.co.in" || HOSTNAME.endsWith(".schooldb.co.in");
 const APP_ASSETS = [
   OFFLINE_URL,
   "/pwa-192.png",
@@ -8,6 +10,10 @@ const APP_ASSETS = [
 ];
 
 self.addEventListener("install", (event) => {
+  if (!ALLOWED_HOST) {
+    event.waitUntil(self.registration.unregister());
+    return;
+  }
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_ASSETS)),
   );
@@ -15,6 +21,14 @@ self.addEventListener("install", (event) => {
 });
 
 self.addEventListener("activate", (event) => {
+  if (!ALLOWED_HOST) {
+    event.waitUntil(
+      caches.keys()
+        .then((keys) => Promise.all(keys.filter((key) => key.startsWith("schooldb-pwa-")).map((key) => caches.delete(key))))
+        .then(() => self.registration.unregister()),
+    );
+    return;
+  }
   event.waitUntil(
     caches
       .keys()
@@ -30,6 +44,7 @@ self.addEventListener("activate", (event) => {
 });
 
 self.addEventListener("fetch", (event) => {
+  if (!ALLOWED_HOST) return;
   const request = event.request;
   if (request.method !== "GET") return;
 
@@ -67,6 +82,7 @@ self.addEventListener("fetch", (event) => {
 });
 
 self.addEventListener("push", (event) => {
+  if (!ALLOWED_HOST) return;
   if (!event.data) return;
 
   let payload;
@@ -93,6 +109,7 @@ self.addEventListener("push", (event) => {
 });
 
 self.addEventListener("notificationclick", (event) => {
+  if (!ALLOWED_HOST) return;
   event.notification.close();
   const targetUrl = new URL(event.notification.data?.url || "/", self.location.origin).href;
 

@@ -70,8 +70,8 @@ export async function createLeaveRequest(
     return { error: "This student already has a pending or approved request for these dates.", success: false };
   }
 
-  const created = await prisma.leaveRequest.create({
-    data: {
+  const created = await prisma.$transaction(async (tx) => {
+    const leave = await tx.leaveRequest.create({ data: {
       schoolId: context.membership.schoolId,
       studentId,
       enrollmentId: context.enrollment.id,
@@ -82,7 +82,15 @@ export async function createLeaveRequest(
       startTime: parsed.data.startTime || null,
       endTime: parsed.data.endTime || null,
       reason: parsed.data.reason,
-    },
+    } });
+    await tx.studentActivity.create({ data: {
+      schoolId: context.membership.schoolId, studentId, enrollmentId: context.enrollment.id,
+      performedByUserId: context.membership.userId, type: "LEAVE_REQUEST_CREATED",
+      title: "Leave request submitted", description: parsed.data.reason,
+      sourceType: "LEAVE_REQUEST", sourceId: leave.id,
+      metadata: { requestId: leave.id, requestType: parsed.data.requestType, startDate: startDate.toISOString(), endDate: endDate.toISOString() },
+    } });
+    return leave;
   });
 
   await notifyLeaveRequestSubmitted(created.id, context.membership.schoolId).catch((error) => {
@@ -100,7 +108,7 @@ export async function cancelLeaveRequest(
   requestId: string,
 ) {
   const context = await requireStudentAccess(schoolSlug, studentId);
-  await prisma.leaveRequest.updateMany({
+  const updated = await prisma.leaveRequest.updateMany({
     where: {
       id: requestId,
       schoolId: context.membership.schoolId,
@@ -109,6 +117,12 @@ export async function cancelLeaveRequest(
     },
     data: { status: "CANCELLED" },
   });
+  if (updated.count === 1) await prisma.studentActivity.create({ data: {
+    schoolId: context.membership.schoolId, studentId, enrollmentId: context.enrollment?.id,
+    performedByUserId: context.membership.userId, type: "LEAVE_REQUEST_UPDATED",
+    title: "Leave request cancelled", sourceType: "LEAVE_REQUEST_CANCELLED", sourceId: requestId,
+    metadata: { requestId, status: "CANCELLED" },
+  } });
   revalidatePath(`/${schoolSlug}/my/${studentId}/leave-requests`);
   revalidatePath(`/${schoolSlug}/leave-requests`);
 }
@@ -134,6 +148,8 @@ export async function decideLeaveRequest(
     where: { id: requestId, schoolId: membership.schoolId },
     select: {
       status: true,
+      studentId: true,
+      enrollmentId: true,
       enrollment: { select: { classId: true, sectionId: true } },
     },
   });
@@ -156,6 +172,14 @@ export async function decideLeaveRequest(
     },
   });
   if (updated.count !== 1) return { error: "This request was already updated. Refresh the page.", success: false };
+
+  await prisma.studentActivity.create({ data: {
+    schoolId: membership.schoolId, studentId: request.studentId, enrollmentId: request.enrollmentId,
+    performedByUserId: membership.userId, type: "LEAVE_REQUEST_UPDATED",
+    title: `Leave request ${parsed.data.decision.toLowerCase()}`,
+    description: parsed.data.decisionNote, sourceType: "LEAVE_REQUEST_DECISION", sourceId: requestId,
+    metadata: { requestId, status: parsed.data.decision },
+  } });
 
   await notifyLeaveRequestDecided(requestId, membership.schoolId).catch((error) => {
     console.error("Unable to create leave decision notification", error);

@@ -97,6 +97,7 @@ export async function POST(request: Request, { params }: Props) {
         data: {
           schoolId: tenant.schoolId,
           studentId,
+          performedByUserId: tenant.userId,
           type: "DOCUMENT_UPLOADED",
           title: "Document uploaded",
           description: name,

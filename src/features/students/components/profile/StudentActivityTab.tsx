@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
 import { Badge } from "@/components/ui/badge";
 
@@ -31,7 +32,23 @@ type ActivityType =
   | "STATUS_CHANGED"
   | "PARENT_UPDATED"
   | "DOCUMENT_UPLOADED"
-  | "DOCUMENT_DELETED";
+  | "DOCUMENT_DELETED"
+  | "STUDENT_PROMOTED"
+  | "DOCUMENT_UPDATED"
+  | "FEE_ASSIGNED"
+  | "FEE_PAYMENT_VOIDED"
+  | "EXAM_MARKS_UPDATED"
+  | "EXAM_RESULT_PUBLISHED"
+  | "LEAVE_REQUEST_CREATED"
+  | "LEAVE_REQUEST_UPDATED"
+  | "HOUSE_ASSIGNED"
+  | "TRANSPORT_ASSIGNED"
+  | "TRANSPORT_REMOVED"
+  | "LIBRARY_BOOK_ISSUED"
+  | "LIBRARY_BOOK_RETURNED"
+  | "LIBRARY_BOOK_RENEWED"
+  | "CERTIFICATE_ISSUED"
+  | "CERTIFICATE_CANCELLED";
 
 type StudentActivity = {
   id: string;
@@ -43,6 +60,7 @@ type StudentActivity = {
   description: string | null;
 
   performedByUserId: string | null;
+  performedBy: { id: string; firstName: string | null; lastName: string | null } | null;
 
   metadata: unknown;
 
@@ -158,6 +176,34 @@ function getActivityConfig(type: ActivityType) {
         badgeClassName: "border-red-200 bg-red-50 text-red-700",
       };
 
+    case "STUDENT_PROMOTED":
+      return { label: "Promotion", icon: GraduationCap, className: "bg-indigo-50 text-indigo-600", badgeClassName: "border-indigo-200 bg-indigo-50 text-indigo-700" };
+    case "DOCUMENT_UPDATED":
+      return { label: "Document Updated", icon: FileEdit, className: "bg-cyan-50 text-cyan-600", badgeClassName: "border-cyan-200 bg-cyan-50 text-cyan-700" };
+    case "FEE_ASSIGNED":
+      return { label: "Fee Assigned", icon: CreditCard, className: "bg-teal-50 text-teal-600", badgeClassName: "border-teal-200 bg-teal-50 text-teal-700" };
+    case "FEE_PAYMENT_VOIDED":
+      return { label: "Payment Voided", icon: CreditCard, className: "bg-rose-50 text-rose-600", badgeClassName: "border-rose-200 bg-rose-50 text-rose-700" };
+    case "EXAM_MARKS_UPDATED":
+      return { label: "Exam Marks", icon: GraduationCap, className: "bg-blue-50 text-blue-600", badgeClassName: "border-blue-200 bg-blue-50 text-blue-700" };
+    case "EXAM_RESULT_PUBLISHED":
+      return { label: "Exam Result", icon: GraduationCap, className: "bg-indigo-50 text-indigo-600", badgeClassName: "border-indigo-200 bg-indigo-50 text-indigo-700" };
+    case "LEAVE_REQUEST_CREATED":
+    case "LEAVE_REQUEST_UPDATED":
+      return { label: "Leave Request", icon: CalendarDays, className: "bg-amber-50 text-amber-600", badgeClassName: "border-amber-200 bg-amber-50 text-amber-700" };
+    case "HOUSE_ASSIGNED":
+      return { label: "House Assignment", icon: UserRound, className: "bg-purple-50 text-purple-600", badgeClassName: "border-purple-200 bg-purple-50 text-purple-700" };
+    case "TRANSPORT_ASSIGNED":
+    case "TRANSPORT_REMOVED":
+      return { label: "Transport", icon: ArrowRight, className: "bg-sky-50 text-sky-600", badgeClassName: "border-sky-200 bg-sky-50 text-sky-700" };
+    case "LIBRARY_BOOK_ISSUED":
+    case "LIBRARY_BOOK_RETURNED":
+    case "LIBRARY_BOOK_RENEWED":
+      return { label: "Library", icon: FileEdit, className: "bg-orange-50 text-orange-600", badgeClassName: "border-orange-200 bg-orange-50 text-orange-700" };
+    case "CERTIFICATE_ISSUED":
+    case "CERTIFICATE_CANCELLED":
+      return { label: "Certificate", icon: CheckCircle2, className: "bg-emerald-50 text-emerald-600", badgeClassName: "border-emerald-200 bg-emerald-50 text-emerald-700" };
+
     default:
       return {
         label: "Activity",
@@ -174,6 +220,8 @@ export function StudentActivityTab({ studentId }: Props) {
   const [loading, setLoading] = useState(true);
 
   const [error, setError] = useState(false);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -198,7 +246,8 @@ export function StudentActivityTab({ studentId }: Props) {
           return;
         }
 
-        setActivities(result.data ?? []);
+        setActivities(result.data?.items ?? []);
+        setNextCursor(result.data?.nextCursor ?? null);
         setError(false);
       } catch (err) {
         if (!cancelled) {
@@ -220,6 +269,25 @@ export function StudentActivityTab({ studentId }: Props) {
       cancelled = true;
     };
   }, [studentId]);
+
+  async function loadMore() {
+    if (!nextCursor || loadingMore) return;
+    try {
+      setLoadingMore(true);
+      const response = await fetch(
+        `/api/v1/students/${studentId}/activity?cursor=${encodeURIComponent(nextCursor)}`,
+        { cache: "no-store" },
+      );
+      const result = await response.json();
+      if (!response.ok || !result.success) throw new Error("Unable to load more activity.");
+      setActivities((current) => [...current, ...(result.data?.items ?? [])]);
+      setNextCursor(result.data?.nextCursor ?? null);
+    } catch {
+      setError(true);
+    } finally {
+      setLoadingMore(false);
+    }
+  }
 
   if (loading) {
     return (
@@ -368,7 +436,9 @@ export function StudentActivityTab({ studentId }: Props) {
                         <span>Performed by</span>
 
                         <span className="font-semibold text-foreground">
-                          {activity.performedByUserId ?? "System"}
+                          {[activity.performedBy?.firstName, activity.performedBy?.lastName]
+                            .filter(Boolean)
+                            .join(" ") || "System"}
                         </span>
 
                         <ArrowRight className="size-3.5" />
@@ -379,6 +449,13 @@ export function StudentActivityTab({ studentId }: Props) {
                   </div>
                 );
               })}
+              {nextCursor && (
+                <div className="flex justify-center p-4">
+                  <Button variant="outline" disabled={loadingMore} onClick={() => void loadMore()}>
+                    {loadingMore ? "Loading…" : "Load more"}
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </CardContent>

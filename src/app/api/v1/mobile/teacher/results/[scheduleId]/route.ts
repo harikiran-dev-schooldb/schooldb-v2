@@ -84,6 +84,7 @@ export async function PUT(req: Request, { params }: { params: Params }) {
       tenant.schoolId,
       sectionId,
       marks,
+      tenant.userId,
     );
     await recordAuditLog({
       actor: tenant,

@@ -64,12 +64,12 @@ export async function createLibraryBook(schoolId: string, value: unknown) {
   });
 }
 
-export async function issueLibraryBook(schoolId: string, value: unknown) {
+export async function issueLibraryBook(schoolId: string, value: unknown, performedByUserId?: string) {
   const input = issueSchema.parse(value);
   const issuedAt = new Date(`${input.issuedAt}T00:00:00.000Z`);
   const dueAt = new Date(`${input.dueAt}T00:00:00.000Z`);
   if (dueAt < issuedAt) throw new Error("Due date must be on or after the issue date.");
-  const copy = await prisma.libraryBookCopy.findFirst({ where: { schoolId, bookId: input.bookId, status: "AVAILABLE", book: { active: true } }, orderBy: { barcode: "asc" }, select: { id: true } });
+  const copy = await prisma.libraryBookCopy.findFirst({ where: { schoolId, bookId: input.bookId, status: "AVAILABLE", book: { active: true } }, orderBy: { barcode: "asc" }, select: { id: true, book: { select: { title: true } } } });
   if (!copy) throw new Error("No available copy remains for this book.");
   const studentEnrollment = input.borrowerType === "STUDENT" ? await prisma.studentEnrollment.findFirst({ where: { schoolId, studentId: input.borrowerId, academicYearId: input.academicYearId, active: true }, select: { id: true } }) : null;
   const teacher = input.borrowerType === "TEACHER" ? await prisma.teacher.findFirst({ where: { schoolId, id: input.borrowerId, active: true }, select: { id: true } }) : null;
@@ -78,22 +78,50 @@ export async function issueLibraryBook(schoolId: string, value: unknown) {
   return prisma.$transaction(async (tx) => {
     const claimed = await tx.libraryBookCopy.updateMany({ where: { id: copy.id, schoolId, status: "AVAILABLE" }, data: { status: "ISSUED" } });
     if (claimed.count !== 1) throw new Error("That copy was just issued. Please try again.");
-    return tx.libraryLoan.create({ data: { schoolId, copyId: copy.id, borrowerType: input.borrowerType, studentEnrollmentId: studentEnrollment?.id, teacherId: teacher?.id, issuedAt, dueAt, notes: input.notes } });
+    const loan = await tx.libraryLoan.create({ data: { schoolId, copyId: copy.id, borrowerType: input.borrowerType, studentEnrollmentId: studentEnrollment?.id, teacherId: teacher?.id, issuedAt, dueAt, notes: input.notes } });
+    if (studentEnrollment) await tx.studentActivity.create({ data: {
+      schoolId, studentId: input.borrowerId, enrollmentId: studentEnrollment.id,
+      performedByUserId, type: "LIBRARY_BOOK_ISSUED", title: "Library book issued",
+      description: `${copy.book.title} was issued until ${dueAt.toLocaleDateString("en-IN", { timeZone: "UTC" })}.`,
+      sourceType: "LIBRARY_LOAN", sourceId: loan.id,
+      metadata: { loanId: loan.id, bookId: input.bookId, dueAt: dueAt.toISOString() },
+    } });
+    return loan;
   });
 }
 
-export async function returnLibraryBook(schoolId: string, value: unknown) {
+export async function returnLibraryBook(schoolId: string, value: unknown, performedByUserId?: string) {
   const input = z.object({ loanId: z.string().min(1), fineAmount: z.coerce.number().min(0).max(1_000_000).default(0) }).parse(value);
-  const loan = await prisma.libraryLoan.findFirst({ where: { id: input.loanId, schoolId, returnedAt: null }, select: { id: true, copyId: true } });
+  const loan = await prisma.libraryLoan.findFirst({ where: { id: input.loanId, schoolId, returnedAt: null }, select: { id: true, copyId: true, studentEnrollment: { select: { id: true, studentId: true } }, copy: { select: { book: { select: { title: true } } } } } });
   if (!loan) throw new Error("Active loan not found.");
-  return prisma.$transaction([prisma.libraryLoan.update({ where: { id: loan.id }, data: { returnedAt: new Date(), fineAmount: input.fineAmount } }), prisma.libraryBookCopy.update({ where: { id: loan.copyId }, data: { status: "AVAILABLE" } })]);
+  return prisma.$transaction(async (tx) => {
+    const returned = await tx.libraryLoan.update({ where: { id: loan.id }, data: { returnedAt: new Date(), fineAmount: input.fineAmount } });
+    await tx.libraryBookCopy.update({ where: { id: loan.copyId }, data: { status: "AVAILABLE" } });
+    if (loan.studentEnrollment) await tx.studentActivity.create({ data: {
+      schoolId, studentId: loan.studentEnrollment.studentId, enrollmentId: loan.studentEnrollment.id,
+      performedByUserId, type: "LIBRARY_BOOK_RETURNED", title: "Library book returned",
+      description: `${loan.copy.book.title} was returned${input.fineAmount ? ` with a ₹${input.fineAmount.toLocaleString("en-IN")} fine` : ""}.`,
+      sourceType: "LIBRARY_RETURN", sourceId: loan.id, metadata: { loanId: loan.id, fineAmount: input.fineAmount },
+    } });
+    return returned;
+  });
 }
 
-export async function renewLibraryLoan(schoolId: string, value: unknown) {
+export async function renewLibraryLoan(schoolId: string, value: unknown, performedByUserId?: string) {
   const { loanId } = z.object({ loanId: z.string().min(1) }).parse(value);
-  const loan = await prisma.libraryLoan.findFirst({ where: { id: loanId, schoolId, returnedAt: null }, select: { id: true, dueAt: true, renewedCount: true } });
+  const loan = await prisma.libraryLoan.findFirst({ where: { id: loanId, schoolId, returnedAt: null }, select: { id: true, dueAt: true, renewedCount: true, studentEnrollment: { select: { id: true, studentId: true } }, copy: { select: { book: { select: { title: true } } } } } });
   if (!loan) throw new Error("Active loan not found.");
   if (loan.renewedCount >= 2) throw new Error("This loan has reached its renewal limit.");
   const dueAt = new Date(loan.dueAt); dueAt.setUTCDate(dueAt.getUTCDate() + 14);
-  return prisma.libraryLoan.update({ where: { id: loan.id }, data: { dueAt, renewedCount: { increment: 1 } } });
+  return prisma.$transaction(async (tx) => {
+    const renewed = await tx.libraryLoan.update({ where: { id: loan.id }, data: { dueAt, renewedCount: { increment: 1 } } });
+    if (loan.studentEnrollment) await tx.studentActivity.create({ data: {
+      schoolId, studentId: loan.studentEnrollment.studentId, enrollmentId: loan.studentEnrollment.id,
+      performedByUserId, type: "LIBRARY_BOOK_RENEWED", title: "Library loan renewed",
+      description: `${loan.copy.book.title} was renewed until ${dueAt.toLocaleDateString("en-IN", { timeZone: "UTC" })}.`,
+      sourceType: "LIBRARY_RENEWAL", sourceId: `${loan.id}:${loan.renewedCount + 1}`,
+      metadata: { loanId: loan.id, dueAt: dueAt.toISOString(), renewal: loan.renewedCount + 1 },
+    } });
+    return renewed;
+  });
 }

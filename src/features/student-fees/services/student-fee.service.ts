@@ -18,11 +18,13 @@ export const studentFeeService = {
   async assign(
     schoolId: string,
     input: StudentFeeAssignmentInput,
+    performedByUserId?: string,
   ) {
     return studentFeeRepository.create(
       schoolId,
       input.studentEnrollmentId,
       input.feePlanId,
+      performedByUserId,
     );
   },
 
@@ -39,10 +41,12 @@ export const studentFeeService = {
   applyFeePlanToStudents(
   schoolId: string,
   feePlanId: string,
+  performedByUserId?: string,
 ) {
   return studentFeeRepository.applyFeePlanToStudents(
     schoolId,
     feePlanId,
+    performedByUserId,
   );
 },
 };

@@ -11,7 +11,7 @@ type Props = {
 };
 
 export async function GET(
-  _req: Request,
+  req: Request,
   { params }: Props,
 ) {
   return apiHandler(async () => {
@@ -23,12 +23,20 @@ export async function GET(
       throw new Error("Unauthorized.");
     }
 
-    const activities =
+    const { searchParams } = new URL(req.url);
+    const take = Math.min(100, Math.max(10, Number(searchParams.get("take")) || 50));
+    const rows =
       await studentActivityService.list(
         id,
         tenant.schoolId,
+        { cursor: searchParams.get("cursor") || undefined, take },
       );
+    const hasMore = rows.length > take;
+    const activities = hasMore ? rows.slice(0, take) : rows;
 
-    return ApiResponse.success(activities);
+    return ApiResponse.success({
+      items: activities,
+      nextCursor: hasMore ? activities.at(-1)?.id ?? null : null,
+    });
   });
 }

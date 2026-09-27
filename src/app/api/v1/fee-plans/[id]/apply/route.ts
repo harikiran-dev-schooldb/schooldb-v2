@@ -19,6 +19,7 @@ export async function POST(req: Request, { params }: Props) {
     const result = await studentFeeService.applyFeePlanToStudents(
       tenant.schoolId,
       feePlanId,
+      tenant.userId,
     );
 
     return ApiResponse.success(

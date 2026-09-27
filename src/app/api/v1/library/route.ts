@@ -9,7 +9,7 @@ export async function POST(request: Request) {
   return apiHandler(async () => {
     const membership = await requireRole(["SUPER_ADMIN", "SCHOOL_ADMIN"]);
     const input = schema.parse(await request.json());
-    const result = input.action === "CREATE_CATEGORY" ? await createLibraryCategory(membership.schoolId, input.data) : input.action === "CREATE_BOOK" ? await createLibraryBook(membership.schoolId, input.data) : input.action === "ISSUE" ? await issueLibraryBook(membership.schoolId, input.data) : input.action === "RETURN" ? await returnLibraryBook(membership.schoolId, input.data) : await renewLibraryLoan(membership.schoolId, input.data);
+    const result = input.action === "CREATE_CATEGORY" ? await createLibraryCategory(membership.schoolId, input.data) : input.action === "CREATE_BOOK" ? await createLibraryBook(membership.schoolId, input.data) : input.action === "ISSUE" ? await issueLibraryBook(membership.schoolId, input.data, membership.userId) : input.action === "RETURN" ? await returnLibraryBook(membership.schoolId, input.data, membership.userId) : await renewLibraryLoan(membership.schoolId, input.data, membership.userId);
     return ApiResponse.success(result, "Library updated successfully.", 201);
   });
 }

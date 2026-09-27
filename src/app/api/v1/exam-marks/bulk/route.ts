@@ -26,6 +26,7 @@ type ResolvedRow = {
   schoolId: string;
   examScheduleId: string;
   studentEnrollmentId: string;
+  studentId: string;
   marksObtained: number | null;
   status: "PRESENT" | "ABSENT" | "EXEMPTED";
   remarks: string | null;
@@ -258,6 +259,7 @@ export async function POST(request: Request) {
         schoolId: tenant.schoolId,
         examScheduleId: schedule.id,
         studentEnrollmentId: enrollment.id,
+        studentId: student.id,
         marksObtained: row.marks,
         status: row.status,
         remarks: row.remarks?.trim() || null,
@@ -330,6 +332,23 @@ export async function POST(request: Request) {
 
     const created = toCreate.length;
     const updated = toUpdate.length;
+
+    const activityBatchId = `exam-marks-import:${Date.now()}`;
+    await prisma.studentActivity.createMany({
+      data: resolved.map((row) => ({
+        schoolId: tenant.schoolId,
+        studentId: row.studentId,
+        enrollmentId: row.studentEnrollmentId,
+        performedByUserId: tenant.userId,
+        type: "EXAM_MARKS_UPDATED" as const,
+        title: "Exam marks imported",
+        description: "Marks or exam attendance status were updated by bulk import.",
+        sourceType: "EXAM_MARKS_BATCH",
+        sourceId: activityBatchId,
+        metadata: { scheduleId: row.examScheduleId, status: row.status },
+      })),
+      skipDuplicates: true,
+    });
 
     await recordAuditLog({
       actor: tenant,

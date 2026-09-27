@@ -45,6 +45,7 @@ export async function POST(request: Request) {
     const enrollment = await studentEnrollmentService.create(
       tenant.schoolId,
       input,
+      tenant.userId,
     );
 
     return ApiResponse.success(enrollment);

@@ -60,14 +60,18 @@ export async function POST(req: Request) {
     const existingSet=new Set(existing.map(x=>x.studentEnrollmentId));
     let created=0,updated=0;
 
-    const operations=resolved.map(row=>{
+    const operations=resolved.flatMap(row=>{
       const studentEnrollmentId=enrollmentMap.get(`${row.academicYearId}:${row.studentId}`)!;
       if(existingSet.has(studentEnrollmentId))updated++;else created++;
-      return prisma.studentHouse.upsert({
+      return [prisma.studentHouse.upsert({
         where:{studentEnrollmentId},
         create:{schoolId:tenant.schoolId,academicYearId:row.academicYearId,studentId:row.studentId,studentEnrollmentId,houseId:row.houseId},
         update:{houseId:row.houseId},
-      });
+      }), prisma.studentActivity.upsert({
+        where:{studentId_type_sourceType_sourceId:{studentId:row.studentId,type:"HOUSE_ASSIGNED",sourceType:"HOUSE_ASSIGNMENT",sourceId:`${studentEnrollmentId}:${row.houseId}`}},
+        create:{schoolId:tenant.schoolId,studentId:row.studentId,enrollmentId:studentEnrollmentId,performedByUserId:tenant.userId,type:"HOUSE_ASSIGNED",title:"House assigned",description:"Student house allocation was updated by bulk import.",sourceType:"HOUSE_ASSIGNMENT",sourceId:`${studentEnrollmentId}:${row.houseId}`,metadata:{houseId:row.houseId}},
+        update:{},
+      })];
     });
     for(let i=0;i<operations.length;i+=100)await prisma.$transaction(operations.slice(i,i+100));
     return ApiResponse.success({created,updated,total:resolved.length},`${created} allocation(s) created and ${updated} updated.`);

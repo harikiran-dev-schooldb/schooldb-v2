@@ -390,6 +390,24 @@ export const cashfreePaymentService = {
         },
       });
 
+      const enrollment = await tx.studentEnrollment.findUniqueOrThrow({
+        where: { id: order.studentEnrollmentId },
+        select: { id: true, studentId: true },
+      });
+      await tx.studentActivity.create({
+        data: {
+          schoolId: order.schoolId,
+          studentId: enrollment.studentId,
+          enrollmentId: enrollment.id,
+          type: "FEE_PAYMENT",
+          title: "Online fee payment received",
+          description: `₹${Number(order.amount).toLocaleString("en-IN")} received online. Receipt: ${payment.receiptNo}.`,
+          sourceType: "FEE_PAYMENT",
+          sourceId: payment.id,
+          metadata: { receiptNo: payment.receiptNo, amount: Number(order.amount), paymentMode: "ONLINE" },
+        },
+      });
+
       for (const allocation of order.allocations) {
         const installment = allocation.studentFeeInstallment;
         const paidAmount = money(installment.paidAmount).plus(allocation.amount);

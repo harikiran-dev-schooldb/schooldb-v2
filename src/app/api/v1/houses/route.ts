@@ -138,7 +138,7 @@ export async function PUT(req: Request) {
     }
 
     await prisma.$transaction(
-      enrollments.map((enrollment) =>
+      enrollments.flatMap((enrollment) => [
         prisma.studentHouse.upsert({
           where: { studentEnrollmentId: enrollment.id },
           create: {
@@ -150,7 +150,30 @@ export async function PUT(req: Request) {
           },
           update: { houseId },
         }),
-      ),
+        prisma.studentActivity.upsert({
+          where: {
+            studentId_type_sourceType_sourceId: {
+              studentId: enrollment.studentId,
+              type: "HOUSE_ASSIGNED",
+              sourceType: "HOUSE_ASSIGNMENT",
+              sourceId: `${enrollment.id}:${houseId}`,
+            },
+          },
+          create: {
+            schoolId: tenant.schoolId,
+            studentId: enrollment.studentId,
+            enrollmentId: enrollment.id,
+            performedByUserId: tenant.userId,
+            type: "HOUSE_ASSIGNED",
+            title: "House assigned",
+            description: "Student house allocation was updated.",
+            sourceType: "HOUSE_ASSIGNMENT",
+            sourceId: `${enrollment.id}:${houseId}`,
+            metadata: { houseId },
+          },
+          update: {},
+        }),
+      ]),
     );
 
     return ApiResponse.success({ updated: enrollments.length }, `${enrollments.length} student(s) allocated successfully.`);

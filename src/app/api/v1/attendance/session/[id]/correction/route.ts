@@ -6,6 +6,7 @@ import { ApiResponse } from "@/lib/response";
 
 import { attendanceService } from "@/features/attendance/services/attendance.service";
 import { recordAuditLog } from "@/lib/audit";
+import { prisma } from "@/lib/prisma";
 
 const correctionSchema = z.object({
   changes: z
@@ -38,6 +39,21 @@ export async function POST(req: Request, { params }: Props) {
       id,
       input.changes,
     );
+
+    const correctionId = `${id}:${Date.now()}`;
+    await prisma.studentActivity.createMany({
+      data: input.changes.map((change) => ({
+        schoolId: tenant.schoolId,
+        studentId: change.studentId,
+        performedByUserId: tenant.userId,
+        type: "ATTENDANCE_MARKED" as const,
+        title: "Attendance corrected",
+        description: `Attendance was corrected to ${change.status.toLowerCase()}.`,
+        sourceType: "ATTENDANCE_CORRECTION",
+        sourceId: correctionId,
+        metadata: { sessionId: id, status: change.status },
+      })),
+    });
 
     await recordAuditLog({
       actor: tenant,

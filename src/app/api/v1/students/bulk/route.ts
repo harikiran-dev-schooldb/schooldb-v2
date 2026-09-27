@@ -8,7 +8,11 @@ export async function POST(req: Request) {
     const tenant = await requireRole(["SUPER_ADMIN", "SCHOOL_ADMIN"]);
     const body = await req.json();
 
-    const result = await studentBulkService.import(tenant.schoolId, body);
+    const result = await studentBulkService.import(
+      tenant.schoolId,
+      body,
+      tenant.userId,
+    );
 
     return ApiResponse.success(result, "Bulk student import processed.");
   });

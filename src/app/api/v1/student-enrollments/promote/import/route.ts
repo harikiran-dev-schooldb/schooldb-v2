@@ -27,7 +27,11 @@ export async function POST(request: Request) {
     const tenant = await requireRole(["SUPER_ADMIN", "SCHOOL_ADMIN"]);
     const body = (await request.json()) as Record<string, unknown>;
     const rows = rowsFrom(body.rows);
-    const result = await studentEnrollmentService.importPromotions(tenant.schoolId, rows);
+    const result = await studentEnrollmentService.importPromotions(
+      tenant.schoolId,
+      rows,
+      tenant.userId,
+    );
 
     await recordAuditLog({
       actor: tenant,

@@ -176,6 +176,7 @@ export const studentExamMarkService = {
     schoolId: string,
     sectionId: string,
     marks: MarkInput[],
+    performedByUserId?: string,
   ) {
     const schedule = await prisma.examSchedule.findFirst({
       where: {
@@ -255,6 +256,7 @@ export const studentExamMarkService = {
 
       select: {
         id: true,
+        studentId: true,
       },
     });
 
@@ -266,6 +268,8 @@ export const studentExamMarkService = {
 
     const maxMarks = Number(schedule.maxMarks);
 
+    const studentByEnrollment = new Map(enrollments.map((item) => [item.id, item.studentId]));
+    const activityBatchId = `${scheduleId}:${Date.now()}`;
     const operations = marks.map((input) => {
       const status =
         input.status ?? StudentExamStatus.PRESENT;
@@ -325,10 +329,25 @@ export const studentExamMarkService = {
       });
     });
 
-    const result = await prisma.$transaction(operations);
+    const activityOperations = marks.map((input) => prisma.studentActivity.create({
+      data: {
+        schoolId,
+        studentId: studentByEnrollment.get(input.studentEnrollmentId)!,
+        enrollmentId: input.studentEnrollmentId,
+        performedByUserId,
+        type: "EXAM_MARKS_UPDATED",
+        title: "Exam marks updated",
+        description: "Marks or exam attendance status were saved.",
+        sourceType: "EXAM_MARKS_BATCH",
+        sourceId: activityBatchId,
+        metadata: { scheduleId, status: input.status ?? StudentExamStatus.PRESENT },
+      },
+    }));
+
+    await prisma.$transaction([...operations, ...activityOperations]);
 
     return {
-      count: result.length,
+      count: marks.length,
     };
   },
 };

@@ -34,10 +34,11 @@ export async function POST(request: Request) {
         : input.action === "CREATE_STOP"
           ? await createTransportStop(membership.schoolId, input.data)
           : input.action === "ASSIGN_STUDENT"
-            ? await assignStudentTransport(membership.schoolId, input.data)
+            ? await assignStudentTransport(membership.schoolId, input.data, membership.userId)
             : await archiveTransportAssignment(
                 membership.schoolId,
                 z.object({ assignmentId: z.string().min(1) }).parse(input.data).assignmentId,
+                membership.userId,
               );
 
     return ApiResponse.success(result, "Transport details saved successfully.", 201);

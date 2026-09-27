@@ -5,6 +5,8 @@ import { z } from "zod";
 
 import { feePaymentService } from "@/features/fee-payments/services/fee-payment.service";
 import { recordAuditLog } from "@/lib/audit";
+import { prisma } from "@/lib/prisma";
+import { studentActivityService } from "@/features/students/services/student-activity.service";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -32,6 +34,24 @@ export async function POST(req: Request, { params }: Params) {
       reason,
       tenant.userId,
     );
+    const enrollment = await prisma.studentEnrollment.findUnique({
+      where: { id: payment.studentEnrollmentId },
+      select: { id: true, studentId: true },
+    });
+    if (enrollment) {
+      await studentActivityService.create({
+        schoolId: tenant.schoolId,
+        studentId: enrollment.studentId,
+        enrollmentId: enrollment.id,
+        performedByUserId: tenant.userId,
+        type: "FEE_PAYMENT_VOIDED",
+        title: "Fee payment voided",
+        description: `${payment.receiptNo}: ${reason}`,
+        sourceType: "FEE_PAYMENT_VOID",
+        sourceId: payment.id,
+        metadata: { receiptNo: payment.receiptNo, reason },
+      });
+    }
     await recordAuditLog({
       actor: tenant,
       module: "FEES",

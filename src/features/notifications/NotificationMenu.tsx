@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { isSchoolDbProductionHost } from "@/lib/production-domain";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -119,6 +120,10 @@ export function NotificationMenu({ schoolSlug }: { schoolSlug: string }) {
   }
 
   async function enablePush() {
+    if (!isSchoolDbProductionHost(window.location.hostname)) {
+      toast.error("Browser notifications are available only on schooldb.co.in.");
+      return;
+    }
     if (!("Notification" in window) || !("serviceWorker" in navigator)) {
       toast.error("This browser does not support push notifications.");
       return;

@@ -18,7 +18,7 @@ export async function PATCH(request: Request, { params }: Context) {
     const membership = await requireRole(["SUPER_ADMIN", "SCHOOL_ADMIN"]);
     const body = await request.json() as { cancellationNote?: unknown };
     const cancelledByName = [membership.user.firstName, membership.user.lastName].filter(Boolean).join(" ") || membership.user.email;
-    await cancelCertificateIssue(membership.schoolId, (await params).id, cancelledByName, body.cancellationNote);
+    await cancelCertificateIssue(membership.schoolId, (await params).id, cancelledByName, body.cancellationNote, membership.userId);
     return ApiResponse.success(null, "Certificate cancelled.");
   });
 }

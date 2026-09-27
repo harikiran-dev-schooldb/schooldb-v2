@@ -19,7 +19,7 @@ export async function POST(req: Request) {
 
     const body = await createStudentSchema.parseAsync(await req.json());
 
-    const student = await studentService.create(tenant.schoolId, body);
+    const student = await studentService.create(tenant.schoolId, body, tenant.userId);
 
     await recordAuditLog({
       actor: tenant,

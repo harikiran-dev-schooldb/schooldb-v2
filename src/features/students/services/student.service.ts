@@ -109,7 +109,7 @@ export const studentService = {
   /* Create                                                                 */
   /* ---------------------------------------------------------------------- */
 
-  async create(schoolId: string, input: StudentCreateInput) {
+  async create(schoolId: string, input: StudentCreateInput, performedByUserId?: string) {
     const exists = await studentRepository.findByAdmissionNo(
       schoolId,
       input.admissionNo,
@@ -196,6 +196,7 @@ export const studentService = {
       schoolId,
 
       studentId: student.id,
+      performedByUserId,
 
       type: "STUDENT_CREATED",
 
@@ -228,7 +229,7 @@ export const studentService = {
   /* Update                                                                 */
   /* ---------------------------------------------------------------------- */
 
-  async update(id: string, schoolId: string, input: StudentFormOutput) {
+  async update(id: string, schoolId: string, input: StudentFormOutput, performedByUserId?: string) {
     const student = await studentRepository.findById(id, schoolId);
 
     if (!student) {
@@ -275,6 +276,7 @@ export const studentService = {
       schoolId,
 
       studentId: id,
+      performedByUserId,
 
       type: "PROFILE_UPDATED",
 
@@ -284,6 +286,24 @@ export const studentService = {
         updated.fullName ?? updated.admissionNo
       } was updated.`,
     });
+
+    const parentFields = [
+      "fatherName", "fatherPhone", "fatherEmail", "fatherOccupation",
+      "motherName", "motherPhone", "motherEmail", "motherOccupation",
+      "guardianName", "guardianPhone", "guardianRelation",
+    ] as const;
+    const parentChanges = parentFields.filter((field) => student[field] !== updated[field]);
+    if (parentChanges.length > 0) {
+      await studentActivityService.create({
+        schoolId,
+        studentId: id,
+        performedByUserId,
+        type: "PARENT_UPDATED",
+        title: "Parent information updated",
+        description: `Updated: ${parentChanges.join(", ")}.`,
+        metadata: { fields: parentChanges },
+      });
+    }
 
     const loginAccess = await safelyProvisionStudentLogin(updated.id, schoolId);
     return { ...updated, loginAccess };
@@ -298,6 +318,7 @@ export const studentService = {
     schoolId: string,
     status: StudentStatus,
     remarks?: string,
+    performedByUserId?: string,
   ) {
     const student = await studentRepository.findById(id, schoolId);
 
@@ -324,6 +345,7 @@ export const studentService = {
       schoolId,
 
       studentId: id,
+      performedByUserId,
 
       type: "STATUS_CHANGED",
 

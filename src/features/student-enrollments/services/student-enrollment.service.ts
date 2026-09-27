@@ -442,6 +442,7 @@ export const studentEnrollmentService = {
   async create(
     schoolId: string,
     input: StudentEnrollmentFormOutput,
+    performedByUserId?: string,
   ) {
     const exists =
       await studentEnrollmentRepository.findFirst({
@@ -520,6 +521,7 @@ export const studentEnrollmentService = {
           title: "Student enrollment created",
 
           description: `${created.student.fullName ?? created.student.admissionNo} enrolled in ${created.class.name} — ${created.section.name} for ${created.academicYear.name}.`,
+          performedByUserId,
         },
         tx,
       );
@@ -561,6 +563,7 @@ export const studentEnrollmentService = {
     id: string,
     schoolId: string,
     input: StudentEnrollmentFormOutput,
+    performedByUserId?: string,
   ) {
     const enrollment =
       await studentEnrollmentRepository.findById(
@@ -725,6 +728,7 @@ export const studentEnrollmentService = {
             metadata: {
               changes,
             },
+            performedByUserId,
           },
           tx,
         );
@@ -1055,7 +1059,11 @@ export const studentEnrollmentService = {
     };
   },
 
-  async promoteSchool(schoolId: string, input: SchoolPromotionInput) {
+  async promoteSchool(
+    schoolId: string,
+    input: SchoolPromotionInput,
+    performedByUserId?: string,
+  ) {
     const plan = await buildSchoolPromotionPlan(schoolId, input);
     const summary = {
       created: 0,
@@ -1076,16 +1084,20 @@ export const studentEnrollmentService = {
       const results = await Promise.all(
         groupBatch.map(async (group) => ({
           group,
-          result: await studentEnrollmentService.promote(schoolId, {
-            studentIds: group.studentIds,
-            sourceAcademicYearId: input.sourceAcademicYearId,
-            sourceClassId: group.sourceClassId,
-            sourceSectionId: group.sourceSectionId,
-            targetAcademicYearId: input.targetAcademicYearId,
-            targetClassId: group.targetClassId,
-            targetSectionId: group.targetSectionId,
-            decision: "PROMOTE",
-          }),
+          result: await studentEnrollmentService.promote(
+            schoolId,
+            {
+              studentIds: group.studentIds,
+              sourceAcademicYearId: input.sourceAcademicYearId,
+              sourceClassId: group.sourceClassId,
+              sourceSectionId: group.sourceSectionId,
+              targetAcademicYearId: input.targetAcademicYearId,
+              targetClassId: group.targetClassId,
+              targetSectionId: group.targetSectionId,
+              decision: "PROMOTE",
+            },
+            performedByUserId,
+          ),
         })),
       );
       for (const { group, result } of results) {
@@ -1156,7 +1168,11 @@ export const studentEnrollmentService = {
     };
   },
 
-  async importPromotions(schoolId: string, rows: PromotionImportRow[]) {
+  async importPromotions(
+    schoolId: string,
+    rows: PromotionImportRow[],
+    performedByUserId?: string,
+  ) {
     if (rows.length === 0) throw new Error("No promotion rows were provided.");
     if (rows.length > 500) throw new Error("Maximum 500 promotion rows per batch.");
     const prepared = await preparePromotionImport(schoolId, rows);
@@ -1170,7 +1186,7 @@ export const studentEnrollmentService = {
       results.push(
         ...(await Promise.all(
           prepared.groups.slice(index, index + 4).map((group) =>
-            studentEnrollmentService.promote(schoolId, group),
+            studentEnrollmentService.promote(schoolId, group, performedByUserId),
           ),
         )),
       );
@@ -1189,6 +1205,7 @@ export const studentEnrollmentService = {
   async promote(
     schoolId: string,
     input: PromotionInput,
+    performedByUserId?: string,
   ) {
     if (input.studentIds.length === 0) {
       throw new Error(
@@ -1361,6 +1378,7 @@ export const studentEnrollmentService = {
 
               rollNo: enrollment.rollNo,
             },
+            performedByUserId,
           },
           tx,
         );

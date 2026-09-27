@@ -18,8 +18,8 @@ export async function issueCertificate(schoolId: string, schoolSlug: string, iss
 
   const year = new Date().getFullYear();
   const token = randomUUID().replaceAll("-", "").slice(0, 8).toUpperCase();
-  return prisma.certificateIssue.create({
-    data: {
+  return prisma.$transaction(async (tx) => {
+    const certificate = await tx.certificateIssue.create({ data: {
       schoolId,
       studentId: input.studentId,
       type: input.type,
@@ -27,8 +27,15 @@ export async function issueCertificate(schoolId: string, schoolSlug: string, iss
       issuedByUserId,
       issuedByName,
       certificateNo: `${schoolSlug.toUpperCase()}/${year}/${student.admissionNo}/${token}`,
-    },
-    select: { id: true, certificateNo: true },
+    }, select: { id: true, certificateNo: true } });
+    await tx.studentActivity.create({ data: {
+      schoolId, studentId: input.studentId, performedByUserId: issuedByUserId,
+      type: "CERTIFICATE_ISSUED", title: "Certificate issued",
+      description: `${input.type.replaceAll("_", " ")} certificate ${certificate.certificateNo} was issued.`,
+      sourceType: "CERTIFICATE_ISSUE", sourceId: certificate.id,
+      metadata: { certificateId: certificate.id, certificateNo: certificate.certificateNo, type: input.type },
+    } });
+    return certificate;
   });
 }
 
@@ -40,11 +47,21 @@ export async function recordCertificatePrint(schoolId: string, id: string) {
   if (!result.count) throw new ApiError(404, "Active certificate issue not found");
 }
 
-export async function cancelCertificateIssue(schoolId: string, id: string, cancelledByName: string, note: unknown) {
+export async function cancelCertificateIssue(schoolId: string, id: string, cancelledByName: string, note: unknown, performedByUserId?: string) {
   const cancellationNote = z.string().trim().min(1).max(300).parse(note);
-  const result = await prisma.certificateIssue.updateMany({
+  const certificate = await prisma.certificateIssue.findFirst({
     where: { id, schoolId, status: "ISSUED" },
-    data: { status: "CANCELLED", cancelledAt: new Date(), cancelledByName, cancellationNote },
+    select: { id: true, studentId: true, certificateNo: true, type: true },
   });
-  if (!result.count) throw new ApiError(404, "Active certificate issue not found");
+  if (!certificate) throw new ApiError(404, "Active certificate issue not found");
+  await prisma.$transaction(async (tx) => {
+    await tx.certificateIssue.update({ where: { id }, data: { status: "CANCELLED", cancelledAt: new Date(), cancelledByName, cancellationNote } });
+    await tx.studentActivity.create({ data: {
+      schoolId, studentId: certificate.studentId, performedByUserId,
+      type: "CERTIFICATE_CANCELLED", title: "Certificate cancelled",
+      description: `${certificate.type.replaceAll("_", " ")} certificate ${certificate.certificateNo} was cancelled: ${cancellationNote}`,
+      sourceType: "CERTIFICATE_CANCELLATION", sourceId: certificate.id,
+      metadata: { certificateId: certificate.id, certificateNo: certificate.certificateNo, note: cancellationNote },
+    } });
+  });
 }

@@ -89,7 +89,7 @@ export async function POST(req: Request) {
      * -----------------------------------------------------
      */
 
-    const result = await importBulkFeePayments(tenant.schoolId, payments);
+    const result = await importBulkFeePayments(tenant.schoolId, payments, tenant.userId);
 
     /*
      * -----------------------------------------------------

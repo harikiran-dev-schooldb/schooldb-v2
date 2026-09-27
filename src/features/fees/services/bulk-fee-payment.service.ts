@@ -64,6 +64,7 @@ function normalizeText(value: string) {
 export async function importBulkFeePayments(
   schoolId: string,
   rows: BulkFeePaymentRow[],
+  performedByUserId?: string,
 ) {
   if (rows.length > MAX_BATCH_SIZE) {
     throw new Error(
@@ -152,6 +153,7 @@ export async function importBulkFeePayments(
 
             select: {
               id: true,
+              studentId: true,
             },
           });
 
@@ -362,7 +364,7 @@ export async function importBulkFeePayments(
 
           const receiptNo = createReceiptNo(index);
 
-          await tx.feePayment.create({
+          const payment = await tx.feePayment.create({
             data: {
               schoolId,
 
@@ -388,6 +390,21 @@ export async function importBulkFeePayments(
                   amount,
                 },
               },
+            },
+          });
+
+          await tx.studentActivity.create({
+            data: {
+              schoolId,
+              studentId: enrollment.studentId,
+              enrollmentId: enrollment.id,
+              performedByUserId,
+              type: "FEE_PAYMENT",
+              title: "Fee payment imported",
+              description: `₹${amount.toLocaleString("en-IN")} received. Receipt: ${receiptNo}.`,
+              sourceType: "FEE_PAYMENT",
+              sourceId: payment.id,
+              metadata: { receiptNo, amount, paymentMode: row.paymentMode },
             },
           });
 

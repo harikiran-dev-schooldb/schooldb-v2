@@ -9,6 +9,9 @@ type CreateActivityInput = {
   studentId: string;
 
   enrollmentId?: string;
+  performedByUserId?: string;
+  sourceType?: string;
+  sourceId?: string;
 
   type: StudentActivityType;
 
@@ -35,6 +38,9 @@ export const studentActivityService = {
               enrollmentId: input.enrollmentId,
             }
           : {}),
+        performedByUserId: input.performedByUserId,
+        sourceType: input.sourceType,
+        sourceId: input.sourceId,
 
         type: input.type,
 
@@ -50,7 +56,9 @@ export const studentActivityService = {
   async list(
     studentId: string,
     schoolId: string,
+    options: { cursor?: string; take?: number } = {},
   ) {
+    const take = Math.min(100, Math.max(10, options.take ?? 50));
     return prisma.studentActivity.findMany({
       where: {
         studentId,
@@ -58,6 +66,9 @@ export const studentActivityService = {
       },
 
       include: {
+        performedBy: {
+          select: { id: true, firstName: true, lastName: true },
+        },
         enrollment: {
           select: {
             id: true,
@@ -89,7 +100,8 @@ export const studentActivityService = {
         createdAt: "desc",
       },
 
-      take: 100,
+      take: take + 1,
+      ...(options.cursor ? { cursor: { id: options.cursor }, skip: 1 } : {}),
     });
   },
 };

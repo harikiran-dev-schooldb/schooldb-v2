@@ -18,7 +18,7 @@ export async function POST(request: Request) {
     const result = await studentEnrollmentService.promoteSchool(tenant.schoolId, {
       sourceAcademicYearId,
       targetAcademicYearId,
-    });
+    }, tenant.userId);
 
     await recordAuditLog({
       actor: tenant,

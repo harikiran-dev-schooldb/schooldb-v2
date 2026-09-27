@@ -142,6 +142,7 @@ export const studentFeeRepository = {
     schoolId: string,
     studentEnrollmentId: string,
     feePlanId: string,
+    performedByUserId?: string,
   ) {
     return prisma.$transaction(async (tx) => {
       const plan =
@@ -303,6 +304,21 @@ export const studentFeeRepository = {
           },
         });
 
+      await tx.studentActivity.create({
+        data: {
+          schoolId,
+          studentId: enrollment.studentId,
+          enrollmentId: enrollment.id,
+          type: "FEE_ASSIGNED",
+          title: "Fee plan assigned",
+          description: `${plan.name} was assigned to the student.`,
+          sourceType: "STUDENT_FEE",
+          sourceId: studentFee.id,
+          performedByUserId,
+          metadata: { studentFeeId: studentFee.id, feePlanId: plan.id },
+        },
+      });
+
       return studentFee;
     });
   },
@@ -310,6 +326,7 @@ export const studentFeeRepository = {
   async applyFeePlanToStudents(
   schoolId: string,
   feePlanId: string,
+  performedByUserId?: string,
 ) {
   const plan = await prisma.feePlan.findFirst({
     where: {
@@ -381,6 +398,7 @@ export const studentFeeRepository = {
         schoolId,
         enrollment.id,
         feePlanId,
+        performedByUserId,
       );
 
       created++;
