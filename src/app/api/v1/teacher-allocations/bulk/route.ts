@@ -518,23 +518,24 @@ export async function POST(req: Request) {
      * -------------------------------------------------------
      */
 
+    let created = 0;
+
     if (toCreate.length > 0) {
-      await prisma.$transaction(
-        toCreate.map((item) =>
-          prisma.teacherAllocation.create({
-            data: {
-              schoolId: tenant.schoolId,
-              academicYearId: item.academicYearId,
-              teacherId: item.teacherId,
-              subjectId: item.subjectId,
-              classId: item.classId,
-              sectionId: item.sectionId,
-              active: item.active,
-              remarks: item.remarks,
-            },
-          }),
-        ),
-      );
+      const result = await prisma.teacherAllocation.createMany({
+        data: toCreate.map((item) => ({
+          schoolId: tenant.schoolId,
+          academicYearId: item.academicYearId,
+          teacherId: item.teacherId,
+          subjectId: item.subjectId,
+          classId: item.classId,
+          sectionId: item.sectionId,
+          active: item.active,
+          remarks: item.remarks,
+        })),
+        skipDuplicates: true,
+      });
+
+      created = result.count;
     }
 
     /*
@@ -543,7 +544,6 @@ export async function POST(req: Request) {
      * -------------------------------------------------------
      */
 
-    const created = toCreate.length;
     const skipped = skippedRows.length;
 
     let message = "Teacher allocations imported successfully.";
