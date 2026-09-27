@@ -51,7 +51,7 @@ type SubjectResult = {
   marksObtained: number | null;
 
   status: string;
-  resultStatus: "PASS" | "FAIL" | "ABSENT";
+  resultStatus: "PENDING" | "PASS" | "FAIL" | "ABSENT" | "EXEMPTED";
 
   remarks: string | null;
 };
@@ -86,12 +86,14 @@ type StudentResultData = {
     passedSubjects: number;
     failedSubjects: number;
     absentSubjects: number;
+    exemptedSubjects: number;
+    pendingSubjects: number;
 
     totalObtained: number;
     totalMaxMarks: number;
 
     percentage: number;
-    status: "PASS" | "FAIL";
+    status: "NO_RESULT" | "PENDING" | "PASS" | "FAIL";
 
     attendance: AttendanceSummary;
   };
@@ -236,6 +238,7 @@ export function StudentResultDetailsPage({
   const attendance = data.summary.attendance;
 
   const isPass = data.summary.status === "PASS";
+  const isPending = data.summary.status === "PENDING";
 
   const attendancePercentage = Math.min(
     Math.max(attendance.percentage, 0),
@@ -271,7 +274,9 @@ export function StudentResultDetailsPage({
                 className={
                   isPass
                     ? "rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold text-emerald-600"
-                    : "rounded-full bg-destructive/10 px-2.5 py-1 text-xs font-semibold text-destructive"
+                    : isPending
+                      ? "rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-semibold text-amber-700"
+                      : "rounded-full bg-destructive/10 px-2.5 py-1 text-xs font-semibold text-destructive"
                 }
               >
                 {data.summary.status}
@@ -376,7 +381,9 @@ export function StudentResultDetailsPage({
               className={
                 isPass
                   ? "rounded-2xl border border-emerald-200 bg-emerald-50 px-6 py-4 text-center"
-                  : "rounded-2xl border border-red-200 bg-red-50 px-6 py-4 text-center"
+                  : isPending
+                    ? "rounded-2xl border border-amber-200 bg-amber-50 px-6 py-4 text-center"
+                    : "rounded-2xl border border-red-200 bg-red-50 px-6 py-4 text-center"
               }
             >
               <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -387,7 +394,9 @@ export function StudentResultDetailsPage({
                 className={
                   isPass
                     ? "mt-1 text-2xl font-black text-emerald-600"
-                    : "mt-1 text-2xl font-black text-destructive"
+                    : isPending
+                      ? "mt-1 text-2xl font-black text-amber-700"
+                      : "mt-1 text-2xl font-black text-destructive"
                 }
               >
                 {data.summary.status}
@@ -419,9 +428,13 @@ export function StudentResultDetailsPage({
           label="Subjects Passed"
           value={`${data.summary.passedSubjects} / ${data.summary.totalSubjects}`}
           description={
-            data.summary.failedSubjects > 0
-              ? `${data.summary.failedSubjects} failed`
-              : "All subjects passed"
+            data.summary.pendingSubjects > 0
+              ? `${data.summary.pendingSubjects} pending`
+              : data.summary.failedSubjects > 0
+                ? `${data.summary.failedSubjects} failed`
+                : data.summary.exemptedSubjects > 0
+                  ? `${data.summary.exemptedSubjects} exempted`
+                  : "All subjects passed"
           }
         />
 
@@ -436,7 +449,9 @@ export function StudentResultDetailsPage({
           className={
             isPass
               ? "border-emerald-200 bg-emerald-50 shadow-sm"
-              : "border-red-200 bg-red-50 shadow-sm"
+              : isPending
+                ? "border-amber-200 bg-amber-50 shadow-sm"
+                : "border-red-200 bg-red-50 shadow-sm"
           }
         >
           <CardContent className="p-5">
@@ -447,6 +462,8 @@ export function StudentResultDetailsPage({
 
               {isPass ? (
                 <CheckCircle2 className="size-5 text-emerald-600" />
+              ) : isPending ? (
+                <AlertCircle className="size-5 text-amber-600" />
               ) : (
                 <XCircle className="size-5 text-destructive" />
               )}
@@ -456,7 +473,9 @@ export function StudentResultDetailsPage({
               className={
                 isPass
                   ? "mt-3 text-2xl font-black text-emerald-600"
-                  : "mt-3 text-2xl font-black text-destructive"
+                  : isPending
+                    ? "mt-3 text-2xl font-black text-amber-700"
+                    : "mt-3 text-2xl font-black text-destructive"
               }
             >
               {data.summary.status}
@@ -468,6 +487,10 @@ export function StudentResultDetailsPage({
                 ` • ${data.summary.failedSubjects} failed`}
               {data.summary.absentSubjects > 0 &&
                 ` • ${data.summary.absentSubjects} absent`}
+              {data.summary.pendingSubjects > 0 &&
+                ` • ${data.summary.pendingSubjects} pending`}
+              {data.summary.exemptedSubjects > 0 &&
+                ` • ${data.summary.exemptedSubjects} exempted`}
             </p>
           </CardContent>
         </Card>
@@ -654,7 +677,9 @@ export function StudentResultDetailsPage({
                       </td>
 
                       <td className="px-5 py-4 text-right">
-                        {subject.resultStatus === "ABSENT" ? (
+                        {subject.resultStatus === "ABSENT" ||
+                        subject.resultStatus === "EXEMPTED" ||
+                        subject.resultStatus === "PENDING" ? (
                           <span className="font-semibold text-muted-foreground">
                             —
                           </span>
@@ -780,10 +805,26 @@ function AttendanceMetric({
 /* -------------------------------------------------------------------------- */
 
 function StatusBadge({ status }: { status: string }) {
+  if (status === "PENDING") {
+    return (
+      <span className="inline-flex rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-semibold text-amber-700">
+        PENDING
+      </span>
+    );
+  }
+
   if (status === "ABSENT") {
     return (
       <span className="inline-flex rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-semibold text-amber-600">
         ABSENT
+      </span>
+    );
+  }
+
+  if (status === "EXEMPTED") {
+    return (
+      <span className="inline-flex rounded-full bg-sky-500/10 px-2.5 py-1 text-xs font-semibold text-sky-700">
+        EXEMPTED
       </span>
     );
   }
@@ -799,7 +840,11 @@ function StatusBadge({ status }: { status: string }) {
 /* RESULT BADGE                                                               */
 /* -------------------------------------------------------------------------- */
 
-function ResultBadge({ status }: { status: "PASS" | "FAIL" | "ABSENT" }) {
+function ResultBadge({
+  status,
+}: {
+  status: "PENDING" | "PASS" | "FAIL" | "ABSENT" | "EXEMPTED";
+}) {
   if (status === "PASS") {
     return (
       <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold text-emerald-600">
@@ -809,11 +854,29 @@ function ResultBadge({ status }: { status: "PASS" | "FAIL" | "ABSENT" }) {
     );
   }
 
+  if (status === "PENDING") {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-semibold text-amber-700">
+        <AlertCircle className="size-3.5" />
+        PENDING
+      </span>
+    );
+  }
+
   if (status === "ABSENT") {
     return (
       <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-semibold text-amber-600">
         <AlertCircle className="size-3.5" />
         ABSENT
+      </span>
+    );
+  }
+
+  if (status === "EXEMPTED") {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-sky-500/10 px-2.5 py-1 text-xs font-semibold text-sky-700">
+        <AlertCircle className="size-3.5" />
+        EXEMPTED
       </span>
     );
   }
