@@ -493,3 +493,32 @@ export async function notifyLeaveRequestDecided(requestId: string, schoolId: str
     dedupeKey: notificationDedupeKey.leaveDecided(requestId, request.status),
   });
 }
+
+export async function notifyStudentProfileImageSubmitted(
+  studentId: string,
+  schoolId: string,
+  storageKey: string,
+) {
+  const student = await prisma.student.findFirst({
+    where: { id: studentId, schoolId },
+    select: { fullName: true, admissionNo: true },
+  });
+  if (!student) return null;
+
+  const studentName = student.fullName?.trim() || student.admissionNo;
+  return createEventNotification({
+    schoolId,
+    title: "Student profile image awaiting approval",
+    body: `${studentName} submitted a profile image. Review it in Settings → Student image approvals.`,
+    category: "PROFILE_IMAGE",
+    targetType: "ADMIN",
+    targetId: studentId,
+    targetLabel: "School administrators",
+    sourceType: "STUDENT_PROFILE_IMAGE",
+    sourceId: studentId,
+    dedupeKey: notificationDedupeKey.profileImageSubmitted(
+      studentId,
+      storageKey,
+    ),
+  });
+}

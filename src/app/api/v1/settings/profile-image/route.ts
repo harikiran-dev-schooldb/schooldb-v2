@@ -1,6 +1,7 @@
 import { clerkClient } from "@clerk/nextjs/server";
 
 import { canSubmitOwnProfileImage } from "@/features/settings/profile-image-policy";
+import { notifyStudentProfileImageSubmitted } from "@/features/notifications/events";
 import { apiHandler } from "@/lib/api";
 import { requireMembership } from "@/lib/auth";
 import { ApiError } from "@/lib/errors";
@@ -89,7 +90,7 @@ export async function POST(request: Request) {
             : "Unable to store the profile image request.",
         );
       }
-      await prisma.studentProfileImageRequest.upsert({
+      const pendingRequest = await prisma.studentProfileImageRequest.upsert({
         where: { studentId: student.id },
         create: {
           schoolId: membership.schoolId,
@@ -111,6 +112,13 @@ export async function POST(request: Request) {
           () => undefined,
         );
       }
+      await notifyStudentProfileImageSubmitted(
+        student.id,
+        membership.schoolId,
+        pendingRequest.storageKey,
+      ).catch((error) => {
+        console.error("Unable to create student image approval notification", error);
+      });
       return ApiResponse.success(
         { imageUrl: membership.user.imageUrl, pendingApproval: true },
         "Profile image submitted for approval.",

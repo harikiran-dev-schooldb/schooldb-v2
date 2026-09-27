@@ -9,4 +9,6 @@ export const notificationDedupeKey = {
   attendanceAbsent: (sessionId: string, studentId: string) => `ATTENDANCE:${sessionId}:ABSENT:${studentId}`,
   leaveSubmitted: (requestId: string) => `LEAVE_REQUEST:${requestId}:SUBMITTED`,
   leaveDecided: (requestId: string, status: string) => `LEAVE_REQUEST:${requestId}:${status}`,
+  profileImageSubmitted: (studentId: string, storageKey: string) =>
+    `PROFILE_IMAGE:${studentId}:${storageKey}:SUBMITTED`,
 } as const;
