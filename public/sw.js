@@ -1,4 +1,4 @@
-const CACHE_NAME = "schooldb-pwa-v1";
+const CACHE_NAME = "schooldb-pwa-v2";
 const OFFLINE_URL = "/offline";
 const APP_ASSETS = [
   OFFLINE_URL,
@@ -45,9 +45,9 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  const isStaticAsset =
-    url.pathname.startsWith("/_next/static/") ||
-    APP_ASSETS.includes(url.pathname);
+  // Next.js fingerprints production assets and controls their caching headers.
+  // Caching dev chunks here can keep old environment variables in the browser.
+  const isStaticAsset = APP_ASSETS.includes(url.pathname);
 
   if (!isStaticAsset) return;
 

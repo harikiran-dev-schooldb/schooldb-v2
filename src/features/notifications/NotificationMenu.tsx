@@ -33,6 +33,22 @@ type Feed = {
 
 const emptyFeed: Feed = { unreadCount: 0, items: [] };
 
+function withTimeout<T>(promise: Promise<T>, milliseconds: number, message: string) {
+  return new Promise<T>((resolve, reject) => {
+    const timeout = window.setTimeout(() => reject(new Error(message)), milliseconds);
+    promise.then(
+      (value) => {
+        window.clearTimeout(timeout);
+        resolve(value);
+      },
+      (error) => {
+        window.clearTimeout(timeout);
+        reject(error);
+      },
+    );
+  });
+}
+
 function browserDeviceKey(schoolSlug: string) {
   return `schooldb:web-push:v1:${schoolSlug}`;
 }
@@ -49,6 +65,7 @@ export function NotificationMenu({ schoolSlug }: { schoolSlug: string }) {
   const [feed, setFeed] = useState<Feed>(emptyFeed);
   const [loading, setLoading] = useState(true);
   const [pushBusy, setPushBusy] = useState(false);
+  const [pushStage, setPushStage] = useState("");
   const [pushEnabled, setPushEnabled] = useState(false);
 
   const loadFeed = useCallback(async () => {
@@ -102,16 +119,6 @@ export function NotificationMenu({ schoolSlug }: { schoolSlug: string }) {
   }
 
   async function enablePush() {
-    const [{ getToken }, firebaseClient] = await Promise.all([
-      import("firebase/messaging"),
-      import("@/lib/firebase-client"),
-    ]);
-    const { firebaseVapidKey, firebaseWebPushConfigured, webMessaging } =
-      firebaseClient;
-    if (!firebaseWebPushConfigured || !firebaseVapidKey) {
-      toast.error("Browser push needs the Firebase web keys to be configured.");
-      return;
-    }
     if (!("Notification" in window) || !("serviceWorker" in navigator)) {
       toast.error("This browser does not support push notifications.");
       return;
@@ -119,18 +126,50 @@ export function NotificationMenu({ schoolSlug }: { schoolSlug: string }) {
 
     setPushBusy(true);
     try {
+      setPushStage("Requesting permission");
       const permission = await Notification.requestPermission();
       if (permission !== "granted") {
         toast.error("Notification permission was not granted.");
         return;
       }
-      const messaging = await webMessaging();
+
+      const [{ getToken }, firebaseClient] = await Promise.all([
+        import("firebase/messaging"),
+        import("@/lib/firebase-client"),
+      ]);
+      const { firebaseVapidKey, firebaseWebPushConfigured, webMessaging } =
+        firebaseClient;
+      if (!firebaseWebPushConfigured || !firebaseVapidKey) {
+        throw new Error("Browser push needs the Firebase web keys to be configured.");
+      }
+
+      setPushStage("Starting Firebase");
+      const messaging = await withTimeout(
+        webMessaging(),
+        10_000,
+        "Firebase messaging did not start. Check browser storage access and reload.",
+      );
       if (!messaging) throw new Error("Push messaging is unavailable.");
-      const registration = await navigator.serviceWorker.ready;
-      const fcmToken = await getToken(messaging, {
-        vapidKey: firebaseVapidKey,
-        serviceWorkerRegistration: registration,
-      });
+      setPushStage("Starting service worker");
+      const existingRegistration =
+        await navigator.serviceWorker.getRegistration("/");
+      if (!existingRegistration) {
+        await navigator.serviceWorker.register("/sw.js", { scope: "/" });
+      }
+      const registration = await withTimeout(
+        navigator.serviceWorker.ready,
+        10_000,
+        "The notification service worker did not become ready. Reload the page and try again.",
+      );
+      setPushStage("Registering browser");
+      const fcmToken = await withTimeout(
+        getToken(messaging, {
+          vapidKey: firebaseVapidKey,
+          serviceWorkerRegistration: registration,
+        }),
+        20_000,
+        "Firebase did not return a browser token. Confirm that the VAPID key belongs to this Firebase project.",
+      );
       if (!fcmToken) throw new Error("The browser did not return a push token.");
 
       const key = browserDeviceKey(schoolSlug);
@@ -156,6 +195,7 @@ export function NotificationMenu({ schoolSlug }: { schoolSlug: string }) {
       );
     } finally {
       setPushBusy(false);
+      setPushStage("");
     }
   }
 
@@ -280,7 +320,11 @@ export function NotificationMenu({ schoolSlug }: { schoolSlug: string }) {
             ) : (
               <Settings2 className="size-4" />
             )}
-            {pushEnabled ? "Disable alerts" : "Browser alerts"}
+            {pushBusy
+              ? pushStage || "Connecting"
+              : pushEnabled
+                ? "Disable alerts"
+                : "Browser alerts"}
           </DropdownMenuItem>
         </div>
       </DropdownMenuContent>
