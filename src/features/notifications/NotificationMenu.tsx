@@ -83,6 +83,8 @@ export function NotificationMenu({ schoolSlug }: { schoolSlug: string }) {
   }, [schoolSlug]);
 
   const rebindPush = useCallback(async () => {
+    if (!isSchoolDbProductionHost(window.location.hostname)) return;
+
     if (
       !("Notification" in window) ||
       !("serviceWorker" in navigator) ||
