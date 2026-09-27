@@ -38,12 +38,17 @@ export async function PUT(
     const { id } = await params;
 
     const body = await validateBody(req, homeworkSchema);
+    const previous = await homeworkService.get(id, tenant.schoolId);
 
     const item = await homeworkService.update(
       id,
       tenant.schoolId,
       body,
     );
+
+    if (!previous.active && item.active) {
+      await notifyHomeworkPublished(item.id, tenant.schoolId);
+    }
 
     await recordAuditLog({
       actor: tenant,
@@ -72,6 +77,7 @@ export async function PATCH(
       req,
       z.object({ active: z.boolean() }),
     );
+    const previous = await homeworkService.get(id, tenant.schoolId);
 
     const item = await homeworkService.setActive(
       id,
@@ -79,7 +85,7 @@ export async function PATCH(
       body.active,
     );
 
-    if (body.active) {
+    if (!previous.active && body.active) {
       await notifyHomeworkPublished(item.id, tenant.schoolId);
     }
 

@@ -219,6 +219,9 @@ model Announcement {
   targetType  String             @default("SCHOOL")
   targetId    String?
   targetLabel String
+  sourceType  String?
+  sourceId    String?
+  dedupeKey   String?            @unique
   createdBy   String
   publishedAt DateTime
   expiresAt   DateTime?
@@ -228,6 +231,7 @@ model Announcement {
   reads       AnnouncementRead[]
 
   @@index([schoolId, archived, publishedAt])
+  @@index([schoolId, sourceType, sourceId])
 }
 
 model AnnouncementRead {

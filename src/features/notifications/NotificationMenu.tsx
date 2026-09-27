@@ -82,11 +82,51 @@ export function NotificationMenu({ schoolSlug }: { schoolSlug: string }) {
     }
   }, [schoolSlug]);
 
+  const rebindPush = useCallback(async () => {
+    if (
+      !("Notification" in window) ||
+      !("serviceWorker" in navigator) ||
+      Notification.permission !== "granted"
+    ) return;
+
+    const key = browserDeviceKey(schoolSlug);
+    const installationId = localStorage.getItem(key);
+    if (!installationId) return;
+
+    try {
+      const [{ getToken }, firebaseClient] = await Promise.all([
+        import("firebase/messaging"),
+        import("@/lib/firebase-client"),
+      ]);
+      if (!firebaseClient.firebaseWebPushConfigured || !firebaseClient.firebaseVapidKey) return;
+      const messaging = await firebaseClient.webMessaging();
+      if (!messaging) return;
+      const registration =
+        (await navigator.serviceWorker.getRegistration("/")) ??
+        (await navigator.serviceWorker.register("/sw.js", { scope: "/" }));
+      const fcmToken = await getToken(messaging, {
+        vapidKey: firebaseClient.firebaseVapidKey,
+        serviceWorkerRegistration: registration,
+      });
+      if (!fcmToken) return;
+
+      const response = await fetch("/api/v1/web-push/devices", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ schoolSlug, installationId, fcmToken }),
+      });
+      if (response.ok) setPushEnabled(true);
+    } catch (error) {
+      console.warn("Unable to refresh browser push registration.", error);
+    }
+  }, [schoolSlug]);
+
   useEffect(() => {
     // The subscription flag is browser-local and is only available after hydration.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setPushEnabled(Boolean(localStorage.getItem(browserDeviceKey(schoolSlug))));
     void loadFeed();
+    void rebindPush();
     const interval = window.setInterval(loadFeed, 60_000);
     const refresh = () => {
       if (document.visibilityState === "visible") void loadFeed();
@@ -96,7 +136,7 @@ export function NotificationMenu({ schoolSlug }: { schoolSlug: string }) {
       window.clearInterval(interval);
       document.removeEventListener("visibilitychange", refresh);
     };
-  }, [loadFeed, schoolSlug]);
+  }, [loadFeed, rebindPush, schoolSlug]);
 
   async function markRead(item: NotificationItem) {
     if (!item.read) {
