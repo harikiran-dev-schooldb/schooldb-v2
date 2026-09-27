@@ -20,6 +20,23 @@ type SubjectResultStatus =
 
 type OverallStatus = "PENDING" | "PASS" | "FAIL";
 
+function getApplicableSchedulesForSection<
+  T extends { sectionId: string | null; subjectId: string },
+>(schedules: T[], sectionId: string) {
+  const sectionSpecificSubjectIds = new Set(
+    schedules
+      .filter((schedule) => schedule.sectionId === sectionId)
+      .map((schedule) => schedule.subjectId),
+  );
+
+  return schedules.filter(
+    (schedule) =>
+      schedule.sectionId === sectionId ||
+      (schedule.sectionId === null &&
+        !sectionSpecificSubjectIds.has(schedule.subjectId)),
+  );
+}
+
 export const examResultService = {
   async getToppers({
     examId,
@@ -61,6 +78,7 @@ export const examResultService = {
       select: {
         id: true,
         sectionId: true,
+        subjectId: true,
         maxMarks: true,
         passMarks: true,
       },
@@ -126,9 +144,9 @@ export const examResultService = {
     }
 
     const calculated = enrollments.map((enrollment) => {
-      const applicableSchedules = schedules.filter(
-        (schedule) =>
-          schedule.sectionId === null || schedule.sectionId === enrollment.sectionId,
+      const applicableSchedules = getApplicableSchedulesForSection(
+        schedules,
+        enrollment.sectionId,
       );
       const marksBySchedule = new Map(
         enrollment.examMarks.map((mark) => [mark.examScheduleId, mark]),
@@ -311,6 +329,7 @@ export const examResultService = {
         id: true,
         classId: true,
         sectionId: true,
+        subjectId: true,
         examDate: true,
         maxMarks: true,
         passMarks: true,
@@ -448,16 +467,18 @@ export const examResultService = {
         let pendingSubjects = 0;
         let exemptedSubjects = 0;
 
-        const subjectResults =
-          schedules
-            .filter(
+        const applicableSchedules =
+          getApplicableSchedulesForSection(
+            schedules.filter(
               (schedule) =>
                 schedule.classId ===
-                  enrollment.classId &&
-                (!schedule.sectionId ||
-                  schedule.sectionId ===
-                    enrollment.sectionId),
-            )
+                enrollment.classId,
+            ),
+            enrollment.sectionId,
+          );
+
+        const subjectResults =
+          applicableSchedules
             .map((schedule) => {
               const mark =
                 enrollment.examMarks.find(
