@@ -81,7 +81,6 @@ data class FamilyFeeInstallment(
     val paidAmount: Double,
     val outstanding: Double,
     val status: String,
-    val subjects: List<FamilyResultSubject> = emptyList(),
 )
 
 data class FamilyResultSubject(
@@ -120,6 +119,7 @@ data class FamilyResult(
     val maximum: Double,
     val percentage: Double,
     val status: String,
+    val subjects: List<FamilyResultSubject> = emptyList(),
 )
 
 data class FamilyTimetableEntry(
