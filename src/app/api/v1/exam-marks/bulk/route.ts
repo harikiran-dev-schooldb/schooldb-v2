@@ -306,7 +306,16 @@ export async function POST(request: Request) {
     // createMany is a single SQL operation and is substantially faster than
     // issuing one create query per mark inside a transaction.
     if (toCreate.length > 0) {
-      await prisma.studentExamMark.createMany({ data: toCreate });
+      await prisma.studentExamMark.createMany({
+        data: toCreate.map((row) => ({
+          schoolId: row.schoolId,
+          examScheduleId: row.examScheduleId,
+          studentEnrollmentId: row.studentEnrollmentId,
+          marksObtained: row.marksObtained,
+          status: row.status,
+          remarks: row.remarks,
+        })),
+      });
     }
 
     // Existing marks need different values per row, so update them in small
