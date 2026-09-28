@@ -24,6 +24,7 @@ type FeeRow = {
   id: string;
 
   installmentName: string;
+  sequence: number;
 
   dueDate: string;
 
@@ -34,6 +35,15 @@ type FeeRow = {
   status: "PAID" | "PENDING" | "PARTIAL";
 
   studentEnrollmentId: string;
+
+  feePlan: {
+    id: string;
+    name: string;
+  };
+
+  feeCategory: {
+    name: string;
+  };
 };
 
 type FeeDetailsResponse = {
@@ -121,10 +131,15 @@ export function FeeCollectionContainer({ schoolSlug, allowCashfreeQr = false }: 
         rows.map((row) => ({
           id: row.id,
           name: row.installmentName,
+          sequence: row.sequence,
+          dueDate: row.dueDate,
           payableAmount: Number(row.payableAmount),
           paidAmount: Number(row.paidAmount),
           outstanding: Number(row.outstanding),
           status: row.status,
+          feePlanId: row.feePlan.id,
+          feePlanName: row.feePlan.name,
+          feeCategoryName: row.feeCategory.name,
         })),
       );
     } catch (error) {
@@ -231,6 +246,12 @@ export function FeeCollectionContainer({ schoolSlug, allowCashfreeQr = false }: 
               payableAmount: installment.payableAmount,
               paidAmount: installment.paidAmount,
               outstanding: installment.outstanding,
+              sequence: installment.sequence,
+              dueDate: installment.dueDate,
+              feePlanId: installment.feePlanId,
+              feePlanName: installment.feePlanName,
+              feeCategoryName: installment.feeCategoryName,
+              status: installment.status,
             }))}
           onSuccess={() => {
             setSelectedInstallment(null);

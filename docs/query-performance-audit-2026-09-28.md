@@ -206,9 +206,11 @@ The connected Neon project `cool-wildflower-93956355` was also inspected:
   Teacher 2,260, Announcement 1,651, StudentFeeItem 806, StudentFee 652, and
   Student 569. Scan counts do not include duration and are not grounds for another
   index by themselves.
-- `pg_stat_statements` is not installed, so Neon could not return Query Insights'
-  slowest-query list. Installing that extension changes production database state
-  and was intentionally not done as part of this read-only telemetry check.
+- `pg_stat_statements` was enabled after the first inspection. The initial sample
+  contains only extension setup, Neon maintenance/monitoring, and health-check
+  statements; no SchoolDB application query has accumulated enough traffic to
+  evaluate yet. The one-time extension creation took 106.5 ms, Neon's migration
+  trigger setup took 19.5 ms, and the recurring health check averaged 6–9 ms.
 - The project has `suspend_timeout_seconds: 0`, which explains why its compute can
   remain active continuously. This is a cost/configuration finding, not a slow SQL
   query.
@@ -326,6 +328,6 @@ is preferable after directories reach tens of thousands of rows.
 The repository's production build already runs Prisma migrations through
 `npm run db:migrate:deploy`. Ensure `DIRECT_DATABASE_URL` is configured with the
 direct Neon endpoint before deploying. After release, compare Neon Query Insights
-for at least one normal school day before making another indexing pass. The
-production database first needs `CREATE EXTENSION pg_stat_statements`; obtain
-explicit production-change approval before enabling it.
+for at least one normal school day before making another indexing pass. Query
+Insights collection is now enabled; do not reset its statistics before that
+observation window is complete.

@@ -227,7 +227,7 @@ export function FeeReceiptsContainer({ schoolSlug }: Props) {
   /* ---------------------------------------------------------------------- */
 
   return (
-    <>
+    <div className="space-y-6">
       <FeeReceiptsSummary
         paymentCount={data.summary.paymentCount}
         totalAmount={data.summary.totalAmount}
@@ -264,6 +264,6 @@ export function FeeReceiptsContainer({ schoolSlug }: Props) {
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 }

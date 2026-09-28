@@ -2,6 +2,7 @@ import { randomBytes } from "node:crypto";
 
 import { Prisma } from "@/generated/prisma/client";
 import { runSerializableTransaction } from "@/lib/prisma-transaction";
+import { findInstallmentSequenceViolation } from "../installment-sequence";
 import type { FeePaymentInput } from "../schemas/fee-payment.schema";
 
 export const feePaymentRepository = {
@@ -64,6 +65,57 @@ export const feePaymentRepository = {
       ) {
         throw new Error(
           "One or more fee installments were not found for this student.",
+        );
+      }
+
+      const studentFeeIds = [
+        ...new Set(
+          installments.map(
+            (installment) => installment.studentFeeItem.studentFee.id,
+          ),
+        ),
+      ];
+
+      const sequencedInstallments =
+        await tx.studentFeeInstallment.findMany({
+          where: {
+            studentFeeItem: {
+              studentFeeId: {
+                in: studentFeeIds,
+              },
+            },
+          },
+          select: {
+            id: true,
+            name: true,
+            sequence: true,
+            payableAmount: true,
+            paidAmount: true,
+            status: true,
+            studentFeeItem: {
+              select: {
+                studentFeeId: true,
+              },
+            },
+          },
+        });
+
+      const sequenceViolation = findInstallmentSequenceViolation(
+        sequencedInstallments.map((installment) => ({
+          id: installment.id,
+          name: installment.name,
+          studentFeeId: installment.studentFeeItem.studentFeeId,
+          sequence: installment.sequence,
+          payableAmount: Number(installment.payableAmount),
+          paidAmount: Number(installment.paidAmount),
+          status: installment.status,
+        })),
+        input.allocations,
+      );
+
+      if (sequenceViolation) {
+        throw new Error(
+          `Pay ${sequenceViolation.blockingInstallmentName} in full before paying ${sequenceViolation.installmentName}.`,
         );
       }
 

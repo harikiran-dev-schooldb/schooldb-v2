@@ -9,10 +9,15 @@ import { Card, CardContent } from "@/components/ui/card";
 export type Installment = {
   id: string;
   name: string;
+  sequence?: number;
+  dueDate?: string;
   payableAmount: number;
   paidAmount: number;
   outstanding: number;
   status: "PAID" | "PENDING" | "PARTIAL";
+  feePlanId?: string;
+  feePlanName?: string;
+  feeCategoryName?: string;
 };
 
 type Props = {

@@ -60,6 +60,8 @@ type Installment = {
   feePlanName?: string;
 
   feeCategoryName?: string;
+
+  status?: "PENDING" | "PARTIAL" | "PAID" | "WAIVED";
 };
 
 type Props = {
@@ -111,6 +113,65 @@ function formatDate(value?: string) {
     month: "short",
     year: "numeric",
   }).format(new Date(value));
+}
+
+function getPlanKey(installment: Installment) {
+  if (installment.feePlanId) return `id:${installment.feePlanId}`;
+  if (installment.feePlanName) return `name:${installment.feePlanName}`;
+  return "default";
+}
+
+function getSamePlanInstallments(
+  installments: Installment[],
+  target: Installment,
+) {
+  const planKey = getPlanKey(target);
+
+  return installments.filter(
+    (installment) => getPlanKey(installment) === planKey,
+  );
+}
+
+function getEarlierInstallments(
+  installments: Installment[],
+  target: Installment,
+) {
+  const samePlanInstallments = getSamePlanInstallments(installments, target);
+
+  if (typeof target.sequence === "number") {
+    return samePlanInstallments.filter(
+      (installment) =>
+        typeof installment.sequence === "number" &&
+        installment.sequence < target.sequence!,
+    );
+  }
+
+  const targetIndex = samePlanInstallments.findIndex(
+    (installment) => installment.id === target.id,
+  );
+
+  return targetIndex > 0 ? samePlanInstallments.slice(0, targetIndex) : [];
+}
+
+function getLaterInstallments(
+  installments: Installment[],
+  target: Installment,
+) {
+  const samePlanInstallments = getSamePlanInstallments(installments, target);
+
+  if (typeof target.sequence === "number") {
+    return samePlanInstallments.filter(
+      (installment) =>
+        typeof installment.sequence === "number" &&
+        installment.sequence > target.sequence!,
+    );
+  }
+
+  const targetIndex = samePlanInstallments.findIndex(
+    (installment) => installment.id === target.id,
+  );
+
+  return targetIndex >= 0 ? samePlanInstallments.slice(targetIndex + 1) : [];
 }
 
 /* -------------------------------------------------------------------------- */
@@ -224,6 +285,22 @@ function PaymentForm({
     ).size;
   }, [selectedInstallments]);
 
+  function getBlockingInstallment(installment: Installment) {
+    return getEarlierInstallments(sortedInstallments, installment).find(
+      (earlierInstallment) => {
+        if (earlierInstallment.status === "WAIVED") return false;
+
+        const allocatedAmount = selectedInstallmentIds.includes(
+          earlierInstallment.id,
+        )
+          ? (paymentAmounts[earlierInstallment.id] ?? 0)
+          : 0;
+
+        return earlierInstallment.outstanding - allocatedAmount > 0.005;
+      },
+    );
+  }
+
   /* ------------------------------------------------------------------------ */
   /* Toggle installment                                                       */
   /* ------------------------------------------------------------------------ */
@@ -244,14 +321,21 @@ function PaymentForm({
     /* ---------------------------------------------------------------------- */
 
     if (currentlySelected) {
+      const removedIds = new Set([
+        installmentId,
+        ...getLaterInstallments(sortedInstallments, clickedInstallment).map(
+          (installment) => installment.id,
+        ),
+      ]);
+
       setSelectedInstallmentIds((current) =>
-        current.filter((id) => id !== installmentId),
+        current.filter((id) => !removedIds.has(id)),
       );
 
       setPaymentAmounts((current) => {
         const next = { ...current };
 
-        delete next[installmentId];
+        removedIds.forEach((id) => delete next[id]);
 
         return next;
       });
@@ -287,36 +371,19 @@ function PaymentForm({
      *
      * independently.
      *
-     * We only ensure the previous installment of the SAME fee plan
-     * has been selected first.
+     * We only allow a later installment after every earlier installment of
+     * the SAME fee plan is already paid or will be paid in full in this
+     * receipt.
      */
 
-    const samePlanInstallments = sortedInstallments.filter(
-      (item) =>
-        item.feePlanId === clickedInstallment.feePlanId ||
-        item.feePlanName === clickedInstallment.feePlanName,
-    );
+    const blockingInstallment = getBlockingInstallment(clickedInstallment);
 
-    const samePlanIndex = samePlanInstallments.findIndex(
-      (item) => item.id === clickedInstallment.id,
-    );
-
-    if (samePlanIndex > 0) {
-      const previousInstallment = samePlanInstallments[samePlanIndex - 1];
-
-      const previousSelected = selectedInstallmentIds.includes(
-        previousInstallment.id,
+    if (blockingInstallment) {
+      toast.error(
+        `Pay ${blockingInstallment.name} in full before selecting ${clickedInstallment.name}.`,
       );
 
-      if (!previousSelected) {
-        toast.error(
-          `Please select ${previousInstallment.name} from ${
-            clickedInstallment.feePlanName ?? "this fee plan"
-          } first.`,
-        );
-
-        return;
-      }
+      return;
     }
 
     setSelectedInstallmentIds((current) => [...current, installmentId]);
@@ -332,16 +399,7 @@ function PaymentForm({
   /* ------------------------------------------------------------------------ */
 
   function updatePaymentAmount(installment: Installment, value: string) {
-    if (value === "") {
-      setPaymentAmounts((current) => ({
-        ...current,
-        [installment.id]: 0,
-      }));
-
-      return;
-    }
-
-    let amount = Number(value);
+    let amount = value === "" ? 0 : Number(value);
 
     if (!Number.isFinite(amount)) {
       amount = 0;
@@ -353,10 +411,32 @@ function PaymentForm({
       amount = installment.outstanding;
     }
 
-    setPaymentAmounts((current) => ({
-      ...current,
-      [installment.id]: amount,
-    }));
+    const laterIds = new Set(
+      getLaterInstallments(sortedInstallments, installment).map(
+        (laterInstallment) => laterInstallment.id,
+      ),
+    );
+    const mustRemoveLaterInstallments =
+      installment.outstanding - amount > 0.005;
+
+    if (mustRemoveLaterInstallments) {
+      setSelectedInstallmentIds((current) =>
+        current.filter((id) => !laterIds.has(id)),
+      );
+    }
+
+    setPaymentAmounts((current) => {
+      const next = {
+        ...current,
+        [installment.id]: amount,
+      };
+
+      if (mustRemoveLaterInstallments) {
+        laterIds.forEach((id) => delete next[id]);
+      }
+
+      return next;
+    });
   }
 
   /* ------------------------------------------------------------------------ */
@@ -404,6 +484,16 @@ function PaymentForm({
 
     for (const installment of selectedInstallments) {
       const amount = paymentAmounts[installment.id] ?? 0;
+
+      const blockingInstallment = getBlockingInstallment(installment);
+
+      if (blockingInstallment) {
+        toast.error(
+          `Pay ${blockingInstallment.name} in full before paying ${installment.name}.`,
+        );
+
+        return;
+      }
 
       if (amount <= 0) {
         toast.error(`Enter a valid payment amount for ${installment.name}.`);
@@ -543,6 +633,9 @@ function PaymentForm({
         <div className="overflow-hidden rounded-2xl border">
           {sortedInstallments.map((installment) => {
             const checked = selectedInstallmentIds.includes(installment.id);
+            const blockingInstallment = checked
+              ? null
+              : getBlockingInstallment(installment);
 
             const enteredAmount =
               paymentAmounts[installment.id] ?? installment.outstanding;
@@ -558,7 +651,9 @@ function PaymentForm({
                   <Checkbox
                     className="mt-1"
                     checked={checked}
+                    disabled={Boolean(blockingInstallment)}
                     onCheckedChange={() => toggleInstallment(installment.id)}
+                    aria-label={`Select ${installment.name}`}
                   />
 
                   <div className="min-w-0 flex-1">
@@ -586,6 +681,10 @@ function PaymentForm({
                               Selected
                             </Badge>
                           )}
+
+                          {blockingInstallment && (
+                            <Badge variant="secondary">Locked</Badge>
+                          )}
                         </div>
 
                         <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
@@ -597,6 +696,13 @@ function PaymentForm({
                             <span>Due {formatDate(installment.dueDate)}</span>
                           )}
                         </div>
+
+                        {blockingInstallment && (
+                          <p className="mt-2 text-xs font-medium text-amber-700">
+                            Pay {blockingInstallment.name} in full to unlock this
+                            installment.
+                          </p>
+                        )}
 
                         <div className="mt-2">
                           <span className="text-xs text-muted-foreground">
@@ -660,7 +766,7 @@ function PaymentForm({
 
         <p className="text-xs text-muted-foreground">
           You can collect payment from multiple fee plans in one receipt.
-          Installments within the same fee plan must be selected in sequence.
+          Installments within the same fee plan must be paid in sequence.
         </p>
       </section>
 
