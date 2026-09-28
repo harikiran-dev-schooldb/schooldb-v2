@@ -39,10 +39,6 @@ type AcademicYear = {
   active?: boolean;
 };
 
-type PaginatedResult = {
-  total: number;
-};
-
 type AttendanceDashboard = {
   summary: {
     totalStudents: number;
@@ -232,83 +228,8 @@ async function getJson<T>(url: string, signal: AbortSignal): Promise<T> {
   }
 }
 
-async function fetchDashboardCore(
-  signal: AbortSignal,
-  access: { attendance: boolean; fees: boolean; staff: boolean },
-): Promise<DashboardData> {
-  const [academicYears, students, teachers, classes, attendance] =
-    await Promise.all([
-      getJson<{ data: AcademicYear[]; total: number }>(
-        "/api/v1/academic-years?page=1&pageSize=20",
-        signal,
-      ),
-      getJson<PaginatedResult>("/api/v1/students?page=1&pageSize=1", signal),
-      access.staff
-        ? getJson<PaginatedResult>("/api/v1/teachers?page=1&pageSize=1", signal)
-        : Promise.resolve(null),
-      getJson<PaginatedResult>("/api/v1/classes?page=1&pageSize=1", signal),
-      access.attendance
-        ? getJson<AttendanceDashboard>("/api/v1/attendance/dashboard", signal)
-        : Promise.resolve(null),
-    ]);
-
-  const currentAcademicYear =
-    academicYears.data.find((year) => year.active) ?? null;
-
-  return {
-    ...EMPTY_DASHBOARD_DATA,
-    academicYear: currentAcademicYear,
-    students: students.total,
-    teachers: teachers?.total ?? 0,
-    classes: classes.total,
-    attendance: attendance ?? null,
-    fees: null,
-  };
-}
-
-async function fetchDashboardSecondary(
-  signal: AbortSignal,
-  academicYearId: string,
-  access: { attendance: boolean; fees: boolean },
-) {
-  const id = encodeURIComponent(academicYearId);
-
-  const [fees, lowAttendance, outstanding, houses, birthdays] = await Promise.all([
-    access.fees
-      ? getJson<FeeDashboard>(
-          `/api/v1/fees/dashboard?academicYearId=${id}`,
-          signal,
-        )
-      : Promise.resolve(null),
-    access.attendance
-      ? getJson<{ lowAttendanceCount: number }>(
-          `/api/v1/attendance/reports/low?academicYearId=${id}&threshold=75&summary=1`,
-          signal,
-        )
-      : Promise.resolve(null),
-    access.fees
-      ? getJson<{ installmentCount: number; outstanding: number }>(
-          `/api/v1/fees/outstanding?academicYearId=${id}&summary=1`,
-          signal,
-        )
-      : Promise.resolve(null),
-    getJson<{ houses: HouseSummary[] }>(
-      `/api/v1/houses?academicYearId=${id}&summary=1`,
-      signal,
-    ),
-    getJson<{ birthdays: BirthdaySummary[] }>("/api/v1/birthdays?summary=1", signal),
-  ]);
-
-  return {
-    fees,
-    lowAttendance: [],
-    lowAttendanceCount: lowAttendance?.lowAttendanceCount ?? 0,
-    outstanding: [],
-    outstandingCount: outstanding?.installmentCount ?? 0,
-    outstandingAmount: outstanding?.outstanding ?? 0,
-    houses: houses?.houses ?? [],
-    birthdays: birthdays?.birthdays ?? [],
-  };
+function fetchDashboard(signal: AbortSignal) {
+  return getJson<DashboardData>("/api/v1/dashboard", signal);
 }
 
 /* ==========================================================================
@@ -356,38 +277,13 @@ export default function DashboardPage() {
       try {
         setError(null);
 
-        const dashboardData = await fetchDashboardCore(controller.signal, {
-          attendance: canReadAttendance,
-          fees: canReadFees,
-          staff: canReadStaff,
-        });
+        const dashboardData = await fetchDashboard(controller.signal);
 
         if (controller.signal.aborted) return;
 
         setData(dashboardData);
         setLoading(false);
 
-        if (dashboardData.academicYear) {
-          void fetchDashboardSecondary(
-            controller.signal,
-            dashboardData.academicYear.id,
-            { attendance: canReadAttendance, fees: canReadFees },
-          )
-            .then((secondary) => {
-              if (!controller.signal.aborted) {
-                setData((current) => ({ ...current, ...secondary }));
-              }
-            })
-            .catch((secondaryError) => {
-              if (
-                !controller.signal.aborted &&
-                !(secondaryError instanceof DOMException &&
-                  secondaryError.name === "AbortError")
-              ) {
-                console.error("Dashboard secondary data failed:", secondaryError);
-              }
-            });
-        }
       } catch (loadError) {
         if (
           loadError instanceof DOMException &&
@@ -430,26 +326,10 @@ export default function DashboardPage() {
     setError(null);
 
     try {
-      const dashboardData = await fetchDashboardCore(controller.signal, {
-        attendance: canReadAttendance,
-        fees: canReadFees,
-        staff: canReadStaff,
-      });
+      const dashboardData = await fetchDashboard(controller.signal);
 
       if (!controller.signal.aborted) {
         setData(dashboardData);
-
-        if (dashboardData.academicYear) {
-          const secondary = await fetchDashboardSecondary(
-            controller.signal,
-            dashboardData.academicYear.id,
-            { attendance: canReadAttendance, fees: canReadFees },
-          );
-
-          if (!controller.signal.aborted) {
-            setData((current) => ({ ...current, ...secondary }));
-          }
-        }
       }
     } catch (loadError) {
       if (

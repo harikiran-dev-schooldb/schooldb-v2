@@ -4,6 +4,7 @@ import { examResultService } from "@/features/exams/services/exam-result.service
 import { requireTenant } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createSchoolReportWorkbook, safeReportFilename } from "@/lib/reports/excel";
+import { exportRowLimitResponse } from "@/lib/reports/limits";
 
 export const runtime = "nodejs";
 
@@ -21,6 +22,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     examResultService.getResults({ examId, schoolId: tenant.schoolId, classId, sectionId }),
   ]);
   if (!school || !classInfo) return NextResponse.json({ error: "School or class not found." }, { status: 404 });
+  const limitResponse = exportRowLimitResponse(data.results.length);
+  if (limitResponse) return limitResponse;
 
   const scope = sectionInfo ? `${classInfo.name} - ${sectionInfo.name}` : classInfo.name;
   const workbook = await createSchoolReportWorkbook({

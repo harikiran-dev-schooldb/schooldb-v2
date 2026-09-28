@@ -5,6 +5,7 @@ import {
   queueAutomatedWhatsappAlert,
 } from "./service";
 import { isAutomatedWhatsappSourceAllowed } from "./policy";
+import { findActiveBirthdayStudents } from "@/features/students/services/birthday-summary.service";
 
 function formatDate(value: Date) {
   return new Intl.DateTimeFormat("en-IN", {
@@ -60,32 +61,7 @@ export async function queueAttendanceSessionAlert(
 
 export async function queueDailyBirthdayWishes(now = new Date()) {
   const dateKey = indiaDateKey(now);
-  const [, month, day] = dateKey.split("-").map(Number);
-
-  const students = await prisma.student.findMany({
-    where: {
-      status: "ACTIVE",
-      enrollments: { some: { active: true } },
-    },
-    select: {
-      id: true,
-      schoolId: true,
-      fullName: true,
-      dob: true,
-      whatsappOptIn: true,
-    },
-  });
-
-  const birthdays = students.filter((student) => {
-    const parts = new Intl.DateTimeFormat("en-US", {
-      month: "numeric",
-      day: "numeric",
-      timeZone: "Asia/Kolkata",
-    }).formatToParts(student.dob);
-    const dobMonth = Number(parts.find((part) => part.type === "month")?.value);
-    const dobDay = Number(parts.find((part) => part.type === "day")?.value);
-    return dobMonth === month && dobDay === day;
-  });
+  const birthdays = await findActiveBirthdayStudents(now);
 
   const queued = [];
   for (const student of birthdays) {

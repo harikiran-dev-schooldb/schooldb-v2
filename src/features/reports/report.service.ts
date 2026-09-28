@@ -1,4 +1,4 @@
-import type { Prisma } from "@/generated/prisma/client";
+import { Prisma } from "@/generated/prisma/client";
 
 import { prisma } from "@/lib/prisma";
 
@@ -8,6 +8,25 @@ export type ReportFilterInput = {
   sectionId?: string;
   from?: string;
   to?: string;
+};
+
+type AttendanceAggregateRow = {
+  scope: "overall" | "daily" | "student";
+  studentId: string | null;
+  attendanceDate: Date | null;
+  status: "PRESENT" | "ABSENT" | "LATE" | "LEAVE";
+  count: bigint;
+};
+
+type ExamAggregateRow = {
+  scope: "overall" | "subject";
+  subjectId: string | null;
+  subjectName: string | null;
+  totalRows: bigint;
+  scoredCount: bigint;
+  percentageTotal: number;
+  passed: bigint;
+  graded: bigint;
 };
 
 function startOfDay(value: Date) {
@@ -248,21 +267,13 @@ export async function getSchoolReport(
    * ---------------------------------------------------------
    */
 
-  const attendanceWhere = {
-    schoolId,
+  const attendanceClassFilter = classId
+    ? Prisma.sql`AND s."classId" = ${classId}`
+    : Prisma.empty;
 
-    session: {
-      academicYearId: academicYear.id,
-
-      ...(classId ? { classId } : {}),
-      ...(sectionId ? { sectionId } : {}),
-
-      attendanceDate: {
-        gte: from,
-        lte: to,
-      },
-    },
-  } satisfies Prisma.AttendanceWhereInput;
+  const attendanceSectionFilter = sectionId
+    ? Prisma.sql`AND s."sectionId" = ${sectionId}`
+    : Prisma.empty;
 
   /*
    * ---------------------------------------------------------
@@ -284,25 +295,13 @@ export async function getSchoolReport(
    * ---------------------------------------------------------
    */
 
-  const examWhere = {
-    schoolId,
+  const examClassFilter = classId
+    ? Prisma.sql`AND es."classId" = ${classId} AND se."classId" = ${classId}`
+    : Prisma.empty;
 
-    studentEnrollment: enrollmentWhere,
-
-    examSchedule: {
-      exam: {
-        academicYearId: academicYear.id,
-      },
-
-      examDate: {
-        gte: from,
-        lte: to,
-      },
-
-      ...(classId ? { classId } : {}),
-      ...(sectionId ? { sectionId } : {}),
-    },
-  } satisfies Prisma.StudentExamMarkWhereInput;
+  const examSectionFilter = sectionId
+    ? Prisma.sql`AND es."sectionId" = ${sectionId} AND se."sectionId" = ${sectionId}`
+    : Prisma.empty;
 
   /*
    * ---------------------------------------------------------
@@ -368,26 +367,32 @@ export async function getSchoolReport(
       },
     }),
 
-    prisma.attendance.findMany({
-      where: attendanceWhere,
-
-      select: {
-        studentId: true,
-        status: true,
-
-        session: {
-          select: {
-            attendanceDate: true,
-          },
-        },
-      },
-
-      orderBy: {
-        session: {
-          attendanceDate: "asc",
-        },
-      },
-    }),
+    prisma.$queryRaw<AttendanceAggregateRow[]>(Prisma.sql`
+      SELECT
+        CASE
+          WHEN GROUPING(a."studentId") = 0 THEN 'student'
+          WHEN GROUPING(s."attendanceDate") = 0 THEN 'daily'
+          ELSE 'overall'
+        END AS scope,
+        a."studentId",
+        s."attendanceDate",
+        a."status"::text AS status,
+        COUNT(*)::bigint AS count
+      FROM "Attendance" a
+      JOIN "AttendanceSession" s ON s."id" = a."sessionId"
+      WHERE a."schoolId" = ${schoolId}
+        AND s."schoolId" = ${schoolId}
+        AND s."academicYearId" = ${academicYear.id}
+        AND s."attendanceDate" >= ${from}
+        AND s."attendanceDate" <= ${to}
+        ${attendanceClassFilter}
+        ${attendanceSectionFilter}
+      GROUP BY GROUPING SETS (
+        (a."status"),
+        (s."attendanceDate", a."status"),
+        (a."studentId", a."status")
+      )
+    `),
 
     prisma.attendanceSession.count({
       where: {
@@ -449,28 +454,61 @@ export async function getSchoolReport(
       },
     }),
 
-    prisma.studentExamMark.findMany({
-      where: examWhere,
-
-      select: {
-        marksObtained: true,
-        status: true,
-
-        examSchedule: {
-          select: {
-            maxMarks: true,
-            passMarks: true,
-
-            subject: {
-              select: {
-                id: true,
-                name: true,
-              },
-            },
-          },
-        },
-      },
-    }),
+    prisma.$queryRaw<ExamAggregateRow[]>(Prisma.sql`
+      SELECT
+        CASE
+          WHEN GROUPING(subject."id") = 0 THEN 'subject'
+          ELSE 'overall'
+        END AS scope,
+        subject."id" AS "subjectId",
+        subject."name" AS "subjectName",
+        COUNT(*)::bigint AS "totalRows",
+        COUNT(*) FILTER (
+          WHERE m."status"::text = 'PRESENT'
+            AND m."marksObtained" IS NOT NULL
+            AND es."maxMarks" > 0
+        )::bigint AS "scoredCount",
+        COALESCE(SUM(
+          CASE
+            WHEN m."status"::text = 'PRESENT'
+              AND m."marksObtained" IS NOT NULL
+              AND es."maxMarks" > 0
+            THEN ROUND((m."marksObtained" / es."maxMarks") * 100, 1)
+            ELSE 0
+          END
+        ), 0)::double precision AS "percentageTotal",
+        COUNT(*) FILTER (
+          WHERE m."status"::text = 'PRESENT'
+            AND m."marksObtained" IS NOT NULL
+            AND es."maxMarks" > 0
+            AND es."passMarks" IS NOT NULL
+            AND m."marksObtained" >= es."passMarks"
+        )::bigint AS passed,
+        COUNT(*) FILTER (
+          WHERE m."status"::text = 'PRESENT'
+            AND m."marksObtained" IS NOT NULL
+            AND es."maxMarks" > 0
+            AND es."passMarks" IS NOT NULL
+        )::bigint AS graded
+      FROM "StudentExamMark" m
+      JOIN "ExamSchedule" es ON es."id" = m."examScheduleId"
+      JOIN "Exam" exam ON exam."id" = es."examId"
+      JOIN "Subject" subject ON subject."id" = es."subjectId"
+      JOIN "StudentEnrollment" se ON se."id" = m."studentEnrollmentId"
+      WHERE m."schoolId" = ${schoolId}
+        AND se."schoolId" = ${schoolId}
+        AND se."academicYearId" = ${academicYear.id}
+        AND se."active" = true
+        AND exam."academicYearId" = ${academicYear.id}
+        AND es."examDate" >= ${from}
+        AND es."examDate" <= ${to}
+        ${examClassFilter}
+        ${examSectionFilter}
+      GROUP BY GROUPING SETS (
+        (),
+        (subject."id", subject."name")
+      )
+    `),
 
     prisma.homework.count({
       where: {
@@ -547,7 +585,7 @@ export async function getSchoolReport(
     absent: 0,
     late: 0,
     leave: 0,
-    total: attendanceRows.length,
+    total: 0,
   };
 
   const daily = new Map<
@@ -569,46 +607,45 @@ export async function getSchoolReport(
   >();
 
   for (const row of attendanceRows) {
-    const key = isoDate(row.session.attendanceDate);
+    const count = Number(row.count);
 
-    const day = daily.get(key) ?? {
-      date: key,
-      present: 0,
-      absent: 0,
-      total: 0,
-    };
+    if (row.scope === "overall") {
+      attendance.total += count;
 
-    day.total += 1;
+      if (row.status === "PRESENT") attendance.present += count;
+      else if (row.status === "ABSENT") attendance.absent += count;
+      else if (row.status === "LATE") attendance.late += count;
+      else if (row.status === "LEAVE") attendance.leave += count;
 
-    if (row.status === "PRESENT") {
-      day.present += 1;
-    } else if (row.status === "ABSENT") {
-      day.absent += 1;
+      continue;
     }
 
-    daily.set(key, day);
+    if (row.scope === "daily" && row.attendanceDate) {
+      const key = isoDate(row.attendanceDate);
+      const day = daily.get(key) ?? {
+        date: key,
+        present: 0,
+        absent: 0,
+        total: 0,
+      };
 
-    const student = perStudent.get(row.studentId) ?? {
-      present: 0,
-      total: 0,
-    };
+      day.total += count;
+      if (row.status === "PRESENT") day.present += count;
+      else if (row.status === "ABSENT") day.absent += count;
+      daily.set(key, day);
 
-    student.total += 1;
-
-    if (row.status === "PRESENT") {
-      student.present += 1;
+      continue;
     }
 
-    perStudent.set(row.studentId, student);
+    if (row.scope === "student" && row.studentId) {
+      const student = perStudent.get(row.studentId) ?? {
+        present: 0,
+        total: 0,
+      };
 
-    if (row.status === "PRESENT") {
-      attendance.present += 1;
-    } else if (row.status === "ABSENT") {
-      attendance.absent += 1;
-    } else if (row.status === "LATE") {
-      attendance.late += 1;
-    } else if (row.status === "LEAVE") {
-      attendance.leave += 1;
+      student.total += count;
+      if (row.status === "PRESENT") student.present += count;
+      perStudent.set(row.studentId, student);
     }
   }
 
@@ -690,73 +727,11 @@ export async function getSchoolReport(
    * ---------------------------------------------------------
    */
 
-  const subjectMap = new Map<
-    string,
-    {
-      id: string;
-      name: string;
-      percentageTotal: number;
-      count: number;
-      passed: number;
-      graded: number;
-    }
-  >();
-
-  let percentageTotal = 0;
-  let scoredCount = 0;
-  let passed = 0;
-  let graded = 0;
-
-  for (const mark of examRows) {
-    if (mark.status !== "PRESENT" || mark.marksObtained === null) {
-      continue;
-    }
-
-    const maximum = Number(mark.examSchedule.maxMarks);
-
-    if (maximum <= 0) {
-      continue;
-    }
-
-    const score = Number(mark.marksObtained);
-
-    const scorePercent = percent(score, maximum);
-
-    percentageTotal += scorePercent;
-    scoredCount += 1;
-
-    if (mark.examSchedule.passMarks !== null) {
-      graded += 1;
-
-      if (score >= Number(mark.examSchedule.passMarks)) {
-        passed += 1;
-      }
-    }
-
-    const subject = mark.examSchedule.subject;
-
-    const current = subjectMap.get(subject.id) ?? {
-      id: subject.id,
-      name: subject.name,
-      percentageTotal: 0,
-      count: 0,
-      passed: 0,
-      graded: 0,
-    };
-
-    current.percentageTotal += scorePercent;
-    current.count += 1;
-
-    if (mark.examSchedule.passMarks !== null) {
-      current.graded += 1;
-
-      if (score >= Number(mark.examSchedule.passMarks)) {
-        current.passed += 1;
-      }
-    }
-
-    subjectMap.set(subject.id, current);
-  }
+  const examOverall = examRows.find((row) => row.scope === "overall");
+  const percentageTotal = examOverall?.percentageTotal ?? 0;
+  const scoredCount = Number(examOverall?.scoredCount ?? 0);
+  const passed = Number(examOverall?.passed ?? 0);
+  const graded = Number(examOverall?.graded ?? 0);
 
   /*
    * ---------------------------------------------------------
@@ -805,11 +780,13 @@ export async function getSchoolReport(
 
       percentage: percent(attendance.present, attendance.total),
 
-      daily: [...daily.values()].map((day) => ({
-        ...day,
+      daily: [...daily.values()]
+        .sort((a, b) => a.date.localeCompare(b.date))
+        .map((day) => ({
+          ...day,
 
-        percentage: percent(day.present, day.total),
-      })),
+          percentage: percent(day.present, day.total),
+        })),
 
       low: lowestAttendanceIds.map((row) => {
         const student = lowStudentById.get(row.studentId);
@@ -851,7 +828,7 @@ export async function getSchoolReport(
 
     academics: {
       homework: homeworkCount,
-      marks: examRows.length,
+      marks: Number(examOverall?.totalRows ?? 0),
 
       averagePercentage: scoredCount
         ? Number((percentageTotal / scoredCount).toFixed(1))
@@ -859,18 +836,32 @@ export async function getSchoolReport(
 
       passPercentage: percent(passed, graded),
 
-      subjects: [...subjectMap.values()]
-        .map((subject) => ({
-          id: subject.id,
-          name: subject.name,
-          entries: subject.count,
+      subjects: examRows
+        .filter(
+          (subject) =>
+            subject.scope === "subject" &&
+            subject.subjectId !== null &&
+            subject.subjectName !== null &&
+            Number(subject.scoredCount) > 0,
+        )
+        .map((subject) => {
+          const entries = Number(subject.scoredCount);
 
-          averagePercentage: subject.count
-            ? Number((subject.percentageTotal / subject.count).toFixed(1))
-            : 0,
+          return {
+            id: subject.subjectId as string,
+            name: subject.subjectName as string,
+            entries,
 
-          passPercentage: percent(subject.passed, subject.graded),
-        }))
+            averagePercentage: entries
+              ? Number((subject.percentageTotal / entries).toFixed(1))
+              : 0,
+
+            passPercentage: percent(
+              Number(subject.passed),
+              Number(subject.graded),
+            ),
+          };
+        })
         .sort((a, b) => b.averagePercentage - a.averagePercentage)
         .slice(0, 10),
     },

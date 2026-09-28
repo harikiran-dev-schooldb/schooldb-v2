@@ -3,6 +3,7 @@ import { Prisma } from "@/generated/prisma/client";
 import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createSchoolReportWorkbook, reportDateRange, safeReportFilename } from "@/lib/reports/excel";
+import { EXPORT_QUERY_ROW_LIMIT, exportRowLimitResponse } from "@/lib/reports/limits";
 
 export const runtime = "nodejs";
 
@@ -31,6 +32,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     prisma.school.findFirst({ where: { id: tenant.schoolId, slug: schoolSlug }, select: { name: true } }),
     prisma.certificateIssue.findMany({
       where, orderBy: { issuedAt: "desc" },
+      take: EXPORT_QUERY_ROW_LIMIT,
       select: {
         certificateNo: true, type: true, status: true, purpose: true, issuedAt: true, issuedByName: true, printCount: true,
         lastPrintedAt: true, cancelledAt: true, cancelledByName: true, cancellationNote: true,
@@ -39,6 +41,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     }),
   ]);
   if (!school) return NextResponse.json({ error: "School not found." }, { status: 404 });
+  const limitResponse = exportRowLimitResponse(issues.length);
+  if (limitResponse) return limitResponse;
 
   const workbook = await createSchoolReportWorkbook({
     schoolName: school.name,

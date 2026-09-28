@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { apiHandler } from "@/lib/api";
 import { requireRole } from "@/lib/auth";
 import { ApiResponse } from "@/lib/response";
+import { getBirthdaySummary } from "@/features/students/services/birthday-summary.service";
 
 const ADMIN_ROLES = ["SUPER_ADMIN", "SCHOOL_ADMIN"] as const;
 const INDIA_TIME_ZONE = "Asia/Kolkata";
@@ -27,6 +28,10 @@ export async function GET(req: Request) {
     const todayUtc = new Date(Date.UTC(today.year,today.month-1,today.day));
     const next7Utc = new Date(todayUtc); next7Utc.setUTCDate(next7Utc.getUTCDate()+7);
 
+    if (summaryOnly) {
+      return ApiResponse.success(await getBirthdaySummary(tenant.schoolId, now));
+    }
+
     const students = await prisma.student.findMany({
       where:{
         schoolId:tenant.schoolId,
@@ -41,9 +46,7 @@ export async function GET(req: Request) {
     });
 
     const todayDateKey=new Intl.DateTimeFormat("en-CA",{year:"numeric",month:"2-digit",day:"2-digit",timeZone:INDIA_TIME_ZONE}).format(now);
-    const campaigns = summaryOnly
-      ? []
-      : await prisma.whatsappCampaign.findMany({where:{schoolId:tenant.schoolId,sourceType:"BIRTHDAY",automationKey:{startsWith:"birthday:"}},select:{sourceId:true,automationKey:true,status:true,sentCount:true,deliveredCount:true,readCount:true,failedCount:true}});
+    const campaigns = await prisma.whatsappCampaign.findMany({where:{schoolId:tenant.schoolId,sourceType:"BIRTHDAY",automationKey:{startsWith:"birthday:"}},select:{sourceId:true,automationKey:true,status:true,sentCount:true,deliveredCount:true,readCount:true,failedCount:true}});
     const campaignMap=new Map(campaigns.filter(c=>c.automationKey?.endsWith(`:${todayDateKey}`)).map(c=>[c.sourceId,c]));
 
     const enriched=students.map(student=>{
@@ -56,20 +59,6 @@ export async function GET(req: Request) {
     const birthdays=enriched.filter(s=>monthDayKey(s.birthdayMonth,s.birthdayDay)===todayKey);
     const next7=enriched.filter(s=>{const d=new Date(s.nextBirthday);return d>todayUtc&&d<=next7Utc;}).sort((a,b)=>a.nextBirthday.localeCompare(b.nextBirthday));
     const thisMonth=enriched.filter(s=>s.birthdayMonth===today.month).sort((a,b)=>a.birthdayDay-b.birthdayDay);
-
-    if (summaryOnly) {
-      return ApiResponse.success({
-        birthdays: birthdays.slice(0, 4).map((student) => ({
-          id: student.id,
-          admissionNo: student.admissionNo,
-          fullName: student.fullName,
-          imageUrl: student.imageUrl,
-          whatsappOptIn: student.whatsappOptIn,
-          enrollments: student.enrollments,
-        })),
-        total: birthdays.length,
-      });
-    }
 
     return ApiResponse.success({birthdays,next7,thisMonth,total:birthdays.length});
   });

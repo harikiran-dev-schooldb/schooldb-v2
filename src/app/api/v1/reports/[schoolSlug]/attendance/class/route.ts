@@ -5,6 +5,7 @@ import { PERMISSIONS } from "@/lib/access-control";
 import { requirePermission, requireTeacherClassSection } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createSchoolReportWorkbook, reportDateRange, safeReportFilename } from "@/lib/reports/excel";
+import { exportRowLimitResponse } from "@/lib/reports/limits";
 
 export const runtime = "nodejs";
 
@@ -31,6 +32,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     attendanceService.classAttendanceReport(tenant.schoolId, academicYearId, classId, sectionId, fromDate, toDate),
   ]);
   if (!school || !classInfo || !section) return NextResponse.json({ error: "Report scope not found." }, { status: 404 });
+  const limitResponse = exportRowLimitResponse(report.students.length);
+  if (limitResponse) return limitResponse;
 
   const workbook = await createSchoolReportWorkbook({
     schoolName: school.name,

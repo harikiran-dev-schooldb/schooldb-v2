@@ -4,6 +4,7 @@ import { PERMISSIONS } from "@/lib/access-control";
 import { requirePermission } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createSchoolReportWorkbook, safeReportFilename } from "@/lib/reports/excel";
+import { EXPORT_QUERY_ROW_LIMIT, exportRowLimitResponse } from "@/lib/reports/limits";
 
 export const runtime = "nodejs";
 
@@ -32,6 +33,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     prisma.school.findFirst({ where: { id: tenant.schoolId, slug: schoolSlug }, select: { name: true } }),
     prisma.studentFeeInstallment.findMany({
       where, orderBy: [{ studentFeeItem: { studentFee: { studentEnrollment: { class: { name: "asc" } } } } }, { dueDate: "asc" }],
+      take: EXPORT_QUERY_ROW_LIMIT,
       select: {
         name: true, dueDate: true, status: true, amount: true, concession: true, payableAmount: true, paidAmount: true,
         studentFeeItem: { select: { feeCategory: { select: { name: true } }, studentFee: { select: {
@@ -42,6 +44,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     }),
   ]);
   if (!school) return NextResponse.json({ error: "School not found." }, { status: 404 });
+  const limitResponse = exportRowLimitResponse(installments.length);
+  if (limitResponse) return limitResponse;
 
   const rows = installments.map(i => {
     const e = i.studentFeeItem.studentFee.studentEnrollment;

@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createSchoolReportWorkbook, safeReportFilename } from "@/lib/reports/excel";
+import { EXPORT_QUERY_ROW_LIMIT, exportRowLimitResponse } from "@/lib/reports/limits";
 
 export const runtime = "nodejs";
 
@@ -27,6 +28,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         ] } : {}),
       },
       orderBy: { fullName: "asc" },
+      take: EXPORT_QUERY_ROW_LIMIT,
       select: {
         employeeId: true, fullName: true, gender: true, dob: true, joiningDate: true, phone: true,
         alternatePhone: true, email: true, qualification: true, designation: true, experience: true,
@@ -43,6 +45,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     }),
   ]);
   if (!school) return NextResponse.json({ error: "School not found." }, { status: 404 });
+  const limitResponse = exportRowLimitResponse(teachers.length);
+  if (limitResponse) return limitResponse;
 
   const workbook = await createSchoolReportWorkbook({
     schoolName: school.name,

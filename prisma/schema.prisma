@@ -118,6 +118,7 @@ model School {
   supportTicketReads          SupportTicketRead[]
   androidAppBuilds            AndroidAppBuild[]
   studentProfileImageRequests StudentProfileImageRequest[]
+  reportExportJobs            ReportExportJob[]
 }
 
 model SchoolIdCardSetting {
@@ -176,6 +177,7 @@ model User {
   androidAppBuilds            AndroidAppBuild[]
   performedStudentActivities  StudentActivity[]            @relation("StudentActivityPerformer")
   studentProfileImageRequests StudentProfileImageRequest[]
+  reportExportJobs            ReportExportJob[]
 
   @@index([phone])
 }
@@ -1832,6 +1834,44 @@ model AndroidAppBuild {
   @@index([schoolId, createdAt(sort: Desc)])
   @@index([status, createdAt])
   @@index([requestedById])
+}
+
+enum ReportExportStatus {
+  QUEUED
+  PROCESSING
+  READY
+  FAILED
+  EXPIRED
+}
+
+enum ReportExportType {
+  ANALYTICS_CSV
+}
+
+model ReportExportJob {
+  id                String             @id @default(cuid())
+  schoolId          String
+  requestedByUserId String
+  type              ReportExportType   @default(ANALYTICS_CSV)
+  status            ReportExportStatus @default(QUEUED)
+  filters           Json
+  filename          String?
+  contentType       String?
+  storageKey        String?
+  rowCount          Int?
+  error             String?
+  attempts          Int                @default(0)
+  createdAt         DateTime           @default(now())
+  startedAt         DateTime?
+  completedAt       DateTime?
+  expiresAt         DateTime?
+  updatedAt         DateTime           @updatedAt
+  school            School             @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  requestedBy       User               @relation(fields: [requestedByUserId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId, createdAt(sort: Desc)])
+  @@index([status, createdAt])
+  @@index([requestedByUserId, createdAt(sort: Desc)])
 }
 
 enum Role {

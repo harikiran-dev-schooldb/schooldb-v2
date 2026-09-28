@@ -2,13 +2,14 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Download, Filter, Printer, RotateCcw } from "lucide-react";
+import { Filter, Printer, RotateCcw } from "lucide-react";
 
 import { AcademicYearSelect } from "@/components/common/select/AcademicYearSelect";
 import { ClassSelect } from "@/components/common/select/ClassSelect";
 import { SectionSelect } from "@/components/common/select/SectionSelect";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ReportExportButton } from "@/features/reports/ReportExportButton";
 
 type Props = {
   schoolSlug: string;
@@ -61,12 +62,7 @@ export function ReportsFilters({ schoolSlug, initial }: Props) {
             <RotateCcw className="size-3.5" />
             Reset
           </Button>
-          <Button asChild variant="outline" size="sm">
-            <a href={`/api/v1/reports/export?${query}`}>
-              <Download className="size-3.5" />
-              Download CSV
-            </a>
-          </Button>
+          <ReportExportButton query={query} />
           <Button variant="outline" size="sm" onClick={() => window.print()}>
             <Printer className="size-3.5" />
             Print / PDF

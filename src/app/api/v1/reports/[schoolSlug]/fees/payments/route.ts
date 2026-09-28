@@ -5,6 +5,7 @@ import { PERMISSIONS } from "@/lib/access-control";
 import { requirePermission } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createSchoolReportWorkbook, reportDateRange, safeReportFilename } from "@/lib/reports/excel";
+import { EXPORT_QUERY_ROW_LIMIT, exportRowLimitResponse } from "@/lib/reports/limits";
 
 export const runtime = "nodejs";
 
@@ -36,6 +37,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     prisma.feePayment.findMany({
       where,
       orderBy: [{ paymentDate: "asc" }, { receiptNo: "asc" }],
+      take: EXPORT_QUERY_ROW_LIMIT,
       select: {
         receiptNo: true, paymentDate: true, paymentMode: true, referenceNo: true, remarks: true,
         studentEnrollment: { select: { student: { select: { fullName: true, admissionNo: true } }, class: { select: { name: true } }, section: { select: { name: true } } } },
@@ -69,6 +71,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       remarks: payment.remarks,
     })),
   );
+  const limitResponse = exportRowLimitResponse(rows.length);
+  if (limitResponse) return limitResponse;
   const total = rows.reduce((sum, row) => sum + row.amount, 0);
   const workbook = await createSchoolReportWorkbook({
     schoolName: school.name,

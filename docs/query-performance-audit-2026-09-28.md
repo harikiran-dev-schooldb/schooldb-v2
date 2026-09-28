@@ -3,7 +3,7 @@
 ## Executive summary
 
 The current application is appropriately indexed for its present local data size,
-but four query paths benefited from immediate changes:
+but seven query paths benefited from immediate changes:
 
 1. Notification creation performed redundant existence reads before inserts that
    were already protected by the unique `Announcement.dedupeKey` constraint.
@@ -13,6 +13,12 @@ but four query paths benefited from immediate changes:
    complete filters.
 4. The student-image approval page loaded an unlimited result set and selected
    columns it did not render.
+5. The attendance dashboard loaded every attendance record in the active academic
+   year and calculated low attendance in the application.
+6. The main reports page loaded every attendance record and exam mark in the
+   selected range to calculate totals, trends, averages, and rankings.
+7. The dashboard birthday card loaded every active student even though it renders
+   at most four birthdays for the current day.
 
 These issues were corrected in this audit. Production query telemetry was not
 available, so the remaining recommendations are prioritized static findings and
@@ -120,6 +126,70 @@ The settings page now:
 This prevents an unexpectedly large settings payload and avoids reading storage
 metadata that is not displayed.
 
+### 5. Main dashboard attendance
+
+Files:
+
+- `src/features/attendance/repositories/attendance.repository.ts`
+- `src/features/attendance/services/attendance.service.ts`
+- `src/app/[schoolSlug]/(app)/dashboard/page.tsx`
+
+The attendance card previously returned every active enrollment and every
+attendance row in the active academic year to Node.js, grouped those rows by
+student, and calculated the low-attendance count in memory. It also loaded today's
+records twice: once for overall totals and once grouped by class.
+
+The dashboard now:
+
+- Uses `COUNT` for total active students instead of returning every enrollment.
+- Uses the existing PostgreSQL low-attendance summary query instead of transferring
+  the full academic-year attendance dataset.
+- Derives today's overall status totals and class totals from one bounded result.
+- Removes the second HTTP call that requested the same low-attendance count.
+
+Database work inside the attendance dashboard changed from six post-academic-year
+queries to four, and the largest unbounded result set was removed. A full admin
+dashboard load now makes at most nine API requests instead of ten.
+
+### 6. Reports & Analytics aggregation
+
+File: `src/features/reports/report.service.ts`
+
+The main report previously returned one database row per attendance record and one
+row per exam mark for the date range, then calculated attendance totals, daily
+charts, subject averages, and pass rates in Node.js.
+
+PostgreSQL now performs those calculations with one `GROUPING SETS` query. It
+returns compact groups for:
+
+- Overall status totals.
+- Status totals per day.
+- Status totals per student.
+
+Exam analytics now use a second database aggregate that returns one overall row and
+one row per subject. The overall average, pass rate, mark count, subject averages,
+and subject pass rates retain the same formulas.
+
+The API response and report calculations are unchanged, but application memory and
+database-to-function transfer now scale with students, days, and subjects rather
+than with the number of attendance and exam records. This benefits the web report,
+CSV export, and mobile admin report because all three use the same service.
+
+### 7. Dashboard birthday summary
+
+File: `src/app/api/v1/birthdays/route.ts`
+
+The `summary=1` dashboard request previously loaded every active student and one
+enrollment per student, calculated birthdays in Node.js, and discarded all but
+four rows. It now filters the current month/day in PostgreSQL, selects the latest
+active enrollment with a lateral join, returns at most four students, and gets the
+full birthday count with a window aggregate.
+
+On the local 499-student dataset, PostgreSQL executed the new query in about
+1.4 ms. The table is still scanned for the month/day expression; an expression
+index or persisted birth-month/day columns should only be added after production
+telemetry shows this scan is material.
+
 ## Remaining work, ordered by importance
 
 ### High: confirm production pooling and collect production query timings
@@ -140,14 +210,27 @@ Use Neon Query Insights during normal peak traffic and record:
 Do not add indexes solely from local sequential-scan counts. The local tables are
 too small for those plans to represent production.
 
-### High at 10,000+ students: birthday selection
+### High: consolidate dashboard requests
+
+File: `src/app/[schoolSlug]/(app)/dashboard/page.tsx`
+
+An administrator dashboard still makes up to nine API requests. They run in
+parallel and the secondary cards load progressively, but each request repeats
+authentication, membership resolution, function invocation, and response parsing.
+
+Recommended next change: add one role-aware dashboard summary endpoint that calls
+the existing dashboard services after a single authorization check. Keep the
+current endpoints for their dedicated pages. This is a broader API refactor and
+should be measured in Vercel traces before implementation.
+
+### High at 10,000+ students: scheduled birthday notifications
 
 File: `src/features/notifications/events.ts`
 
-`notifyDailyBirthdays` currently loads every active student with an active
-enrollment and filters month/day in Node.js. This is acceptable for hundreds or a
-few thousand students once daily, but it causes unnecessary database egress as
-the tenant count grows.
+The dashboard birthday query is now bounded, but `notifyDailyBirthdays` still loads
+every active student with an active enrollment and filters month/day in Node.js.
+This is acceptable for hundreds or a few thousand students once daily, but it
+causes unnecessary database egress as the tenant count grows.
 
 Recommended future change: persist an indexed `birthMonth` and `birthDay`, or use
 a carefully tested PostgreSQL expression index and SQL query. Make this change
@@ -168,10 +251,12 @@ thousands of students or allocations.
 Recommended future change: convert selection controls to server-side search with
 20–50 results per request, cursor pagination, and minimal `select` projections.
 
-### Medium: report/export endpoints
+### Medium: remaining report/export work
 
-Files under `src/features/reports` and `src/app/api/v1/reports` intentionally load
-complete filtered datasets. Large attendance, fee, and exam reports can consume
+The main report's attendance and exam aggregation is now performed in PostgreSQL.
+The dedicated Excel exports under `src/app/api/v1/reports/[schoolSlug]`
+intentionally load full filtered student, fee, library, teacher, and transport
+datasets before formatting the workbook. Large exports can still consume
 substantial function memory and hold database connections while formatting files.
 
 Recommended future changes:
@@ -202,10 +287,12 @@ is preferable after directories reach tens of thousands of rows.
 
 - `npm run typecheck` — passed.
 - `npm test` — 62 tests passed.
-- Targeted ESLint for changed TypeScript/TSX files — passed.
+- Targeted ESLint for all changed TypeScript/TSX files — passed.
 - `npx prisma validate` — passed.
 - `npx prisma migrate deploy` against local PostgreSQL — passed.
 - Both new indexes verified through `pg_indexes`.
+- Read-only `EXPLAIN (ANALYZE, BUFFERS)` checks confirmed all three new raw SQL
+  query shapes execute successfully against local PostgreSQL.
 
 ## Production rollout
 

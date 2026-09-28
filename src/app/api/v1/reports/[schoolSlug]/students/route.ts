@@ -5,6 +5,7 @@ import { PERMISSIONS } from "@/lib/access-control";
 import { requireCurrentTeacher, requirePermission } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createSchoolReportWorkbook, safeReportFilename } from "@/lib/reports/excel";
+import { EXPORT_QUERY_ROW_LIMIT, exportRowLimitResponse } from "@/lib/reports/limits";
 
 export const runtime = "nodejs";
 
@@ -48,6 +49,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         ...(classId || sectionId || teacherScope ? { enrollments: { some: enrollmentFilter } } : {}),
       },
       orderBy: [{ fullName: "asc" }, { admissionNo: "asc" }],
+      take: EXPORT_QUERY_ROW_LIMIT,
       select: {
         admissionNo: true, fullName: true, gender: true, dob: true, joinedDate: true, status: true,
         phone: true, email: true, fatherName: true, fatherPhone: true, motherName: true, motherPhone: true,
@@ -62,6 +64,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     }),
   ]);
   if (!school) return NextResponse.json({ error: "School not found." }, { status: 404 });
+  const limitResponse = exportRowLimitResponse(students.length);
+  if (limitResponse) return limitResponse;
 
   const workbook = await createSchoolReportWorkbook({
     schoolName: school.name,

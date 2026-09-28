@@ -41,7 +41,8 @@ function storageRoot() {
 type PrivateDocumentCollection =
   | "student-documents"
   | "admission-documents"
-  | "profile-image-requests";
+  | "profile-image-requests"
+  | "report-exports";
 
 function hasBlobCredentials() {
   return Boolean(
@@ -70,7 +71,7 @@ function storagePath(
   storageKey: string,
   collection: PrivateDocumentCollection = "student-documents",
 ) {
-  if (!/^[a-f0-9-]+\.(?:pdf|jpg|png|webp)$/.test(storageKey)) {
+  if (!/^[a-f0-9-]+\.(?:pdf|jpg|png|webp|csv|xlsx)$/.test(storageKey)) {
     throw new Error("Invalid private storage key");
   }
   const directory = path.join(storageRoot(), collection);
@@ -239,4 +240,53 @@ export async function deletePublishedProfileImage(url: string | null) {
   const hostname = new URL(url).hostname;
   if (!hostname.endsWith(".blob.vercel-storage.com")) return;
   await del(url);
+}
+
+export const MAX_REPORT_EXPORT_BYTES = 25 * 1024 * 1024;
+
+export async function savePrivateReportExport(
+  contents: Buffer,
+  contentType = "text/csv; charset=utf-8",
+) {
+  if (contents.byteLength <= 0 || contents.byteLength > MAX_REPORT_EXPORT_BYTES) {
+    throw new Error("Generated report must be smaller than 25 MB");
+  }
+
+  const storageKey = `${randomUUID()}.csv`;
+  if (hasBlobCredentials()) {
+    const blob = await put(`report-exports/${storageKey}`, contents, {
+      access: "private",
+      addRandomSuffix: false,
+      contentType,
+      maximumSizeInBytes: MAX_REPORT_EXPORT_BYTES,
+    });
+    return blob.url;
+  }
+
+  if (process.env.NODE_ENV === "production") {
+    throw new Error(
+      "Private cloud storage is not configured. Connect a Vercel Blob store before exporting large reports.",
+    );
+  }
+
+  const destination = storagePath(storageKey, "report-exports");
+  await mkdir(path.dirname(destination), { recursive: true });
+  await writeFile(destination, contents, { flag: "wx" });
+  return storageKey;
+}
+
+export function readPrivateReportExport(storageKey: string) {
+  return readPrivateDocument(storageKey, "report-exports");
+}
+
+export async function deletePrivateReportExport(storageKey: string) {
+  if (isBlobStorageKey(storageKey)) {
+    await del(storageKey);
+    return;
+  }
+  try {
+    await unlink(storagePath(storageKey, "report-exports"));
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  }
 }

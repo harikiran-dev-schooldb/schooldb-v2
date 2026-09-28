@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { findActiveBirthdayStudents } from "@/features/students/services/birthday-summary.service";
 import { sendAnnouncementPush } from "./push";
 import { notificationDedupeKey } from "./dedupe";
 
@@ -188,20 +189,7 @@ export async function notifyExamResultsPublished(
 
 export async function notifyDailyBirthdays(now = new Date()) {
   const dateKey = indiaDateKey(now);
-  const [, month, day] = dateKey.split("-").map(Number);
-  const students = await prisma.student.findMany({
-    where: { status: "ACTIVE", enrollments: { some: { active: true } } },
-    select: { id: true, schoolId: true, fullName: true, admissionNo: true, dob: true },
-  });
-  const birthdays = students.filter((student) => {
-    const parts = new Intl.DateTimeFormat("en-US", {
-      month: "numeric",
-      day: "numeric",
-      timeZone: "Asia/Kolkata",
-    }).formatToParts(student.dob);
-    return Number(parts.find((part) => part.type === "month")?.value) === month
-      && Number(parts.find((part) => part.type === "day")?.value) === day;
-  });
+  const birthdays = await findActiveBirthdayStudents(now);
   const birthdayKeys = birthdays.map((student) =>
     notificationDedupeKey.birthday(student.id, dateKey),
   );

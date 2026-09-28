@@ -4,6 +4,7 @@ import { PERMISSIONS } from "@/lib/access-control";
 import { requirePermission } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createSchoolReportWorkbook, safeReportFilename } from "@/lib/reports/excel";
+import { EXPORT_QUERY_ROW_LIMIT, exportRowLimitResponse } from "@/lib/reports/limits";
 
 export const runtime = "nodejs";
 
@@ -30,9 +31,12 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   };
   const installments = await prisma.studentFeeInstallment.findMany({
     where, orderBy: [{ sequence: "asc" }, { studentFeeItem: { studentFee: { studentEnrollment: { class: { name: "asc" } } } } }],
+    take: EXPORT_QUERY_ROW_LIMIT,
     select: { name: true, sequence: true, dueDate: true, status: true, amount: true, concession: true, payableAmount: true, paidAmount: true,
       studentFeeItem: { select: { feeCategory: { select: { name: true } }, studentFee: { select: { feePlan: { select: { name: true } }, studentEnrollment: { select: { rollNo: true, student: { select: { admissionNo: true, fullName: true } }, class: { select: { name: true } }, section: { select: { name: true } } } } } } } } },
   });
+  const limitResponse=exportRowLimitResponse(installments.length);
+  if(limitResponse)return limitResponse;
   const rows=installments.map(i=>{const e=i.studentFeeItem.studentFee.studentEnrollment;const payable=Number(i.payableAmount),paid=Number(i.paidAmount);return {admissionNo:e.student.admissionNo,student:e.student.fullName,className:e.class.name,sectionName:e.section.name,rollNo:e.rollNo,term:i.name,sequence:i.sequence,dueDate:i.dueDate,category:i.studentFeeItem.feeCategory.name,plan:i.studentFeeItem.studentFee.feePlan.name,amount:Number(i.amount),concession:Number(i.concession),payable,paid,outstanding:Math.max(0,payable-paid),status:i.status};});
   const title=installmentName?`Fee Term Summary - ${installmentName}`:"Fee Term Summary";
   const workbook=await createSchoolReportWorkbook({schoolName:school.name,reportName:title,periodLabel:`Academic Year: ${year.name}`,sheetName:"Student Allocations",rows,columns:[

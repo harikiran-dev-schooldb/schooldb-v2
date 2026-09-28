@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createSchoolReportWorkbook, reportDateRange, safeReportFilename } from "@/lib/reports/excel";
+import { exportRowLimitResponse } from "@/lib/reports/limits";
 
 export const runtime = "nodejs";
 
@@ -25,6 +26,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       select: { accessionNo: true, isbn: true, title: true, author: true, publisher: true, edition: true, shelf: true, category: { select: { name: true } }, copies: { select: { barcode: true, status: true } } },
     });
     const rows = books.flatMap((book) => book.copies.map((copy) => ({ ...book, barcode: copy.barcode, copyStatus: copy.status })));
+    const limitResponse = exportRowLimitResponse(rows.length);
+    if (limitResponse) return limitResponse;
     workbook = await createSchoolReportWorkbook({
       schoolName: school.name, reportName: "Library Book Inventory Report", periodLabel: "Current Library Inventory", sheetName: "Book Inventory", rows,
       columns: [
@@ -49,6 +52,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       orderBy: { issuedAt: "desc" },
       select: { borrowerType: true, issuedAt: true, dueAt: true, returnedAt: true, renewedCount: true, fineAmount: true, notes: true, copy: { select: { barcode: true, book: { select: { accessionNo: true, title: true, author: true } } } }, studentEnrollment: { select: { student: { select: { admissionNo: true, fullName: true } }, class: { select: { name: true } }, section: { select: { name: true } } } }, teacher: { select: { employeeId: true, fullName: true } } },
     });
+    const limitResponse = exportRowLimitResponse(loans.length);
+    if (limitResponse) return limitResponse;
     workbook = await createSchoolReportWorkbook({
       schoolName: school.name, reportName: "Library Circulation Report", periodLabel: reportDateRange(from, to), sheetName: "Circulation", rows: loans,
       columns: [

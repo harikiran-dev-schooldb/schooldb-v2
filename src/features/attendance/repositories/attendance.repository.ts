@@ -1037,15 +1037,11 @@ dashboardData(
   academicYearId: string,
 ) {
   return Promise.all([
-    prisma.studentEnrollment.findMany({
+    prisma.studentEnrollment.count({
       where: {
         schoolId,
         academicYearId,
         active: true,
-      },
-
-      select: {
-        studentId: true,
       },
     }),
 
@@ -1089,28 +1085,6 @@ dashboardData(
       },
     }),
 
-    prisma.attendance.findMany({
-      where: {
-        schoolId,
-
-        session: {
-          academicYearId,
-        },
-      },
-
-      select: {
-        studentId: true,
-        status: true,
-
-        session: {
-          select: {
-            attendanceDate: true,
-            sessionType: true,
-            periodId: true,
-          },
-        },
-      },
-    }),
   ]);
 },
 

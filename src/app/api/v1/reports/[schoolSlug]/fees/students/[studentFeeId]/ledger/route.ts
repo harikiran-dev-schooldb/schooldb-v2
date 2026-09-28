@@ -4,6 +4,7 @@ import { requirePermission } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { studentFeeLedgerService } from "@/features/student-fees/services/student-fee-ledger.service";
 import { createSchoolReportWorkbook, safeReportFilename } from "@/lib/reports/excel";
+import { exportRowLimitResponse } from "@/lib/reports/limits";
 
 export const runtime = "nodejs";
 
@@ -16,6 +17,14 @@ export async function GET(_request: Request, { params }: { params: Promise<{ sch
   ]);
   if (!school) return NextResponse.json({ error: "School not found." }, { status: 404 });
   if (!ledger) return NextResponse.json({ error: "Student fee not found." }, { status: 404 });
+  const ledgerRowCount =
+    ledger.installments.length +
+    ledger.payments.reduce(
+      (count, payment) => count + Math.max(1, payment.allocations.length),
+      0,
+    );
+  const limitResponse = exportRowLimitResponse(ledgerRowCount);
+  if (limitResponse) return limitResponse;
 
   const workbook = await createSchoolReportWorkbook({
     schoolName: school.name,

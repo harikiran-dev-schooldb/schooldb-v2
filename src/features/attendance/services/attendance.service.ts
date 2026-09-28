@@ -1274,11 +1274,7 @@ async dashboard(
     );
   }
 
-  const [
-    enrollments,
-    sessions,
-    attendanceRecords,
-  ] =
+  const [totalStudents, sessions] =
     await attendanceRepository.dashboardData(
       schoolId,
       academicYear.id,
@@ -1300,34 +1296,34 @@ async dashboard(
    * We use the session relation because
    * attendanceDate belongs to the session.
    */
-  const todaySessions =
-  await attendanceRepository.todayAttendanceSessions(
-    schoolId,
-    academicYear.id,
-    today,
-    tomorrow,
-  );
+  const threshold = 75;
 
-const todayRecords =
-  await attendanceRepository.attendanceBySessions(
-    schoolId,
-    todaySessions.map(
-      (session) => session.id,
-    ),
-  );
-
-  const todayClassSessions =
-    await attendanceRepository.todayClassAttendance(
+  const [todayClassSessions, lowAttendance] = await Promise.all([
+    attendanceRepository.todayClassAttendance(
       schoolId,
       academicYear.id,
       today,
       tomorrow,
-    );
+    ),
+    attendanceRepository.lowAttendanceSummary(
+      schoolId,
+      academicYear.id,
+      academicYear.attendanceMode,
+      threshold,
+    ),
+  ]);
 
   const classTotals = new Map<
     string,
     { className: string; total: number; attended: number }
   >();
+
+  const todayStatusCounts = {
+    PRESENT: 0,
+    ABSENT: 0,
+    LATE: 0,
+    LEAVE: 0,
+  };
 
   for (const session of todayClassSessions) {
     const current = classTotals.get(session.class.id) ?? {
@@ -1338,6 +1334,7 @@ const todayRecords =
 
     for (const record of session.records) {
       current.total++;
+      todayStatusCounts[record.status]++;
       if (record.status === "PRESENT" || record.status === "LATE") {
         current.attended++;
       }
@@ -1365,32 +1362,11 @@ const todayRecords =
     )
     .slice(0, 3);
 
-  const present =
-    todayRecords.filter(
-      (record) =>
-        record.status === "PRESENT",
-    ).length;
-
-  const absent =
-    todayRecords.filter(
-      (record) =>
-        record.status === "ABSENT",
-    ).length;
-
-  const late =
-    todayRecords.filter(
-      (record) =>
-        record.status === "LATE",
-    ).length;
-
-  const leave =
-    todayRecords.filter(
-      (record) =>
-        record.status === "LEAVE",
-    ).length;
-
-  const totalMarked =
-    todayRecords.length;
+  const present = todayStatusCounts.PRESENT;
+  const absent = todayStatusCounts.ABSENT;
+  const late = todayStatusCounts.LATE;
+  const leave = todayStatusCounts.LEAVE;
+  const totalMarked = present + absent + late + leave;
 
   const attendancePercentage =
     totalMarked > 0
@@ -1450,63 +1426,9 @@ const todayRecords =
       };
     });
 
-  /*
-   * Calculate low attendance using
-   * all available records in the
-   * active academic year.
-   */
-  const recordsByStudent =
-    new Map<
-      string,
-      typeof attendanceRecords
-    >();
-
-  for (const record of attendanceRecords) {
-    const existing =
-      recordsByStudent.get(
-        record.studentId,
-      ) ?? [];
-
-    existing.push(record);
-
-    recordsByStudent.set(
-      record.studentId,
-      existing,
-    );
-  }
-
-  const threshold = 75;
-
-  let lowAttendanceCount = 0;
-
-  for (const enrollment of enrollments) {
-    const studentRecords =
-      recordsByStudent.get(
-        enrollment.studentId,
-      ) ?? [];
-
-    if (studentRecords.length === 0) {
-      continue;
-    }
-
-    const summary =
-      calculateAttendance(
-        studentRecords,
-        academicYear.attendanceMode,
-      );
-
-    if (
-      summary.attendancePercentage <
-      threshold
-    ) {
-      lowAttendanceCount++;
-    }
-  }
-
   return {
     summary: {
-      totalStudents:
-        enrollments.length,
+      totalStudents,
 
       present,
       absent,
@@ -1520,7 +1442,7 @@ const todayRecords =
     topClasses,
 
     alerts: {
-      lowAttendanceCount,
+      lowAttendanceCount: lowAttendance.lowAttendanceCount,
       threshold,
     },
   };

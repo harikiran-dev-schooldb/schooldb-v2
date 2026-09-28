@@ -4,6 +4,7 @@ import { listStaffLeaveRequests } from "@/features/leave-requests/service";
 import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createSchoolReportWorkbook, reportDateRange, safeReportFilename } from "@/lib/reports/excel";
+import { exportRowLimitResponse } from "@/lib/reports/limits";
 
 export const runtime = "nodejs";
 
@@ -40,6 +41,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
   const allRows = await listStaffLeaveRequests(schoolSlug, { classId, sectionId, from, to });
   const rows = type === "ALL" ? allRows : allRows.filter((row) => row.requestType === type);
+  const limitResponse = exportRowLimitResponse(rows.length);
+  if (limitResponse) return limitResponse;
 
   const workbook = await createSchoolReportWorkbook({
     schoolName: school.name,

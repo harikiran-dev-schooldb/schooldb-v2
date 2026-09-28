@@ -4,6 +4,7 @@ import { PERMISSIONS } from "@/lib/access-control";
 import { requirePermission } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createSchoolReportWorkbook, reportDateRange, safeReportFilename } from "@/lib/reports/excel";
+import { exportRowLimitResponse } from "@/lib/reports/limits";
 
 export const runtime = "nodejs";
 
@@ -38,6 +39,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   const groups=new Map<string,Group>();
   for(const i of installments){const e=i.studentFeeItem.studentFee.studentEnrollment,k=`${e.class.name}::${e.section.name}`;const g=groups.get(k)??{className:e.class.name,sectionName:e.section.name,students:new Set<string>(),installments:0,gross:0,concession:0,payable:0,paid:0,outstanding:0};const payable=Number(i.payableAmount),paid=Number(i.paidAmount);g.students.add(e.student.admissionNo);g.installments++;g.gross+=Number(i.amount);g.concession+=Number(i.concession);g.payable+=payable;g.paid+=paid;g.outstanding+=Math.max(0,payable-paid);groups.set(k,g);}
   const rows=[...groups.values()].sort((a,b)=>a.className.localeCompare(b.className)||a.sectionName.localeCompare(b.sectionName));
+  const limitResponse=exportRowLimitResponse(installments.length+payments.length);
+  if(limitResponse)return limitResponse;
   const workbook=await createSchoolReportWorkbook({schoolName:school.name,reportName:installmentName?`Fee Collection Summary - ${installmentName}`:"Fee Collection Summary",periodLabel:`Academic Year: ${year.name} | ${reportDateRange(fromDate,toDate)}`,sheetName:"Class Summary",rows,columns:[
     {header:"S.No",key:"serial",width:8,value:(_r,i)=>i+1},{header:"Class",key:"class",width:16,value:r=>r.className},{header:"Section",key:"section",width:12,value:r=>r.sectionName},{header:"Students",key:"students",width:12,value:r=>r.students.size},{header:"Installments",key:"installments",width:14,value:r=>r.installments},
     {header:"Gross Amount",key:"gross",width:17,value:r=>r.gross,numFmt:"₹#,##0.00"},{header:"Concession",key:"concession",width:16,value:r=>r.concession,numFmt:"₹#,##0.00"},{header:"Payable",key:"payable",width:16,value:r=>r.payable,numFmt:"₹#,##0.00"},{header:"Collected",key:"paid",width:16,value:r=>r.paid,numFmt:"₹#,##0.00"},{header:"Outstanding",key:"outstanding",width:16,value:r=>r.outstanding,numFmt:"₹#,##0.00"},{header:"Collection %",key:"percent",width:14,value:r=>r.payable?r.paid/r.payable:0,numFmt:"0.00%"},

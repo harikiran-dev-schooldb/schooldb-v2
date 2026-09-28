@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createSchoolReportWorkbook, safeReportFilename } from "@/lib/reports/excel";
+import { exportRowLimitResponse } from "@/lib/reports/limits";
 
 export const runtime = "nodejs";
 
@@ -16,6 +17,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   let workbook;
   if (report === "fleet") {
     const rows = await prisma.transportVehicle.findMany({ where: { schoolId: tenant.schoolId }, orderBy: [{ active: "desc" }, { registrationNo: "asc" }], select: { registrationNo: true, name: true, type: true, capacity: true, driverName: true, driverPhone: true, attendantName: true, attendantPhone: true, active: true, _count: { select: { routes: true } } } });
+    const limitResponse = exportRowLimitResponse(rows.length);
+    if (limitResponse) return limitResponse;
     workbook = await createSchoolReportWorkbook({ schoolName: school.name, reportName: "Transport Fleet Report", periodLabel: "Current Vehicle Register", sheetName: "Fleet", rows, columns: [
       { header: "S.No", key: "serial", width: 8, value: (_r, i) => i + 1 },
       { header: "Registration No", key: "registration", width: 20, value: r => r.registrationNo },
@@ -32,6 +35,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   } else if (report === "routes") {
     const routes = await prisma.transportRoute.findMany({ where: { schoolId: tenant.schoolId }, orderBy: [{ active: "desc" }, { code: "asc" }], select: { code: true, name: true, pickupStart: true, dropStart: true, active: true, vehicle: { select: { registrationNo: true, name: true } }, stops: { orderBy: { sequence: "asc" }, select: { name: true, sequence: true, pickupTime: true, dropTime: true, monthlyFee: true, active: true } } } });
     const rows = routes.flatMap(r => r.stops.map(s => ({ ...r, stop: s })));
+    const limitResponse = exportRowLimitResponse(rows.length);
+    if (limitResponse) return limitResponse;
     workbook = await createSchoolReportWorkbook({ schoolName: school.name, reportName: "Transport Routes & Stops Report", periodLabel: "Current Route Register", sheetName: "Routes & Stops", rows, columns: [
       { header: "S.No", key: "serial", width: 8, value: (_r, i) => i + 1 },
       { header: "Route Code", key: "code", width: 14, value: r => r.code },
@@ -52,6 +57,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const classId = q.get("classId") || undefined;
     const sectionId = q.get("sectionId") || undefined;
     const rows = await prisma.studentTransportAssignment.findMany({ where: { schoolId: tenant.schoolId, active: true, ...(routeId ? { routeId } : {}), studentEnrollment: { ...(classId ? { classId } : {}), ...(sectionId ? { sectionId } : {}) } }, orderBy: [{ route: { code: "asc" } }, { studentEnrollment: { rollNo: "asc" } }], select: { pickupEnabled: true, dropEnabled: true, startDate: true, endDate: true, notes: true, studentEnrollment: { select: { rollNo: true, academicYear: { select: { name: true } }, student: { select: { admissionNo: true, fullName: true } }, class: { select: { name: true } }, section: { select: { name: true } } } }, route: { select: { code: true, name: true, vehicle: { select: { registrationNo: true } } } }, stop: { select: { name: true, pickupTime: true, dropTime: true, monthlyFee: true } } } });
+    const limitResponse = exportRowLimitResponse(rows.length);
+    if (limitResponse) return limitResponse;
     workbook = await createSchoolReportWorkbook({ schoolName: school.name, reportName: "Student Transport Assignment Report", periodLabel: "Active Student Transport Assignments", sheetName: "Student Transport", rows, columns: [
       { header: "S.No", key: "serial", width: 8, value: (_r, i) => i + 1 },
       { header: "Admission No", key: "admission", width: 16, value: r => r.studentEnrollment.student.admissionNo },
