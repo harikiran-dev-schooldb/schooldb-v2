@@ -41,7 +41,9 @@ export function ReportExportButton({ query }: Props) {
         }
         if (statusResult.data.status === "READY") {
           toast.success("Report ready. Your download is starting.");
-          window.location.assign(`/api/v1/report-exports/${result.data.id}/download`);
+          const download = document.createElement("a");
+          download.href = `/api/v1/report-exports/${result.data.id}/download`;
+          download.click();
           return;
         }
         if (statusResult.data.status === "FAILED") {

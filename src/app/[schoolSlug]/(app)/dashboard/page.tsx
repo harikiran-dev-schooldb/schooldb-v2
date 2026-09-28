@@ -313,7 +313,7 @@ export default function DashboardPage() {
     return () => {
       controller.abort();
     };
-  }, [canReadAttendance, canReadFees, canReadStaff]);
+  }, []);
 
   /* ------------------------------------------------------------------------
      REFRESH
@@ -347,7 +347,7 @@ export default function DashboardPage() {
     } finally {
       setRefreshing(false);
     }
-  }, [canReadAttendance, canReadFees, canReadStaff]);
+  }, []);
 
   const attendance = data.attendance;
   const fees = data.fees;

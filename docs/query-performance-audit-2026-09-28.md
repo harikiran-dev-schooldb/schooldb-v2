@@ -20,10 +20,10 @@ but seven query paths benefited from immediate changes:
 7. The dashboard birthday card loaded every active student even though it renders
    at most four birthdays for the current day.
 
-These issues were corrected in this audit. Production query telemetry was not
-available, so the remaining recommendations are prioritized static findings and
-must be confirmed with Neon Query Insights or `pg_stat_statements` before further
-index creation.
+These issues were corrected in this audit. A second pass also consolidated the
+dashboard API, bounded every dedicated Excel export, added durable private report
+exports, optimized daily birthday jobs, and inspected the connected Vercel and
+Neon production projects.
 
 ## Evidence and limitations
 
@@ -148,8 +148,9 @@ The dashboard now:
 - Removes the second HTTP call that requested the same low-attendance count.
 
 Database work inside the attendance dashboard changed from six post-academic-year
-queries to four, and the largest unbounded result set was removed. A full admin
-dashboard load now makes at most nine API requests instead of ten.
+queries to four, and the largest unbounded result set was removed. The later
+dashboard consolidation described below now serves the dashboard through one
+role-aware browser request.
 
 ### 6. Reports & Analytics aggregation
 
@@ -186,55 +187,93 @@ active enrollment with a lateral join, returns at most four students, and gets t
 full birthday count with a window aggregate.
 
 On the local 499-student dataset, PostgreSQL executed the new query in about
-1.4 ms. The table is still scanned for the month/day expression; an expression
-index or persisted birth-month/day columns should only be added after production
-telemetry shows this scan is material.
+1.4 ms. The same query shape is now used by daily notification and WhatsApp jobs,
+with a partial birthday expression index for active students.
 
-## Remaining work, ordered by importance
+## Follow-up recommendations completed
 
-### High: confirm production pooling and collect production query timings
+### 8. Production Vercel and Neon evidence
 
-The Vercel `DATABASE_URL` should use Neon's pooled hostname containing
-`-pooler`. Schema migrations should use the direct `DIRECT_DATABASE_URL`.
-The local environment uses `localhost`, so this audit could not verify production
-configuration.
+Vercel production traces for the preceding 24 hours confirmed separate requests
+to attendance dashboard, fee dashboard, students, teachers, classes, houses,
+birthdays, low-attendance, and fee-outstanding endpoints during dashboard loads.
+That evidence supports consolidation without removing the dedicated endpoints.
 
-Use Neon Query Insights during normal peak traffic and record:
+The connected Neon project `cool-wildflower-93956355` was also inspected:
 
-- Queries with the highest total execution time.
-- Queries with high p95 latency.
-- Rows read versus rows returned.
-- Connection count and compute utilization during morning attendance and fee
-  collection peaks.
+- The production branch is ready and no query was stalled for more than 30 seconds.
+- Production tables remain small; the highest recorded sequential scan counts were
+  Teacher 2,260, Announcement 1,651, StudentFeeItem 806, StudentFee 652, and
+  Student 569. Scan counts do not include duration and are not grounds for another
+  index by themselves.
+- `pg_stat_statements` is not installed, so Neon could not return Query Insights'
+  slowest-query list. Installing that extension changes production database state
+  and was intentionally not done as part of this read-only telemetry check.
+- The project has `suspend_timeout_seconds: 0`, which explains why its compute can
+  remain active continuously. This is a cost/configuration finding, not a slow SQL
+  query.
 
-Do not add indexes solely from local sequential-scan counts. The local tables are
-too small for those plans to represent production.
+No speculative general-purpose index was added from these scan counters.
 
-### High: consolidate dashboard requests
+### 9. Role-aware dashboard endpoint
 
-File: `src/app/[schoolSlug]/(app)/dashboard/page.tsx`
+Files:
 
-An administrator dashboard still makes up to nine API requests. They run in
-parallel and the secondary cards load progressively, but each request repeats
-authentication, membership resolution, function invocation, and response parsing.
+- `src/app/api/v1/dashboard/route.ts`
+- `src/app/[schoolSlug]/(app)/dashboard/page.tsx`
+- `src/features/fees/services/fee-dashboard.service.ts`
 
-Recommended next change: add one role-aware dashboard summary endpoint that calls
-the existing dashboard services after a single authorization check. Keep the
-current endpoints for their dedicated pages. This is a broader API refactor and
-should be measured in Vercel traces before implementation.
+The web dashboard now makes one request to `/api/v1/dashboard`. The endpoint does
+one tenant authorization, enforces teacher allocation scope, runs permitted
+attendance/fee/staff sections in parallel, and returns the existing UI shape. The
+old focused endpoints remain available to their dedicated pages. A structured
+duration log with the Vercel request ID was added for post-deployment comparison.
 
-### High at 10,000+ students: scheduled birthday notifications
+### 10. Scheduled birthday processing
 
-File: `src/features/notifications/events.ts`
+Files:
 
-The dashboard birthday query is now bounded, but `notifyDailyBirthdays` still loads
-every active student with an active enrollment and filters month/day in Node.js.
-This is acceptable for hundreds or a few thousand students once daily, but it
-causes unnecessary database egress as the tenant count grows.
+- `src/features/students/services/birthday-summary.service.ts`
+- `src/features/notifications/events.ts`
+- `src/features/whatsapp/automation.ts`
+- `prisma/migrations/20260928143000_birthday_lookup_index/migration.sql`
 
-Recommended future change: persist an indexed `birthMonth` and `birthDay`, or use
-a carefully tested PostgreSQL expression index and SQL query. Make this change
-when production row counts or Query Insights show material cost.
+Both daily jobs now query only active students whose month/day matches today and
+who have an active enrollment. Filtering moved from application memory into
+PostgreSQL. A partial expression index on birth month/day and school for active
+students supports the daily lookup without adding redundant columns.
+
+### 11. Export limits
+
+Files: all dedicated Excel routes under
+`src/app/api/v1/reports/[schoolSlug]` and `src/lib/reports/limits.ts`.
+
+Every dedicated Excel export now stops at 5,000 source rows and returns HTTP 413
+with an actionable message to narrow academic-year/date/class/section/status
+filters. Routes capable of large direct reads fetch at most 5,001 rows, so they
+can detect the limit without loading the full dataset or starting workbook
+formatting.
+
+### 12. Durable private background exports
+
+Files:
+
+- `prisma/schema.prisma`
+- `src/features/reports/report-export.service.ts`
+- `src/app/api/v1/report-exports/route.ts`
+- `src/app/api/v1/report-exports/[id]/route.ts`
+- `src/app/api/v1/report-exports/[id]/download/route.ts`
+- `src/features/reports/ReportExportButton.tsx`
+- `src/lib/private-storage.ts`
+
+Analytics CSV exports now create a durable `ReportExportJob`. Immediate processing
+runs after the HTTP response; interrupted or failed jobs are retried by the secured
+daily worker, up to three attempts. Completed files use private Vercel Blob, are
+downloaded only through a tenant- and user-authorized route, and expire after seven
+days. The same private-storage implementation falls back to local disk only in
+development. Production still requires the configured Blob credentials.
+
+## Remaining scale work
 
 ### High at multi-school scale: searchable option endpoints
 
@@ -250,22 +289,6 @@ thousands of students or allocations.
 
 Recommended future change: convert selection controls to server-side search with
 20–50 results per request, cursor pagination, and minimal `select` projections.
-
-### Medium: remaining report/export work
-
-The main report's attendance and exam aggregation is now performed in PostgreSQL.
-The dedicated Excel exports under `src/app/api/v1/reports/[schoolSlug]`
-intentionally load full filtered student, fee, library, teacher, and transport
-datasets before formatting the workbook. Large exports can still consume
-substantial function memory and hold database connections while formatting files.
-
-Recommended future changes:
-
-- Require academic-year/date/class filters for large reports.
-- Add an explicit maximum export size with a helpful error.
-- Move very large exports to an asynchronous job and private Blob download.
-- Consider a Neon read replica only after production metrics show reporting is
-  affecting transactional traffic.
 
 ### Medium at deep page numbers: offset pagination
 
@@ -287,16 +310,22 @@ is preferable after directories reach tens of thousands of rows.
 
 - `npm run typecheck` — passed.
 - `npm test` — 62 tests passed.
-- Targeted ESLint for all changed TypeScript/TSX files — passed.
+- Full `npm run lint` — passed without warnings.
 - `npx prisma validate` — passed.
 - `npx prisma migrate deploy` against local PostgreSQL — passed.
-- Both new indexes verified through `pg_indexes`.
+- All new migrations, including the birthday index and report-export job table,
+  were applied successfully to local PostgreSQL.
 - Read-only `EXPLAIN (ANALYZE, BUFFERS)` checks confirmed all three new raw SQL
   query shapes execute successfully against local PostgreSQL.
+- `npx next build --webpack` — passed. The default Turbopack build could not bind
+  its internal worker port in this restricted workspace; this was an environment
+  limitation, not a source compilation error.
 
 ## Production rollout
 
 The repository's production build already runs Prisma migrations through
 `npm run db:migrate:deploy`. Ensure `DIRECT_DATABASE_URL` is configured with the
 direct Neon endpoint before deploying. After release, compare Neon Query Insights
-for at least one normal school day before making another indexing pass.
+for at least one normal school day before making another indexing pass. The
+production database first needs `CREATE EXTENSION pg_stat_statements`; obtain
+explicit production-change approval before enabling it.
