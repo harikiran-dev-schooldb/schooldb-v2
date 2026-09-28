@@ -272,7 +272,10 @@ export function OnlineFeeCheckout({
         <DirectUpiDialog
           open={upiOpen}
           onOpenChange={setUpiOpen}
+          schoolSlug={schoolSlug}
           schoolName={directUpi.schoolName}
+          studentId={studentId}
+          installmentIds={selected}
           upiId={directUpi.upiId}
           payeeName={directUpi.payeeName}
           admissionNo={admissionNo}

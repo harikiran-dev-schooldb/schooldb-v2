@@ -1,7 +1,16 @@
 const UPI_ID_PATTERN = /^[A-Za-z0-9._-]{2,256}@[A-Za-z0-9.-]{2,64}$/;
+const UPI_REFERENCE_PATTERN = /^[A-Z0-9/_-]{6,80}$/;
 
 export function isValidUpiId(value: string) {
   return UPI_ID_PATTERN.test(value.trim());
+}
+
+export function normalizeUpiReference(value: string) {
+  return value.trim().toUpperCase().replace(/\s+/g, "");
+}
+
+export function isValidUpiReference(value: string) {
+  return UPI_REFERENCE_PATTERN.test(normalizeUpiReference(value));
 }
 
 export function buildDirectUpiUri({

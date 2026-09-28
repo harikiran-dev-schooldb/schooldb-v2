@@ -1,7 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { buildDirectUpiUri, isValidUpiId } from "../src/features/online-payments/direct-upi.ts";
+import {
+  buildDirectUpiUri,
+  isValidUpiId,
+  isValidUpiReference,
+  normalizeUpiReference,
+} from "../src/features/online-payments/direct-upi.ts";
 
 test("validates UPI IDs", () => {
   assert.equal(isValidUpiId("school@bank"), true);
@@ -35,4 +40,11 @@ test("rejects non-positive amounts", () => {
       note: "Fee",
     }),
   );
+});
+
+test("normalizes and validates UPI references", () => {
+  assert.equal(normalizeUpiReference(" 4265 1234 5678 "), "426512345678");
+  assert.equal(isValidUpiReference("426512345678"), true);
+  assert.equal(isValidUpiReference("T260929ABC123"), true);
+  assert.equal(isValidUpiReference("bad ref!"), false);
 });
