@@ -35,6 +35,7 @@ type FeeRow = {
   status: "PAID" | "PENDING" | "PARTIAL";
 
   studentEnrollmentId: string;
+  studentFeeId: string;
 
   feePlan: {
     id: string;
@@ -137,6 +138,7 @@ export function FeeCollectionContainer({ schoolSlug, allowCashfreeQr = false }: 
           paidAmount: Number(row.paidAmount),
           outstanding: Number(row.outstanding),
           status: row.status,
+          studentFeeId: row.studentFeeId,
           feePlanId: row.feePlan.id,
           feePlanName: row.feePlan.name,
           feeCategoryName: row.feeCategory.name,
@@ -275,6 +277,8 @@ export function FeeCollectionContainer({ schoolSlug, allowCashfreeQr = false }: 
               id: installment.id,
               name: installment.name,
               outstanding: installment.outstanding,
+              studentFeeId: installment.studentFeeId ?? "",
+              sequence: installment.sequence ?? 0,
             }))}
           initialInstallmentId={qrInstallment.id}
           onSuccess={() => {

@@ -18,6 +18,8 @@ type Installment = {
   id: string;
   name: string;
   outstanding: number;
+  studentFeeId: string;
+  sequence: number;
 };
 
 type GeneratedOrder = {
@@ -61,7 +63,20 @@ function StaffQrFlow({
   initialInstallmentId: string;
   onSuccess: () => void;
 }) {
-  const [selectedIds, setSelectedIds] = useState([initialInstallmentId]);
+  const [selectedIds, setSelectedIds] = useState(() => {
+    const initialInstallment = installments.find(
+      (item) => item.id === initialInstallmentId,
+    );
+    if (!initialInstallment) return [initialInstallmentId];
+
+    return installments
+      .filter(
+        (item) =>
+          item.studentFeeId === initialInstallment.studentFeeId &&
+          item.sequence <= initialInstallment.sequence,
+      )
+      .map((item) => item.id);
+  });
   const [customerPhone, setCustomerPhone] = useState("");
   const [creating, setCreating] = useState(false);
   const [checking, setChecking] = useState(false);
@@ -71,10 +86,39 @@ function StaffQrFlow({
   const selected = installments.filter((item) => selectedIds.includes(item.id));
   const total = selected.reduce((sum, item) => sum + item.outstanding, 0);
 
+  function blockingInstallment(installment: Installment) {
+    return installments
+      .filter(
+        (candidate) =>
+          candidate.studentFeeId === installment.studentFeeId &&
+          candidate.sequence < installment.sequence &&
+          !selectedIds.includes(candidate.id),
+      )
+      .sort((a, b) => a.sequence - b.sequence)[0];
+  }
+
   function toggle(id: string, checked: boolean) {
-    setSelectedIds((current) =>
-      checked ? [...current, id] : current.filter((item) => item !== id),
-    );
+    const installment = installments.find((item) => item.id === id);
+    if (!installment) return;
+
+    if (checked && blockingInstallment(installment)) {
+      toast.error("Pay earlier installments first.");
+      return;
+    }
+
+    setSelectedIds((current) => {
+      if (checked) return current.includes(id) ? current : [...current, id];
+
+      return current.filter((selectedId) => {
+        const selectedInstallment = installments.find(
+          (item) => item.id === selectedId,
+        );
+        return !(
+          selectedInstallment?.studentFeeId === installment.studentFeeId &&
+          selectedInstallment.sequence >= installment.sequence
+        );
+      });
+    });
   }
 
   async function generateQr() {
@@ -228,17 +272,31 @@ function StaffQrFlow({
       </div>
 
       <div className="max-h-64 divide-y overflow-y-auto rounded-2xl border">
-        {installments.map((installment) => (
-          <label key={installment.id} className="flex cursor-pointer items-center gap-3 p-4 hover:bg-muted/20">
-            <Checkbox
-              checked={selectedIds.includes(installment.id)}
-              onCheckedChange={(value) => toggle(installment.id, value === true)}
-              aria-label={`Select ${installment.name}`}
-            />
-            <span className="min-w-0 flex-1 font-medium">{installment.name}</span>
-            <span className="font-bold tabular-nums">{formatCurrency(installment.outstanding)}</span>
-          </label>
-        ))}
+        {installments.map((installment) => {
+          const blocker = blockingInstallment(installment);
+          return (
+            <label
+              key={installment.id}
+              className={`flex items-center gap-3 p-4 ${blocker ? "cursor-not-allowed bg-muted/30" : "cursor-pointer hover:bg-muted/20"}`}
+            >
+              <Checkbox
+                checked={selectedIds.includes(installment.id)}
+                onCheckedChange={(value) => toggle(installment.id, value === true)}
+                aria-label={`Select ${installment.name}`}
+                disabled={Boolean(blocker)}
+              />
+              <span className="min-w-0 flex-1">
+                <span className="font-medium">{installment.name}</span>
+                {blocker ? (
+                  <span className="mt-1 block text-xs font-medium text-amber-700">
+                    Pay {blocker.name} first.
+                  </span>
+                ) : null}
+              </span>
+              <span className="font-bold tabular-nums">{formatCurrency(installment.outstanding)}</span>
+            </label>
+          );
+        })}
       </div>
 
       <div>

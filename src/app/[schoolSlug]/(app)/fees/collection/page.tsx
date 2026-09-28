@@ -1,6 +1,7 @@
 import { ReceiptIndianRupee } from "lucide-react";
 
 import { FeeCollectionContainer } from "@/features/student-fees/components/FeeCollectionContainer";
+import { isCashfreeConfigured } from "@/features/online-payments/cashfree";
 import { PERMISSIONS } from "@/lib/access-control";
 import { requirePermission } from "@/lib/auth";
 
@@ -13,9 +14,9 @@ type Props = {
 export default async function FeeCollectionPage({ params }: Props) {
   const { schoolSlug } = await params;
   const membership = await requirePermission(PERMISSIONS.FEE_READ, schoolSlug);
-  const allowCashfreeQr = ["SUPER_ADMIN", "SCHOOL_ADMIN"].includes(
-    membership.role,
-  );
+  const allowCashfreeQr =
+    isCashfreeConfigured() &&
+    ["SUPER_ADMIN", "SCHOOL_ADMIN"].includes(membership.role);
 
   return (
     <div className="w-full space-y-6 p-4 pb-10 sm:p-6">

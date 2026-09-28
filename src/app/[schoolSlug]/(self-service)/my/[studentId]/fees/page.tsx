@@ -17,6 +17,7 @@ import {
 import { studentFeeLedgerService } from "@/features/student-fees/services/student-fee-ledger.service";
 import { studentFeeService } from "@/features/student-fees/services/student-fee.service";
 import { OnlineFeeCheckout } from "@/features/online-payments/components/OnlineFeeCheckout";
+import { isCashfreeConfigured } from "@/features/online-payments/cashfree";
 import { formatCurrency, formatDate } from "@/lib/self-service-format";
 import { requireStudentAccess } from "@/lib/student-access";
 
@@ -53,6 +54,8 @@ export default async function StudentFeesPage({
         category: installment.feeCategory.name,
         dueDate: new Date(installment.dueDate).toISOString(),
         outstanding: installment.outstanding,
+        studentFeeId: ledger.studentFee.id,
+        sequence: installment.sequence,
       })),
   );
   const paidPercentage = summary.payable > 0
@@ -81,7 +84,7 @@ export default async function StudentFeesPage({
         </div>
       </section>
 
-      {outstandingInstallments.length ? (
+      {outstandingInstallments.length && isCashfreeConfigured() ? (
         <OnlineFeeCheckout
           schoolSlug={schoolSlug}
           studentId={studentId}

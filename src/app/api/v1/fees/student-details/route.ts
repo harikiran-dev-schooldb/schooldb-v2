@@ -247,6 +247,10 @@ export async function GET(req: Request) {
             .studentFee
             .studentEnrollment.id,
 
+        studentFeeId:
+          installment.studentFeeItem
+            .studentFee.id,
+
         feePlan:
           installment.studentFeeItem
             .studentFee

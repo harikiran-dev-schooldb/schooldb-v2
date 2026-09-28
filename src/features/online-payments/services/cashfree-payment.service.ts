@@ -4,6 +4,8 @@ import { Prisma } from "@/generated/prisma/client";
 import { ApiError } from "@/lib/errors";
 import { prisma } from "@/lib/prisma";
 import { runSerializableTransaction } from "@/lib/prisma-transaction";
+import { findInstallmentSequenceViolation } from "@/features/fee-payments/installment-sequence";
+import { notifyFeePayment } from "@/features/notifications/events";
 import {
   createCashfreeProviderOrder,
   getCashfreeMode,
@@ -164,7 +166,15 @@ export const cashfreePaymentService = {
             studentFee: { schoolId, studentEnrollmentId: enrollmentId, active: true },
           },
         },
-        select: { id: true, payableAmount: true, paidAmount: true },
+        select: {
+          id: true,
+          name: true,
+          sequence: true,
+          payableAmount: true,
+          paidAmount: true,
+          status: true,
+          studentFeeItem: { select: { studentFeeId: true } },
+        },
       });
 
       if (installments.length !== uniqueIds.length) {
@@ -177,6 +187,49 @@ export const cashfreePaymentService = {
       }));
       if (allocations.some((item) => item.amount.lessThanOrEqualTo(0))) {
         throw new ApiError(409, "A selected installment has already been paid.");
+      }
+
+      const studentFeeIds = [
+        ...new Set(
+          installments.map(
+            (installment) => installment.studentFeeItem.studentFeeId,
+          ),
+        ),
+      ];
+      const sequencedInstallments = await tx.studentFeeInstallment.findMany({
+        where: {
+          studentFeeItem: { studentFeeId: { in: studentFeeIds } },
+        },
+        select: {
+          id: true,
+          name: true,
+          sequence: true,
+          payableAmount: true,
+          paidAmount: true,
+          status: true,
+          studentFeeItem: { select: { studentFeeId: true } },
+        },
+      });
+      const sequenceViolation = findInstallmentSequenceViolation(
+        sequencedInstallments.map((installment) => ({
+          id: installment.id,
+          name: installment.name,
+          studentFeeId: installment.studentFeeItem.studentFeeId,
+          sequence: installment.sequence,
+          payableAmount: Number(installment.payableAmount),
+          paidAmount: Number(installment.paidAmount),
+          status: installment.status,
+        })),
+        allocations.map((allocation) => ({
+          studentFeeInstallmentId: allocation.studentFeeInstallmentId,
+          amount: Number(allocation.amount),
+        })),
+      );
+      if (sequenceViolation) {
+        throw new ApiError(
+          400,
+          `Pay ${sequenceViolation.blockingInstallmentName} in full before paying ${sequenceViolation.installmentName}.`,
+        );
       }
 
       const amount = allocations.reduce(
@@ -345,7 +398,7 @@ export const cashfreePaymentService = {
     const paymentReference =
       successful?.cf_payment_id?.toString() || webhookPaymentId || providerOrderIdValue;
 
-    return runSerializableTransaction(async (tx) => {
+    const settledOrder = await runSerializableTransaction(async (tx) => {
       const order = await tx.cashfreePaymentOrder.findUniqueOrThrow({
         where: { id: localOrder.id },
         include: {
@@ -433,5 +486,17 @@ export const cashfreePaymentService = {
         },
       });
     });
+
+    if (settledOrder.feePaymentId) {
+      try {
+        await notifyFeePayment(settledOrder.feePaymentId, settledOrder.schoolId);
+      } catch (error) {
+        // Payment settlement must remain successful even if a non-critical
+        // notification provider is temporarily unavailable.
+        console.error("Cashfree payment notification failed", error);
+      }
+    }
+
+    return settledOrder;
   },
 };

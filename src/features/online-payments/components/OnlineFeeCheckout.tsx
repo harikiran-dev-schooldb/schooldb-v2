@@ -16,6 +16,8 @@ type InstallmentOption = {
   category: string;
   dueDate: string;
   outstanding: number;
+  studentFeeId: string;
+  sequence: number;
 };
 
 type CashfreeCheckout = {
@@ -51,10 +53,39 @@ export function OnlineFeeCheckout({
     [installments, selected],
   );
 
+  function blockingInstallment(installment: InstallmentOption) {
+    return installments
+      .filter(
+        (candidate) =>
+          candidate.studentFeeId === installment.studentFeeId &&
+          candidate.sequence < installment.sequence &&
+          !selected.includes(candidate.id),
+      )
+      .sort((a, b) => a.sequence - b.sequence)[0];
+  }
+
   function toggle(id: string, checked: boolean) {
-    setSelected((current) =>
-      checked ? [...current, id] : current.filter((item) => item !== id),
-    );
+    const installment = installments.find((item) => item.id === id);
+    if (!installment) return;
+
+    if (checked && blockingInstallment(installment)) {
+      toast.error("Pay earlier installments first.");
+      return;
+    }
+
+    setSelected((current) => {
+      if (checked) return current.includes(id) ? current : [...current, id];
+
+      return current.filter((selectedId) => {
+        const selectedInstallment = installments.find(
+          (item) => item.id === selectedId,
+        );
+        return !(
+          selectedInstallment?.studentFeeId === installment.studentFeeId &&
+          selectedInstallment.sequence >= installment.sequence
+        );
+      });
+    });
   }
 
   async function payNow() {
@@ -134,22 +165,36 @@ export function OnlineFeeCheckout({
           <div className="divide-y rounded-2xl border border-slate-200/80 bg-slate-50/60">
             {installments.map((installment) => {
               const checked = selected.includes(installment.id);
+              const blocker = blockingInstallment(installment);
               return (
                 <label
                   key={installment.id}
-                  className="flex cursor-pointer items-start gap-3 p-4 transition-colors hover:bg-white"
+                  className={`flex items-start gap-3 p-4 transition-colors ${blocker ? "cursor-not-allowed bg-slate-100/70" : "cursor-pointer hover:bg-white"}`}
                 >
                   <Checkbox
                     checked={checked}
                     onCheckedChange={(value) => toggle(installment.id, value === true)}
                     aria-label={`Select ${installment.name}`}
+                    disabled={Boolean(blocker)}
                     className="mt-0.5"
                   />
                   <span className="min-w-0 flex-1">
-                    <span className="block font-semibold text-slate-900">{installment.name}</span>
+                    <span className="flex items-center gap-2 font-semibold text-slate-900">
+                      {installment.name}
+                      {blocker ? (
+                        <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-600">
+                          Locked
+                        </span>
+                      ) : null}
+                    </span>
                     <span className="mt-1 block text-xs text-muted-foreground">
                       {installment.category} · Due {formatDate(installment.dueDate)}
                     </span>
+                    {blocker ? (
+                      <span className="mt-1 block text-xs font-medium text-amber-700">
+                        Pay {blocker.name} first.
+                      </span>
+                    ) : null}
                   </span>
                   <span className="font-bold tabular-nums text-slate-900">
                     {formatCurrency(installment.outstanding)}

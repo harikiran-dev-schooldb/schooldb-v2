@@ -15,6 +15,7 @@ export type Installment = {
   paidAmount: number;
   outstanding: number;
   status: "PAID" | "PENDING" | "PARTIAL";
+  studentFeeId?: string;
   feePlanId?: string;
   feePlanName?: string;
   feeCategoryName?: string;

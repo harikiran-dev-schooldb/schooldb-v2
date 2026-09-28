@@ -16,6 +16,13 @@ type CashfreePayment = {
   payment_status?: string;
 };
 
+export function isCashfreeConfigured() {
+  return Boolean(
+    process.env.CASHFREE_APP_ID?.trim() &&
+      process.env.CASHFREE_SECRET_KEY?.trim(),
+  );
+}
+
 function config() {
   const appId = process.env.CASHFREE_APP_ID?.trim();
   const secretKey = process.env.CASHFREE_SECRET_KEY?.trim();
