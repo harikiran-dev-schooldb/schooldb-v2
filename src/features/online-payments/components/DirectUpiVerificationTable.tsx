@@ -38,7 +38,7 @@ type VerificationRow = {
   student: {
     id: string;
     admissionNo: string;
-    fullName: string;
+    fullName: string | null;
     class: string;
     section: string;
   };
