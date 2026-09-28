@@ -1043,6 +1043,7 @@ model Teacher {
   @@unique([schoolId, employeeId])
   @@index([schoolId])
   @@index([schoolId, active, fullName])
+  @@index([schoolId, clerkId, active])
 }
 
 model TeacherAllocation {
@@ -1068,6 +1069,7 @@ model TeacherAllocation {
   @@unique([schoolId, academicYearId, teacherId, subjectId, classId, sectionId])
   @@index([schoolId])
   @@index([schoolId, active, academicYearId])
+  @@index([schoolId, teacherId, active])
 }
 
 model Period {

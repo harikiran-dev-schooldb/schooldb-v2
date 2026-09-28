@@ -238,225 +238,164 @@ function createAnnualInstallments(
   ];
 }
 
+type GeneratedInstallment = Parameters<
+  typeof feeInstallmentRepository.createMany
+>[0][number];
+
 export const feeInstallmentService = {
-  async generate(
-    schoolId: string,
-    feePlanId: string,
-  ) {
-    const plan =
-      await prisma.feePlan.findFirst({
-        where: {
-          id: feePlanId,
-          schoolId,
+  async generate(schoolId: string, feePlanId: string) {
+    const plan = await prisma.feePlan.findFirst({
+      where: { id: feePlanId, schoolId },
+      select: {
+        id: true,
+        name: true,
+        active: true,
+        academicYearId: true,
+        academicYear: {
+          select: { name: true, startDate: true, endDate: true },
         },
-
-        include: {
-          academicYear: true,
-
-          items: true,
-
-          classes: true,
+        items: {
+          select: {
+            id: true,
+            frequency: true,
+            amount: true,
+            installments: { select: { id: true } },
+            customInstallments: {
+              orderBy: { sequence: "asc" },
+              select: {
+                name: true,
+                amount: true,
+                dueDate: true,
+                sequence: true,
+                periodStart: true,
+                periodEnd: true,
+              },
+            },
+          },
         },
-      });
+      },
+    });
 
-    if (!plan) {
-      throw new Error(
-        "Fee plan not found.",
-      );
-    }
-
+    if (!plan) throw new Error("Fee plan not found.");
     if (!plan.active) {
-      throw new Error(
-        "Cannot generate installments for an inactive fee plan.",
-      );
+      throw new Error("Cannot generate installments for an inactive fee plan.");
     }
 
-    if (
-      !plan.academicYear
-    ) {
-      throw new Error(
-        "Academic year not found.",
-      );
+    const needsAcademicPeriods = plan.items.some(
+      (item) => item.installments.length === 0 && item.frequency === "TERMLY",
+    );
+    const academicPeriods = needsAcademicPeriods
+      ? await prisma.academicPeriod.findMany({
+          where: {
+            schoolId,
+            academicYearId: plan.academicYearId,
+            active: true,
+          },
+          orderBy: { sequence: "asc" },
+          select: {
+            id: true,
+            name: true,
+            startDate: true,
+            endDate: true,
+          },
+        })
+      : [];
+
+    if (needsAcademicPeriods && academicPeriods.length === 0) {
+      throw new Error("No active academic periods found for this academic year.");
     }
 
-    const results = [];
+    const results: Array<{
+      feePlanItemId: string;
+      status: "EXISTS" | "GENERATED";
+      count: number;
+    }> = [];
+    const pendingInstallments: GeneratedInstallment[] = [];
 
     for (const item of plan.items) {
-      const existing =
-        await feeInstallmentRepository.findByFeePlanItem(
-          item.id,
-        );
-
-      if (existing.length > 0) {
+      if (item.installments.length > 0) {
         results.push({
           feePlanItemId: item.id,
           status: "EXISTS",
-          count: existing.length,
+          count: item.installments.length,
         });
-
         continue;
       }
 
-      let installments = [];
-
+      let installments: GeneratedInstallment[];
       switch (item.frequency) {
         case "MONTHLY":
-          installments =
-            createMonthlyInstallments(
-              item,
-              plan.academicYear.startDate,
-              plan.academicYear.endDate,
-            );
-          break;
-
-        case "QUARTERLY":
-          installments =
-            createQuarterlyInstallments(
-              item,
-              plan.academicYear.startDate,
-              plan.academicYear.endDate,
-            );
-          break;
-
-        case "HALF_YEARLY":
-          installments =
-            createHalfYearlyInstallments(
-              item,
-              plan.academicYear.startDate,
-              plan.academicYear.endDate,
-            );
-          break;
-
-        case "ANNUAL":
-          installments =
-            createAnnualInstallments(
-              item,
-              plan.academicYear.startDate,
-              plan.academicYear.endDate,
-            );
-          break;
-
-        case "TERMLY": {
-  const periods =
-    await prisma.academicPeriod.findMany({
-      where: {
-        schoolId,
-        academicYearId:
-          plan.academicYearId,
-        active: true,
-      },
-      orderBy: {
-        sequence: "asc",
-      },
-    });
-
-  if (periods.length === 0) {
-    throw new Error(
-      "No active academic periods found for this academic year.",
-    );
-  }
-
-  installments = periods.map(
-    (period, index) => ({
-      feePlanItemId: item.id,
-
-      academicPeriodId:
-        period.id,
-
-      name: period.name,
-
-      amount: Number(item.amount),
-
-      dueDate: new Date(
-        period.startDate,
-      ),
-
-      sequence: index + 1,
-
-      periodStart: new Date(
-        period.startDate,
-      ),
-
-      periodEnd: new Date(
-        period.endDate,
-      ),
-    }),
-  );
-
-  break;
-}
-
-        case "CUSTOM": {
-  const customInstallments =
-    await prisma.feePlanCustomInstallment.findMany({
-      where: {
-        feePlanItemId: item.id,
-      },
-      orderBy: {
-        sequence: "asc",
-      },
-    });
-
-  if (customInstallments.length === 0) {
-    throw new Error(
-      "No custom installments have been configured for this fee item.",
-    );
-  }
-
-  installments =
-    customInstallments.map(
-      (custom) => ({
-        feePlanItemId: item.id,
-
-        name: custom.name,
-
-        amount: Number(
-          custom.amount,
-        ),
-
-        dueDate: new Date(
-          custom.dueDate,
-        ),
-
-        sequence:
-          custom.sequence,
-
-        periodStart:
-          custom.periodStart
-            ? new Date(
-                custom.periodStart,
-              )
-            : null,
-
-        periodEnd:
-          custom.periodEnd
-            ? new Date(
-                custom.periodEnd,
-              )
-            : null,
-      }),
-    );
-
-  break;
-}
-
-        default:
-          throw new Error(
-            `Unsupported fee frequency: ${item.frequency}`,
+          installments = createMonthlyInstallments(
+            item,
+            plan.academicYear.startDate,
+            plan.academicYear.endDate,
           );
+          break;
+        case "QUARTERLY":
+          installments = createQuarterlyInstallments(
+            item,
+            plan.academicYear.startDate,
+            plan.academicYear.endDate,
+          );
+          break;
+        case "HALF_YEARLY":
+          installments = createHalfYearlyInstallments(
+            item,
+            plan.academicYear.startDate,
+            plan.academicYear.endDate,
+          );
+          break;
+        case "ANNUAL":
+          installments = createAnnualInstallments(
+            item,
+            plan.academicYear.startDate,
+            plan.academicYear.endDate,
+          );
+          break;
+        case "TERMLY":
+          installments = academicPeriods.map((period, index) => ({
+            feePlanItemId: item.id,
+            academicPeriodId: period.id,
+            name: period.name,
+            amount: Number(item.amount),
+            dueDate: new Date(period.startDate),
+            sequence: index + 1,
+            periodStart: new Date(period.startDate),
+            periodEnd: new Date(period.endDate),
+          }));
+          break;
+        case "CUSTOM":
+          if (item.customInstallments.length === 0) {
+            throw new Error(
+              "No custom installments have been configured for this fee item.",
+            );
+          }
+          installments = item.customInstallments.map((custom) => ({
+            feePlanItemId: item.id,
+            name: custom.name,
+            amount: Number(custom.amount),
+            dueDate: new Date(custom.dueDate),
+            sequence: custom.sequence,
+            periodStart: custom.periodStart
+              ? new Date(custom.periodStart)
+              : null,
+            periodEnd: custom.periodEnd ? new Date(custom.periodEnd) : null,
+          }));
+          break;
+        default:
+          throw new Error(`Unsupported fee frequency: ${item.frequency}`);
       }
 
-      if (installments.length > 0) {
-        await feeInstallmentRepository.createMany(
-          installments,
-        );
-      }
-
+      pendingInstallments.push(...installments);
       results.push({
         feePlanItemId: item.id,
         status: "GENERATED",
         count: installments.length,
       });
+    }
+
+    if (pendingInstallments.length > 0) {
+      await feeInstallmentRepository.createMany(pendingInstallments);
     }
 
     return {

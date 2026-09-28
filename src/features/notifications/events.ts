@@ -14,13 +14,6 @@ async function createEventNotification(input: {
   sourceId?: string;
   dedupeKey?: string;
 }) {
-  if (input.dedupeKey) {
-    const existing = await prisma.announcement.findUnique({
-      where: { dedupeKey: input.dedupeKey },
-    });
-    if (existing) return existing;
-  }
-
   try {
     const announcement = await prisma.announcement.create({
       data: {
@@ -56,12 +49,6 @@ function indiaDateKey(value = new Date()) {
     day: "2-digit",
     timeZone: "Asia/Kolkata",
   }).format(value);
-}
-
-function indiaDayBounds(value = new Date()) {
-  const [year, month, day] = indiaDateKey(value).split("-").map(Number);
-  const start = new Date(Date.UTC(year, month - 1, day) - 5.5 * 60 * 60 * 1000);
-  return { start, end: new Date(start.getTime() + 24 * 60 * 60 * 1000) };
 }
 
 function formatDate(value: Date) {
@@ -100,21 +87,6 @@ export async function notifyHomeworkPublished(homeworkId: string, schoolId: stri
     homework.subject?.name,
     homework.dueDate ? `Due ${formatDate(homework.dueDate)}` : null,
   ].filter(Boolean).join(" · ") || "Open SchoolDB to view the homework.";
-
-  const existing = await prisma.announcement.findFirst({
-    where: {
-      schoolId,
-      category: "HOMEWORK",
-      targetType,
-      targetId,
-      title,
-      body,
-      createdBy: "SYSTEM",
-      publishedAt: { gte: homework.assignedDate },
-    },
-    select: { id: true },
-  });
-  if (existing) return existing;
 
   return createEventNotification({
     schoolId,
@@ -165,21 +137,6 @@ export async function notifyExamResultsPublished(
       : scope.class.name;
     const title = `${exam.name} results published`;
     const body = "Results are now available. Open SchoolDB to view the result and report card.";
-    const existing = await prisma.announcement.findFirst({
-      where: {
-        schoolId,
-        category: "EXAM",
-        targetType,
-        targetId,
-        title,
-        createdBy: "SYSTEM",
-      },
-      select: { id: true },
-    });
-    if (existing) {
-      notifications.push(existing);
-      continue;
-    }
     notifications.push(await createEventNotification({
       schoolId,
       title,
@@ -232,7 +189,6 @@ export async function notifyExamResultsPublished(
 export async function notifyDailyBirthdays(now = new Date()) {
   const dateKey = indiaDateKey(now);
   const [, month, day] = dateKey.split("-").map(Number);
-  const { start, end } = indiaDayBounds(now);
   const students = await prisma.student.findMany({
     where: { status: "ACTIVE", enrollments: { some: { active: true } } },
     select: { id: true, schoolId: true, fullName: true, admissionNo: true, dob: true },
@@ -246,20 +202,26 @@ export async function notifyDailyBirthdays(now = new Date()) {
     return Number(parts.find((part) => part.type === "month")?.value) === month
       && Number(parts.find((part) => part.type === "day")?.value) === day;
   });
+  const birthdayKeys = birthdays.map((student) =>
+    notificationDedupeKey.birthday(student.id, dateKey),
+  );
+  const existingBirthdayKeys = birthdayKeys.length > 0
+    ? new Set(
+        (
+          await prisma.announcement.findMany({
+            where: { dedupeKey: { in: birthdayKeys } },
+            select: { dedupeKey: true },
+          })
+        ).flatMap((announcement) =>
+          announcement.dedupeKey ? [announcement.dedupeKey] : [],
+        ),
+      )
+    : new Set<string>();
 
   let created = 0;
   for (const student of birthdays) {
-    const existing = await prisma.announcement.findFirst({
-      where: {
-        schoolId: student.schoolId,
-        category: "BIRTHDAY",
-        targetType: "STUDENT",
-        targetId: student.id,
-        createdAt: { gte: start, lt: end },
-      },
-      select: { id: true },
-    });
-    if (existing) continue;
+    const dedupeKey = notificationDedupeKey.birthday(student.id, dateKey);
+    if (existingBirthdayKeys.has(dedupeKey)) continue;
     const name = student.fullName?.trim() || student.admissionNo;
     await createEventNotification({
       schoolId: student.schoolId,
@@ -271,7 +233,7 @@ export async function notifyDailyBirthdays(now = new Date()) {
       targetLabel: name,
       sourceType: "BIRTHDAY",
       sourceId: student.id,
-      dedupeKey: notificationDedupeKey.birthday(student.id, dateKey),
+      dedupeKey,
     });
     created += 1;
   }
@@ -298,18 +260,6 @@ export async function notifyFeePayment(paymentId: string, schoolId: string) {
   const student = payment.studentEnrollment.student;
   const name = student.fullName?.trim() || student.admissionNo;
   const amount = Number(payment.amount).toLocaleString("en-IN");
-
-  const existing = await prisma.announcement.findFirst({
-    where: {
-      schoolId,
-      category: "FEES",
-      targetType: "STUDENT",
-      targetId: payment.studentEnrollment.studentId,
-      body: { contains: payment.receiptNo },
-    },
-    select: { id: true },
-  });
-  if (existing) return existing;
 
   return createEventNotification({
     schoolId,
@@ -366,45 +316,20 @@ export async function notifyAttendanceLocked(
   const leave = session.records.filter((record) => record.status === "LEAVE").length;
   const label = `${session.class.name} - ${session.section.name}`;
 
-  const adminExisting = await prisma.announcement.findFirst({
-    where: {
-      schoolId,
-      category: "ATTENDANCE_SUMMARY",
-      targetType: "ADMIN",
-      targetId: session.id,
-    },
-    select: { id: true },
+  await createEventNotification({
+    schoolId,
+    title: `${label} attendance completed`,
+    body: `${session.records.length} students · ${present} present · ${absent} absent · ${late} late · ${leave} leave.`,
+    category: "ATTENDANCE_SUMMARY",
+    targetType: "ADMIN",
+    targetId: session.id,
+    targetLabel: "School administrators",
+    sourceType: "ATTENDANCE_SESSION",
+    sourceId: session.id,
+    dedupeKey: notificationDedupeKey.attendanceSummary(session.id),
   });
 
-  if (!adminExisting) {
-    await createEventNotification({
-      schoolId,
-      title: `${label} attendance completed`,
-      body: `${session.records.length} students · ${present} present · ${absent} absent · ${late} late · ${leave} leave.`,
-      category: "ATTENDANCE_SUMMARY",
-      targetType: "ADMIN",
-      targetId: session.id,
-      targetLabel: "School administrators",
-      sourceType: "ATTENDANCE_SESSION",
-      sourceId: session.id,
-      dedupeKey: notificationDedupeKey.attendanceSummary(session.id),
-    });
-  }
-
   for (const studentId of absentIds) {
-    const existing = await prisma.announcement.findFirst({
-      where: {
-        schoolId,
-        category: "ATTENDANCE",
-        targetType: "STUDENT",
-        targetId: studentId,
-        createdBy: "SYSTEM",
-        publishedAt: { gte: session.attendanceDate },
-      },
-      select: { id: true },
-    });
-    if (existing) continue;
-
     await createEventNotification({
       schoolId,
       title: "Attendance alert",

@@ -31,7 +31,10 @@ export default async function SettingsPage({
       ? prisma.studentProfileImageRequest.findMany({
           where: { schoolId: membership.schoolId },
           orderBy: { createdAt: "asc" },
-          include: {
+          take: 100,
+          select: {
+            id: true,
+            createdAt: true,
             student: {
               select: { fullName: true, admissionNo: true },
             },
