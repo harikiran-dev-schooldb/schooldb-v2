@@ -42,8 +42,13 @@ export default clerkMiddleware(async (auth, req) => {
     if (pathname.startsWith("/api/")) {
       await auth.protect();
     } else {
+      const schoolSlug = schoolSlugFromPath(pathname);
+
       await auth.protect({
-        unauthenticatedUrl: new URL("/choose-school", req.url).toString(),
+        unauthenticatedUrl: new URL(
+          schoolSlug ? `/${schoolSlug}/login` : "/choose-school",
+          req.url,
+        ).toString(),
       });
     }
   }
