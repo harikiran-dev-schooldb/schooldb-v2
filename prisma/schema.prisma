@@ -61,6 +61,9 @@ model School {
   createdAt                   DateTime                     @default(now())
   updatedAt                   DateTime                     @updatedAt
   logo                        String?
+  directUpiEnabled            Boolean                      @default(false)
+  directUpiId                 String?                      @db.VarChar(120)
+  directUpiPayeeName          String?                      @db.VarChar(160)
   academicPeriods             AcademicPeriod[]
   academicYears               AcademicYear[]
   admissionApplications       AdmissionApplication[]

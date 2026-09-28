@@ -14,10 +14,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { studentFeeLedgerService } from "@/features/student-fees/services/student-fee-ledger.service";
-import { studentFeeService } from "@/features/student-fees/services/student-fee.service";
+import { isValidUpiId } from "@/features/online-payments/direct-upi";
 import { OnlineFeeCheckout } from "@/features/online-payments/components/OnlineFeeCheckout";
 import { isCashfreeConfigured } from "@/features/online-payments/cashfree";
+import { studentFeeLedgerService } from "@/features/student-fees/services/student-fee-ledger.service";
+import { studentFeeService } from "@/features/student-fees/services/student-fee.service";
 import { formatCurrency, formatDate } from "@/lib/self-service-format";
 import { requireStudentAccess } from "@/lib/student-access";
 
@@ -27,7 +28,7 @@ export default async function StudentFeesPage({
   params: Promise<{ schoolSlug: string; studentId: string }>;
 }) {
   const { schoolSlug, studentId } = await params;
-  const { membership } = await requireStudentAccess(schoolSlug, studentId);
+  const { membership, student } = await requireStudentAccess(schoolSlug, studentId);
   const assignments = await studentFeeService.list(membership.schoolId, studentId);
   const ledgers = (
     await Promise.all(
@@ -61,6 +62,11 @@ export default async function StudentFeesPage({
   const paidPercentage = summary.payable > 0
     ? Math.min(100, Math.round((summary.paid / summary.payable) * 100))
     : 0;
+  const cashfreeAvailable = isCashfreeConfigured();
+  const directUpiAvailable =
+    membership.school.directUpiEnabled &&
+    Boolean(membership.school.directUpiId) &&
+    isValidUpiId(membership.school.directUpiId ?? "");
 
   return (
     <SelfServicePage title="Fees" description="Fee plans, installments, and successful payments.">
@@ -84,11 +90,22 @@ export default async function StudentFeesPage({
         </div>
       </section>
 
-      {outstandingInstallments.length && isCashfreeConfigured() ? (
+      {outstandingInstallments.length && (cashfreeAvailable || directUpiAvailable) ? (
         <OnlineFeeCheckout
           schoolSlug={schoolSlug}
           studentId={studentId}
+          admissionNo={student.admissionNo}
           installments={outstandingInstallments}
+          cashfreeAvailable={cashfreeAvailable}
+          directUpi={
+            directUpiAvailable && membership.school.directUpiId
+              ? {
+                  upiId: membership.school.directUpiId,
+                  payeeName: membership.school.directUpiPayeeName || membership.school.name,
+                  schoolName: membership.school.name,
+                }
+              : undefined
+          }
         />
       ) : null}
 

@@ -1,0 +1,4 @@
+ALTER TABLE "School"
+ADD COLUMN "directUpiEnabled" BOOLEAN NOT NULL DEFAULT false,
+ADD COLUMN "directUpiId" VARCHAR(120),
+ADD COLUMN "directUpiPayeeName" VARCHAR(160);

@@ -2,13 +2,14 @@
 
 import Script from "next/script";
 import { useMemo, useState } from "react";
-import { CreditCard, LockKeyhole, ShieldCheck } from "lucide-react";
+import { CreditCard, LockKeyhole, ShieldCheck, Smartphone } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { formatCurrency, formatDate } from "@/lib/self-service-format";
+import { DirectUpiDialog } from "./DirectUpiDialog";
 
 type InstallmentOption = {
   id: string;
@@ -36,15 +37,26 @@ declare global {
 export function OnlineFeeCheckout({
   schoolSlug,
   studentId,
+  admissionNo,
   installments,
+  cashfreeAvailable,
+  directUpi,
 }: {
   schoolSlug: string;
   studentId: string;
+  admissionNo: string;
   installments: InstallmentOption[];
+  cashfreeAvailable: boolean;
+  directUpi?: {
+    upiId: string;
+    payeeName: string;
+    schoolName: string;
+  };
 }) {
   const [selected, setSelected] = useState(() => installments.map((item) => item.id));
   const [sdkReady, setSdkReady] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [upiOpen, setUpiOpen] = useState(false);
   const total = useMemo(
     () =>
       installments
@@ -88,12 +100,12 @@ export function OnlineFeeCheckout({
     });
   }
 
-  async function payNow() {
+  async function payWithCashfree() {
     if (!selected.length) {
       toast.error("Select at least one installment.");
       return;
     }
-    if (!window.Cashfree) {
+    if (!cashfreeAvailable || !window.Cashfree) {
       toast.error("Secure checkout is still loading. Please try again.");
       return;
     }
@@ -137,13 +149,23 @@ export function OnlineFeeCheckout({
     }
   }
 
+  function openDirectUpi() {
+    if (!selected.length) {
+      toast.error("Select at least one installment.");
+      return;
+    }
+    setUpiOpen(true);
+  }
+
   return (
     <>
-      <Script
-        src="https://sdk.cashfree.com/js/v3/cashfree.js"
-        strategy="afterInteractive"
-        onLoad={() => setSdkReady(true)}
-      />
+      {cashfreeAvailable ? (
+        <Script
+          src="https://sdk.cashfree.com/js/v3/cashfree.js"
+          strategy="afterInteractive"
+          onLoad={() => setSdkReady(true)}
+        />
+      ) : null}
       <Card className="overflow-hidden border-indigo-100 bg-white/95 shadow-[0_20px_60px_rgba(79,70,229,0.10)]">
         <div className="bg-gradient-to-r from-indigo-600 via-violet-600 to-purple-600 px-5 py-5 text-white sm:px-6">
           <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
@@ -153,11 +175,11 @@ export function OnlineFeeCheckout({
               </span>
               <div>
                 <p className="text-lg font-bold">Pay fees online</p>
-                <p className="mt-0.5 text-sm text-indigo-100">Select installments and continue securely.</p>
+                <p className="mt-0.5 text-sm text-indigo-100">Select installments and choose how you want to pay.</p>
               </div>
             </div>
             <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5 text-xs font-semibold ring-1 ring-white/20">
-              <ShieldCheck className="size-3.5" /> Cashfree secured
+              <ShieldCheck className="size-3.5" /> School payment options
             </span>
           </div>
         </div>
@@ -204,7 +226,7 @@ export function OnlineFeeCheckout({
             })}
           </div>
 
-          <div className="flex flex-col gap-4 rounded-2xl bg-indigo-50/70 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-4 rounded-2xl bg-indigo-50/70 p-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.14em] text-indigo-600">Payable now</p>
               <p className="mt-1 text-2xl font-bold tracking-tight text-slate-950">{formatCurrency(total)}</p>
@@ -212,17 +234,51 @@ export function OnlineFeeCheckout({
                 <LockKeyhole className="size-3.5" /> Amount is calculated from your fee ledger.
               </p>
             </div>
-            <Button
-              size="xl"
-              onClick={payNow}
-              disabled={!selected.length || !sdkReady || submitting}
-              className="min-w-44 bg-indigo-600 shadow-[0_10px_26px_rgba(79,70,229,0.25)] hover:bg-indigo-700"
-            >
-              {submitting ? "Opening checkout…" : sdkReady ? "Pay securely" : "Loading secure checkout…"}
-            </Button>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              {directUpi ? (
+                <Button
+                  size="xl"
+                  variant="outline"
+                  onClick={openDirectUpi}
+                  disabled={!selected.length || total <= 0}
+                  className="min-w-44 border-emerald-200 bg-white text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800"
+                >
+                  <Smartphone className="size-4" />
+                  Pay direct UPI
+                </Button>
+              ) : null}
+              {cashfreeAvailable ? (
+                <Button
+                  size="xl"
+                  onClick={() => void payWithCashfree()}
+                  disabled={!selected.length || !sdkReady || submitting}
+                  className="min-w-44 bg-indigo-600 shadow-[0_10px_26px_rgba(79,70,229,0.25)] hover:bg-indigo-700"
+                >
+                  {submitting ? "Opening checkout…" : sdkReady ? "Pay via Cashfree" : "Loading Cashfree…"}
+                </Button>
+              ) : null}
+            </div>
           </div>
+
+          {directUpi ? (
+            <p className="text-xs leading-5 text-muted-foreground">
+              Direct UPI sends money to the school UPI account without using Cashfree. The school must verify the bank transaction before recording the fee as paid.
+            </p>
+          ) : null}
         </CardContent>
       </Card>
+
+      {directUpi ? (
+        <DirectUpiDialog
+          open={upiOpen}
+          onOpenChange={setUpiOpen}
+          schoolName={directUpi.schoolName}
+          upiId={directUpi.upiId}
+          payeeName={directUpi.payeeName}
+          admissionNo={admissionNo}
+          amount={total}
+        />
+      ) : null}
     </>
   );
 }
