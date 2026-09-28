@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import Script from "next/script";
 import { useEffect, useRef, useState } from "react";
-import { CheckCircle2, Copy, ExternalLink, LoaderCircle, QrCode, ShieldCheck, Smartphone } from "lucide-react";
+import { CheckCircle2, Copy, CreditCard, ExternalLink, LoaderCircle, ShieldCheck, Smartphone } from "lucide-react";
 import QRCode from "react-qr-code";
 import { toast } from "sonner";
 
@@ -25,6 +26,8 @@ type Installment = {
 type GeneratedOrder = {
   orderId: string;
   publicUrl: string;
+  paymentSessionId: string;
+  mode: "sandbox" | "production";
   amount: number;
   status: "ACTIVE" | "PAID" | "FAILED" | "EXPIRED" | "REVIEW_REQUIRED";
   feePaymentId?: string | null;
@@ -80,6 +83,8 @@ function StaffQrFlow({
   const [customerPhone, setCustomerPhone] = useState("");
   const [creating, setCreating] = useState(false);
   const [checking, setChecking] = useState(false);
+  const [openingCheckout, setOpeningCheckout] = useState(false);
+  const [sdkReady, setSdkReady] = useState(false);
   const [order, setOrder] = useState<GeneratedOrder | null>(null);
   const notifiedPaid = useRef(false);
 
@@ -147,7 +152,13 @@ function StaffQrFlow({
       const result = (await response.json()) as {
         success: boolean;
         message?: string;
-        data?: { orderId: string; publicUrl?: string; amount: number };
+        data?: {
+          orderId: string;
+          publicUrl?: string;
+          paymentSessionId: string;
+          mode: "sandbox" | "production";
+          amount: number;
+        };
       };
       if (!response.ok || !result.data?.publicUrl) {
         throw new Error(result.message || "Unable to generate payment QR.");
@@ -155,6 +166,8 @@ function StaffQrFlow({
       setOrder({
         orderId: result.data.orderId,
         publicUrl: result.data.publicUrl,
+        paymentSessionId: result.data.paymentSessionId,
+        mode: result.data.mode,
         amount: result.data.amount,
         status: "ACTIVE",
       });
@@ -200,10 +213,57 @@ function StaffQrFlow({
     toast.success("Payment link copied.");
   }
 
+  async function payOnOfficeDevice() {
+    if (!order) return;
+
+    const cashfreeFactory = (
+      window as unknown as {
+        Cashfree?: (options: {
+          mode: "sandbox" | "production";
+        }) => {
+          checkout(options: {
+            paymentSessionId: string;
+            redirectTarget: "_modal";
+          }): Promise<{ error?: { message?: string } }>;
+        };
+      }
+    ).Cashfree;
+
+    if (!cashfreeFactory) {
+      toast.error("Secure checkout is still loading. Please try again.");
+      return;
+    }
+
+    setOpeningCheckout(true);
+    try {
+      const result = await cashfreeFactory({ mode: order.mode }).checkout({
+        paymentSessionId: order.paymentSessionId,
+        redirectTarget: "_modal",
+      });
+      if (result?.error) {
+        throw new Error(result.error.message || "Cashfree checkout could not be opened.");
+      }
+      await checkPayment();
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Cashfree checkout could not be opened.",
+      );
+    } finally {
+      setOpeningCheckout(false);
+    }
+  }
+
   if (order) {
     const paid = order.status === "PAID";
     return (
       <div className="space-y-5">
+        <Script
+          src="https://sdk.cashfree.com/js/v3/cashfree.js"
+          strategy="afterInteractive"
+          onReady={() => setSdkReady(true)}
+        />
         <div className="flex flex-col items-center rounded-3xl border border-indigo-100 bg-gradient-to-b from-indigo-50/80 to-white p-6 text-center">
           {paid ? (
             <span className="flex size-16 items-center justify-center rounded-3xl bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100">
@@ -215,12 +275,12 @@ function StaffQrFlow({
             </div>
           )}
           <h3 className="mt-5 text-xl font-bold tracking-tight">
-            {paid ? "Payment received" : "Ask the student to scan"}
+            {paid ? "Payment received" : "Cashfree payment ready"}
           </h3>
           <p className="mt-1 text-sm text-muted-foreground">
             {paid
               ? `${formatCurrency(order.amount)} was verified and added to the fee ledger.`
-              : `${studentName} can scan this QR using any phone camera.`}
+              : `${studentName} can scan this QR, or you can open checkout on this office device.`}
           </p>
           <Badge className="mt-3" variant={paid ? "success" : "secondary"}>
             {paid ? "Receipt created" : `Waiting for ${formatCurrency(order.amount)}`}
@@ -228,18 +288,29 @@ function StaffQrFlow({
         </div>
 
         {!paid ? (
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <Button className="flex-1" onClick={() => void checkPayment()} disabled={checking}>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <Button
+              className="sm:col-span-2"
+              onClick={() => void payOnOfficeDevice()}
+              disabled={!sdkReady || openingCheckout}
+            >
+              {openingCheckout ? (
+                <LoaderCircle className="size-4 animate-spin" />
+              ) : (
+                <CreditCard className="size-4" />
+              )}
+              {openingCheckout
+                ? "Opening checkout…"
+                : sdkReady
+                  ? "Pay on this device"
+                  : "Loading secure checkout…"}
+            </Button>
+            <Button variant="outline" onClick={() => void checkPayment()} disabled={checking}>
               {checking ? <LoaderCircle className="size-4 animate-spin" /> : <ShieldCheck className="size-4" />}
               {checking ? "Checking…" : "Check payment"}
             </Button>
             <Button variant="outline" onClick={() => void copyLink()}>
-              <Copy className="size-4" /> Copy link
-            </Button>
-            <Button variant="outline" asChild>
-              <a href={order.publicUrl} target="_blank" rel="noreferrer">
-                <ExternalLink className="size-4" /> Open
-              </a>
+              <Copy className="size-4" /> Copy payment link
             </Button>
           </div>
         ) : order.feePaymentId ? (
@@ -263,10 +334,10 @@ function StaffQrFlow({
     <div className="space-y-5">
       <div className="rounded-2xl border border-indigo-100 bg-indigo-50/60 p-4">
         <div className="flex items-center gap-3">
-          <span className="flex size-10 items-center justify-center rounded-xl bg-indigo-600 text-white"><QrCode className="size-5" /></span>
+          <span className="flex size-10 items-center justify-center rounded-xl bg-indigo-600 text-white"><CreditCard className="size-5" /></span>
           <div>
-            <p className="font-semibold">Generate payment QR</p>
-            <p className="text-xs text-muted-foreground">The amount is recalculated securely before checkout.</p>
+            <p className="font-semibold">Accept an online payment</p>
+            <p className="text-xs text-muted-foreground">Use Cashfree checkout on this device or let the parent scan a QR.</p>
           </div>
         </div>
       </div>
@@ -317,19 +388,19 @@ function StaffQrFlow({
 
       <div className="flex items-center justify-between rounded-2xl bg-slate-50 p-4">
         <div>
-          <p className="text-xs font-semibold text-muted-foreground">QR payment total</p>
+          <p className="text-xs font-semibold text-muted-foreground">Cashfree payment total</p>
           <p className="mt-1 text-2xl font-bold tracking-tight">{formatCurrency(total)}</p>
         </div>
         <Button size="lg" onClick={() => void generateQr()} disabled={creating || !selectedIds.length}>
-          {creating ? <LoaderCircle className="size-4 animate-spin" /> : <QrCode className="size-4" />}
-          {creating ? "Generating…" : "Generate QR"}
+          {creating ? <LoaderCircle className="size-4 animate-spin" /> : <CreditCard className="size-4" />}
+          {creating ? "Preparing…" : "Continue with Cashfree"}
         </Button>
       </div>
     </div>
   );
 }
 
-export function StaffCashfreeQrDialog({
+export function StaffCashfreePaymentDialog({
   open,
   onOpenChange,
   schoolSlug,
@@ -350,7 +421,7 @@ export function StaffCashfreeQrDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Cashfree payment QR</DialogTitle>
+          <DialogTitle>Cashfree online payment</DialogTitle>
         </DialogHeader>
         {open ? (
           <StaffQrFlow

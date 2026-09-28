@@ -14,7 +14,7 @@ export async function POST(request: Request) {
   return apiHandler(async () => {
     const input = await validateBody(request, cashfreeOrderSchema);
     const membership = await requireRole(
-      ["SUPER_ADMIN", "SCHOOL_ADMIN"],
+      ["SUPER_ADMIN", "SCHOOL_ADMIN", "ACCOUNTANT"],
       input.schoolSlug,
     );
     const enrollment = await prisma.studentEnrollment.findFirst({
@@ -37,6 +37,6 @@ export async function POST(request: Request) {
       initiator: "STAFF_QR",
     });
 
-    return ApiResponse.success(order, "Payment QR is ready.", 201);
+    return ApiResponse.success(order, "Cashfree payment is ready.", 201);
   });
 }

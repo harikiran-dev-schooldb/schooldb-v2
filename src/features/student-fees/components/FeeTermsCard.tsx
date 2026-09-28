@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle2, Clock3, IndianRupee, QrCode, WalletCards } from "lucide-react";
+import { CheckCircle2, Clock3, CreditCard, IndianRupee, WalletCards } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -25,7 +25,7 @@ type Props = {
   installments: Installment[];
   loading: boolean;
   onCollect: (installment: Installment) => void;
-  onGenerateQr?: (installment: Installment) => void;
+  onCashfreePayment?: (installment: Installment) => void;
 };
 
 function money(value: number) {
@@ -45,7 +45,7 @@ function getStatusClass(status: Installment["status"]) {
   }
 }
 
-export function FeeTermsCard({ installments, loading, onCollect, onGenerateQr }: Props) {
+export function FeeTermsCard({ installments, loading, onCollect, onCashfreePayment }: Props) {
   const paidCount = installments.filter(
     (installment) => installment.status === "PAID",
   ).length;
@@ -148,14 +148,14 @@ export function FeeTermsCard({ installments, loading, onCollect, onGenerateQr }:
 
                     {installment.outstanding > 0 ? (
                       <div className="flex flex-col gap-2 sm:flex-row">
-                        {onGenerateQr ? (
+                        {onCashfreePayment ? (
                           <Button
                             variant="outline"
                             className="min-w-28 rounded-xl border-indigo-200 text-indigo-700 hover:bg-indigo-50 hover:text-indigo-800"
-                            onClick={() => onGenerateQr(installment)}
+                            onClick={() => onCashfreePayment(installment)}
                           >
-                            <QrCode className="size-4" />
-                            Show QR
+                            <CreditCard className="size-4" />
+                            Cashfree
                           </Button>
                         ) : null}
                         <Button

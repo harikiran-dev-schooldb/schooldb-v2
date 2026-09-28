@@ -14,9 +14,9 @@ type Props = {
 export default async function FeeCollectionPage({ params }: Props) {
   const { schoolSlug } = await params;
   const membership = await requirePermission(PERMISSIONS.FEE_READ, schoolSlug);
-  const allowCashfreeQr =
+  const allowCashfreePayments =
     isCashfreeConfigured() &&
-    ["SUPER_ADMIN", "SCHOOL_ADMIN"].includes(membership.role);
+    ["SUPER_ADMIN", "SCHOOL_ADMIN", "ACCOUNTANT"].includes(membership.role);
 
   return (
     <div className="w-full space-y-6 p-4 pb-10 sm:p-6">
@@ -30,7 +30,7 @@ export default async function FeeCollectionPage({ params }: Props) {
             Fee Collection
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Search a student, review installments, and record fee payments.
+            Collect cash or accept secure Cashfree payments in the office.
           </p>
         </div>
       </div>
@@ -39,7 +39,7 @@ export default async function FeeCollectionPage({ params }: Props) {
       <section className="premium-card overflow-hidden rounded-2xl">
         <FeeCollectionContainer
           schoolSlug={schoolSlug}
-          allowCashfreeQr={allowCashfreeQr}
+          allowCashfreePayments={allowCashfreePayments}
         />
       </section>
     </div>

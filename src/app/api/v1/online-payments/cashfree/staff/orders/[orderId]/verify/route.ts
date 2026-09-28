@@ -16,7 +16,7 @@ export async function POST(
     const { orderId } = await params;
     const schoolSlug = new URL(request.url).searchParams.get("schoolSlug") ?? "";
     const membership = await requireRole(
-      ["SUPER_ADMIN", "SCHOOL_ADMIN"],
+      ["SUPER_ADMIN", "SCHOOL_ADMIN", "ACCOUNTANT"],
       schoolSlug,
     );
     const localOrder = await prisma.cashfreePaymentOrder.findFirst({

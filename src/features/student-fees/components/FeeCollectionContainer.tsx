@@ -8,7 +8,7 @@ import {
   type Installment,
 } from "@/features/student-fees/components/FeeTermsCard";
 import { RecordFeePaymentDialog } from "@/features/student-fees/components/RecordFeePaymentDialog";
-import { StaffCashfreeQrDialog } from "@/features/online-payments/components/StaffCashfreeQrDialog";
+import { StaffCashfreePaymentDialog } from "@/features/online-payments/components/StaffCashfreeQrDialog";
 import { StudentFeeSearch } from "./StudentFeeSearch";
 
 type Student = {
@@ -58,10 +58,10 @@ type FeeDetailsResponse = {
 
 type Props = {
   schoolSlug: string;
-  allowCashfreeQr?: boolean;
+  allowCashfreePayments?: boolean;
 };
 
-export function FeeCollectionContainer({ schoolSlug, allowCashfreeQr = false }: Props) {
+export function FeeCollectionContainer({ schoolSlug, allowCashfreePayments = false }: Props) {
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
 
   const [installments, setInstallments] = useState<Installment[]>([]);
@@ -76,7 +76,7 @@ export function FeeCollectionContainer({ schoolSlug, allowCashfreeQr = false }: 
     useState<Installment | null>(null);
 
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
-  const [qrInstallment, setQrInstallment] = useState<Installment | null>(null);
+  const [cashfreeInstallment, setCashfreeInstallment] = useState<Installment | null>(null);
 
   const [feesError, setFeesError] = useState<string | null>(null);
 
@@ -165,7 +165,7 @@ export function FeeCollectionContainer({ schoolSlug, allowCashfreeQr = false }: 
     setSelectedInstallment(null);
 
     setPaymentDialogOpen(false);
-    setQrInstallment(null);
+    setCashfreeInstallment(null);
     setFeesError(null);
   }
 
@@ -222,7 +222,7 @@ export function FeeCollectionContainer({ schoolSlug, allowCashfreeQr = false }: 
               installments={installments}
               loading={false}
               onCollect={handleCollect}
-              onGenerateQr={allowCashfreeQr ? setQrInstallment : undefined}
+              onCashfreePayment={allowCashfreePayments ? setCashfreeInstallment : undefined}
             />
           )}
         </div>
@@ -263,11 +263,11 @@ export function FeeCollectionContainer({ schoolSlug, allowCashfreeQr = false }: 
         />
       )}
 
-      {selectedStudent && qrInstallment ? (
-        <StaffCashfreeQrDialog
+      {selectedStudent && cashfreeInstallment ? (
+        <StaffCashfreePaymentDialog
           open
           onOpenChange={(open) => {
-            if (!open) setQrInstallment(null);
+            if (!open) setCashfreeInstallment(null);
           }}
           schoolSlug={schoolSlug}
           student={selectedStudent}
@@ -280,7 +280,7 @@ export function FeeCollectionContainer({ schoolSlug, allowCashfreeQr = false }: 
               studentFeeId: installment.studentFeeId ?? "",
               sequence: installment.sequence ?? 0,
             }))}
-          initialInstallmentId={qrInstallment.id}
+          initialInstallmentId={cashfreeInstallment.id}
           onSuccess={() => {
             void selectStudent(selectedStudent);
           }}
