@@ -1,4 +1,4 @@
-import { cashfreeOrderSchema } from "@/features/online-payments/schemas/cashfree-order.schema";
+import { cashfreeStaffOrderSchema } from "@/features/online-payments/schemas/cashfree-order.schema";
 import { cashfreePaymentService } from "@/features/online-payments/services/cashfree-payment.service";
 import { apiHandler } from "@/lib/api";
 import { requireRole } from "@/lib/auth";
@@ -12,7 +12,7 @@ export const runtime = "nodejs";
 
 export async function POST(request: Request) {
   return apiHandler(async () => {
-    const input = await validateBody(request, cashfreeOrderSchema);
+    const input = await validateBody(request, cashfreeStaffOrderSchema);
     const membership = await requireRole(
       ["SUPER_ADMIN", "SCHOOL_ADMIN", "ACCOUNTANT"],
       input.schoolSlug,
@@ -20,16 +20,24 @@ export async function POST(request: Request) {
     const enrollment = await prisma.studentEnrollment.findFirst({
       where: {
         schoolId: membership.schoolId,
-        studentId: input.studentId,
+        ...(input.studentEnrollmentId
+          ? { id: input.studentEnrollmentId }
+          : { studentId: input.studentId }),
         active: true,
       },
       orderBy: { updatedAt: "desc" },
-      select: { id: true },
+      select: { id: true, studentId: true },
     });
     if (!enrollment) throw new ApiError(404, "Active student enrollment not found.");
 
     const order = await cashfreePaymentService.createOrder({
-      input,
+      input: {
+        schoolSlug: input.schoolSlug,
+        studentId: enrollment.studentId,
+        installmentIds: input.installmentIds,
+        idempotencyKey: input.idempotencyKey,
+        ...(input.customerPhone ? { customerPhone: input.customerPhone } : {}),
+      },
       schoolId: membership.schoolId,
       enrollmentId: enrollment.id,
       requestedByUserId: membership.userId,

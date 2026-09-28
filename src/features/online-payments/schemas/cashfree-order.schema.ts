@@ -12,4 +12,14 @@ export const cashfreeOrderSchema = z.object({
     .optional(),
 });
 
+export const cashfreeStaffOrderSchema = cashfreeOrderSchema
+  .omit({ studentId: true })
+  .extend({
+    studentId: z.string().trim().min(1).optional(),
+    studentEnrollmentId: z.string().trim().min(1).optional(),
+  })
+  .refine((input) => input.studentId || input.studentEnrollmentId, {
+    message: "A student or enrollment is required.",
+  });
+
 export type CashfreeOrderInput = z.infer<typeof cashfreeOrderSchema>;

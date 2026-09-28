@@ -1,16 +1,23 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import Script from "next/script";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
   CalendarDays,
   CheckCircle2,
+  Copy,
   CreditCard,
   IndianRupee,
   Landmark,
+  LoaderCircle,
+  QrCode,
   ReceiptIndianRupee,
+  ShieldCheck,
+  Smartphone,
   Wallet,
 } from "lucide-react";
+import QRCode from "react-qr-code";
 
 import {
   Dialog,
@@ -89,6 +96,32 @@ type PaymentFormProps = {
 
   onSuccess: () => void;
 };
+
+type CashfreeOrder = {
+  orderId: string;
+  publicUrl: string;
+  paymentSessionId: string;
+  mode: "sandbox" | "production";
+  amount: number;
+  status: "ACTIVE" | "PAID" | "FAILED" | "EXPIRED" | "REVIEW_REQUIRED";
+  feePaymentId?: string | null;
+};
+
+async function verifyCashfreeOrder(schoolSlug: string, orderId: string) {
+  const response = await fetch(
+    `/api/v1/online-payments/cashfree/staff/orders/${encodeURIComponent(orderId)}/verify?schoolSlug=${encodeURIComponent(schoolSlug)}`,
+    { method: "POST" },
+  );
+  const result = (await response.json()) as {
+    success: boolean;
+    message?: string;
+    data?: Pick<CashfreeOrder, "status" | "feePaymentId" | "amount">;
+  };
+  if (!response.ok || !result.data) {
+    throw new Error(result.message || "Unable to verify Cashfree payment.");
+  }
+  return result.data;
+}
 
 /* -------------------------------------------------------------------------- */
 /* Helpers                                                                    */
@@ -240,6 +273,20 @@ function PaymentForm({
   const [remarks, setRemarks] = useState("");
 
   const [loading, setLoading] = useState(false);
+
+  const [customerPhone, setCustomerPhone] = useState("");
+
+  const [cashfreeOrder, setCashfreeOrder] = useState<CashfreeOrder | null>(
+    null,
+  );
+
+  const [checkingCashfree, setCheckingCashfree] = useState(false);
+
+  const [openingCashfree, setOpeningCashfree] = useState(false);
+
+  const [cashfreeSdkReady, setCashfreeSdkReady] = useState(false);
+
+  const notifiedCashfreePaid = useRef(false);
 
   /* ------------------------------------------------------------------------ */
   /* Selected installments                                                    */
@@ -399,6 +446,8 @@ function PaymentForm({
   /* ------------------------------------------------------------------------ */
 
   function updatePaymentAmount(installment: Installment, value: string) {
+    if (paymentMode === "ONLINE") return;
+
     let amount = value === "" ? 0 : Number(value);
 
     if (!Number.isFinite(amount)) {
@@ -467,6 +516,119 @@ function PaymentForm({
     setPaymentAmounts({});
   }
 
+  function changePaymentMode(value: string) {
+    setPaymentMode(value);
+
+    if (value === "ONLINE") {
+      setPaymentAmounts(
+        Object.fromEntries(
+          selectedInstallments.map((installment) => [
+            installment.id,
+            installment.outstanding,
+          ]),
+        ),
+      );
+      setReferenceNo("");
+    }
+  }
+
+  async function checkCashfreePayment(showToast = true) {
+    if (!cashfreeOrder || !schoolSlug) return;
+    if (showToast) setCheckingCashfree(true);
+
+    try {
+      const next = await verifyCashfreeOrder(schoolSlug, cashfreeOrder.orderId);
+      setCashfreeOrder((current) =>
+        current ? { ...current, ...next } : current,
+      );
+
+      if (next.status === "PAID" && !notifiedCashfreePaid.current) {
+        notifiedCashfreePaid.current = true;
+        toast.success("Payment verified and receipt created.");
+        refreshTable("student-fees", "fee-payments", "fee-receipts");
+        onOpenChange(false);
+        await onSuccess();
+
+        if (next.feePaymentId) {
+          window.open(
+            `/${schoolSlug}/fees/receipts/${next.feePaymentId}`,
+            "_blank",
+          );
+        }
+      }
+    } catch (error) {
+      if (showToast) {
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : "Unable to verify Cashfree payment.",
+        );
+      }
+    } finally {
+      if (showToast) setCheckingCashfree(false);
+    }
+  }
+
+  useEffect(() => {
+    if (!cashfreeOrder || cashfreeOrder.status !== "ACTIVE") return;
+    const timer = window.setInterval(() => {
+      void checkCashfreePayment(false);
+    }, 4000);
+    return () => window.clearInterval(timer);
+    // Poll only while the current Cashfree order is active.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cashfreeOrder?.orderId, cashfreeOrder?.status, schoolSlug]);
+
+  async function openCashfreeCheckout() {
+    if (!cashfreeOrder) return;
+
+    const cashfreeFactory = (
+      window as unknown as {
+        Cashfree?: (options: { mode: "sandbox" | "production" }) => {
+          checkout(options: {
+            paymentSessionId: string;
+            redirectTarget: "_modal";
+          }): Promise<{ error?: { message?: string } }>;
+        };
+      }
+    ).Cashfree;
+
+    if (!cashfreeFactory || !cashfreeSdkReady) {
+      toast.error("Secure checkout is still loading. Please try again.");
+      return;
+    }
+
+    setOpeningCashfree(true);
+    try {
+      const result = await cashfreeFactory({ mode: cashfreeOrder.mode }).checkout(
+        {
+          paymentSessionId: cashfreeOrder.paymentSessionId,
+          redirectTarget: "_modal",
+        },
+      );
+      if (result?.error) {
+        throw new Error(
+          result.error.message || "Cashfree checkout could not be opened.",
+        );
+      }
+      await checkCashfreePayment();
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Cashfree checkout could not be opened.",
+      );
+    } finally {
+      setOpeningCashfree(false);
+    }
+  }
+
+  async function copyCashfreeLink() {
+    if (!cashfreeOrder) return;
+    await navigator.clipboard.writeText(cashfreeOrder.publicUrl);
+    toast.success("Payment link copied.");
+  }
+
   /* ------------------------------------------------------------------------ */
   /* Submit                                                                   */
   /* ------------------------------------------------------------------------ */
@@ -510,6 +672,16 @@ function PaymentForm({
 
         return;
       }
+
+      if (
+        paymentMode === "ONLINE" &&
+        Math.abs(amount - installment.outstanding) > 0.005
+      ) {
+        toast.error(
+          `Cashfree must collect the full balance for ${installment.name}.`,
+        );
+        return;
+      }
     }
 
     if (totalPayment <= 0) {
@@ -520,6 +692,43 @@ function PaymentForm({
 
     try {
       setLoading(true);
+
+      if (paymentMode === "ONLINE") {
+        if (!schoolSlug) {
+          toast.error("Online payments are unavailable on this page.");
+          return;
+        }
+        if (customerPhone && !/^[6-9]\d{9}$/.test(customerPhone)) {
+          toast.error("Enter a valid 10-digit Indian mobile number.");
+          return;
+        }
+
+        const response = await fetch(
+          "/api/v1/online-payments/cashfree/staff/orders",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              schoolSlug,
+              studentEnrollmentId,
+              installmentIds: selectedInstallmentIds,
+              idempotencyKey: crypto.randomUUID(),
+              ...(customerPhone ? { customerPhone } : {}),
+            }),
+          },
+        );
+        const result = (await response.json()) as {
+          success: boolean;
+          message?: string;
+          data?: Omit<CashfreeOrder, "status" | "feePaymentId">;
+        };
+        if (!response.ok || !result.data) {
+          throw new Error(result.message || "Unable to prepare Cashfree payment.");
+        }
+        setCashfreeOrder({ ...result.data, status: "ACTIVE" });
+        toast.success("Cashfree payment is ready. Scan the QR or pay on this device.");
+        return;
+      }
 
       /* -------------------------------------------------------------------- */
       /* Build allocations                                                     */
@@ -592,6 +801,74 @@ function PaymentForm({
 
   return (
     <div className="space-y-6">
+      {cashfreeOrder && (
+        <>
+          <Script
+            src="https://sdk.cashfree.com/js/v3/cashfree.js"
+            strategy="afterInteractive"
+            onReady={() => setCashfreeSdkReady(true)}
+          />
+          <section className="space-y-4 rounded-2xl border border-indigo-100 bg-gradient-to-b from-indigo-50/80 to-white p-5">
+            <div className="flex items-start gap-3">
+              <div className="flex size-10 items-center justify-center rounded-xl bg-indigo-100 text-indigo-600">
+                <QrCode className="size-5" />
+              </div>
+              <div>
+                <h3 className="font-semibold">Cashfree payment ready</h3>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Scan this QR code or open secure checkout on this device. The receipt is created only after Cashfree confirms payment.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-col items-center gap-4 rounded-2xl border bg-white p-4 sm:flex-row sm:items-start">
+              {cashfreeOrder.status === "PAID" ? (
+                <div className="flex size-48 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
+                  <CheckCircle2 className="size-16" />
+                </div>
+              ) : (
+                <div className="rounded-xl bg-white p-3 shadow-sm ring-1 ring-slate-200">
+                  <QRCode value={cashfreeOrder.publicUrl} size={190} level="M" />
+                </div>
+              )}
+
+              <div className="w-full space-y-3 sm:pt-2">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-sm text-muted-foreground">Amount</span>
+                  <span className="text-xl font-bold">{money(cashfreeOrder.amount)}</span>
+                </div>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <ShieldCheck className="size-4 text-emerald-600" />
+                  Secure payment by Cashfree
+                </div>
+                {cashfreeOrder.status === "PAID" ? (
+                  <p className="text-sm font-medium text-emerald-700">Payment received and receipt created.</p>
+                ) : (
+                  <>
+                    <Button type="button" className="w-full rounded-xl" onClick={openCashfreeCheckout} disabled={openingCashfree}>
+                      {openingCashfree ? <LoaderCircle className="size-4 animate-spin" /> : <Smartphone className="size-4" />}
+                      {openingCashfree ? "Opening checkout..." : "Pay on this device"}
+                    </Button>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button type="button" variant="outline" className="rounded-xl" onClick={copyCashfreeLink}>
+                        <Copy className="size-4" /> Copy link
+                      </Button>
+                      <Button type="button" variant="outline" className="rounded-xl" onClick={() => void checkCashfreePayment()} disabled={checkingCashfree}>
+                        {checkingCashfree && <LoaderCircle className="size-4 animate-spin" />}
+                        Check payment
+                      </Button>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+
+            <p className="text-center text-xs text-muted-foreground">
+              Order ID: {cashfreeOrder.orderId}
+            </p>
+          </section>
+        </>
+      )}
       {/* ==================================================================== */}
       {/* PAYMENT ALLOCATION                                                   */}
       {/* ==================================================================== */}
@@ -732,6 +1009,7 @@ function PaymentForm({
                               max={installment.outstanding}
                               step="0.01"
                               value={enteredAmount}
+                              disabled={paymentMode === "ONLINE"}
                               onChange={(event) =>
                                 updatePaymentAmount(
                                   installment,
@@ -742,7 +1020,7 @@ function PaymentForm({
                             />
                           </div>
 
-                          <button
+                          {paymentMode !== "ONLINE" && <button
                             type="button"
                             onClick={() =>
                               setPaymentAmounts((current) => ({
@@ -753,7 +1031,7 @@ function PaymentForm({
                             className="mt-1.5 text-xs font-medium text-primary hover:underline"
                           >
                             Pay full balance
-                          </button>
+                          </button>}
                         </div>
                       )}
                     </div>
@@ -864,7 +1142,7 @@ function PaymentForm({
           <div className="space-y-2">
             <label className="text-sm font-medium">Payment Mode</label>
 
-            <Select value={paymentMode} onValueChange={setPaymentMode}>
+            <Select value={paymentMode} onValueChange={changePaymentMode}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -880,7 +1158,7 @@ function PaymentForm({
 
                 <SelectItem value="CHEQUE">Cheque</SelectItem>
 
-                <SelectItem value="ONLINE">Online</SelectItem>
+                {schoolSlug && <SelectItem value="ONLINE">Online · Cashfree</SelectItem>}
               </SelectContent>
             </Select>
           </div>
@@ -888,7 +1166,7 @@ function PaymentForm({
 
         {/* REFERENCE */}
 
-        {paymentMode !== "CASH" && (
+        {paymentMode !== "CASH" && paymentMode !== "ONLINE" && (
           <div className="space-y-2">
             <label className="text-sm font-medium">Reference Number</label>
 
@@ -909,9 +1187,32 @@ function PaymentForm({
           </div>
         )}
 
+        {paymentMode === "ONLINE" && (
+          <div className="space-y-2">
+            <label className="text-sm font-medium">
+              Payer mobile number
+              <span className="ml-1 font-normal text-muted-foreground">(Optional)</span>
+            </label>
+            <div className="relative">
+              <Smartphone className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                inputMode="numeric"
+                maxLength={10}
+                placeholder="Uses student or parent number when blank"
+                value={customerPhone}
+                onChange={(event) => setCustomerPhone(event.target.value.replace(/\D/g, "").slice(0, 10))}
+                className="pl-9"
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Cashfree collects the full outstanding balance for the selected installments.
+            </p>
+          </div>
+        )}
+
         {/* REMARKS */}
 
-        <div className="space-y-2">
+        {paymentMode !== "ONLINE" && <div className="space-y-2">
           <label className="text-sm font-medium">
             Remarks
             <span className="ml-1 font-normal text-muted-foreground">
@@ -925,7 +1226,7 @@ function PaymentForm({
             onChange={(event) => setRemarks(event.target.value)}
             className="min-h-24 resize-none"
           />
-        </div>
+        </div>}
       </section>
 
       {/* ==================================================================== */}
@@ -948,15 +1249,18 @@ function PaymentForm({
           className="min-w-48 rounded-xl"
           onClick={submit}
           disabled={
-            loading || selectedInstallmentIds.length === 0 || totalPayment <= 0
+            loading ||
+            Boolean(cashfreeOrder) ||
+            selectedInstallmentIds.length === 0 ||
+            totalPayment <= 0
           }
         >
           {loading ? (
-            "Recording Payment..."
+            paymentMode === "ONLINE" ? "Preparing Cashfree..." : "Recording Payment..."
           ) : (
             <>
-              <CheckCircle2 className="size-4" />
-              Collect {money(totalPayment)}
+              {paymentMode === "ONLINE" ? <CreditCard className="size-4" /> : <CheckCircle2 className="size-4" />}
+              {paymentMode === "ONLINE" ? `Continue with Cashfree · ${money(totalPayment)}` : `Collect ${money(totalPayment)}`}
             </>
           )}
         </Button>
