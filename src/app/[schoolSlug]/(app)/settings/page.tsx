@@ -1,4 +1,3 @@
-import { DirectUpiSettingsCard } from "@/features/online-payments/components/DirectUpiSettingsCard";
 import { AccountSettingsPage } from "@/features/settings/AccountSettingsPage";
 import { PendingProfileImageApprovals } from "@/features/settings/PendingProfileImageApprovals";
 import { canReviewStudentProfileImages } from "@/features/settings/profile-image-policy";
@@ -24,7 +23,6 @@ export default async function SettingsPage({
   const { schoolSlug } = await params;
   const membership = await requireMembership(schoolSlug);
   const canApproveImages = canReviewStudentProfileImages(membership.role);
-  const canManagePayments = ["SUPER_ADMIN", "SCHOOL_ADMIN"].includes(membership.role);
   const [teacher, pendingImageRequests] = await Promise.all([
     membership.role === "TEACHER"
       ? requireCurrentTeacher(membership.schoolId)
@@ -80,15 +78,6 @@ export default async function SettingsPage({
         { label: "School", value: membership.school.name },
       ]}
     >
-      {canManagePayments ? (
-        <DirectUpiSettingsCard
-          schoolSlug={schoolSlug}
-          schoolName={membership.school.name}
-          initialEnabled={membership.school.directUpiEnabled}
-          initialUpiId={membership.school.directUpiId ?? ""}
-          initialPayeeName={membership.school.directUpiPayeeName ?? membership.school.name}
-        />
-      ) : null}
       {canApproveImages ? (
         <PendingProfileImageApprovals
           schoolSlug={schoolSlug}

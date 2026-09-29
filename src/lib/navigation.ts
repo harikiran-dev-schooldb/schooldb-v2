@@ -130,7 +130,6 @@ export const navigation: NavigationItem[] = [
       { title: "Collect Fees", href: "fees/collection" },
       { title: "Outstanding Fees", href: "fees/outstanding" },
       { title: "Payment History", href: "fees/payments" },
-      { title: "UPI Verification", href: "fees/upi-verification" },
       { title: "Receipts", href: "fees/receipts" },
       {
         title: "Expenses",

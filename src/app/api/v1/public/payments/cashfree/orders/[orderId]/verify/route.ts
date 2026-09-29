@@ -26,7 +26,6 @@ export async function POST(
       where: {
         providerOrderId: orderId,
         publicTokenHash: hashCashfreePublicToken(token),
-        initiatedBy: "STAFF_QR",
       },
       select: { id: true },
     });

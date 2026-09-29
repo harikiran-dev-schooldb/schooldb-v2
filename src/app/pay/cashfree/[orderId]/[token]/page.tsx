@@ -18,7 +18,6 @@ export default async function PublicCashfreePage({
     where: {
       providerOrderId: orderId,
       publicTokenHash: hashCashfreePublicToken(token),
-      initiatedBy: "STAFF_QR",
     },
     select: {
       amount: true,

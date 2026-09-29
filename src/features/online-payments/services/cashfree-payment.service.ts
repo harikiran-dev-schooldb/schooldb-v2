@@ -257,19 +257,14 @@ export const cashfreePaymentService = {
       }
 
       const newProviderOrderId = providerOrderId();
-      const publicToken =
-        initiator === "STAFF_QR"
-          ? cashfreePublicToken(newProviderOrderId)
-          : null;
+      const publicToken = cashfreePublicToken(newProviderOrderId);
       const order = await tx.cashfreePaymentOrder.create({
         data: {
           schoolId,
           studentEnrollmentId: enrollmentId,
           providerOrderId: newProviderOrderId,
           idempotencyKey: input.idempotencyKey,
-          publicTokenHash: publicToken
-            ? hashCashfreePublicToken(publicToken)
-            : null,
+          publicTokenHash: hashCashfreePublicToken(publicToken),
           amount,
           initiatedBy: initiator,
           requestedByUserId,
@@ -288,10 +283,7 @@ export const cashfreePaymentService = {
       };
     });
 
-    const publicToken =
-      initiator === "STAFF_QR"
-        ? cashfreePublicToken(prepared.order.providerOrderId)
-        : undefined;
+    const publicToken = cashfreePublicToken(prepared.order.providerOrderId);
 
     if (prepared.order.status === "ACTIVE" && prepared.order.paymentSessionId) {
       const publicOrigin = callbackOrigin(requestOrigin);
@@ -300,11 +292,7 @@ export const cashfreePaymentService = {
         paymentSessionId: prepared.order.paymentSessionId,
         amount: Number(prepared.order.amount),
         mode: getCashfreeMode(),
-        ...(initiator === "STAFF_QR" && publicToken
-          ? {
-              publicUrl: `${publicOrigin}/pay/cashfree/${prepared.order.providerOrderId}/${publicToken}`,
-            }
-          : {}),
+        publicUrl: `${publicOrigin}/pay/cashfree/${prepared.order.providerOrderId}/${publicToken}`,
       };
     }
 
@@ -314,10 +302,7 @@ export const cashfreePaymentService = {
 
     try {
       const publicOrigin = callbackOrigin(requestOrigin);
-      const returnUrl =
-        initiator === "STAFF_QR" && publicToken
-          ? `${publicOrigin}/pay/cashfree/${prepared.order.providerOrderId}/${publicToken}/complete`
-          : `${publicOrigin}/${input.schoolSlug}/my/${input.studentId}/fees/payment/${prepared.order.providerOrderId}`;
+      const returnUrl = `${publicOrigin}/pay/cashfree/${prepared.order.providerOrderId}/${publicToken}/complete`;
       const notifyUrl = `${publicOrigin}/api/v1/public/payments/cashfree/webhook`;
       const provider = await createCashfreeProviderOrder({
         orderId: prepared.order.providerOrderId,
@@ -345,11 +330,7 @@ export const cashfreePaymentService = {
         paymentSessionId: provider.payment_session_id,
         amount: Number(prepared.order.amount),
         mode: getCashfreeMode(),
-        ...(initiator === "STAFF_QR" && publicToken
-          ? {
-              publicUrl: `${publicOrigin}/pay/cashfree/${prepared.order.providerOrderId}/${publicToken}`,
-            }
-          : {}),
+        publicUrl: `${publicOrigin}/pay/cashfree/${prepared.order.providerOrderId}/${publicToken}`,
       };
     } catch (error) {
       await prisma.cashfreePaymentOrder.update({
