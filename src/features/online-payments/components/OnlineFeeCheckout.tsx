@@ -3,13 +3,14 @@
 import Script from "next/script";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
-import { CreditCard, LockKeyhole, QrCode, ShieldCheck } from "lucide-react";
+import { CreditCard, LockKeyhole, QrCode, ShieldCheck, Smartphone } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { formatCurrency, formatDate } from "@/lib/self-service-format";
+import { DirectUpiDialog } from "./DirectUpiDialog";
 import {
   StudentCashfreeQrDialog,
   type StudentCashfreeOrder,
@@ -28,18 +29,27 @@ type InstallmentOption = {
 export function OnlineFeeCheckout({
   schoolSlug,
   studentId,
+  admissionNo,
   installments,
   cashfreeAvailable,
+  directUpi,
 }: {
   schoolSlug: string;
   studentId: string;
+  admissionNo: string;
   installments: InstallmentOption[];
   cashfreeAvailable: boolean;
+  directUpi?: {
+    upiId: string;
+    payeeName: string;
+    schoolName: string;
+  };
 }) {
   const router = useRouter();
   const [selected, setSelected] = useState(() => installments.map((item) => item.id));
   const [submitting, setSubmitting] = useState(false);
   const [paymentOpen, setPaymentOpen] = useState(false);
+  const [upiOpen, setUpiOpen] = useState(false);
   const [order, setOrder] = useState<StudentCashfreeOrder | null>(null);
   const total = useMemo(
     () =>
@@ -69,6 +79,7 @@ export function OnlineFeeCheckout({
       return;
     }
 
+    setOrder(null);
     setSelected((current) => {
       if (checked) return current.includes(id) ? current : [...current, id];
 
@@ -82,6 +93,14 @@ export function OnlineFeeCheckout({
         );
       });
     });
+  }
+
+  function openDirectUpi() {
+    if (!selected.length || total <= 0) {
+      toast.error("Select at least one installment.");
+      return;
+    }
+    setUpiOpen(true);
   }
 
   async function payWithCashfree() {
@@ -150,7 +169,7 @@ export function OnlineFeeCheckout({
               </span>
               <div>
                 <p className="text-lg font-bold">Pay fees online</p>
-                <p className="mt-0.5 text-sm text-indigo-100">Select installments, scan the QR, and pay with any supported UPI app.</p>
+                <p className="mt-0.5 text-sm text-indigo-100">Select installments and choose Direct UPI or Cashfree.</p>
               </div>
             </div>
             <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5 text-xs font-semibold ring-1 ring-white/20">
@@ -210,6 +229,18 @@ export function OnlineFeeCheckout({
               </p>
             </div>
             <div className="flex flex-col gap-2 sm:flex-row">
+              {directUpi ? (
+                <Button
+                  size="xl"
+                  variant="outline"
+                  onClick={openDirectUpi}
+                  disabled={!selected.length || total <= 0}
+                  className="min-w-44 border-emerald-200 bg-white text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800"
+                >
+                  <Smartphone className="size-4" />
+                  Direct UPI
+                </Button>
+              ) : null}
               {cashfreeAvailable ? (
                 <Button
                   size="xl"
@@ -218,17 +249,41 @@ export function OnlineFeeCheckout({
                   className="min-w-44 bg-indigo-600 shadow-[0_10px_26px_rgba(79,70,229,0.25)] hover:bg-indigo-700"
                 >
                   <QrCode className="size-4" />
-                  {submitting ? "Creating secure QR…" : "Pay with UPI / QR"}
+                  {submitting ? "Creating secure QR…" : "Cashfree UPI / QR"}
                 </Button>
               ) : null}
             </div>
           </div>
 
-          <p className="text-xs leading-5 text-muted-foreground">
-            No UTR is required. Cashfree verifies the payment and SchoolDB updates the receipt and fee ledger automatically.
-          </p>
+          <div className="space-y-1 text-xs leading-5 text-muted-foreground">
+            {directUpi ? (
+              <p>
+                Direct UPI sends money to the school UPI account. Enter the UTR after payment so the school can verify it before the fee is marked paid.
+              </p>
+            ) : null}
+            {cashfreeAvailable ? (
+              <p>
+                Cashfree verifies the payment automatically and SchoolDB updates the receipt and fee ledger after confirmation.
+              </p>
+            ) : null}
+          </div>
         </CardContent>
       </Card>
+
+      {directUpi ? (
+        <DirectUpiDialog
+          open={upiOpen}
+          onOpenChange={setUpiOpen}
+          schoolSlug={schoolSlug}
+          schoolName={directUpi.schoolName}
+          studentId={studentId}
+          installmentIds={selected}
+          upiId={directUpi.upiId}
+          payeeName={directUpi.payeeName}
+          admissionNo={admissionNo}
+          amount={total}
+        />
+      ) : null}
 
       {order ? (
         <StudentCashfreeQrDialog

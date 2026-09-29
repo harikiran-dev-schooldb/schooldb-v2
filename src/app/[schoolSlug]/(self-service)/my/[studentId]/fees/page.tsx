@@ -14,6 +14,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { isValidUpiId } from "@/features/online-payments/direct-upi";
+import { directUpiPaymentService } from "@/features/online-payments/services/direct-upi-payment.service";
 import { OnlineFeeCheckout } from "@/features/online-payments/components/OnlineFeeCheckout";
 import { isCashfreeConfigured } from "@/features/online-payments/cashfree";
 import { studentFeeLedgerService } from "@/features/student-fees/services/student-fee-ledger.service";
@@ -27,7 +29,7 @@ export default async function StudentFeesPage({
   params: Promise<{ schoolSlug: string; studentId: string }>;
 }) {
   const { schoolSlug, studentId } = await params;
-  const { membership } = await requireStudentAccess(schoolSlug, studentId);
+  const { membership, student, enrollment } = await requireStudentAccess(schoolSlug, studentId);
   const assignments = await studentFeeService.list(membership.schoolId, studentId);
   const ledgers = (
     await Promise.all(
@@ -62,6 +64,24 @@ export default async function StudentFeesPage({
     ? Math.min(100, Math.round((summary.paid / summary.payable) * 100))
     : 0;
   const cashfreeAvailable = isCashfreeConfigured();
+  const directUpiAvailable =
+    membership.school.directUpiEnabled &&
+    Boolean(membership.school.directUpiId) &&
+    isValidUpiId(membership.school.directUpiId ?? "");
+  const directUpiSubmissions = enrollment
+    ? await directUpiPaymentService.listForStudent(
+        membership.schoolId,
+        enrollment.id,
+      )
+    : [];
+  const pendingDirectUpiInstallmentIds = new Set(
+    directUpiSubmissions
+      .filter((submission) => submission.status === "PENDING")
+      .flatMap((submission) => submission.installmentIds),
+  );
+  const payableInstallments = outstandingInstallments.filter(
+    (installment) => !pendingDirectUpiInstallmentIds.has(installment.id),
+  );
 
   return (
     <SelfServicePage title="Fees" description="Fee plans, installments, and successful payments.">
@@ -85,13 +105,73 @@ export default async function StudentFeesPage({
         </div>
       </section>
 
-      {outstandingInstallments.length && cashfreeAvailable ? (
+      {payableInstallments.length && (cashfreeAvailable || directUpiAvailable) ? (
         <OnlineFeeCheckout
           schoolSlug={schoolSlug}
           studentId={studentId}
-          installments={outstandingInstallments}
+          admissionNo={student.admissionNo}
+          installments={payableInstallments}
           cashfreeAvailable={cashfreeAvailable}
+          directUpi={
+            directUpiAvailable && membership.school.directUpiId
+              ? {
+                  upiId: membership.school.directUpiId,
+                  payeeName: membership.school.directUpiPayeeName || membership.school.name,
+                  schoolName: membership.school.name,
+                }
+              : undefined
+          }
         />
+      ) : null}
+
+      {directUpiSubmissions.length ? (
+        <Card className="overflow-hidden rounded-[26px] border-emerald-100/80 bg-white/95">
+          <CardHeader>
+            <CardTitle className="text-base">Direct UPI verification</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Payments submitted from your UPI app appear here until the school verifies them.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {directUpiSubmissions.map((submission) => (
+              <div
+                key={submission.id}
+                className="flex flex-col gap-3 rounded-2xl border border-border/70 p-4 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="font-semibold">{formatCurrency(submission.amount)}</p>
+                    <Badge
+                      variant={
+                        submission.status === "APPROVED"
+                          ? "success"
+                          : submission.status === "REJECTED"
+                            ? "destructive"
+                            : "warning"
+                      }
+                    >
+                      {submission.status === "PENDING"
+                        ? "PENDING VERIFICATION"
+                        : submission.status}
+                    </Badge>
+                  </div>
+                  <p className="mt-1 font-mono text-xs text-muted-foreground">
+                    UTR {submission.utr}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Submitted {formatDate(submission.createdAt)}
+                    {submission.receiptNo ? ` · Receipt ${submission.receiptNo}` : ""}
+                  </p>
+                  {submission.rejectionReason ? (
+                    <p className="mt-2 text-sm text-destructive">
+                      {submission.rejectionReason}
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
       ) : null}
 
       {ledgers.length ? (
