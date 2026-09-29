@@ -59,7 +59,7 @@ export default function OTPLogin({
             }
             placeholder="98765 43210"
             disabled={pendingVerification}
-            className="h-[54px] w-full rounded-2xl border border-slate-200 bg-slate-50/80 pl-[92px] pr-4 text-[15px] font-semibold tracking-[0.02em] text-slate-950 outline-none transition placeholder:font-medium placeholder:tracking-normal placeholder:text-slate-400 hover:border-slate-300 focus:border-indigo-400 focus:bg-white focus:ring-4 focus:ring-indigo-100/80 disabled:cursor-not-allowed disabled:bg-slate-100/80 disabled:text-slate-600"
+            className="h-[56px] w-full rounded-2xl border border-slate-200 bg-slate-50/80 pl-[92px] pr-4 text-[15px] font-semibold tracking-[0.02em] text-slate-950 outline-none transition placeholder:font-medium placeholder:tracking-normal placeholder:text-slate-400 hover:border-slate-300 focus:border-indigo-400 focus:bg-white focus:ring-4 focus:ring-indigo-100/80 disabled:cursor-not-allowed disabled:bg-slate-100/80 disabled:text-slate-600"
           />
         </div>
 

@@ -1,9 +1,19 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { Building2, Loader2, Plus, School, Smartphone, X } from "lucide-react";
+import {
+  Building2,
+  ImageUp,
+  Loader2,
+  Plus,
+  School,
+  Smartphone,
+  Trash2,
+  X,
+} from "lucide-react";
 
 import { PageHeader } from "@/components/common/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -27,6 +37,7 @@ export default function SchoolsPage() {
   const [schools, setSchools] = useState<SchoolItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [logoActionId, setLogoActionId] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
@@ -98,6 +109,54 @@ export default function SchoolsPage() {
       setError(err instanceof Error ? err.message : "Unable to create school.");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function uploadLogo(schoolId: string, file: File) {
+    setError(null);
+    setLogoActionId(schoolId);
+    try {
+      const body = new FormData();
+      body.set("file", file);
+      const response = await fetch(`/api/v1/schools/${schoolId}/logo`, {
+        method: "POST",
+        body,
+      });
+      const payload = await response.json();
+      if (!response.ok || !payload.success) {
+        throw new Error(payload.message ?? "Unable to upload the school logo.");
+      }
+      const logo = payload.data.logo as string;
+      setSchools((items) =>
+        items.map((item) => (item.id === schoolId ? { ...item, logo } : item)),
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to upload the school logo.");
+    } finally {
+      setLogoActionId(null);
+    }
+  }
+
+  async function removeLogo(schoolId: string) {
+    setError(null);
+    setLogoActionId(schoolId);
+    try {
+      const response = await fetch(`/api/v1/schools/${schoolId}/logo`, {
+        method: "DELETE",
+      });
+      const payload = await response.json();
+      if (!response.ok || !payload.success) {
+        throw new Error(payload.message ?? "Unable to remove the school logo.");
+      }
+      setSchools((items) =>
+        items.map((item) =>
+          item.id === schoolId ? { ...item, logo: null } : item,
+        ),
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to remove the school logo.");
+    } finally {
+      setLogoActionId(null);
     }
   }
 
@@ -197,8 +256,18 @@ export default function SchoolsPage() {
             <Card key={item.id} className="premium-card overflow-hidden rounded-2xl border-0">
               <CardContent className="p-6">
                 <div className="flex items-start gap-4">
-                  <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                    <School className="size-5" />
+                  <div className="flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-border bg-primary/10 text-primary">
+                    {item.logo ? (
+                      <Image
+                        src={item.logo}
+                        alt={`${item.name} logo`}
+                        width={56}
+                        height={56}
+                        className="size-full bg-white object-contain p-1.5"
+                      />
+                    ) : (
+                      <School className="size-6" />
+                    )}
                   </div>
                   <div className="min-w-0 flex-1">
                     <h2 className="truncate text-base font-bold">{item.name}</h2>
@@ -211,6 +280,44 @@ export default function SchoolsPage() {
                   <Metric label="Teachers" value={item._count.teachers} />
                   <Metric label="Users" value={item._count.memberships} />
                 </div>
+
+                <div className="mt-5 flex gap-2">
+                  <label className="flex h-10 flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl border border-border bg-background px-3 text-sm font-semibold transition hover:bg-muted/50 has-[:disabled]:pointer-events-none has-[:disabled]:opacity-50">
+                    {logoActionId === item.id ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      <ImageUp className="size-4" />
+                    )}
+                    {item.logo ? "Replace logo" : "Upload logo"}
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp"
+                      className="sr-only"
+                      disabled={logoActionId === item.id}
+                      onChange={(event) => {
+                        const file = event.target.files?.[0];
+                        event.target.value = "";
+                        if (file) void uploadLogo(item.id, file);
+                      }}
+                    />
+                  </label>
+                  {item.logo && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      className="size-10 shrink-0 rounded-xl text-destructive hover:text-destructive"
+                      disabled={logoActionId === item.id}
+                      onClick={() => void removeLogo(item.id)}
+                      aria-label={`Remove ${item.name} logo`}
+                    >
+                      <Trash2 className="size-4" />
+                    </Button>
+                  )}
+                </div>
+                <p className="mt-2 text-[11px] text-muted-foreground">
+                  PNG, JPG, or WebP · square image recommended · maximum 5 MB
+                </p>
 
                 <Button asChild variant="outline" className="mt-6 w-full rounded-xl">
                   <Link href={`/${item.slug}/dashboard`}>

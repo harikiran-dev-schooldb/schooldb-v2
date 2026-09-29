@@ -13,9 +13,15 @@ export default async function TenantLoginPage({ params }: Props) {
   const { schoolSlug } = await params;
   const school = await prisma.school.findUnique({
     where: { slug: schoolSlug },
-    select: { name: true },
+    select: { name: true, logo: true },
   });
   if (!school) notFound();
 
-  return <TenantOtpSignIn schoolSlug={schoolSlug} schoolName={school.name} />;
+  return (
+    <TenantOtpSignIn
+      schoolSlug={schoolSlug}
+      schoolName={school.name}
+      schoolLogo={school.logo}
+    />
+  );
 }

@@ -3,6 +3,14 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   agentRules: false,
   allowedDevOrigins: ["*.trycloudflare.com"],
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "**.blob.vercel-storage.com",
+      },
+    ],
+  },
   async headers() {
     return [
       {
