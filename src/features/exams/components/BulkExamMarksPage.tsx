@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { refreshTable } from "@/lib/table-event";
+import { EXAM_GRADES } from "@/features/exams/assessment";
 
 type Status = "PRESENT" | "ABSENT" | "EXEMPTED";
 
@@ -20,11 +21,13 @@ type Schedule = {
   subjectId: string;
   examDate: string;
   maxMarks: string | number;
+  assessmentType: "MARKS" | "GRADE";
   subject: { id: string; name: string; code: string | null };
 };
 
 type MarkValue = {
   marksObtained: string;
+  grade: string;
   status: Status;
   remarks: string;
 };
@@ -115,6 +118,7 @@ export function BulkExamMarksPage({ schoolSlug, examId }: Props) {
           };
           student.marks[schedule.id] = {
             marksObtained: row.mark?.marksObtained == null ? "" : String(row.mark.marksObtained),
+            grade: row.mark?.grade ?? "",
             status: row.mark?.status ?? "PRESENT",
             remarks: row.mark?.remarks ?? "",
           };
@@ -155,6 +159,12 @@ export function BulkExamMarksPage({ schoolSlug, examId }: Props) {
     ));
   }
 
+  function updateGrade(studentEnrollmentId: string, scheduleId: string, value: string) {
+    setStudents((current) => current.map((student) => student.studentEnrollmentId === studentEnrollmentId
+      ? { ...student, marks: { ...student.marks, [scheduleId]: { ...student.marks[scheduleId], grade: value } } }
+      : student));
+  }
+
   function updateStatus(studentEnrollmentId: string, scheduleId: string, status: Status) {
     setStudents((current) => current.map((student) =>
       student.studentEnrollmentId === studentEnrollmentId
@@ -176,6 +186,7 @@ export function BulkExamMarksPage({ schoolSlug, examId }: Props) {
   async function saveResults() {
     if (!students.length || !subjects.length) return;
     for (const schedule of subjects) {
+      if (schedule.assessmentType === "GRADE") continue;
       const maxMarks = Number(schedule.maxMarks);
       for (const student of students) {
         const mark = student.marks[schedule.id];
@@ -201,7 +212,8 @@ export function BulkExamMarksPage({ schoolSlug, examId }: Props) {
                 const mark = student.marks[schedule.id];
                 return {
                   studentEnrollmentId: student.studentEnrollmentId,
-                  marksObtained: !mark || mark.status !== "PRESENT" || mark.marksObtained === "" ? null : Number(mark.marksObtained),
+                  marksObtained: schedule.assessmentType === "GRADE" || !mark || mark.status !== "PRESENT" || mark.marksObtained === "" ? null : Number(mark.marksObtained),
+                  grade: schedule.assessmentType === "GRADE" && mark?.status === "PRESENT" ? mark.grade || null : null,
                   status: mark?.status ?? "PRESENT",
                   remarks: mark?.remarks || null,
                 };
@@ -276,7 +288,7 @@ export function BulkExamMarksPage({ schoolSlug, examId }: Props) {
                   <th className="sticky left-0 z-20 w-[70px] border-b border-r bg-muted/50 p-3 text-left">R.No</th>
                   <th className="sticky left-[70px] z-20 min-w-[130px] border-b border-r bg-muted/50 p-3 text-left">Adm No.</th>
                   <th className="sticky left-[200px] z-20 min-w-[210px] border-b border-r bg-muted/50 p-3 text-left">Student Name</th>
-                  {subjects.map((schedule) => <th key={schedule.id} className="min-w-[145px] border-b border-r p-3 text-center"><div className="font-semibold">{schedule.subject.name}</div><div className="mt-1 text-xs text-muted-foreground">Max {Number(schedule.maxMarks)}</div></th>)}
+                  {subjects.map((schedule) => <th key={schedule.id} className="min-w-[145px] border-b border-r p-3 text-center"><div className="font-semibold">{schedule.subject.name}</div><div className="mt-1 text-xs text-muted-foreground">{schedule.assessmentType === "GRADE" ? "Grades" : `Max ${Number(schedule.maxMarks)}`}</div></th>)}
                 </tr></thead>
                 <tbody>{students.map((student) => <tr key={student.studentEnrollmentId} className="border-b hover:bg-muted/20">
                   <td className="sticky left-0 z-10 border-r bg-background p-3 font-semibold">{student.rollNo ?? "—"}</td>
@@ -285,7 +297,7 @@ export function BulkExamMarksPage({ schoolSlug, examId }: Props) {
                   {subjects.map((schedule) => {
                     const mark = student.marks[schedule.id] ?? { marksObtained: "", status: "PRESENT" as Status, remarks: "" };
                     return <td key={schedule.id} className="border-r p-2"><div className="flex min-w-[125px] gap-2">
-                      <Input type="number" min="0" max={Number(schedule.maxMarks)} step="0.01" value={mark.marksObtained} disabled={saving || mark.status !== "PRESENT"} onChange={(event) => updateMark(student.studentEnrollmentId, schedule.id, event.target.value)} placeholder="Marks" className="w-20" />
+                      {schedule.assessmentType === "GRADE" ? <select value={mark.grade ?? ""} disabled={saving || mark.status !== "PRESENT"} onChange={(event) => updateGrade(student.studentEnrollmentId, schedule.id, event.target.value)} className="h-9 w-20 rounded-md border bg-background px-2 text-xs"><option value="">Grade</option>{EXAM_GRADES.map((grade) => <option key={grade} value={grade}>{grade}</option>)}</select> : <Input type="number" min="0" max={Number(schedule.maxMarks)} step="0.01" value={mark.marksObtained} disabled={saving || mark.status !== "PRESENT"} onChange={(event) => updateMark(student.studentEnrollmentId, schedule.id, event.target.value)} placeholder="Marks" className="w-20" />}
                       <Button
                       type="button"
                       variant={mark.status === "ABSENT" ? "destructive" : mark.status === "EXEMPTED" ? "secondary" : "outline"}

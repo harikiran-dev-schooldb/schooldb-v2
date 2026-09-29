@@ -54,6 +54,7 @@ type ExamSchedule = {
   endTime: string | null;
   maxMarks: string | number;
   passMarks: string | number | null;
+  assessmentType: "MARKS" | "GRADE";
   class: { id: string; name: string };
   section: { id: string; name: string } | null;
   subject: { id: string; name: string; code: string | null };
@@ -408,7 +409,7 @@ export function ExamDetailsPage({ schoolSlug, examId }: Props) {
                     <th className="px-6 py-3 text-left">Class</th>
                     <th className="px-4 py-3 text-left">Subject</th>
                     <th className="px-4 py-3 text-left">Date & Time</th>
-                    <th className="px-4 py-3 text-right">Marks</th>
+                    <th className="px-4 py-3 text-right">Result Type</th>
                     <th className="px-6 py-3 text-right">Actions</th>
                   </tr>
                 </thead>
@@ -438,7 +439,7 @@ export function ExamDetailsPage({ schoolSlug, examId }: Props) {
                         </div>
                       </td>
                       <td className="px-4 py-4 text-right">
-                        {Number(schedule.maxMarks)}
+                        {schedule.assessmentType === "GRADE" ? "Grades" : `${Number(schedule.maxMarks)} marks`}
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex justify-end gap-1.5">
@@ -451,7 +452,7 @@ export function ExamDetailsPage({ schoolSlug, examId }: Props) {
                             }
                           >
                             <ClipboardPenLine className="mr-1.5 size-3.5" />
-                            Marks
+                            {schedule.assessmentType === "GRADE" ? "Grades" : "Marks"}
                           </Button>
                           <Button
                             variant="outline"
@@ -491,7 +492,7 @@ export function ExamDetailsPage({ schoolSlug, examId }: Props) {
                   </div>
                   <div className="mt-3 text-sm">
                     {formatDate(schedule.examDate)} ·{" "}
-                    {Number(schedule.maxMarks)} marks
+                    {schedule.assessmentType === "GRADE" ? "Grades only" : `${Number(schedule.maxMarks)} marks`}
                   </div>
                   <div className="mt-4 flex gap-2">
                     <Button
@@ -503,7 +504,7 @@ export function ExamDetailsPage({ schoolSlug, examId }: Props) {
                       }
                     >
                       <ClipboardPenLine className="mr-2 size-4" />
-                      Enter Marks
+                      Enter {schedule.assessmentType === "GRADE" ? "Grades" : "Marks"}
                     </Button>
                     <Button
                       variant="outline"

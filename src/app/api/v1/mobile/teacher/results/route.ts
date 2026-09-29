@@ -57,6 +57,7 @@ export async function GET() {
         examDate: true,
         maxMarks: true,
         passMarks: true,
+        assessmentType: true,
         exam: { select: { name: true, status: true, academicYearId: true } },
         class: { select: { name: true } },
         section: { select: { name: true } },
@@ -86,6 +87,7 @@ export async function GET() {
             examDate: schedule.examDate,
             maxMarks: schedule.maxMarks,
             passMarks: schedule.passMarks,
+            assessmentType: schedule.assessmentType,
             editable: !["COMPLETED", "CANCELLED"].includes(schedule.exam.status),
           }));
       }),

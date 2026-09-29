@@ -49,6 +49,8 @@ type SubjectResult = {
   maxMarks: number;
   passMarks: number | null;
   marksObtained: number | null;
+  assessmentType: "MARKS" | "GRADE";
+  grade: string | null;
 
   status: string;
   resultStatus: "PASS" | "FAIL" | "ABSENT";
@@ -646,15 +648,17 @@ export function StudentResultDetailsPage({
                       </td>
 
                       <td className="px-5 py-4 text-right font-medium">
-                        {subject.maxMarks}
+                        {subject.assessmentType === "GRADE" ? "—" : subject.maxMarks}
                       </td>
 
                       <td className="px-5 py-4 text-right text-muted-foreground">
-                        {subject.passMarks ?? "—"}
+                        {subject.assessmentType === "GRADE" ? "—" : subject.passMarks ?? "—"}
                       </td>
 
                       <td className="px-5 py-4 text-right">
-                        {subject.resultStatus === "ABSENT" ? (
+                        {subject.assessmentType === "GRADE" ? (
+                          <span className="font-bold">{subject.grade ?? "—"}</span>
+                        ) : subject.resultStatus === "ABSENT" ? (
                           <span className="font-semibold text-muted-foreground">
                             —
                           </span>

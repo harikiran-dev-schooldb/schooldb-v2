@@ -43,6 +43,8 @@ type SubjectResult = {
   maxMarks: number;
   passMarks: number | null;
   marksObtained: number | null;
+  assessmentType: "MARKS" | "GRADE";
+  grade: string | null;
 
   status: string;
   resultStatus: "PASS" | "FAIL" | "ABSENT";
@@ -516,15 +518,17 @@ export function StudentReportCardPage({
                     </td>
 
                     <td className="border-b px-3 py-3 text-center print:border-black">
-                      {subject.maxMarks}
+                      {subject.assessmentType === "GRADE" ? "—" : subject.maxMarks}
                     </td>
 
                     <td className="border-b px-3 py-3 text-center print:border-black">
-                      {subject.passMarks ?? "—"}
+                      {subject.assessmentType === "GRADE" ? "—" : subject.passMarks ?? "—"}
                     </td>
 
                     <td className="border-b px-3 py-3 text-center font-semibold print:border-black">
-                      {subject.resultStatus === "ABSENT"
+                      {subject.assessmentType === "GRADE"
+                        ? subject.grade ?? "—"
+                        : subject.resultStatus === "ABSENT"
                         ? "ABSENT"
                         : (subject.marksObtained ?? "—")}
                     </td>

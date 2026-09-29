@@ -27,6 +27,7 @@ export const studentExamService = {
         endTime: true,
         maxMarks: true,
         passMarks: true,
+        assessmentType: true,
         subject: { select: { id: true, name: true, code: true } },
         exam: {
           select: { id: true, name: true, status: true, startDate: true, endDate: true },
@@ -74,12 +75,14 @@ export const studentExamService = {
             examDate: true,
             maxMarks: true,
             passMarks: true,
+            assessmentType: true,
             subject: { select: { id: true, name: true, code: true } },
             marks: {
               where: { studentEnrollmentId: enrollment.id },
               take: 1,
               select: {
                 marksObtained: true,
+                grade: true,
                 status: true,
                 remarks: true,
               },
@@ -105,24 +108,29 @@ export const studentExamService = {
           mark?.marksObtained === null || mark?.marksObtained === undefined
             ? null
             : Number(mark.marksObtained);
+        const grade = mark?.grade ?? null;
 
         let status: "PENDING" | "PASS" | "FAIL" | "ABSENT" | "EXEMPTED";
 
         if (!mark) {
           status = "PENDING";
           pending = true;
-          maximum += maxMarks;
+          if (schedule.assessmentType === "MARKS") maximum += maxMarks;
         } else if (mark.status === "ABSENT") {
           status = "ABSENT";
           failed = true;
-          maximum += maxMarks;
+          if (schedule.assessmentType === "MARKS") maximum += maxMarks;
         } else if (mark.status === "EXEMPTED") {
           status = "EXEMPTED";
         } else {
           const value = marksObtained ?? 0;
-          obtained += value;
-          maximum += maxMarks;
-          status = passMarks === null || value >= passMarks ? "PASS" : "FAIL";
+          if (schedule.assessmentType === "GRADE") {
+            status = grade ? "PASS" : "FAIL";
+          } else {
+            obtained += value;
+            maximum += maxMarks;
+            status = passMarks === null || value >= passMarks ? "PASS" : "FAIL";
+          }
           failed ||= status === "FAIL";
         }
 
@@ -131,6 +139,8 @@ export const studentExamService = {
           subject: schedule.subject,
           examDate: schedule.examDate,
           marksObtained,
+          assessmentType: schedule.assessmentType,
+          grade,
           maxMarks,
           passMarks,
           status,

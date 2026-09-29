@@ -6,6 +6,7 @@ import { ApiResponse } from "@/lib/response";
 
 import { studentExamMarkService } from "@/features/exams/services/student-exam-mark.service";
 import { recordAuditLog } from "@/lib/audit";
+import { isExamGrade } from "@/features/exams/assessment";
 
 type Params = Promise<{
   scheduleId: string;
@@ -100,6 +101,15 @@ export async function PUT(
       }
 
       if (
+        mark.grade !== undefined &&
+        mark.grade !== null &&
+        mark.grade !== "" &&
+        !isExamGrade(mark.grade)
+      ) {
+        return ApiResponse.error(`Invalid grade: ${mark.grade}`, 400);
+      }
+
+      if (
         mark.marksObtained !== undefined &&
         mark.marksObtained !== null &&
         mark.marksObtained !== ""
@@ -130,6 +140,7 @@ export async function PUT(
         (mark: {
           studentEnrollmentId: string;
           marksObtained?: number | string | null;
+          grade?: string | null;
           status?: StudentExamStatus;
           remarks?: string | null;
         }) => ({
@@ -140,6 +151,7 @@ export async function PUT(
             mark.marksObtained !== ""
               ? Number(mark.marksObtained)
               : null,
+          grade: mark.grade || null,
           status: mark.status ?? StudentExamStatus.PRESENT,
           remarks: mark.remarks || null,
         }),

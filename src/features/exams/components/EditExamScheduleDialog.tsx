@@ -27,6 +27,7 @@ type ExamSchedule = {
 
   maxMarks: string | number;
   passMarks: string | number | null;
+  assessmentType: "MARKS" | "GRADE";
 
   class: {
     id: string;
@@ -82,6 +83,7 @@ export function EditExamScheduleDialog({
 
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
+  const [assessmentType, setAssessmentType] = useState<"MARKS" | "GRADE">("MARKS");
 
   const [maxMarks, setMaxMarks] = useState("");
   const [passMarks, setPassMarks] = useState("");
@@ -104,6 +106,7 @@ export function EditExamScheduleDialog({
 
       setStartTime(schedule.startTime ?? "");
       setEndTime(schedule.endTime ?? "");
+      setAssessmentType(schedule.assessmentType ?? "MARKS");
 
       setMaxMarks(String(schedule.maxMarks));
 
@@ -161,21 +164,21 @@ export function EditExamScheduleDialog({
       return;
     }
 
-    if (!maxMarks.trim()) {
+    if (assessmentType === "MARKS" && !maxMarks.trim()) {
       toast.error("Maximum marks are required.");
       return;
     }
 
-    const parsedMaxMarks = Number(maxMarks);
+    const parsedMaxMarks = assessmentType === "GRADE" ? 1 : Number(maxMarks);
 
-    if (!Number.isFinite(parsedMaxMarks) || parsedMaxMarks <= 0) {
+    if (assessmentType === "MARKS" && (!Number.isFinite(parsedMaxMarks) || parsedMaxMarks <= 0)) {
       toast.error("Maximum marks must be greater than zero.");
       return;
     }
 
     let parsedPassMarks: number | null = null;
 
-    if (passMarks.trim()) {
+    if (assessmentType === "MARKS" && passMarks.trim()) {
       parsedPassMarks = Number(passMarks);
 
       if (!Number.isFinite(parsedPassMarks) || parsedPassMarks < 0) {
@@ -218,6 +221,8 @@ export function EditExamScheduleDialog({
             startTime: startTime || null,
 
             endTime: endTime || null,
+
+            assessmentType,
 
             maxMarks: parsedMaxMarks,
 
@@ -302,7 +307,23 @@ export function EditExamScheduleDialog({
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Result Type</label>
+            <select
+              value={assessmentType}
+              onChange={(event) => setAssessmentType(event.target.value as "MARKS" | "GRADE")}
+              disabled={saving}
+              className="h-10 w-full rounded-xl border border-input bg-card px-3.5 text-sm"
+            >
+              <option value="MARKS">Marks</option>
+              <option value="GRADE">Grades only (A+ to E)</option>
+            </select>
+            <p className="text-xs text-muted-foreground">
+              Grade-only subjects are excluded from total marks, percentage, rank, and pass/fail.
+            </p>
+          </div>
+
+          {assessmentType === "MARKS" && <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <label className="text-sm font-medium">Start Time</label>
 
@@ -324,7 +345,7 @@ export function EditExamScheduleDialog({
                 disabled={saving}
               />
             </div>
-          </div>
+          </div>}
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">

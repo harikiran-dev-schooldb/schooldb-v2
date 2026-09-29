@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import type { ExamAssessmentType } from "@/features/exams/assessment";
 
 type CreateExamScheduleInput = {
   examId: string;
@@ -10,6 +11,7 @@ type CreateExamScheduleInput = {
   startTime?: string | null;
   endTime?: string | null;
 
+  assessmentType?: ExamAssessmentType;
   maxMarks: number;
   passMarks?: number | null;
 };
@@ -23,6 +25,7 @@ type UpdateExamScheduleInput = {
   startTime?: string | null;
   endTime?: string | null;
 
+  assessmentType?: ExamAssessmentType;
   maxMarks?: number;
   passMarks?: number | null;
 };
@@ -222,16 +225,19 @@ export const examScheduleService = {
       );
     }
 
-    if (input.maxMarks <= 0) {
+    const assessmentType = input.assessmentType ?? "MARKS";
+    const maxMarks = assessmentType === "GRADE" ? 1 : input.maxMarks;
+    const passMarks = assessmentType === "GRADE" ? null : input.passMarks ?? null;
+
+    if (maxMarks <= 0) {
       throw new Error(
         "Maximum marks must be greater than zero.",
       );
     }
 
     if (
-      input.passMarks !== undefined &&
-      input.passMarks !== null &&
-      input.passMarks < 0
+      passMarks !== null &&
+      passMarks < 0
     ) {
       throw new Error(
         "Pass marks cannot be negative.",
@@ -239,9 +245,8 @@ export const examScheduleService = {
     }
 
     if (
-      input.passMarks !== undefined &&
-      input.passMarks !== null &&
-      input.passMarks > input.maxMarks
+      passMarks !== null &&
+      passMarks > maxMarks
     ) {
       throw new Error(
         "Pass marks cannot be greater than maximum marks.",
@@ -294,10 +299,11 @@ validateExamTime(
         endTime:
           input.endTime || null,
 
-        maxMarks: input.maxMarks,
+        assessmentType,
 
-        passMarks:
-          input.passMarks ?? null,
+        maxMarks,
+
+        passMarks,
       },
 
       include: {
@@ -429,11 +435,17 @@ if (duplicate) {
   );
 }
 
+    const assessmentType = input.assessmentType ?? existing.assessmentType;
+
     const maxMarks =
-      input.maxMarks ?? Number(existing.maxMarks);
+      assessmentType === "GRADE"
+        ? 1
+        : input.maxMarks ?? Number(existing.maxMarks);
 
     const passMarks =
-      input.passMarks !== undefined
+      assessmentType === "GRADE"
+        ? null
+        : input.passMarks !== undefined
         ? input.passMarks
         : existing.passMarks
           ? Number(existing.passMarks)
@@ -534,6 +546,8 @@ validateExamTime(
           input.endTime !== undefined
             ? input.endTime
             : undefined,
+
+        assessmentType,
 
         maxMarks,
 

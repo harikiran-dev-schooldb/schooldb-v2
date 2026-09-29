@@ -56,6 +56,7 @@ export async function PUT(req: Request, { params }: { params: Params }) {
         marksObtained?: unknown;
         status?: unknown;
         remarks?: unknown;
+        grade?: unknown;
       };
       if (typeof mark.studentEnrollmentId !== "string" || !mark.studentEnrollmentId) {
         throw new Error("Student enrollment ID is required.");
@@ -74,6 +75,7 @@ export async function PUT(req: Request, { params }: { params: Params }) {
       return {
         studentEnrollmentId: mark.studentEnrollmentId,
         marksObtained: parsed,
+        grade: typeof mark.grade === "string" ? mark.grade : null,
         status: status as StudentExamStatus,
         remarks: typeof mark.remarks === "string" ? mark.remarks : null,
       };

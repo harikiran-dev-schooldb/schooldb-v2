@@ -1561,6 +1561,7 @@ model ExamSchedule {
   examDate  DateTime          @db.Date
   startTime String?
   endTime   String?
+  assessmentType ExamAssessmentType @default(MARKS)
   maxMarks  Decimal           @db.Decimal(10, 2)
   passMarks Decimal?          @db.Decimal(10, 2)
   createdAt DateTime          @default(now())
@@ -1585,6 +1586,7 @@ model StudentExamMark {
   examScheduleId      String
   studentEnrollmentId String
   marksObtained       Decimal?          @db.Decimal(10, 2)
+  grade               String?           @db.VarChar(5)
   status              StudentExamStatus @default(PRESENT)
   remarks             String?
   createdAt           DateTime          @default(now())
@@ -2056,6 +2058,11 @@ enum ExamStatus {
   PUBLISHED
   COMPLETED
   CANCELLED
+}
+
+enum ExamAssessmentType {
+  MARKS
+  GRADE
 }
 
 enum StudentExamStatus {

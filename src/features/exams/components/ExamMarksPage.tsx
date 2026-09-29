@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ClassSelect, SectionSelect } from "@/components/common/select";
 import { Input } from "@/components/ui/input";
 import { refreshTable } from "@/lib/table-event";
+import { EXAM_GRADES } from "@/features/exams/assessment";
 
 type Status = "PRESENT" | "ABSENT" | "EXEMPTED";
 
@@ -21,6 +22,7 @@ type Schedule = {
   examDate: string;
   maxMarks: string | number;
   passMarks: string | number | null;
+  assessmentType: "MARKS" | "GRADE";
   class: {
     id: string;
     name: string;
@@ -48,6 +50,7 @@ type Student = {
     string,
     {
       marksObtained: string;
+      grade: string;
       status: Status;
       remarks: string;
     }
@@ -192,6 +195,7 @@ export function ExamMarksPage({ schoolSlug, examId }: Props) {
               row.mark?.marksObtained === undefined
                 ? ""
                 : String(row.mark.marksObtained),
+            grade: row.mark?.grade ?? "",
             status: row.mark?.status ?? "PRESENT",
             remarks: row.mark?.remarks ?? "",
           };
@@ -261,6 +265,12 @@ export function ExamMarksPage({ schoolSlug, examId }: Props) {
     );
   }
 
+  function updateGrade(studentEnrollmentId: string, scheduleId: string, value: string) {
+    setStudents((current) => current.map((student) => student.studentEnrollmentId === studentEnrollmentId
+      ? { ...student, marks: { ...student.marks, [scheduleId]: { ...student.marks[scheduleId], grade: value } } }
+      : student));
+  }
+
   function updateStatus(
     studentEnrollmentId: string,
     scheduleId: string,
@@ -292,6 +302,7 @@ export function ExamMarksPage({ schoolSlug, examId }: Props) {
     if (!students.length || !applicableSchedules.length) return;
 
     for (const schedule of applicableSchedules) {
+      if (schedule.assessmentType === "GRADE") continue;
       const maxMarks = Number(schedule.maxMarks);
 
       for (const student of students) {
@@ -334,11 +345,12 @@ export function ExamMarksPage({ schoolSlug, examId }: Props) {
                     studentEnrollmentId: student.studentEnrollmentId,
 
                     marksObtained:
-                      !mark ||
+                      schedule.assessmentType === "GRADE" || !mark ||
                       mark.status !== "PRESENT" ||
                       mark.marksObtained === ""
                         ? null
                         : Number(mark.marksObtained),
+                    grade: schedule.assessmentType === "GRADE" && mark?.status === "PRESENT" ? mark.grade || null : null,
 
                     status: mark?.status ?? "PRESENT",
 
@@ -502,7 +514,7 @@ export function ExamMarksPage({ schoolSlug, examId }: Props) {
                         </div>
 
                         <div className="mt-1 text-xs text-muted-foreground">
-                          / {Number(schedule.maxMarks)}
+                          {schedule.assessmentType === "GRADE" ? "Grades" : `/ ${Number(schedule.maxMarks)}`}
                         </div>
                       </th>
                     ))}
@@ -536,7 +548,12 @@ export function ExamMarksPage({ schoolSlug, examId }: Props) {
                         return (
                           <td key={schedule.id} className="border-r p-2">
                             <div className="flex min-w-[160px] flex-col gap-2">
-                              <Input
+                              {schedule.assessmentType === "GRADE" ? (
+                                <select value={mark.grade ?? ""} disabled={saving || mark.status !== "PRESENT"} onChange={(event) => updateGrade(student.studentEnrollmentId, schedule.id, event.target.value)} className="h-8 w-full rounded-md border bg-background px-2 text-xs">
+                                  <option value="">Grade</option>
+                                  {EXAM_GRADES.map((grade) => <option key={grade} value={grade}>{grade}</option>)}
+                                </select>
+                              ) : <Input
                                 type="number"
                                 min="0"
                                 max={Number(schedule.maxMarks)}
@@ -551,7 +568,7 @@ export function ExamMarksPage({ schoolSlug, examId }: Props) {
                                   )
                                 }
                                 placeholder="Marks"
-                              />
+                              />}
 
                               <select
                                 value={mark.status}

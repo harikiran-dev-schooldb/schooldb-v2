@@ -63,6 +63,7 @@ export const examResultService = {
         sectionId: true,
         maxMarks: true,
         passMarks: true,
+        assessmentType: true,
       },
     });
 
@@ -114,6 +115,7 @@ export const examResultService = {
             select: {
               examScheduleId: true,
               marksObtained: true,
+              grade: true,
               status: true,
             },
           },
@@ -140,6 +142,7 @@ export const examResultService = {
       let failedSubjects = 0;
 
       for (const schedule of applicableSchedules) {
+        if (schedule.assessmentType === "GRADE") continue;
         const mark = marksBySchedule.get(schedule.id);
 
         if (!mark) {
@@ -314,6 +317,7 @@ export const examResultService = {
         examDate: true,
         maxMarks: true,
         passMarks: true,
+        assessmentType: true,
 
         class: {
           select: {
@@ -418,6 +422,7 @@ export const examResultService = {
               id: true,
               examScheduleId: true,
               marksObtained: true,
+              grade: true,
               status: true,
               remarks: true,
             },
@@ -484,6 +489,8 @@ export const examResultService = {
                     )
                   : null;
 
+              const grade = mark?.grade ?? null;
+
               subjects += 1;
 
               let subjectStatus: SubjectResultStatus;
@@ -528,6 +535,11 @@ export const examResultService = {
                */
 
               else {
+                if (schedule.assessmentType === "GRADE") {
+                  subjectStatus = grade ? "PASS" : "FAIL";
+                  if (subjectStatus === "PASS") passedSubjects += 1;
+                  else failedSubjects += 1;
+                } else {
                 const obtained =
                   marksObtained ?? 0;
 
@@ -542,6 +554,7 @@ export const examResultService = {
                 } else {
                   subjectStatus = "FAIL";
                   failedSubjects += 1;
+                }
                 }
               }
 
@@ -562,6 +575,8 @@ export const examResultService = {
                   schedule.examDate,
 
                 marksObtained,
+                assessmentType: schedule.assessmentType,
+                grade,
 
                 maxMarks,
 
@@ -586,7 +601,7 @@ export const examResultService = {
         const percentageMaxMarks =
           subjectResults.reduce(
             (total, subject) =>
-              subject.status === "EXEMPTED"
+              subject.status === "EXEMPTED" || subject.assessmentType === "GRADE"
                 ? total
                 : total + subject.maxMarks,
             0,

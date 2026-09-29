@@ -20,12 +20,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { refreshTable } from "@/lib/table-event";
+import { EXAM_GRADES } from "@/features/exams/assessment";
 
 type StudentExamStatus = "PRESENT" | "ABSENT";
 
 type StudentMark = {
   id: string | null;
   marksObtained: string | number | null;
+  grade: string | null;
   status: StudentExamStatus;
   remarks: string | null;
 };
@@ -65,6 +67,7 @@ type ScheduleData = {
   };
 
   examDate: string;
+  assessmentType: "MARKS" | "GRADE";
   maxMarks: string | number;
   passMarks: string | number | null;
 };
@@ -163,6 +166,16 @@ export function MarksEntryPage({ schoolSlug, examId, scheduleId }: Props) {
     );
   }
 
+  function updateGrade(studentEnrollmentId: string, grade: string) {
+    setStudents((current) =>
+      current.map((student) =>
+        student.studentEnrollmentId === studentEnrollmentId
+          ? { ...student, mark: { ...student.mark, grade: grade || null } }
+          : student,
+      ),
+    );
+  }
+
   /* ---------------------------------------------------------------------- */
   /* UPDATE STATUS                                                          */
   /* ---------------------------------------------------------------------- */
@@ -181,6 +194,7 @@ export function MarksEntryPage({ schoolSlug, examId, scheduleId }: Props) {
                 status,
                 marksObtained:
                   status === "ABSENT" ? null : student.mark.marksObtained,
+                grade: status === "ABSENT" ? null : student.mark.grade,
               },
             }
           : student,
@@ -228,10 +242,11 @@ export function MarksEntryPage({ schoolSlug, examId, scheduleId }: Props) {
       students.filter(
         (student) =>
           student.mark.status === "PRESENT" &&
-          student.mark.marksObtained !== null &&
-          student.mark.marksObtained !== "",
+          (data?.schedule.assessmentType === "GRADE"
+            ? Boolean(student.mark.grade)
+            : student.mark.marksObtained !== null && student.mark.marksObtained !== ""),
       ).length,
-    [students],
+    [data?.schedule.assessmentType, students],
   );
 
   const pendingCount = presentCount - enteredCount;
@@ -250,7 +265,7 @@ export function MarksEntryPage({ schoolSlug, examId, scheduleId }: Props) {
 
     const maxMarks = Number(data.schedule.maxMarks);
 
-    for (const student of students) {
+    for (const student of data.schedule.assessmentType === "MARKS" ? students : []) {
       if (student.mark.status === "ABSENT") {
         continue;
       }
@@ -298,12 +313,17 @@ export function MarksEntryPage({ schoolSlug, examId, scheduleId }: Props) {
               studentEnrollmentId: student.studentEnrollmentId,
 
               marksObtained:
-                student.mark.status === "ABSENT"
+                data.schedule.assessmentType === "GRADE" || student.mark.status === "ABSENT"
                   ? null
                   : student.mark.marksObtained === null ||
                       student.mark.marksObtained === ""
                     ? null
                     : Number(student.mark.marksObtained),
+
+              grade:
+                data.schedule.assessmentType === "GRADE" && student.mark.status === "PRESENT"
+                  ? student.mark.grade
+                  : null,
 
               status: student.mark.status,
 
@@ -320,7 +340,7 @@ export function MarksEntryPage({ schoolSlug, examId, scheduleId }: Props) {
         return;
       }
 
-      toast.success("Student marks saved successfully.");
+      toast.success(`Student ${data.schedule.assessmentType === "GRADE" ? "grades" : "marks"} saved successfully.`);
       refreshTable("exams");
 
       await loadData();
@@ -420,7 +440,7 @@ export function MarksEntryPage({ schoolSlug, examId, scheduleId }: Props) {
           <div>
             <div className="flex flex-wrap items-center gap-2">
               <span className="rounded-full border border-primary/15 bg-primary/[0.07] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-primary">
-                Marks Entry
+                {schedule.assessmentType === "GRADE" ? "Grades Entry" : "Marks Entry"}
               </span>
 
               <span className="rounded-full bg-muted px-2.5 py-1 text-[10px] font-semibold">
@@ -457,7 +477,7 @@ export function MarksEntryPage({ schoolSlug, examId, scheduleId }: Props) {
               onClick={() => void saveMarks()}
             >
               <Save className="mr-2 size-4" />
-              {saving ? "Saving..." : "Save Marks"}
+              {saving ? "Saving..." : `Save ${schedule.assessmentType === "GRADE" ? "Grades" : "Marks"}`}
             </Button>
           </div>
         </div>
@@ -472,7 +492,7 @@ export function MarksEntryPage({ schoolSlug, examId, scheduleId }: Props) {
 
         <CardContent className="p-6">
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <SummaryItem
+            {schedule.assessmentType === "MARKS" ? <SummaryItem
               icon={<Users className="size-5" />}
               label="Class"
               value={
@@ -480,13 +500,13 @@ export function MarksEntryPage({ schoolSlug, examId, scheduleId }: Props) {
                   ? `${schedule.class.name} - ${schedule.section.name}`
                   : schedule.class.name
               }
-            />
+            /> : <SummaryItem icon={<BarChart3 className="size-5" />} label="Result Type" value="Grades only" />}
 
-            <SummaryItem
+            {schedule.assessmentType === "MARKS" && <SummaryItem
               icon={<CalendarDays className="size-5" />}
               label="Exam Date"
               value={formatDate(schedule.examDate)}
-            />
+            />}
 
             <SummaryItem
               icon={<BarChart3 className="size-5" />}
@@ -519,7 +539,7 @@ export function MarksEntryPage({ schoolSlug, examId, scheduleId }: Props) {
         />
 
         <StatCard
-          label="Marks Entered"
+          label={`${schedule.assessmentType === "GRADE" ? "Grades" : "Marks"} Entered`}
           value={enteredCount}
           icon={<CheckCircle2 className="size-5" />}
           tone="success"
@@ -551,7 +571,7 @@ export function MarksEntryPage({ schoolSlug, examId, scheduleId }: Props) {
               <p className="text-sm font-semibold">Entry Progress</p>
 
               <p className="mt-0.5 text-xs text-muted-foreground">
-                {enteredCount} of {students.length} students have marks entered.
+                {enteredCount} of {students.length} students have {schedule.assessmentType === "GRADE" ? "grades" : "marks"} entered.
               </p>
             </div>
 
@@ -579,7 +599,7 @@ export function MarksEntryPage({ schoolSlug, examId, scheduleId }: Props) {
             <div className="flex items-center gap-2">
               <ClipboardList className="size-5 text-primary" />
 
-              <h2 className="font-semibold">Student Marks</h2>
+              <h2 className="font-semibold">Student {schedule.assessmentType === "GRADE" ? "Grades" : "Marks"}</h2>
 
               <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-semibold">
                 {students.length}
@@ -587,16 +607,16 @@ export function MarksEntryPage({ schoolSlug, examId, scheduleId }: Props) {
             </div>
 
             <p className="mt-1 text-xs text-muted-foreground">
-              Enter marks and attendance for each student.
+              Enter {schedule.assessmentType === "GRADE" ? "grades" : "marks"} and attendance for each student.
             </p>
           </div>
 
-          <div className="text-xs text-muted-foreground">
+          {schedule.assessmentType === "MARKS" && <div className="text-xs text-muted-foreground">
             Maximum:{" "}
             <span className="font-semibold text-foreground">
               {Number(schedule.maxMarks)}
             </span>
-          </div>
+          </div>}
         </div>
 
         {students.length === 0 ? (
@@ -627,7 +647,7 @@ export function MarksEntryPage({ schoolSlug, examId, scheduleId }: Props) {
                     </th>
 
                     <th className="w-44 px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                      Marks
+                      {schedule.assessmentType === "GRADE" ? "Grade" : "Marks"}
                     </th>
 
                     <th className="w-36 px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
@@ -666,7 +686,17 @@ export function MarksEntryPage({ schoolSlug, examId, scheduleId }: Props) {
                         </td>
 
                         <td className="px-4 py-4">
-                          <Input
+                          {schedule.assessmentType === "GRADE" ? (
+                            <select
+                              value={student.mark.grade ?? ""}
+                              disabled={saving || absent}
+                              onChange={(event) => updateGrade(student.studentEnrollmentId, event.target.value)}
+                              className="h-10 w-full rounded-lg border bg-background px-3 text-center font-semibold"
+                            >
+                              <option value="">Select grade</option>
+                              {EXAM_GRADES.map((grade) => <option key={grade} value={grade}>{grade}</option>)}
+                            </select>
+                          ) : <Input
                             type="number"
                             min="0"
                             max={Number(schedule.maxMarks)}
@@ -685,7 +715,7 @@ export function MarksEntryPage({ schoolSlug, examId, scheduleId }: Props) {
                             }
                             className="h-10 rounded-lg text-center text-base font-semibold"
                             placeholder="—"
-                          />
+                          />}
                         </td>
 
                         <td className="px-4 py-4">
@@ -790,10 +820,20 @@ export function MarksEntryPage({ schoolSlug, examId, scheduleId }: Props) {
                     <div className="mt-4 grid grid-cols-2 gap-3">
                       <div>
                         <label className="mb-1.5 block text-xs font-semibold text-muted-foreground">
-                          Marks / {Number(schedule.maxMarks)}
+                          {schedule.assessmentType === "GRADE" ? "Grade" : `Marks / ${Number(schedule.maxMarks)}`}
                         </label>
 
-                        <Input
+                        {schedule.assessmentType === "GRADE" ? (
+                          <select
+                            value={student.mark.grade ?? ""}
+                            disabled={saving || absent}
+                            onChange={(event) => updateGrade(student.studentEnrollmentId, event.target.value)}
+                            className="h-11 w-full rounded-xl border bg-background px-3 text-center font-semibold"
+                          >
+                            <option value="">Select grade</option>
+                            {EXAM_GRADES.map((grade) => <option key={grade} value={grade}>{grade}</option>)}
+                          </select>
+                        ) : <Input
                           type="number"
                           min="0"
                           max={Number(schedule.maxMarks)}
@@ -812,7 +852,7 @@ export function MarksEntryPage({ schoolSlug, examId, scheduleId }: Props) {
                           }
                           className="h-11 rounded-xl text-center text-base font-semibold"
                           placeholder="Enter marks"
-                        />
+                        />}
                       </div>
 
                       <div>

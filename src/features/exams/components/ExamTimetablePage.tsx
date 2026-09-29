@@ -21,6 +21,7 @@ type ExamSchedule = {
   endTime: string | null;
   maxMarks: string | number;
   passMarks: string | number | null;
+  assessmentType: "MARKS" | "GRADE";
   class: { id: string; name: string };
   section: { id: string; name: string } | null;
   subject: { id: string; name: string; code: string | null };
@@ -231,7 +232,7 @@ export function ExamTimetablePage({ schoolSlug, examId }: Props) {
                           : schedule.startTime || "Time not set"}
                       </span>
                     </td>
-                    <td className="px-5 py-4 text-right font-semibold">{Number(schedule.maxMarks)}</td>
+                    <td className="px-5 py-4 text-right font-semibold">{schedule.assessmentType === "GRADE" ? "Grades" : Number(schedule.maxMarks)}</td>
                   </tr>
                 ))}
               </tbody>

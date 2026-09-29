@@ -52,14 +52,16 @@ export async function POST(
     const { examId } = await params;
 
     const body = await req.json();
+    const assessmentType = body.assessmentType === "GRADE" ? "GRADE" : "MARKS";
 
     if (
       !body.classId ||
       !body.subjectId ||
       !body.examDate ||
-      body.maxMarks === undefined ||
-      body.maxMarks === null ||
-      body.maxMarks === ""
+      (assessmentType === "MARKS" &&
+        (body.maxMarks === undefined ||
+          body.maxMarks === null ||
+          body.maxMarks === ""))
     ) {
       return ApiResponse.error(
         "Class, subject, exam date and maximum marks are required.",
@@ -67,7 +69,7 @@ export async function POST(
       );
     }
 
-    if (Number(body.maxMarks) <= 0) {
+    if (assessmentType === "MARKS" && Number(body.maxMarks) <= 0) {
       return ApiResponse.error(
         "Maximum marks must be greater than zero.",
         400,
@@ -75,6 +77,7 @@ export async function POST(
     }
 
     if (
+      assessmentType === "MARKS" &&
       body.passMarks !== undefined &&
       body.passMarks !== null &&
       body.passMarks !== "" &&
@@ -97,8 +100,10 @@ export async function POST(
         examDate: body.examDate,
         startTime: body.startTime || null,
         endTime: body.endTime || null,
-        maxMarks: Number(body.maxMarks),
+        assessmentType,
+        maxMarks: assessmentType === "GRADE" ? 1 : Number(body.maxMarks),
         passMarks:
+          assessmentType === "MARKS" &&
           body.passMarks !== undefined &&
           body.passMarks !== null &&
           body.passMarks !== ""

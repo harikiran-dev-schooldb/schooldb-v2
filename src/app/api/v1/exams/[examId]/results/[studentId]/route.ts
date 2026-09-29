@@ -177,6 +177,7 @@ export async function GET(
               examDate: true,
               maxMarks: true,
               passMarks: true,
+              assessmentType: true,
 
               subject: {
                 select: {
@@ -221,6 +222,8 @@ export async function GET(
         resultStatus = "ABSENT";
       } else if (mark.status === "EXEMPTED") {
         resultStatus = "EXEMPTED";
+      } else if (mark.examSchedule.assessmentType === "GRADE") {
+        resultStatus = mark.grade ? "PASS" : "FAIL";
       } else if (
         marksObtained !== null &&
         (passMarks === null ||
@@ -245,6 +248,8 @@ export async function GET(
         maxMarks,
         passMarks,
         marksObtained,
+        assessmentType: mark.examSchedule.assessmentType,
+        grade: mark.grade,
 
         status: mark.status,
 
@@ -374,8 +379,8 @@ export async function GET(
 
     const gradedSubjects = subjects.filter(
       (subject) =>
-        subject.resultStatus === "PASS" ||
-        subject.resultStatus === "FAIL",
+        subject.assessmentType === "MARKS" &&
+        (subject.resultStatus === "PASS" || subject.resultStatus === "FAIL"),
     );
 
     const totalMaxMarks =

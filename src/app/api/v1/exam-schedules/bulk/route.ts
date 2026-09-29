@@ -16,6 +16,7 @@ type ImportRow = {
   endTime: string;
   maxMarks: string;
   passMarks: string;
+  assessmentType?: string;
 };
 
 type PreparedRow = Omit<
@@ -25,6 +26,7 @@ type PreparedRow = Omit<
   examDate: Date;
   maxMarks: number;
   passMarks: number | null;
+  assessmentType: "MARKS" | "GRADE";
 };
 
 type ResolvedRow = {
@@ -38,6 +40,7 @@ type ResolvedRow = {
   endTime: string | null;
   maxMarks: number;
   passMarks: number | null;
+  assessmentType: "MARKS" | "GRADE";
 };
 
 function normalize(value: string): string {
@@ -106,6 +109,7 @@ export async function POST(request: Request) {
       const subjectName = row.subjectName?.trim() ?? "";
       const examDate = parseDate(row.examDate ?? "");
       const maxMarks = Number(row.maxMarks);
+      const assessmentType = row.assessmentType?.trim().toUpperCase() === "GRADE" ? "GRADE" : "MARKS";
       const passMarks = row.passMarks === "" || row.passMarks == null ? null : Number(row.passMarks);
 
       if (!examName || !academicYear || !className || !subjectName) {
@@ -115,7 +119,7 @@ export async function POST(request: Request) {
       if (row.startTime && !isValidTime(row.startTime)) throw new Error(`Row ${rowNumber}: Start time must be HH:MM.`);
       if (row.endTime && !isValidTime(row.endTime)) throw new Error(`Row ${rowNumber}: End time must be HH:MM.`);
       if (row.startTime && row.endTime && row.endTime <= row.startTime) throw new Error(`Row ${rowNumber}: End time must be after start time.`);
-      if (!Number.isFinite(maxMarks) || maxMarks <= 0) throw new Error(`Row ${rowNumber}: Max marks must be greater than 0.`);
+      if (assessmentType === "MARKS" && (!Number.isFinite(maxMarks) || maxMarks <= 0)) throw new Error(`Row ${rowNumber}: Max marks must be greater than 0.`);
       if (passMarks !== null && (!Number.isFinite(passMarks) || passMarks < 0 || passMarks > maxMarks)) {
         throw new Error(`Row ${rowNumber}: Pass marks must be between 0 and max marks.`);
       }
@@ -123,7 +127,7 @@ export async function POST(request: Request) {
       const duplicateKey = [examName, academicYear, className, sectionName, subjectName].map(normalize).join(":");
       if (seen.has(duplicateKey)) throw new Error(`Duplicate schedule in import at row ${rowNumber}.`);
       seen.add(duplicateKey);
-      prepared.push({ ...row, examName, academicYear, className, sectionName, subjectName, examDate, maxMarks, passMarks });
+      prepared.push({ ...row, examName, academicYear, className, sectionName, subjectName, examDate, maxMarks: assessmentType === "GRADE" ? 1 : maxMarks, passMarks: assessmentType === "GRADE" ? null : passMarks, assessmentType });
     }
 
     const [academicYears, exams, classes, sections, subjects] = await Promise.all([
@@ -171,7 +175,7 @@ export async function POST(request: Request) {
       const subject = subjectByName.get(normalize(row.subjectName));
       if (!subject) throw new Error(`Row ${rowNumber}: Subject not found: ${row.subjectName}.`);
 
-      resolved.push({ schoolId: tenant.schoolId, examId: exam.id, classId: classRecord.id, sectionId, subjectId: subject.id, examDate: row.examDate, startTime: row.startTime || null, endTime: row.endTime || null, maxMarks: row.maxMarks, passMarks: row.passMarks });
+      resolved.push({ schoolId: tenant.schoolId, examId: exam.id, classId: classRecord.id, sectionId, subjectId: subject.id, examDate: row.examDate, startTime: row.startTime || null, endTime: row.endTime || null, maxMarks: row.maxMarks, passMarks: row.passMarks, assessmentType: row.assessmentType === "GRADE" ? "GRADE" : "MARKS" });
     }
 
     const existing = await prisma.examSchedule.findMany({

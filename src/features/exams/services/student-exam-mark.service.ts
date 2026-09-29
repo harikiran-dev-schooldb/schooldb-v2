@@ -1,10 +1,12 @@
 import { StudentExamStatus } from "@/generated/prisma/client";
 
 import { prisma } from "@/lib/prisma";
+import { isExamGrade } from "@/features/exams/assessment";
 
 type MarkInput = {
   studentEnrollmentId: string;
   marksObtained?: number | null;
+  grade?: string | null;
   status?: StudentExamStatus;
   remarks?: string | null;
 };
@@ -89,6 +91,7 @@ export const studentExamMarkService = {
           select: {
             id: true,
             marksObtained: true,
+            grade: true,
             status: true,
             remarks: true,
           },
@@ -130,6 +133,8 @@ export const studentExamMarkService = {
 
         examDate: schedule.examDate,
 
+        assessmentType: schedule.assessmentType,
+
         maxMarks: schedule.maxMarks,
 
         passMarks: schedule.passMarks,
@@ -153,12 +158,14 @@ export const studentExamMarkService = {
             ? {
                 id: mark.id,
                 marksObtained: mark.marksObtained,
+                grade: mark.grade,
                 status: mark.status,
                 remarks: mark.remarks,
               }
             : {
                 id: null,
                 marksObtained: null,
+                grade: null,
                 status: StudentExamStatus.PRESENT,
                 remarks: null,
               },
@@ -189,6 +196,7 @@ export const studentExamMarkService = {
         classId: true,
         sectionId: true,
         maxMarks: true,
+        assessmentType: true,
         exam: { select: { academicYearId: true } },
       },
     });
@@ -275,12 +283,20 @@ export const studentExamMarkService = {
         input.status ?? StudentExamStatus.PRESENT;
 
       let marksObtained: number | null = null;
+      let grade: string | null = null;
 
       /*
        * Absent students do not receive marks.
        */
       if (status === StudentExamStatus.PRESENT) {
-        if (
+        if (schedule.assessmentType === "GRADE") {
+          if (input.grade !== undefined && input.grade !== null && input.grade !== "") {
+            if (!isExamGrade(input.grade)) {
+              throw new Error(`Invalid grade: ${input.grade}.`);
+            }
+            grade = input.grade;
+          }
+        } else if (
           input.marksObtained !== undefined &&
           input.marksObtained !== null
         ) {
@@ -317,12 +333,14 @@ export const studentExamMarkService = {
           examScheduleId: scheduleId,
           studentEnrollmentId: input.studentEnrollmentId,
           marksObtained,
+          grade,
           status,
           remarks: input.remarks || null,
         },
 
         update: {
           marksObtained,
+          grade,
           status,
           remarks: input.remarks || null,
         },
@@ -336,8 +354,8 @@ export const studentExamMarkService = {
         enrollmentId: input.studentEnrollmentId,
         performedByUserId,
         type: "EXAM_MARKS_UPDATED",
-        title: "Exam marks updated",
-        description: "Marks or exam attendance status were saved.",
+        title: "Exam result updated",
+        description: "Marks, grade, or exam attendance status was saved.",
         sourceType: "EXAM_MARKS_BATCH",
         sourceId: activityBatchId,
         metadata: { scheduleId, status: input.status ?? StudentExamStatus.PRESENT },

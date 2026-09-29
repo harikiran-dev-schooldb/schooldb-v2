@@ -70,6 +70,10 @@ export async function PATCH(
           body.endTime !== undefined
             ? body.endTime || null
             : undefined,
+        assessmentType:
+          body.assessmentType === "MARKS" || body.assessmentType === "GRADE"
+            ? body.assessmentType
+            : undefined,
         maxMarks:
           body.maxMarks !== undefined
             ? Number(body.maxMarks)
