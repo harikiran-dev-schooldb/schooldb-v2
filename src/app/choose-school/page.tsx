@@ -100,6 +100,7 @@ export default function ChooseSchoolPage() {
             alt=""
             width={88}
             height={88}
+            unoptimized={Boolean(visibleBrand?.logo)}
             className="size-[88px] rounded-[24px] bg-white object-contain p-1.5 shadow-[0_24px_70px_rgba(30,27,75,.28)]"
           />
           <p className="mt-5 text-[10px] font-black uppercase tracking-[0.24em] text-indigo-200">
@@ -118,6 +119,7 @@ export default function ChooseSchoolPage() {
             alt={visibleBrand ? `${visibleBrand.name} logo` : "SchoolDB"}
             width={72}
             height={72}
+            unoptimized={Boolean(visibleBrand?.logo)}
             className="schooldb-choose-logo mx-auto size-[72px] rounded-2xl bg-white object-contain p-1 shadow-xl shadow-indigo-950/15"
             priority
           />

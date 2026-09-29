@@ -359,6 +359,7 @@ export function TenantOtpSignIn({ schoolSlug, schoolName, schoolLogo }: Props) {
               alt=""
               width={88}
               height={88}
+              unoptimized={Boolean(schoolLogo)}
               className="size-[88px] rounded-[24px] bg-white object-contain p-1.5 shadow-[0_24px_70px_rgba(30,27,75,.28)]"
               priority
             />
@@ -464,6 +465,7 @@ export function TenantOtpSignIn({ schoolSlug, schoolName, schoolLogo }: Props) {
                           alt={`${schoolName} logo`}
                           width={44}
                           height={44}
+                          unoptimized
                           className="size-full bg-white object-contain p-1"
                         />
                       ) : (

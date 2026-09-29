@@ -289,6 +289,7 @@ export function StudentReportCardPage({
                   alt={`${data.school.name} logo`}
                   width={80}
                   height={80}
+                  unoptimized
                   className="size-20 object-contain"
                 />
               </div>

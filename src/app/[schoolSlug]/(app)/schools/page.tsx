@@ -263,6 +263,7 @@ export default function SchoolsPage() {
                         alt={`${item.name} logo`}
                         width={56}
                         height={56}
+                        unoptimized
                         className="size-full bg-white object-contain p-1.5"
                       />
                     ) : (

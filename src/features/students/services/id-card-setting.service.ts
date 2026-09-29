@@ -7,7 +7,6 @@ export const idCardSettingSchema = z.object({
   widthMm: z.coerce.number().min(40).max(150),
   heightMm: z.coerce.number().min(40).max(150),
   showBack: z.boolean(),
-  backImageUrl: z.string().trim().max(2000).nullable().optional().transform((value) => value || null),
   backContent: z.string().trim().max(1000).nullable().optional().transform((value) => value || null),
 });
 
@@ -26,6 +25,6 @@ export async function saveIdCardSetting(schoolId: string, value: unknown) {
     where: { schoolId },
     create: { schoolId, ...input },
     update: input,
-    select: { orientation: true, widthMm: true, heightMm: true, showBack: true, backImageUrl: true, backContent: true },
+    select: { orientation: true, widthMm: true, heightMm: true, showBack: true, backContent: true },
   });
 }

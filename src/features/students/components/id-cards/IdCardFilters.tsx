@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { IdCard, LayoutPanelLeft, Loader2, Save, Search, Users } from "lucide-react";
+import { IdCard, ImageUp, LayoutPanelLeft, Loader2, Save, Search, Trash2, Users } from "lucide-react";
 import { toast } from "sonner";
 
 import { AcademicYearSelect, ClassSelect, SectionSelect } from "@/components/common/select";
@@ -37,6 +37,7 @@ export function IdCardFilters({ initialAcademicYearId, initialClassId = "", init
   const [backImageUrl, setBackImageUrl] = useState(initialSetting.backImageUrl ?? "");
   const [backContent, setBackContent] = useState(initialSetting.backContent ?? "");
   const [saving, setSaving] = useState(false);
+  const [imageBusy, setImageBusy] = useState(false);
 
   function generate() {
     const params = new URLSearchParams({ academicYearId });
@@ -68,7 +69,7 @@ export function IdCardFilters({ initialAcademicYearId, initialClassId = "", init
       const response = await fetch("/api/v1/id-card-settings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ orientation, widthMm: width, heightMm: height, showBack, backImageUrl, backContent }),
+        body: JSON.stringify({ orientation, widthMm: width, heightMm: height, showBack, backContent }),
       });
       const payload = (await response.json()) as { success?: boolean; message?: string };
       if (!response.ok || !payload.success) throw new Error(payload.message || "Unable to save the ID card design.");
@@ -78,6 +79,56 @@ export function IdCardFilters({ initialAcademicYearId, initialClassId = "", init
       toast.error(error instanceof Error ? error.message : "Unable to save the ID card design.");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function uploadBackImage(file: File) {
+    setImageBusy(true);
+    try {
+      const body = new FormData();
+      body.set("file", file);
+      const response = await fetch("/api/v1/id-card-settings/back-image", {
+        method: "POST",
+        body,
+      });
+      const payload = (await response.json()) as {
+        success?: boolean;
+        message?: string;
+        data?: { imageUrl?: string };
+      };
+      if (!response.ok || !payload.success || !payload.data?.imageUrl) {
+        throw new Error(payload.message || "Unable to upload the back image.");
+      }
+      setBackImageUrl(payload.data.imageUrl);
+      toast.success("ID card back image uploaded.");
+      router.refresh();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to upload the back image.");
+    } finally {
+      setImageBusy(false);
+    }
+  }
+
+  async function removeBackImage() {
+    setImageBusy(true);
+    try {
+      const response = await fetch("/api/v1/id-card-settings/back-image", {
+        method: "DELETE",
+      });
+      const payload = (await response.json()) as {
+        success?: boolean;
+        message?: string;
+      };
+      if (!response.ok || !payload.success) {
+        throw new Error(payload.message || "Unable to remove the back image.");
+      }
+      setBackImageUrl("");
+      toast.success("ID card back image removed. The school logo will be used.");
+      router.refresh();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to remove the back image.");
+    } finally {
+      setImageBusy(false);
     }
   }
 
@@ -100,10 +151,49 @@ export function IdCardFilters({ initialAcademicYearId, initialClassId = "", init
         </div>
         {showBack ? (
           <div className="mt-4 grid gap-4 border-t border-indigo-100 pt-4 lg:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="card-back-image" className="text-xs">Back image URL (optional)</Label>
-              <Input id="card-back-image" type="url" value={backImageUrl} onChange={(event) => setBackImageUrl(event.target.value)} placeholder="Leave empty to use the school logo" />
-              <p className="text-[11px] text-slate-500">The school logo is used automatically when this is empty.</p>
+            <div className="space-y-2">
+              <Label className="text-xs">ID card back image (optional)</Label>
+              <div className="flex items-center gap-3 rounded-2xl border border-indigo-100 bg-white/80 p-3">
+                <div
+                  className="flex size-16 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 bg-contain bg-center bg-no-repeat text-indigo-400"
+                  style={backImageUrl ? { backgroundImage: `url(${JSON.stringify(backImageUrl)})` } : undefined}
+                  role={backImageUrl ? "img" : undefined}
+                  aria-label={backImageUrl ? "Current ID card back image" : undefined}
+                >
+                  {!backImageUrl && <ImageUp className="size-6" />}
+                </div>
+                <div className="flex min-w-0 flex-1 flex-wrap gap-2">
+                  <label className="inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-xl border border-border bg-background px-3 text-sm font-semibold transition hover:bg-muted/50 has-[:disabled]:pointer-events-none has-[:disabled]:opacity-50">
+                    {imageBusy ? <Loader2 className="size-4 animate-spin" /> : <ImageUp className="size-4" />}
+                    {backImageUrl ? "Replace image" : "Upload image"}
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp"
+                      className="sr-only"
+                      disabled={imageBusy}
+                      onChange={(event) => {
+                        const file = event.target.files?.[0];
+                        event.target.value = "";
+                        if (file) void uploadBackImage(file);
+                      }}
+                    />
+                  </label>
+                  {backImageUrl && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      className="size-10 rounded-xl text-destructive hover:text-destructive"
+                      disabled={imageBusy}
+                      onClick={() => void removeBackImage()}
+                      aria-label="Remove ID card back image"
+                    >
+                      <Trash2 className="size-4" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+              <p className="text-[11px] text-slate-500">PNG, JPG, or WebP · maximum 5 MB. The school logo is used when no image is uploaded.</p>
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="card-back-content" className="text-xs">School information on back (optional)</Label>

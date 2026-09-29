@@ -9,7 +9,7 @@ import { PrintDocumentButton } from "@/features/students/components/profile/Prin
 import { StudentIdCard } from "@/features/students/components/id-cards/StudentIdCard";
 import { requireTenant } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { publicSchoolLogoUrl } from "@/lib/school-branding";
+import { idCardBackImageUrl, publicSchoolLogoUrl } from "@/lib/school-branding";
 
 type Props = { params: Promise<{ schoolSlug: string; id: string; type: string }>; searchParams: Promise<{ issueId?: string }> };
 const validTypes = new Set(["id-card", "bonafide", "study", "transfer"]);
@@ -57,7 +57,7 @@ export default async function StudentCertificatePage({ params, searchParams }: P
           name: true,
           logo: true,
           idCardSetting: {
-            select: { orientation: true, widthMm: true, heightMm: true, showBack: true, backImageUrl: true, backContent: true },
+            select: { orientation: true, widthMm: true, heightMm: true, showBack: true, backImageUrl: true, backContent: true, updatedAt: true },
           },
           certificateSetting: {
             select: { headerSubtitle: true, bonafideContent: true, studyContent: true, transferContent: true, footerNote: true, signatoryLabel: true },
@@ -102,7 +102,11 @@ export default async function StudentCertificatePage({ params, searchParams }: P
               widthMm: Number(student.school.idCardSetting.widthMm),
               heightMm: Number(student.school.idCardSetting.heightMm),
               showBack: student.school.idCardSetting.showBack,
-              backImageUrl: student.school.idCardSetting.backImageUrl,
+              backImageUrl: idCardBackImageUrl(
+                schoolSlug,
+                student.school.idCardSetting.backImageUrl,
+                student.school.idCardSetting.updatedAt,
+              ),
               backContent: student.school.idCardSetting.backContent,
             } : undefined}
             student={{

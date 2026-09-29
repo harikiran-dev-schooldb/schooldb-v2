@@ -43,6 +43,7 @@ type PrivateDocumentCollection =
   | "admission-documents"
   | "profile-image-requests"
   | "school-logos"
+  | "id-card-back-images"
   | "report-exports";
 
 function hasBlobCredentials() {
@@ -249,6 +250,28 @@ export function schoolLogoContentType(storageKey: string) {
   if (pathname.endsWith(".png")) return "image/png";
   if (pathname.endsWith(".webp")) return "image/webp";
   return "image/jpeg";
+}
+
+export async function saveIdCardBackImage(file: File) {
+  await validateProfileImageFile(file);
+  return savePrivateDocument(file, "id-card-back-images");
+}
+
+export function readIdCardBackImage(storageKey: string) {
+  return readPrivateDocument(storageKey, "id-card-back-images");
+}
+
+export async function deleteIdCardBackImage(storageKey: string | null) {
+  if (!storageKey) return;
+  if (isBlobStorageKey(storageKey)) {
+    await del(storageKey);
+    return;
+  }
+  try {
+    await unlink(storagePath(storageKey, "id-card-back-images"));
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  }
 }
 
 export async function savePublicProfileImage(
