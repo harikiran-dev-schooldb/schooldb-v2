@@ -1,20 +1,22 @@
 "use client";
 
 import { SignIn, useSignIn, useUser } from "@clerk/nextjs";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import {
+  ArrowRight,
   Banknote,
   CalendarCheck,
+  CheckCircle2,
   ChevronRight,
-  FileSpreadsheet,
   FileText,
   GraduationCap,
   LoaderCircle,
   LockKeyhole,
   School,
   ShieldCheck,
+  Sparkles,
   Users,
   UserRoundCog,
 } from "lucide-react";
@@ -24,33 +26,36 @@ import OTPLogin from "./OTPLogin";
 
 const FEATURES = [
   {
-    title: "Student enrollment",
+    title: "One place for every school day",
     description:
-      "Student profiles, contacts, and academic history—all in one secure place.",
+      "Attendance, fees, academics, communication, and student records stay connected.",
+    icon: School,
+  },
+  {
+    title: "Built for families and staff",
+    description:
+      "A simple workspace for parents, students, teachers, and school administrators.",
     icon: Users,
-    color: "from-orange-500 to-amber-400",
   },
   {
-    title: "Fee management",
+    title: "Clear fee visibility",
     description:
-      "Clear installments, payment history, receipts, and outstanding balances.",
+      "Track installments, receipts, balances, and payment history without confusion.",
     icon: Banknote,
-    color: "from-emerald-500 to-teal-400",
   },
   {
-    title: "Smart attendance",
+    title: "Academic progress at a glance",
     description:
-      "Daily attendance records and progress available whenever families need them.",
-    icon: CalendarCheck,
-    color: "from-blue-500 to-cyan-400",
-  },
-  {
-    title: "Exams & results",
-    description:
-      "Schedules, marks, report cards, and academic progress in a single student space.",
+      "Attendance, exam schedules, marks, and results are always easy to reach.",
     icon: GraduationCap,
-    color: "from-violet-500 to-fuchsia-500",
   },
+];
+
+const HIGHLIGHTS = [
+  { label: "Attendance", icon: CalendarCheck },
+  { label: "Fees & receipts", icon: Banknote },
+  { label: "Results", icon: GraduationCap },
+  { label: "Student records", icon: Users },
 ];
 
 type Props = { schoolSlug: string; schoolName: string };
@@ -100,7 +105,7 @@ export function TenantOtpSignIn({ schoolSlug, schoolName }: Props) {
   }, [resendTimer]);
 
   useEffect(() => {
-    if (userLoaded && isSignedIn) router.replace(`/${schoolSlug}`);
+    if (userLoaded && isSignedIn) router.replace("/" + schoolSlug);
   }, [isSignedIn, router, schoolSlug, userLoaded]);
 
   const handleSendOTP = async () => {
@@ -135,11 +140,12 @@ export function TenantOtpSignIn({ schoolSlug, schoolName }: Props) {
   const completeSignIn = async (token: string) => {
     const ticketResult = await signIn.ticket({ ticket: token });
     if (ticketResult.error) throw ticketResult.error;
-    if (signIn.status !== "complete")
+    if (signIn.status !== "complete") {
       throw new Error("Authentication could not be completed.");
+    }
     const finalizeResult = await signIn.finalize({
       navigate: ({ decorateUrl }) =>
-        router.replace(decorateUrl(`/${schoolSlug}`)),
+        router.replace(decorateUrl("/" + schoolSlug)),
     });
     if (finalizeResult.error) throw finalizeResult.error;
   };
@@ -169,8 +175,9 @@ export function TenantOtpSignIn({ schoolSlug, schoolName }: Props) {
         challengeId?: string;
         accounts?: AccountChoice[];
       };
-      if (!response.ok)
+      if (!response.ok) {
         throw new Error(data.error || "OTP verification failed.");
+      }
       if (
         data.requiresAccountSelection &&
         data.challengeId &&
@@ -181,8 +188,9 @@ export function TenantOtpSignIn({ schoolSlug, schoolName }: Props) {
         toast.success("Mobile number verified. Choose an account or role.");
         return;
       }
-      if (!data.token)
+      if (!data.token) {
         throw new Error("Authentication could not be completed.");
+      }
       await completeSignIn(data.token);
     } catch (error) {
       toast.error(errorMessage(error));
@@ -209,8 +217,9 @@ export function TenantOtpSignIn({ schoolSlug, schoolName }: Props) {
         error?: string;
         token?: string;
       };
-      if (!response.ok || !data.token)
+      if (!response.ok || !data.token) {
         throw new Error(data.error || "Account selection failed.");
+      }
       await completeSignIn(data.token);
     } catch (error) {
       toast.error(errorMessage(error));
@@ -247,215 +256,351 @@ export function TenantOtpSignIn({ schoolSlug, schoolName }: Props) {
       .replace(/\b\w/g, (letter) => letter.toUpperCase());
 
   return (
-    <main className="flex min-h-screen w-full bg-white font-sans">
-      <section className="relative z-10 flex w-full flex-col justify-center px-5 py-10 sm:px-10 lg:w-[45%] lg:px-14 xl:px-24">
-        <div className="mx-auto w-full max-w-md">
-          <div className="mb-9 flex items-center gap-3">
-            <div className="flex size-12 items-center justify-center rounded-2xl bg-slate-950 text-white shadow-[0_12px_30px_rgba(15,23,42,0.18)]">
-              <School className="size-6" />
+    <main className="min-h-screen bg-[#f3f6fb] p-0 lg:p-5">
+      <div className="mx-auto flex min-h-screen w-full max-w-[1600px] overflow-hidden bg-white lg:min-h-[calc(100vh-2.5rem)] lg:rounded-[36px] lg:border lg:border-slate-200/80 lg:shadow-[0_30px_90px_rgba(15,23,42,0.10)]">
+        <section className="relative hidden w-[52%] overflow-hidden bg-[#091540] p-10 text-white lg:flex lg:flex-col xl:p-14">
+          <div className="absolute -left-32 top-24 size-80 rounded-full bg-indigo-500/20 blur-3xl" />
+          <div className="absolute -right-20 bottom-4 size-96 rounded-full bg-violet-500/15 blur-3xl" />
+          <div className="absolute inset-0 opacity-[0.08] [background-image:linear-gradient(rgba(255,255,255,.18)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.18)_1px,transparent_1px)] [background-size:42px_42px]" />
+
+          <div className="relative z-10 flex items-center gap-3">
+            <div className="flex size-11 items-center justify-center rounded-2xl bg-white text-[#091540] shadow-lg shadow-black/10">
+              <School className="size-5" />
             </div>
             <div>
-              <p className="font-bold tracking-[-0.02em] text-slate-950">
-                {schoolName}
-              </p>
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
-                SchoolDB · Student space
+              <p className="text-base font-extrabold tracking-[-0.02em]">SchoolDB</p>
+              <p className="text-xs font-medium text-slate-300">
+                Modern school management
               </p>
             </div>
           </div>
 
-          <div className="mb-8">
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-indigo-600">
-              {passwordMode ? "School workspace" : "Welcome back"}
-            </p>
-            <h1 className="mt-3 text-3xl font-bold tracking-[-0.04em] text-slate-950 sm:text-4xl">
-              {passwordMode ? "Staff sign in" : "Login with WhatsApp"}
-            </h1>
-            <p className="mt-3 text-sm leading-6 text-slate-500">
-              {passwordMode
-                ? "Use your existing administrator or teacher credentials."
-                : "Use your registered mobile number. If it belongs to more than one account, you can choose the account after verification."}
-            </p>
-          </div>
+          <div className="relative z-10 my-auto max-w-2xl py-12">
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3.5 py-2 text-xs font-bold text-indigo-100 backdrop-blur">
+              <Sparkles className="size-3.5" />
+              Secure access for {schoolName}
+            </div>
 
-          {passwordMode ? (
-            <SignIn
-              forceRedirectUrl={`/${schoolSlug}`}
-              fallbackRedirectUrl={`/${schoolSlug}`}
-              appearance={{
-                variables: {
-                  colorPrimary: "#4f46e5",
-                  colorBackground: "#ffffff",
-                  colorForeground: "#0f172a",
-                  borderRadius: "1rem",
-                },
-                elements: {
-                  rootBox: "w-full",
-                  card: "w-full bg-transparent shadow-none border-0 p-0",
-                  headerTitle: "hidden",
-                  headerSubtitle: "hidden",
-                  formButtonPrimary: "bg-indigo-600 hover:bg-indigo-700",
-                  footerActionLink: "text-indigo-600",
-                },
-              }}
-            />
-          ) : accountChoices.length > 0 ? (
-            <div className="space-y-4">
-              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
-                <p className="text-sm font-bold text-emerald-900">
-                  Mobile number verified
-                </p>
-                <p className="mt-1 text-xs leading-5 text-emerald-700">
-                  Choose the person and role you want to continue as.
-                </p>
+            <h1 className="mt-7 max-w-xl text-[clamp(2.8rem,4vw,5rem)] font-extrabold leading-[0.98] tracking-[-0.055em]">
+              Your school day,
+              <span className="block text-indigo-300">beautifully connected.</span>
+            </h1>
+            <p className="mt-6 max-w-xl text-base leading-7 text-slate-300 xl:text-lg xl:leading-8">
+              A focused digital workspace that keeps students, families, teachers,
+              and school operations in sync.
+            </p>
+
+            <div className="mt-10 grid max-w-xl grid-cols-2 gap-3">
+              {HIGHLIGHTS.map(({ label, icon: Icon }) => (
+                <div
+                  key={label}
+                  className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3.5 backdrop-blur-sm"
+                >
+                  <span className="flex size-9 items-center justify-center rounded-xl bg-white/10 text-indigo-200">
+                    <Icon className="size-4" />
+                  </span>
+                  <span className="text-sm font-semibold text-slate-100">{label}</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-10 rounded-[28px] border border-white/10 bg-white/[0.07] p-5 backdrop-blur-md xl:p-6">
+              <div className="flex items-start gap-4">
+                <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-indigo-400/15 text-indigo-200">
+                  <FeatureIcon className="size-6" />
+                </div>
+                <div className="min-w-0">
+                  <p className="font-bold tracking-[-0.01em] text-white">
+                    {feature.title}
+                  </p>
+                  <p className="mt-1.5 text-sm leading-6 text-slate-300">
+                    {feature.description}
+                  </p>
+                </div>
               </div>
-              <div className="grid gap-3" aria-label="Choose an account or role">
-                {accountChoices.map((account) => (
+              <div className="mt-5 flex gap-2" aria-label="Platform highlights">
+                {FEATURES.map((item, index) => (
                   <button
-                    key={account.id}
+                    key={item.title}
                     type="button"
-                    disabled={isSending}
-                    onClick={() => void handleAccountSelect(account.id)}
-                    className="group flex w-full items-center gap-4 rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-indigo-300 hover:shadow-lg disabled:cursor-wait disabled:opacity-60"
-                  >
-                    <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
-                      <UserRoundCog className="size-5" />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-bold text-slate-950">
-                        {account.name}
-                      </span>
-                      <span className="mt-1 block text-xs font-semibold text-slate-500">
-                        {formatRole(account.role)}
-                      </span>
-                    </span>
-                    {isSending ? (
-                      <LoaderCircle className="size-5 animate-spin text-indigo-500" />
-                    ) : (
-                      <ChevronRight className="size-5 text-slate-300 transition-transform group-hover:translate-x-1 group-hover:text-indigo-500" />
-                    )}
-                  </button>
+                    aria-label={"Show " + item.title}
+                    onClick={() => setCurrentFeature(index)}
+                    className={
+                      "h-1.5 rounded-full transition-all duration-500 " +
+                      (index === currentFeature
+                        ? "w-10 bg-indigo-300"
+                        : "w-2 bg-white/20 hover:bg-white/40")
+                    }
+                  />
                 ))}
               </div>
-              <button
-                type="button"
-                onClick={resetPhone}
-                className="text-xs font-semibold text-slate-500 hover:text-indigo-600"
-              >
-                Use a different mobile number
-              </button>
             </div>
-          ) : (
-            <form
-              onSubmit={(event) => {
-                event.preventDefault();
-                void (pendingVerification ? handleSignIn() : handleSendOTP());
-              }}
-              className="space-y-6"
-            >
-              <OTPLogin
-                phoneNumber={phoneNumber}
-                otpCode={otpCode}
-                setPhoneNumber={setPhoneNumber}
-                setOtpCode={setOtpCode}
-                pendingVerification={pendingVerification}
-                otpInputRef={otpInputRef}
-                isSending={isSending}
-                resendTimer={resendTimer}
-                handleSendOTP={handleSendOTP}
-              />
-              {pendingVerification && (
-                <button
-                  type="button"
-                  onClick={resetPhone}
-                  className="text-xs font-semibold text-slate-500 hover:text-indigo-600"
-                >
-                  Use a different mobile number
-                </button>
-              )}
-              <button
-                type="submit"
-                disabled={
-                  isSending || (pendingVerification && otpCode.length !== 6)
-                }
-                className="group flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 px-5 text-sm font-bold text-white shadow-[0_14px_32px_rgba(15,23,42,0.2)] transition hover:-translate-y-0.5 hover:bg-indigo-600 hover:shadow-[0_18px_38px_rgba(79,70,229,0.25)] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
-              >
-                {isSending ? (
-                  <LoaderCircle className="size-5 animate-spin" />
-                ) : (
-                  <>
-                    {pendingVerification
-                      ? "Verify mobile number"
-                      : "Send WhatsApp OTP"}
-                    <ChevronRight className="size-4 opacity-60 transition-transform group-hover:translate-x-1" />
-                  </>
-                )}
-              </button>
-            </form>
-          )}
+          </div>
 
-          <button
-            type="button"
-            onClick={() => switchLoginMode(passwordMode ? "OTP" : "PASSWORD")}
-            className="mt-7 flex w-full items-center justify-center gap-2 border-t border-slate-100 pt-6 text-sm font-semibold text-slate-500 transition hover:text-indigo-600"
-          >
-            <LockKeyhole className="size-4" />
-            {passwordMode
-              ? "Use WhatsApp OTP instead"
-              : "Use staff email or password instead"}
-          </button>
-          <Link
-            href={`/${schoolSlug}/apply`}
-            className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-50 px-4 py-3 text-sm font-bold text-indigo-700 transition hover:bg-indigo-100"
-          >
-            <FileText className="size-4" />
-            Apply for a new admission
-          </Link>
-          <div className="mt-7 flex items-center justify-between text-[11px] text-slate-400">
-            <span>Powered by SchoolDB</span>
-            <span className="flex items-center gap-1.5">
-              <ShieldCheck className="size-3.5 text-emerald-500" />
-              Secure connection
+          <div className="relative z-10 flex items-center justify-between gap-6 border-t border-white/10 pt-6 text-xs text-slate-400">
+            <span>© SchoolDB</span>
+            <span className="flex items-center gap-2">
+              <ShieldCheck className="size-4 text-emerald-300" />
+              Protected sign-in
             </span>
           </div>
-        </div>
-      </section>
+        </section>
 
-      <section className="relative hidden w-[55%] items-center justify-center overflow-hidden bg-[#050505] lg:flex">
-        <div className="absolute right-0 top-0 size-96 rounded-full bg-indigo-500/15 blur-[120px]" />
-        <div className="absolute bottom-0 left-0 size-96 rounded-full bg-emerald-500/10 blur-[120px]" />
-        <Banknote className="absolute left-[16%] top-[20%] size-9 animate-pulse text-emerald-500/40" />
-        <GraduationCap className="absolute right-[15%] top-[25%] size-10 animate-pulse text-violet-500/40 [animation-delay:1s]" />
-        <FileSpreadsheet className="absolute bottom-[20%] left-[18%] size-8 animate-pulse text-blue-400/40 [animation-delay:2s]" />
-        <Users className="absolute bottom-[16%] right-[18%] size-9 animate-pulse text-orange-500/40 [animation-delay:3s]" />
-        <div className="relative z-10 max-w-xl px-12 text-center">
-          <div
-            className={`mx-auto flex size-24 items-center justify-center rounded-[28px] bg-gradient-to-br ${feature.color} shadow-2xl ring-4 ring-white/5`}
-          >
-            <FeatureIcon className="size-11 text-white" />
+        <section className="flex w-full flex-col lg:w-[48%]">
+          <div className="flex items-center justify-between px-5 py-5 sm:px-8 lg:hidden">
+            <div className="flex items-center gap-3">
+              <div className="flex size-10 items-center justify-center rounded-2xl bg-[#091540] text-white shadow-lg shadow-slate-300/50">
+                <School className="size-5" />
+              </div>
+              <div>
+                <p className="text-sm font-extrabold text-slate-950">SchoolDB</p>
+                <p className="max-w-[220px] truncate text-[11px] font-medium text-slate-500">
+                  {schoolName}
+                </p>
+              </div>
+            </div>
+            <ShieldCheck className="size-5 text-emerald-500" />
           </div>
-          <h2 className="mt-8 text-4xl font-bold tracking-[-0.04em] text-white">
-            {feature.title}
-          </h2>
-          <p className="mx-auto mt-4 max-w-lg text-lg leading-8 text-zinc-400">
-            {feature.description}
-          </p>
-          <div
-            className="mt-14 flex justify-center gap-2.5"
-            aria-label="Feature slides"
-          >
-            {FEATURES.map((item, index) => (
-              <button
-                key={item.title}
-                type="button"
-                aria-label={`Show ${item.title}`}
-                onClick={() => setCurrentFeature(index)}
-                className={`h-1.5 rounded-full transition-all duration-500 ${index === currentFeature ? "w-12 bg-white" : "w-2 bg-zinc-700 hover:bg-zinc-500"}`}
-              />
-            ))}
+
+          <div className="flex flex-1 items-center justify-center px-4 pb-8 pt-3 sm:px-8 sm:py-10 lg:px-10 xl:px-16">
+            <div className="w-full max-w-[520px]">
+              <div className="rounded-[28px] border border-slate-200/80 bg-white p-5 shadow-[0_24px_70px_rgba(15,23,42,0.09)] sm:rounded-[32px] sm:p-8 xl:p-9">
+                <div className="mb-7">
+                  <div className="mb-5 hidden items-center gap-3 lg:flex">
+                    <div className="flex size-11 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600">
+                      <School className="size-5" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-extrabold text-slate-950">
+                        {schoolName}
+                      </p>
+                      <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">
+                        Secure school portal
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="inline-flex items-center gap-1.5 rounded-full bg-indigo-50 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.12em] text-indigo-700">
+                    <ShieldCheck className="size-3.5" />
+                    Verified access
+                  </div>
+                  <h2 className="mt-4 text-3xl font-extrabold tracking-[-0.045em] text-slate-950 sm:text-[2.35rem]">
+                    Welcome back
+                  </h2>
+                  <p className="mt-2.5 max-w-md text-sm leading-6 text-slate-500">
+                    Choose how you want to sign in to your {schoolName} account.
+                  </p>
+                </div>
+
+                <div className="mb-7 grid grid-cols-2 rounded-2xl bg-slate-100 p-1.5">
+                  <button
+                    type="button"
+                    onClick={() => switchLoginMode("OTP")}
+                    className={
+                      "flex h-11 items-center justify-center gap-2 rounded-xl text-sm font-bold transition " +
+                      (!passwordMode
+                        ? "bg-white text-slate-950 shadow-sm ring-1 ring-slate-200/70"
+                        : "text-slate-500 hover:text-slate-800")
+                    }
+                  >
+                    <ShieldCheck className="size-4" />
+                    WhatsApp OTP
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => switchLoginMode("PASSWORD")}
+                    className={
+                      "flex h-11 items-center justify-center gap-2 rounded-xl text-sm font-bold transition " +
+                      (passwordMode
+                        ? "bg-white text-slate-950 shadow-sm ring-1 ring-slate-200/70"
+                        : "text-slate-500 hover:text-slate-800")
+                    }
+                  >
+                    <LockKeyhole className="size-4" />
+                    Staff login
+                  </button>
+                </div>
+
+                {passwordMode ? (
+                  <div>
+                    <div className="mb-5 rounded-2xl border border-indigo-100 bg-indigo-50/70 px-4 py-3.5">
+                      <p className="text-sm font-bold text-indigo-950">
+                        Staff credentials
+                      </p>
+                      <p className="mt-1 text-xs leading-5 text-indigo-700/80">
+                        Administrators and teachers can use their existing sign-in
+                        credentials.
+                      </p>
+                    </div>
+                    <SignIn
+                      forceRedirectUrl={"/" + schoolSlug}
+                      fallbackRedirectUrl={"/" + schoolSlug}
+                      appearance={{
+                        variables: {
+                          colorPrimary: "#4f46e5",
+                          colorBackground: "#ffffff",
+                          colorForeground: "#0f172a",
+                          borderRadius: "1rem",
+                        },
+                        elements: {
+                          rootBox: "w-full",
+                          card: "w-full bg-transparent shadow-none border-0 p-0",
+                          headerTitle: "hidden",
+                          headerSubtitle: "hidden",
+                          formButtonPrimary:
+                            "h-12 bg-[#091540] hover:bg-indigo-600 shadow-none",
+                          footerActionLink: "text-indigo-600 font-semibold",
+                          formFieldInput:
+                            "h-12 border-slate-200 bg-slate-50 focus:bg-white",
+                          formFieldLabel: "text-slate-700 font-semibold",
+                          socialButtonsBlockButton:
+                            "h-12 border-slate-200 bg-white hover:bg-slate-50",
+                        },
+                      }}
+                    />
+                  </div>
+                ) : accountChoices.length > 0 ? (
+                  <div className="space-y-4">
+                    <div className="flex gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3.5">
+                      <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-emerald-600" />
+                      <div>
+                        <p className="text-sm font-bold text-emerald-950">
+                          Mobile number verified
+                        </p>
+                        <p className="mt-1 text-xs leading-5 text-emerald-700">
+                          Select the person and role you want to continue as.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="grid gap-3" aria-label="Choose an account or role">
+                      {accountChoices.map((account) => (
+                        <button
+                          key={account.id}
+                          type="button"
+                          disabled={isSending}
+                          onClick={() => void handleAccountSelect(account.id)}
+                          className="group flex w-full items-center gap-4 rounded-2xl border border-slate-200 bg-white p-4 text-left transition hover:-translate-y-0.5 hover:border-indigo-300 hover:shadow-[0_14px_30px_rgba(79,70,229,0.10)] disabled:cursor-wait disabled:opacity-60"
+                        >
+                          <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600">
+                            <UserRoundCog className="size-5" />
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-sm font-extrabold text-slate-950">
+                              {account.name}
+                            </span>
+                            <span className="mt-1 block text-xs font-semibold text-slate-500">
+                              {formatRole(account.role)}
+                            </span>
+                          </span>
+                          {isSending ? (
+                            <LoaderCircle className="size-5 animate-spin text-indigo-500" />
+                          ) : (
+                            <ChevronRight className="size-5 text-slate-300 transition-transform group-hover:translate-x-1 group-hover:text-indigo-500" />
+                          )}
+                        </button>
+                      ))}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={resetPhone}
+                      className="text-xs font-bold text-slate-500 transition hover:text-indigo-600"
+                    >
+                      Use a different mobile number
+                    </button>
+                  </div>
+                ) : (
+                  <form
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      void (pendingVerification ? handleSignIn() : handleSendOTP());
+                    }}
+                    className="space-y-5"
+                  >
+                    <OTPLogin
+                      phoneNumber={phoneNumber}
+                      otpCode={otpCode}
+                      setPhoneNumber={setPhoneNumber}
+                      setOtpCode={setOtpCode}
+                      pendingVerification={pendingVerification}
+                      otpInputRef={otpInputRef}
+                      isSending={isSending}
+                      resendTimer={resendTimer}
+                      handleSendOTP={handleSendOTP}
+                    />
+
+                    {pendingVerification && (
+                      <button
+                        type="button"
+                        onClick={resetPhone}
+                        className="text-xs font-bold text-slate-500 transition hover:text-indigo-600"
+                      >
+                        Use a different mobile number
+                      </button>
+                    )}
+
+                    <button
+                      type="submit"
+                      disabled={
+                        isSending || (pendingVerification && otpCode.length !== 6)
+                      }
+                      className="group flex h-[52px] w-full items-center justify-center gap-2 rounded-2xl bg-[#091540] px-5 text-sm font-extrabold text-white shadow-[0_14px_30px_rgba(9,21,64,0.18)] transition hover:-translate-y-0.5 hover:bg-indigo-600 hover:shadow-[0_18px_36px_rgba(79,70,229,0.22)] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
+                    >
+                      {isSending ? (
+                        <LoaderCircle className="size-5 animate-spin" />
+                      ) : (
+                        <>
+                          {pendingVerification
+                            ? "Verify & continue"
+                            : "Send WhatsApp OTP"}
+                          <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
+                        </>
+                      )}
+                    </button>
+                  </form>
+                )}
+
+                <div className="my-7 flex items-center gap-3">
+                  <div className="h-px flex-1 bg-slate-100" />
+                  <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">
+                    New admission
+                  </span>
+                  <div className="h-px flex-1 bg-slate-100" />
+                </div>
+
+                <Link
+                  href={"/" + schoolSlug + "/apply"}
+                  className="group flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-3.5 transition hover:border-indigo-200 hover:bg-indigo-50/70"
+                >
+                  <span className="flex items-center gap-3">
+                    <span className="flex size-9 items-center justify-center rounded-xl bg-white text-indigo-600 shadow-sm ring-1 ring-slate-200/70">
+                      <FileText className="size-4" />
+                    </span>
+                    <span>
+                      <span className="block text-sm font-bold text-slate-800">
+                        Apply for admission
+                      </span>
+                      <span className="mt-0.5 block text-[11px] font-medium text-slate-500">
+                        Start a new student application
+                      </span>
+                    </span>
+                  </span>
+                  <ChevronRight className="size-4 text-slate-400 transition-transform group-hover:translate-x-1 group-hover:text-indigo-600" />
+                </Link>
+              </div>
+
+              <div className="mt-5 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 px-4 text-[11px] font-medium text-slate-400">
+                <span className="flex items-center gap-1.5">
+                  <ShieldCheck className="size-3.5 text-emerald-500" />
+                  Secure connection
+                </span>
+                <span>Powered by SchoolDB</span>
+              </div>
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      </div>
     </main>
   );
 }
