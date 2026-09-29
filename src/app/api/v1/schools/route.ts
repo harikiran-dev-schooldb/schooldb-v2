@@ -2,6 +2,7 @@ import { apiHandler } from "@/lib/api";
 import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ApiResponse } from "@/lib/response";
+import { publicSchoolLogoUrl } from "@/lib/school-branding";
 
 function normalizeSlug(value: string) {
   return value
@@ -24,6 +25,7 @@ export async function GET() {
         slug: true,
         logo: true,
         createdAt: true,
+        updatedAt: true,
         _count: {
           select: {
             students: true,
@@ -34,7 +36,12 @@ export async function GET() {
       },
     });
 
-    return ApiResponse.success({ schools });
+    return ApiResponse.success({
+      schools: schools.map((school) => ({
+        ...school,
+        logo: publicSchoolLogoUrl(school.slug, school.logo, school.updatedAt),
+      })),
+    });
   });
 }
 

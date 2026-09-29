@@ -9,6 +9,7 @@ import { PrintDocumentButton } from "@/features/students/components/profile/Prin
 import { StudentIdCard } from "@/features/students/components/id-cards/StudentIdCard";
 import { requireTenant } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { publicSchoolLogoUrl } from "@/lib/school-branding";
 
 type Props = { params: Promise<{ schoolSlug: string; id: string; type: string }>; searchParams: Promise<{ issueId?: string }> };
 const validTypes = new Set(["id-card", "bonafide", "study", "transfer"]);
@@ -92,7 +93,10 @@ export default async function StudentCertificatePage({ params, searchParams }: P
         </div>
         <main className="id-card-print mx-auto max-w-2xl">
           <StudentIdCard
-            school={student.school}
+            school={{
+              ...student.school,
+              logo: publicSchoolLogoUrl(schoolSlug, student.school.logo),
+            }}
             setting={student.school.idCardSetting ? {
               orientation: student.school.idCardSetting.orientation,
               widthMm: Number(student.school.idCardSetting.widthMm),

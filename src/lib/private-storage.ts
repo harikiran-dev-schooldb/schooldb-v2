@@ -42,6 +42,7 @@ type PrivateDocumentCollection =
   | "student-documents"
   | "admission-documents"
   | "profile-image-requests"
+  | "school-logos"
   | "report-exports";
 
 function hasBlobCredentials() {
@@ -214,6 +215,40 @@ export async function deletePendingProfileImage(storageKey: string) {
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
   }
+}
+
+export async function saveSchoolLogo(file: File) {
+  await validateProfileImageFile(file);
+  return savePrivateDocument(file, "school-logos");
+}
+
+export function readSchoolLogo(storageKey: string) {
+  return readPrivateDocument(storageKey, "school-logos");
+}
+
+export async function deleteSchoolLogo(storageKey: string | null) {
+  if (!storageKey) return;
+  if (isBlobStorageKey(storageKey)) {
+    await del(storageKey);
+    return;
+  }
+  try {
+    await unlink(storagePath(storageKey, "school-logos"));
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  }
+}
+
+export function schoolLogoContentType(storageKey: string) {
+  let pathname = storageKey;
+  try {
+    pathname = new URL(storageKey).pathname;
+  } catch {
+    // Local storage keys are already path-like.
+  }
+  if (pathname.endsWith(".png")) return "image/png";
+  if (pathname.endsWith(".webp")) return "image/webp";
+  return "image/jpeg";
 }
 
 export async function savePublicProfileImage(

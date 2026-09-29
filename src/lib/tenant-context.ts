@@ -35,7 +35,7 @@ const PUBLIC_PATH_PATTERNS = [
   /^\/api\/v1\/public\/payments\/cashfree\/webhook$/,
   /^\/api\/v1\/public\/payments\/cashfree\/orders\/[^/]+\/verify$/,
   /^\/api\/v1\/public\/auth\/(?:send-otp|verify-otp)$/,
-  /^\/api\/v1\/public\/schools\/[^/]+\/branding\/?$/,
+  /^\/api\/v1\/public\/schools\/[^/]+\/(?:branding|logo)\/?$/,
   /^\/api\/v1\/public\/admissions\/[^/]+(?:\/(?:track|documents))?$/,
   /^\/api\/v1\/public\/support\/[^/]+(?:\/students)?\/?$/,
 ];

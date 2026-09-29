@@ -7,6 +7,7 @@ import { PrintDocumentButton } from "@/features/students/components/profile/Prin
 import { DEFAULT_ID_CARD_SETTING } from "@/features/students/services/id-card-setting.service";
 import { requireTenant } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { publicSchoolLogoUrl } from "@/lib/school-branding";
 
 type Props = {
   params: Promise<{ schoolSlug: string }>;
@@ -89,6 +90,10 @@ export default async function IdCardsPage({ params, searchParams }: Props) {
         backContent: school.idCardSetting.backContent,
       }
     : DEFAULT_ID_CARD_SETTING;
+  const brandedSchool = {
+    ...school,
+    logo: publicSchoolLogoUrl(schoolSlug, school.logo),
+  };
 
   return (
     <div className="space-y-6 p-4 pb-12 sm:p-6">
@@ -133,7 +138,7 @@ export default async function IdCardsPage({ params, searchParams }: Props) {
             </div>
           </div>
           <div className="id-card-sheet space-y-5 print:space-y-[5mm]">
-            {cards.map((student) => <StudentIdCard key={student.admissionNo} school={school} student={student} setting={setting} />)}
+            {cards.map((student) => <StudentIdCard key={student.admissionNo} school={brandedSchool} student={student} setting={setting} />)}
           </div>
         </section>
       ) : null}

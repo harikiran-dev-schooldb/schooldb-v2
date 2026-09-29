@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { requireTenant } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { publicSchoolLogoUrl } from "@/lib/school-branding";
 
 type RouteContext = {
   params: Promise<{
@@ -456,7 +457,10 @@ export async function GET(
       success: true,
 
       data: {
-        school,
+        school: {
+          ...school,
+          logo: publicSchoolLogoUrl(school.slug, school.logo),
+        },
 
         exam: {
           id: exam.id,

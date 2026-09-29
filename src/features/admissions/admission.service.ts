@@ -4,6 +4,7 @@ import type { AdmissionApplicationStatus, Prisma } from "@/generated/prisma/clie
 import { safelyProvisionStudentLogin } from "@/features/auth/account-provisioning";
 import { ApiError } from "@/lib/errors";
 import { prisma } from "@/lib/prisma";
+import { publicSchoolLogoUrl } from "@/lib/school-branding";
 import { queueAdmissionWhatsappUpdate } from "@/features/whatsapp/service";
 
 import type { PublicAdmissionInput } from "./admission.schema";
@@ -47,7 +48,10 @@ export async function admissionPublicOptions(schoolSlug: string) {
     },
   });
   if (!school) throw new ApiError(404, "School not found.");
-  return school;
+  return {
+    ...school,
+    logo: publicSchoolLogoUrl(schoolSlug, school.logo),
+  };
 }
 
 export async function submitAdmission(schoolSlug: string, input: PublicAdmissionInput) {
