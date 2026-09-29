@@ -1,7 +1,10 @@
 {
   "buildCommand": "npm run vercel-build",
   "git": {
-    "deploymentEnabled": false
+    "deploymentEnabled": {
+      "*": false,
+      "main": true
+    }
   },
   "crons": [
     {
