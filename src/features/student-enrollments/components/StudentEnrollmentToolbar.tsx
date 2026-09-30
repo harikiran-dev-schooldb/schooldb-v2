@@ -24,7 +24,7 @@ export function StudentEnrollmentToolbar({
     <div className="flex flex-col gap-3 border-b p-4 lg:flex-row lg:items-center lg:justify-between">
       <DataGridSearch
         value={search}
-        placeholder="Search enrollments..."
+        placeholder="Search present students..."
         onSearch={onSearch}
       />
 

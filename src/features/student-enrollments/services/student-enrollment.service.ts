@@ -1,4 +1,5 @@
 import { ListQuery } from "@/types/query";
+import { Prisma } from "@/generated/prisma/client";
 
 import { studentEnrollmentRepository } from "../repositories/student-enrollment.repository";
 import { studentRepository } from "@/features/students/repositories/student.repository";
@@ -347,8 +348,27 @@ export const studentEnrollmentService = {
     const page = query.page ?? 1;
     const pageSize = query.pageSize ?? 25;
 
+    const currentAcademicYear = await academicYearRepository.getCurrent(schoolId);
+
+    if (!currentAcademicYear) {
+      return {
+        data: [],
+        total: 0,
+        page,
+        pageSize,
+        totalPages: 0,
+        planning: {
+          currentAcademicYearName: null,
+          nextAcademicYearName: null,
+          currentStudents: 0,
+        },
+      };
+    }
+
     const where = {
       schoolId,
+      academicYearId: currentAcademicYear.id,
+      student: { status: "ACTIVE" },
 
       ...(query.classId && { classId: query.classId }),
       ...(query.sectionId && { sectionId: query.sectionId }),
@@ -392,46 +412,146 @@ export const studentEnrollmentService = {
           },
         ],
       }),
-    };
+    } satisfies Prisma.StudentEnrollmentWhereInput;
 
-    const [data, total] = await Promise.all([
+    const [data, total, nextAcademicYear, classes] = await Promise.all([
       studentEnrollmentRepository.list(where, {
         skip: (page - 1) * pageSize,
         take: pageSize,
       }),
 
       studentEnrollmentRepository.count(where),
+
+      prisma.academicYear.findFirst({
+        where: {
+          schoolId,
+          startDate: { gt: currentAcademicYear.startDate },
+        },
+        orderBy: { startDate: "asc" },
+        select: { id: true, name: true },
+      }),
+
+      prisma.class.findMany({
+        where: { schoolId, active: true },
+        orderBy: [{ displayOrder: "asc" }, { name: "asc" }],
+        select: {
+          id: true,
+          name: true,
+          displayOrder: true,
+          sections: {
+            where: { active: true },
+            orderBy: [{ displayOrder: "asc" }, { name: "asc" }],
+            select: { id: true, name: true },
+          },
+        },
+      }),
     ]);
 
+    const nextEnrollments = nextAcademicYear && data.length
+      ? await prisma.studentEnrollment.findMany({
+          where: {
+            schoolId,
+            academicYearId: nextAcademicYear.id,
+            studentId: { in: data.map((item) => item.studentId) },
+          },
+          select: {
+            studentId: true,
+            class: { select: { name: true } },
+            section: { select: { name: true } },
+          },
+        })
+      : [];
+
+    const nextEnrollmentByStudent = new Map(
+      nextEnrollments.map((item) => [item.studentId, item]),
+    );
+    const classIndex = new Map(classes.map((item, index) => [item.id, index]));
+    const classOrdersAreUnique =
+      new Set(classes.map((item) => item.displayOrder)).size === classes.length;
+
     return {
-      data: data.map((item) => ({
-        id: item.id,
+      data: data.map((item) => {
+        const existingNextEnrollment = nextEnrollmentByStudent.get(item.studentId);
+        const currentClassIndex = classIndex.get(item.classId);
+        const recommendedClass =
+          !classOrdersAreUnique || currentClassIndex === undefined
+            ? undefined
+            : classes[currentClassIndex + 1];
+        const matchingSection = recommendedClass?.sections.find(
+          (section) =>
+            section.name.trim().toLowerCase() ===
+            item.section.name.trim().toLowerCase(),
+        );
+        const recommendedSection =
+          matchingSection ??
+          (recommendedClass?.sections.length === 1
+            ? recommendedClass.sections[0]
+            : undefined);
 
-        studentId: item.studentId,
-        studentName: item.student.fullName,
-        admissionNo: item.student.admissionNo,
+        let nextEnrollmentStatus:
+          | "READY"
+          | "ENROLLED"
+          | "GRADUATING"
+          | "NEEDS_SECTION"
+          | "NEXT_YEAR_MISSING";
 
-        academicYearId: item.academicYearId,
-        academicYearName: item.academicYear.name,
+        if (existingNextEnrollment) {
+          nextEnrollmentStatus = "ENROLLED";
+        } else if (
+          classOrdersAreUnique &&
+          currentClassIndex !== undefined &&
+          currentClassIndex === classes.length - 1
+        ) {
+          nextEnrollmentStatus = "GRADUATING";
+        } else if (!nextAcademicYear) {
+          nextEnrollmentStatus = "NEXT_YEAR_MISSING";
+        } else if (!classOrdersAreUnique || !recommendedClass || !recommendedSection) {
+          nextEnrollmentStatus = "NEEDS_SECTION";
+        } else {
+          nextEnrollmentStatus = "READY";
+        }
 
-        classId: item.classId,
-        className: item.class.name,
+        return {
+          id: item.id,
 
-        sectionId: item.sectionId,
-        sectionName: item.section.name,
+          studentId: item.studentId,
+          studentName: item.student.fullName,
+          admissionNo: item.student.admissionNo,
 
-        rollNo: item.rollNo,
+          academicYearId: item.academicYearId,
+          academicYearName: item.academicYear.name,
 
-        admissionDate: item.admissionDate,
+          classId: item.classId,
+          className: item.class.name,
 
-        active: item.active,
-      })),
+          sectionId: item.sectionId,
+          sectionName: item.section.name,
+
+          rollNo: item.rollNo,
+
+          admissionDate: item.admissionDate,
+
+          active: item.active,
+
+          nextAcademicYearName: nextAcademicYear?.name ?? null,
+          nextClassName:
+            existingNextEnrollment?.class.name ?? recommendedClass?.name ?? null,
+          nextSectionName:
+            existingNextEnrollment?.section.name ?? recommendedSection?.name ?? null,
+          nextEnrollmentStatus,
+        };
+      }),
 
       total,
       page,
       pageSize,
 
       totalPages: Math.ceil(total / pageSize),
+      planning: {
+        currentAcademicYearName: currentAcademicYear.name,
+        nextAcademicYearName: nextAcademicYear?.name ?? null,
+        currentStudents: total,
+      },
     };
   },
 

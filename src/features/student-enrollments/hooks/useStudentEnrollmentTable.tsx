@@ -4,7 +4,10 @@ import { useCallback, useEffect, useState } from "react";
 
 import { useDebounce } from "@/hooks/useDebounce";
 
-import { StudentEnrollmentListItem } from "../types";
+import {
+  EnrollmentPlanningSummary,
+  StudentEnrollmentListItem,
+} from "../types";
 import { subscribeTableRefresh } from "@/lib/table-event";
 
 type Response = {
@@ -13,6 +16,7 @@ type Response = {
   page: number;
   pageSize: number;
   totalPages: number;
+  planning: EnrollmentPlanningSummary;
 };
 
 export function useStudentEnrollmentTable() {
@@ -29,6 +33,11 @@ export function useStudentEnrollmentTable() {
   const [sectionId, setSectionId] = useState("");
 
   const [totalPages, setTotalPages] = useState(1);
+  const [planning, setPlanning] = useState<EnrollmentPlanningSummary>({
+    currentAcademicYearName: null,
+    nextAcademicYearName: null,
+    currentStudents: 0,
+  });
 
   const debouncedSearch = useDebounce(search, 400);
 
@@ -76,6 +85,7 @@ export function useStudentEnrollmentTable() {
 
         setEnrollments(response.data);
         setTotalPages(response.totalPages);
+        setPlanning(response.planning);
       } finally {
         if (active) {
           setLoading(false);
@@ -102,6 +112,7 @@ export function useStudentEnrollmentTable() {
     setPage,
 
     totalPages,
+    planning,
 
     search,
     setSearch,

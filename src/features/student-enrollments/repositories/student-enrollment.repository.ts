@@ -27,6 +27,8 @@ export const studentEnrollmentRepository = {
         { academicYear: { startDate: "desc" } },
         { class: { displayOrder: "asc" } },
         { section: { displayOrder: "asc" } },
+        { rollNo: { sort: "asc", nulls: "last" } },
+        { student: { fullName: "asc" } },
       ],
     });
   },

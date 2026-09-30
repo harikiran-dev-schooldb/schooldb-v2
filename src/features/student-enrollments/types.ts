@@ -21,4 +21,20 @@ export type StudentEnrollmentListItem = {
   admissionDate: Date | null;
 
   active: boolean;
+
+  nextAcademicYearName: string | null;
+  nextClassName: string | null;
+  nextSectionName: string | null;
+  nextEnrollmentStatus:
+    | "READY"
+    | "ENROLLED"
+    | "GRADUATING"
+    | "NEEDS_SECTION"
+    | "NEXT_YEAR_MISSING";
+};
+
+export type EnrollmentPlanningSummary = {
+  currentAcademicYearName: string | null;
+  nextAcademicYearName: string | null;
+  currentStudents: number;
 };

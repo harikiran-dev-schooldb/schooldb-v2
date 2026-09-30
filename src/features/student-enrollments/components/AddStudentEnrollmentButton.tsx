@@ -11,7 +11,9 @@ export function AddStudentEnrollmentButton() {
 
   return (
     <>
-      <Button onClick={() => setOpen(true)}>Enroll Student</Button>
+      <Button variant="outline" onClick={() => setOpen(true)}>
+        Add individual enrollment
+      </Button>
 
       <StudentEnrollmentDialog
         open={open}
