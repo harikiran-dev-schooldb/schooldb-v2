@@ -1,5 +1,6 @@
 "use client";
 
+import { useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
 import {
@@ -42,6 +43,7 @@ function waitForBrandPaint() {
 
 export default function ChooseSchoolPage() {
   const router = useRouter();
+  const { isLoaded: userLoaded, isSignedIn } = useUser();
   const [schoolSlug, setSchoolSlug] = useState("");
   const [error, setError] = useState("");
   const [isCheckingSchool, setIsCheckingSchool] = useState(false);
@@ -83,7 +85,10 @@ export default function ChooseSchoolPage() {
 
       await preloadSchoolLogo(payload.data.school.logo);
       setSchoolBrand(payload.data.school);
-      router.prefetch(`/${slug}/login`);
+      const destination = userLoaded && isSignedIn
+        ? `/${slug}`
+        : `/${slug}/login`;
+      router.prefetch(destination);
       await waitForBrandPaint();
     } catch {
       setError("We couldn’t check the school right now. Please try again.");
@@ -93,9 +98,19 @@ export default function ChooseSchoolPage() {
     }
 
     setIsTransitioning(true);
-    window.sessionStorage.setItem("schooldb-school-transition", slug);
+    const destination = userLoaded && isSignedIn
+      ? `/${slug}`
+      : `/${slug}/login`;
+
+    if (userLoaded && isSignedIn) {
+      window.sessionStorage.removeItem("schooldb-school-transition");
+      window.sessionStorage.removeItem("schooldb-workspace-transition");
+    } else {
+      window.sessionStorage.setItem("schooldb-school-transition", slug);
+    }
+
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    window.setTimeout(() => router.push(`/${slug}/login`), reduceMotion ? 50 : 420);
+    window.setTimeout(() => router.push(destination), reduceMotion ? 50 : 420);
   };
 
   return (
