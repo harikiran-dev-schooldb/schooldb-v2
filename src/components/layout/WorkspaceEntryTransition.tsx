@@ -33,28 +33,17 @@ export function WorkspaceEntryTransition({
   useEffect(() => {
     const transitionSchool = window.sessionStorage.getItem(TRANSITION_KEY);
 
-    if (transitionSchool !== schoolSlug) {
-      document.documentElement.classList.remove(
-        "schooldb-workspace-transition-pending",
-      );
-      return;
-    }
+    if (transitionSchool !== schoolSlug) return;
 
     window.sessionStorage.removeItem(TRANSITION_KEY);
 
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      document.documentElement.classList.remove(
-        "schooldb-workspace-transition-pending",
-      );
       return;
     }
 
     const startTimer = window.setTimeout(() => setVisible(true), 0);
 
     const revealTimer = window.setTimeout(() => {
-      document.documentElement.classList.remove(
-        "schooldb-workspace-transition-pending",
-      );
       setLeaving(true);
     }, 140);
 
@@ -64,9 +53,6 @@ export function WorkspaceEntryTransition({
       window.clearTimeout(startTimer);
       window.clearTimeout(revealTimer);
       window.clearTimeout(finishTimer);
-      document.documentElement.classList.remove(
-        "schooldb-workspace-transition-pending",
-      );
     };
   }, [schoolSlug]);
 

@@ -2,7 +2,6 @@
 
 import { useSignIn, useUser } from "@clerk/nextjs";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ArrowRight,
@@ -85,7 +84,6 @@ function errorMessage(error: unknown) {
 }
 
 export function TenantOtpSignIn({ schoolSlug, schoolName, schoolLogo }: Props) {
-  const router = useRouter();
   const { isLoaded: userLoaded, isSignedIn } = useUser();
   const { fetchStatus: signInStatus, signIn } = useSignIn();
   const [phoneNumber, setPhoneNumber] = useState("");
@@ -104,7 +102,6 @@ export function TenantOtpSignIn({ schoolSlug, schoolName, schoolLogo }: Props) {
   const [challengeId, setChallengeId] = useState("");
   const otpInputRef = useRef<HTMLInputElement>(null);
   const workspaceTransitionStartedRef = useRef(false);
-  const workspaceTransitionTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -123,22 +120,18 @@ export function TenantOtpSignIn({ schoolSlug, schoolName, schoolLogo }: Props) {
         "schooldb-workspace-transition",
         schoolSlug,
       );
-      document.documentElement.classList.add(
-        "schooldb-workspace-transition-pending",
-      );
 
       const reduceMotion = window.matchMedia(
         "(prefers-reduced-motion: reduce)",
       ).matches;
 
-      router.prefetch(destination);
       setIsEnteringWorkspace(true);
-      workspaceTransitionTimerRef.current = window.setTimeout(
-        () => router.replace(destination),
+      window.setTimeout(
+        () => window.location.replace(destination),
         reduceMotion ? 50 : 520,
       );
     },
-    [router, schoolSlug],
+    [schoolSlug],
   );
 
   useEffect(() => {
@@ -177,15 +170,6 @@ export function TenantOtpSignIn({ schoolSlug, schoolName, schoolLogo }: Props) {
   useEffect(() => {
     if (pendingVerification) otpInputRef.current?.focus();
   }, [pendingVerification]);
-
-  useEffect(
-    () => () => {
-      if (workspaceTransitionTimerRef.current !== null) {
-        window.clearTimeout(workspaceTransitionTimerRef.current);
-      }
-    },
-    [],
-  );
 
   useEffect(() => {
     if (resendTimer <= 0) return;
@@ -458,6 +442,7 @@ export function TenantOtpSignIn({ schoolSlug, schoolName, schoolLogo }: Props) {
             <p className="mt-2 max-w-xs text-xl font-black tracking-tight text-slate-950">
               {schoolName}
             </p>
+            <span className="schooldb-shared-loader mt-6 block" aria-hidden="true" />
           </div>
         </div>
       )}

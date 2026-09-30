@@ -515,18 +515,36 @@
 .schooldb-school-transition-identity {
   opacity: 0;
   min-width: min(86vw, 300px);
-  padding: 28px 32px;
-  border: 1px solid rgb(226 232 240 / 0.9);
-  border-radius: 28px;
-  background: rgb(255 255 255 / 0.88);
-  box-shadow: 0 24px 80px rgb(15 23 42 / 0.14);
-  backdrop-filter: blur(18px);
   animation: schooldb-shared-card-in 380ms cubic-bezier(0.22, 1, 0.36, 1) 25ms both;
 }
 
 .schooldb-shared-logo {
   transform-origin: center;
   will-change: transform, opacity, filter;
+}
+
+.schooldb-shared-loader {
+  position: relative;
+  width: 132px;
+  height: 4px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgb(203 213 225 / 0.62);
+}
+
+.schooldb-shared-loader::after {
+  position: absolute;
+  inset-block: 0;
+  left: -45%;
+  width: 45%;
+  content: "";
+  border-radius: inherit;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--school-workspace-brand, #4f46e5) 76%, #6366f1),
+    #6366f1
+  );
+  animation: schooldb-shared-loader 850ms cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
 
 .schooldb-school-transition.is-active .schooldb-shared-logo,
@@ -540,39 +558,6 @@
     radial-gradient(circle at 12% 18%, rgb(99 102 241 / 0.12), transparent 30%),
     radial-gradient(circle at 82% 22%, rgb(139 92 246 / 0.10), transparent 28%),
     linear-gradient(145deg, #f8faff 0%, #f2f5ff 48%, #f8f7ff 100%);
-}
-
-html.schooldb-workspace-transition-pending::before {
-  position: fixed;
-  inset: 0;
-  z-index: 98;
-  content: "";
-  background:
-    radial-gradient(circle at 50% 44%, color-mix(in srgb, var(--school-workspace-brand, #4f46e5) 12%, white), transparent 32%),
-    linear-gradient(145deg, #f8fafc, #f4f6fb 52%, #ffffff);
-  animation: schooldb-workspace-pending-breathe 1.8s ease-in-out infinite alternate;
-}
-
-html.schooldb-workspace-transition-pending::after {
-  position: fixed;
-  left: 50%;
-  top: 50%;
-  z-index: 99;
-  width: 82px;
-  height: 82px;
-  content: "";
-  border: 1px solid rgb(226 232 240 / 0.95);
-  border-radius: 24px;
-  background-color: rgb(255 255 255 / 0.98);
-  background-image: var(--school-workspace-logo, url("/pwa-192.png"));
-  background-position: center;
-  background-repeat: no-repeat;
-  background-size: contain;
-  box-shadow:
-    0 0 0 12px color-mix(in srgb, var(--school-workspace-brand, #4f46e5) 7%, transparent),
-    0 24px 70px rgb(15 23 42 / 0.16);
-  transform: translate(-50%, -50%);
-  animation: schooldb-workspace-pending-logo 1.25s ease-in-out infinite;
 }
 
 .schooldb-workspace-launch,
@@ -644,12 +629,6 @@ html.schooldb-workspace-transition-pending::after {
 
 .schooldb-workspace-launch-content,
 .schooldb-workspace-arrival-content {
-  padding: 28px 30px;
-  border: 1px solid rgb(226 232 240 / 0.9);
-  border-radius: 32px;
-  background: rgb(255 255 255 / 0.86);
-  box-shadow: 0 28px 90px rgb(15 23 42 / 0.14);
-  backdrop-filter: blur(20px);
   will-change: transform, opacity, filter;
 }
 
@@ -790,12 +769,6 @@ html.schooldb-workspace-transition-pending::after {
 
 .schooldb-auth-arrival-identity {
   min-width: min(86vw, 300px);
-  padding: 28px 32px;
-  border: 1px solid rgb(226 232 240 / 0.9);
-  border-radius: 28px;
-  background: rgb(255 255 255 / 0.9);
-  box-shadow: 0 24px 80px rgb(15 23 42 / 0.14);
-  backdrop-filter: blur(18px);
   animation: schooldb-shared-card-out 760ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
@@ -984,14 +957,10 @@ html.schooldb-workspace-transition-pending::after {
   0%, 32% {
     transform: translateY(0) scale(1);
     opacity: 1;
-    background: rgb(255 255 255 / 0.9);
-    box-shadow: 0 24px 80px rgb(15 23 42 / 0.14);
   }
   100% {
     transform: translateY(-18px) scale(1.08);
     opacity: 0;
-    background: rgb(255 255 255 / 0);
-    box-shadow: 0 24px 80px rgb(15 23 42 / 0);
   }
 }
 
@@ -1008,6 +977,11 @@ html.schooldb-workspace-transition-pending::after {
 @keyframes schooldb-shared-copy-out {
   0%, 24% { transform: translateY(0); opacity: 1; }
   100% { transform: translateY(8px); opacity: 0; }
+}
+
+@keyframes schooldb-shared-loader {
+  from { transform: translateX(0); }
+  to { transform: translateX(325%); }
 }
 
 @keyframes schooldb-portal-pulse {
@@ -1075,16 +1049,6 @@ html.schooldb-workspace-transition-pending::after {
 @keyframes schooldb-workspace-launch {
   0% { opacity: 0; transform: scale(1.025); filter: blur(8px); }
   100% { opacity: 1; transform: scale(1); filter: blur(0); }
-}
-
-@keyframes schooldb-workspace-pending-breathe {
-  from { filter: brightness(0.985); }
-  to { filter: brightness(1.015); }
-}
-
-@keyframes schooldb-workspace-pending-logo {
-  0%, 100% { transform: translate(-50%, -50%) scale(0.96); }
-  50% { transform: translate(-50%, -50%) scale(1.04); }
 }
 
 @keyframes schooldb-workspace-reveal {
@@ -1197,8 +1161,6 @@ html.schooldb-workspace-transition-pending::after {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  html.schooldb-workspace-transition-pending::before,
-  html.schooldb-workspace-transition-pending::after,
   .schooldb-aurora,
   .schooldb-header-context,
   .schooldb-header-workspace-mark,
@@ -1214,6 +1176,7 @@ html.schooldb-workspace-transition-pending::after {
   .schooldb-school-transition-halo,
   .schooldb-school-transition-identity,
   .schooldb-shared-logo,
+  .schooldb-shared-loader::after,
   .schooldb-auth-arrival-identity > p,
   .schooldb-choose-logo,
   .schooldb-choose-card,

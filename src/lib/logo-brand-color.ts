@@ -117,14 +117,6 @@ function setWorkspaceBrandColor(color: string) {
   );
 }
 
-function setWorkspaceBrandLogo(logoUrl: string | null) {
-  const source = logoUrl || "/pwa-192.png";
-  document.documentElement.style.setProperty(
-    "--school-workspace-logo",
-    `url(${JSON.stringify(source)})`,
-  );
-}
-
 export async function applySchoolLogoBrandColor(
   schoolSlug: string,
   logoUrl: string | null,
@@ -136,8 +128,6 @@ export async function applySchoolLogoBrandColor(
 
   const cacheKey = `schooldb-workspace-brand-v2:${schoolSlug}`;
   const currentLogoUrl = logoUrl ?? "";
-
-  if (!signal?.aborted) setWorkspaceBrandLogo(logoUrl);
 
   try {
     const cachedValue = window.sessionStorage.getItem(cacheKey);
