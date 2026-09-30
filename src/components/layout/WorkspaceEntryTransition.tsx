@@ -45,9 +45,9 @@ export function WorkspaceEntryTransition({
 
     const revealTimer = window.setTimeout(() => {
       setLeaving(true);
-    }, 620);
+    }, 1_200);
 
-    const finishTimer = window.setTimeout(() => setVisible(false), 1_200);
+    const finishTimer = window.setTimeout(() => setVisible(false), 1_780);
 
     return () => {
       window.clearTimeout(startTimer);
