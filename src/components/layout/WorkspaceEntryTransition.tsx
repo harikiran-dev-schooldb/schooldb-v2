@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Check, ShieldCheck, Sparkles } from "lucide-react";
+import { Check } from "lucide-react";
 
 import { SchoolLogo } from "@/components/branding/SchoolLogo";
 import { applySchoolLogoBrandColor } from "@/lib/logo-brand-color";
@@ -45,9 +45,9 @@ export function WorkspaceEntryTransition({
 
     const revealTimer = window.setTimeout(() => {
       setLeaving(true);
-    }, 140);
+    }, 620);
 
-    const finishTimer = window.setTimeout(() => setVisible(false), 660);
+    const finishTimer = window.setTimeout(() => setVisible(false), 1_200);
 
     return () => {
       window.clearTimeout(startTimer);
@@ -87,19 +87,22 @@ export function WorkspaceEntryTransition({
           </span>
         </div>
 
-        <div className="mt-7 inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3.5 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-emerald-700">
-          <ShieldCheck className="size-3.5 text-emerald-600" />
-          Identity verified
-        </div>
-
-        <h2 className="mt-4 text-2xl font-black tracking-[-0.035em] text-slate-950 sm:text-3xl">
-          Welcome to {schoolName}
-        </h2>
-        <p className="mt-2 flex items-center gap-2 text-sm font-semibold text-slate-500">
-          <Sparkles className="size-4 text-indigo-500" />
-          Preparing your secure workspace
+        <p className="mt-7 text-[10px] font-black uppercase tracking-[0.22em] text-emerald-600">
+          Access granted
         </p>
 
+        <h2 className="mt-3 text-2xl font-black tracking-[-0.035em] text-slate-950 sm:text-3xl">
+          {schoolName}
+        </h2>
+        <p className="mt-2 text-sm font-semibold text-slate-500">
+          Connecting your secure workspace
+        </p>
+        <div
+          className="mt-7 h-1.5 w-full overflow-hidden rounded-full border border-slate-200/80 bg-slate-100/90 shadow-inner"
+          aria-hidden="true"
+        >
+          <div className="schooldb-workspace-progress h-full rounded-full" />
+        </div>
       </div>
     </div>
   );

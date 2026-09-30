@@ -97,18 +97,19 @@ export default function ChooseSchoolPage() {
       setIsCheckingSchool(false);
     }
 
-    setIsTransitioning(true);
     const destination = userLoaded && isSignedIn
       ? `/${slug}`
       : `/${slug}/login`;
 
     if (userLoaded && isSignedIn) {
       window.sessionStorage.removeItem("schooldb-school-transition");
-      window.sessionStorage.removeItem("schooldb-workspace-transition");
-    } else {
-      window.sessionStorage.setItem("schooldb-school-transition", slug);
+      window.sessionStorage.setItem("schooldb-workspace-transition", slug);
+      router.push(destination);
+      return;
     }
 
+    setIsTransitioning(true);
+    window.sessionStorage.setItem("schooldb-school-transition", slug);
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     window.setTimeout(() => router.push(destination), reduceMotion ? 50 : 560);
   };
