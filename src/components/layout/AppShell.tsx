@@ -5,6 +5,8 @@ import { useState } from "react";
 
 import { AppHeader } from "./AppHeader";
 import { AppSidebar } from "./AppSidebar";
+import { WorkspaceEntryTransition } from "./WorkspaceEntryTransition";
+import { useSchool } from "@/contexts/school-context";
 
 import {
   Sheet,
@@ -18,10 +20,19 @@ type Props = {
 };
 
 export function AppShell({ children }: Props) {
+  const { school } = useSchool();
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
+  const schoolLogo = school.logo
+    ? `/api/v1/public/schools/${encodeURIComponent(school.slug)}/logo?v=${new Date(school.updatedAt).getTime()}`
+    : null;
 
   return (
     <div className="min-h-screen overflow-x-clip bg-background">
+      <WorkspaceEntryTransition
+        schoolSlug={school.slug}
+        schoolName={school.name}
+        schoolLogo={schoolLogo}
+      />
       <div className="flex min-h-screen">
         {/* ================================================================
             SIDEBAR

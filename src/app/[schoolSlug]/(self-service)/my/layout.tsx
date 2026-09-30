@@ -2,7 +2,9 @@ import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 
 import { SelfServiceHeader } from "@/components/self-service/SelfServiceHeader";
+import { WorkspaceEntryTransition } from "@/components/layout/WorkspaceEntryTransition";
 import { listAccessibleStudents } from "@/lib/student-access";
+import { publicSchoolLogoUrl } from "@/lib/school-branding";
 import { unreadNotificationCount } from "@/features/notifications/service";
 import { requireMembership } from "@/lib/auth";
 import { isOperationalRole, isSelfServiceRole } from "@/lib/access-control";
@@ -24,6 +26,15 @@ export default async function SelfServiceLayout({
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(99,102,241,0.08),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(139,92,246,0.07),transparent_32%)] bg-background">
+      <WorkspaceEntryTransition
+        schoolSlug={schoolSlug}
+        schoolName={membership.school.name}
+        schoolLogo={publicSchoolLogoUrl(
+          schoolSlug,
+          membership.school.logo,
+          membership.school.updatedAt,
+        )}
+      />
       <SelfServiceHeader
         schoolName={membership.school.name}
         schoolSlug={schoolSlug}

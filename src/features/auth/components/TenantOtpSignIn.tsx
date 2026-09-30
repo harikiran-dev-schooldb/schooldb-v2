@@ -3,7 +3,7 @@
 import { useSignIn, useUser } from "@clerk/nextjs";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ArrowRight,
   Banknote,
@@ -98,9 +98,38 @@ export function TenantOtpSignIn({ schoolSlug, schoolName, schoolLogo }: Props) {
   const [currentFeature, setCurrentFeature] = useState(0);
   const [loginMode, setLoginMode] = useState<LoginMode>("OTP");
   const [isArriving, setIsArriving] = useState(false);
+  const [isEnteringWorkspace, setIsEnteringWorkspace] = useState(false);
   const [accountChoices, setAccountChoices] = useState<AccountChoice[]>([]);
   const [challengeId, setChallengeId] = useState("");
   const otpInputRef = useRef<HTMLInputElement>(null);
+  const workspaceTransitionStartedRef = useRef(false);
+  const workspaceTransitionTimerRef = useRef<number | null>(null);
+
+  const enterWorkspace = useCallback(
+    (destination: string) => {
+      if (workspaceTransitionStartedRef.current) return;
+
+      workspaceTransitionStartedRef.current = true;
+      window.sessionStorage.setItem(
+        "schooldb-workspace-transition",
+        schoolSlug,
+      );
+      document.documentElement.classList.add(
+        "schooldb-workspace-transition-pending",
+      );
+
+      const reduceMotion = window.matchMedia(
+        "(prefers-reduced-motion: reduce)",
+      ).matches;
+
+      setIsEnteringWorkspace(true);
+      workspaceTransitionTimerRef.current = window.setTimeout(
+        () => router.replace(destination),
+        reduceMotion ? 80 : 820,
+      );
+    },
+    [router, schoolSlug],
+  );
 
   useEffect(() => {
     const timer = window.setInterval(
@@ -139,6 +168,15 @@ export function TenantOtpSignIn({ schoolSlug, schoolName, schoolLogo }: Props) {
     if (pendingVerification) otpInputRef.current?.focus();
   }, [pendingVerification]);
 
+  useEffect(
+    () => () => {
+      if (workspaceTransitionTimerRef.current !== null) {
+        window.clearTimeout(workspaceTransitionTimerRef.current);
+      }
+    },
+    [],
+  );
+
   useEffect(() => {
     if (resendTimer <= 0) return;
     const timer = window.setInterval(
@@ -149,8 +187,8 @@ export function TenantOtpSignIn({ schoolSlug, schoolName, schoolLogo }: Props) {
   }, [resendTimer]);
 
   useEffect(() => {
-    if (userLoaded && isSignedIn) router.replace("/" + schoolSlug);
-  }, [isSignedIn, router, schoolSlug, userLoaded]);
+    if (userLoaded && isSignedIn) enterWorkspace("/" + schoolSlug);
+  }, [enterWorkspace, isSignedIn, schoolSlug, userLoaded]);
 
   const handleSendOTP = async () => {
     if (isSending) return;
@@ -187,7 +225,7 @@ export function TenantOtpSignIn({ schoolSlug, schoolName, schoolLogo }: Props) {
     }
     const finalizeResult = await signIn.finalize({
       navigate: ({ decorateUrl }) =>
-        router.replace(decorateUrl("/" + schoolSlug)),
+        enterWorkspace(decorateUrl("/" + schoolSlug)),
     });
     if (finalizeResult.error) throw finalizeResult.error;
   };
@@ -351,7 +389,49 @@ export function TenantOtpSignIn({ schoolSlug, schoolName, schoolLogo }: Props) {
 
   return (
     <main className={"schooldb-auth-scene relative min-h-screen overflow-hidden bg-[#f5f7ff] px-4 py-5 text-slate-950 sm:px-7 lg:px-9 lg:py-7 xl:px-12 " + (isArriving ? "is-arriving" : "")}>
-      {isArriving && (
+      {isEnteringWorkspace && (
+        <div
+          className="schooldb-workspace-launch fixed inset-0 z-[100] flex items-center justify-center overflow-hidden"
+          role="status"
+          aria-live="polite"
+          aria-label={`Signing in to ${schoolName}`}
+        >
+          <div className="schooldb-workspace-grid absolute inset-0" aria-hidden="true" />
+          <div className="schooldb-workspace-launch-flare absolute size-44 rounded-full" aria-hidden="true" />
+          <div className="schooldb-workspace-launch-content relative flex w-[min(88vw,420px)] flex-col items-center text-center">
+            <div className="relative flex size-36 items-center justify-center sm:size-40">
+              <div className="schooldb-workspace-ring schooldb-workspace-ring-one absolute inset-0 rounded-full border border-white/25" />
+              <div className="schooldb-workspace-ring schooldb-workspace-ring-two absolute inset-4 rounded-full border border-dashed border-white/30" />
+              <div className="schooldb-workspace-logo-halo absolute inset-7 rounded-[32px]" />
+              <SchoolLogo
+                src={schoolLogo}
+                schoolName={schoolName}
+                sizes="88px"
+                className="relative size-[88px] rounded-[25px] border-white/80 shadow-[0_28px_80px_rgba(15,23,42,.38)] ring-8 ring-white/10"
+                priority
+              />
+              <span className="schooldb-workspace-verified absolute bottom-3 right-2 flex size-8 items-center justify-center rounded-full border-2 border-indigo-800 bg-emerald-400 text-emerald-950 shadow-lg sm:right-3">
+                <CheckCircle2 className="size-4 stroke-[3]" />
+              </span>
+            </div>
+
+            <p className="mt-7 text-[10px] font-black uppercase tracking-[0.22em] text-emerald-300">
+              Access granted
+            </p>
+            <h2 className="mt-3 text-2xl font-black tracking-[-0.035em] text-white sm:text-3xl">
+              {schoolName}
+            </h2>
+            <p className="mt-2 text-sm font-semibold text-indigo-100/80">
+              Connecting your secure workspace
+            </p>
+
+            <div className="mt-7 h-1.5 w-full overflow-hidden rounded-full bg-white/10 ring-1 ring-white/10">
+              <span className="schooldb-workspace-progress block h-full rounded-full bg-gradient-to-r from-cyan-300 via-indigo-300 to-violet-300" />
+            </div>
+          </div>
+        </div>
+      )}
+      {isArriving && !isEnteringWorkspace && (
         <div className="schooldb-auth-arrival pointer-events-none fixed inset-0 z-50 flex items-center justify-center" aria-hidden="true">
           <div className="schooldb-auth-arrival-orbit absolute size-52 rounded-full border border-white/25" />
           <div className="schooldb-auth-arrival-identity relative flex flex-col items-center text-center">
