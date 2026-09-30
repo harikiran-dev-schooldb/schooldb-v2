@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import {
   Building2,
   ImageUp,
@@ -34,6 +34,7 @@ type SchoolItem = {
 
 export default function SchoolsPage() {
   const { schoolSlug } = useParams<{ schoolSlug: string }>();
+  const router = useRouter();
   const [schools, setSchools] = useState<SchoolItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -130,6 +131,7 @@ export default function SchoolsPage() {
       setSchools((items) =>
         items.map((item) => (item.id === schoolId ? { ...item, logo } : item)),
       );
+      router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to upload the school logo.");
     } finally {
@@ -153,6 +155,7 @@ export default function SchoolsPage() {
           item.id === schoolId ? { ...item, logo: null } : item,
         ),
       );
+      router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to remove the school logo.");
     } finally {

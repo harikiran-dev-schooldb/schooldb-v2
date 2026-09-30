@@ -1,5 +1,7 @@
 "use client";
 
+import Image from "next/image";
+import { useState } from "react";
 import {
   Building2,
   ChevronDown,
@@ -36,11 +38,15 @@ type Props = {
 };
 
 export function AppHeader({ onMenuClick }: Props) {
-  const { role, user } = useSchool();
+  const { role, school, user } = useSchool();
   const router = useRouter();
+  const [failedSchoolLogo, setFailedSchoolLogo] = useState<string | null>(null);
 
   const params = useParams<{ schoolSlug: string }>();
   const schoolSlug = params.schoolSlug;
+  const schoolLogo = school.logo
+    ? `/api/v1/public/schools/${encodeURIComponent(school.slug)}/logo?v=${new Date(school.updatedAt).getTime()}`
+    : null;
 
   const initials =
     `${user.firstName?.[0] ?? ""}${user.lastName?.[0] ?? ""}` || "U";
@@ -65,12 +71,36 @@ export function AppHeader({ onMenuClick }: Props) {
             <Menu className="size-5" />
           </Button>
 
-          <div className="min-w-0">
-            <p className="section-label hidden sm:block">School workspace</p>
-
-            <p className="truncate text-sm font-semibold tracking-tight text-foreground sm:mt-1">
-              {formatRole(role)} Portal
-            </p>
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-indigo-100 bg-indigo-50 text-indigo-600 shadow-sm sm:size-11">
+              {schoolLogo && schoolLogo !== failedSchoolLogo ? (
+                <Image
+                  src={schoolLogo}
+                  alt={`${school.name} logo`}
+                  width={44}
+                  height={44}
+                  unoptimized
+                  onError={() => setFailedSchoolLogo(schoolLogo)}
+                  className="size-full bg-white object-contain p-1"
+                />
+              ) : (
+                <Building2 className="size-5" />
+              )}
+            </div>
+            <div className="min-w-0">
+              <p
+                title={school.name}
+                className="max-w-[42vw] truncate text-sm font-extrabold tracking-[-0.02em] text-foreground sm:max-w-sm sm:text-base"
+              >
+                {school.name}
+              </p>
+              <div className="mt-0.5 flex min-w-0 items-center gap-1.5">
+                <span className="shrink-0 text-[10px] font-semibold text-muted-foreground">
+                  {formatRole(role)} Portal
+                </span>
+                <span className="hidden h-3 w-px bg-border sm:block" />
+              </div>
+            </div>
           </div>
         </div>
 

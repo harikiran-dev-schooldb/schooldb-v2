@@ -3,15 +3,15 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import {
-  Building2,
   ChevronDown,
   PanelLeftClose,
   PanelLeftOpen,
   Search,
   Settings,
   UserCircle2,
+  X,
 } from "lucide-react";
 
 import { useSchool } from "@/contexts/school-context";
@@ -81,6 +81,8 @@ export function AppSidebar({ mobile = false, onNavigate }: Props) {
 
   const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({});
   const [unreadQueries, setUnreadQueries] = useState(0);
+  const [searchQuery, setSearchQuery] = useState("");
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!["SUPER_ADMIN", "SCHOOL_ADMIN", "TEACHER", "ACCOUNTANT", "RECEPTIONIST"].includes(role)) return;
@@ -118,6 +120,35 @@ export function AppSidebar({ mobile = false, onNavigate }: Props) {
     [role],
   );
 
+  const normalizedSearch = searchQuery.trim().toLowerCase();
+  const filteredNavigation = useMemo(() => {
+    if (!normalizedSearch) return visibleNavigation;
+
+    return visibleNavigation.flatMap((item) => {
+      if (item.title.toLowerCase().includes(normalizedSearch)) return [item];
+      if (!item.children?.length) return [];
+
+      const children = item.children.filter((child) =>
+        child.title.toLowerCase().includes(normalizedSearch),
+      );
+      return children.length ? [{ ...item, children }] : [];
+    });
+  }, [normalizedSearch, visibleNavigation]);
+
+  useEffect(() => {
+    const handleShortcut = (event: KeyboardEvent) => {
+      if (event.key.toLowerCase() !== "k" || (!event.metaKey && !event.ctrlKey)) {
+        return;
+      }
+      event.preventDefault();
+      if (collapsed) setSidebarCollapsed(false);
+      window.setTimeout(() => searchInputRef.current?.focus(), 0);
+    };
+
+    window.addEventListener("keydown", handleShortcut);
+    return () => window.removeEventListener("keydown", handleShortcut);
+  }, [collapsed]);
+
   function toggleSidebar() {
     setSidebarCollapsed(!collapsed);
   }
@@ -127,6 +158,11 @@ export function AppSidebar({ mobile = false, onNavigate }: Props) {
       ...current,
       [title]: !current[title],
     }));
+  }
+
+  function handleNavigation() {
+    setSearchQuery("");
+    onNavigate?.();
   }
 
   const activeParents = useMemo(() => {
@@ -171,111 +207,37 @@ export function AppSidebar({ mobile = false, onNavigate }: Props) {
         )}
       >
         {/* ==================================================================
-            BRAND
+            PLATFORM BRAND
             ================================================================== */}
 
         <div
           className={cn(
-            "relative flex h-[72px] shrink-0 items-center",
-            "border-b border-sidebar-border",
+            "flex h-[56px] shrink-0 items-center border-b border-sidebar-border text-slate-400",
             collapsed ? "justify-center px-2" : "px-4",
           )}
         >
           <Link
             href={`/${school.slug}/${role === "TEACHER" ? "teacher/dashboard" : "dashboard"}`}
-            onClick={onNavigate}
+            onClick={handleNavigation}
             className={cn(
               "group flex min-w-0 items-center",
-              collapsed ? "justify-center" : "gap-3",
+              collapsed ? "justify-center" : "gap-2.5",
             )}
           >
-            <div
-              className={cn(
-                "relative flex size-10 shrink-0 items-center justify-center",
-                "overflow-hidden rounded-xl",
-                "shadow-[0_8px_22px_rgba(79,70,229,0.22)]",
-                "ring-1 ring-indigo-200/70",
-                "transition-all duration-200",
-                "group-hover:scale-[1.03]",
-              )}
-            >
-              <Image
-                src="/schooldb-app-logo.png"
-                alt="SchoolDB"
-                width={40}
-                height={40}
-                className="size-10 object-cover"
-                priority
-              />
-            </div>
-
+            <Image
+              src="/schooldb-app-logo.png"
+              alt="SchoolDB"
+              width={28}
+              height={28}
+              className="size-7 rounded-lg object-cover shadow-sm ring-1 ring-indigo-100 transition group-hover:scale-105"
+              priority
+            />
             {!collapsed && (
-              <div className="min-w-0">
-                <p className="truncate text-[15px] font-bold tracking-[-0.02em] text-slate-900">
-                  SchoolDB
-                </p>
-
-                <p className="mt-0.5 truncate text-[9px] font-semibold uppercase tracking-[0.2em] text-slate-400">
-                  School Management
-                </p>
-              </div>
+              <p className="truncate text-[9px] font-semibold uppercase tracking-[0.15em]">
+                Powered by <span className="font-extrabold text-slate-700">SchoolDB</span>
+              </p>
             )}
           </Link>
-        </div>
-
-        {/* ==================================================================
-            SCHOOL
-            ================================================================== */}
-
-        <div className={cn("px-3 pt-3", collapsed && "px-2")}>
-          <div
-            className={cn(
-              "relative overflow-hidden rounded-xl",
-              "border border-slate-200/80",
-              "bg-slate-50/70",
-              "transition-all duration-200",
-              "hover:border-indigo-200",
-              "hover:bg-indigo-50/40",
-              collapsed ? "flex justify-center p-2" : "px-3 py-3",
-            )}
-          >
-            <div
-              className={cn(
-                "relative flex items-center",
-                collapsed ? "justify-center" : "gap-3",
-              )}
-            >
-              <div
-                className={cn(
-                  "flex size-9 shrink-0 items-center justify-center",
-                  "rounded-lg",
-                  "bg-indigo-50",
-                  "text-indigo-600",
-                  "ring-1 ring-indigo-100",
-                )}
-              >
-                <Building2 className="size-4" strokeWidth={2} />
-              </div>
-
-              {!collapsed && (
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-[12px] font-semibold text-slate-800">
-                    {school.name}
-                  </p>
-
-                  <div className="mt-1 flex items-center gap-1.5">
-                    <span className="size-1.5 rounded-full bg-emerald-500" />
-
-                    <span className="text-[9px] font-medium text-slate-400">
-                      Active school
-                    </span>
-                  </div>
-                </div>
-              )}
-
-              {!collapsed && <ChevronDown className="size-4 text-slate-300" />}
-            </div>
-          </div>
         </div>
 
         {/* ==================================================================
@@ -284,15 +246,14 @@ export function AppSidebar({ mobile = false, onNavigate }: Props) {
 
         {!collapsed && (
           <div className="px-3 pt-3">
-            <button
-              type="button"
+            <div
               className={cn(
                 "group flex h-9 w-full items-center gap-2",
                 "rounded-lg",
                 "border border-slate-200",
                 "bg-slate-50/60",
                 "px-3",
-                "text-left text-[11px]",
+                "text-[11px]",
                 "text-slate-400",
                 "transition-all duration-200",
                 "hover:border-indigo-200",
@@ -301,22 +262,42 @@ export function AppSidebar({ mobile = false, onNavigate }: Props) {
               )}
             >
               <Search className="size-3.5 text-slate-400 transition-colors group-hover:text-indigo-500" />
-
-              <span className="flex-1">Search...</span>
-
-              <kbd
-                className={cn(
-                  "rounded-md",
-                  "border border-slate-200",
-                  "bg-white",
-                  "px-1.5 py-0.5",
-                  "text-[9px]",
-                  "text-slate-400",
-                )}
-              >
-                ⌘K
-              </kbd>
-            </button>
+              <input
+                ref={searchInputRef}
+                type="search"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="Search navigation..."
+                aria-label="Search navigation"
+                className="h-full min-w-0 flex-1 bg-transparent text-slate-700 outline-none placeholder:text-slate-400 [&::-webkit-search-cancel-button]:hidden"
+              />
+              {searchQuery ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchQuery("");
+                    searchInputRef.current?.focus();
+                  }}
+                  className="rounded-md p-1 text-slate-400 transition hover:bg-white hover:text-slate-700"
+                  aria-label="Clear navigation search"
+                >
+                  <X className="size-3.5" />
+                </button>
+              ) : (
+                <kbd
+                  className={cn(
+                    "rounded-md",
+                    "border border-slate-200",
+                    "bg-white",
+                    "px-1.5 py-0.5",
+                    "text-[9px]",
+                    "text-slate-400",
+                  )}
+                >
+                  ⌘K
+                </kbd>
+              )}
+            </div>
           </div>
         )}
 
@@ -334,12 +315,12 @@ export function AppSidebar({ mobile = false, onNavigate }: Props) {
         >
           {!collapsed && (
             <p className="mb-2 px-3 text-[9px] font-bold uppercase tracking-[0.2em] text-slate-400">
-              Workspace
+              {normalizedSearch ? "Search results" : "Workspace"}
             </p>
           )}
 
           <div className="space-y-1">
-            {visibleNavigation.map((item) => {
+            {filteredNavigation.map((item) => {
               const hasChildren = Boolean(item.children?.length);
 
               /* ============================================================
@@ -354,6 +335,7 @@ export function AppSidebar({ mobile = false, onNavigate }: Props) {
                 });
 
                 const isOpen =
+                  Boolean(normalizedSearch) ||
                   activeParents.has(item.title) ||
                   openMenus[item.title] === true;
 
@@ -484,7 +466,7 @@ export function AppSidebar({ mobile = false, onNavigate }: Props) {
                                 <Link
                                   key={child.title}
                                   href={href}
-                                  onClick={onNavigate}
+                                  onClick={handleNavigation}
                                   className={cn(
                                     "group relative flex items-center gap-2.5",
                                     "rounded-lg px-3 py-2",
@@ -549,7 +531,7 @@ export function AppSidebar({ mobile = false, onNavigate }: Props) {
                   <div key={item.title} className="group relative">
                     <Link
                       href={href}
-                      onClick={onNavigate}
+                      onClick={handleNavigation}
                       className={cn(
                         "flex size-11 w-full items-center justify-center",
                         "rounded-xl",
@@ -599,7 +581,7 @@ export function AppSidebar({ mobile = false, onNavigate }: Props) {
                 <Link
                   key={item.title}
                   href={href}
-                  onClick={onNavigate}
+                  onClick={handleNavigation}
                   className={cn(
                     "group relative flex items-center gap-3",
                     "rounded-xl px-3 py-2.5",
@@ -640,6 +622,17 @@ export function AppSidebar({ mobile = false, onNavigate }: Props) {
                 </Link>
               );
             })}
+            {!filteredNavigation.length && !collapsed && (
+              <div className="rounded-xl border border-dashed border-slate-200 px-3 py-6 text-center">
+                <Search className="mx-auto size-5 text-slate-300" />
+                <p className="mt-2 text-xs font-semibold text-slate-600">
+                  No navigation found
+                </p>
+                <p className="mt-1 text-[10px] text-slate-400">
+                  Try another page or feature name.
+                </p>
+              </div>
+            )}
           </div>
         </nav>
 
@@ -675,7 +668,7 @@ export function AppSidebar({ mobile = false, onNavigate }: Props) {
             <div className="mb-2 flex gap-1">
               <Link
                 href={`/${school.slug}/settings`}
-                onClick={onNavigate}
+                onClick={handleNavigation}
                 className={cn(
                   "flex flex-1 items-center gap-2",
                   "rounded-lg px-2.5 py-2",
