@@ -1,7 +1,6 @@
 "use client";
 
 import { useSignIn, useUser } from "@clerk/nextjs";
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -23,6 +22,8 @@ import {
   UserRoundCog,
 } from "lucide-react";
 import { toast } from "sonner";
+
+import { SchoolLogo } from "@/components/branding/SchoolLogo";
 
 import OTPLogin from "./OTPLogin";
 
@@ -354,13 +355,11 @@ export function TenantOtpSignIn({ schoolSlug, schoolName, schoolLogo }: Props) {
         <div className="schooldb-auth-arrival pointer-events-none fixed inset-0 z-50 flex items-center justify-center" aria-hidden="true">
           <div className="schooldb-auth-arrival-orbit absolute size-52 rounded-full border border-white/25" />
           <div className="schooldb-auth-arrival-identity relative flex flex-col items-center text-center">
-            <Image
+            <SchoolLogo
               src={schoolLogo || "/pwa-192.png"}
-              alt=""
-              width={88}
-              height={88}
-              unoptimized={Boolean(schoolLogo)}
-              className="size-[88px] rounded-[24px] bg-white object-contain p-1.5 shadow-[0_24px_70px_rgba(30,27,75,.28)]"
+              schoolName={schoolName}
+              sizes="88px"
+              className="size-[88px] rounded-[24px] shadow-[0_24px_70px_rgba(30,27,75,.28)]"
               priority
             />
             <p className="mt-5 text-[10px] font-black uppercase tracking-[0.24em] text-indigo-100">
@@ -458,20 +457,12 @@ export function TenantOtpSignIn({ schoolSlug, schoolName, schoolLogo }: Props) {
               <div className="schooldb-card-sheen pointer-events-none absolute inset-y-0 -left-1/2 w-1/3" aria-hidden="true" />
                 <div className="relative mb-7">
                   <div className="mb-5 flex items-center gap-3">
-                    <div className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-indigo-100 bg-indigo-50 text-indigo-600">
-                      {schoolLogo ? (
-                        <Image
-                          src={schoolLogo}
-                          alt={`${schoolName} logo`}
-                          width={44}
-                          height={44}
-                          unoptimized
-                          className="size-full bg-white object-contain p-1"
-                        />
-                      ) : (
-                        <School className="size-5" />
-                      )}
-                    </div>
+                    <SchoolLogo
+                      src={schoolLogo}
+                      schoolName={schoolName}
+                      sizes="44px"
+                      className="size-11 rounded-2xl"
+                    />
                     <div className="min-w-0">
                       <p className="truncate text-sm font-extrabold text-slate-950">
                         {schoolName}

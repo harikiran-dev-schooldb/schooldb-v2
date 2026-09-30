@@ -59,6 +59,13 @@ export function DataGrid<TData>({
         <div className="border-b border-border/60 bg-card/50">{toolbar}</div>
       )}
 
+      {!loading && rows.length > 0 ? (
+        <div className="flex items-center justify-between border-b border-border/50 bg-muted/20 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground sm:hidden">
+          <span>{rows.length} records</span>
+          <span>Swipe to view more →</span>
+        </div>
+      ) : null}
+
       {/* Table */}
       <div className="w-full overflow-x-auto overscroll-x-contain [scrollbar-width:thin]">
         <Table className="min-w-max">

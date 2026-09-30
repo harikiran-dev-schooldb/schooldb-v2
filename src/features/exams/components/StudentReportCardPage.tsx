@@ -13,10 +13,10 @@ import {
   UserRound,
   XCircle,
 } from "lucide-react";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
+import { SchoolLogo } from "@/components/branding/SchoolLogo";
 import { Button } from "@/components/ui/button";
 
 type SubjectResult = {
@@ -282,22 +282,13 @@ export function StudentReportCardPage({
           <div className="flex flex-col items-center gap-5 text-center sm:flex-row sm:text-left">
             {/* Logo */}
 
-            {data.school.logo ? (
-              <div className="flex size-20 shrink-0 items-center justify-center">
-                <Image
-                  src={data.school.logo}
-                  alt={`${data.school.name} logo`}
-                  width={80}
-                  height={80}
-                  unoptimized
-                  className="size-20 object-contain"
-                />
-              </div>
-            ) : (
-              <div className="flex size-20 shrink-0 items-center justify-center border-2 border-primary text-3xl font-bold text-primary print:border-black print:text-black">
-                {data.school.name.charAt(0).toUpperCase()}
-              </div>
-            )}
+            <SchoolLogo
+              src={data.school.logo}
+              schoolName={data.school.name}
+              sizes="80px"
+              className="size-20 rounded-2xl print:rounded-none print:ring-black"
+              fallbackClassName="print:text-black"
+            />
 
             {/* School Information */}
 

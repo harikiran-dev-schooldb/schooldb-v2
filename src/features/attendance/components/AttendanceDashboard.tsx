@@ -12,7 +12,6 @@ import {
   FileText,
   GraduationCap,
   History,
-  Loader2,
   Sparkles,
   UserCheck,
   UserX,
@@ -21,6 +20,7 @@ import {
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/common/PageHeader";
 
 type Props = {
   schoolSlug: string;
@@ -57,6 +57,8 @@ type DashboardData = {
 export function AttendanceDashboard({ schoolSlug }: Props) {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
   /* ==========================================================================
      LOAD DASHBOARD
@@ -68,6 +70,7 @@ export function AttendanceDashboard({ schoolSlug }: Props) {
     async function loadDashboard() {
       try {
         setLoading(true);
+        setError(null);
 
         const response = await fetch("/api/v1/attendance/dashboard", {
           signal: controller.signal,
@@ -80,15 +83,22 @@ export function AttendanceDashboard({ schoolSlug }: Props) {
           return;
         }
 
-        if (result.success) {
-          setData(result.data);
+        if (!response.ok || !result.success) {
+          throw new Error(result.message || "Unable to load attendance data.");
         }
+
+        setData(result.data);
       } catch (error) {
         if (error instanceof DOMException && error.name === "AbortError") {
           return;
         }
 
         console.error("Failed to load attendance dashboard:", error);
+        setError(
+          error instanceof Error
+            ? error.message
+            : "Unable to load attendance data.",
+        );
       } finally {
         if (!controller.signal.aborted) {
           setLoading(false);
@@ -101,7 +111,7 @@ export function AttendanceDashboard({ schoolSlug }: Props) {
     return () => {
       controller.abort();
     };
-  }, []);
+  }, [reloadKey]);
 
   /* ==========================================================================
      DEFAULT DATA
@@ -165,12 +175,36 @@ export function AttendanceDashboard({ schoolSlug }: Props) {
      ========================================================================== */
 
   if (loading) {
+    return <AttendanceDashboardSkeleton />;
+  }
+
+  if (error) {
     return (
-      <div className="flex min-h-[400px] items-center justify-center">
-        <div className="flex items-center gap-2 text-sm text-slate-500">
-          <Loader2 className="size-5 animate-spin text-indigo-500" />
-          Loading attendance dashboard...
-        </div>
+      <div className="schooldb-page-enter space-y-6 pb-10">
+        <PageHeader
+          eyebrow="Attendance"
+          title="Attendance Dashboard"
+          description="Monitor attendance activity and identify students requiring attention."
+        />
+        <Card className="overflow-hidden rounded-3xl border border-red-100 bg-white shadow-[0_12px_35px_rgba(15,23,42,.05)]">
+          <CardContent className="flex min-h-72 flex-col items-center justify-center px-6 py-12 text-center">
+            <div className="flex size-14 items-center justify-center rounded-2xl bg-red-50 text-red-600 ring-1 ring-red-100">
+              <AlertTriangle className="size-6" />
+            </div>
+            <h2 className="mt-5 text-lg font-bold text-slate-950">
+              Unable to load attendance
+            </h2>
+            <p className="mt-2 max-w-md text-sm leading-6 text-slate-500">
+              {error}
+            </p>
+            <Button
+              className="mt-6 rounded-xl"
+              onClick={() => setReloadKey((current) => current + 1)}
+            >
+              Try again
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -180,47 +214,27 @@ export function AttendanceDashboard({ schoolSlug }: Props) {
      ========================================================================== */
 
   return (
-    <div className="w-full space-y-6 p-4 pb-10 sm:p-6">
+    <div className="schooldb-page-enter w-full space-y-6 pb-10">
       {/* ======================================================================
           PAGE HEADER
           ====================================================================== */}
 
-      <div className="flex flex-col gap-4 border-b border-slate-200/70 pb-5 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex min-w-0 items-center gap-3">
-          <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 ring-1 ring-indigo-100">
-            <CalendarDays className="size-5" strokeWidth={2} />
-          </div>
-
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <Sparkles className="size-3 text-indigo-500" />
-
-              <span className="text-[10px] font-bold tracking-[0.18em] text-indigo-600 uppercase">
-                Attendance
-              </span>
-            </div>
-
-            <h1 className="mt-1 text-xl font-bold tracking-tight text-slate-950 sm:text-2xl">
-              Attendance Dashboard
-            </h1>
-
-            <p className="mt-0.5 text-sm text-slate-500">
-              Monitor attendance activity and identify students requiring
-              attention.
-            </p>
-          </div>
-        </div>
-
-        <Button
-          asChild
-          className="w-full gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 sm:w-auto"
-        >
-          <Link href={`/${schoolSlug}/attendance`}>
-            <CheckCircle2 className="size-4" />
-            Mark Attendance
-          </Link>
-        </Button>
-      </div>
+      <PageHeader
+        eyebrow="Attendance"
+        title="Attendance Dashboard"
+        description="Monitor attendance activity and identify students requiring attention."
+        action={
+          <Button
+            asChild
+            className="w-full gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 sm:w-auto"
+          >
+            <Link href={`/${schoolSlug}/attendance`}>
+              <CheckCircle2 className="size-4" />
+              Mark Attendance
+            </Link>
+          </Button>
+        }
+      />
 
       {/* ======================================================================
           SUMMARY
@@ -625,6 +639,73 @@ function EmptyState({
       </p>
 
       {action}
+    </div>
+  );
+}
+
+function AttendanceDashboardSkeleton() {
+  return (
+    <div
+      className="schooldb-page-enter space-y-6 pb-10"
+      aria-label="Loading attendance dashboard"
+      aria-busy="true"
+    >
+      <div className="flex flex-col gap-4 border-b border-border/60 pb-5 sm:flex-row sm:items-end sm:justify-between">
+        <div className="space-y-2.5">
+          <div className="h-3 w-24 animate-pulse rounded bg-muted" />
+          <div className="h-8 w-64 max-w-[75vw] animate-pulse rounded-lg bg-muted" />
+          <div className="h-4 w-96 max-w-[88vw] animate-pulse rounded bg-muted" />
+        </div>
+        <div className="h-10 w-full animate-pulse rounded-xl bg-muted sm:w-40" />
+      </div>
+
+      <section>
+        <div className="mb-4 flex items-center gap-3">
+          <div className="size-9 animate-pulse rounded-xl bg-muted" />
+          <div className="space-y-2">
+            <div className="h-4 w-40 animate-pulse rounded bg-muted" />
+            <div className="h-3 w-64 max-w-[70vw] animate-pulse rounded bg-muted" />
+          </div>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+          {Array.from({ length: 6 }).map((_, index) => (
+            <Card key={index} className="rounded-2xl border-border/60 shadow-sm">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="h-3 w-20 animate-pulse rounded bg-muted" />
+                  <div className="size-9 animate-pulse rounded-xl bg-muted" />
+                </div>
+                <div className="mt-4 h-7 w-16 animate-pulse rounded bg-muted" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </section>
+
+      <div className="grid gap-5 xl:grid-cols-[1fr_360px]">
+        <Card className="rounded-2xl border-border/60 shadow-sm">
+          <CardContent className="space-y-4 p-5 md:p-6">
+            <div className="h-5 w-48 animate-pulse rounded bg-muted" />
+            {Array.from({ length: 4 }).map((_, index) => (
+              <div key={index} className="flex items-center gap-3 border-t border-border/50 pt-4">
+                <div className="size-10 animate-pulse rounded-xl bg-muted" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-4 w-40 animate-pulse rounded bg-muted" />
+                  <div className="h-3 w-64 max-w-[65vw] animate-pulse rounded bg-muted" />
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+        <Card className="rounded-2xl border-border/60 shadow-sm">
+          <CardContent className="space-y-4 p-5 md:p-6">
+            <div className="size-10 animate-pulse rounded-xl bg-muted" />
+            <div className="h-5 w-36 animate-pulse rounded bg-muted" />
+            <div className="h-28 animate-pulse rounded-xl bg-muted" />
+            <div className="h-10 animate-pulse rounded-xl bg-muted" />
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

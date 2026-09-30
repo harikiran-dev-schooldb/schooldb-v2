@@ -5,7 +5,7 @@ import { GraduationCap, Users, Sparkles } from "lucide-react";
 
 export default function StudentPage() {
   return (
-    <div className="space-y-6 pb-10">
+    <div className="schooldb-page-enter space-y-6 pb-10">
       {/* ======================================================================
           PAGE HEADER
           ====================================================================== */}

@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useEffect, useState } from "react";
 import {
@@ -11,6 +10,8 @@ import {
   ShieldCheck,
   Sparkles,
 } from "lucide-react";
+
+import { SchoolLogo } from "@/components/branding/SchoolLogo";
 
 const SCHOOL_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 type SchoolBrand = { name: string; slug: string; logo: string | null };
@@ -95,13 +96,11 @@ export default function ChooseSchoolPage() {
       >
         <div className="schooldb-school-transition-halo absolute size-40 rounded-full" />
         <div className="schooldb-school-transition-identity relative flex flex-col items-center text-center">
-          <Image
+          <SchoolLogo
             src={visibleBrand?.logo || "/pwa-192.png"}
-            alt=""
-            width={88}
-            height={88}
-            unoptimized={Boolean(visibleBrand?.logo)}
-            className="size-[88px] rounded-[24px] bg-white object-contain p-1.5 shadow-[0_24px_70px_rgba(30,27,75,.28)]"
+            schoolName={visibleBrand?.name || "SchoolDB"}
+            sizes="88px"
+            className="size-[88px] rounded-[24px] shadow-[0_24px_70px_rgba(30,27,75,.28)]"
           />
           <p className="mt-5 text-[10px] font-black uppercase tracking-[0.24em] text-indigo-200">
             Opening secure portal
@@ -114,13 +113,11 @@ export default function ChooseSchoolPage() {
 
       <div className="relative z-10 mx-auto w-full max-w-lg">
         <header className="schooldb-choose-intro text-center">
-          <Image
+          <SchoolLogo
             src={visibleBrand?.logo || "/pwa-192.png"}
-            alt={visibleBrand ? `${visibleBrand.name} logo` : "SchoolDB"}
-            width={72}
-            height={72}
-            unoptimized={Boolean(visibleBrand?.logo)}
-            className="schooldb-choose-logo mx-auto size-[72px] rounded-2xl bg-white object-contain p-1 shadow-xl shadow-indigo-950/15"
+            schoolName={visibleBrand?.name || "SchoolDB"}
+            sizes="72px"
+            className="schooldb-choose-logo mx-auto size-[72px] rounded-2xl shadow-xl shadow-indigo-950/15"
             priority
           />
           <p className="mt-6 inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-white/70 px-3.5 py-2 text-[10px] font-bold uppercase tracking-[0.18em] text-indigo-700 shadow-sm backdrop-blur-xl">

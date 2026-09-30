@@ -626,7 +626,11 @@ async lowAttendanceSummary(
         : Prisma.sql`s."attendanceDate"::text || ':PERIOD:' || s."periodId"`;
 
   const rows = await prisma.$queryRaw<
-    Array<{ totalStudents: bigint; lowAttendanceCount: bigint }>
+    Array<{
+      totalStudents: bigint;
+      lowAttendanceCount: bigint;
+      studentsWithoutAttendance: bigint;
+    }>
   >(Prisma.sql`
     WITH active_students AS (
       SELECT e."studentId"
@@ -666,13 +670,12 @@ async lowAttendanceSummary(
       GROUP BY e."studentId"
     )
     SELECT
-      COUNT(*)::bigint AS "totalStudents",
+      COUNT(*) FILTER (WHERE total > 0)::bigint AS "totalStudents",
       COUNT(*) FILTER (
-        WHERE CASE
-          WHEN total = 0 THEN 0
-          ELSE (attended::numeric / total::numeric) * 100
-        END < ${threshold}
-      )::bigint AS "lowAttendanceCount"
+        WHERE total > 0
+          AND (attended::numeric / total::numeric) * 100 < ${threshold}
+      )::bigint AS "lowAttendanceCount",
+      COUNT(*) FILTER (WHERE total = 0)::bigint AS "studentsWithoutAttendance"
     FROM student_summary
   `);
 
@@ -681,6 +684,7 @@ async lowAttendanceSummary(
   return {
     totalStudents: Number(row?.totalStudents ?? 0),
     lowAttendanceCount: Number(row?.lowAttendanceCount ?? 0),
+    studentsWithoutAttendance: Number(row?.studentsWithoutAttendance ?? 0),
   };
 },
 

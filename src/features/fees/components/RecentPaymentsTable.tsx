@@ -10,6 +10,7 @@ import {
   UserRound,
 } from "lucide-react";
 import { useParams } from "next/navigation";
+import Link from "next/link";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -126,6 +127,13 @@ export function RecentPaymentsTable({ payments }: Props) {
             <p className="mt-2 max-w-sm text-sm leading-6 text-muted-foreground">
               Fee payments recorded by the school will appear here.
             </p>
+
+            <Button asChild className="mt-5 rounded-xl">
+              <Link href={`/${schoolSlug}/fees/collection`}>
+                <ReceiptIndianRupee className="mr-2 size-4" />
+                Collect a payment
+              </Link>
+            </Button>
           </div>
         ) : (
           <>

@@ -27,7 +27,7 @@ export function AppShell({ children }: Props) {
             SIDEBAR
             ================================================================ */}
 
-        <div className="hidden print:hidden lg:block">
+        <div className="hidden print:hidden xl:block">
           <AppSidebar />
         </div>
 
@@ -37,7 +37,7 @@ export function AppShell({ children }: Props) {
         >
           <SheetContent
             side="left"
-            className="w-[min(88vw,320px)] gap-0 border-0 bg-transparent p-0 lg:hidden"
+            className="w-[min(92vw,340px)] gap-0 border-0 bg-transparent p-0 xl:hidden [&_[data-slot=sheet-close]]:right-3 [&_[data-slot=sheet-close]]:top-3 [&_[data-slot=sheet-close]]:z-[60] [&_[data-slot=sheet-close]]:bg-white/90 [&_[data-slot=sheet-close]]:shadow-sm"
           >
             <SheetTitle className="sr-only">Main navigation</SheetTitle>
             <SheetDescription className="sr-only">
@@ -62,7 +62,7 @@ export function AppShell({ children }: Props) {
           </div>
 
           <main className="min-w-0 flex-1">
-            <div className="mx-auto w-full max-w-[1920px] px-3 py-4 print:max-w-none print:p-0 sm:px-5 sm:py-6 lg:px-6 xl:px-8 2xl:px-10">
+            <div className="mx-auto w-full max-w-[1920px] px-3 py-4 print:max-w-none print:p-0 sm:px-5 sm:py-6 md:px-6 xl:px-8 2xl:px-10">
               {children}
             </div>
           </main>

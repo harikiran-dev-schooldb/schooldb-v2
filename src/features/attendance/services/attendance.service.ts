@@ -12,6 +12,10 @@ import {
 
 import { attendanceRepository } from "../repositories/attendance.repository";
 import { calculateAttendance } from "./attendance-calculator";
+import {
+  compareStudentsByRollNumber,
+  isLowAttendance,
+} from "./attendance-threshold";
 import { rankAttendanceStudents } from "./attendance-ranking";
 import { academicYearRepository } from "@/features/academic-years/repositories/academic-year.repository";
 import { classRepository } from "@/features/classes/repositories/class.repository";
@@ -858,6 +862,7 @@ async lowAttendanceReport(
       threshold,
       totalStudents: 0,
       lowAttendanceCount: 0,
+      studentsWithoutAttendance: 0,
       students: [],
     };
   }
@@ -935,6 +940,15 @@ async lowAttendanceReport(
     });
 
   /*
+   * A student with no attendance opportunities has no percentage yet.
+   * Do not turn "no data" into 0%, because that incorrectly flags the
+   * student as low attendance.
+   */
+  const evaluatedResults = results.filter(
+    (student) => student.total > 0,
+  );
+
+  /*
    * Only students below the selected threshold.
    *
    * Example:
@@ -943,22 +957,19 @@ async lowAttendanceReport(
    * 75.00 = not included
    */
   const lowAttendance =
-    results
+    evaluatedResults
       .filter(
-        (student) =>
-          student.attendancePercentage < threshold,
+        (student) => isLowAttendance(student, threshold),
       )
-      .sort(
-  (a, b) =>
-    a.attendancePercentage -
-      b.attendancePercentage ||
-    (a.fullName ?? "").localeCompare(b.fullName ?? ""),
-);
+      .sort(compareStudentsByRollNumber);
 
   return {
     threshold,
 
-    totalStudents: results.length,
+    totalStudents: evaluatedResults.length,
+
+    studentsWithoutAttendance:
+      results.length - evaluatedResults.length,
 
     lowAttendanceCount:
       lowAttendance.length,

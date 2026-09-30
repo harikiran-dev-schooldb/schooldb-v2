@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -9,13 +8,13 @@ import {
   ImageUp,
   Loader2,
   Plus,
-  School,
   Smartphone,
   Trash2,
   X,
 } from "lucide-react";
 
 import { PageHeader } from "@/components/common/PageHeader";
+import { SchoolLogo } from "@/components/branding/SchoolLogo";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -259,20 +258,12 @@ export default function SchoolsPage() {
             <Card key={item.id} className="premium-card overflow-hidden rounded-2xl border-0">
               <CardContent className="p-6">
                 <div className="flex items-start gap-4">
-                  <div className="flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-border bg-primary/10 text-primary">
-                    {item.logo ? (
-                      <Image
-                        src={item.logo}
-                        alt={`${item.name} logo`}
-                        width={56}
-                        height={56}
-                        unoptimized
-                        className="size-full bg-white object-contain p-1.5"
-                      />
-                    ) : (
-                      <School className="size-6" />
-                    )}
-                  </div>
+                  <SchoolLogo
+                    src={item.logo}
+                    schoolName={item.name}
+                    sizes="56px"
+                    className="size-14 rounded-2xl"
+                  />
                   <div className="min-w-0 flex-1">
                     <h2 className="truncate text-base font-bold">{item.name}</h2>
                     <p className="mt-1 text-xs text-muted-foreground">/{item.slug}</p>

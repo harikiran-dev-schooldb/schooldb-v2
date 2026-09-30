@@ -1,7 +1,5 @@
 "use client";
 
-import Image from "next/image";
-import { useState } from "react";
 import {
   Building2,
   ChevronDown,
@@ -38,15 +36,11 @@ type Props = {
 };
 
 export function AppHeader({ onMenuClick }: Props) {
-  const { role, school, user } = useSchool();
+  const { role, user } = useSchool();
   const router = useRouter();
-  const [failedSchoolLogo, setFailedSchoolLogo] = useState<string | null>(null);
 
   const params = useParams<{ schoolSlug: string }>();
   const schoolSlug = params.schoolSlug;
-  const schoolLogo = school.logo
-    ? `/api/v1/public/schools/${encodeURIComponent(school.slug)}/logo?v=${new Date(school.updatedAt).getTime()}`
-    : null;
 
   const initials =
     `${user.firstName?.[0] ?? ""}${user.lastName?.[0] ?? ""}` || "U";
@@ -57,7 +51,7 @@ export function AppHeader({ onMenuClick }: Props) {
 
   return (
     <header className="sticky top-0 z-40 h-16 border-b border-border/70 bg-background/90 backdrop-blur-xl sm:h-[72px]">
-      <div className="flex h-full items-center justify-between gap-2 px-3 sm:px-5 lg:px-6 xl:px-8">
+      <div className="mx-auto flex h-full w-full max-w-[1920px] items-center justify-between gap-2 px-3 sm:px-5 md:px-6 xl:px-8 2xl:px-10">
         {/* Workspace context */}
         <div className="flex min-w-0 items-center gap-2 sm:gap-3">
           <Button
@@ -65,41 +59,22 @@ export function AppHeader({ onMenuClick }: Props) {
             variant="ghost"
             size="icon"
             aria-label="Open main navigation"
-            className="shrink-0 rounded-xl lg:hidden"
+            className="size-10 shrink-0 rounded-xl border border-border/70 bg-card/80 shadow-sm xl:hidden"
             onClick={onMenuClick}
           >
             <Menu className="size-5" />
           </Button>
 
-          <div className="flex min-w-0 items-center gap-3">
-            <div className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-indigo-100 bg-indigo-50 text-indigo-600 shadow-sm sm:size-11">
-              {schoolLogo && schoolLogo !== failedSchoolLogo ? (
-                <Image
-                  src={schoolLogo}
-                  alt={`${school.name} logo`}
-                  width={44}
-                  height={44}
-                  unoptimized
-                  onError={() => setFailedSchoolLogo(schoolLogo)}
-                  className="size-full bg-white object-contain p-1"
-                />
-              ) : (
-                <Building2 className="size-5" />
-              )}
+          <div className="schooldb-header-context flex min-w-0 items-center gap-3">
+            <div className="schooldb-header-workspace-mark relative hidden size-10 shrink-0 items-center justify-center rounded-xl border border-indigo-100 text-indigo-600 min-[420px]:flex sm:size-11">
+              <Building2 className="relative z-10 size-5" />
+              <span className="absolute right-1.5 top-1.5 size-1.5 rounded-full bg-emerald-500 ring-2 ring-white" />
             </div>
             <div className="min-w-0">
-              <p
-                title={school.name}
-                className="max-w-[42vw] truncate text-sm font-extrabold tracking-[-0.02em] text-foreground sm:max-w-sm sm:text-base"
-              >
-                {school.name}
+              <p className="section-label hidden sm:block">School workspace</p>
+              <p className="max-w-[46vw] truncate text-sm font-bold tracking-tight text-foreground sm:mt-1 sm:max-w-none">
+                {formatRole(role)} Portal
               </p>
-              <div className="mt-0.5 flex min-w-0 items-center gap-1.5">
-                <span className="shrink-0 text-[10px] font-semibold text-muted-foreground">
-                  {formatRole(role)} Portal
-                </span>
-                <span className="hidden h-3 w-px bg-border sm:block" />
-              </div>
             </div>
           </div>
         </div>
@@ -112,14 +87,14 @@ export function AppHeader({ onMenuClick }: Props) {
             variant="ghost"
             size="icon"
             aria-label="Search"
-            className="hidden rounded-xl text-muted-foreground transition-all hover:bg-card hover:text-foreground hover:shadow-sm sm:inline-flex"
+            className="hidden rounded-xl text-muted-foreground transition-all hover:bg-card hover:text-foreground hover:shadow-sm md:inline-flex"
           >
             <Search className="size-[18px]" />
           </Button>
 
           <NotificationMenu schoolSlug={schoolSlug} />
 
-          <div className="mx-2 hidden h-7 w-px bg-border sm:block" />
+          <div className="mx-1 hidden h-7 w-px bg-border sm:block md:mx-2" />
 
           {/* User menu */}
           <DropdownMenu>
@@ -127,7 +102,7 @@ export function AppHeader({ onMenuClick }: Props) {
               <Button
                 type="button"
                 variant="ghost"
-                className="h-auto gap-3 rounded-2xl px-2 py-1.5 hover:bg-card hover:shadow-sm"
+                className="h-auto gap-2 rounded-2xl px-1.5 py-1.5 hover:bg-card hover:shadow-sm sm:gap-3 sm:px-2"
               >
                 <Avatar className="size-9 border border-border bg-muted">
                   <AvatarImage

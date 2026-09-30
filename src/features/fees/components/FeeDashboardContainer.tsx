@@ -28,7 +28,7 @@ export function FeeDashboardContainer() {
 
   if (loading) {
     return (
-      <div className="space-y-6 p-4 sm:p-6">
+      <div className="schooldb-page-enter space-y-6 pb-10">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <div className="h-7 w-48 animate-pulse rounded-lg bg-muted" />
@@ -114,7 +114,7 @@ export function FeeDashboardContainer() {
 
   if (error) {
     return (
-      <div className="space-y-6 p-4 sm:p-6">
+      <div className="schooldb-page-enter space-y-6 pb-10">
         <FeeDashboardHeader
           academicYearId={academicYearId}
           onAcademicYearChange={setAcademicYearId}
@@ -150,7 +150,7 @@ export function FeeDashboardContainer() {
 
   if (!data) {
     return (
-      <div className="space-y-6 p-4 sm:p-6">
+      <div className="schooldb-page-enter space-y-6 pb-10">
         <FeeDashboardHeader
           academicYearId={academicYearId}
           onAcademicYearChange={setAcademicYearId}
@@ -192,7 +192,7 @@ export function FeeDashboardContainer() {
   const { summary, collection, paymentModes, recentPayments } = data;
 
   return (
-    <div className="space-y-6 p-4 sm:p-6">
+    <div className="schooldb-page-enter space-y-6 pb-10">
       <FeeDashboardHeader
         academicYearId={academicYearId}
         onAcademicYearChange={setAcademicYearId}

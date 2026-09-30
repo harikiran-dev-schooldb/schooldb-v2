@@ -41,6 +41,7 @@ type ReportData = {
   threshold: number;
   totalStudents: number;
   lowAttendanceCount: number;
+  studentsWithoutAttendance: number;
   students: Student[];
 };
 
@@ -297,7 +298,7 @@ export function LowAttendanceReport({ schoolSlug }: Props) {
             <SummaryCard
               label="Students Evaluated"
               value={data.totalStudents}
-              description="Students matching the selected filters"
+              description="Students with attendance records"
               icon={<Users className="h-5 w-5" />}
             />
 
@@ -317,6 +318,22 @@ export function LowAttendanceReport({ schoolSlug }: Props) {
               className="text-amber-600"
             />
           </div>
+
+          {data.studentsWithoutAttendance > 0 ? (
+            <div className="flex items-start gap-3 rounded-2xl border border-blue-100 bg-blue-50/60 px-4 py-3 text-sm text-blue-900">
+              <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-white text-blue-600 ring-1 ring-blue-100">
+                <FileText className="size-4" />
+              </div>
+              <div>
+                <p className="font-semibold">
+                  {data.studentsWithoutAttendance} {data.studentsWithoutAttendance === 1 ? "student has" : "students have"} no attendance data
+                </p>
+                <p className="mt-0.5 text-xs leading-5 text-blue-700">
+                  They are excluded from this report until at least one attendance session is recorded.
+                </p>
+              </div>
+            </div>
+          ) : null}
 
           {/* Students */}
           <div className="overflow-hidden rounded-2xl border bg-card shadow-sm">
@@ -349,10 +366,16 @@ export function LowAttendanceReport({ schoolSlug }: Props) {
                   <GraduationCap className="h-5 w-5" />
                 </div>
 
-                <p className="font-medium">No low-attendance students</p>
+                <p className="font-medium">
+                  {data.totalStudents === 0
+                    ? "No attendance data available"
+                    : "No low-attendance students"}
+                </p>
 
                 <p className="mt-1 text-sm text-muted-foreground">
-                  All students are meeting the selected attendance threshold.
+                  {data.totalStudents === 0
+                    ? "Record attendance to begin evaluating students against this threshold."
+                    : "All evaluated students are meeting the selected attendance threshold."}
                 </p>
               </div>
             ) : (

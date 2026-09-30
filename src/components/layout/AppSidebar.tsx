@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 
 import { useSchool } from "@/contexts/school-context";
+import { SchoolLogo } from "@/components/branding/SchoolLogo";
 import { navigation } from "@/lib/navigation";
 import { cn } from "@/lib/utils";
 
@@ -83,6 +84,9 @@ export function AppSidebar({ mobile = false, onNavigate }: Props) {
   const [unreadQueries, setUnreadQueries] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const schoolLogo = school.logo
+    ? `/api/v1/public/schools/${encodeURIComponent(school.slug)}/logo?v=${new Date(school.updatedAt).getTime()}`
+    : null;
 
   useEffect(() => {
     if (!["SUPER_ADMIN", "SCHOOL_ADMIN", "TEACHER", "ACCOUNTANT", "RECEPTIONIST"].includes(role)) return;
@@ -193,7 +197,7 @@ export function AppSidebar({ mobile = false, onNavigate }: Props) {
         "z-50 h-dvh shrink-0",
         "transition-[width] duration-300 ease-out",
         mobile
-          ? "w-full p-0"
+          ? "w-full p-0 [padding-bottom:env(safe-area-inset-bottom)]"
           : ["sticky top-0 p-3", collapsed ? "w-[82px]" : "w-[286px]"],
       )}
     >
@@ -207,35 +211,52 @@ export function AppSidebar({ mobile = false, onNavigate }: Props) {
         )}
       >
         {/* ==================================================================
-            PLATFORM BRAND
+            SCHOOL BRAND
             ================================================================== */}
 
         <div
           className={cn(
-            "flex h-[56px] shrink-0 items-center border-b border-sidebar-border text-slate-400",
-            collapsed ? "justify-center px-2" : "px-4",
+            "shrink-0 border-b border-sidebar-border p-3",
+            collapsed && "px-2",
+            mobile && "pr-12",
           )}
         >
           <Link
             href={`/${school.slug}/${role === "TEACHER" ? "teacher/dashboard" : "dashboard"}`}
             onClick={handleNavigation}
             className={cn(
-              "group flex min-w-0 items-center",
-              collapsed ? "justify-center" : "gap-2.5",
+              "group flex min-w-0 items-center rounded-2xl border border-indigo-100 bg-gradient-to-br from-white via-indigo-50/60 to-violet-50/65 shadow-[0_9px_24px_rgba(79,70,229,.09)] transition hover:border-indigo-200 hover:shadow-[0_12px_30px_rgba(79,70,229,.13)]",
+              collapsed ? "justify-center p-2" : "gap-3 p-3",
             )}
           >
-            <Image
-              src="/schooldb-app-logo.png"
-              alt="SchoolDB"
-              width={28}
-              height={28}
-              className="size-7 rounded-lg object-cover shadow-sm ring-1 ring-indigo-100 transition group-hover:scale-105"
+            <SchoolLogo
+              src={schoolLogo}
+              schoolName={school.name}
               priority
+              sizes="44px"
+              className="size-11 rounded-xl shadow-[0_7px_18px_rgba(79,70,229,.14)] transition group-hover:scale-[1.03]"
             />
             {!collapsed && (
-              <p className="truncate text-[9px] font-semibold uppercase tracking-[0.15em]">
-                Powered by <span className="font-extrabold text-slate-700">SchoolDB</span>
-              </p>
+              <div className="min-w-0 flex-1">
+                <p
+                  title={school.name}
+                  className="line-clamp-2 break-words text-[14px] font-extrabold leading-[1.15] tracking-[-0.02em] text-slate-900"
+                >
+                  {school.name}
+                </p>
+                <div className="mt-2 flex min-w-0 items-center gap-1.5">
+                  <Image
+                    src="/schooldb-app-logo.png"
+                    alt=""
+                    width={14}
+                    height={14}
+                    className="size-3.5 shrink-0 rounded-[4px] object-cover opacity-75"
+                  />
+                  <span className="truncate text-[8px] font-semibold uppercase tracking-[0.1em] text-slate-400">
+                    Powered by <span className="font-extrabold text-slate-600">SchoolDB</span>
+                  </span>
+                </div>
+              </div>
             )}
           </Link>
         </div>
@@ -307,7 +328,7 @@ export function AppSidebar({ mobile = false, onNavigate }: Props) {
 
         <nav
           className={cn(
-            "flex-1 overflow-y-auto py-5",
+            "flex-1 overscroll-contain overflow-y-auto py-4 sm:py-5",
             "[scrollbar-width:thin]",
             "[scrollbar-color:rgba(100,116,139,0.15)_transparent]",
             collapsed ? "px-2" : "px-3",
@@ -373,6 +394,7 @@ export function AppSidebar({ mobile = false, onNavigate }: Props) {
                                 "hover:text-indigo-600",
                               ],
                         )}
+                        aria-label={`Open ${item.title}`}
                       >
                         <item.icon className="size-[18px]" strokeWidth={2} />
                       </button>
@@ -406,6 +428,7 @@ export function AppSidebar({ mobile = false, onNavigate }: Props) {
                     <button
                       type="button"
                       onClick={() => toggleMenu(item.title)}
+                      aria-expanded={isOpen}
                       className={cn(
                         "group flex w-full items-center gap-3",
                         "rounded-xl px-3 py-2.5",
@@ -649,6 +672,7 @@ export function AppSidebar({ mobile = false, onNavigate }: Props) {
                 "border border-emerald-100",
                 "bg-emerald-50/70",
               )}
+              role="status"
             >
               <span className="size-1.5 rounded-full bg-emerald-500" />
 
