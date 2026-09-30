@@ -8,6 +8,14 @@ import { SearchableStudentSelect } from "@/components/common/select/SearchableSt
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -53,4 +61,161 @@ function Metric({ value, label }: { value: number; label: string }) { return <di
 function Field({ label, children }: { label: string; children: React.ReactNode }) { return <div className="space-y-2"><Label>{label}</Label>{children}</div>; }
 function Empty({ text }: { text: string }) { return <Card className="min-h-44"><CardContent className="flex flex-1 items-center justify-center p-8 text-center text-sm text-muted-foreground">{text}</CardContent></Card>; }
 function BookCard({ book }: { book: LibraryData["books"][number] }) { const available = book.copies.filter((copy) => copy.status === "AVAILABLE").length; return <Card><CardHeader><div className="flex items-start justify-between gap-3"><div className="flex size-11 items-center justify-center rounded-2xl bg-violet-50 text-violet-700"><LibraryBig className="size-5" /></div><Badge variant={available ? "success" : "warning"}>{available} available</Badge></div><CardTitle className="mt-3">{book.title}</CardTitle><CardDescription>{book.author}</CardDescription></CardHeader><CardContent className="space-y-2 text-xs text-muted-foreground"><p>{book.accessionNo} · {book.copies.length} copies</p><p>{book.category?.name || "Uncategorized"}{book.shelf ? ` · Shelf ${book.shelf}` : ""}</p>{book.isbn && <p>ISBN {book.isbn}</p>}</CardContent></Card>; }
-function LoanCard({ loan, now, pending, onReturn, onRenew }: { loan: LibraryData["loans"][number]; now: number; pending: boolean; onReturn: (fine: number) => void; onRenew: () => void }) { const overdue = new Date(loan.dueAt).getTime() < now; const borrower = loan.studentEnrollment ? `${loan.studentEnrollment.student.fullName || loan.studentEnrollment.student.admissionNo} · ${loan.studentEnrollment.class.name} ${loan.studentEnrollment.section.name}` : `${loan.teacher?.fullName} · ${loan.teacher?.employeeId}`; return <Card><CardContent className="p-5"><div className="flex flex-wrap items-start justify-between gap-3"><div><div className="flex flex-wrap gap-2"><Badge variant={overdue ? "destructive" : "info"}>{overdue ? "OVERDUE" : "ISSUED"}</Badge><Badge variant="outline">{loan.borrowerType}</Badge></div><h3 className="mt-3 font-bold">{loan.copy.book.title}</h3><p className="mt-1 text-sm text-muted-foreground">{borrower}</p></div><span className="text-xs font-semibold text-muted-foreground">{loan.copy.barcode}</span></div><div className="mt-4 grid gap-2 border-t pt-4 text-sm sm:grid-cols-2"><p>Issued {date(loan.issuedAt)}</p><p className={overdue ? "font-bold text-destructive" : ""}>Due {date(loan.dueAt)}</p></div><div className="mt-4 flex flex-wrap gap-2"><Button size="sm" variant="outline" disabled={pending || loan.renewedCount >= 2} onClick={onRenew}><RotateCcw className="size-3.5" />Renew ({loan.renewedCount}/2)</Button><Button size="sm" disabled={pending} onClick={() => { const fine = overdue ? Number(prompt("Fine amount (₹)", "0") || 0) : 0; if (Number.isFinite(fine) && fine >= 0) onReturn(fine); }}><Undo2 className="size-3.5" />Return book</Button></div></CardContent></Card>; }
+function LoanCard({ loan, now, pending, onReturn, onRenew }: { loan: LibraryData["loans"][number]; now: number; pending: boolean; onReturn: (fine: number) => void; onRenew: () => void }) {
+  const [returnOpen, setReturnOpen] = useState(false);
+  const [fineAmount, setFineAmount] = useState("0");
+  const overdue = new Date(loan.dueAt).getTime() < now;
+  const borrower = loan.studentEnrollment
+    ? `${loan.studentEnrollment.student.fullName || loan.studentEnrollment.student.admissionNo} · ${loan.studentEnrollment.class.name} ${loan.studentEnrollment.section.name}`
+    : `${loan.teacher?.fullName} · ${loan.teacher?.employeeId}`;
+
+  function requestReturn() {
+    setFineAmount("0");
+    setReturnOpen(true);
+  }
+
+  function confirmReturn(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const fine = overdue ? Number(fineAmount) : 0;
+
+    if (!Number.isFinite(fine) || fine < 0) {
+      toast.error("Enter a valid fine amount of ₹0 or more.");
+      return;
+    }
+
+    setReturnOpen(false);
+    onReturn(fine);
+  }
+
+  return (
+    <>
+      <Card>
+        <CardContent className="p-5">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <div className="flex flex-wrap gap-2">
+                <Badge variant={overdue ? "destructive" : "info"}>
+                  {overdue ? "OVERDUE" : "ISSUED"}
+                </Badge>
+                <Badge variant="outline">{loan.borrowerType}</Badge>
+              </div>
+              <h3 className="mt-3 font-bold">{loan.copy.book.title}</h3>
+              <p className="mt-1 text-sm text-muted-foreground">{borrower}</p>
+            </div>
+            <span className="text-xs font-semibold text-muted-foreground">
+              {loan.copy.barcode}
+            </span>
+          </div>
+
+          <div className="mt-4 grid gap-2 border-t pt-4 text-sm sm:grid-cols-2">
+            <p>Issued {date(loan.issuedAt)}</p>
+            <p className={overdue ? "font-bold text-destructive" : ""}>
+              Due {date(loan.dueAt)}
+            </p>
+          </div>
+
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={pending || loan.renewedCount >= 2}
+              onClick={onRenew}
+            >
+              <RotateCcw className="size-3.5" />
+              Renew ({loan.renewedCount}/2)
+            </Button>
+            <Button size="sm" disabled={pending} onClick={requestReturn}>
+              <Undo2 className="size-3.5" />
+              Return book
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Dialog
+        open={returnOpen}
+        onOpenChange={(open) => {
+          if (!pending) setReturnOpen(open);
+        }}
+      >
+        <DialogContent className="gap-0 overflow-hidden rounded-3xl border-border/70 bg-background p-0 shadow-2xl sm:max-w-md">
+          <form onSubmit={confirmReturn}>
+            <DialogHeader className="relative overflow-hidden border-b border-border/60 bg-gradient-to-br from-primary/[0.1] via-primary/[0.025] to-transparent px-6 py-6 text-left">
+              <div className="absolute -right-10 -top-10 size-32 rounded-full bg-primary/15 blur-3xl" />
+              <div className="relative flex items-start gap-4">
+                <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary shadow-sm ring-1 ring-primary/15">
+                  <Undo2 className="size-5" />
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary">
+                    Library return
+                  </p>
+                  <DialogTitle className="mt-1 text-xl">
+                    Confirm book return
+                  </DialogTitle>
+                  <DialogDescription className="mt-1">
+                    Review the loan and record any applicable fine before returning the copy.
+                  </DialogDescription>
+                </div>
+              </div>
+            </DialogHeader>
+
+            <div className="space-y-4 px-6 py-5">
+              <div className="rounded-2xl border border-border/70 bg-muted/25 p-4">
+                <p className="font-semibold text-foreground">
+                  {loan.copy.book.title}
+                </p>
+                <p className="mt-1 text-sm text-muted-foreground">{borrower}</p>
+                <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                  <span>Copy {loan.copy.barcode}</span>
+                  <span>Due {date(loan.dueAt)}</span>
+                </div>
+              </div>
+
+              {overdue ? (
+                <div className="space-y-2">
+                  <Label htmlFor={`fine-${loan.id}`}>Fine amount (₹)</Label>
+                  <Input
+                    id={`fine-${loan.id}`}
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    inputMode="decimal"
+                    value={fineAmount}
+                    onChange={(event) => setFineAmount(event.target.value)}
+                    className="h-11 rounded-xl"
+                    autoFocus
+                    required
+                  />
+                  <p className="text-xs leading-5 text-amber-700">
+                    This loan is overdue. Enter ₹0 if the fine is being waived.
+                  </p>
+                </div>
+              ) : (
+                <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs leading-5 text-emerald-800">
+                  This book is being returned on time. No fine will be recorded.
+                </div>
+              )}
+            </div>
+
+            <DialogFooter className="border-t border-border/60 bg-muted/[0.3] px-6 py-4">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={pending}
+                onClick={() => setReturnOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={pending}>
+                <Undo2 className="size-4" />
+                Confirm return
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}

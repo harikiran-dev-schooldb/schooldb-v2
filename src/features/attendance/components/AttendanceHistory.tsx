@@ -10,10 +10,13 @@ import {
   Eye,
   Filter,
   Loader2,
+  LockKeyhole,
   Users,
   XCircle,
 } from "lucide-react";
+import { toast } from "sonner";
 
+import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { Button } from "@/components/ui/button";
 import { refreshTable } from "@/lib/table-event";
 
@@ -37,6 +40,7 @@ export function AttendanceHistory({ schoolSlug }: Props) {
   const [sectionId, setSectionId] = useState("");
   const [date, setDate] = useState("");
   const [locking, setLocking] = useState(false);
+  const [lockConfirmationOpen, setLockConfirmationOpen] = useState(false);
 
   const { data, loading } = useAttendanceHistory({
     academicYearId,
@@ -63,12 +67,12 @@ export function AttendanceHistory({ schoolSlug }: Props) {
 
   async function lockAllAttendance() {
     if (!academicYearId) {
-      alert("Please select an academic year.");
+      toast.error("Please select an academic year.");
       return;
     }
 
     if (!date) {
-      alert("Please select an attendance date.");
+      toast.error("Please select an attendance date.");
       return;
     }
 
@@ -95,17 +99,19 @@ export function AttendanceHistory({ schoolSlug }: Props) {
       }
 
       if (result?.data?.incompleteCount > 0) {
-        alert(
+        toast.warning(
           `${result.data.incompleteCount} attendance session(s) are incomplete. Please mark all students before locking.`,
         );
 
         return;
       }
 
-      alert(result?.message ?? "All attendance sessions have been locked.");
+      toast.success(
+        result?.message ?? "All attendance sessions have been locked.",
+      );
       refreshTable("attendance");
     } catch (error) {
-      alert(
+      toast.error(
         error instanceof Error
           ? error.message
           : "Failed to lock attendance sessions.",
@@ -131,6 +137,15 @@ export function AttendanceHistory({ schoolSlug }: Props) {
   }
 
   const sessions = data?.data ?? [];
+  const completedSessions = sessions.filter((session) => session.completed);
+  const pendingSessions = sessions.length - completedSessions.length;
+  const selectedDateLabel = date
+    ? new Date(`${date}T00:00:00`).toLocaleDateString("en-IN", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      })
+    : "Not selected";
 
   const hasFilters =
     Boolean(academicYearId) ||
@@ -139,7 +154,8 @@ export function AttendanceHistory({ schoolSlug }: Props) {
     Boolean(date);
 
   return (
-    <div className="min-h-screen space-y-6 p-4 pb-10 sm:p-6">
+    <>
+      <div className="min-h-screen space-y-6 p-4 pb-10 sm:p-6">
       {/* ================================================================ */}
       {/* Header */}
       {/* ================================================================ */}
@@ -166,7 +182,7 @@ export function AttendanceHistory({ schoolSlug }: Props) {
             {date && academicYearId && !loading && sessions.length > 0 && (
               <Button
                 type="button"
-                onClick={lockAllAttendance}
+                onClick={() => setLockConfirmationOpen(true)}
                 disabled={locking}
                 className="gap-2"
               >
@@ -413,6 +429,45 @@ export function AttendanceHistory({ schoolSlug }: Props) {
           })}
         </div>
       )}
-    </div>
+      </div>
+
+      <ConfirmDialog
+        open={lockConfirmationOpen}
+        onOpenChange={(open) => {
+          if (!locking) setLockConfirmationOpen(open);
+        }}
+        eyebrow="Secure attendance"
+        icon={LockKeyhole}
+        tone="warning"
+        title={`Lock attendance for ${selectedDateLabel}?`}
+        description="Confirm that every register has been reviewed before securing the attendance records."
+        details={[
+          {
+            label: "Attendance date",
+            value: selectedDateLabel,
+          },
+          {
+            label: "Total sessions",
+            value: sessions.length,
+          },
+          {
+            label: "Completed",
+            value: completedSessions.length,
+          },
+          {
+            label: "Pending",
+            value: pendingSessions,
+          },
+        ]}
+        consequence={
+          pendingSessions > 0
+            ? `${pendingSessions} session${pendingSessions === 1 ? " is" : "s are"} still incomplete. No attendance will be locked until every student has been marked.`
+            : "Once locked, these attendance sessions can no longer be edited. Review the totals carefully before continuing."
+        }
+        confirmLabel="Lock all attendance"
+        pending={locking}
+        onConfirm={() => void lockAllAttendance()}
+      />
+    </>
   );
 }
