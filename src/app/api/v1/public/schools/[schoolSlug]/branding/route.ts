@@ -1,5 +1,4 @@
 import { apiHandler } from "@/lib/api";
-import { ApiError } from "@/lib/errors";
 import { prisma } from "@/lib/prisma";
 import { ApiResponse } from "@/lib/response";
 import { publicSchoolLogoUrl } from "@/lib/school-branding";
@@ -13,7 +12,7 @@ export async function GET(_request: Request, { params }: Props) {
       where: { slug: schoolSlug },
       select: { name: true, slug: true, logo: true, updatedAt: true },
     });
-    if (!school) throw new ApiError(404, "School not found.");
+    if (!school) return ApiResponse.error("School not found.", 404);
 
     return ApiResponse.success({
       school: {

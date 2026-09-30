@@ -117,9 +117,18 @@ function setWorkspaceBrandColor(color: string) {
   );
 }
 
+function setWorkspaceBrandLogo(logoUrl: string | null) {
+  const source = logoUrl || "/pwa-192.png";
+  document.documentElement.style.setProperty(
+    "--school-workspace-logo",
+    `url(${JSON.stringify(source)})`,
+  );
+}
+
 export async function applySchoolLogoBrandColor(
   schoolSlug: string,
   logoUrl: string | null,
+  signal?: AbortSignal,
 ) {
   if (typeof window === "undefined" || typeof document === "undefined") {
     return DEFAULT_WORKSPACE_BRAND;
@@ -128,12 +137,14 @@ export async function applySchoolLogoBrandColor(
   const cacheKey = `schooldb-workspace-brand-v2:${schoolSlug}`;
   const currentLogoUrl = logoUrl ?? "";
 
+  if (!signal?.aborted) setWorkspaceBrandLogo(logoUrl);
+
   try {
     const cachedValue = window.sessionStorage.getItem(cacheKey);
     if (cachedValue) {
       const cached = JSON.parse(cachedValue) as CachedBrandColor;
       if (cached.logoUrl === currentLogoUrl && cached.color) {
-        setWorkspaceBrandColor(cached.color);
+        if (!signal?.aborted) setWorkspaceBrandColor(cached.color);
         return cached.color;
       }
     }
@@ -141,13 +152,16 @@ export async function applySchoolLogoBrandColor(
     // Ignore malformed or unavailable session storage.
   }
 
-  setWorkspaceBrandColor(DEFAULT_WORKSPACE_BRAND);
+  if (!signal?.aborted) setWorkspaceBrandColor(DEFAULT_WORKSPACE_BRAND);
 
   if (!logoUrl) return DEFAULT_WORKSPACE_BRAND;
 
   try {
     const image = await loadLogo(logoUrl);
     const color = extractDominantColor(image);
+
+    if (signal?.aborted) return color;
+
     setWorkspaceBrandColor(color);
 
     try {

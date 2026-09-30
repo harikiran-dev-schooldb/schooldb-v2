@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { type FormEvent, useEffect, useState } from "react";
+import { type FormEvent, useState } from "react";
 import {
   ArrowRight,
   CheckCircle2,
@@ -16,45 +16,42 @@ import { SchoolLogo } from "@/components/branding/SchoolLogo";
 const SCHOOL_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 type SchoolBrand = { name: string; slug: string; logo: string | null };
 
+function preloadSchoolLogo(source: string | null) {
+  if (!source) return Promise.resolve();
+
+  return new Promise<void>((resolve) => {
+    const image = new window.Image();
+    const finish = () => {
+      window.clearTimeout(timeout);
+      resolve();
+    };
+    const timeout = window.setTimeout(resolve, 600);
+    image.onload = finish;
+    image.onerror = finish;
+    image.src = source;
+  });
+}
+
+function waitForBrandPaint() {
+  return new Promise<void>((resolve) => {
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => resolve());
+    });
+  });
+}
+
 export default function ChooseSchoolPage() {
   const router = useRouter();
   const [schoolSlug, setSchoolSlug] = useState("");
   const [error, setError] = useState("");
+  const [isCheckingSchool, setIsCheckingSchool] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [schoolBrand, setSchoolBrand] = useState<SchoolBrand | null>(null);
   const normalizedSlug = schoolSlug.trim().toLowerCase().replace(/^\/+|\/+$/g, "");
   const schoolReady = SCHOOL_SLUG_PATTERN.test(normalizedSlug);
   const visibleBrand = schoolBrand?.slug === normalizedSlug ? schoolBrand : null;
 
-  useEffect(() => {
-    if (!SCHOOL_SLUG_PATTERN.test(normalizedSlug)) return;
-
-    const controller = new AbortController();
-    const timer = window.setTimeout(async () => {
-      try {
-        const response = await fetch(
-          `/api/v1/public/schools/${encodeURIComponent(normalizedSlug)}/branding`,
-          { cache: "no-store", signal: controller.signal },
-        );
-        if (!response.ok) return;
-        const payload = (await response.json()) as {
-          data?: { school?: SchoolBrand };
-        };
-        if (payload.data?.school) setSchoolBrand(payload.data.school);
-      } catch (fetchError) {
-        if (!(fetchError instanceof DOMException && fetchError.name === "AbortError")) {
-          console.error("Unable to load school branding", fetchError);
-        }
-      }
-    }, 280);
-
-    return () => {
-      window.clearTimeout(timer);
-      controller.abort();
-    };
-  }, [normalizedSlug]);
-
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     const slug = normalizedSlug;
@@ -64,12 +61,41 @@ export default function ChooseSchoolPage() {
       return;
     }
 
-    if (isTransitioning) return;
+    if (isCheckingSchool || isTransitioning) return;
+
+    setIsCheckingSchool(true);
+    setError("");
+
+    try {
+      const response = await fetch(
+        `/api/v1/public/schools/${encodeURIComponent(slug)}/branding`,
+        { cache: "no-store" },
+      );
+      const payload = (await response.json()) as {
+        data?: { school?: SchoolBrand };
+      };
+
+      if (!response.ok || !payload.data?.school) {
+        setSchoolBrand(null);
+        setError("We couldn’t find that school. Check the slug and try again.");
+        return;
+      }
+
+      await preloadSchoolLogo(payload.data.school.logo);
+      setSchoolBrand(payload.data.school);
+      router.prefetch(`/${slug}/login`);
+      await waitForBrandPaint();
+    } catch {
+      setError("We couldn’t check the school right now. Please try again.");
+      return;
+    } finally {
+      setIsCheckingSchool(false);
+    }
 
     setIsTransitioning(true);
     window.sessionStorage.setItem("schooldb-school-transition", slug);
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    window.setTimeout(() => router.push(`/${slug}/login`), reduceMotion ? 80 : 820);
+    window.setTimeout(() => router.push(`/${slug}/login`), reduceMotion ? 50 : 420);
   };
 
   return (
@@ -100,12 +126,12 @@ export default function ChooseSchoolPage() {
             src={visibleBrand?.logo || "/pwa-192.png"}
             schoolName={visibleBrand?.name || "SchoolDB"}
             sizes="88px"
-            className="size-[88px] rounded-[24px] shadow-[0_24px_70px_rgba(30,27,75,.28)]"
+            className="schooldb-shared-logo size-[88px] rounded-[24px] shadow-[0_24px_70px_rgba(30,27,75,.18)]"
           />
-          <p className="mt-5 text-[10px] font-black uppercase tracking-[0.24em] text-indigo-200">
+          <p className="mt-5 text-[10px] font-black uppercase tracking-[0.24em] text-indigo-600">
             Opening secure portal
           </p>
-          <p className="mt-2 text-xl font-black tracking-tight text-white">
+          <p className="mt-2 text-xl font-black tracking-tight text-slate-950">
             {visibleBrand?.name || normalizedSlug || "Your school"}
           </p>
         </div>
@@ -180,7 +206,7 @@ export default function ChooseSchoolPage() {
           ) : schoolReady ? (
             <p className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-emerald-600">
               <CheckCircle2 className="size-3.5" />
-              School address is ready.
+              School address format looks good.
             </p>
           ) : (
             <p className="mt-2 text-xs leading-5 text-muted-foreground">
@@ -190,10 +216,15 @@ export default function ChooseSchoolPage() {
 
           <button
             type="submit"
-            disabled={!schoolSlug.trim() || isTransitioning}
+            disabled={!schoolSlug.trim() || isCheckingSchool || isTransitioning}
             className="schooldb-choose-action group relative mt-6 flex h-14 w-full items-center justify-center gap-2 overflow-hidden rounded-2xl bg-gradient-to-r from-indigo-600 via-violet-600 to-blue-600 bg-[length:200%_100%] px-5 text-sm font-bold text-white shadow-[0_14px_32px_rgba(79,70,229,.22)] transition hover:-translate-y-0.5 hover:shadow-[0_18px_38px_rgba(79,70,229,.25)] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0"
           >
-            {isTransitioning ? (
+            {isCheckingSchool ? (
+              <>
+                <LoaderCircle className="size-4 animate-spin" />
+                Finding your school
+              </>
+            ) : isTransitioning ? (
               <>
                 <LoaderCircle className="size-4 animate-spin" />
                 Opening secure portal

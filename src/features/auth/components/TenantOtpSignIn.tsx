@@ -107,7 +107,11 @@ export function TenantOtpSignIn({ schoolSlug, schoolName, schoolLogo }: Props) {
   const workspaceTransitionTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
-    void applySchoolLogoBrandColor(schoolSlug, schoolLogo);
+    const controller = new AbortController();
+
+    void applySchoolLogoBrandColor(schoolSlug, schoolLogo, controller.signal);
+
+    return () => controller.abort();
   }, [schoolLogo, schoolSlug]);
 
   const enterWorkspace = useCallback(
@@ -127,10 +131,11 @@ export function TenantOtpSignIn({ schoolSlug, schoolName, schoolLogo }: Props) {
         "(prefers-reduced-motion: reduce)",
       ).matches;
 
+      router.prefetch(destination);
       setIsEnteringWorkspace(true);
       workspaceTransitionTimerRef.current = window.setTimeout(
         () => router.replace(destination),
-        reduceMotion ? 50 : 500,
+        reduceMotion ? 50 : 520,
       );
     },
     [router, schoolSlug],
@@ -161,7 +166,7 @@ export function TenantOtpSignIn({ schoolSlug, schoolName, schoolLogo }: Props) {
       exitTimer = window.setTimeout(() => {
         setIsArriving(false);
         window.sessionStorage.removeItem("schooldb-school-transition");
-      }, 1_250);
+      }, 760);
     });
     return () => {
       window.cancelAnimationFrame(enterFrame);
@@ -405,14 +410,14 @@ export function TenantOtpSignIn({ schoolSlug, schoolName, schoolLogo }: Props) {
           <div className="schooldb-workspace-launch-flare absolute size-44 rounded-full" aria-hidden="true" />
           <div className="schooldb-workspace-launch-content relative flex w-[min(88vw,420px)] flex-col items-center text-center">
             <div className="relative flex size-36 items-center justify-center sm:size-40">
-              <div className="schooldb-workspace-ring schooldb-workspace-ring-one absolute inset-0 rounded-full border border-white/25" />
-              <div className="schooldb-workspace-ring schooldb-workspace-ring-two absolute inset-4 rounded-full border border-dashed border-white/30" />
+              <div className="schooldb-workspace-ring schooldb-workspace-ring-one absolute inset-0 rounded-full border border-indigo-200/70" />
+              <div className="schooldb-workspace-ring schooldb-workspace-ring-two absolute inset-4 rounded-full border border-indigo-100" />
               <div className="schooldb-workspace-logo-halo absolute inset-7 rounded-[32px]" />
               <SchoolLogo
                 src={schoolLogo}
                 schoolName={schoolName}
                 sizes="88px"
-                className="relative size-[88px] rounded-[25px] border-white/80 shadow-[0_28px_80px_rgba(15,23,42,.38)] ring-8 ring-white/10"
+                className="schooldb-shared-logo relative size-[88px] rounded-[25px] border-white shadow-[0_20px_55px_rgba(15,23,42,.16)] ring-8 ring-white/70"
                 priority
               />
               <span className="schooldb-workspace-verified absolute bottom-3 right-2 flex size-8 items-center justify-center rounded-full border-2 border-white/70 bg-emerald-400 text-emerald-950 shadow-lg sm:right-3">
@@ -420,17 +425,17 @@ export function TenantOtpSignIn({ schoolSlug, schoolName, schoolLogo }: Props) {
               </span>
             </div>
 
-            <p className="mt-7 text-[10px] font-black uppercase tracking-[0.22em] text-emerald-300">
+            <p className="mt-7 text-[10px] font-black uppercase tracking-[0.22em] text-emerald-600">
               Access granted
             </p>
-            <h2 className="mt-3 text-2xl font-black tracking-[-0.035em] text-white sm:text-3xl">
+            <h2 className="mt-3 text-2xl font-black tracking-[-0.035em] text-slate-950 sm:text-3xl">
               {schoolName}
             </h2>
-            <p className="mt-2 text-sm font-semibold text-white/80">
+            <p className="mt-2 text-sm font-semibold text-slate-500">
               Connecting your secure workspace
             </p>
 
-            <div className="mt-7 h-1.5 w-full overflow-hidden rounded-full bg-white/10 ring-1 ring-white/10">
+            <div className="mt-7 h-1.5 w-full overflow-hidden rounded-full bg-slate-100 ring-1 ring-slate-200/80">
               <span className="schooldb-workspace-progress block h-full rounded-full " />
             </div>
           </div>
@@ -444,13 +449,13 @@ export function TenantOtpSignIn({ schoolSlug, schoolName, schoolLogo }: Props) {
               src={schoolLogo || "/pwa-192.png"}
               schoolName={schoolName}
               sizes="88px"
-              className="size-[88px] rounded-[24px] shadow-[0_24px_70px_rgba(30,27,75,.28)]"
+              className="schooldb-shared-logo size-[88px] rounded-[24px] shadow-[0_24px_70px_rgba(30,27,75,.18)]"
               priority
             />
-            <p className="mt-5 text-[10px] font-black uppercase tracking-[0.24em] text-indigo-100">
-              Secure portal ready
+            <p className="mt-5 text-[10px] font-black uppercase tracking-[0.24em] text-indigo-600">
+              Opening secure portal
             </p>
-            <p className="mt-2 max-w-xs text-xl font-black tracking-tight text-white">
+            <p className="mt-2 max-w-xs text-xl font-black tracking-tight text-slate-950">
               {schoolName}
             </p>
           </div>
