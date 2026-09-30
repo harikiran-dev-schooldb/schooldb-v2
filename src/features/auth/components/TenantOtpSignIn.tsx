@@ -128,7 +128,7 @@ export function TenantOtpSignIn({ schoolSlug, schoolName, schoolLogo }: Props) {
       setIsEnteringWorkspace(true);
       window.setTimeout(
         () => window.location.replace(destination),
-        reduceMotion ? 50 : 560,
+        reduceMotion ? 50 : 1_200,
       );
     },
     [schoolSlug],
