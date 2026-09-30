@@ -128,7 +128,7 @@ export function TenantOtpSignIn({ schoolSlug, schoolName, schoolLogo }: Props) {
       setIsEnteringWorkspace(true);
       window.setTimeout(
         () => window.location.replace(destination),
-        reduceMotion ? 50 : 520,
+        reduceMotion ? 50 : 560,
       );
     },
     [schoolSlug],
@@ -419,9 +419,6 @@ export function TenantOtpSignIn({ schoolSlug, schoolName, schoolLogo }: Props) {
               Connecting your secure workspace
             </p>
 
-            <div className="mt-7 h-1.5 w-full overflow-hidden rounded-full bg-slate-100 ring-1 ring-slate-200/80">
-              <span className="schooldb-workspace-progress block h-full rounded-full " />
-            </div>
           </div>
         </div>
       )}
@@ -442,7 +439,6 @@ export function TenantOtpSignIn({ schoolSlug, schoolName, schoolLogo }: Props) {
             <p className="mt-2 max-w-xs text-xl font-black tracking-tight text-slate-950">
               {schoolName}
             </p>
-            <span className="schooldb-shared-loader mt-6 block" aria-hidden="true" />
           </div>
         </div>
       )}

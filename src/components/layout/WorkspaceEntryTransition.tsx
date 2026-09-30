@@ -66,6 +66,7 @@ export function WorkspaceEntryTransition({
       aria-label={`Opening ${schoolName} workspace`}
     >
       <div className="schooldb-workspace-grid absolute inset-0" aria-hidden="true" />
+      <div className="schooldb-workspace-launch-flare absolute size-44 rounded-full" aria-hidden="true" />
       <div className="schooldb-workspace-beam schooldb-workspace-beam-left" aria-hidden="true" />
       <div className="schooldb-workspace-beam schooldb-workspace-beam-right" aria-hidden="true" />
 
@@ -99,15 +100,6 @@ export function WorkspaceEntryTransition({
           Preparing your secure workspace
         </p>
 
-        <div className="mt-7 h-1.5 w-full overflow-hidden rounded-full bg-slate-100 ring-1 ring-slate-200/80">
-          <span className="schooldb-workspace-progress block h-full rounded-full " />
-        </div>
-
-        <div className="mt-3 flex w-full justify-between text-[9px] font-bold uppercase tracking-[0.14em] text-slate-400">
-          <span>Verified</span>
-          <span>School connected</span>
-          <span>Workspace ready</span>
-        </div>
       </div>
     </div>
   );

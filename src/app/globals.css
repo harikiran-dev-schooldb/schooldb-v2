@@ -497,19 +497,23 @@
 
 .schooldb-school-transition.is-active {
   visibility: visible;
-  animation: schooldb-transition-backdrop 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: schooldb-transition-backdrop 620ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .schooldb-school-transition-halo {
-  width: 280px;
-  height: 280px;
+  width: 180px;
+  height: 180px;
+  border: 1px solid color-mix(in srgb, var(--school-workspace-brand, #4f46e5) 42%, white);
   background: radial-gradient(
     circle,
-    color-mix(in srgb, var(--school-workspace-brand, #4f46e5) 18%, white),
+    color-mix(in srgb, var(--school-workspace-brand, #4f46e5) 12%, white) 0 42%,
+    color-mix(in srgb, var(--school-workspace-brand, #4f46e5) 34%, transparent) 54%,
     transparent 68%
   );
-  filter: blur(10px);
-  animation: schooldb-transition-halo 1.4s ease-in-out infinite alternate;
+  box-shadow:
+    0 0 0 18px color-mix(in srgb, var(--school-workspace-brand, #4f46e5) 7%, transparent),
+    0 0 70px color-mix(in srgb, var(--school-workspace-brand, #4f46e5) 18%, transparent);
+  animation: schooldb-portal-zoom-wave 620ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .schooldb-school-transition-identity {
@@ -521,30 +525,6 @@
 .schooldb-shared-logo {
   transform-origin: center;
   will-change: transform, opacity, filter;
-}
-
-.schooldb-shared-loader {
-  position: relative;
-  width: 132px;
-  height: 4px;
-  overflow: hidden;
-  border-radius: 999px;
-  background: rgb(203 213 225 / 0.62);
-}
-
-.schooldb-shared-loader::after {
-  position: absolute;
-  inset-block: 0;
-  left: -45%;
-  width: 45%;
-  content: "";
-  border-radius: inherit;
-  background: linear-gradient(
-    90deg,
-    color-mix(in srgb, var(--school-workspace-brand, #4f46e5) 76%, #6366f1),
-    #6366f1
-  );
-  animation: schooldb-shared-loader 850ms cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
 
 .schooldb-school-transition.is-active .schooldb-shared-logo,
@@ -617,14 +597,14 @@
 .schooldb-workspace-launch-flare {
   background: radial-gradient(
     circle,
-    color-mix(in srgb, var(--school-workspace-brand, #4f46e5) 55%, white) 0 24%,
-    var(--school-workspace-brand, #4f46e5) 52%,
-    color-mix(in srgb, var(--school-workspace-brand, #4f46e5) 72%, #020617) 72%,
-    transparent 73%
+    transparent 0 42%,
+    color-mix(in srgb, var(--school-workspace-brand, #4f46e5) 38%, white) 44% 47%,
+    color-mix(in srgb, var(--school-workspace-brand, #4f46e5) 16%, transparent) 49% 60%,
+    transparent 62%
   );
-  opacity: 0.16;
-  filter: blur(18px);
-  animation: schooldb-workspace-flare 700ms ease-out both;
+  border: 1px solid color-mix(in srgb, var(--school-workspace-brand, #4f46e5) 30%, transparent);
+  box-shadow: 0 0 60px color-mix(in srgb, var(--school-workspace-brand, #4f46e5) 18%, transparent);
+  animation: schooldb-portal-zoom-wave 650ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .schooldb-workspace-launch-content,
@@ -661,28 +641,6 @@
 
 .schooldb-workspace-verified {
   animation: schooldb-workspace-check 320ms cubic-bezier(0.34, 1.56, 0.64, 1) 120ms both;
-}
-
-.schooldb-workspace-progress {
-  background: linear-gradient(
-    90deg,
-    color-mix(in srgb, var(--school-workspace-brand, #4f46e5) 48%, white),
-    var(--school-workspace-brand, #4f46e5),
-    color-mix(in srgb, var(--school-workspace-brand, #4f46e5) 72%, white)
-  );
-  box-shadow: 0 0 18px
-    color-mix(in srgb, var(--school-workspace-brand, #4f46e5) 62%, transparent);
-  will-change: width;
-}
-
-.schooldb-workspace-launch .schooldb-workspace-progress {
-  width: 0;
-  animation: schooldb-workspace-progress-launch 520ms cubic-bezier(0.33, 1, 0.68, 1) forwards;
-}
-
-.schooldb-workspace-arrival .schooldb-workspace-progress {
-  width: 64%;
-  animation: schooldb-workspace-progress-arrival 380ms cubic-bezier(0.33, 1, 0.68, 1) forwards;
 }
 
 .schooldb-header-context {
@@ -758,13 +716,19 @@
 .schooldb-auth-arrival {
   background: rgb(248 250 252 / 0.84);
   backdrop-filter: blur(18px);
-  animation: schooldb-arrival-curtain 760ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: schooldb-arrival-curtain 620ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .schooldb-auth-arrival-orbit {
   border-color: color-mix(in srgb, var(--school-workspace-brand, #4f46e5) 24%, transparent);
   box-shadow: 0 0 0 34px color-mix(in srgb, var(--school-workspace-brand, #4f46e5) 5%, transparent);
-  animation: schooldb-arrival-orbit 680ms ease-out both;
+  background: radial-gradient(
+    circle,
+    transparent 0 42%,
+    color-mix(in srgb, var(--school-workspace-brand, #4f46e5) 30%, white) 44% 47%,
+    transparent 60%
+  );
+  animation: schooldb-portal-zoom-wave 620ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .schooldb-auth-arrival-identity {
@@ -930,11 +894,6 @@
   to { opacity: 1; background: rgb(248 250 252 / 0.82); backdrop-filter: blur(16px); }
 }
 
-@keyframes schooldb-transition-halo {
-  from { transform: scale(0.9); opacity: 0.45; }
-  to { transform: scale(1.08); opacity: 0.85; }
-}
-
 @keyframes schooldb-transition-identity {
   from { transform: translateY(12px) scale(0.96); opacity: 0; }
   to { transform: translateY(0) scale(1); opacity: 1; }
@@ -977,11 +936,6 @@
 @keyframes schooldb-shared-copy-out {
   0%, 24% { transform: translateY(0); opacity: 1; }
   100% { transform: translateY(8px); opacity: 0; }
-}
-
-@keyframes schooldb-shared-loader {
-  from { transform: translateX(0); }
-  to { transform: translateX(325%); }
 }
 
 @keyframes schooldb-portal-pulse {
@@ -1071,9 +1025,11 @@
   to { transform: translateX(-18%) rotate(-14deg); }
 }
 
-@keyframes schooldb-workspace-flare {
-  from { transform: scale(0.25); opacity: 0.15; }
-  to { transform: scale(13); opacity: 0; }
+@keyframes schooldb-portal-zoom-wave {
+  0% { transform: scale(0.35); opacity: 0; }
+  18% { opacity: 0.9; }
+  58% { opacity: 0.45; }
+  100% { transform: scale(10); opacity: 0; }
 }
 
 @keyframes schooldb-workspace-content {
@@ -1103,16 +1059,6 @@
 @keyframes schooldb-workspace-check {
   from { transform: scale(0) rotate(-24deg); opacity: 0; }
   to { transform: scale(1) rotate(0); opacity: 1; }
-}
-
-@keyframes schooldb-workspace-progress-launch {
-  from { width: 0; }
-  to { width: 64%; }
-}
-
-@keyframes schooldb-workspace-progress-arrival {
-  from { width: 64%; }
-  to { width: 100%; }
 }
 
 @keyframes schooldb-choose-intro {
@@ -1176,7 +1122,6 @@
   .schooldb-school-transition-halo,
   .schooldb-school-transition-identity,
   .schooldb-shared-logo,
-  .schooldb-shared-loader::after,
   .schooldb-auth-arrival-identity > p,
   .schooldb-choose-logo,
   .schooldb-choose-card,
@@ -1200,7 +1145,6 @@
   .schooldb-workspace-ring,
   .schooldb-workspace-logo-halo,
   .schooldb-workspace-verified,
-  .schooldb-workspace-progress,
   .schooldb-choose-intro,
   .schooldb-card-sheen,
   .schooldb-primary-action::before,

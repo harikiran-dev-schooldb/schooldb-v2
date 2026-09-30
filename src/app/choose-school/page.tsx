@@ -110,7 +110,7 @@ export default function ChooseSchoolPage() {
     }
 
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    window.setTimeout(() => router.push(destination), reduceMotion ? 50 : 420);
+    window.setTimeout(() => router.push(destination), reduceMotion ? 50 : 560);
   };
 
   return (
@@ -149,7 +149,6 @@ export default function ChooseSchoolPage() {
           <p className="mt-2 text-xl font-black tracking-tight text-slate-950">
             {visibleBrand?.name || normalizedSlug || "Your school"}
           </p>
-          <span className="schooldb-shared-loader mt-6 block" aria-hidden="true" />
         </div>
       </div>
 
