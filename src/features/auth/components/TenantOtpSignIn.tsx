@@ -418,7 +418,12 @@ export function TenantOtpSignIn({ schoolSlug, schoolName, schoolLogo }: Props) {
             <p className="mt-2 text-sm font-semibold text-slate-500">
               Connecting your secure workspace
             </p>
-
+            <div
+              className="mt-7 h-1.5 w-full overflow-hidden rounded-full border border-slate-200/80 bg-slate-100/90 shadow-inner"
+              aria-hidden="true"
+            >
+              <div className="schooldb-workspace-progress h-full rounded-full" />
+            </div>
           </div>
         </div>
       )}
