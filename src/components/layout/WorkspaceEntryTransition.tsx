@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Check, ShieldCheck, Sparkles } from "lucide-react";
 
 import { SchoolLogo } from "@/components/branding/SchoolLogo";
+import { applySchoolLogoBrandColor } from "@/lib/logo-brand-color";
 
 type Props = {
   schoolSlug: string;
@@ -22,6 +23,8 @@ export function WorkspaceEntryTransition({
   const [leaving, setLeaving] = useState(false);
 
   useEffect(() => {
+    void applySchoolLogoBrandColor(schoolSlug, schoolLogo);
+
     const transitionSchool = window.sessionStorage.getItem(TRANSITION_KEY);
 
     if (transitionSchool !== schoolSlug) {
@@ -47,9 +50,9 @@ export function WorkspaceEntryTransition({
         "schooldb-workspace-transition-pending",
       );
       setLeaving(true);
-    }, 520);
+    }, 280);
 
-    const finishTimer = window.setTimeout(() => setVisible(false), 1_260);
+    const finishTimer = window.setTimeout(() => setVisible(false), 820);
 
     return () => {
       window.clearTimeout(startTimer);
@@ -86,12 +89,12 @@ export function WorkspaceEntryTransition({
             className="relative size-[88px] rounded-[25px] border-white/80 shadow-[0_28px_80px_rgba(15,23,42,.38)] ring-8 ring-white/10"
             priority
           />
-          <span className="schooldb-workspace-verified absolute bottom-3 right-2 flex size-8 items-center justify-center rounded-full border-2 border-indigo-800 bg-emerald-400 text-emerald-950 shadow-lg sm:right-3">
+          <span className="schooldb-workspace-verified absolute bottom-3 right-2 flex size-8 items-center justify-center rounded-full border-2 border-white/70 bg-emerald-400 text-emerald-950 shadow-lg sm:right-3">
             <Check className="size-4 stroke-[3]" />
           </span>
         </div>
 
-        <div className="mt-7 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3.5 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-indigo-100 backdrop-blur-xl">
+        <div className="mt-7 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3.5 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-white/90 backdrop-blur-xl">
           <ShieldCheck className="size-3.5 text-emerald-300" />
           Identity verified
         </div>
@@ -99,16 +102,16 @@ export function WorkspaceEntryTransition({
         <h2 className="mt-4 text-2xl font-black tracking-[-0.035em] text-white sm:text-3xl">
           Welcome to {schoolName}
         </h2>
-        <p className="mt-2 flex items-center gap-2 text-sm font-semibold text-indigo-100/80">
-          <Sparkles className="size-4 text-violet-300" />
+        <p className="mt-2 flex items-center gap-2 text-sm font-semibold text-white/80">
+          <Sparkles className="size-4 text-white/75" />
           Preparing your secure workspace
         </p>
 
         <div className="mt-7 h-1.5 w-full overflow-hidden rounded-full bg-white/10 ring-1 ring-white/10">
-          <span className="schooldb-workspace-progress block h-full rounded-full bg-gradient-to-r from-cyan-300 via-indigo-300 to-violet-300" />
+          <span className="schooldb-workspace-progress block h-full rounded-full " />
         </div>
 
-        <div className="mt-3 flex w-full justify-between text-[9px] font-bold uppercase tracking-[0.14em] text-indigo-100/55">
+        <div className="mt-3 flex w-full justify-between text-[9px] font-bold uppercase tracking-[0.14em] text-white/60">
           <span>Verified</span>
           <span>School connected</span>
           <span>Workspace ready</span>

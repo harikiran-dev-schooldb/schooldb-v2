@@ -524,8 +524,17 @@ html.schooldb-workspace-transition-pending::before {
   z-index: 99;
   content: "";
   background:
-    radial-gradient(circle at 50% 42%, rgb(129 140 248 / 0.25), transparent 28%),
-    linear-gradient(145deg, #11124a, #312e81 48%, #4c1d95);
+    radial-gradient(
+      circle at 50% 42%,
+      color-mix(in srgb, var(--school-workspace-brand, #4f46e5) 42%, transparent),
+      transparent 30%
+    ),
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--school-workspace-brand, #4f46e5) 42%, #020617),
+      color-mix(in srgb, var(--school-workspace-brand, #4f46e5) 70%, #0f172a) 50%,
+      color-mix(in srgb, var(--school-workspace-brand, #4f46e5) 52%, #020617)
+    );
 }
 
 .schooldb-workspace-launch,
@@ -533,18 +542,35 @@ html.schooldb-workspace-transition-pending::before {
   isolation: isolate;
   color: white;
   background:
-    radial-gradient(circle at 50% 38%, rgb(129 140 248 / 0.32), transparent 31%),
-    radial-gradient(circle at 15% 20%, rgb(34 211 238 / 0.12), transparent 28%),
-    radial-gradient(circle at 86% 78%, rgb(192 132 252 / 0.2), transparent 31%),
-    linear-gradient(145deg, #11124a, #312e81 48%, #4c1d95);
+    radial-gradient(
+      circle at 50% 38%,
+      color-mix(in srgb, var(--school-workspace-brand, #4f46e5) 48%, transparent),
+      transparent 31%
+    ),
+    radial-gradient(
+      circle at 15% 20%,
+      color-mix(in srgb, var(--school-workspace-brand, #4f46e5) 24%, transparent),
+      transparent 28%
+    ),
+    radial-gradient(
+      circle at 86% 78%,
+      color-mix(in srgb, var(--school-workspace-brand, #4f46e5) 32%, transparent),
+      transparent 31%
+    ),
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--school-workspace-brand, #4f46e5) 42%, #020617),
+      color-mix(in srgb, var(--school-workspace-brand, #4f46e5) 72%, #0f172a) 48%,
+      color-mix(in srgb, var(--school-workspace-brand, #4f46e5) 54%, #020617)
+    );
 }
 
 .schooldb-workspace-launch {
-  animation: schooldb-workspace-launch 820ms cubic-bezier(0.65, 0, 0.35, 1) both;
+  animation: schooldb-workspace-launch 500ms cubic-bezier(0.65, 0, 0.35, 1) both;
 }
 
 .schooldb-workspace-arrival.is-leaving {
-  animation: schooldb-workspace-reveal 740ms cubic-bezier(0.65, 0, 0.35, 1) both;
+  animation: schooldb-workspace-reveal 540ms cubic-bezier(0.65, 0, 0.35, 1) both;
 }
 
 .schooldb-workspace-grid {
@@ -563,7 +589,12 @@ html.schooldb-workspace-transition-pending::before {
   width: 46vw;
   height: 140vh;
   opacity: 0.18;
-  background: linear-gradient(90deg, transparent, rgb(165 180 252 / 0.62), transparent);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--school-workspace-brand, #4f46e5) 68%, white),
+    transparent
+  );
   filter: blur(24px);
 }
 
@@ -580,14 +611,21 @@ html.schooldb-workspace-transition-pending::before {
 }
 
 .schooldb-workspace-launch-flare {
-  background: radial-gradient(circle, #818cf8 0 24%, #6d28d9 52%, #2563eb 72%, transparent 73%);
-  box-shadow: 0 0 90px rgb(129 140 248 / 0.65);
-  animation: schooldb-workspace-flare 820ms cubic-bezier(0.65, 0, 0.35, 1) both;
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--school-workspace-brand, #4f46e5) 55%, white) 0 24%,
+    var(--school-workspace-brand, #4f46e5) 52%,
+    color-mix(in srgb, var(--school-workspace-brand, #4f46e5) 72%, #020617) 72%,
+    transparent 73%
+  );
+  box-shadow: 0 0 90px
+    color-mix(in srgb, var(--school-workspace-brand, #4f46e5) 60%, transparent);
+  animation: schooldb-workspace-flare 500ms cubic-bezier(0.65, 0, 0.35, 1) both;
 }
 
 .schooldb-workspace-launch-content,
 .schooldb-workspace-arrival-content {
-  animation: schooldb-workspace-content 720ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: schooldb-workspace-content 430ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .schooldb-workspace-ring {
@@ -603,19 +641,31 @@ html.schooldb-workspace-transition-pending::before {
 }
 
 .schooldb-workspace-logo-halo {
-  background: radial-gradient(circle, rgb(255 255 255 / 0.28), rgb(129 140 248 / 0.12) 55%, transparent 72%);
+  background: radial-gradient(
+    circle,
+    rgb(255 255 255 / 0.3),
+    color-mix(in srgb, var(--school-workspace-brand, #4f46e5) 42%, transparent) 55%,
+    transparent 72%
+  );
   filter: blur(8px);
   animation: schooldb-workspace-logo-pulse 1.8s ease-in-out infinite;
 }
 
 .schooldb-workspace-verified {
-  animation: schooldb-workspace-check 520ms cubic-bezier(0.34, 1.56, 0.64, 1) 260ms both;
+  animation: schooldb-workspace-check 320ms cubic-bezier(0.34, 1.56, 0.64, 1) 120ms both;
 }
 
 .schooldb-workspace-progress {
   width: 0;
-  box-shadow: 0 0 18px rgb(165 180 252 / 0.65);
-  animation: schooldb-workspace-progress 1.05s cubic-bezier(0.22, 1, 0.36, 1) 120ms forwards;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--school-workspace-brand, #4f46e5) 48%, white),
+    var(--school-workspace-brand, #4f46e5),
+    color-mix(in srgb, var(--school-workspace-brand, #4f46e5) 72%, white)
+  );
+  box-shadow: 0 0 18px
+    color-mix(in srgb, var(--school-workspace-brand, #4f46e5) 62%, transparent);
+  animation: schooldb-workspace-progress 680ms cubic-bezier(0.22, 1, 0.36, 1) 50ms forwards;
 }
 
 .schooldb-header-context {

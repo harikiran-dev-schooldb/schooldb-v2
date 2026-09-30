@@ -24,6 +24,7 @@ import {
 import { toast } from "sonner";
 
 import { SchoolLogo } from "@/components/branding/SchoolLogo";
+import { applySchoolLogoBrandColor } from "@/lib/logo-brand-color";
 
 import OTPLogin from "./OTPLogin";
 
@@ -105,6 +106,10 @@ export function TenantOtpSignIn({ schoolSlug, schoolName, schoolLogo }: Props) {
   const workspaceTransitionStartedRef = useRef(false);
   const workspaceTransitionTimerRef = useRef<number | null>(null);
 
+  useEffect(() => {
+    void applySchoolLogoBrandColor(schoolSlug, schoolLogo);
+  }, [schoolLogo, schoolSlug]);
+
   const enterWorkspace = useCallback(
     (destination: string) => {
       if (workspaceTransitionStartedRef.current) return;
@@ -125,7 +130,7 @@ export function TenantOtpSignIn({ schoolSlug, schoolName, schoolLogo }: Props) {
       setIsEnteringWorkspace(true);
       workspaceTransitionTimerRef.current = window.setTimeout(
         () => router.replace(destination),
-        reduceMotion ? 80 : 820,
+        reduceMotion ? 50 : 500,
       );
     },
     [router, schoolSlug],
@@ -410,7 +415,7 @@ export function TenantOtpSignIn({ schoolSlug, schoolName, schoolLogo }: Props) {
                 className="relative size-[88px] rounded-[25px] border-white/80 shadow-[0_28px_80px_rgba(15,23,42,.38)] ring-8 ring-white/10"
                 priority
               />
-              <span className="schooldb-workspace-verified absolute bottom-3 right-2 flex size-8 items-center justify-center rounded-full border-2 border-indigo-800 bg-emerald-400 text-emerald-950 shadow-lg sm:right-3">
+              <span className="schooldb-workspace-verified absolute bottom-3 right-2 flex size-8 items-center justify-center rounded-full border-2 border-white/70 bg-emerald-400 text-emerald-950 shadow-lg sm:right-3">
                 <CheckCircle2 className="size-4 stroke-[3]" />
               </span>
             </div>
@@ -421,12 +426,12 @@ export function TenantOtpSignIn({ schoolSlug, schoolName, schoolLogo }: Props) {
             <h2 className="mt-3 text-2xl font-black tracking-[-0.035em] text-white sm:text-3xl">
               {schoolName}
             </h2>
-            <p className="mt-2 text-sm font-semibold text-indigo-100/80">
+            <p className="mt-2 text-sm font-semibold text-white/80">
               Connecting your secure workspace
             </p>
 
             <div className="mt-7 h-1.5 w-full overflow-hidden rounded-full bg-white/10 ring-1 ring-white/10">
-              <span className="schooldb-workspace-progress block h-full rounded-full bg-gradient-to-r from-cyan-300 via-indigo-300 to-violet-300" />
+              <span className="schooldb-workspace-progress block h-full rounded-full " />
             </div>
           </div>
         </div>
