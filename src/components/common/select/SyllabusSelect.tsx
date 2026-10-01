@@ -39,6 +39,12 @@ export function SyllabusSelect({
     return () => { active = false; };
   }, []);
 
+  useEffect(() => {
+    if (!allowAll && !value && options.length === 1) {
+      onChange(options[0].id);
+    }
+  }, [allowAll, onChange, options, value]);
+
   return (
     <Select
       value={value || (allowAll ? "ALL" : "")}
