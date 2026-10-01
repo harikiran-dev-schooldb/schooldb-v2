@@ -3,8 +3,12 @@ package com.schooldb.mobile.auth
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.clerk.api.Clerk
+import com.clerk.api.network.serialization.errorMessage
+import com.clerk.api.network.serialization.onFailure
+import com.clerk.api.network.serialization.onSuccess
 import com.clerk.api.session.Session
 import com.schooldb.mobile.BuildConfig
+import com.schooldb.mobile.notifications.PushNotificationManager
 import java.io.IOException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -92,6 +96,27 @@ class AuthViewModel(
 
     fun clearMessage() {
         _uiState.value = _uiState.value.copy(message = null)
+    }
+
+    fun signOut() {
+        if (_uiState.value.loading) return
+        _uiState.value = _uiState.value.copy(loading = true, message = null)
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) { PushNotificationManager.unregisterCurrentDevice() }
+            var signedOut = false
+            var failure: String? = null
+            Clerk.auth.signOut()
+                .onSuccess { signedOut = true }
+                .onFailure { failure = it.errorMessage }
+            _uiState.value = if (signedOut) {
+                AuthUiState()
+            } else {
+                _uiState.value.copy(
+                    loading = false,
+                    message = failure ?: "Could not sign out. Please try again.",
+                )
+            }
+        }
     }
 
     private fun runRequest(block: suspend () -> Unit) {

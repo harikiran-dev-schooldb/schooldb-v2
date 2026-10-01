@@ -176,6 +176,7 @@ fun SchoolDbApp(
                     TeacherDashboardScreen(
                         refreshKey = portalRefreshKey,
                         onSwitchAccount = { showAccountSwitcher = true },
+                        onSignOut = authViewModel::signOut,
                         openNotificationId = openNotificationId,
                         onNotificationOpened = onNotificationOpened,
                     )

@@ -114,6 +114,7 @@ private enum class TeacherTab {
 fun TeacherDashboardScreen(
     refreshKey: Int = 0,
     onSwitchAccount: (() -> Unit)? = null,
+    onSignOut: (() -> Unit)? = null,
     openNotificationId: String? = null,
     onNotificationOpened: () -> Unit = {},
     viewModel: TeacherViewModel = viewModel(),
@@ -140,6 +141,7 @@ fun TeacherDashboardScreen(
         FamilyDashboardScreen(
             refreshKey = refreshKey,
             onSwitchAccount = onSwitchAccount ?: viewModel::signOut,
+            onSignOut = onSignOut ?: viewModel::signOut,
             openNotificationId = openNotificationId,
             onNotificationOpened = onNotificationOpened,
         )

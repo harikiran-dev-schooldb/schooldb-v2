@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.School
+import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.DirectionsBus
 import androidx.compose.material.icons.outlined.Home
@@ -220,6 +221,7 @@ private fun StudentPremiumNavigation(
 @Composable
 fun FamilyDashboardScreen(
     onSwitchAccount: () -> Unit,
+    onSignOut: () -> Unit,
     refreshKey: Int = 0,
     openNotificationId: String? = null,
     onNotificationOpened: () -> Unit = {},
@@ -231,6 +233,7 @@ fun FamilyDashboardScreen(
     val student = dashboard?.students?.firstOrNull { it.id == state.selectedStudentId }
     var tab by rememberSaveable { mutableStateOf(FamilyTab.HOME) }
     var moreScreen by rememberSaveable { mutableStateOf("MENU") }
+    var showSignOutConfirmation by rememberSaveable { mutableStateOf(false) }
 
     BackHandler(enabled = tab != FamilyTab.HOME) {
         if (tab == FamilyTab.MORE && moreScreen != "MENU") {
@@ -306,7 +309,7 @@ fun FamilyDashboardScreen(
                         }
                     }
                     IconButton(onClick = onSwitchAccount) {
-                        Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = "Switch account or role")
+                        Icon(Icons.Default.SwapHoriz, contentDescription = "Switch account or role")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -427,12 +430,33 @@ fun FamilyDashboardScreen(
                         onOpenNotifications = { moreScreen = "NOTIFICATIONS" },
                         onOpenFees = { moreScreen = "FEES" },
                         onSwitchAccount = onSwitchAccount,
+                        onSignOut = { showSignOutConfirmation = true },
                         modifier = Modifier.padding(padding),
                     )
                 }
             }
             else -> FamilyError("No active student is linked to this account.", viewModel::refresh, Modifier.padding(padding))
         }
+    }
+
+    if (showSignOutConfirmation) {
+        AlertDialog(
+            onDismissRequest = { showSignOutConfirmation = false },
+            title = { Text("Sign out of SchoolDB?") },
+            text = { Text("You will need to verify your mobile number again to sign back in.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showSignOutConfirmation = false
+                        onSignOut()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = FamilyRed),
+                ) { Text("Sign out") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showSignOutConfirmation = false }) { Text("Cancel") }
+            },
+        )
     }
 }
 
@@ -807,13 +831,14 @@ private fun MoreTab(
     onOpenNotifications: () -> Unit,
     onOpenFees: () -> Unit,
     onSwitchAccount: () -> Unit,
+    onSignOut: () -> Unit,
     modifier: Modifier,
 ) {
     if (dashboard.role == "STUDENT") {
         StudentMoreTab(
             dashboard, student, state, onSelect, onOpenTimetable, onOpenLeave,
             onOpenCalendar, onOpenTransport, onOpenNotifications, onOpenFees,
-            onSwitchAccount, modifier,
+            onSwitchAccount, onSignOut, modifier,
         )
         return
     }
@@ -915,7 +940,7 @@ private fun MoreTab(
     item {
         Card(onClick = onSwitchAccount, modifier = Modifier.fillMaxWidth().padding(20.dp), shape = RoundedCornerShape(18.dp)) {
             Row(Modifier.fillMaxWidth().padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = null, tint = FamilyIndigo)
+                Icon(Icons.Default.SwapHoriz, contentDescription = null, tint = FamilyIndigo)
                 Column(Modifier.padding(start = 14.dp)) {
                     Text("Switch account or role", fontWeight = FontWeight.Bold)
                     Text("Choose another profile without a new OTP", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
@@ -939,6 +964,7 @@ private fun StudentMoreTab(
     onOpenNotifications: () -> Unit,
     onOpenFees: () -> Unit,
     onSwitchAccount: () -> Unit,
+    onSignOut: () -> Unit,
     modifier: Modifier,
 ) {
     LazyColumn(
@@ -964,7 +990,8 @@ private fun StudentMoreTab(
         item { Spacer(Modifier.height(5.dp)) }
         item { StudentSectionHeading("Account", "Your school account") }
         item { StudentMoreAction(Icons.Outlined.Payments, "Fees", "Installments and payments", Color(0xFFB74E69), onOpenFees) }
-        item { StudentMoreAction(Icons.AutoMirrored.Filled.Logout, "Switch account or role", "Choose another linked profile", FamilyIndigo, onSwitchAccount) }
+        item { StudentMoreAction(Icons.Default.SwapHoriz, "Switch account or role", "Choose another linked profile", FamilyIndigo, onSwitchAccount) }
+        item { StudentMoreAction(Icons.AutoMirrored.Filled.Logout, "Sign out", "Sign out completely on this device", FamilyRed, onSignOut) }
     }
 }
 
