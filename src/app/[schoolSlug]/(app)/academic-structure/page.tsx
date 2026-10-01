@@ -174,12 +174,30 @@ export default function AcademicStructurePage() {
             </Select>
             <Input placeholder="Branch name" value={branchForm.name} onChange={(event) => setBranchForm({ ...branchForm, name: event.target.value })} />
             <Input placeholder="Code (optional)" value={branchForm.code} onChange={(event) => setBranchForm({ ...branchForm, code: event.target.value })} />
-            <Input placeholder="Description (optional)" value={branchForm.description} onChange={(event) => setBranchForm({ ...branchForm, description: event.target.value })} />
+            <div className="space-y-1.5">
+              <label htmlFor="branch-display-order" className="text-xs font-medium text-muted-foreground">
+                Display order
+              </label>
+              <Input
+                id="branch-display-order"
+                type="number"
+                min={0}
+                step={1}
+                value={branchForm.displayOrder}
+                onChange={(event) =>
+                  setBranchForm({
+                    ...branchForm,
+                    displayOrder: Number(event.target.value),
+                  })
+                }
+              />
+            </div>
+            <Input className="sm:col-span-2" placeholder="Description (optional)" value={branchForm.description} onChange={(event) => setBranchForm({ ...branchForm, description: event.target.value })} />
           </div>
           <FormActions editing={Boolean(editingBranchId)} saving={saving} onSave={() => void saveBranch()} onCancel={() => { setEditingBranchId(null); setBranchForm(emptyBranch); }} />
           <StructureList loading={loading} empty="No academic branches configured.">
             {branches.map((item) => (
-              <StructureRow key={item.id} title={item.name} subtitle={`${item.syllabus.name} · ${item._count.classes} ${item._count.classes === 1 ? "class" : "classes"}`} code={item.code} onEdit={() => { setEditingBranchId(item.id); setBranchForm({ syllabusId: item.syllabusId, name: item.name, code: item.code ?? "", description: item.description ?? "", displayOrder: item.displayOrder }); }} />
+              <StructureRow key={item.id} title={item.name} subtitle={`${item.syllabus.name} · Order ${item.displayOrder} · ${item._count.classes} ${item._count.classes === 1 ? "class" : "classes"}`} code={item.code} onEdit={() => { setEditingBranchId(item.id); setBranchForm({ syllabusId: item.syllabusId, name: item.name, code: item.code ?? "", description: item.description ?? "", displayOrder: item.displayOrder }); }} />
             ))}
           </StructureList>
         </StructureCard>

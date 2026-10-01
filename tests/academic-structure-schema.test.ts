@@ -13,8 +13,17 @@ test("accepts configurable syllabi and academic branches", () => {
     academicBranchSchema.safeParse({
       syllabusId: "syllabus-1",
       name: "Primary",
+      displayOrder: 2,
     }).success,
     true,
+  );
+  assert.equal(
+    academicBranchSchema.safeParse({
+      syllabusId: "syllabus-1",
+      name: "Primary",
+      displayOrder: -1,
+    }).success,
+    false,
   );
 });
 
