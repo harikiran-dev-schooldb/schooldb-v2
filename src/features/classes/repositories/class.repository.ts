@@ -81,12 +81,6 @@ export const classRepository = {
     select: {
       id: true,
       name: true,
-      branch: {
-        select: {
-          name: true,
-          syllabus: { select: { name: true } },
-        },
-      },
     },
 
     orderBy: {

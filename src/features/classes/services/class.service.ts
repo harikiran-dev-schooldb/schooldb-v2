@@ -166,7 +166,7 @@ async options(
 
   return classes.map((item) => ({
     id: item.id,
-    label: `${item.name} · ${item.branch.name} · ${item.branch.syllabus.name}`,
+    label: item.name,
   }));
 },
 };
