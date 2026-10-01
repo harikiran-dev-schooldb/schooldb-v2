@@ -19,6 +19,47 @@ import java.net.HttpURLConnection
 
 internal data class SchoolIdentity(val name: String, val logo: Bitmap?)
 
+/** App-private, school-scoped storage survives process death and RAM cleanup. */
+internal class SchoolIdentityCache(context: android.content.Context) {
+    private val directory = java.io.File(context.filesDir, "school-branding")
+    private fun file(slug: String): android.util.AtomicFile {
+        val key = java.security.MessageDigest.getInstance("SHA-256")
+            .digest(slug.toByteArray()).joinToString("") { "%02x".format(it) }
+        return android.util.AtomicFile(java.io.File(directory, "$key.json"))
+    }
+
+    suspend fun read(slug: String): SchoolIdentity? = withContext(Dispatchers.IO) {
+        try {
+            val json = JSONObject(file(slug).openRead().use { it.bufferedReader().readText() })
+            val logo = json.optString("logo").takeIf { it.isNotBlank() }?.let {
+                val bytes = android.util.Base64.decode(it, android.util.Base64.NO_WRAP)
+                BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+            }
+            SchoolIdentity(json.getString("name"), logo)
+        } catch (cancelled: CancellationException) { throw cancelled }
+        catch (_: Exception) { null }
+    }
+
+    suspend fun write(slug: String, identity: SchoolIdentity) = withContext(Dispatchers.IO) {
+        directory.mkdirs()
+        val logo = identity.logo?.let { bitmap ->
+            val bytes = java.io.ByteArrayOutputStream()
+            check(bitmap.compress(Bitmap.CompressFormat.PNG, 100, bytes))
+            android.util.Base64.encodeToString(bytes.toByteArray(), android.util.Base64.NO_WRAP)
+        }.orEmpty()
+        val bytes = JSONObject().put("name", identity.name).put("logo", logo).toString().toByteArray()
+        val target = file(slug)
+        val stream = target.startWrite()
+        try {
+            stream.write(bytes)
+            target.finishWrite(stream)
+        } catch (error: Exception) {
+            target.failWrite(stream)
+            throw error
+        }
+    }
+}
+
 internal suspend fun loadSchoolIdentity(slug: String): SchoolIdentity = withContext(Dispatchers.IO) {
     val base = URL(BuildConfig.API_BASE_URL)
     fun read(url: URL, maxBytes: Int): ByteArray {
@@ -47,21 +88,22 @@ internal suspend fun loadSchoolIdentity(slug: String): SchoolIdentity = withCont
         .getJSONObject("data").getJSONObject("school")
     val logoPath = school.optString("logo").takeIf { it.isNotBlank() && it != "null" }
     val bitmap = logoPath?.let { path ->
-        try {
             val bytes = read(URL(base, path), 5 * 1024 * 1024)
             val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
             BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
             var sample = 1
             while (bounds.outWidth / sample > 256 || bounds.outHeight / sample > 256) sample *= 2
-            BitmapFactory.decodeByteArray(bytes, 0, bytes.size, BitmapFactory.Options().apply { inSampleSize = sample })
-        } catch (cancelled: CancellationException) { throw cancelled }
-        catch (_: Exception) { null }
+            checkNotNull(BitmapFactory.decodeByteArray(bytes, 0, bytes.size, BitmapFactory.Options().apply { inSampleSize = sample }))
     }
     SchoolIdentity(school.getString("name"), bitmap)
 }
 
 @Composable
-internal fun SchoolIdentityMark(identity: SchoolIdentity?, modifier: Modifier = Modifier) {
+internal fun SchoolIdentityMark(identity: SchoolIdentity?, modifier: Modifier = Modifier, loading: Boolean = false) {
+    if (loading && identity == null) {
+        Surface(modifier, shape = MaterialTheme.shapes.medium, color = Indigo.copy(alpha = .08f)) { }
+        return
+    }
     if (identity?.logo == null) { BrandMark(modifier); return }
     Surface(modifier, shape = MaterialTheme.shapes.medium, color = androidx.compose.ui.graphics.Color.White) {
         Image(identity.logo.asImageBitmap(), "${identity.name} logo",

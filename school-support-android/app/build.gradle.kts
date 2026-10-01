@@ -56,8 +56,8 @@ android {
         applicationId = "com.schooldb.support"
         minSdk = 26
         targetSdk = 36
-        versionCode = versionCodeOverride ?: 8
-        versionName = "0.8.0"
+        versionCode = versionCodeOverride ?: 10
+        versionName = "0.8.2"
         buildConfigField("String", "CLERK_PUBLISHABLE_KEY", "\"$clerkKey\"")
         buildConfigField("boolean", "FIREBASE_CONFIGURED", firebaseConfig.exists().toString())
         resValue("string", "brand_app_name", "School Support")

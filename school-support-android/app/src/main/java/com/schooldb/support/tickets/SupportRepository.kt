@@ -366,12 +366,16 @@ class SupportRepository {
     }
 
     private suspend fun token(forceRefresh: Boolean = false): String {
+        Clerk.isInitialized.first { it }
+        if (Clerk.activeSession == null) throw SupportSessionExpiredException()
         var value: String? = null
-        var failure: String? = null
         Clerk.auth.getToken(GetTokenOptions(skipCache = forceRefresh))
             .onSuccess { value = it }
-            .onFailure { failure = it.errorMessage }
-        return value?.takeIf(String::isNotBlank) ?: throw SupportSessionExpiredException()
+        value?.takeIf(String::isNotBlank)?.let { return it }
+        if (Clerk.activeSession == null) throw SupportSessionExpiredException()
+        // Token minting can fail offline while the restored session remains valid.
+        // Only a missing session or a confirmed server 401 should clear local state.
+        throw SupportNetworkException("Could not verify your session. Check your connection and retry.")
     }
 
     private suspend fun request(

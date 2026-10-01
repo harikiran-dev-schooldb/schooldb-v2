@@ -101,6 +101,9 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
     }
     val clerkInitialized by Clerk.isInitialized.collectAsStateWithLifecycle()
     val clerkUser by Clerk.userFlow.collectAsStateWithLifecycle()
+    val clerkSession by Clerk.sessionFlow.collectAsStateWithLifecycle()
+    val sessionReady = clerkInitialized && clerkSession?.status == com.clerk.api.session.Session.SessionStatus.ACTIVE
+    var startupLoadFinished by remember(authState.school, clerkSession?.id) { mutableStateOf(false) }
     val school = authState.school
     val phone = authState.phone
     val code = authState.code
@@ -113,7 +116,15 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
     var signingOut by remember { mutableStateOf(false) }
     var resendSeconds by remember { mutableIntStateOf(0) }
     var resumeVersion by remember { mutableIntStateOf(0) }
-    var identity by remember(school) { mutableStateOf<SchoolIdentity?>(null) }
+    val identitySchool = school.ifBlank { savedSchool }
+    val identityCache = remember { SchoolIdentityCache(context) }
+    var identity by remember(identitySchool) { mutableStateOf<SchoolIdentity?>(null) }
+    var identityCacheLoaded by remember(identitySchool) { mutableStateOf(false) }
+    var manualRefreshing by remember(school) { mutableStateOf(false) }
+    LaunchedEffect(identitySchool) {
+        identity = if (identitySchool.isNotBlank()) identityCache.read(identitySchool) else null
+        identityCacheLoaded = true
+    }
     var alertsEnabled by remember { mutableStateOf(true) }
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
@@ -123,12 +134,16 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
-    LaunchedEffect(school, clerkUser, resumeVersion) {
+    LaunchedEffect(school, clerkUser, resumeVersion, identityCacheLoaded) {
         alertsEnabled = androidx.core.app.NotificationManagerCompat.from(context).areNotificationsEnabled() &&
             (context.getSystemService(android.app.NotificationManager::class.java)
                 .getNotificationChannel("support_tickets")?.importance != android.app.NotificationManager.IMPORTANCE_NONE)
-        if (school.isNotBlank() && clerkUser != null) {
-            try { identity = loadSchoolIdentity(school) }
+        if (school.isNotBlank() && clerkUser != null && identityCacheLoaded) {
+            try {
+                val fresh = loadSchoolIdentity(school)
+                identity = fresh
+                identityCache.write(school, fresh)
+            }
             catch (cancelled: CancellationException) { throw cancelled }
             catch (_: Exception) { /* Keep the last successfully loaded school identity. */ }
         }
@@ -319,18 +334,30 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
         }
         page = if (school.isNotBlank() && clerkUser != null) SupportPage.DASHBOARD else SupportPage.LOGIN
     }
-    LaunchedEffect(page, school) {
-        if (page == SupportPage.DASHBOARD && school.isNotBlank() && !ticketState.ticketsLoaded && Clerk.activeSession != null) {
+    LaunchedEffect(page, school, sessionReady) {
+        if (page == SupportPage.DASHBOARD && school.isNotBlank() && !startupLoadFinished && sessionReady) {
             ticketViewModel.restoreCachedTickets(ticketCache, school)
             // Draw the dashboard before starting its first network request.
             withFrameNanos { }
             try {
-                loadTickets()
+                // Session restoration and token availability can finish separately.
+                // Retry transient startup failures without requiring a pull gesture.
+                for (attempt in 0..2) {
+                    try {
+                        loadTickets()
+                        startupLoadFinished = true
+                        break
+                    } catch (network: SupportNetworkException) {
+                        if (attempt == 2) throw network
+                        delay(1_000L * (attempt + 1))
+                    }
+                }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: SupportSessionExpiredException) {
                 handleSessionExpired()
             } catch (e: Exception) {
+                startupLoadFinished = true
                 if (!ticketViewModel.state.value.ticketsLoaded) {
                     error = e.message ?: "Could not load tickets. Pull down to retry."
                 }
@@ -355,7 +382,7 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
                 Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp),
                     horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        if (page == SupportPage.DASHBOARD) SchoolIdentityMark(identity, Modifier.size(42.dp))
+                        if (page == SupportPage.DASHBOARD) SchoolIdentityMark(identity, Modifier.size(42.dp), loading = !identityCacheLoaded)
                         else Surface(shape = CircleShape, color = Canvas, border = BorderStroke(1.dp, Line)) {
                             IconButton(onClick = { page = if (page == SupportPage.ADMIN_FORM) SupportPage.ADMINS else SupportPage.DASHBOARD }, modifier = Modifier.size(42.dp)) {
                             Icon(Icons.Outlined.ArrowBack, contentDescription = "Back", tint = Ink)
@@ -449,7 +476,7 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
             when (page) {
                 SupportPage.LOADING -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        BrandMark(Modifier.size(68.dp))
+                        SchoolIdentityMark(identity, Modifier.size(68.dp), loading = !identityCacheLoaded)
                         Spacer(Modifier.height(18.dp))
                         CircularProgressIndicator(Modifier.size(28.dp), strokeWidth = 3.dp)
                         Spacer(Modifier.height(12.dp))
@@ -514,6 +541,7 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
                 SupportPage.DASHBOARD -> TicketDashboard(school, ticketState.tickets, ticketState.summary, ticketState.isAdmin, ticketState.canManageAdmins, ticketState.analytics,
                     ticketState.analyticsLoading, ticketState.analyticsError, busy, ticketState.ticketsLoading, ticketState.ticketsLoaded,
                     showingCachedData = ticketState.showingCachedData,
+                    manualRefreshing = manualRefreshing,
                     selectedTab = dashboardTab.label,
                     query = ticketState.query,
                     page = ticketState.page,
@@ -547,10 +575,15 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
                         page = SupportPage.ADMINS
                     } },
                     onRefresh = {
-                        if (!ticketState.ticketsLoading) run {
-                            ticketViewModel.invalidateAnalytics()
-                            loadTickets()
-                            if (ticketState.isAdmin) ticketViewModel.loadAnalytics(school, force = true)
+                        if (!ticketState.ticketsLoading && !busy) run {
+                            manualRefreshing = true
+                            try {
+                                ticketViewModel.invalidateAnalytics()
+                                loadTickets()
+                                if (ticketState.isAdmin) ticketViewModel.loadAnalytics(school, force = true)
+                            } finally {
+                                manualRefreshing = false
+                            }
                         }
                     },
                     onTicket = { id -> run { loadDetail(id) } })

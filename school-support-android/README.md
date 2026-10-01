@@ -42,3 +42,7 @@ Release 0.8.0 requires the matching server `src/lib/support-push.ts` update: mes
 ## School branding
 
 Upload or replace the school logo on the website's **Schools** page. After sign-in, the app reads the public school branding endpoint and displays the school name and logo in its dashboard header. Returning to the app refreshes branding. Schools without a logo retain the default mark; no separate school-specific APK is needed.
+
+School branding is stored in app-private, school-scoped files and restored on cold startup, including after RAM cleanup. Network failures retain the last downloaded logo; a successful response explicitly removing the logo clears the saved image. The pull-to-refresh indicator is reserved for explicit refresh requests, not ticket selections, filtering, or background synchronization.
+
+Startup observes Clerk's active-session flow before loading the dashboard, with up to three attempts for temporary network/token failures. While the initial data is unavailable, the dashboard explicitly shows loading rather than presenting an empty account as ready. The overview hero uses the main Android app's light neutral surface, dark text, and indigo accents.

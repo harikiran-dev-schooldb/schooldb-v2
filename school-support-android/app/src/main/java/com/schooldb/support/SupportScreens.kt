@@ -117,7 +117,7 @@ private fun attachmentSize(sizeBytes: Int): String =
 internal fun TicketDashboard(school: String, tickets: List<TicketSummary>, summary: List<Int>,
     admin: Boolean, canManageAdmins: Boolean, analytics: SupportAnalytics?, analyticsLoading: Boolean,
     analyticsError: String?, busy: Boolean, ticketsLoading: Boolean, ticketsLoaded: Boolean,
-    showingCachedData: Boolean,
+    showingCachedData: Boolean, manualRefreshing: Boolean,
     selectedTab: String, query: String, page: Int, total: Int, totalPages: Int,
     onQueryChange: (String) -> Unit, onSearch: () -> Unit, onPage: (Int) -> Unit,
     requestedFilter: String?, onFilterConsumed: () -> Unit,
@@ -139,7 +139,7 @@ internal fun TicketDashboard(school: String, tickets: List<TicketSummary>, summa
     // Queue filters are applied by the API. Do not re-filter the current page locally:
     // doing so made server-only filters such as WAITING_OVERDUE and NEW_TODAY inaccurate.
     PullToRefreshBox(
-        isRefreshing = busy || ticketsLoading,
+        isRefreshing = manualRefreshing,
         onRefresh = onRefresh,
         modifier = Modifier.fillMaxSize(),
     ) {
@@ -176,21 +176,23 @@ internal fun TicketDashboard(school: String, tickets: List<TicketSummary>, summa
             SupportPageHeading("Stay ahead of every issue.", "Your school support desk, all in one place.", "OVERVIEW")
         }
         item {
+            Surface(shape = RoundedCornerShape(28.dp), shadowElevation = 8.dp,
+                color = Color.White, modifier = Modifier.fillMaxWidth()) {
             Box(Modifier.fillMaxWidth().background(
-                Brush.linearGradient(listOf(Navy, Indigo, Violet)), RoundedCornerShape(28.dp))) {
+                Brush.linearGradient(listOf(Color.White, Color(0xFFF6F6F8))), RoundedCornerShape(28.dp))) {
                 Column(Modifier.padding(22.dp)) {
-                    Pill(SchoolBrand.supportLabel, SchoolGold)
+                    Pill(SchoolBrand.supportLabel, Indigo)
                     Spacer(Modifier.height(18.dp))
                     val activeTickets = summary[0] + summary[1]
-                    Text(if (!ticketsLoaded) "Your support desk is ready" else
+                    Text(if (!ticketsLoaded) "Loading your support desk…" else
                         "$activeTickets ${if (activeTickets == 1) "ticket needs" else "tickets need"} attention",
-                        style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = Color.White)
+                        style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = Ink)
                     Spacer(Modifier.height(5.dp))
                     Text("Capture a concern and keep the right people in the loop.",
-                        style = MaterialTheme.typography.bodyMedium, color = Color(0xFFCDD8FF))
+                        style = MaterialTheme.typography.bodyMedium, color = Muted)
                     Spacer(Modifier.height(18.dp))
                     Button(onClick = onCreate, shape = RoundedCornerShape(13.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Navy)) {
+                        colors = ButtonDefaults.buttonColors(containerColor = Indigo, contentColor = Color.White)) {
                         Icon(Icons.Outlined.Add, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(6.dp))
                         Text("Raise a ticket", fontWeight = FontWeight.SemiBold)
@@ -201,15 +203,16 @@ internal fun TicketDashboard(school: String, tickets: List<TicketSummary>, summa
                             val url = BuildConfig.API_BASE_URL.trimEnd('/') + "/$school/parent-query/qr"
                             context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
                         }) {
-                            Icon(Icons.Outlined.QrCode2, contentDescription = null, tint = Color.White)
+                            Icon(Icons.Outlined.QrCode2, contentDescription = null, tint = Indigo)
                             Spacer(Modifier.width(8.dp))
-                            Text("Parent query QR", color = Color.White, fontWeight = FontWeight.SemiBold)
+                            Text("Parent query QR", color = Indigo, fontWeight = FontWeight.SemiBold)
                         }
                     }
                 }
             }
         }
-        if (ticketsLoading && !ticketsLoaded) item(contentType = "dashboard-loading") {
+        }
+        if (!ticketsLoaded) item(contentType = "dashboard-loading") {
             LoadingTicketCard()
         }
         if (ticketsLoaded) item {
