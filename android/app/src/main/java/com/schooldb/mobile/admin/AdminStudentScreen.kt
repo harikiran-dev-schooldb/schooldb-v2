@@ -193,17 +193,16 @@ fun AdminStudentScreen(id: String, onBack: () -> Unit) {
     LaunchedEffect(id) { viewModel.load(id) }
 
     Scaffold(containerColor = MaterialTheme.colorScheme.background, topBar = {
-        Column(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 18.dp, vertical = 10.dp)) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                StudentRoundButton(onClick = onBack) { Icon(Lucide.ArrowLeft, contentDescription = "Back") }
-                StudentRoundButton(onClick = { viewModel.load(id, true) }, enabled = !state.loading) {
-                    Icon(Lucide.RefreshCw, contentDescription = "Refresh student")
-                }
-            }
-            Spacer(Modifier.height(14.dp))
-            Text("Student profile", fontSize = 32.sp, lineHeight = 36.sp, fontWeight = FontWeight.ExtraBold)
-            Text("Academic, attendance and fee overview", color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
+        AdminPremiumPageHeader(
+            title = "Student profile",
+            subtitle = state.student?.name ?: "Academic, attendance and fee overview",
+            eyebrow = "STUDENT 360°",
+            onBack = onBack,
+            actionIcon = Lucide.RefreshCw,
+            actionDescription = "Refresh student",
+            actionEnabled = !state.loading,
+            onAction = { viewModel.load(id, true) },
+        )
     }) { padding ->
         PullToRefreshBox(
             isRefreshing = state.loading && state.student != null,

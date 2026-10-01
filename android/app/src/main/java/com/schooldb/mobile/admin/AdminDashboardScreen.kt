@@ -434,7 +434,7 @@ fun AdminDashboardScreen(
         }
     }
 
-    val darkTheme = MaterialTheme.colorScheme.background.luminance() < 0.5f
+    AdminDarkStatusBarEffect()
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
@@ -446,64 +446,76 @@ fun AdminDashboardScreen(
             )
         },
         topBar = {
-            val commandMode = selectedTab == "More"
-            Column(
+            val headerShape = RoundedCornerShape(bottomStart = 28.dp, bottomEnd = 28.dp)
+            Box(
                 Modifier.fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.background)
-                    .statusBarsPadding()
-                    .padding(start = 20.dp, end = 14.dp, top = 12.dp, bottom = 10.dp),
+                    .shadow(14.dp, headerShape, ambientColor = Color(0xFF302568).copy(alpha = .20f),
+                        spotColor = Color(0xFF302568).copy(alpha = .23f))
+                    .clip(headerShape)
+                    .background(Brush.linearGradient(listOf(
+                        Color(0xFF10172D), Color(0xFF302568), Color(0xFF125B68),
+                    )))
+                    .statusBarsPadding(),
             ) {
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        Text(school.schoolName.uppercase(), fontSize = 10.sp,
-                            letterSpacing = 1.3.sp, fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text("SchoolDB", style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface)
-                    }
-                    if (selectedTab == "Home") {
-                        PremiumIconButton(onClick = { showAnnouncements = true }) {
-                            BadgedBox(badge = {
-                                val unread = state.dashboard?.unreadAnnouncements ?: 0
-                                if (unread > 0) Badge { Text(unread.coerceAtMost(99).toString()) }
-                            }) {
-                                Icon(Lucide.Bell, contentDescription = "Announcements",
-                                    modifier = Modifier.size(20.dp))
+                Box(Modifier.size(150.dp).align(Alignment.TopEnd)
+                    .background(Color(0xFF9FCBFF).copy(alpha = .10f), CircleShape))
+                Box(Modifier.size(94.dp).align(Alignment.BottomStart)
+                    .background(Color(0xFFD6A4FF).copy(alpha = .08f), CircleShape))
+                Column(Modifier.fillMaxWidth()
+                    .padding(start = 20.dp, end = 14.dp, top = 12.dp, bottom = 16.dp)) {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text(school.schoolName.uppercase(), fontSize = 10.sp,
+                                letterSpacing = 1.3.sp, fontWeight = FontWeight.Bold,
+                                color = Color(0xFFAFC1FF))
+                            Text("SchoolDB", style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold, color = Color.White)
+                        }
+                        if (selectedTab == "Home") {
+                            AdminPremiumHeaderButton(
+                                onClick = { showAnnouncements = true },
+                                contentDescription = "Announcements",
+                            ) {
+                                BadgedBox(badge = {
+                                    val unread = state.dashboard?.unreadAnnouncements ?: 0
+                                    if (unread > 0) Badge { Text(unread.coerceAtMost(99).toString()) }
+                                }) {
+                                    Icon(Lucide.Bell, contentDescription = "Announcements",
+                                        modifier = Modifier.size(20.dp))
+                                }
+                            }
+                        }
+                        Spacer(Modifier.width(8.dp))
+                        AdminPremiumHeaderButton(
+                            onClick = {
+                                if (selectedTab == "Reports") viewModel.loadReport(forceRefresh = true)
+                                else viewModel.refresh(forceRefresh = true)
+                            },
+                            contentDescription = "Refresh dashboard",
+                            enabled = if (selectedTab == "Reports") !state.reportLoading else !state.loading,
+                        ) {
+                            Icon(Lucide.RefreshCw, contentDescription = "Refresh dashboard",
+                                modifier = Modifier.size(20.dp))
+                        }
+                        Spacer(Modifier.width(8.dp))
+                        Surface(onClick = onSwitchAccount, modifier = Modifier.size(42.dp),
+                            shape = CircleShape, color = Color.White.copy(alpha = .14f),
+                            border = BorderStroke(1.dp, Color.White.copy(alpha = .18f))) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text(school.userName.trim().take(1).uppercase().ifBlank { "S" },
+                                    color = Color.White, fontWeight = FontWeight.Bold)
                             }
                         }
                     }
-                    Spacer(Modifier.width(8.dp))
-                    PremiumIconButton(
-                        dark = commandMode && darkTheme,
-                        onClick = {
-                            if (selectedTab == "Reports") viewModel.loadReport(forceRefresh = true)
-                            else viewModel.refresh(forceRefresh = true)
-                        },
-                        enabled = if (selectedTab == "Reports") !state.reportLoading else !state.loading,
-                    ) {
-                        Icon(Lucide.RefreshCw, contentDescription = "Refresh dashboard",
-                            modifier = Modifier.size(20.dp))
-                    }
-                    Spacer(Modifier.width(8.dp))
-                    Surface(onClick = onSwitchAccount, modifier = Modifier.size(42.dp), shape = CircleShape,
-                        color = if (commandMode) Color(0xFF3154D9) else MaterialTheme.colorScheme.onSurface) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Text(school.userName.trim().take(1).uppercase().ifBlank { "S" },
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold)
-                        }
-                    }
+                    Spacer(Modifier.height(12.dp))
+                    Text(when (selectedTab) {
+                        "Reports" -> "Reports"
+                        "Queries" -> "Queries"
+                        "More" -> "School tools"
+                        else -> "Overview"
+                    }, fontSize = 32.sp, lineHeight = 36.sp, fontWeight = FontWeight.ExtraBold,
+                        letterSpacing = (-0.6).sp, color = Color.White)
                 }
-                Spacer(Modifier.height(12.dp))
-                Text(when (selectedTab) {
-                    "Reports" -> "Reports"
-                    "Queries" -> "Queries"
-                    "More" -> "School tools"
-                    else -> "Overview"
-                }, fontSize = 32.sp, lineHeight = 36.sp, fontWeight = FontWeight.ExtraBold,
-                    letterSpacing = (-0.6).sp,
-                    color = MaterialTheme.colorScheme.onBackground)
             }
         },
     ) { padding ->

@@ -170,20 +170,12 @@ fun AdminTicketScreen(id: String, onBack: () -> Unit) {
     LaunchedEffect(id) { viewModel.load(id) }
 
     Scaffold(containerColor = MaterialTheme.colorScheme.background, topBar = {
-        Column(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 18.dp, vertical = 10.dp)) {
-            Surface(onClick = onBack, shape = CircleShape,
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.78f)) {
-                Box(Modifier.size(46.dp), contentAlignment = Alignment.Center) {
-                    Icon(Lucide.ArrowLeft, contentDescription = "Back")
-                }
-            }
-            Spacer(Modifier.height(14.dp))
-            Text("Support ticket", fontSize = 32.sp, lineHeight = 36.sp,
-                letterSpacing = (-0.5).sp, fontWeight = FontWeight.ExtraBold)
-            Text(state.ticket?.number ?: "Loading ticket",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
+        AdminPremiumPageHeader(
+            title = "Support ticket",
+            subtitle = state.ticket?.number ?: "Loading ticket",
+            eyebrow = "SUPPORT DESK",
+            onBack = onBack,
+        )
     }) { padding ->
         val ticket = state.ticket
         if (ticket == null && state.loading) {

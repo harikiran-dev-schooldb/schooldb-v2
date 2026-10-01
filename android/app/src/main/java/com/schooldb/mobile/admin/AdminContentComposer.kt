@@ -483,13 +483,20 @@ private fun AdminComposerScaffold(
     content: @Composable (PaddingValues) -> Unit,
 ) {
     Scaffold(topBar = {
-        TopAppBar(
-            title = { Text(title, fontWeight = FontWeight.Bold) },
-            navigationIcon = {
-                IconButton(onClick = onBack, enabled = !saving) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
-                }
+        AdminPremiumPageHeader(
+            title = title,
+            subtitle = if (title.contains("announcement", ignoreCase = true)) {
+                "Compose a clear update and choose exactly who should receive it."
+            } else {
+                "Publish classwork with a clear audience and due date."
             },
+            eyebrow = if (title.contains("announcement", ignoreCase = true)) {
+                "COMMUNICATION HUB"
+            } else {
+                "ACADEMIC COMMAND"
+            },
+            onBack = onBack,
+            backEnabled = !saving,
         )
     }, content = content)
 }

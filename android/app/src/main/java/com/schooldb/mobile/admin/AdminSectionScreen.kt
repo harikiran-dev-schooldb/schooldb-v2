@@ -293,30 +293,16 @@ fun AdminSectionScreen(
     }
 
     Scaffold(containerColor = MaterialTheme.colorScheme.background, topBar = {
-        Column(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 18.dp, vertical = 10.dp)) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Surface(onClick = onBack, shape = RoundedCornerShape(50),
-                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f)) {
-                    Box(Modifier.padding(11.dp), contentAlignment = Alignment.Center) {
-                        Icon(Lucide.ArrowLeft, contentDescription = "Back")
-                    }
-                }
-                Surface(onClick = { viewModel.load(section, state.page, query, forceRefresh = true) },
-                    enabled = !state.loading,
-                    shape = RoundedCornerShape(50),
-                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f)) {
-                    Box(Modifier.padding(11.dp), contentAlignment = Alignment.Center) {
-                        Icon(Lucide.RefreshCw, contentDescription = "Refresh $title")
-                    }
-                }
-            }
-            Spacer(Modifier.height(14.dp))
-            Text(title, fontSize = 32.sp, lineHeight = 36.sp,
-                letterSpacing = (-0.5).sp, fontWeight = FontWeight.ExtraBold)
-            Text(sectionDescriptions[section] ?: "School records in this section",
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                style = MaterialTheme.typography.bodyMedium)
-        }
+        AdminPremiumPageHeader(
+            title = title,
+            subtitle = sectionDescriptions[section] ?: "School records in this section",
+            eyebrow = "SCHOOL OPERATIONS",
+            onBack = onBack,
+            actionIcon = Lucide.RefreshCw,
+            actionDescription = "Refresh $title",
+            actionEnabled = !state.loading,
+            onAction = { viewModel.load(section, state.page, query, forceRefresh = true) },
+        )
     }) { padding ->
         PullToRefreshBox(
             isRefreshing = state.loading && state.rows.isNotEmpty(),
