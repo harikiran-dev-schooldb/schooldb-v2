@@ -9,6 +9,7 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
@@ -434,7 +435,7 @@ fun AdminDashboardScreen(
         }
     }
 
-    AdminDarkStatusBarEffect()
+    AdminLightStatusBarEffect()
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
@@ -449,27 +450,28 @@ fun AdminDashboardScreen(
             val headerShape = RoundedCornerShape(bottomStart = 28.dp, bottomEnd = 28.dp)
             Box(
                 Modifier.fillMaxWidth()
-                    .shadow(14.dp, headerShape, ambientColor = Color(0xFF302568).copy(alpha = .20f),
-                        spotColor = Color(0xFF302568).copy(alpha = .23f))
+                    .shadow(12.dp, headerShape, ambientColor = Color(0xFF0F172A).copy(alpha = .06f),
+                        spotColor = Color(0xFF0F172A).copy(alpha = .08f))
                     .clip(headerShape)
                     .background(Brush.linearGradient(listOf(
-                        Color(0xFF10172D), Color(0xFF302568), Color(0xFF125B68),
+                        Color.White, Color(0xFFF1F3FF), Color(0xFFF5F3FF),
                     )))
+                    .border(1.dp, Color(0xFFE0E7FF), headerShape)
                     .statusBarsPadding(),
             ) {
                 Box(Modifier.size(150.dp).align(Alignment.TopEnd)
-                    .background(Color(0xFF9FCBFF).copy(alpha = .10f), CircleShape))
+                    .background(Color(0xFF818CF8).copy(alpha = .08f), CircleShape))
                 Box(Modifier.size(94.dp).align(Alignment.BottomStart)
-                    .background(Color(0xFFD6A4FF).copy(alpha = .08f), CircleShape))
+                    .background(Color(0xFFA78BFA).copy(alpha = .08f), CircleShape))
                 Column(Modifier.fillMaxWidth()
                     .padding(start = 20.dp, end = 14.dp, top = 12.dp, bottom = 16.dp)) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
                             Text(school.schoolName.uppercase(), fontSize = 10.sp,
                                 letterSpacing = 1.3.sp, fontWeight = FontWeight.Bold,
-                                color = Color(0xFFAFC1FF))
+                                color = Color(0xFF4F46E5))
                             Text("SchoolDB", style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold, color = Color.White)
+                                fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
                         }
                         if (selectedTab == "Home") {
                             AdminPremiumHeaderButton(
@@ -499,8 +501,8 @@ fun AdminDashboardScreen(
                         }
                         Spacer(Modifier.width(8.dp))
                         Surface(onClick = onSwitchAccount, modifier = Modifier.size(42.dp),
-                            shape = CircleShape, color = Color.White.copy(alpha = .14f),
-                            border = BorderStroke(1.dp, Color.White.copy(alpha = .18f))) {
+                            shape = CircleShape, color = Color(0xFF4F46E5),
+                            border = BorderStroke(1.dp, Color(0xFF4338CA))) {
                             Box(contentAlignment = Alignment.Center) {
                                 Text(school.userName.trim().take(1).uppercase().ifBlank { "S" },
                                     color = Color.White, fontWeight = FontWeight.Bold)
@@ -514,7 +516,7 @@ fun AdminDashboardScreen(
                         "More" -> "School tools"
                         else -> "Overview"
                     }, fontSize = 32.sp, lineHeight = 36.sp, fontWeight = FontWeight.ExtraBold,
-                        letterSpacing = (-0.6).sp, color = Color.White)
+                        letterSpacing = (-0.6).sp, color = Color(0xFF0F172A))
                 }
             }
         },

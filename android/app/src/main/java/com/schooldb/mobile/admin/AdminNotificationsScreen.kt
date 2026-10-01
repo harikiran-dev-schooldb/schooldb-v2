@@ -1,6 +1,5 @@
 package com.schooldb.mobile.admin
 
-import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -9,6 +8,7 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -39,7 +39,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -51,7 +50,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -60,7 +58,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.core.view.WindowCompat
 import com.schooldb.mobile.network.ApiException
 import com.schooldb.mobile.network.AuthenticatedApiClient
 import com.composables.icons.lucide.ArrowLeft
@@ -178,16 +175,7 @@ fun AdminNotificationsScreen(onBack: () -> Unit, onCreate: () -> Unit) {
             item.target, item.publishedAt, item.read,
         ).matches(filter)
     }
-    val view = LocalView.current
-    DisposableEffect(view) {
-        val window = (view.context as? Activity)?.window
-        val controller = window?.let { WindowCompat.getInsetsController(it, view) }
-        val previous = controller?.isAppearanceLightStatusBars
-        controller?.isAppearanceLightStatusBars = false
-        onDispose {
-            if (previous != null) controller.isAppearanceLightStatusBars = previous
-        }
-    }
+    AdminLightStatusBarEffect()
     BackHandler(onBack = onBack)
     LaunchedEffect(Unit) { viewModel.load() }
 
@@ -197,31 +185,32 @@ fun AdminNotificationsScreen(onBack: () -> Unit, onCreate: () -> Unit) {
             val headerShape = RoundedCornerShape(bottomStart = 32.dp, bottomEnd = 32.dp)
             Box(
                 Modifier.fillMaxWidth()
-                    .shadow(18.dp, headerShape, ambientColor = Color(0xFF312A78).copy(alpha = .24f),
-                        spotColor = Color(0xFF312A78).copy(alpha = .28f))
+                    .shadow(14.dp, headerShape, ambientColor = Color(0xFF0F172A).copy(alpha = .06f),
+                        spotColor = Color(0xFF0F172A).copy(alpha = .08f))
                     .clip(headerShape)
                     .background(Brush.linearGradient(listOf(
-                        Color(0xFF10172D), Color(0xFF31256E), Color(0xFF0B5B69),
+                        Color.White, Color(0xFFF1F3FF), Color(0xFFF5F3FF),
                     )))
+                    .border(1.dp, Color(0xFFE0E7FF), headerShape)
                     .statusBarsPadding(),
             ) {
                 Box(Modifier.size(180.dp).align(Alignment.TopEnd).padding(top = 6.dp)
-                    .background(Color(0xFF9EC9FF).copy(alpha = .10f), CircleShape))
+                    .background(Color(0xFF818CF8).copy(alpha = .08f), CircleShape))
                 Box(Modifier.size(125.dp).align(Alignment.BottomStart)
-                    .background(Color(0xFFD8A8FF).copy(alpha = .09f), CircleShape))
+                    .background(Color(0xFFA78BFA).copy(alpha = .08f), CircleShape))
                 Column(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 14.dp)) {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically) {
                         PremiumHeaderIcon(onClick = onBack, contentDescription = "Back") {
-                            Icon(Lucide.ArrowLeft, contentDescription = null, tint = Color.White,
+                            Icon(Lucide.ArrowLeft, contentDescription = null, tint = Color(0xFF4F46E5),
                                 modifier = Modifier.size(20.dp))
                         }
-                        Surface(shape = RoundedCornerShape(50.dp), color = Color.White.copy(alpha = .10f),
-                            border = BorderStroke(1.dp, Color.White.copy(alpha = .14f))) {
+                        Surface(shape = RoundedCornerShape(50.dp), color = Color(0xFFECFDF5),
+                            border = BorderStroke(1.dp, Color(0xFFA7F3D0))) {
                             Row(Modifier.padding(horizontal = 11.dp, vertical = 7.dp),
                                 verticalAlignment = Alignment.CenterVertically) {
-                                Box(Modifier.size(6.dp).background(Color(0xFF5BE0B5), CircleShape))
-                                Text("  LIVE", color = Color(0xFFCFF8EC), fontSize = 9.sp,
+                                Box(Modifier.size(6.dp).background(Color(0xFF10B981), CircleShape))
+                                Text("  LIVE", color = Color(0xFF047857), fontSize = 9.sp,
                                     fontWeight = FontWeight.ExtraBold, letterSpacing = 1.sp)
                             }
                         }
@@ -232,29 +221,29 @@ fun AdminNotificationsScreen(onBack: () -> Unit, onCreate: () -> Unit) {
                         ) {
                             if (state.loading && state.items.isNotEmpty()) {
                                 CircularProgressIndicator(Modifier.size(19.dp), strokeWidth = 2.dp,
-                                    color = Color.White)
+                                    color = Color(0xFF4F46E5))
                             } else {
-                                Icon(Lucide.RefreshCw, contentDescription = null, tint = Color.White,
+                                Icon(Lucide.RefreshCw, contentDescription = null, tint = Color(0xFF4F46E5),
                                     modifier = Modifier.size(20.dp))
                             }
                         }
                     }
                     Spacer(Modifier.height(20.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Surface(shape = RoundedCornerShape(18.dp), color = Color.White.copy(alpha = .12f),
-                            border = BorderStroke(1.dp, Color.White.copy(alpha = .17f))) {
-                            Icon(Lucide.Bell, contentDescription = null, tint = Color(0xFFC7D5FF),
+                        Surface(shape = RoundedCornerShape(18.dp), color = Color(0xFFEEF2FF),
+                            border = BorderStroke(1.dp, Color(0xFFC7D2FE))) {
+                            Icon(Lucide.Bell, contentDescription = null, tint = Color(0xFF4F46E5),
                                 modifier = Modifier.padding(13.dp).size(26.dp))
                         }
                         Column(Modifier.padding(start = 14.dp)) {
-                            Text("COMMUNICATION HUB", color = Color(0xFF9EB7FF), fontSize = 9.sp,
+                            Text("COMMUNICATION HUB", color = Color(0xFF4F46E5), fontSize = 9.sp,
                                 fontWeight = FontWeight.ExtraBold, letterSpacing = 1.3.sp)
-                            Text("Announcements", color = Color.White, fontSize = 29.sp, lineHeight = 34.sp,
+                            Text("Announcements", color = Color(0xFF0F172A), fontSize = 29.sp, lineHeight = 34.sp,
                                 letterSpacing = (-.45).sp, fontWeight = FontWeight.ExtraBold)
                         }
                     }
                     Text("Reach the right families with clear, targeted school updates.",
-                        Modifier.padding(top = 12.dp), color = Color.White.copy(alpha = .68f),
+                        Modifier.padding(top = 12.dp), color = Color(0xFF64748B),
                         fontSize = 12.sp, lineHeight = 17.sp)
                     Spacer(Modifier.height(15.dp))
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(9.dp)) {
@@ -266,8 +255,8 @@ fun AdminNotificationsScreen(onBack: () -> Unit, onCreate: () -> Unit) {
                         onClick = onCreate,
                         modifier = Modifier.fillMaxWidth().height(50.dp),
                         shape = RoundedCornerShape(17.dp),
-                        color = Color.White,
-                        contentColor = Color(0xFF25205D),
+                        color = Color(0xFF4F46E5),
+                        contentColor = Color.White,
                         shadowElevation = 6.dp,
                     ) {
                         Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.Center,
@@ -347,8 +336,9 @@ private fun PremiumHeaderIcon(
         enabled = enabled,
         modifier = Modifier.size(42.dp).semantics { this.contentDescription = contentDescription },
         shape = CircleShape,
-        color = Color.White.copy(alpha = if (enabled) .11f else .06f),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = if (enabled) .16f else .08f)),
+        color = if (enabled) Color(0xFFEEF2FF) else Color(0xFFF8FAFC),
+        contentColor = Color(0xFF4F46E5),
+        border = BorderStroke(1.dp, if (enabled) Color(0xFFC7D2FE) else Color(0xFFE2E8F0)),
     ) {
         Box(contentAlignment = Alignment.Center) { content() }
     }
@@ -359,13 +349,13 @@ private fun NotificationMetric(value: String, label: String, modifier: Modifier 
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(16.dp),
-        color = Color.Black.copy(alpha = .14f),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = .11f)),
+        color = Color.White.copy(alpha = .82f),
+        border = BorderStroke(1.dp, Color(0xFFE0E7FF)),
     ) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 13.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically) {
-            Text(value, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
-            Text("  $label", color = Color.White.copy(alpha = .62f), fontSize = 11.sp,
+            Text(value, color = Color(0xFF0F172A), fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
+            Text("  $label", color = Color(0xFF64748B), fontSize = 11.sp,
                 fontWeight = FontWeight.SemiBold)
         }
     }

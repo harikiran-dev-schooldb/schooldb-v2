@@ -3,6 +3,7 @@ package com.schooldb.mobile.admin
 import android.app.Activity
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -50,22 +51,23 @@ internal fun AdminPremiumPageHeader(
     actionEnabled: Boolean = true,
     onAction: (() -> Unit)? = null,
 ) {
-    AdminDarkStatusBarEffect()
+    AdminLightStatusBarEffect()
     val shape = RoundedCornerShape(bottomStart = 28.dp, bottomEnd = 28.dp)
     Box(
         modifier.fillMaxWidth()
-            .shadow(14.dp, shape, ambientColor = HeaderIndigo.copy(alpha = .20f),
-                spotColor = HeaderIndigo.copy(alpha = .23f))
+            .shadow(12.dp, shape, ambientColor = HeaderNavy.copy(alpha = .06f),
+                spotColor = HeaderNavy.copy(alpha = .08f))
             .clip(shape)
             .background(Brush.linearGradient(listOf(
-                Color(0xFF10172D), Color(0xFF302568), Color(0xFF125B68),
+                Color.White, Color(0xFFF1F3FF), Color(0xFFF5F3FF),
             )))
+            .border(1.dp, HeaderBorder, shape)
             .statusBarsPadding(),
     ) {
         Box(Modifier.size(150.dp).align(Alignment.TopEnd)
-            .background(Color(0xFF9FCBFF).copy(alpha = .10f), CircleShape))
+            .background(Color(0xFF818CF8).copy(alpha = .08f), CircleShape))
         Box(Modifier.size(94.dp).align(Alignment.BottomStart)
-            .background(Color(0xFFD6A4FF).copy(alpha = .08f), CircleShape))
+            .background(Color(0xFFA78BFA).copy(alpha = .08f), CircleShape))
         Column(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 13.dp)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically) {
@@ -74,7 +76,7 @@ internal fun AdminPremiumPageHeader(
                     enabled = backEnabled,
                     contentDescription = "Back",
                 ) {
-                    Icon(Lucide.ArrowLeft, null, tint = Color.White, modifier = Modifier.size(20.dp))
+                    Icon(Lucide.ArrowLeft, null, tint = HeaderIndigo, modifier = Modifier.size(20.dp))
                 }
                 if (actionIcon != null && onAction != null) {
                     AdminPremiumHeaderButton(
@@ -82,19 +84,19 @@ internal fun AdminPremiumPageHeader(
                         enabled = actionEnabled,
                         contentDescription = actionDescription,
                     ) {
-                        Icon(actionIcon, null, tint = Color.White, modifier = Modifier.size(20.dp))
+                        Icon(actionIcon, null, tint = HeaderIndigo, modifier = Modifier.size(20.dp))
                     }
                 } else {
                     Spacer(Modifier.size(42.dp))
                 }
             }
             Spacer(Modifier.size(15.dp))
-            Text(eyebrow, color = Color(0xFFAFC1FF), fontSize = 9.sp,
+            Text(eyebrow, color = HeaderIndigo, fontSize = 9.sp,
                 fontWeight = FontWeight.ExtraBold, letterSpacing = 1.25.sp)
-            Text(title, color = Color.White, fontSize = 28.sp, lineHeight = 33.sp,
+            Text(title, color = HeaderNavy, fontSize = 28.sp, lineHeight = 33.sp,
                 fontWeight = FontWeight.ExtraBold, letterSpacing = (-.4).sp,
                 maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(subtitle, Modifier.padding(top = 4.dp), color = Color.White.copy(alpha = .67f),
+            Text(subtitle, Modifier.padding(top = 4.dp), color = HeaderSlate,
                 fontSize = 12.sp, lineHeight = 17.sp, maxLines = 2,
                 overflow = TextOverflow.Ellipsis)
             Spacer(Modifier.size(8.dp))
@@ -114,25 +116,29 @@ internal fun AdminPremiumHeaderButton(
         enabled = enabled,
         modifier = Modifier.size(42.dp).semantics { this.contentDescription = contentDescription },
         shape = CircleShape,
-        color = Color.White.copy(alpha = if (enabled) .11f else .06f),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = if (enabled) .16f else .08f)),
+        color = if (enabled) Color(0xFFEEF2FF) else Color(0xFFF8FAFC),
+        contentColor = HeaderIndigo,
+        border = BorderStroke(1.dp, if (enabled) HeaderBorder else Color(0xFFE2E8F0)),
     ) {
         Box(contentAlignment = Alignment.Center) { content() }
     }
 }
 
 @Composable
-internal fun AdminDarkStatusBarEffect() {
+internal fun AdminLightStatusBarEffect() {
     val view = LocalView.current
     DisposableEffect(view) {
         val window = (view.context as? Activity)?.window
         val controller = window?.let { WindowCompat.getInsetsController(it, view) }
         val previous = controller?.isAppearanceLightStatusBars
-        controller?.isAppearanceLightStatusBars = false
+        controller?.isAppearanceLightStatusBars = true
         onDispose {
             if (previous != null) controller.isAppearanceLightStatusBars = previous
         }
     }
 }
 
-private val HeaderIndigo = Color(0xFF302568)
+private val HeaderIndigo = Color(0xFF4F46E5)
+private val HeaderNavy = Color(0xFF0F172A)
+private val HeaderSlate = Color(0xFF64748B)
+private val HeaderBorder = Color(0xFFE0E7FF)

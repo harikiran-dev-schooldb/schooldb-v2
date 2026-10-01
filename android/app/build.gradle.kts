@@ -61,8 +61,8 @@ android {
         applicationId = "com.schooldb.mobile"
         minSdk = 26
         targetSdk = 37
-        versionCode = 14
-        versionName = "0.3.9"
+        versionCode = 15
+        versionName = "0.3.10"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
