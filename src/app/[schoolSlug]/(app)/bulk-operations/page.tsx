@@ -6,6 +6,7 @@ import {
   Bus,
   CalendarDays,
   ClipboardList,
+  Copy,
   GraduationCap,
   Home,
   IndianRupee,
@@ -20,6 +21,14 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 
 const operations = [
+  {
+    title: "Copy School Setup",
+    description:
+      "Copy syllabus, branches, classes and sections from demo, with optional subjects and class-subject mappings.",
+    href: "bulk-operations/copy-school-setup",
+    icon: Copy,
+    status: "Ready",
+  },
   {
     title: "Students",
     description:
