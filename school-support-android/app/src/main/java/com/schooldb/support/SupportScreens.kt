@@ -125,7 +125,6 @@ internal fun TicketDashboard(school: String, tickets: List<TicketSummary>, summa
     }
     // Queue filters are applied by the API. Do not re-filter the current page locally:
     // doing so made server-only filters such as WAITING_OVERDUE and NEW_TODAY inaccurate.
-    val visible = tickets
     PullToRefreshBox(
         isRefreshing = busy || ticketsLoading,
         onRefresh = onRefresh,
@@ -180,9 +179,8 @@ internal fun TicketDashboard(school: String, tickets: List<TicketSummary>, summa
                 }
             }
         }
-        if (ticketsLoading && !ticketsLoaded) item {
-            LinearProgressIndicator(Modifier.fillMaxWidth())
-            Text("Loading tickets…", style = MaterialTheme.typography.bodySmall, color = Muted)
+        if (ticketsLoading && !ticketsLoaded) item(contentType = "dashboard-loading") {
+            LoadingTicketCard()
         }
         if (ticketsLoaded) item {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -374,20 +372,23 @@ internal fun TicketDashboard(school: String, tickets: List<TicketSummary>, summa
                 Text("Search tickets", style = MaterialTheme.typography.labelLarge,
                     color = Ink, fontWeight = FontWeight.SemiBold)
                 Spacer(Modifier.height(8.dp))
-                Row(verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(
-                        value = query,
-                        onValueChange = onQueryChange,
-                        modifier = Modifier.weight(1f),
-                        singleLine = true,
-                        placeholder = { Text("Ticket no, subject, student...") },
-                        shape = RoundedCornerShape(13.dp),
-                    )
-                    IconButton(onClick = onSearch, enabled = !busy && !ticketsLoading) {
-                        Icon(Icons.Outlined.Search, contentDescription = "Search", tint = Indigo)
-                    }
-                }
+                OutlinedTextField(
+                    value = query,
+                    onValueChange = onQueryChange,
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    placeholder = { Text("Ticket no, subject, student...") },
+                    shape = RoundedCornerShape(13.dp),
+                    trailingIcon = {
+                        IconButton(onClick = onSearch, enabled = !busy && !ticketsLoading) {
+                            Icon(Icons.Outlined.Search, contentDescription = "Search", tint = Indigo)
+                        }
+                    },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Indigo,
+                        unfocusedBorderColor = Line,
+                    ),
+                )
                 Text(if (ticketsLoaded) "$total tickets" else "Tickets are loading…",
                     style = MaterialTheme.typography.bodySmall, color = Muted)
             }
@@ -396,19 +397,29 @@ internal fun TicketDashboard(school: String, tickets: List<TicketSummary>, summa
             Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf("All", "Open", "Active", "Waiting", "Urgent", "Resolved").forEach { value ->
-                    FilterChip(selected = filter == value, onClick = { onOpenQueue(value) }, label = { Text(value) },
-                        shape = RoundedCornerShape(12.dp))
+                    FilterChip(
+                        selected = filter == value,
+                        onClick = { onOpenQueue(value) },
+                        label = { Text(value) },
+                        shape = RoundedCornerShape(12.dp),
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = Indigo.copy(alpha = 0.12f),
+                            selectedLabelColor = Indigo,
+                        ),
+                        border = FilterChipDefaults.filterChipBorder(
+                            enabled = true,
+                            selected = filter == value,
+                            borderColor = Line,
+                            selectedBorderColor = Indigo.copy(alpha = 0.18f),
+                        ),
+                    )
                 }
             }
         }
-        if (ticketsLoading && !ticketsLoaded) item {
-            SurfaceCard(Modifier.fillMaxWidth()) {
-                CircularProgressIndicator(Modifier.size(24.dp))
-                Spacer(Modifier.height(8.dp))
-                Text("Loading tickets…", color = Muted)
-            }
+        if (ticketsLoading && !ticketsLoaded) item(contentType = "ticket-loading") {
+            LoadingTicketCard()
         }
-        if (visible.isEmpty() && ticketsLoaded) item {
+        if (tickets.isEmpty() && ticketsLoaded) item(contentType = "ticket-empty") {
             SurfaceCard(Modifier.fillMaxWidth()) {
                 Text(if (tickets.isEmpty()) "No tickets yet" else "No " + filter.lowercase() + " tickets",
                     style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
@@ -417,11 +428,11 @@ internal fun TicketDashboard(school: String, tickets: List<TicketSummary>, summa
                     else "Try another filter to see more tickets.", color = Muted)
             }
         }
-        items(visible, key = { it.id }) { ticket -> TicketCard(ticket) { onTicket(ticket.id) } }
+        items(tickets, key = { it.id }, contentType = { "ticket" }) { ticket -> TicketCard(ticket) { onTicket(ticket.id) } }
         if (ticketsLoaded) item {
             SurfaceCard(Modifier.fillMaxWidth()) {
                 Text(
-                    "Showing ${visible.size} of $total tickets · Page $page of ${totalPages.coerceAtLeast(1)}",
+                    "Showing ${tickets.size} of $total tickets · Page $page of ${totalPages.coerceAtLeast(1)}",
                     style = MaterialTheme.typography.bodySmall,
                     color = Muted,
                 )
@@ -449,14 +460,30 @@ internal fun TicketDashboard(school: String, tickets: List<TicketSummary>, summa
 private fun MetricCard(label: String, value: Int, tint: Color, modifier: Modifier = Modifier, onClick: (() -> Unit)? = null) {
     val cardModifier = if (onClick != null) modifier.clickable(onClick = onClick) else modifier
     SurfaceCard(cardModifier) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(10.dp).background(tint, CircleShape))
-            Spacer(Modifier.width(10.dp))
-            Text(value.toString(), style = MaterialTheme.typography.headlineMedium,
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(value.toString(), style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold, color = Ink)
+            Box(Modifier.size(30.dp).background(tint.copy(alpha = 0.11f), CircleShape), contentAlignment = Alignment.Center) {
+                Box(Modifier.size(8.dp).background(tint, CircleShape))
+            }
         }
-        Spacer(Modifier.height(5.dp))
-        Text(label, style = MaterialTheme.typography.bodySmall, color = Muted)
+        Spacer(Modifier.height(6.dp))
+        Text(label, style = MaterialTheme.typography.labelMedium, color = Muted)
+    }
+}
+
+@Composable
+private fun LoadingTicketCard() {
+    SurfaceCard(Modifier.fillMaxWidth()) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.5.dp)
+            Spacer(Modifier.width(12.dp))
+            Column {
+                Text("Loading your support desk", color = Ink, fontWeight = FontWeight.SemiBold)
+                Text("Getting the latest tickets…", color = Muted, style = MaterialTheme.typography.bodySmall)
+            }
+        }
     }
 }
 
@@ -494,9 +521,13 @@ private fun formatResolutionTime(hours: Double?): String {
 private fun TicketCard(ticket: TicketSummary, onClick: () -> Unit) {
     SurfaceCard(Modifier.fillMaxWidth().clickable(onClick = onClick)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
+            Box(
+                Modifier.width(4.dp).height(44.dp).background(statusTint(ticket.status.name), CircleShape)
+            )
+            Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(ticket.ticketNo, style = MaterialTheme.typography.labelSmall,
-                    color = Muted, fontWeight = FontWeight.SemiBold)
+                    color = Indigo, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(6.dp))
                 Text(ticket.subject, style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold, color = Ink, maxLines = 2, overflow = TextOverflow.Ellipsis)
@@ -508,7 +539,7 @@ private fun TicketCard(ticket: TicketSummary, onClick: () -> Unit) {
             Text("Student · " + it, style = MaterialTheme.typography.bodySmall, color = Muted,
                 maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
-        Spacer(Modifier.height(14.dp))
+        Spacer(Modifier.height(16.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Pill(ticket.status.name.replace('_', ' '), statusTint(ticket.status.name))
             if (ticket.source == "PARENT_QR") Pill("PARENT QUERY", Indigo)
@@ -933,10 +964,12 @@ private fun OptionMenu(selected: String, values: List<String>, choose: (String) 
 
 @Composable
 internal fun AuthShell(title: String, subtitle: String, content: @Composable ColumnScope.() -> Unit) {
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp),
+    Column(Modifier.fillMaxSize()
+        .background(Brush.verticalGradient(listOf(Color.White, Canvas, Canvas)))
+        .verticalScroll(rememberScrollState()).padding(horizontal = 24.dp),
         verticalArrangement = Arrangement.spacedBy(0.dp)) {
         Spacer(Modifier.height(46.dp))
-        BrandMark(Modifier.size(64.dp))
+        BrandMark(Modifier.size(72.dp))
         Spacer(Modifier.height(18.dp))
         Text(SchoolBrand.authEyebrow, style = MaterialTheme.typography.labelSmall,
             color = Indigo, fontWeight = FontWeight.Bold)
@@ -971,8 +1004,9 @@ internal fun SupportField(value: String, onValueChange: (String) -> Unit, label:
 
 @Composable
 internal fun PrimaryAction(label: String, enabled: Boolean, onClick: () -> Unit) {
-    Button(onClick = onClick, enabled = enabled, modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp),
-        shape = RoundedCornerShape(14.dp), colors = ButtonDefaults.buttonColors(containerColor = Indigo)) {
+    Button(onClick = onClick, enabled = enabled, modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
+        shape = RoundedCornerShape(16.dp), colors = ButtonDefaults.buttonColors(containerColor = Indigo),
+        elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp, pressedElevation = 0.dp)) {
         Text(label, fontWeight = FontWeight.SemiBold)
     }
 }

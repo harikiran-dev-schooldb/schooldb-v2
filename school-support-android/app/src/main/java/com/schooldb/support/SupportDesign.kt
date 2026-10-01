@@ -14,14 +14,16 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 
-internal val Ink = Color(0xFF18314F)
-internal val Muted = Color(0xFF6B7885)
-internal val Canvas = Color(0xFFF8FAF7)
+internal val Ink = Color(0xFF14253A)
+internal val Muted = Color(0xFF66758A)
+internal val Canvas = Color(0xFFF5F7FA)
 internal val Indigo = SchoolBrand.primary
-internal val Line = Color(0xFFE2E8E1)
+internal val Line = Color(0xFFE3E8EF)
 internal val Navy = Color(0xFF173F6B)
 internal val Violet = SchoolBrand.secondary
 internal val SchoolGreen = SchoolBrand.secondary
@@ -35,13 +37,42 @@ private val SupportColors = lightColorScheme(
     onBackground = Ink,
     surface = Color.White,
     onSurface = Ink,
+    surfaceVariant = Color(0xFFF0F3F7),
+    onSurfaceVariant = Muted,
     outline = Line,
+    outlineVariant = Color(0xFFEDF0F4),
     error = Color(0xFFC33D47),
+)
+
+private val SupportTypography = Typography(
+    headlineLarge = TextStyle(fontSize = 34.sp, lineHeight = 40.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.7).sp),
+    headlineSmall = TextStyle(fontSize = 24.sp, lineHeight = 30.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.3).sp),
+    titleLarge = TextStyle(fontSize = 20.sp, lineHeight = 26.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.15).sp),
+    titleMedium = TextStyle(fontSize = 16.sp, lineHeight = 22.sp, fontWeight = FontWeight.SemiBold),
+    bodyLarge = TextStyle(fontSize = 16.sp, lineHeight = 24.sp),
+    bodyMedium = TextStyle(fontSize = 14.sp, lineHeight = 21.sp),
+    bodySmall = TextStyle(fontSize = 12.sp, lineHeight = 18.sp),
+    labelLarge = TextStyle(fontSize = 14.sp, lineHeight = 20.sp, fontWeight = FontWeight.SemiBold),
+    labelMedium = TextStyle(fontSize = 12.sp, lineHeight = 17.sp, fontWeight = FontWeight.SemiBold),
+    labelSmall = TextStyle(fontSize = 11.sp, lineHeight = 15.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.7.sp),
+)
+
+private val SupportShapes = Shapes(
+    extraSmall = RoundedCornerShape(8.dp),
+    small = RoundedCornerShape(12.dp),
+    medium = RoundedCornerShape(16.dp),
+    large = RoundedCornerShape(22.dp),
+    extraLarge = RoundedCornerShape(28.dp),
 )
 
 @Composable
 internal fun SupportTheme(content: @Composable () -> Unit) {
-    MaterialTheme(colorScheme = SupportColors, content = content)
+    MaterialTheme(
+        colorScheme = SupportColors,
+        typography = SupportTypography,
+        shapes = SupportShapes,
+        content = content,
+    )
 }
 
 @Composable
@@ -50,8 +81,8 @@ internal fun BrandMark(modifier: Modifier = Modifier) {
         modifier = modifier,
         shape = CircleShape,
         color = Color.White,
-        border = BorderStroke(1.dp, Line),
-        shadowElevation = 2.dp,
+        border = BorderStroke(1.dp, Line.copy(alpha = 0.85f)),
+        shadowElevation = 0.dp,
     ) {
         Image(
             painter = painterResource(SchoolBrand.logoRes),
@@ -64,8 +95,8 @@ internal fun BrandMark(modifier: Modifier = Modifier) {
 
 @Composable
 internal fun SurfaceCard(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
-    Surface(modifier, shape = RoundedCornerShape(22.dp), color = Color.White,
-        border = BorderStroke(1.dp, Line), shadowElevation = 3.dp) {
+    Surface(modifier, shape = MaterialTheme.shapes.large, color = Color.White,
+        border = BorderStroke(1.dp, Line.copy(alpha = 0.82f)), shadowElevation = 0.dp) {
         Column(Modifier.padding(18.dp), content = content)
     }
 }

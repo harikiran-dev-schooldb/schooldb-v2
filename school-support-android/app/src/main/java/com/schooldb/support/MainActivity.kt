@@ -309,7 +309,11 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         bottomBar = {
             if (page == SupportPage.DASHBOARD) {
-                NavigationBar(containerColor = Color.White, tonalElevation = 3.dp) {
+                NavigationBar(
+                    containerColor = Color.White,
+                    tonalElevation = 0.dp,
+                    windowInsets = NavigationBarDefaults.windowInsets,
+                ) {
                     listOf(
                         Triple("Overview", Icons.Outlined.Dashboard, "Overview"),
                         Triple("Tickets", Icons.Outlined.ConfirmationNumber, "Tickets"),
@@ -319,7 +323,14 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
                             selected = dashboardTab.label == tab,
                             onClick = { dashboardTab = DashboardTab.entries.first { it.label == tab } },
                             icon = { Icon(icon, contentDescription = label) },
-                            label = { Text(label) },
+                            label = { Text(label, fontWeight = if (dashboardTab.label == tab) FontWeight.Bold else FontWeight.Medium) },
+                            colors = NavigationBarItemDefaults.colors(
+                                selectedIconColor = Indigo,
+                                selectedTextColor = Ink,
+                                indicatorColor = Indigo.copy(alpha = 0.11f),
+                                unselectedIconColor = Muted,
+                                unselectedTextColor = Muted,
+                            ),
                         )
                     }
                 }
@@ -327,13 +338,15 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
         },
         topBar = {
         if (page in listOf(SupportPage.DASHBOARD, SupportPage.CREATE_TICKET, SupportPage.TICKET_DETAIL, SupportPage.ADMINS, SupportPage.ADMIN_FORM)) {
-            Surface(color = Canvas) {
-                Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
+            Surface(color = Color.White, border = BorderStroke(0.5.dp, Line.copy(alpha = 0.7f))) {
+                Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 10.dp),
                     horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         if (page == SupportPage.DASHBOARD) BrandMark(Modifier.size(42.dp))
-                        else IconButton(onClick = { page = if (page == SupportPage.ADMIN_FORM) SupportPage.ADMINS else SupportPage.DASHBOARD }, modifier = Modifier.size(42.dp)) {
+                        else Surface(shape = CircleShape, color = Canvas, border = BorderStroke(1.dp, Line)) {
+                            IconButton(onClick = { page = if (page == SupportPage.ADMIN_FORM) SupportPage.ADMINS else SupportPage.DASHBOARD }, modifier = Modifier.size(42.dp)) {
                             Icon(Icons.Outlined.ArrowBack, contentDescription = "Back", tint = Ink)
+                            }
                         }
                         Column {
                             Text(if (page == SupportPage.DASHBOARD) SchoolBrand.shortName else SchoolBrand.supportLabel,
@@ -391,7 +404,7 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
                                 }
                             }
                         }
-                    }) { Icon(Icons.Outlined.Logout, contentDescription = "Sign out", tint = Ink) }
+                    }, modifier = Modifier.size(42.dp)) { Icon(Icons.Outlined.Logout, contentDescription = "Sign out", tint = Muted) }
                 }
             }
         }
@@ -407,9 +420,21 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
                 Text(error, Modifier.padding(14.dp), color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodyMedium)
             }
-            if (busy) LinearProgressIndicator(Modifier.fillMaxWidth())
+            if (busy) LinearProgressIndicator(
+                Modifier.fillMaxWidth().height(2.dp),
+                color = Indigo,
+                trackColor = Indigo.copy(alpha = 0.08f),
+            )
             when (page) {
-                SupportPage.LOADING -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+                SupportPage.LOADING -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        BrandMark(Modifier.size(68.dp))
+                        Spacer(Modifier.height(18.dp))
+                        CircularProgressIndicator(Modifier.size(28.dp), strokeWidth = 3.dp)
+                        Spacer(Modifier.height(12.dp))
+                        Text("Preparing your support desk", color = Muted, style = MaterialTheme.typography.bodyMedium)
+                    }
+                }
                 SupportPage.LOGIN -> AuthShell("School Support", "Sign in with the mobile number registered at " + SchoolBrand.schoolName + ".") {
                     Text(SchoolBrand.shortName, style = MaterialTheme.typography.labelSmall, color = Indigo, fontWeight = FontWeight.Bold)
                     if (SchoolBrand.location.isNotBlank()) {
