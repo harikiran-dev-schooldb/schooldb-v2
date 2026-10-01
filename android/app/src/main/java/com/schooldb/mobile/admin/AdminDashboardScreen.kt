@@ -357,9 +357,13 @@ fun AdminDashboardScreen(
     var selectedTicket by rememberSaveable(school.schoolSlug) { mutableStateOf<String?>(null) }
     var selectedStudent by rememberSaveable(school.schoolSlug) { mutableStateOf<String?>(null) }
     var showAnnouncements by rememberSaveable(school.schoolSlug) { mutableStateOf(false) }
+    var showAnnouncementComposer by rememberSaveable(school.schoolSlug) { mutableStateOf(false) }
+    var showHomeworkComposer by rememberSaveable(school.schoolSlug) { mutableStateOf(false) }
     var showSignOutConfirmation by rememberSaveable(school.schoolSlug) { mutableStateOf(false) }
-    BackHandler(enabled = selectedSection != null || selectedTicket != null || selectedStudent != null || showAnnouncements) {
+    BackHandler(enabled = selectedSection != null || selectedTicket != null || selectedStudent != null || showAnnouncements || showAnnouncementComposer || showHomeworkComposer) {
         when {
+            showAnnouncementComposer -> showAnnouncementComposer = false
+            showHomeworkComposer -> showHomeworkComposer = false
             selectedTicket != null -> selectedTicket = null
             selectedStudent != null -> selectedStudent = null
             selectedSection != null -> selectedSection = null
@@ -367,11 +371,34 @@ fun AdminDashboardScreen(
         }
     }
 
+    if (showAnnouncementComposer) {
+        AdminAnnouncementComposerScreen(
+            onBack = { showAnnouncementComposer = false },
+            onPublished = {
+                showAnnouncementComposer = false
+                showAnnouncements = true
+            },
+        )
+        return
+    }
+    if (showHomeworkComposer) {
+        AdminHomeworkComposerScreen(
+            onBack = { showHomeworkComposer = false },
+            onPublished = { showHomeworkComposer = false },
+        )
+        return
+    }
     if (showAnnouncements) {
-        AdminNotificationsScreen(onBack = {
-            showAnnouncements = false
-            viewModel.refresh(forceRefresh = true)
-        })
+        AdminNotificationsScreen(
+            onBack = {
+                showAnnouncements = false
+                viewModel.refresh(forceRefresh = true)
+            },
+            onCreate = {
+                showAnnouncements = false
+                showAnnouncementComposer = true
+            },
+        )
         return
     }
     selectedTicket?.let { ticketId ->
@@ -498,6 +525,8 @@ fun AdminDashboardScreen(
                     dashboard = state.dashboard,
                     modifier = Modifier.padding(padding),
                     onSection = { selectedSection = it },
+                    onAnnouncement = { showAnnouncements = true },
+                    onHomework = { showHomeworkComposer = true },
                     onSwitchAccount = onSwitchAccount,
                     onSignOut = { showSignOutConfirmation = true },
                 )
@@ -1245,6 +1274,8 @@ private fun MoreTab(
     dashboard: AdminDashboard?,
     modifier: Modifier,
     onSection: (String) -> Unit,
+    onAnnouncement: () -> Unit,
+    onHomework: () -> Unit,
     onSwitchAccount: () -> Unit,
     onSignOut: () -> Unit,
 ) {
@@ -1254,11 +1285,13 @@ private fun MoreTab(
         AdminTool("Students", "PEOPLE", "Profiles, enrollment and records", Lucide.UserRoundSearch, "students", listOf(Color(0xFF5A83FF), Color(0xFF3154D9))),
         AdminTool("Teachers", "TEAM", "Faculty directory and allocations", Lucide.BriefcaseBusiness, "teachers", listOf(Color(0xFFC576F0), Color(0xFF7A42CB))),
         AdminTool("Classes", "ACADEMICS", "Classes, sections and strength", Lucide.School, "classes", listOf(Color(0xFFFFA45B), Color(0xFFE2632F))),
+        AdminTool("Homework", "ACADEMICS", "Publish work to a class or section", Lucide.BookOpenCheck, "homework", listOf(Color(0xFF7B8CFF), Color(0xFF4A42C8))),
         AdminTool("Fees", "FINANCE", "Payments and outstanding balances", Lucide.BadgeIndianRupee, "fees", listOf(Color(0xFF48D59B), Color(0xFF0A9367))),
         AdminTool("Leave", "APPROVALS", "Review requests that need action", Lucide.ClipboardCheck, "leave", listOf(Color(0xFFFFC857), Color(0xFFDA8616))),
         AdminTool("Timetable", "PLANNING", "The live academic schedule", Lucide.CalendarClock, "timetable", listOf(Color(0xFF70A0FF), Color(0xFF4354C9))),
         AdminTool("Exams", "ASSESSMENT", "Schedules, marks and results", Lucide.BookOpenCheck, "exams", listOf(Color(0xFFA982F3), Color(0xFF6638C5))),
         AdminTool("Calendar", "SCHOOL LIFE", "Events, holidays and milestones", Lucide.CalendarRange, "calendar", listOf(Color(0xFFF17D9E), Color(0xFFC93466))),
+        AdminTool("Announcements", "COMMUNICATION", "Send targeted school updates", Lucide.Megaphone, "announcements", listOf(Color(0xFFFF8B7B), Color(0xFFC93D58))),
         AdminTool("Fee collection", "COLLECTIONS", "Pending installments and follow-up", Lucide.ReceiptIndianRupee, "fee-collection", listOf(Color(0xFF3CD4B0), Color(0xFF057E69))),
         AdminTool("Admissions", "GROWTH", "New applications and onboarding", Lucide.UserRoundPlus, "admissions", listOf(Color(0xFF56BCEB), Color(0xFF2568C7))),
     )
@@ -1293,6 +1326,7 @@ private fun MoreTab(
         }
         item { PremiumSectionTitle("Academic command", "Plan the rhythm of teaching and learning") }
         item { WideAdminTool(byId.getValue("classes"), onSection) }
+        item { WideAdminTool(byId.getValue("homework")) { onHomework() } }
         item {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 PremiumAdminTool(byId.getValue("timetable"), Modifier.weight(1f), onSection)
@@ -1300,6 +1334,7 @@ private fun MoreTab(
             }
         }
         item { WideAdminTool(byId.getValue("calendar"), onSection) }
+        item { WideAdminTool(byId.getValue("announcements")) { onAnnouncement() } }
         item { PremiumSectionTitle("Office & growth", "Money, admissions and front-office momentum") }
         item { WideAdminTool(byId.getValue("fee-collection"), onSection) }
         item { WideAdminTool(byId.getValue("admissions"), onSection) }

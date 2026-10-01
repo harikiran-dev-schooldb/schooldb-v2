@@ -27,6 +27,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -156,7 +157,7 @@ internal class AdminNotificationsViewModel : ViewModel() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AdminNotificationsScreen(onBack: () -> Unit) {
+fun AdminNotificationsScreen(onBack: () -> Unit, onCreate: () -> Unit) {
     val viewModel: AdminNotificationsViewModel = viewModel()
     val state by viewModel.state.collectAsStateWithLifecycle()
     var filter by rememberSaveable { mutableStateOf(NotificationFilter.ALL) }
@@ -195,6 +196,12 @@ fun AdminNotificationsScreen(onBack: () -> Unit) {
                 Text("${state.items.count { !it.read }} unread",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(Modifier.height(12.dp))
+                Button(onClick = onCreate, modifier = Modifier.fillMaxWidth().height(48.dp)) {
+                    Icon(Lucide.Megaphone, contentDescription = null)
+                    Spacer(Modifier.size(8.dp))
+                    Text("Create announcement", fontWeight = FontWeight.Bold)
+                }
             }
         },
     ) { padding ->
