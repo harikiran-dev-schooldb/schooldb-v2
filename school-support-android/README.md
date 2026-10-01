@@ -1,12 +1,12 @@
 # School Support Android
 
-Standalone internal ticketing app for SchoolDB staff and school admins. It uses the same school code, WhatsApp OTP and Clerk sign-in flow as the main Android app, but keeps its own session.
+One shared internal ticketing app for staff and administrators across every SchoolDB school. Users enter their school code at sign-in, followed by the same WhatsApp OTP and Clerk flow as the main Android app. The support app keeps its own session.
 
 ## Run locally
 
 1. Apply the repository migrations to a local SchoolDB database and start the web server on port 3000.
 2. Configure `CLERK_PUBLISHABLE_KEY` in `~/.gradle/gradle.properties` (the same development key used by `android/`).
-3. Open this directory in Android Studio, or build a school variant such as `./gradlew :app:assembleDemoDebug`.
+3. Open this directory in Android Studio, or build with `./gradlew :app:assembleDebug`.
 4. Install the debug APK on an emulator. Debug connects to `http://10.0.2.2:3000/`.
 
 The debug APK's default server address works only in an emulator. For a physical phone on the
@@ -35,20 +35,10 @@ The debug build allows cleartext traffic for the local server. The release build
 
 ## Push notification setup
 
-Keep each school's Firebase file at `app/src/<flavor>/google-services.json`. Its Android client package must match that school's `applicationId` in `schools.properties`. The API key must be allowed to call the Firebase Installations API; otherwise Firebase token retrieval fails with `FIS_AUTH_ERROR`. Rebuild and reinstall that school variant after changing this file.
+Keep the shared Firebase file at `app/google-services.json`. It must contain an Android client for `com.schooldb.support`. The API key must be allowed to call the Firebase Installations API; otherwise token retrieval fails with `FIS_AUTH_ERROR`. One Firebase registration and one installed app serve all schools; push payloads continue to be checked against the signed-in school code.
 
-## Create an app for another school
+Release 0.8.0 requires the matching server `src/lib/support-push.ts` update: messages are data-only and include `schoolSlug`, `title`, `body`, and `ticketId`. Deploy the server change alongside the APK; legacy unscoped messages are rejected by the updated client. Device registration and logout token deletion retry through WorkManager when connectivity returns. Notification taps only open tickets for the signed-in school. Android notification permission and the Support tickets channel must be enabled.
 
-Run:
+## School branding
 
-```bash
-./tools/create-school.sh <flavor-id> <school-slug> <application-id> "<school-name>" "<location>"
-```
-
-For example:
-
-```bash
-./tools/create-school.sh stjoseph st-joseph com.schooldb.support.stjoseph "St Joseph School" "Hyderabad"
-```
-
-The command adds the school to `schools.properties` and creates flavor-specific resources. Replace the placeholder logo, add the school's Firebase file, adjust its colors, and build `:app:assembleStjosephDebug` or `:app:assembleStjosephRelease`.
+Upload or replace the school logo on the website's **Schools** page. After sign-in, the app reads the public school branding endpoint and displays the school name and logo in its dashboard header. Returning to the app refreshes branding. Schools without a logo retain the default mark; no separate school-specific APK is needed.

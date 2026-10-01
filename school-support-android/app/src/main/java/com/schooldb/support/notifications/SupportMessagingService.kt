@@ -23,21 +23,7 @@ class SupportMessagingService : FirebaseMessagingService() {
     override fun onNewToken(token: String) {
         val pushPreferences = getSharedPreferences("support_push", MODE_PRIVATE)
         pushPreferences.edit().putString("pending_fcm_token", token).apply()
-        val school = getSharedPreferences("support_session", MODE_PRIVATE)
-            .getString("school", null)?.takeIf(String::isNotBlank) ?: return
-        if (Clerk.activeSession == null) return
-        val installationId = pushPreferences.getString("installation_id", null)
-            ?: UUID.randomUUID().toString().also {
-                pushPreferences.edit().putString("installation_id", it).apply()
-            }
-        CoroutineScope(Dispatchers.IO).launch {
-            runCatching { SupportRepository().registerPushDevice(school, installationId, token) }
-                .onSuccess {
-                    if (pushPreferences.getString("pending_fcm_token", null) == token) {
-                        pushPreferences.edit().remove("pending_fcm_token").apply()
-                    }
-                }
-        }
+        SupportPushSync.enqueue(this)
     }
 
     override fun onMessageReceived(message: RemoteMessage) {
@@ -47,26 +33,22 @@ class SupportMessagingService : FirebaseMessagingService() {
             .getString("school", null)?.takeIf(String::isNotBlank) ?: return
 
         val messageSchool = message.data["schoolSlug"]
-        if (!messageSchool.isNullOrBlank() && messageSchool != school) return
+        if (messageSchool != school) return
 
-        val title = message.notification?.title ?: "School Support"
-        val body = message.notification?.body ?: "A support ticket was updated."
-        val ticketId = message.data["ticketId"]
+        val title = message.data["title"] ?: message.notification?.title ?: "School Support"
+        val body = message.data["body"] ?: message.notification?.body ?: "A support ticket was updated."
+        val ticketId = message.data["ticketId"]?.takeIf(String::isNotBlank) ?: return
+        updates.value = school to (updates.value.second + 1)
+        getSharedPreferences("support_push", MODE_PRIVATE).edit().putLong("updated_at", System.currentTimeMillis()).apply()
 
         val manager = getSystemService(NotificationManager::class.java)
-        manager.createNotificationChannel(
-            NotificationChannel(
-                CHANNEL_ID,
-                "Support tickets",
-                NotificationManager.IMPORTANCE_HIGH,
-            ).apply {
-                description = "Ticket assignments, replies and status updates"
-            },
-        )
+        createChannel(this)
 
         val intent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
-            ticketId?.let { putExtra("ticketId", it) }
+            putExtra("ticketId", ticketId)
+            putExtra("schoolSlug", school)
+            data = android.net.Uri.parse("school-support://ticket/$school/$ticketId")
         }
         val pendingIntent = PendingIntent.getActivity(
             this,
@@ -76,7 +58,10 @@ class SupportMessagingService : FirebaseMessagingService() {
         )
 
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setSmallIcon(com.schooldb.support.R.drawable.ic_support_notification)
+            .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
+            .setCategory(NotificationCompat.CATEGORY_MESSAGE)
+            .setGroup("support-$school")
             .setContentTitle(title)
             .setContentText(body)
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))
@@ -88,11 +73,21 @@ class SupportMessagingService : FirebaseMessagingService() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
             ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
         ) {
-            manager.notify(message.messageId?.hashCode() ?: System.currentTimeMillis().toInt(), notification)
+            manager.notify("$school:$ticketId", 0, notification)
         }
     }
 
     companion object {
         const val CHANNEL_ID = "support_tickets"
+        val updates = kotlinx.coroutines.flow.MutableStateFlow("" to 0L)
+
+        fun createChannel(context: android.content.Context) {
+            context.getSystemService(NotificationManager::class.java).createNotificationChannel(
+                NotificationChannel(CHANNEL_ID, "Support tickets", NotificationManager.IMPORTANCE_HIGH).apply {
+                    description = "Ticket assignments, replies and status updates"
+                    enableVibration(true)
+                }
+            )
+        }
     }
 }

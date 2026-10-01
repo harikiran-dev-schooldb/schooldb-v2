@@ -4,6 +4,9 @@ import androidx.lifecycle.ViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.CancellationException
 
 data class SupportTicketUiState(
     val tickets: List<TicketSummary> = emptyList(),
@@ -44,9 +47,10 @@ class SupportTicketViewModel(
         _state.update { it.copy(page = value) }
     }
 
-    fun restoreCachedTickets(cache: SupportTicketCache, school: String) {
+    suspend fun restoreCachedTickets(cache: SupportTicketCache, school: String) {
         if (state.value.ticketsLoaded) return
-        val cached = cache.read(school) ?: return
+        val cached = withContext(Dispatchers.IO) { cache.read(school) } ?: return
+        if (state.value.ticketsLoaded) return
         applyTicketList(cached.result, showingCachedData = true, cachedAt = cached.savedAt)
     }
 
@@ -62,7 +66,7 @@ class SupportTicketViewModel(
             val result = repository.tickets(school, filter, query, targetPage)
             applyTicketList(result, showingCachedData = false, cachedAt = System.currentTimeMillis())
             if ((filter.isBlank() || filter == "ALL") && query.isBlank() && targetPage == 1) {
-                cache?.write(school, result)
+                withContext(Dispatchers.IO) { cache?.write(school, result) }
             }
         } catch (error: Throwable) {
             _state.update { it.copy(ticketsLoading = false) }
@@ -101,11 +105,15 @@ class SupportTicketViewModel(
     }
 
     suspend fun loadAnalytics(school: String, force: Boolean = false) {
+        if (state.value.analyticsLoading) return
         if (!force && state.value.analytics != null) return
         _state.update { it.copy(analyticsLoading = true, analyticsError = null) }
         try {
             val analytics = repository.analytics(school)
             _state.update { it.copy(analytics = analytics, analyticsLoading = false) }
+        } catch (error: CancellationException) {
+            _state.update { it.copy(analyticsLoading = false) }
+            throw error
         } catch (error: SupportSessionExpiredException) {
             _state.update { it.copy(analyticsLoading = false) }
             throw error

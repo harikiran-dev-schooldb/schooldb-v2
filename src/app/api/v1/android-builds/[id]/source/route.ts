@@ -22,7 +22,6 @@ export async function GET(request: Request, { params }: Props) {
         status: true,
         callbackTokenHash: true,
         configuration: true,
-        logoBytes: true,
         firebaseConfig: true,
       },
     });
@@ -30,7 +29,7 @@ export async function GET(request: Request, { params }: Props) {
     if (!verifyAndroidBuildToken(bearerToken(request), build.callbackTokenHash)) {
       throw new ApiError(401, "Invalid build token.");
     }
-    if (!build.logoBytes || !build.firebaseConfig) {
+    if (!build.firebaseConfig) {
       throw new ApiError(410, "Android build inputs are no longer available.");
     }
 
@@ -41,7 +40,7 @@ export async function GET(request: Request, { params }: Props) {
         where: { id },
         data: {
           status: "BUILDING",
-          message: "Preparing the school Android application.",
+          message: "Preparing the universal School Support application.",
           startedAt: new Date(),
           githubRunId: runId || undefined,
         },
@@ -59,7 +58,6 @@ export async function GET(request: Request, { params }: Props) {
         data: {
           configuration:
             build.configuration as unknown as AndroidBuildConfiguration,
-          logoBase64: Buffer.from(build.logoBytes).toString("base64"),
           firebaseBase64: Buffer.from(
             JSON.stringify(build.firebaseConfig as Prisma.JsonValue),
             "utf8",

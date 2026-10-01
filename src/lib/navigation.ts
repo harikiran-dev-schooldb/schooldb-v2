@@ -62,7 +62,7 @@ export const navigation: NavigationItem[] = [
     roles: ["SUPER_ADMIN"],
   },
   {
-    title: "Android App Builder",
+    title: "Support Android App",
     href: "schools/android-app",
     icon: Smartphone,
     roles: ["SUPER_ADMIN"],

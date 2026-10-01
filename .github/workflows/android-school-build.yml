@@ -1,5 +1,5 @@
-name: Build school support Android app
-run-name: Android app · ${{ inputs.school_slug }} · ${{ inputs.build_id }}
+name: Build universal School Support Android app
+run-name: Universal Android app · ${{ inputs.build_id }}
 
 on:
   workflow_dispatch:
@@ -10,10 +10,6 @@ on:
         type: string
       callback_token:
         description: One-time build callback token
-        required: true
-        type: string
-      school_slug:
-        description: School URL
         required: true
         type: string
       source_url:
@@ -61,7 +57,7 @@ jobs:
             "${SOURCE_URL}?runId=${GITHUB_RUN_ID}" \
             --output /tmp/android-build-source.json
 
-      - name: Configure school flavor
+      - name: Configure universal app
         run: |
           python3 <<'PY'
           import base64
@@ -69,76 +65,12 @@ jobs:
           from pathlib import Path
 
           payload = json.loads(Path("/tmp/android-build-source.json").read_text())["data"]
-          config = payload["configuration"]
-          flavor = config["flavorId"]
           root = Path("school-support-android")
-          properties_path = root / "schools.properties"
-          lines = properties_path.read_text().splitlines()
-
-          for index, line in enumerate(lines):
-              if line.startswith("schools="):
-                  schools = [item.strip() for item in line.split("=", 1)[1].split(",") if item.strip()]
-                  if flavor not in schools:
-                      schools.append(flavor)
-                  lines[index] = "schools=" + ",".join(schools)
-                  break
-          else:
-              raise SystemExit("schools.properties does not define schools=")
-
-          values = {
-              "applicationId": config["applicationId"],
-              "schoolSlug": config["schoolSlug"],
-              "schoolName": config["schoolName"],
-              "shortName": config["shortName"],
-              "location": config["location"],
-              "supportLabel": config["supportLabel"],
-              "appName": config["appName"],
-              "primaryColor": config["primaryColor"],
-              "secondaryColor": config["secondaryColor"],
-              "accentColor": config["accentColor"],
-              "dangerColor": config["dangerColor"],
-          }
-
-          for key, value in values.items():
-              prefix = f"{flavor}.{key}="
-              for index, line in enumerate(lines):
-                  if line.startswith(prefix):
-                      lines[index] = prefix + value
-                      break
-              else:
-                  lines.append(prefix + value)
-
-          properties_path.write_text("\n".join(lines) + "\n")
-
-          resource_root = root / "app" / "src" / flavor / "res"
-          drawable = resource_root / "drawable"
-          drawable_nodpi = resource_root / "drawable-nodpi"
-          drawable.mkdir(parents=True, exist_ok=True)
-          drawable_nodpi.mkdir(parents=True, exist_ok=True)
-          (drawable_nodpi / "school_logo.png").write_bytes(
-              base64.b64decode(payload["logoBase64"])
-          )
-          (drawable / "brand_logo.xml").write_text("""<?xml version="1.0" encoding="utf-8"?>
-          <bitmap xmlns:android="http://schemas.android.com/apk/res/android"
-              android:src="@drawable/school_logo"
-              android:gravity="fill" />
-          """)
-          (drawable / "brand_launcher_foreground.xml").write_text("""<?xml version="1.0" encoding="utf-8"?>
-          <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-              <item android:left="24dp" android:top="24dp" android:right="24dp" android:bottom="24dp">
-                  <bitmap android:src="@drawable/school_logo" android:gravity="fill" />
-              </item>
-          </layer-list>
-          """)
-          (root / "app" / "src" / flavor / "google-services.json").write_bytes(
+          (root / "app" / "google-services.json").write_bytes(
               base64.b64decode(payload["firebaseBase64"])
           )
-
-          variant = flavor[0].upper() + flavor[1:]
           with Path("/tmp/android-build.env").open("w") as output:
-              output.write(f"FLAVOR_ID={flavor}\n")
-              output.write(f"VARIANT={variant}\n")
-              output.write(f"ARTIFACT_NAME=school-support-{flavor}\n")
+              output.write("ARTIFACT_NAME=school-support-universal\n")
           PY
 
           cat /tmp/android-build.env >> "$GITHUB_ENV"
@@ -170,24 +102,24 @@ jobs:
         working-directory: school-support-android
         run: |
           ./gradlew \
-            ":app:assemble${VARIANT}Release" \
-            ":app:bundle${VARIANT}Release" \
+            ":app:assembleRelease" \
+            ":app:bundleRelease" \
             -PVERSION_CODE="$GITHUB_RUN_NUMBER"
 
       - name: Stage Android packages
         run: |
           cp \
-            "school-support-android/app/build/outputs/apk/$FLAVOR_ID/release/app-$FLAVOR_ID-release.apk" \
-            "/tmp/$FLAVOR_ID-school-support.apk"
+            "school-support-android/app/build/outputs/apk/release/app-release.apk" \
+            "/tmp/school-support.apk"
           cp \
-            "school-support-android/app/build/outputs/bundle/${FLAVOR_ID}Release/app-$FLAVOR_ID-release.aab" \
-            "/tmp/$FLAVOR_ID-school-support.aab"
+            "school-support-android/app/build/outputs/bundle/release/app-release.aab" \
+            "/tmp/school-support.aab"
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.ARTIFACT_NAME }}-apk
-          path: /tmp/${{ env.FLAVOR_ID }}-school-support.apk
+          path: /tmp/school-support.apk
           if-no-files-found: error
           retention-days: 30
 
@@ -195,7 +127,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.ARTIFACT_NAME }}-play
-          path: /tmp/${{ env.FLAVOR_ID }}-school-support.aab
+          path: /tmp/school-support.aab
           if-no-files-found: error
           retention-days: 30
 

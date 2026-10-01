@@ -23,7 +23,11 @@ class SupportAuthViewModel : ViewModel() {
         if (_state.value.school.isBlank()) _state.update { it.copy(school = school) }
     }
 
-    fun setSchool(value: String) = _state.update { it.copy(school = value.trim()) }
+    fun setSchool(value: String) = _state.update {
+        it.copy(school = value.lowercase().replace(' ', '-').filter { character ->
+            character.isLetterOrDigit() || character == '-'
+        })
+    }
     fun setPhone(value: String) = _state.update { it.copy(phone = value.filter(Char::isDigit).take(10)) }
     fun setCode(value: String) = _state.update { it.copy(code = value.filter(Char::isDigit).take(6)) }
 

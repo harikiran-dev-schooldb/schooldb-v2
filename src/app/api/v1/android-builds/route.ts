@@ -2,12 +2,11 @@ import { Prisma } from "@/generated/prisma/client";
 import {
   createAndroidBuildCallbackToken,
   hashAndroidBuildToken,
-  parseAndroidBuildConfiguration,
   publicAppUrl,
-  readAndroidLogo,
   readFirebaseConfiguration,
   triggerGithubAndroidBuild,
   type AndroidBuildConfiguration,
+  UNIVERSAL_ANDROID_CONFIGURATION,
 } from "@/lib/android-build";
 import { apiHandler } from "@/lib/api";
 import { requireRole } from "@/lib/auth";
@@ -93,20 +92,15 @@ export async function POST(request: Request) {
 
     const activeBuild = await prisma.androidAppBuild.findFirst({
       where: {
-        schoolId,
         status: { in: ["QUEUED", "BUILDING"] },
       },
       select: { id: true },
     });
     if (activeBuild) {
-      throw new ApiError(409, "An Android build is already running for this school.");
+      throw new ApiError(409, "A universal Android build is already running.");
     }
 
-    const configuration = parseAndroidBuildConfiguration(form);
-    if (configuration.schoolSlug !== school.slug) {
-      throw new ApiError(400, "The Android school URL must match the selected school.");
-    }
-    const logoBytes = await readAndroidLogo(form.get("logo"));
+    const configuration = UNIVERSAL_ANDROID_CONFIGURATION;
     const firebaseConfig = await readFirebaseConfiguration(
       form.get("firebaseConfig"),
       configuration.applicationId,
@@ -119,7 +113,6 @@ export async function POST(request: Request) {
         requestedById: membership.userId,
         status: "QUEUED",
         configuration: configuration as unknown as Prisma.InputJsonValue,
-        logoBytes,
         firebaseConfig: firebaseConfig as Prisma.InputJsonValue,
         callbackTokenHash: hashAndroidBuildToken(callbackToken),
         message: "Waiting for GitHub Actions.",
@@ -134,7 +127,6 @@ export async function POST(request: Request) {
       await triggerGithubAndroidBuild({
         buildId: build.id,
         callbackToken,
-        schoolSlug: school.slug,
         sourceUrl: baseUrl + "/api/v1/android-builds/" + build.id + "/source",
         callbackUrl: baseUrl + "/api/v1/android-builds/" + build.id + "/callback",
       });

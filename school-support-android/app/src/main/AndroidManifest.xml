@@ -10,6 +10,8 @@
         android:label="@string/brand_app_name"
         android:theme="@style/Theme.SchoolSupport"
         android:usesCleartextTraffic="@bool/uses_cleartext_traffic">
+        <meta-data android:name="com.google.firebase.messaging.default_notification_channel_id" android:value="support_tickets" />
+        <meta-data android:name="com.google.firebase.messaging.default_notification_icon" android:resource="@drawable/ic_support_notification" />
         <service android:name=".notifications.SupportMessagingService" android:exported="false">
             <intent-filter>
                 <action android:name="com.google.firebase.MESSAGING_EVENT" />

@@ -1,7 +1,8 @@
-# Android App Builder
+# School Support Android App
 
-The Super Admin **Android App Builder** creates a school-specific signed release
-APK through GitHub Actions.
+The Super Admin **Support Android App** page creates one universal signed release
+APK and Play Store AAB through GitHub Actions. The same package is installed for
+every school; users enter their school code when signing in.
 
 ## Web application environment
 
@@ -34,13 +35,13 @@ keystore as one line.
 
 ## Build flow
 
-1. A Super Admin selects a school, uploads a PNG logo and that Android
-   package's `google-services.json`, and starts the build.
-2. The web app validates the package and stores the protected build input.
+1. A Super Admin uploads the shared `google-services.json` and starts the build.
+2. The web app verifies that Firebase contains the `com.schooldb.support`
+   Android client and stores the protected build input.
 3. GitHub Actions downloads the input with a one-time random token.
-4. The workflow creates or updates the school flavor, signs the release APK,
-   and stores it as a 30-day GitHub Actions artifact.
+4. The workflow builds and signs the universal release APK and AAB and stores
+   them as 30-day GitHub Actions artifacts.
 5. The page polls build status and provides an authenticated download link.
 
-Firebase files, logos, callback tokens, and signing secrets are not committed
-to Git.
+Firebase files, callback tokens, and signing secrets are not committed to Git.
+Adding a school requires no Android configuration or rebuild.

@@ -2,22 +2,18 @@ import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 
 import { ApiError } from "@/lib/errors";
 
-export const MAX_ANDROID_LOGO_BYTES = 2 * 1024 * 1024;
 export const MAX_FIREBASE_CONFIG_BYTES = 64 * 1024;
 
 export type AndroidBuildConfiguration = {
   flavorId: string;
   applicationId: string;
-  schoolSlug: string;
-  schoolName: string;
-  shortName: string;
-  location: string;
-  supportLabel: string;
   appName: string;
-  primaryColor: string;
-  secondaryColor: string;
-  accentColor: string;
-  dangerColor: string;
+};
+
+export const UNIVERSAL_ANDROID_CONFIGURATION: AndroidBuildConfiguration = {
+  flavorId: "universal",
+  applicationId: "com.schooldb.support",
+  appName: "School Support",
 };
 
 type GithubSettings = {
@@ -51,96 +47,12 @@ export function getGithubAndroidBuildSettings(): GithubSettings {
   };
 }
 
-export function normalizeFlavorId(value: string) {
-  const normalized = value
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "")
-    .replace(/^[^a-z]+/, "");
-  return normalized || "school";
-}
-
-export function defaultAndroidApplicationId(slug: string) {
-  return "com.schooldb.support." + normalizeFlavorId(slug);
-}
-
-function requiredText(value: FormDataEntryValue | null, label: string, max = 120) {
-  const text = typeof value === "string" ? value.trim() : "";
-  if (!text) throw new ApiError(400, label + " is required.");
-  if (text.length > max) {
-    throw new ApiError(400, label + " cannot exceed " + max + " characters.");
-  }
-  return text;
-}
-
-function color(value: FormDataEntryValue | null, label: string) {
-  const text = requiredText(value, label, 7).toUpperCase();
-  if (!/^#[0-9A-F]{6}$/.test(text)) {
-    throw new ApiError(400, label + " must be a six-digit color.");
-  }
-  return "0xFF" + text.slice(1);
-}
-
-export function parseAndroidBuildConfiguration(form: FormData): AndroidBuildConfiguration {
-  const schoolSlug = requiredText(form.get("schoolSlug"), "School URL", 80)
-    .toLowerCase()
-    .replace(/[^a-z0-9-]/g, "");
-  const flavorId = normalizeFlavorId(
-    typeof form.get("flavorId") === "string"
-      ? String(form.get("flavorId"))
-      : schoolSlug,
-  );
-  const applicationId = requiredText(
-    form.get("applicationId"),
-    "Application ID",
-    160,
-  ).toLowerCase();
-
-  if (!/^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$/.test(applicationId)) {
-    throw new ApiError(
-      400,
-      "Application ID must look like com.schooldb.support.schoolname.",
-    );
-  }
-
-  return {
-    flavorId,
-    applicationId,
-    schoolSlug,
-    schoolName: requiredText(form.get("schoolName"), "School name"),
-    shortName: requiredText(form.get("shortName"), "Short name"),
-    location:
-      typeof form.get("location") === "string"
-        ? String(form.get("location")).trim().slice(0, 120)
-        : "",
-    supportLabel: requiredText(form.get("supportLabel"), "Support label"),
-    appName: requiredText(form.get("appName"), "App name"),
-    primaryColor: color(form.get("primaryColor"), "Primary color"),
-    secondaryColor: color(form.get("secondaryColor"), "Secondary color"),
-    accentColor: color(form.get("accentColor"), "Accent color"),
-    dangerColor: color(form.get("dangerColor"), "Danger color"),
-  };
-}
-
-export async function readAndroidLogo(value: FormDataEntryValue | null) {
-  if (!(value instanceof File)) {
-    throw new ApiError(400, "Upload the school logo as a PNG file.");
-  }
-  if (value.type !== "image/png") {
-    throw new ApiError(400, "The school logo must be a PNG file.");
-  }
-  if (value.size <= 0 || value.size > MAX_ANDROID_LOGO_BYTES) {
-    throw new ApiError(400, "The school logo must be smaller than 2 MB.");
-  }
-  return new Uint8Array(await value.arrayBuffer());
-}
-
 export async function readFirebaseConfiguration(
   value: FormDataEntryValue | null,
   applicationId: string,
 ) {
   if (!(value instanceof File)) {
-    throw new ApiError(400, "Upload the school's google-services.json file.");
+    throw new ApiError(400, "Upload the shared google-services.json file.");
   }
   if (value.size <= 0 || value.size > MAX_FIREBASE_CONFIG_BYTES) {
     throw new ApiError(400, "google-services.json must be smaller than 64 KB.");
@@ -213,7 +125,6 @@ export function publicAppUrl(request: Request) {
 export async function triggerGithubAndroidBuild(input: {
   buildId: string;
   callbackToken: string;
-  schoolSlug: string;
   sourceUrl: string;
   callbackUrl: string;
 }) {
@@ -237,7 +148,6 @@ export async function triggerGithubAndroidBuild(input: {
         inputs: {
           build_id: input.buildId,
           callback_token: input.callbackToken,
-          school_slug: input.schoolSlug,
           source_url: input.sourceUrl,
           callback_url: input.callbackUrl,
         },
@@ -318,7 +228,7 @@ export function androidBuildArtifactName(
   configuration: AndroidBuildConfiguration,
   format: "apk" | "aab" = "apk",
 ) {
-  const base = "school-support-" + configuration.flavorId;
+  const base = "school-support-" + (configuration.flavorId || "universal");
   return format === "aab" ? base + "-play" : base + "-apk";
 }
 

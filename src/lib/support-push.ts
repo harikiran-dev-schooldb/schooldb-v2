@@ -17,6 +17,12 @@ export async function sendSupportPush(input: {
   );
   if (!userIds.length) return;
 
+  const school = await prisma.school.findUnique({
+    where: { id: input.schoolId },
+    select: { slug: true },
+  });
+  if (!school) return;
+
   const messaging = firebaseMessaging();
   if (!messaging) {
     console.warn("Support push skipped: Firebase messaging is unavailable.");
@@ -41,15 +47,16 @@ export async function sendSupportPush(input: {
 
   const response = await messaging.sendEachForMulticast({
     tokens,
-    notification: { title: input.title, body: input.body },
     data: {
       type: "SUPPORT_TICKET",
+      schoolSlug: school.slug,
+      title: input.title,
+      body: input.body,
       ticketId: input.ticketId,
       ticketNo: input.ticketNo,
     },
     android: {
       priority: "high",
-      notification: { channelId: "support_tickets" },
     },
   });
 

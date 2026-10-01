@@ -6,38 +6,8 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
-val schoolsFile = rootProject.file("schools.properties")
-require(schoolsFile.exists()) { "Missing schools.properties" }
-
-val schoolProperties = Properties().apply {
-    FileInputStream(schoolsFile).use(::load)
-}
-
-fun schoolValue(schoolId: String, key: String): String =
-    schoolProperties.getProperty("$schoolId.$key")
-        ?.trim()
-        ?.takeIf(String::isNotEmpty)
-        ?: error("Missing $schoolId.$key in schools.properties")
-
-fun optionalSchoolValue(schoolId: String, key: String): String =
-    schoolProperties.getProperty("$schoolId.$key")?.trim().orEmpty()
-
-fun quoted(value: String): String =
-    "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
-
-val schoolIds = schoolProperties.getProperty("schools")
-    ?.split(',')
-    ?.map(String::trim)
-    ?.filter(String::isNotEmpty)
-    ?.distinct()
-    .orEmpty()
-
-require(schoolIds.isNotEmpty()) { "schools.properties must define at least one school" }
-
-val firebaseConfigBySchool = schoolIds.associateWith { schoolId ->
-    file("src/$schoolId/google-services.json")
-}
-if (firebaseConfigBySchool.values.any { it.exists() }) {
+val firebaseConfig = file("google-services.json")
+if (firebaseConfig.exists()) {
     apply(plugin = "com.google.gms.google-services")
 }
 
@@ -86,44 +56,11 @@ android {
         applicationId = "com.schooldb.support"
         minSdk = 26
         targetSdk = 36
-        versionCode = versionCodeOverride ?: 4
-        versionName = "0.4.0"
+        versionCode = versionCodeOverride ?: 8
+        versionName = "0.8.0"
         buildConfigField("String", "CLERK_PUBLISHABLE_KEY", "\"$clerkKey\"")
-        buildConfigField("boolean", "FIREBASE_CONFIGURED", "false")
-        // Safe generic defaults. Each school flavor overrides these values.
-        buildConfigField("String", "DEFAULT_SCHOOL_SLUG", "\"\"")
-        buildConfigField("String", "BRAND_SCHOOL_NAME", "\"School Support\"")
-        buildConfigField("String", "BRAND_SHORT_NAME", "\"SCHOOL SUPPORT\"")
-        buildConfigField("String", "BRAND_LOCATION", "\"\"")
-        buildConfigField("String", "BRAND_SUPPORT_LABEL", "\"SUPPORT\"")
-        buildConfigField("Long", "BRAND_PRIMARY_COLOR", "0xFF235A8CL")
-        buildConfigField("Long", "BRAND_SECONDARY_COLOR", "0xFF2E7D4FL")
-        buildConfigField("Long", "BRAND_ACCENT_COLOR", "0xFFE0A62BL")
-        buildConfigField("Long", "BRAND_DANGER_COLOR", "0xFFC7352EL")
+        buildConfigField("boolean", "FIREBASE_CONFIGURED", firebaseConfig.exists().toString())
         resValue("string", "brand_app_name", "School Support")
-    }
-
-    flavorDimensions += "school"
-
-    productFlavors {
-        schoolIds.forEach { schoolId ->
-            create(schoolId) {
-                dimension = "school"
-                applicationId = schoolValue(schoolId, "applicationId")
-                buildConfigField("String", "DEFAULT_SCHOOL_SLUG", quoted(schoolValue(schoolId, "schoolSlug")))
-                buildConfigField("String", "BRAND_SCHOOL_NAME", quoted(schoolValue(schoolId, "schoolName")))
-                buildConfigField("String", "BRAND_SHORT_NAME", quoted(schoolValue(schoolId, "shortName")))
-                buildConfigField("String", "BRAND_LOCATION", quoted(optionalSchoolValue(schoolId, "location")))
-                buildConfigField("String", "BRAND_SUPPORT_LABEL", quoted(schoolValue(schoolId, "supportLabel")))
-                buildConfigField("Long", "BRAND_PRIMARY_COLOR", schoolValue(schoolId, "primaryColor") + "L")
-                buildConfigField("Long", "BRAND_SECONDARY_COLOR", schoolValue(schoolId, "secondaryColor") + "L")
-                buildConfigField("Long", "BRAND_ACCENT_COLOR", schoolValue(schoolId, "accentColor") + "L")
-                buildConfigField("Long", "BRAND_DANGER_COLOR", schoolValue(schoolId, "dangerColor") + "L")
-                buildConfigField("boolean", "FIREBASE_CONFIGURED",
-                    firebaseConfigBySchool.getValue(schoolId).exists().toString())
-                resValue("string", "brand_app_name", schoolValue(schoolId, "appName"))
-            }
-        }
     }
 
     buildTypes {
@@ -181,6 +118,7 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.10.0")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.10.0")
     implementation("androidx.profileinstaller:profileinstaller:1.4.1")
+    implementation("androidx.work:work-runtime-ktx:2.10.1")
     implementation("com.clerk:clerk-android-api:1.1.3")
     implementation("com.google.firebase:firebase-messaging")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")

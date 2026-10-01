@@ -48,6 +48,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.clerk.api.Clerk
@@ -62,22 +63,25 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 
 class MainActivity : ComponentActivity() {
     private val notificationTicketId = mutableStateOf<String?>(null)
+    private val notificationSchool = mutableStateOf<String?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         notificationTicketId.value = intent.getStringExtra("ticketId")
-        setContent { SupportTheme { SupportApp(notificationTicketId.value) { notificationTicketId.value = null } } }
+        notificationSchool.value = intent.getStringExtra("schoolSlug")
+        setContent { SupportTheme { SupportApp(notificationTicketId.value, notificationSchool.value) { notificationTicketId.value = null } } }
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
         notificationTicketId.value = intent.getStringExtra("ticketId")
+        notificationSchool.value = intent.getStringExtra("schoolSlug")
     }
 }
 
 @Composable
-private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: () -> Unit) {
+private fun SupportApp(notificationTicketId: String?, notificationSchool: String?, onNotificationConsumed: () -> Unit) {
     val context = LocalContext.current
     val preferences = context.getSharedPreferences("support_session", 0)
     val api = remember { SupportRepository() }
@@ -90,7 +94,7 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
     val adminState by adminViewModel.state.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     val savedSchool = remember {
-        preferences.getString("school", SchoolBrand.defaultSchoolSlug).orEmpty()
+        preferences.getString("school", "").orEmpty()
     }
     LaunchedEffect(savedSchool) {
         authViewModel.initializeSchool(savedSchool)
@@ -108,6 +112,27 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
     var requestedTicketFilter by remember { mutableStateOf<String?>(null) }
     var signingOut by remember { mutableStateOf(false) }
     var resendSeconds by remember { mutableIntStateOf(0) }
+    var resumeVersion by remember { mutableIntStateOf(0) }
+    var identity by remember(school) { mutableStateOf<SchoolIdentity?>(null) }
+    var alertsEnabled by remember { mutableStateOf(true) }
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) resumeVersion++
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+    LaunchedEffect(school, clerkUser, resumeVersion) {
+        alertsEnabled = androidx.core.app.NotificationManagerCompat.from(context).areNotificationsEnabled() &&
+            (context.getSystemService(android.app.NotificationManager::class.java)
+                .getNotificationChannel("support_tickets")?.importance != android.app.NotificationManager.IMPORTANCE_NONE)
+        if (school.isNotBlank() && clerkUser != null) {
+            try { identity = loadSchoolIdentity(school) }
+            catch (cancelled: CancellationException) { throw cancelled }
+            catch (_: Exception) { /* Keep the last successfully loaded school identity. */ }
+        }
+    }
 
     LaunchedEffect(resendSeconds) {
         if (resendSeconds > 0) {
@@ -118,36 +143,19 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
 
     val notificationPermission = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
-    ) { }
-    LaunchedEffect(page, school, ticketState.ticketsLoaded) {
-        if (page == SupportPage.DASHBOARD && ticketState.ticketsLoaded && school.isNotBlank() && BuildConfig.FIREBASE_CONFIGURED) {
+    ) { granted -> alertsEnabled = granted }
+    LaunchedEffect(page, school, ticketState.ticketsLoaded, resumeVersion) {
+        if (page == SupportPage.DASHBOARD && ticketState.ticketsLoaded && school.isNotBlank() &&
+            BuildConfig.FIREBASE_CONFIGURED) {
+            val pushPreferences = context.getSharedPreferences("support_push", 0)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                !pushPreferences.getBoolean("permission_requested", false) &&
                 ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
             ) {
+                pushPreferences.edit().putBoolean("permission_requested", true).apply()
                 notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
-            val pushPreferences = context.getSharedPreferences("support_push", 0)
-            val installationId = pushPreferences.getString("installation_id", null)
-                ?: UUID.randomUUID().toString().also {
-                    pushPreferences.edit().putString("installation_id", it).apply()
-                }
-            FirebaseMessaging.getInstance().token.addOnSuccessListener { token ->
-                Log.i("SupportPush", "Firebase token available; registering support device")
-                pushPreferences.edit().putString("pending_fcm_token", token).apply()
-                scope.launch {
-                    try {
-                        api.registerPushDevice(school, installationId, token)
-                        Log.i("SupportPush", "Support device registered")
-                        if (pushPreferences.getString("pending_fcm_token", null) == token) {
-                            pushPreferences.edit().remove("pending_fcm_token").apply()
-                        }
-                    } catch (exception: Exception) {
-                        Log.e("SupportPush", "Support device registration failed", exception)
-                    }
-                }
-            }.addOnFailureListener { exception ->
-                Log.e("SupportPush", "Firebase token request failed", exception)
-            }
+            com.schooldb.support.notifications.SupportPushSync.enqueue(context)
         }
     }
 
@@ -182,6 +190,8 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
         scope.launch {
             try {
                 action()
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: SupportSessionExpiredException) {
                 handleSessionExpired()
             } catch (e: Exception) {
@@ -208,6 +218,23 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
         ticketViewModel.loadDetail(school, id)
         ticketViewModel.loadTickets(school, cache = ticketCache)
         ticketViewModel.invalidateAnalytics()
+    }
+
+    val pushUpdate by com.schooldb.support.notifications.SupportMessagingService.updates.collectAsStateWithLifecycle()
+    var refreshedEvent by remember(school) { mutableStateOf(resumeVersion to pushUpdate.second) }
+    LaunchedEffect(resumeVersion, pushUpdate, page, busy, ticketState.ticketsLoading) {
+        val event = resumeVersion to pushUpdate.second
+        if (event == refreshedEvent || busy || signingOut || ticketState.ticketsLoading ||
+            !ticketState.ticketsLoaded || Clerk.activeSession == null ||
+            page !in listOf(SupportPage.DASHBOARD, SupportPage.TICKET_DETAIL)) return@LaunchedEffect
+        refreshedEvent = event
+        // Launch outside this effect so loading-state updates do not cancel the request.
+        run {
+            loadTickets()
+            if (page == SupportPage.TICKET_DETAIL) ticketState.detail?.id?.let { ticketViewModel.loadDetail(school, it) }
+            ticketViewModel.invalidateAnalytics()
+            if (ticketState.isAdmin) ticketViewModel.loadAnalytics(school)
+        }
     }
 
     LaunchedEffect(page, school, ticketState.isAdmin) {
@@ -237,6 +264,10 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
         if (school.isBlank() || Clerk.activeSession == null ||
             page in listOf(SupportPage.LOADING, SupportPage.LOGIN, SupportPage.OTP, SupportPage.ACCOUNTS)
         ) return@LaunchedEffect
+        if (notificationSchool != school) {
+            onNotificationConsumed()
+            return@LaunchedEffect
+        }
 
         try {
             loadDetail(ticketId)
@@ -282,18 +313,17 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
             page = SupportPage.LOGIN
             return@LaunchedEffect
         }
-        if (!clerkInitialized || school.isBlank()) {
+        if (!clerkInitialized) {
             page = SupportPage.LOADING
             return@LaunchedEffect
         }
-        page = if (clerkUser != null) SupportPage.DASHBOARD else SupportPage.LOGIN
+        page = if (school.isNotBlank() && clerkUser != null) SupportPage.DASHBOARD else SupportPage.LOGIN
     }
     LaunchedEffect(page, school) {
         if (page == SupportPage.DASHBOARD && school.isNotBlank() && !ticketState.ticketsLoaded && Clerk.activeSession != null) {
             ticketViewModel.restoreCachedTickets(ticketCache, school)
             // Draw the dashboard before starting its first network request.
             withFrameNanos { }
-            delay(50)
             try {
                 loadTickets()
             } catch (e: CancellationException) {
@@ -314,47 +344,25 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         bottomBar = {
             if (page == SupportPage.DASHBOARD) {
-                NavigationBar(
-                    containerColor = Color.White,
-                    tonalElevation = 0.dp,
-                    windowInsets = NavigationBarDefaults.windowInsets,
-                ) {
-                    listOf(
-                        Triple("Overview", Icons.Outlined.Dashboard, "Overview"),
-                        Triple("Tickets", Icons.Outlined.ConfirmationNumber, "Tickets"),
-                        Triple("Analytics", Icons.Outlined.BarChart, "Analytics"),
-                    ).forEach { (tab, icon, label) ->
-                        NavigationBarItem(
-                            selected = dashboardTab.label == tab,
-                            onClick = { dashboardTab = DashboardTab.entries.first { it.label == tab } },
-                            icon = { Icon(icon, contentDescription = label) },
-                            label = { Text(label, fontWeight = if (dashboardTab.label == tab) FontWeight.Bold else FontWeight.Medium) },
-                            colors = NavigationBarItemDefaults.colors(
-                                selectedIconColor = Indigo,
-                                selectedTextColor = Ink,
-                                indicatorColor = Indigo.copy(alpha = 0.11f),
-                                unselectedIconColor = Muted,
-                                unselectedTextColor = Muted,
-                            ),
-                        )
-                    }
+                SupportNavigationDock(dashboardTab.label) { label ->
+                    dashboardTab = DashboardTab.entries.first { it.label == label }
                 }
             }
         },
         topBar = {
         if (page in listOf(SupportPage.DASHBOARD, SupportPage.CREATE_TICKET, SupportPage.TICKET_DETAIL, SupportPage.ADMINS, SupportPage.ADMIN_FORM)) {
-            Surface(color = Color.White, border = BorderStroke(0.5.dp, Line.copy(alpha = 0.7f))) {
-                Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 10.dp),
+            SupportHeaderSurface {
+                Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp),
                     horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        if (page == SupportPage.DASHBOARD) BrandMark(Modifier.size(42.dp))
+                    Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        if (page == SupportPage.DASHBOARD) SchoolIdentityMark(identity, Modifier.size(42.dp))
                         else Surface(shape = CircleShape, color = Canvas, border = BorderStroke(1.dp, Line)) {
                             IconButton(onClick = { page = if (page == SupportPage.ADMIN_FORM) SupportPage.ADMINS else SupportPage.DASHBOARD }, modifier = Modifier.size(42.dp)) {
                             Icon(Icons.Outlined.ArrowBack, contentDescription = "Back", tint = Ink)
                             }
                         }
                         Column {
-                            Text(if (page == SupportPage.DASHBOARD) SchoolBrand.shortName else SchoolBrand.supportLabel,
+                            Text((identity?.name ?: school).uppercase(), maxLines = 1, overflow = TextOverflow.Ellipsis,
                                 style = MaterialTheme.typography.labelSmall, color = Muted, fontWeight = FontWeight.Bold)
                             Text(when (page) {
                                 SupportPage.DASHBOARD -> "Support Desk"
@@ -372,6 +380,9 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
                             // and must never keep the user on an endless loading screen.
                             signingOut = true
                             page = SupportPage.LOGIN
+                            preferences.edit().remove("school").apply()
+                            context.getSystemService(android.app.NotificationManager::class.java).cancelAll()
+                            context.getSharedPreferences("support_push", 0).edit().putBoolean("delete_token", true).apply()
                             scope.launch {
                                 val pushPreferences = context.getSharedPreferences("support_push", 0)
                                 try {
@@ -389,11 +400,6 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
                                                 .apply()
                                         }
                                     }
-                                    FirebaseMessaging.getInstance().deleteToken()
-                                        .addOnFailureListener { exception ->
-                                            Log.w("SupportPush", "Could not delete Firebase token during sign out", exception)
-                                        }
-                                    pushPreferences.edit().remove("pending_fcm_token").apply()
                                     api.signOut()
                                 } catch (exception: Exception) {
                                     Log.w("SupportAuth", "Remote sign out cleanup failed", exception)
@@ -402,9 +408,10 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
                                     ticketCache.clear(school)
                                     ticketViewModel.reset()
                                     adminViewModel.reset()
-                                    authViewModel.clearAll(SchoolBrand.defaultSchoolSlug)
+                                    authViewModel.clearAll()
                                     dashboardTab = DashboardTab.OVERVIEW
                                     requestedTicketFilter = null
+                                    com.schooldb.support.notifications.SupportPushSync.enqueue(context, replace = true)
                                     signingOut = false
                                     page = SupportPage.LOGIN
                                 }
@@ -416,6 +423,14 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
         }
     }) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
+            if (page == SupportPage.DASHBOARD && !alertsEnabled) {
+                TextButton(onClick = {
+                    context.startActivity(Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                        .putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName))
+                }, modifier = Modifier.fillMaxWidth()) {
+                    Text("Ticket alerts are off · Enable notifications")
+                }
+            }
             if (notice.isNotBlank()) Surface(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
                 color = Color(0xFFE9F7EF), shape = RoundedCornerShape(14.dp)) {
                 Text(notice, Modifier.padding(14.dp), color = Color(0xFF16704C),
@@ -441,22 +456,22 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
                         Text("Preparing your support desk", color = Muted, style = MaterialTheme.typography.bodyMedium)
                     }
                 }
-                SupportPage.LOGIN -> AuthShell("School Support", "Sign in with the mobile number registered at " + SchoolBrand.schoolName + ".") {
-                    Text(SchoolBrand.shortName, style = MaterialTheme.typography.labelSmall, color = Indigo, fontWeight = FontWeight.Bold)
-                    if (SchoolBrand.location.isNotBlank()) {
-                        Spacer(Modifier.height(4.dp))
-                        Text(SchoolBrand.location, style = MaterialTheme.typography.bodySmall, color = Muted)
-                    }
+                SupportPage.LOGIN -> AuthShell("School Support", "Enter your school code and registered mobile number.") {
+                    Text("YOUR SCHOOL", style = MaterialTheme.typography.labelSmall, color = Indigo, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(12.dp))
+                    SupportField(school, authViewModel::setSchool, "School code", enabled = !busy && !signingOut)
                     Spacer(Modifier.height(16.dp))
-                    SupportField(phone, authViewModel::setPhone, "Mobile number")
+                    SupportField(phone, authViewModel::setPhone, "Mobile number", keyboardType = KeyboardType.Phone,
+                        enabled = !busy && !signingOut)
                     Spacer(Modifier.height(20.dp))
-                    PrimaryAction("Send WhatsApp code", !busy && school.isNotBlank() && phone.length == 10,
+                    PrimaryAction("Send WhatsApp code", !busy && !signingOut && school.isNotBlank() && phone.length == 10,
                         onClick = { run { api.sendCode(school, phone); resendSeconds = 60; page = SupportPage.OTP } })
                 }
                 SupportPage.OTP -> AuthShell("Check WhatsApp", "Enter the six-digit code sent to +91 ••••••" + phone.takeLast(4) + ".") {
                     Text("VERIFY MOBILE", style = MaterialTheme.typography.labelSmall, color = Indigo, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(12.dp))
-                    SupportField(code, authViewModel::setCode, "Six-digit code")
+                    SupportField(code, authViewModel::setCode, "Six-digit code", keyboardType = KeyboardType.NumberPassword,
+                        enabled = !busy)
                     Spacer(Modifier.height(20.dp))
                     PrimaryAction("Verify and continue", !busy && code.length == 6, onClick = { run {
                         val response = api.verifyCode(school, phone, code)
@@ -479,7 +494,7 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
                     ) { Text(if (resendSeconds > 0) "Resend code in ${resendSeconds}s" else "Resend WhatsApp code") }
                     TextButton(onClick = { resendSeconds = 0; page = SupportPage.LOGIN }, modifier = Modifier.align(Alignment.CenterHorizontally)) { Text("Change number") }
                 }
-                SupportPage.ACCOUNTS -> AuthShell("Choose an account", "Select how you want to work in " + SchoolBrand.schoolName + ".") {
+                SupportPage.ACCOUNTS -> AuthShell("Choose an account", "Select the account you want to use for this school.") {
                     authState.accounts.forEach { (id, label) ->
                         SurfaceCard(Modifier.fillMaxWidth().padding(bottom = 10.dp).clickable { run {
                             finishLogin(api.selectAccount(school, authState.challenge, id).getString("token"))

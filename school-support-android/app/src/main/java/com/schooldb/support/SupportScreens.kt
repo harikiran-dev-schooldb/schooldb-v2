@@ -13,6 +13,12 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -35,6 +41,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import com.schooldb.support.tickets.*
 import kotlinx.coroutines.launch
@@ -118,6 +126,10 @@ internal fun TicketDashboard(school: String, tickets: List<TicketSummary>, summa
     onRefresh: () -> Unit, onTicket: (String) -> Unit) {
     val context = LocalContext.current
     var filter by remember { mutableStateOf("All") }
+    val overviewScroll = rememberLazyListState()
+    val ticketsScroll = rememberLazyListState()
+    val analyticsScroll = rememberLazyListState()
+    val keyboard = LocalSoftwareKeyboardController.current
     LaunchedEffect(requestedFilter) {
         requestedFilter?.let {
             filter = it
@@ -131,7 +143,13 @@ internal fun TicketDashboard(school: String, tickets: List<TicketSummary>, summa
         onRefresh = onRefresh,
         modifier = Modifier.fillMaxSize(),
     ) {
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 28.dp),
+    LazyColumn(Modifier.fillMaxSize(),
+        state = when (selectedTab) {
+            "Tickets" -> ticketsScroll
+            "Analytics" -> analyticsScroll
+            else -> overviewScroll
+        },
+        contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 28.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)) {
         if (showingCachedData) item(contentType = "offline-banner") {
             Surface(
@@ -145,7 +163,7 @@ internal fun TicketDashboard(school: String, tickets: List<TicketSummary>, summa
                     Spacer(Modifier.width(10.dp))
                     Column(Modifier.weight(1f)) {
                         Text("Showing saved tickets", color = Ink, fontWeight = FontWeight.SemiBold)
-                        Text("Connect and tap to refresh for the latest updates.", color = Muted,
+                        Text(if (ticketsLoading) "Refreshing in the background…" else "Tap to refresh for the latest updates.", color = Muted,
                             style = MaterialTheme.typography.bodySmall)
                     }
                     Icon(Icons.Outlined.Refresh, contentDescription = "Retry", tint = Indigo)
@@ -155,19 +173,11 @@ internal fun TicketDashboard(school: String, tickets: List<TicketSummary>, summa
         if (selectedTab == "Overview") {
 
             item {
-            Column(Modifier.padding(top = 14.dp)) {
-                Text("OVERVIEW · " + school.uppercase(), style = MaterialTheme.typography.labelSmall,
-                    color = Indigo, fontWeight = FontWeight.Bold)
-                Spacer(Modifier.height(5.dp))
-                Text("Stay ahead of every issue.", style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold, color = Ink)
-                Text("Your school support desk, all in one place.", color = Muted,
-                    style = MaterialTheme.typography.bodyMedium)
-            }
+            SupportPageHeading("Stay ahead of every issue.", "Your school support desk, all in one place.", "OVERVIEW")
         }
         item {
             Box(Modifier.fillMaxWidth().background(
-                Brush.linearGradient(listOf(Navy, Color(0xFF235A8C), SchoolGreen)), RoundedCornerShape(24.dp))) {
+                Brush.linearGradient(listOf(Navy, Indigo, Violet)), RoundedCornerShape(28.dp))) {
                 Column(Modifier.padding(22.dp)) {
                     Pill(SchoolBrand.supportLabel, SchoolGold)
                     Spacer(Modifier.height(18.dp))
@@ -288,15 +298,7 @@ internal fun TicketDashboard(school: String, tickets: List<TicketSummary>, summa
         }
         if (selectedTab == "Analytics") {
             item {
-                Column(Modifier.padding(top = 14.dp)) {
-                    Text("ANALYTICS · " + school.uppercase(), style = MaterialTheme.typography.labelSmall,
-                        color = Indigo, fontWeight = FontWeight.Bold)
-                    Spacer(Modifier.height(5.dp))
-                    Text("Support performance", style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold, color = Ink)
-                    Text("School-wide ticket trends, workload and resolution performance.",
-                        color = Muted, style = MaterialTheme.typography.bodyMedium)
-                }
+                SupportPageHeading("Support performance", "School-wide trends, workload and resolution performance.", "ANALYTICS")
             }
             if (!admin) {
                 item {
@@ -381,7 +383,7 @@ internal fun TicketDashboard(school: String, tickets: List<TicketSummary>, summa
         item {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween) {
-                SectionTitle("Tickets", "Follow progress and respond quickly")
+                Box(Modifier.weight(1f)) { SupportPageHeading("Tickets", "Follow progress and respond quickly", "SUPPORT QUEUE") }
                 IconButton(onClick = onRefresh, enabled = !busy) {
                     Icon(Icons.Outlined.Refresh, contentDescription = "Refresh tickets", tint = Indigo)
                 }
@@ -398,6 +400,13 @@ internal fun TicketDashboard(school: String, tickets: List<TicketSummary>, summa
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                     placeholder = { Text("Ticket no, subject, student...") },
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                    keyboardActions = KeyboardActions(onSearch = {
+                        if (!busy && !ticketsLoading) {
+                            keyboard?.hide()
+                            onSearch()
+                        }
+                    }),
                     shape = RoundedCornerShape(13.dp),
                     trailingIcon = {
                         IconButton(onClick = onSearch, enabled = !busy && !ticketsLoading) {
@@ -420,6 +429,7 @@ internal fun TicketDashboard(school: String, tickets: List<TicketSummary>, summa
                     FilterChip(
                         selected = filter == value,
                         onClick = { onOpenQueue(value) },
+                        enabled = !busy && !ticketsLoading,
                         label = { Text(value) },
                         shape = RoundedCornerShape(12.dp),
                         colors = FilterChipDefaults.filterChipColors(
@@ -440,13 +450,9 @@ internal fun TicketDashboard(school: String, tickets: List<TicketSummary>, summa
             LoadingTicketCard()
         }
         if (tickets.isEmpty() && ticketsLoaded) item(contentType = "ticket-empty") {
-            SurfaceCard(Modifier.fillMaxWidth()) {
-                Text(if (tickets.isEmpty()) "No tickets yet" else "No " + filter.lowercase() + " tickets",
-                    style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                Spacer(Modifier.height(4.dp))
-                Text(if (tickets.isEmpty()) "Raise the first ticket to start tracking a concern."
-                    else "Try another filter to see more tickets.", color = Muted)
-            }
+            SupportEmptyState(if (query.isNotBlank() || filter != "All") "No matching tickets" else "No tickets yet",
+                if (query.isNotBlank() || filter != "All") "Try another search or filter."
+                else "Raise the first ticket to start tracking a concern.")
         }
         items(tickets, key = { it.id }, contentType = { "ticket" }) { ticket -> TicketCard(ticket) { onTicket(ticket.id) } }
         if (ticketsLoaded) item {
@@ -496,12 +502,11 @@ private fun MetricCard(label: String, value: Int, tint: Color, modifier: Modifie
 @Composable
 private fun LoadingTicketCard() {
     SurfaceCard(Modifier.fillMaxWidth()) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.5.dp)
-            Spacer(Modifier.width(12.dp))
-            Column {
-                Text("Loading your support desk", color = Ink, fontWeight = FontWeight.SemiBold)
-                Text("Getting the latest tickets…", color = Muted, style = MaterialTheme.typography.bodySmall)
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text("Loading your support desk", color = Muted, style = MaterialTheme.typography.labelMedium)
+            repeat(3) { index ->
+                Box(Modifier.fillMaxWidth(if (index == 1) .85f else .55f).height(if (index == 0) 22.dp else 14.dp)
+                    .background(Color(0xFFEEF2FF), RoundedCornerShape(8.dp)))
             }
         }
     }
@@ -560,7 +565,7 @@ private fun TicketCard(ticket: TicketSummary, onClick: () -> Unit) {
                 maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         Spacer(Modifier.height(16.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Pill(ticket.status.name.replace('_', ' '), statusTint(ticket.status.name))
             if (ticket.source == "PARENT_QR") Pill("PARENT QUERY", Indigo)
             if (ticket.priority == TicketPriority.URGENT || ticket.priority == TicketPriority.HIGH)
@@ -585,7 +590,7 @@ internal fun CreateTicket(api: SupportRepository, school: String, busy: Boolean,
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Spacer(Modifier.height(2.dp))
-        SectionTitle("Tell us what happened", "Add the details your team needs to take action.")
+        SupportPageHeading("Tell us what happened", "Add the details your team needs to take action.", "NEW TICKET")
         SurfaceCard(Modifier.fillMaxWidth()) {
             Text("ISSUE DETAILS", style = MaterialTheme.typography.labelSmall, color = Indigo,
                 fontWeight = FontWeight.Bold)
@@ -596,7 +601,7 @@ internal fun CreateTicket(api: SupportRepository, school: String, busy: Boolean,
             Spacer(Modifier.height(16.dp))
             Text("Category", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.height(7.dp))
-            OptionMenu(type.name.replace('_', ' '), TicketType.entries.map { it.name }) {
+            OptionMenu(type.name.replace('_', ' '), TicketType.entries.map { it.name }, title = "Ticket category") {
                 type = TicketType.valueOf(it)
                 if (type != TicketType.STUDENT) {
                     selected = null
@@ -607,7 +612,7 @@ internal fun CreateTicket(api: SupportRepository, school: String, busy: Boolean,
             Spacer(Modifier.height(14.dp))
             Text("Priority", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.height(7.dp))
-            OptionMenu(priority.name, TicketPriority.entries.map { it.name }) { priority = TicketPriority.valueOf(it) }
+            OptionMenu(priority.name, TicketPriority.entries.map { it.name }, title = "Ticket priority") { priority = TicketPriority.valueOf(it) }
         }
         if (type == TicketType.STUDENT) {
             SurfaceCard(Modifier.fillMaxWidth()) {
@@ -708,11 +713,8 @@ internal fun TicketDetails(ticket: TicketDetail, admin: Boolean, busy: Boolean, 
         verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Spacer(Modifier.height(2.dp))
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(ticket.ticketNo, style = MaterialTheme.typography.labelSmall, color = Indigo,
-                fontWeight = FontWeight.Bold)
-            Text(ticket.subject, style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold, color = Ink)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            SupportPageHeading(ticket.subject, "Track progress and keep your team informed.", ticket.ticketNo)
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Pill(ticket.status.replace('_', ' '), statusTint(ticket.status))
                 Pill(ticket.priority, priorityTint(ticket.priority))
                 if (ticket.source == "PARENT_QR") Pill("PARENT QUERY", Indigo)
@@ -852,7 +854,7 @@ internal fun TicketDetails(ticket: TicketDetail, admin: Boolean, busy: Boolean, 
                         contentAlignment = Alignment.Center) {
                         Text(message.author.take(1).uppercase(), color = Indigo, fontWeight = FontWeight.Bold)
                     }
-                    Column(Modifier.weight(1f)) {
+                    Column(Modifier.weight(1f).background(Color(0xFFF1F3FF), RoundedCornerShape(18.dp)).padding(14.dp)) {
                         Text(message.author, style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Bold, color = Ink)
                         Text(message.body, style = MaterialTheme.typography.bodyMedium, color = Ink)
@@ -877,7 +879,7 @@ internal fun AdminAccountsScreen(result: AdminAccounts, busy: Boolean,
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Spacer(Modifier.height(2.dp))
-        SectionTitle("School administrators", "Manage who can lead and respond to school issues.")
+        SupportPageHeading("School administrators", "Manage who can lead and respond to school issues.", "PEOPLE & ACCESS")
         PrimaryAction("Add administrator", !busy, onCreate)
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically) {
@@ -898,7 +900,7 @@ internal fun AdminAccountsScreen(result: AdminAccounts, busy: Boolean,
                     if (!ownAccount) Icon(Icons.Outlined.ChevronRight, contentDescription = "Edit administrator", tint = Indigo)
                 }
                 Spacer(Modifier.height(12.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Pill(if (account.role == "SUPER_ADMIN") "Super Admin" else "School Admin", Indigo)
                     Pill(if (account.isActive) "Active" else "Disabled",
                         if (account.isActive) Color(0xFF15976C) else Muted)
@@ -923,7 +925,7 @@ internal fun AdminAccountForm(account: AdminAccount?, busy: Boolean,
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Spacer(Modifier.height(2.dp))
-        SectionTitle(if (account == null) "Create administrator" else "Update administrator",
+        SupportPageHeading(if (account == null) "Create administrator" else "Update administrator",
             "This account signs in with a WhatsApp code sent to its mobile number.")
         SurfaceCard(Modifier.fillMaxWidth()) {
             Text("ACCOUNT DETAILS", style = MaterialTheme.typography.labelSmall,
@@ -931,7 +933,7 @@ internal fun AdminAccountForm(account: AdminAccount?, busy: Boolean,
             Spacer(Modifier.height(14.dp))
             SupportField(fullName, { fullName = it }, "Full name")
             Spacer(Modifier.height(12.dp))
-            SupportField(phone, { phone = it.filter(Char::isDigit).take(10) }, "10-digit mobile number")
+            SupportField(phone, { phone = it.filter(Char::isDigit).take(10) }, "10-digit mobile number", keyboardType = KeyboardType.Phone)
             Spacer(Modifier.height(16.dp))
             Text("Access role", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.height(7.dp))
@@ -968,48 +970,78 @@ internal fun AdminAccountForm(account: AdminAccount?, busy: Boolean,
 }
 
 @Composable
-private fun OptionMenu(selected: String, values: List<String>, choose: (String) -> Unit) {
+@OptIn(ExperimentalMaterial3Api::class)
+private fun OptionMenu(selected: String, values: List<String>, title: String = "Choose an option", choose: (String) -> Unit) {
     var open by remember { mutableStateOf(false) }
+    fun label(value: String) = value.replace('_', ' ').lowercase().split(' ').joinToString(" ") { it.replaceFirstChar(Char::titlecase) }
     Box(Modifier.fillMaxWidth()) {
         OutlinedButton(onClick = { open = true }, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
-            shape = RoundedCornerShape(13.dp), border = BorderStroke(1.dp, Line)) {
-            Text(selected, modifier = Modifier.weight(1f), color = Ink, fontWeight = FontWeight.SemiBold)
+            colors = ButtonDefaults.outlinedButtonColors(containerColor = Color.White),
+            shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, Line)) {
+            Text(label(selected), modifier = Modifier.weight(1f), color = Ink, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Start)
             Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = Muted)
         }
-        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-            values.forEach { value -> DropdownMenuItem(text = { Text(value.replace('_', ' ')) }, onClick = { open = false; choose(value) }) }
+        if (open) ModalBottomSheet(onDismissRequest = { open = false }, containerColor = Color.White) {
+            Text(title, Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
+                style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = Ink)
+            LazyColumn(Modifier.fillMaxWidth().heightIn(max = 480.dp),
+                contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                items(values, key = { it }) { value ->
+                    val active = label(value) == label(selected)
+                    Surface(onClick = { open = false; choose(value) }, shape = RoundedCornerShape(16.dp),
+                        color = if (active) Indigo.copy(alpha = .08f) else Canvas,
+                        border = BorderStroke(1.dp, if (active) Indigo.copy(alpha = .4f) else Line)) {
+                        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Text(label(value), Modifier.weight(1f), color = if (active) Indigo else Ink, fontWeight = FontWeight.SemiBold)
+                            RadioButton(selected = active, onClick = null)
+                        }
+                    }
+                }
+            }
         }
     }
 }
 
 @Composable
 internal fun AuthShell(title: String, subtitle: String, content: @Composable ColumnScope.() -> Unit) {
-    Column(Modifier.fillMaxSize()
-        .background(Brush.verticalGradient(listOf(Color.White, Canvas, Canvas)))
-        .verticalScroll(rememberScrollState()).padding(horizontal = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(0.dp)) {
-        Spacer(Modifier.height(46.dp))
-        BrandMark(Modifier.size(72.dp))
-        Spacer(Modifier.height(18.dp))
-        Text(SchoolBrand.authEyebrow, style = MaterialTheme.typography.labelSmall,
-            color = Indigo, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(10.dp))
-        Text(title, style = MaterialTheme.typography.headlineLarge, color = Ink,
-            fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(8.dp))
-        Text(subtitle, style = MaterialTheme.typography.bodyLarge, color = Muted)
-        Spacer(Modifier.height(30.dp))
-        SurfaceCard(Modifier.fillMaxWidth(), content)
-        Spacer(Modifier.height(30.dp))
-        Text(SchoolBrand.footer, style = MaterialTheme.typography.bodySmall,
-            color = Muted, modifier = Modifier.align(Alignment.CenterHorizontally))
-        Spacer(Modifier.height(30.dp))
+    Box(Modifier.fillMaxSize().imePadding()) {
+        Box(Modifier.size(260.dp).offset(x = 210.dp, y = (-105).dp).clip(CircleShape)
+            .background(Violet.copy(alpha = .10f)))
+        Box(Modifier.size(190.dp).offset(x = (-105).dp, y = 480.dp).clip(CircleShape)
+            .background(Indigo.copy(alpha = .08f)))
+        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
+            horizontalAlignment = Alignment.CenterHorizontally) {
+            Spacer(Modifier.height(54.dp))
+            BrandMark(Modifier.size(82.dp))
+            Spacer(Modifier.height(16.dp))
+            Text("SCHOOLDB  •  SCHOOL SUPPORT", style = MaterialTheme.typography.labelMedium, color = Indigo)
+            Spacer(Modifier.height(12.dp))
+            Text(title, style = MaterialTheme.typography.headlineMedium, color = Ink,
+                textAlign = TextAlign.Center, modifier = Modifier.padding(horizontal = 24.dp))
+            Spacer(Modifier.height(9.dp))
+            Text(subtitle, style = MaterialTheme.typography.bodyLarge, color = Muted,
+                textAlign = TextAlign.Center, modifier = Modifier.padding(horizontal = 34.dp))
+            Spacer(Modifier.height(26.dp))
+            Card(Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+                shape = RoundedCornerShape(28.dp),
+                border = BorderStroke(1.dp, Line.copy(alpha = .8f)),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)) {
+                Column(Modifier.padding(horizontal = 22.dp, vertical = 24.dp), content = content)
+            }
+            Spacer(Modifier.height(28.dp))
+            Text("Private • Secure • Built for your school", style = MaterialTheme.typography.bodySmall, color = Muted)
+            Spacer(Modifier.height(24.dp))
+        }
     }
 }
 
 @Composable
-internal fun SupportField(value: String, onValueChange: (String) -> Unit, label: String, minLines: Int = 1) {
+internal fun SupportField(value: String, onValueChange: (String) -> Unit, label: String, minLines: Int = 1,
+    keyboardType: KeyboardType = KeyboardType.Text, enabled: Boolean = true) {
     OutlinedTextField(value = value, onValueChange = onValueChange, label = { Text(label) },
+        enabled = enabled,
+        keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
         modifier = Modifier.fillMaxWidth(), minLines = minLines, singleLine = minLines == 1,
         shape = RoundedCornerShape(14.dp),
         colors = OutlinedTextFieldDefaults.colors(
@@ -1025,8 +1057,8 @@ internal fun SupportField(value: String, onValueChange: (String) -> Unit, label:
 @Composable
 internal fun PrimaryAction(label: String, enabled: Boolean, onClick: () -> Unit) {
     Button(onClick = onClick, enabled = enabled, modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
-        shape = RoundedCornerShape(16.dp), colors = ButtonDefaults.buttonColors(containerColor = Indigo),
-        elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp, pressedElevation = 0.dp)) {
+        shape = RoundedCornerShape(18.dp), colors = ButtonDefaults.buttonColors(containerColor = Indigo),
+        elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp, pressedElevation = 1.dp)) {
         Text(label, fontWeight = FontWeight.SemiBold)
     }
 }
