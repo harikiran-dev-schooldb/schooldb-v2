@@ -511,6 +511,8 @@ internal fun CreateTicket(api: SupportRepository, school: String, busy: Boolean,
                                 buildList {
                                     add(option.admissionNo)
                                     option.academicYearName?.let(::add)
+                                    option.syllabusName?.let(::add)
+                                    option.branchName?.let(::add)
                                     option.className?.let { className ->
                                         add(className + (option.sectionName?.let { " · " + it } ?: ""))
                                     }
@@ -529,6 +531,8 @@ internal fun CreateTicket(api: SupportRepository, school: String, busy: Boolean,
                         Text(
                             listOfNotNull(
                                 it.academicYearName,
+                                it.syllabusName,
+                                it.branchName,
                                 it.className?.let { className ->
                                     className + (it.sectionName?.let { section -> " · " + section } ?: "")
                                 }
@@ -587,7 +591,12 @@ internal fun TicketDetails(ticket: TicketDetail, admin: Boolean, busy: Boolean, 
                 fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(6.dp))
             Text(
-                student + listOfNotNull(ticket.studentClassName, ticket.studentSectionName)
+                student + listOfNotNull(
+                    ticket.studentSyllabusName,
+                    ticket.studentBranchName,
+                    ticket.studentClassName,
+                    ticket.studentSectionName,
+                )
                     .takeIf { it.isNotEmpty() }
                     ?.joinToString(" - ", prefix = " (", postfix = ")").orEmpty(),
                 style = MaterialTheme.typography.titleMedium,

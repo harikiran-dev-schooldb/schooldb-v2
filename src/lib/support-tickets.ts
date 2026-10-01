@@ -32,7 +32,17 @@ export async function visibleTicket(id: string, actor: Awaited<ReturnType<typeof
             where: { active: true, academicYear: { active: true } },
             take: 1,
             select: {
-              class: { select: { name: true } },
+              class: {
+                select: {
+                  name: true,
+                  branch: {
+                    select: {
+                      name: true,
+                      syllabus: { select: { name: true } },
+                    },
+                  },
+                },
+              },
               section: { select: { name: true } },
             },
           },

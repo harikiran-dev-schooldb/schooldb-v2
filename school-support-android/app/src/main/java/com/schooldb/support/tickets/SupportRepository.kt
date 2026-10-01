@@ -30,6 +30,8 @@ data class TicketDetail(
     val parentName: String?,
     val parentPhone: String?,
     val studentName: String?,
+    val studentSyllabusName: String?,
+    val studentBranchName: String?,
     val studentClassName: String?,
     val studentSectionName: String?,
     val assignedToName: String?,
@@ -180,6 +182,12 @@ class SupportRepository {
             parentName = item.optString("parentName").takeIf(String::isNotBlank),
             parentPhone = item.optString("parentPhone").takeIf(String::isNotBlank),
             studentName = item.optJSONObject("student")?.optString("fullName")?.takeIf(String::isNotBlank),
+            studentSyllabusName = item.optJSONObject("student")?.optJSONArray("enrollments")
+                ?.optJSONObject(0)?.optJSONObject("class")?.optJSONObject("branch")
+                ?.optJSONObject("syllabus")?.optString("name")?.takeIf(String::isNotBlank),
+            studentBranchName = item.optJSONObject("student")?.optJSONArray("enrollments")
+                ?.optJSONObject(0)?.optJSONObject("class")?.optJSONObject("branch")
+                ?.optString("name")?.takeIf(String::isNotBlank),
             studentClassName = item.optJSONObject("student")?.optJSONArray("enrollments")
                 ?.optJSONObject(0)?.optJSONObject("class")?.optString("name")?.takeIf(String::isNotBlank),
             studentSectionName = item.optJSONObject("student")?.optJSONArray("enrollments")
@@ -215,6 +223,8 @@ class SupportRepository {
             val item = items.getJSONObject(index)
             StudentOption(item.getString("id"), item.getString("admissionNo"), item.getString("fullName"),
                 item.optString("academicYearName").takeUnless { it.isBlank() || it == "null" },
+                item.optString("syllabusName").takeUnless { it.isBlank() || it == "null" },
+                item.optString("branchName").takeUnless { it.isBlank() || it == "null" },
                 item.optString("className").takeUnless { it.isBlank() || it == "null" },
                 item.optString("sectionName").takeUnless { it.isBlank() || it == "null" })
         }

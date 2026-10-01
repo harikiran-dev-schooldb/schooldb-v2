@@ -28,7 +28,17 @@ export async function GET(request: Request) {
           where: { academicYearId: activeAcademicYear.id, active: true },
           take: 1,
           select: {
-            class: { select: { name: true } },
+            class: {
+              select: {
+                name: true,
+                branch: {
+                  select: {
+                    name: true,
+                    syllabus: { select: { name: true } },
+                  },
+                },
+              },
+            },
             section: { select: { name: true } },
           },
         },
@@ -41,6 +51,8 @@ export async function GET(request: Request) {
       admissionNo: student.admissionNo,
       fullName: student.fullName ?? "Student",
       academicYearName: activeAcademicYear.name,
+      syllabusName: student.enrollments[0]?.class.branch.syllabus.name ?? null,
+      branchName: student.enrollments[0]?.class.branch.name ?? null,
       className: student.enrollments[0]?.class.name ?? null,
       sectionName: student.enrollments[0]?.section.name ?? null,
     })));
