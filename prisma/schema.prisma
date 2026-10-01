@@ -122,6 +122,7 @@ model School {
   supportTicketMessages       SupportTicketMessage[]
   supportTicketActivities     SupportTicketActivity[]
   supportTicketReads          SupportTicketRead[]
+  supportTicketAttachments    SupportTicketAttachment[]
   androidAppBuilds            AndroidAppBuild[]
   studentProfileImageRequests StudentProfileImageRequest[]
   reportExportJobs            ReportExportJob[]
@@ -180,6 +181,7 @@ model User {
   supportTicketMessages       SupportTicketMessage[]
   supportTicketActivities     SupportTicketActivity[]
   supportTicketReads          SupportTicketRead[]
+  supportTicketAttachments    SupportTicketAttachment[]
   androidAppBuilds            AndroidAppBuild[]
   performedStudentActivities  StudentActivity[]            @relation("StudentActivityPerformer")
   studentProfileImageRequests StudentProfileImageRequest[]
@@ -2026,6 +2028,7 @@ model SupportTicket {
   source       String                  @default("STAFF")
   parentName   String?
   parentPhone  String?
+  diagnostics  Json?
   assignedToId String?
   createdAt    DateTime                @default(now())
   updatedAt    DateTime                @updatedAt
@@ -2037,6 +2040,7 @@ model SupportTicket {
   messages     SupportTicketMessage[]
   activities   SupportTicketActivity[]
   reads        SupportTicketRead[]
+  attachments  SupportTicketAttachment[]
 
   @@unique([schoolId, ticketNo])
   @@index([schoolId, status, createdAt(sort: Desc)])
@@ -2044,6 +2048,24 @@ model SupportTicket {
   @@index([schoolId, source, createdAt(sort: Desc)])
   @@index([schoolId, assignedToId])
   @@index([schoolId, studentId])
+}
+
+model SupportTicketAttachment {
+  id           String        @id @default(cuid())
+  schoolId     String
+  ticketId     String
+  uploadedById String
+  originalName String
+  mimeType     String
+  sizeBytes    Int
+  storageKey   String        @unique
+  createdAt    DateTime      @default(now())
+  school       School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  ticket       SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  uploadedBy   User          @relation(fields: [uploadedById], references: [id], onDelete: Restrict)
+
+  @@index([schoolId, ticketId, createdAt])
+  @@index([uploadedById, createdAt])
 }
 
 model SupportTicketRead {

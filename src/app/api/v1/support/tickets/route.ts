@@ -15,6 +15,13 @@ const createInput = z.object({
   type: z.enum(SupportTicketType),
   priority: z.enum(SupportTicketPriority).default("NORMAL"),
   studentId: z.string().trim().min(1).nullable().optional(),
+  diagnostics: z.object({
+    appVersion: z.string().trim().max(80).optional(),
+    appBuild: z.string().trim().max(40).optional(),
+    deviceModel: z.string().trim().max(160).optional(),
+    manufacturer: z.string().trim().max(120).optional(),
+    androidVersion: z.string().trim().max(80).optional(),
+  }).optional(),
 });
 
 export async function GET(request: Request) {
@@ -95,6 +102,7 @@ export async function POST(request: Request) {
           type: input.data.type,
           priority: input.data.priority,
           studentId: input.data.studentId || null,
+          diagnostics: input.data.diagnostics,
           createdById: actor.userId,
         },
       });

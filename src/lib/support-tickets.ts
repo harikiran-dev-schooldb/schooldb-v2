@@ -58,6 +58,16 @@ export async function visibleTicket(id: string, actor: Awaited<ReturnType<typeof
         orderBy: { createdAt: "asc" },
         include: { actor: { select: { id: true, firstName: true, lastName: true } } },
       },
+      attachments: {
+        orderBy: { createdAt: "asc" },
+        select: {
+          id: true,
+          originalName: true,
+          mimeType: true,
+          sizeBytes: true,
+          createdAt: true,
+        },
+      },
     },
   });
   if (!ticket) throw new ApiError(404, "Ticket not found");

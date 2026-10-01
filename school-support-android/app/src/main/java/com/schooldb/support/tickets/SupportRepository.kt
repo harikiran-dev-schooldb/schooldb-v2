@@ -12,6 +12,9 @@ import java.net.SocketTimeoutException
 import java.net.UnknownHostException
 import java.net.URL
 import java.io.IOException
+import java.io.ByteArrayOutputStream
+import java.io.DataOutputStream
+import android.os.Build
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
@@ -34,6 +37,8 @@ data class TicketDetail(
     val studentBranchName: String?,
     val studentClassName: String?,
     val studentSectionName: String?,
+    val diagnostics: TicketDiagnostics?,
+    val attachments: List<TicketAttachment>,
     val assignedToName: String?,
     val messages: List<TicketMessage>,
     val activities: List<TicketActivity>,
@@ -173,6 +178,8 @@ class SupportRepository {
         val item = request("GET", "api/v1/support/tickets/$id", school).getJSONObject("data")
         val messages = item.getJSONArray("messages")
         val activities = item.optJSONArray("activities") ?: JSONArray()
+        val attachments = item.optJSONArray("attachments") ?: JSONArray()
+        val diagnostics = item.optJSONObject("diagnostics")
         TicketDetail(
             id = item.getString("id"), ticketNo = item.getString("ticketNo"),
             subject = item.getString("subject"), description = item.getString("description"),
@@ -192,6 +199,24 @@ class SupportRepository {
                 ?.optJSONObject(0)?.optJSONObject("class")?.optString("name")?.takeIf(String::isNotBlank),
             studentSectionName = item.optJSONObject("student")?.optJSONArray("enrollments")
                 ?.optJSONObject(0)?.optJSONObject("section")?.optString("name")?.takeIf(String::isNotBlank),
+            diagnostics = diagnostics?.let {
+                TicketDiagnostics(
+                    appVersion = it.optString("appVersion").takeIf(String::isNotBlank),
+                    appBuild = it.optString("appBuild").takeIf(String::isNotBlank),
+                    deviceModel = it.optString("deviceModel").takeIf(String::isNotBlank),
+                    manufacturer = it.optString("manufacturer").takeIf(String::isNotBlank),
+                    androidVersion = it.optString("androidVersion").takeIf(String::isNotBlank),
+                )
+            },
+            attachments = (0 until attachments.length()).map { index ->
+                val attachment = attachments.getJSONObject(index)
+                TicketAttachment(
+                    id = attachment.getString("id"),
+                    name = attachment.getString("originalName"),
+                    mimeType = attachment.getString("mimeType"),
+                    sizeBytes = attachment.getInt("sizeBytes"),
+                )
+            },
             assignedToName = item.optJSONObject("assignedTo")?.let { person ->
                 listOf(person.optString("firstName"), person.optString("lastName"))
                     .filter { it.isNotBlank() }.joinToString(" ")
@@ -232,9 +257,36 @@ class SupportRepository {
 
     suspend fun create(school: String, subject: String, description: String, type: TicketType,
         priority: TicketPriority, studentId: String?): String = withContext(Dispatchers.IO) {
+        val diagnostics = JSONObject()
+            .put("appVersion", BuildConfig.VERSION_NAME)
+            .put("appBuild", BuildConfig.VERSION_CODE.toString())
+            .put("deviceModel", Build.MODEL)
+            .put("manufacturer", Build.MANUFACTURER)
+            .put("androidVersion", Build.VERSION.RELEASE)
         val body = JSONObject().put("subject", subject).put("description", description)
             .put("type", type.name).put("priority", priority.name).put("studentId", studentId)
+            .put("diagnostics", diagnostics)
         request("POST", "api/v1/support/tickets", school, body).getJSONObject("data").getString("id")
+    }
+
+    suspend fun uploadAttachment(school: String, ticketId: String, attachment: PendingAttachment) =
+        withContext(Dispatchers.IO) {
+            multipartRequest(
+                path = "api/v1/support/tickets/$ticketId/attachments",
+                school = school,
+                attachment = attachment,
+            )
+        }
+
+    suspend fun downloadAttachment(
+        school: String,
+        ticketId: String,
+        attachment: TicketAttachment,
+    ): ByteArray = withContext(Dispatchers.IO) {
+        downloadRequest(
+            path = "api/v1/support/tickets/$ticketId/attachments/${attachment.id}",
+            school = school,
+        )
     }
 
     suspend fun reply(school: String, id: String, body: String) = withContext(Dispatchers.IO) {
@@ -386,6 +438,105 @@ class SupportRepository {
             throw SupportNetworkException("The request timed out. Please try again.", error)
         } catch (error: IOException) {
             throw SupportNetworkException("Could not reach SchoolDB. Check your connection and try again.", error)
+        } finally {
+            connection.disconnect()
+        }
+    }
+
+    private suspend fun multipartRequest(
+        path: String,
+        school: String,
+        attachment: PendingAttachment,
+        retryOnUnauthorized: Boolean = true,
+    ): JSONObject {
+        val authToken = token(forceRefresh = !retryOnUnauthorized)
+        val boundary = "SchoolDB-${System.currentTimeMillis()}"
+        val connection = URL(BuildConfig.API_BASE_URL + path).openConnection() as HttpURLConnection
+        return try {
+            connection.requestMethod = "POST"
+            connection.connectTimeout = 15_000
+            connection.readTimeout = 60_000
+            connection.doOutput = true
+            connection.setRequestProperty("Accept", "application/json")
+            connection.setRequestProperty("x-school-slug", school)
+            connection.setRequestProperty("Authorization", "Bearer $authToken")
+            connection.setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
+            DataOutputStream(connection.outputStream).use { output ->
+                val safeName = attachment.name.replace('"', '_')
+                output.writeBytes("--$boundary\r\n")
+                output.writeBytes("Content-Disposition: form-data; name=\"file\"; filename=\"$safeName\"\r\n")
+                output.writeBytes("Content-Type: ${attachment.mimeType}\r\n\r\n")
+                output.write(attachment.bytes)
+                output.writeBytes("\r\n--$boundary--\r\n")
+            }
+            val status = connection.responseCode
+            val payload = (if (status in 200..299) connection.inputStream else connection.errorStream)
+                ?.bufferedReader()?.use { it.readText() }.orEmpty()
+            if (status == HttpURLConnection.HTTP_UNAUTHORIZED && retryOnUnauthorized) {
+                return multipartRequest(path, school, attachment, false)
+            }
+            val json = runCatching { if (payload.isBlank()) JSONObject() else JSONObject(payload) }
+                .getOrElse { JSONObject() }
+            if (status == HttpURLConnection.HTTP_UNAUTHORIZED) throw SupportSessionExpiredException()
+            if (status !in 200..299) {
+                throw SupportApiException(
+                    status,
+                    json.optString("message").ifBlank { "Attachment upload failed (HTTP $status)." },
+                )
+            }
+            json
+        } catch (error: SupportSessionExpiredException) {
+            throw error
+        } catch (error: SupportApiException) {
+            throw error
+        } catch (error: UnknownHostException) {
+            throw SupportNetworkException("No internet connection. Check your network and try again.", error)
+        } catch (error: SocketTimeoutException) {
+            throw SupportNetworkException("The attachment upload timed out. Please try again.", error)
+        } catch (error: IOException) {
+            throw SupportNetworkException("Could not upload the attachment. Check your connection and try again.", error)
+        } finally {
+            connection.disconnect()
+        }
+    }
+
+    private suspend fun downloadRequest(
+        path: String,
+        school: String,
+        retryOnUnauthorized: Boolean = true,
+    ): ByteArray {
+        val authToken = token(forceRefresh = !retryOnUnauthorized)
+        val connection = URL(BuildConfig.API_BASE_URL + path).openConnection() as HttpURLConnection
+        return try {
+            connection.requestMethod = "GET"
+            connection.connectTimeout = 15_000
+            connection.readTimeout = 60_000
+            connection.instanceFollowRedirects = false
+            connection.setRequestProperty("x-school-slug", school)
+            connection.setRequestProperty("Authorization", "Bearer $authToken")
+            val status = connection.responseCode
+            if (status == HttpURLConnection.HTTP_UNAUTHORIZED && retryOnUnauthorized) {
+                return downloadRequest(path, school, false)
+            }
+            if (status == HttpURLConnection.HTTP_UNAUTHORIZED) throw SupportSessionExpiredException()
+            if (status !in 200..299) {
+                val message = connection.errorStream?.bufferedReader()?.use { it.readText() }.orEmpty()
+                val parsed = runCatching { JSONObject(message).optString("message") }.getOrNull()
+                throw SupportApiException(status, parsed?.ifBlank { null } ?: "Attachment download failed (HTTP $status).")
+            }
+            val buffer = ByteArrayOutputStream()
+            connection.inputStream.use { input -> input.copyTo(buffer) }
+            buffer.toByteArray()
+        } catch (error: SupportSessionExpiredException) {
+            throw error
+        } catch (error: SupportApiException) {
+            throw error
+        } catch (error: UnknownHostException) {
+            throw SupportNetworkException("No internet connection. Check your network and try again.", error)
+        } catch (error: SocketTimeoutException) {
+            throw SupportNetworkException("The attachment download timed out. Please try again.", error)
+        } catch (error: IOException) {
+            throw SupportNetworkException("Could not download the attachment. Check your connection and try again.", error)
         } finally {
             connection.disconnect()
         }

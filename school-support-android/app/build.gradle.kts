@@ -86,8 +86,8 @@ android {
         applicationId = "com.schooldb.support"
         minSdk = 26
         targetSdk = 36
-        versionCode = versionCodeOverride ?: 2
-        versionName = "0.2.0"
+        versionCode = versionCodeOverride ?: 3
+        versionName = "0.3.0"
         buildConfigField("String", "CLERK_PUBLISHABLE_KEY", "\"$clerkKey\"")
         buildConfigField("boolean", "FIREBASE_CONFIGURED", "false")
         // Safe generic defaults. Each school flavor overrides these values.

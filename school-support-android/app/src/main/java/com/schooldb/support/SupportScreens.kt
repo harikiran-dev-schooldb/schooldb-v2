@@ -1,7 +1,11 @@
 package com.schooldb.support
 
 import android.content.Intent
+import android.content.Context
 import android.net.Uri
+import android.provider.OpenableColumns
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -15,6 +19,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.AttachFile
 import androidx.compose.material.icons.outlined.BarChart
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.Refresh
@@ -33,6 +38,72 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.schooldb.support.tickets.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+
+private const val MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024
+private val attachmentMimeTypes = setOf("application/pdf", "image/jpeg", "image/png", "image/webp")
+
+private suspend fun readAttachment(context: Context, uri: Uri): PendingAttachment =
+    withContext(Dispatchers.IO) {
+        val resolver = context.contentResolver
+        val mimeType = resolver.getType(uri).orEmpty()
+        if (mimeType !in attachmentMimeTypes) {
+            error("Choose a PDF, JPG, PNG, or WebP file.")
+        }
+        val name = resolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
+            if (cursor.moveToFirst()) cursor.getString(0) else null
+        }?.takeIf(String::isNotBlank) ?: "Attachment"
+        val bytes = resolver.openInputStream(uri)?.use { it.readBytes() }
+            ?: error("Could not read the selected file.")
+        if (bytes.isEmpty() || bytes.size > MAX_ATTACHMENT_BYTES) {
+            error("Attachment must be smaller than 5 MB.")
+        }
+        PendingAttachment(name, mimeType, bytes)
+    }
+
+@Composable
+private fun AttachmentPicker(
+    enabled: Boolean,
+    label: String = "Choose attachment",
+    onAttachment: (PendingAttachment) -> Unit,
+) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var loading by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf("") }
+    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        scope.launch {
+            loading = true
+            error = ""
+            try {
+                onAttachment(readAttachment(context, uri))
+            } catch (exception: Exception) {
+                error = exception.message ?: "Could not read the selected file."
+            } finally {
+                loading = false
+            }
+        }
+    }
+    OutlinedButton(
+        onClick = { launcher.launch("*/*") },
+        enabled = enabled && !loading,
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(13.dp),
+    ) {
+        Icon(Icons.Outlined.AttachFile, contentDescription = null, modifier = Modifier.size(18.dp))
+        Spacer(Modifier.width(8.dp))
+        Text(if (loading) "Reading file..." else label)
+    }
+    if (error.isNotBlank()) {
+        Text(error, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+    }
+}
+
+private fun attachmentSize(sizeBytes: Int): String =
+    if (sizeBytes >= 1024 * 1024) "%.1f MB".format(sizeBytes / (1024.0 * 1024.0))
+    else "%.0f KB".format(sizeBytes / 1024.0)
 
 @Composable
 internal fun TicketDashboard(school: String, tickets: List<TicketSummary>, summary: List<Int>,
@@ -449,7 +520,7 @@ private fun TicketCard(ticket: TicketSummary, onClick: () -> Unit) {
 
 @Composable
 internal fun CreateTicket(api: SupportRepository, school: String, busy: Boolean,
-    submit: (String, String, TicketType, TicketPriority, String?) -> Unit) {
+    submit: (String, String, TicketType, TicketPriority, String?, PendingAttachment?) -> Unit) {
     val scope = rememberCoroutineScope()
     var subject by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
@@ -459,6 +530,7 @@ internal fun CreateTicket(api: SupportRepository, school: String, busy: Boolean,
     var options by remember { mutableStateOf<List<StudentOption>>(emptyList()) }
     var selected by remember { mutableStateOf<StudentOption?>(null) }
     var searchError by remember { mutableStateOf("") }
+    var attachment by remember { mutableStateOf<PendingAttachment?>(null) }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Spacer(Modifier.height(2.dp))
@@ -544,6 +616,19 @@ internal fun CreateTicket(api: SupportRepository, school: String, busy: Boolean,
                 }
             }
         }
+        SurfaceCard(Modifier.fillMaxWidth()) {
+            SectionTitle("Attachment", "Add one screenshot, image, or PDF up to 5 MB.")
+            Spacer(Modifier.height(12.dp))
+            attachment?.let { selectedAttachment ->
+                Text(selectedAttachment.name, color = Ink, fontWeight = FontWeight.SemiBold)
+                Text(attachmentSize(selectedAttachment.bytes.size), color = Muted,
+                    style = MaterialTheme.typography.bodySmall)
+                TextButton(onClick = { attachment = null }, enabled = !busy) { Text("Remove") }
+            }
+            if (attachment == null) {
+                AttachmentPicker(enabled = !busy) { attachment = it }
+            }
+        }
         val missingField = when {
             subject.trim().length < 3 -> "Enter a subject with at least 3 characters."
             description.trim().length < 10 -> "Describe the issue in at least 10 characters."
@@ -554,7 +639,7 @@ internal fun CreateTicket(api: SupportRepository, school: String, busy: Boolean,
             style = MaterialTheme.typography.bodySmall)
         PrimaryAction("Create ticket", !busy && missingField == null,
             onClick = { submit(subject.trim(), description.trim(), type, priority,
-                selected?.id?.takeIf { type == TicketType.STUDENT }) })
+                selected?.id?.takeIf { type == TicketType.STUDENT }, attachment) })
         Text("Your ticket will be visible to the support team at " + school + ".",
             style = MaterialTheme.typography.bodySmall, color = Muted)
         Spacer(Modifier.height(20.dp))
@@ -564,7 +649,9 @@ internal fun CreateTicket(api: SupportRepository, school: String, busy: Boolean,
 @Composable
 internal fun TicketDetails(ticket: TicketDetail, admin: Boolean, busy: Boolean, staff: List<StaffOption>,
     onReply: (String) -> Unit, onStatus: (TicketStatus) -> Unit,
-    onPriority: (TicketPriority) -> Unit, onAssign: (String?) -> Unit) {
+    onPriority: (TicketPriority) -> Unit, onAssign: (String?) -> Unit,
+    onOpenAttachment: (TicketAttachment) -> Unit,
+    onAddAttachment: (PendingAttachment) -> Unit) {
     var reply by remember(ticket.id) { mutableStateOf("") }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -608,6 +695,49 @@ internal fun TicketDetails(ticket: TicketDetail, admin: Boolean, busy: Boolean, 
             SectionTitle("Issue", ticket.type.replace('_', ' ').lowercase().replaceFirstChar { it.uppercase() })
             Spacer(Modifier.height(12.dp))
             Text(ticket.description, style = MaterialTheme.typography.bodyLarge, color = Ink)
+        }
+        if (ticket.diagnostics != null) SurfaceCard(Modifier.fillMaxWidth()) {
+            SectionTitle("App diagnostics", "Captured automatically when this ticket was created")
+            Spacer(Modifier.height(10.dp))
+            val diagnostics = ticket.diagnostics
+            listOfNotNull(
+                diagnostics.appVersion?.let { "App version" to "$it (${diagnostics.appBuild ?: "—"})" },
+                diagnostics.deviceModel?.let { "Device" to listOfNotNull(diagnostics.manufacturer, it).joinToString(" ") },
+                diagnostics.androidVersion?.let { "Android" to it },
+            ).forEach { (label, value) ->
+                Row(Modifier.fillMaxWidth().padding(vertical = 3.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text(label, color = Muted, style = MaterialTheme.typography.bodySmall)
+                    Text(value, color = Ink, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium)
+                }
+            }
+        }
+        SurfaceCard(Modifier.fillMaxWidth()) {
+            SectionTitle("Attachments", "Screenshots, images, and supporting documents")
+            Spacer(Modifier.height(10.dp))
+            if (ticket.attachments.isEmpty()) {
+                Text("No attachments yet.", color = Muted, style = MaterialTheme.typography.bodySmall)
+            }
+            ticket.attachments.forEach { attachment ->
+                Row(
+                    Modifier.fillMaxWidth().clickable(enabled = !busy) { onOpenAttachment(attachment) }
+                        .padding(vertical = 9.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(Icons.Outlined.AttachFile, contentDescription = null, tint = Indigo)
+                    Spacer(Modifier.width(10.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(attachment.name, color = Ink, fontWeight = FontWeight.SemiBold,
+                            maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(attachmentSize(attachment.sizeBytes), color = Muted,
+                            style = MaterialTheme.typography.bodySmall)
+                    }
+                    Icon(Icons.Outlined.ChevronRight, contentDescription = "Open attachment", tint = Muted)
+                }
+            }
+            if (ticket.status != "CLOSED") {
+                Spacer(Modifier.height(8.dp))
+                AttachmentPicker(enabled = !busy, label = "Add attachment", onAttachment = onAddAttachment)
+            }
         }
         if (admin) SurfaceCard(Modifier.fillMaxWidth()) {
             SectionTitle("Manage ticket", "Keep ownership and progress clear")

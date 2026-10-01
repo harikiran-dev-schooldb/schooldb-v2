@@ -44,6 +44,7 @@ type PrivateDocumentCollection =
   | "profile-image-requests"
   | "school-logos"
   | "id-card-back-images"
+  | "support-ticket-attachments"
   | "report-exports";
 
 function hasBlobCredentials() {
@@ -156,6 +157,26 @@ export async function deleteStudentDocumentFile(storageKey: string) {
   }
   try {
     await unlink(storagePath(storageKey));
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  }
+}
+
+export function saveSupportTicketAttachment(file: File) {
+  return savePrivateDocument(file, "support-ticket-attachments");
+}
+
+export function readSupportTicketAttachment(storageKey: string) {
+  return readPrivateDocument(storageKey, "support-ticket-attachments");
+}
+
+export async function deleteSupportTicketAttachment(storageKey: string) {
+  if (isBlobStorageKey(storageKey)) {
+    await del(storageKey);
+    return;
+  }
+  try {
+    await unlink(storagePath(storageKey, "support-ticket-attachments"));
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
   }

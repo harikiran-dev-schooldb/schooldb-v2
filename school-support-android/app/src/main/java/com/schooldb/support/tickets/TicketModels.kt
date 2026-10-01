@@ -35,3 +35,24 @@ data class TicketSummary(
     val student: StudentOption? = null,
     val studentName: String? = null,
 )
+
+data class PendingAttachment(
+    val name: String,
+    val mimeType: String,
+    val bytes: ByteArray,
+)
+
+data class TicketAttachment(
+    val id: String,
+    val name: String,
+    val mimeType: String,
+    val sizeBytes: Int,
+)
+
+data class TicketDiagnostics(
+    val appVersion: String?,
+    val appBuild: String?,
+    val deviceModel: String?,
+    val manufacturer: String?,
+    val androidVersion: String?,
+)

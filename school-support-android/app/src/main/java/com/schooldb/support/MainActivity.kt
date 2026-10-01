@@ -10,8 +10,10 @@ import android.util.Log
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import com.google.firebase.messaging.FirebaseMessaging
 import java.util.UUID
+import java.io.File
 import java.net.HttpURLConnection
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -505,9 +507,18 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
                         }
                     },
                     onTicket = { id -> run { loadDetail(id) } })
-                SupportPage.CREATE_TICKET -> CreateTicket(api, school, busy) { subject, description, type, priority, studentId -> run {
+                SupportPage.CREATE_TICKET -> CreateTicket(api, school, busy) { subject, description, type, priority, studentId, attachment -> run {
                     val createdId = api.create(school, subject, description, type, priority, studentId)
-                    notice = "Ticket created successfully."
+                    notice = if (attachment == null) {
+                        "Ticket created successfully."
+                    } else {
+                        try {
+                            api.uploadAttachment(school, createdId, attachment)
+                            "Ticket and attachment uploaded successfully."
+                        } catch (exception: Exception) {
+                            "Ticket created, but the attachment could not be uploaded: ${exception.message ?: "please try again"}"
+                        }
+                    }
                     try {
                         loadDetail(createdId)
                         ticketViewModel.loadTickets(school)
@@ -521,7 +532,25 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
                     onReply = { body -> run { api.reply(school, ticket.id, body); refreshTicketAfterMutation(ticket.id) } },
                     onStatus = { status -> run { api.updateStatus(school, ticket.id, status); refreshTicketAfterMutation(ticket.id) } },
                     onPriority = { priority -> run { api.updatePriority(school, ticket.id, priority); refreshTicketAfterMutation(ticket.id) } },
-                    onAssign = { userId -> run { api.assign(school, ticket.id, userId); refreshTicketAfterMutation(ticket.id) } }) }
+                    onAssign = { userId -> run { api.assign(school, ticket.id, userId); refreshTicketAfterMutation(ticket.id) } },
+                    onOpenAttachment = { attachment -> run {
+                        val contents = api.downloadAttachment(school, ticket.id, attachment)
+                        val directory = File(context.cacheDir, "support-attachments").apply { mkdirs() }
+                        val safeName = attachment.name.replace(Regex("[^A-Za-z0-9._-]"), "_")
+                            .ifBlank { "attachment" }
+                        val file = File(directory, "${attachment.id}-$safeName")
+                        file.writeBytes(contents)
+                        val uri = FileProvider.getUriForFile(context, "${BuildConfig.APPLICATION_ID}.files", file)
+                        context.startActivity(Intent(Intent.ACTION_VIEW).apply {
+                            setDataAndType(uri, attachment.mimeType)
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        })
+                    } },
+                    onAddAttachment = { attachment -> run {
+                        api.uploadAttachment(school, ticket.id, attachment)
+                        notice = "Attachment uploaded successfully."
+                        refreshTicketAfterMutation(ticket.id)
+                    } }) }
                 SupportPage.ADMINS -> adminState.accounts?.let { result -> AdminAccountsScreen(result, busy,
                     onCreate = { adminViewModel.select(null); page = SupportPage.ADMIN_FORM },
                     onEdit = { adminViewModel.select(it); page = SupportPage.ADMIN_FORM },
@@ -537,4 +566,3 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
         }
     }
 }
-
