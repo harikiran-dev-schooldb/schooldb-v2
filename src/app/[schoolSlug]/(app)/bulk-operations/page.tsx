@@ -10,6 +10,7 @@ import {
   GraduationCap,
   Home,
   IndianRupee,
+  KeyRound,
   Layers3,
   Network,
   UserRound,
@@ -35,6 +36,14 @@ const operations = [
       "Create student records and optional academic-year enrollments from one validated file.",
     href: "bulk-operations/students",
     icon: GraduationCap,
+    status: "Ready",
+  },
+  {
+    title: "Student Login Access",
+    description:
+      "Create Clerk login access only for the students who need to sign in.",
+    href: "bulk-operations/student-logins",
+    icon: KeyRound,
     status: "Ready",
   },
   {

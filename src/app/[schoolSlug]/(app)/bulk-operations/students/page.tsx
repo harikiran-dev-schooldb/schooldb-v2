@@ -7,6 +7,7 @@ import {
   CheckCircle2,
   Download,
   FileSpreadsheet,
+  KeyRound,
   Loader2,
   UploadCloud,
   XCircle,
@@ -295,8 +296,6 @@ export default function BulkStudentsPage() {
     enrolled: number;
     skipped: number;
     failed: number;
-    loginProvisioned: number;
-    loginPending: number;
     errors: RowError[];
   } | null>(null);
 
@@ -349,8 +348,6 @@ export default function BulkStudentsPage() {
           enrolled: number;
           skipped: number;
           failed: number;
-          loginProvisioned: number;
-          loginPending: number;
           errors: RowError[];
         }
       >({
@@ -420,8 +417,8 @@ export default function BulkStudentsPage() {
               <CardTitle>Student import</CardTitle>
               <p className="mt-1 text-xs text-muted-foreground">
                 Upload the complete CSV; SchoolDB processes 25 rows per batch
-                so student and family login setup can finish reliably.
-                The template can create the student and enrollment together.
+                to create student records reliably. Login accounts are not
+                created during import. The template can create the student and enrollment together.
                 Academic year, class, and section must all be filled when a row
                 includes enrollment details; roll number is optional.
               </p>
@@ -578,12 +575,17 @@ export default function BulkStudentsPage() {
                     {result.created} students created · {result.enrolled}{" "}
                     enrolled · {result.skipped} existing rows skipped · {result.failed} failed
                   </p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Login access ready for {result.loginProvisioned} students
-                    {result.loginPending > 0
-                      ? ` · ${result.loginPending} login setups pending`
-                      : ""}
-                  </p>
+                  <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/60 bg-background/70 p-3">
+                    <p className="text-xs text-muted-foreground">
+                      No Clerk accounts were created. Create login access separately only for students who need it.
+                    </p>
+                    <Button asChild size="sm" variant="outline">
+                      <Link href={`/${school.slug}/bulk-operations/student-logins`}>
+                        <KeyRound className="size-4" />
+                        Create student logins
+                      </Link>
+                    </Button>
+                  </div>
                 </div>
               )}
 
