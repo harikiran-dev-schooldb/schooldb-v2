@@ -14,6 +14,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 import { ClassSelect, SectionSelect } from "@/components/common/select";
+import { AcademicBranchSelect } from "@/components/common/select/AcademicBranchSelect";
+import { SyllabusSelect } from "@/components/common/select/SyllabusSelect";
 
 import { RemoteCombobox } from "@/components/common/combobox/RemoteCombobox";
 import { refreshTable } from "@/lib/table-event";
@@ -32,6 +34,11 @@ type ExamSchedule = {
   class: {
     id: string;
     name: string;
+    branchId: string;
+    branch: {
+      id: string;
+      syllabusId: string;
+    };
   };
 
   section: {
@@ -75,6 +82,8 @@ export function EditExamScheduleDialog({
   endDate,
   onSuccess,
 }: Props) {
+  const [syllabusId, setSyllabusId] = useState("");
+  const [branchId, setBranchId] = useState("");
   const [classId, setClassId] = useState("");
   const [sectionId, setSectionId] = useState("");
   const [subjectId, setSubjectId] = useState("");
@@ -98,6 +107,8 @@ export function EditExamScheduleDialog({
     if (!open || !schedule) return;
 
     const frameId = requestAnimationFrame(() => {
+      setSyllabusId(schedule.class.branch.syllabusId);
+      setBranchId(schedule.class.branchId);
       setClassId(schedule.class.id);
       setSectionId(schedule.section?.id ?? "");
       setSubjectId(schedule.subject.id);
@@ -266,9 +277,41 @@ export function EditExamScheduleDialog({
 
         <div className="space-y-5">
           <div className="space-y-2">
+            <label className="text-sm font-medium">Syllabus</label>
+            <SyllabusSelect
+              value={syllabusId}
+              disabled={saving}
+              onChange={(value) => {
+                setSyllabusId(value);
+                setBranchId("");
+                handleClassChange("");
+              }}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Academic Branch</label>
+            <AcademicBranchSelect
+              syllabusId={syllabusId}
+              value={branchId}
+              disabled={saving}
+              onChange={(value) => {
+                setBranchId(value);
+                handleClassChange("");
+              }}
+            />
+          </div>
+
+          <div className="space-y-2">
             <label className="text-sm font-medium">Class</label>
 
-            <ClassSelect value={classId} onChange={handleClassChange} />
+            <ClassSelect
+              syllabusId={syllabusId}
+              branchId={branchId}
+              value={classId}
+              onChange={handleClassChange}
+              disabled={saving || !branchId}
+            />
           </div>
 
           <div className="space-y-2">

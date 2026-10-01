@@ -21,6 +21,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 import { ClassSelect, SectionSelect } from "@/components/common/select";
+import { AcademicBranchSelect } from "@/components/common/select/AcademicBranchSelect";
+import { SyllabusSelect } from "@/components/common/select/SyllabusSelect";
 
 /* -------------------------------------------------------------------------- */
 /* TYPES                                                                      */
@@ -74,6 +76,10 @@ type Props = {
 
 export function ExamResultsPage({ schoolSlug, examId }: Props) {
   const router = useRouter();
+
+  const [syllabusId, setSyllabusId] = useState("");
+
+  const [branchId, setBranchId] = useState("");
 
   const [selectedClassId, setSelectedClassId] = useState("");
 
@@ -186,6 +192,10 @@ export function ExamResultsPage({ schoolSlug, examId }: Props) {
   /* ---------------------------------------------------------------------- */
 
   function clearFilters() {
+    setSyllabusId("");
+
+    setBranchId("");
+
     setSelectedClassId("");
 
     setSectionId("");
@@ -264,12 +274,40 @@ export function ExamResultsPage({ schoolSlug, examId }: Props) {
         </CardHeader>
 
         <CardContent className="p-4 pt-0">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-end">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="w-full">
+              <SyllabusSelect
+                value={syllabusId}
+                onChange={(value) => {
+                  setSyllabusId(value);
+                  setBranchId("");
+                  setSelectedClassId("");
+                  setSectionId("");
+                  setData(null);
+                }}
+              />
+            </div>
+
+            <div className="w-full">
+              <AcademicBranchSelect
+                syllabusId={syllabusId}
+                value={branchId}
+                onChange={(value) => {
+                  setBranchId(value);
+                  setSelectedClassId("");
+                  setSectionId("");
+                  setData(null);
+                }}
+              />
+            </div>
             {/* CLASS */}
 
-            <div className="w-full lg:max-w-xs">
+            <div className="w-full">
               <ClassSelect
+                syllabusId={syllabusId}
+                branchId={branchId}
                 value={selectedClassId}
+                disabled={!branchId}
                 onChange={(value) => {
                   setSelectedClassId(value);
 
@@ -290,7 +328,7 @@ export function ExamResultsPage({ schoolSlug, examId }: Props) {
 
             {/* SECTION */}
 
-            <div className="w-full lg:max-w-xs">
+            <div className="w-full">
               <SectionSelect
                 value={sectionId}
                 onChange={(value) => {
@@ -303,7 +341,7 @@ export function ExamResultsPage({ schoolSlug, examId }: Props) {
 
             {/* CLEAR */}
 
-            {selectedClassId && (
+            {(syllabusId || branchId || selectedClassId) && (
               <Button variant="ghost" onClick={clearFilters}>
                 Clear filters
               </Button>

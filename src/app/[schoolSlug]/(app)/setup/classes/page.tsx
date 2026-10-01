@@ -18,10 +18,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useSchool } from "@/contexts/school-context";
 
 import { ClassForm } from "@/features/classes/components/ClassForm";
+import { AcademicBranchSelect } from "@/components/common/select/AcademicBranchSelect";
+import { SyllabusSelect } from "@/components/common/select/SyllabusSelect";
 
 type SchoolClass = {
   id: string;
+  syllabusId: string;
   syllabusName: string;
+  branchId: string;
   branchName: string;
   name: string;
   code: string | null;
@@ -41,6 +45,8 @@ export default function SetupClassesPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const [error, setError] = useState<string | null>(null);
+  const [syllabusFilter, setSyllabusFilter] = useState("");
+  const [branchFilter, setBranchFilter] = useState("");
 
   /* ------------------------------------------------------------------ */
   /* Load Classes                                                       */
@@ -145,7 +151,10 @@ export default function SetupClassesPage() {
   /* Sorted Classes                                                     */
   /* ------------------------------------------------------------------ */
 
-  const sortedClasses = [...classes].sort((a, b) => {
+  const sortedClasses = classes
+    .filter((item) => !syllabusFilter || item.syllabusId === syllabusFilter)
+    .filter((item) => !branchFilter || item.branchId === branchFilter)
+    .sort((a, b) => {
     const syllabusOrder = a.syllabusName.localeCompare(b.syllabusName);
     if (syllabusOrder !== 0) return syllabusOrder;
     const branchOrder = a.branchName.localeCompare(b.branchName);
@@ -155,7 +164,7 @@ export default function SetupClassesPage() {
     }
 
     return a.name.localeCompare(b.name);
-  });
+    });
 
   /* ------------------------------------------------------------------ */
   /* Status                                                             */
@@ -269,7 +278,7 @@ export default function SetupClassesPage() {
 
       <Card className="premium-card overflow-hidden rounded-2xl border-0">
         <CardHeader className="border-b border-border/60 px-6 py-5">
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex items-center gap-3">
               <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
                 <GraduationCap className="size-5" />
@@ -327,17 +336,35 @@ export default function SetupClassesPage() {
               </p>
             </div>
 
-            {!showForm && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={openCreate}
-                className="rounded-xl"
-              >
-                <Plus className="size-4" />
-                Add Class
-              </Button>
-            )}
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <SyllabusSelect
+                allowAll
+                value={syllabusFilter}
+                onChange={(value) => {
+                  setSyllabusFilter(value);
+                  setBranchFilter("");
+                }}
+                triggerClassName="h-9 w-full bg-background sm:w-40"
+              />
+              <AcademicBranchSelect
+                allowAll
+                syllabusId={syllabusFilter}
+                value={branchFilter}
+                onChange={setBranchFilter}
+                triggerClassName="h-9 w-full bg-background sm:w-44"
+              />
+              {!showForm && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={openCreate}
+                  className="rounded-xl"
+                >
+                  <Plus className="size-4" />
+                  Add Class
+                </Button>
+              )}
+            </div>
           </div>
         </CardHeader>
 
@@ -353,18 +380,21 @@ export default function SetupClassesPage() {
               </div>
 
               <p className="mt-3 text-sm font-semibold">
-                No classes configured
+                {classes.length ? "No matching classes" : "No classes configured"}
               </p>
 
               <p className="mt-1 max-w-md text-xs leading-5 text-muted-foreground">
-                Add the classes offered by your school to continue with section
-                configuration.
+                {classes.length
+                  ? "Change the syllabus or branch filter to view other classes."
+                  : "Add the classes offered by your school to continue with section configuration."}
               </p>
 
-              <Button className="mt-5 rounded-xl" onClick={openCreate}>
-                <Plus className="size-4" />
-                Add First Class
-              </Button>
+              {!classes.length && (
+                <Button className="mt-5 rounded-xl" onClick={openCreate}>
+                  <Plus className="size-4" />
+                  Add First Class
+                </Button>
+              )}
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -373,14 +403,6 @@ export default function SetupClassesPage() {
                   <tr>
                     <th className="px-5 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                       #
-                    </th>
-
-                    <th className="px-5 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                      Syllabus
-                    </th>
-
-                    <th className="px-5 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                      Branch
                     </th>
 
                     <th className="px-5 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
@@ -413,14 +435,6 @@ export default function SetupClassesPage() {
                     >
                       <td className="px-5 py-4 text-xs text-muted-foreground">
                         {index + 1}
-                      </td>
-
-                      <td className="px-5 py-4 text-muted-foreground">
-                        {item.syllabusName}
-                      </td>
-
-                      <td className="px-5 py-4 text-muted-foreground">
-                        {item.branchName}
                       </td>
 
                       <td className="px-5 py-4 font-semibold">{item.name}</td>

@@ -3,8 +3,10 @@
 import { useState } from "react";
 
 import { ClassSelect } from "@/components/common/select/ClassSelect";
+import { AcademicBranchSelect } from "@/components/common/select/AcademicBranchSelect";
 import { SearchableStudentSelect } from "@/components/common/select/SearchableStudentSelect";
 import { SectionSelect } from "@/components/common/select/SectionSelect";
+import { SyllabusSelect } from "@/components/common/select/SyllabusSelect";
 
 import {
   Select,
@@ -31,12 +33,18 @@ export function AudienceSelector({
 }: AudienceSelectorProps) {
   const [target, setTarget] = useState<AudienceType>("SCHOOL");
 
+  const [syllabusId, setSyllabusId] = useState("");
+  const [branchId, setBranchId] = useState("");
   const [classId, setClassId] = useState("");
   const [sectionId, setSectionId] = useState("");
   const [studentId, setStudentId] = useState("");
 
   const targetId =
-    target === "CLASS"
+    target === "SYLLABUS"
+      ? syllabusId
+      : target === "BRANCH"
+        ? branchId
+        : target === "CLASS"
       ? classId
       : target === "SECTION"
         ? sectionId
@@ -53,11 +61,28 @@ export function AudienceSelector({
   function changeTarget(value: AudienceType) {
     setTarget(value);
 
+    setSyllabusId("");
+    setBranchId("");
     setClassId("");
     setSectionId("");
     setStudentId("");
 
     report(value, "");
+  }
+
+  function changeSyllabus(value: string) {
+    setSyllabusId(value);
+    setBranchId("");
+    setClassId("");
+    setSectionId("");
+    report(target, target === "SYLLABUS" ? value : "");
+  }
+
+  function changeBranch(value: string) {
+    setBranchId(value);
+    setClassId("");
+    setSectionId("");
+    report(target, target === "BRANCH" ? value : "");
   }
 
   function changeClass(value: string) {
@@ -103,6 +128,10 @@ export function AudienceSelector({
           <SelectContent>
             <SelectItem value="SCHOOL">Whole school</SelectItem>
 
+            <SelectItem value="SYLLABUS">Syllabus</SelectItem>
+
+            <SelectItem value="BRANCH">Academic branch</SelectItem>
+
             <SelectItem value="CLASS">Class</SelectItem>
 
             <SelectItem value="SECTION">Section</SelectItem>
@@ -116,11 +145,37 @@ export function AudienceSelector({
 
       <input type="hidden" name="targetId" value={targetId} />
 
+      {target !== "SCHOOL" && target !== "STUDENT" && (
+        <div className="grid gap-2 text-sm font-medium">
+          <span>Syllabus</span>
+          <SyllabusSelect value={syllabusId} onChange={changeSyllabus} />
+        </div>
+      )}
+
+      {target !== "SCHOOL" &&
+        target !== "SYLLABUS" &&
+        target !== "STUDENT" && (
+          <div className="grid gap-2 text-sm font-medium">
+            <span>Academic branch</span>
+            <AcademicBranchSelect
+              syllabusId={syllabusId}
+              value={branchId}
+              onChange={changeBranch}
+            />
+          </div>
+        )}
+
       {target === "CLASS" && (
         <div className="grid gap-2 text-sm font-medium">
           <span>Class</span>
 
-          <ClassSelect value={classId} onChange={changeClass} />
+          <ClassSelect
+            syllabusId={syllabusId}
+            branchId={branchId}
+            value={classId}
+            disabled={!branchId}
+            onChange={changeClass}
+          />
         </div>
       )}
 
@@ -129,7 +184,13 @@ export function AudienceSelector({
           <div className="grid gap-2 text-sm font-medium">
             <span>Class</span>
 
-            <ClassSelect value={classId} onChange={changeSectionClass} />
+            <ClassSelect
+              syllabusId={syllabusId}
+              branchId={branchId}
+              value={classId}
+              disabled={!branchId}
+              onChange={changeSectionClass}
+            />
           </div>
 
           <div className="grid gap-2 text-sm font-medium">

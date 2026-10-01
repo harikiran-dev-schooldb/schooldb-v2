@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import { ClassSelect, SectionSelect } from "@/components/common/select";
+import { AcademicBranchSelect } from "@/components/common/select/AcademicBranchSelect";
+import { SyllabusSelect } from "@/components/common/select/SyllabusSelect";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -46,6 +48,8 @@ export function BulkExamMarksPage({ schoolSlug, examId }: Props) {
   const [examName, setExamName] = useState("");
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
+  const [syllabusId, setSyllabusId] = useState("");
+  const [branchId, setBranchId] = useState("");
   const [classId, setClassId] = useState("");
   const [sectionId, setSectionId] = useState("");
   const [loading, setLoading] = useState(true);
@@ -262,9 +266,11 @@ export function BulkExamMarksPage({ schoolSlug, examId }: Props) {
 
       <Card className="rounded-2xl">
         <CardContent className="p-4 sm:p-5">
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
             <div><div className="mb-2 text-xs font-medium uppercase text-muted-foreground">Exam</div><div className="flex h-10 items-center rounded-md border bg-muted/30 px-3 text-sm font-medium">{examName || "—"}</div></div>
-            <div><div className="mb-2 text-xs font-medium uppercase text-muted-foreground">Class</div><ClassSelect value={classId} onChange={(value) => { setClassId(value); setSectionId(""); setStudents([]); }} /></div>
+            <div><div className="mb-2 text-xs font-medium uppercase text-muted-foreground">Syllabus</div><SyllabusSelect value={syllabusId} onChange={(value) => { setSyllabusId(value); setBranchId(""); setClassId(""); setSectionId(""); setStudents([]); }} /></div>
+            <div><div className="mb-2 text-xs font-medium uppercase text-muted-foreground">Academic branch</div><AcademicBranchSelect syllabusId={syllabusId} value={branchId} onChange={(value) => { setBranchId(value); setClassId(""); setSectionId(""); setStudents([]); }} /></div>
+            <div><div className="mb-2 text-xs font-medium uppercase text-muted-foreground">Class</div><ClassSelect syllabusId={syllabusId} branchId={branchId} value={classId} disabled={!branchId} onChange={(value) => { setClassId(value); setSectionId(""); setStudents([]); }} /></div>
             <div><div className="mb-2 text-xs font-medium uppercase text-muted-foreground">Section</div><SectionSelect classId={classId} value={sectionId} disabled={!classId} onChange={(value) => { setSectionId(value); setStudents([]); }} /></div>
           </div>
         </CardContent>

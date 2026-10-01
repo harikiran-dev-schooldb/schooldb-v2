@@ -64,11 +64,18 @@ export const classRepository = {
     });
   },
 
-  options(schoolId: string) {
+  options(
+  schoolId: string,
+  filters?: { syllabusId?: string; branchId?: string },
+) {
   return prisma.class.findMany({
     where: {
       schoolId,
       active: true,
+      ...(filters?.branchId ? { branchId: filters.branchId } : {}),
+      ...(filters?.syllabusId
+        ? { branch: { syllabusId: filters.syllabusId } }
+        : {}),
     },
 
     select: {

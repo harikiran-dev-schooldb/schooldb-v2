@@ -14,6 +14,8 @@ export interface ListQuery {
   status?: StudentStatus;
   classId?: string;
   sectionId?: string;
+  syllabusId?: string;
+  branchId?: string;
 }
 
 export interface PaginatedResult<T> {

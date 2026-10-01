@@ -10,7 +10,16 @@ test("limits notifications to the school and accessible student scopes", () => {
     [
       {
         id: "student-1",
-        enrollments: [{ classId: "class-10", sectionId: "section-c" }],
+        enrollments: [
+          {
+            classId: "class-10",
+            sectionId: "section-c",
+            class: {
+              branchId: "branch-primary",
+              branch: { syllabusId: "syllabus-cbse" },
+            },
+          },
+        ],
       },
     ],
     now,
@@ -26,6 +35,8 @@ test("limits notifications to the school and accessible student scopes", () => {
         OR: [
           { targetType: "SCHOOL", targetId: null },
           { targetType: "STUDENT", targetId: { in: ["student-1"] } },
+          { targetType: "SYLLABUS", targetId: { in: ["syllabus-cbse"] } },
+          { targetType: "BRANCH", targetId: { in: ["branch-primary"] } },
           { targetType: "CLASS", targetId: { in: ["class-10"] } },
           { targetType: "SECTION", targetId: { in: ["section-c"] } },
         ],

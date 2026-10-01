@@ -24,6 +24,25 @@ export async function notificationContext(schoolSlug: string) {
       const sectionIds = Array.from(
         new Set(allocations.map((allocation) => allocation.sectionId)),
       );
+      const classScopes = classIds.length
+        ? await prisma.class.findMany({
+            where: { schoolId: membership.schoolId, id: { in: classIds } },
+            select: {
+              branchId: true,
+              branch: { select: { syllabusId: true } },
+            },
+          })
+        : [];
+      const branchIds = Array.from(new Set(classScopes.map((item) => item.branchId)));
+      const syllabusIds = Array.from(
+        new Set(classScopes.map((item) => item.branch.syllabusId)),
+      );
+      if (syllabusIds.length > 0) {
+        audience.push({ targetType: "SYLLABUS", targetId: { in: syllabusIds } });
+      }
+      if (branchIds.length > 0) {
+        audience.push({ targetType: "BRANCH", targetId: { in: branchIds } });
+      }
       if (classIds.length > 0) {
         audience.push({ targetType: "CLASS", targetId: { in: classIds } });
       }

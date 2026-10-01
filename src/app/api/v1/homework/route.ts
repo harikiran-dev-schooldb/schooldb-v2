@@ -20,6 +20,8 @@ export async function GET(req: Request) {
     const page = Number(searchParams.get("page") ?? 1);
     const pageSize = Number(searchParams.get("pageSize") ?? 25);
     const search = searchParams.get("search") ?? undefined;
+    const syllabusId = searchParams.get("syllabusId") ?? undefined;
+    const branchId = searchParams.get("branchId") ?? undefined;
     const teacherScope = tenant.role === "TEACHER"
       ? await requireCurrentTeacher(tenant.schoolId).then((teacher) =>
           prisma.teacherAllocation.findMany({
@@ -33,6 +35,8 @@ export async function GET(req: Request) {
       page,
       pageSize,
       search,
+      syllabusId,
+      branchId,
       teacherScope,
     });
     return ApiResponse.success(homework);

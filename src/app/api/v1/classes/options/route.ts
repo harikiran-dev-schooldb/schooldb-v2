@@ -4,13 +4,15 @@ import { ApiResponse } from "@/lib/response";
 
 import { classService } from "@/features/classes/services/class.service";
 
-export async function GET() {
+export async function GET(request: Request) {
   return apiHandler(async () => {
     const tenant = await requireTenant();
 
-    const classes = await classService.options(
-      tenant.schoolId
-    );
+    const params = new URL(request.url).searchParams;
+    const classes = await classService.options(tenant.schoolId, {
+      syllabusId: params.get("syllabusId") ?? undefined,
+      branchId: params.get("branchId") ?? undefined,
+    });
 
     return ApiResponse.success(classes);
   });

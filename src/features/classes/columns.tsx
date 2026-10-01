@@ -7,14 +7,6 @@ import { ClassActions } from "./components/ClassActions";
 
 export const classColumns: ColumnDef<ClassListItem>[] = [
   {
-    accessorKey: "syllabusName",
-    header: "Syllabus",
-  },
-  {
-    accessorKey: "branchName",
-    header: "Branch",
-  },
-  {
     accessorKey: "displayOrder",
     header: "Order",
     cell: ({ row }) => (

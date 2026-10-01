@@ -4,6 +4,8 @@ import { CalendarDays, GraduationCap } from "lucide-react";
 
 import { CrudToolbar } from "@/components/common/crud";
 import { Badge } from "@/components/ui/badge";
+import { AcademicBranchSelect } from "@/components/common/select/AcademicBranchSelect";
+import { SyllabusSelect } from "@/components/common/select/SyllabusSelect";
 
 import { useHomeworkTable } from "../hooks/useHomeworkTable";
 import type { HomeworkListItem } from "../types";
@@ -41,7 +43,17 @@ function dueLabel(item: HomeworkListItem) {
 }
 
 export function HomeworkTable({ className }: Props) {
-  const { data, loading, search, setSearch, total } = useHomeworkTable();
+  const {
+    data,
+    loading,
+    search,
+    setSearch,
+    syllabusId,
+    setSyllabusId,
+    branchId,
+    setBranchId,
+    total,
+  } = useHomeworkTable();
 
   return (
     <section className={className}>
@@ -58,12 +70,26 @@ export function HomeworkTable({ className }: Props) {
           </p>
         </div>
 
-        <div className="w-full sm:max-w-sm">
+        <div className="w-full lg:max-w-3xl">
           <CrudToolbar
             search={search}
             onSearch={setSearch}
             placeholder="Search homework..."
-          />
+          >
+            <SyllabusSelect
+              allowAll
+              value={syllabusId}
+              onChange={setSyllabusId}
+              triggerClassName="h-10 w-full bg-background sm:w-40"
+            />
+            <AcademicBranchSelect
+              allowAll
+              syllabusId={syllabusId}
+              value={branchId}
+              onChange={setBranchId}
+              triggerClassName="h-10 w-full bg-background sm:w-44"
+            />
+          </CrudToolbar>
         </div>
       </div>
 

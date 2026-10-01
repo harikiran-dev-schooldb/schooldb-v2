@@ -14,6 +14,13 @@ export type HomeworkListItem = {
   class: {
     id: string;
     name: string;
+    branchId: string;
+    branch: {
+      id: string;
+      name: string;
+      syllabusId: string;
+      syllabus: { id: string; name: string };
+    };
   };
 
   section?: {
@@ -38,6 +45,13 @@ export type HomeworkDetails = {
   class: {
     id: string;
     name: string;
+    branchId: string;
+    branch: {
+      id: string;
+      name: string;
+      syllabusId: string;
+      syllabus: { id: string; name: string };
+    };
   };
 
   section?: {

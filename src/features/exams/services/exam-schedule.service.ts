@@ -58,6 +58,13 @@ export const examScheduleService = {
           select: {
             id: true,
             name: true,
+            branchId: true,
+            branch: {
+              select: {
+                id: true,
+                syllabusId: true,
+              },
+            },
           },
         },
 
@@ -105,6 +112,13 @@ export const examScheduleService = {
           select: {
             id: true,
             name: true,
+            branchId: true,
+            branch: {
+              select: {
+                id: true,
+                syllabusId: true,
+              },
+            },
           },
         },
 

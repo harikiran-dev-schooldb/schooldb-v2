@@ -24,6 +24,8 @@ export function useSectionTable() {
   const [pageSize] = useState(25);
 
   const [search, setSearch] = useState("");
+  const [syllabusId, setSyllabusId] = useState("");
+  const [branchId, setBranchId] = useState("");
 
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
@@ -46,16 +48,31 @@ export function useSectionTable() {
     setPage(page);
   };
 
+  const handleSyllabus = (value: string) => {
+    setSyllabusId(value);
+    setBranchId("");
+    setPage(1);
+  };
+
+  const handleBranch = (value: string) => {
+    setBranchId(value);
+    setPage(1);
+  };
+
   useEffect(() => {
     let active = true;
 
     async function loadSections() {
       try {
-        const res = await fetch(
-          `/api/v1/sections?page=${page}&pageSize=${pageSize}&search=${encodeURIComponent(
-            debouncedSearch
-          )}`
-        );
+        const params = new URLSearchParams({
+          page: String(page),
+          pageSize: String(pageSize),
+          search: debouncedSearch,
+        });
+        if (syllabusId) params.set("syllabusId", syllabusId);
+        if (branchId) params.set("branchId", branchId);
+
+        const res = await fetch(`/api/v1/sections?${params.toString()}`);
 
         const result = await res.json();
 
@@ -78,7 +95,7 @@ export function useSectionTable() {
     return () => {
       active = false;
     };
-  }, [page, pageSize, debouncedSearch, reloadVersion]);
+  }, [page, pageSize, debouncedSearch, syllabusId, branchId, reloadVersion]);
 
   useEffect(() => {
       return subscribeTableRefresh("sections", reload);
@@ -96,6 +113,11 @@ export function useSectionTable() {
 
     search,
     setSearch: handleSearch,
+
+    syllabusId,
+    setSyllabusId: handleSyllabus,
+    branchId,
+    setBranchId: handleBranch,
 
     total,
     totalPages,

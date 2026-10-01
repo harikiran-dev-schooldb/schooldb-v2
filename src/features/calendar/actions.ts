@@ -13,7 +13,7 @@ const calendarEventSchema = z.object({
   category: z.enum(["HOLIDAY", "EXAM", "EVENT", "FEE_DEADLINE", "PARENT_MEETING"]),
   startDate: z.string(),
   endDate: z.string(),
-  targetType: z.enum(["SCHOOL", "CLASS", "SECTION", "STUDENT"]),
+  targetType: z.enum(["SCHOOL", "SYLLABUS", "BRANCH", "CLASS", "SECTION", "STUDENT"]),
   targetId: z.string().trim().max(100),
 });
 

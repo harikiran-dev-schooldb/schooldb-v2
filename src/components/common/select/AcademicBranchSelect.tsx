@@ -16,10 +16,19 @@ type Props = {
   syllabusId?: string;
   value?: string;
   disabled?: boolean;
+  allowAll?: boolean;
+  triggerClassName?: string;
   onChange: (value: string) => void;
 };
 
-export function AcademicBranchSelect({ syllabusId, value, disabled, onChange }: Props) {
+export function AcademicBranchSelect({
+  syllabusId,
+  value,
+  disabled,
+  allowAll = false,
+  triggerClassName,
+  onChange,
+}: Props) {
   const [options, setOptions] = useState<Option[]>([]);
   const [loadedFor, setLoadedFor] = useState("");
 
@@ -43,14 +52,15 @@ export function AcademicBranchSelect({ syllabusId, value, disabled, onChange }: 
 
   return (
     <Select
-      value={value ?? ""}
+      value={syllabusId ? (value || (allowAll ? "ALL" : "")) : ""}
       disabled={disabled || !syllabusId}
-      onValueChange={onChange}
+      onValueChange={(nextValue) => onChange(nextValue === "ALL" ? "" : nextValue)}
     >
-      <SelectTrigger className="h-11 bg-background">
-        <SelectValue placeholder={syllabusId ? "Select branch" : "Select syllabus first"} />
+      <SelectTrigger className={triggerClassName ?? "h-11 bg-background"}>
+        <SelectValue placeholder={syllabusId ? (allowAll ? "All branches" : "Select branch") : "Select syllabus first"} />
       </SelectTrigger>
       <SelectContent>
+        {allowAll && syllabusId && <SelectItem value="ALL">All branches</SelectItem>}
         {(loadedFor === syllabusId ? options : []).map((option) => (
           <SelectItem key={option.id} value={option.id}>
             {option.name}{option.code ? ` (${option.code})` : ""}

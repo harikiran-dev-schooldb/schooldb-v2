@@ -19,6 +19,10 @@ export const sectionService = {
 
       class: {
         schoolId,
+        ...(query.branchId ? { branchId: query.branchId } : {}),
+        ...(query.syllabusId
+          ? { branch: { syllabusId: query.syllabusId } }
+          : {}),
       },
 
       ...(query.search && {

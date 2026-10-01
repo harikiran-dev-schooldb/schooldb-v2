@@ -61,6 +61,8 @@ export const homeworkService = {
       page: number;
       pageSize: number;
       search?: string;
+      syllabusId?: string;
+      branchId?: string;
       teacherScope?: Array<{ classId: string; sectionId: string }>;
     }
   ) {
@@ -69,6 +71,16 @@ export const homeworkService = {
 
     const where: Prisma.HomeworkWhereInput = {
       schoolId,
+      ...(query.branchId || query.syllabusId
+        ? {
+            class: {
+              ...(query.branchId ? { branchId: query.branchId } : {}),
+              ...(query.syllabusId
+                ? { branch: { syllabusId: query.syllabusId } }
+                : {}),
+            },
+          }
+        : {}),
 
       ...(query.teacherScope && {
         OR: query.teacherScope.map((scope) => ({

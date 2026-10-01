@@ -55,7 +55,12 @@ type ExamSchedule = {
   maxMarks: string | number;
   passMarks: string | number | null;
   assessmentType: "MARKS" | "GRADE";
-  class: { id: string; name: string };
+  class: {
+    id: string;
+    name: string;
+    branchId: string;
+    branch: { id: string; syllabusId: string };
+  };
   section: { id: string; name: string } | null;
   subject: { id: string; name: string; code: string | null };
 };

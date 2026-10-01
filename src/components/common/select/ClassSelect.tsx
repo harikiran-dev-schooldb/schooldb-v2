@@ -21,6 +21,8 @@ type Props = {
   allowAll?: boolean;
   placeholder?: string;
   triggerClassName?: string;
+  syllabusId?: string;
+  branchId?: string;
   onChange: (value: string) => void;
 };
 
@@ -30,13 +32,19 @@ export function ClassSelect({
   allowAll = false,
   placeholder = "Select Class",
   triggerClassName,
+  syllabusId,
+  branchId,
   onChange,
 }: Props) {
   const [classes, setClasses] = useState<ClassOption[]>([]);
 
   useEffect(() => {
     async function load() {
-      const res = await fetch("/api/v1/classes/options");
+      const params = new URLSearchParams();
+      if (syllabusId) params.set("syllabusId", syllabusId);
+      if (branchId) params.set("branchId", branchId);
+      const query = params.toString();
+      const res = await fetch(`/api/v1/classes/options${query ? `?${query}` : ""}`);
 
       const result = await res.json();
 
@@ -46,7 +54,7 @@ export function ClassSelect({
     }
 
     load();
-  }, []);
+  }, [syllabusId, branchId]);
 
   return (
     <Select

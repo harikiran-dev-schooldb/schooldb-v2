@@ -8,6 +8,8 @@ import { toast } from "sonner";
 
 import { FormField } from "@/components/common/forms";
 import { ClassSelect, SectionSelect } from "@/components/common/select";
+import { AcademicBranchSelect } from "@/components/common/select/AcademicBranchSelect";
+import { SyllabusSelect } from "@/components/common/select/SyllabusSelect";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -65,6 +67,8 @@ export function HomeworkForm({
     mode === "edit" && Boolean(homeworkId),
   );
   const [confirmationOpen, setConfirmationOpen] = useState(false);
+  const [syllabusId, setSyllabusId] = useState("");
+  const [branchId, setBranchId] = useState("");
 
   const form = useForm<HomeworkFormInput>({
     resolver: zodResolver(homeworkSchema),
@@ -96,6 +100,8 @@ export function HomeworkForm({
         }
 
         const item = result.data;
+        setSyllabusId(item.class.branch.syllabusId);
+        setBranchId(item.class.branchId);
         form.reset({
           classId: item.classId,
           sectionId: item.sectionId ?? "",
@@ -145,7 +151,11 @@ export function HomeworkForm({
             : "Homework updated successfully."),
       );
 
-      if (mode === "create") form.reset(createDefaults());
+      if (mode === "create") {
+        form.reset(createDefaults());
+        setSyllabusId("");
+        setBranchId("");
+      }
       refreshTable("homework");
       onSuccess();
     } catch (error) {
@@ -220,13 +230,40 @@ export function HomeworkForm({
       </FormField>
 
       <div className="grid gap-4 sm:grid-cols-2">
+        <FormField label="Syllabus" required>
+          <SyllabusSelect
+            value={syllabusId}
+            onChange={(value) => {
+              setSyllabusId(value);
+              setBranchId("");
+              form.setValue("classId", "", { shouldDirty: true });
+              form.setValue("sectionId", "", { shouldDirty: true });
+            }}
+          />
+        </FormField>
+
+        <FormField label="Academic branch" required>
+          <AcademicBranchSelect
+            syllabusId={syllabusId}
+            value={branchId}
+            onChange={(value) => {
+              setBranchId(value);
+              form.setValue("classId", "", { shouldDirty: true });
+              form.setValue("sectionId", "", { shouldDirty: true });
+            }}
+          />
+        </FormField>
+
         <FormField
           label="Class"
           required
           error={form.formState.errors.classId?.message}
         >
           <ClassSelect
+            syllabusId={syllabusId}
+            branchId={branchId}
             value={classId}
+            disabled={!branchId}
             onChange={(value) => {
               form.setValue("classId", value, {
                 shouldDirty: true,

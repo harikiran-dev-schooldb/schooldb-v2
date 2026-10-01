@@ -18,6 +18,10 @@ export function SectionTable() {
 
     search,
     setSearch,
+    syllabusId,
+    setSyllabusId,
+    branchId,
+    setBranchId,
   } = useSectionTable();
 
   return (
@@ -28,7 +32,16 @@ export function SectionTable() {
       page={page}
       totalPages={totalPages}
       onPageChange={setPage}
-      toolbar={<SectionToolbar search={search} onSearch={setSearch} />}
+      toolbar={
+        <SectionToolbar
+          search={search}
+          onSearch={setSearch}
+          syllabusId={syllabusId}
+          branchId={branchId}
+          onSyllabusChange={setSyllabusId}
+          onBranchChange={setBranchId}
+        />
+      }
     />
   );
 }

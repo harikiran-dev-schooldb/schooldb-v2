@@ -36,11 +36,15 @@ async function audienceUserIds(announcement: PushAnnouncement) {
   }
 
   if (!announcement.targetId) return [];
-  const enrollmentWhere = announcement.targetType === "CLASS"
-    ? { classId: announcement.targetId }
-    : announcement.targetType === "SECTION"
-      ? { sectionId: announcement.targetId }
-      : undefined;
+  const enrollmentWhere = announcement.targetType === "SYLLABUS"
+    ? { class: { branch: { syllabusId: announcement.targetId } } }
+    : announcement.targetType === "BRANCH"
+      ? { class: { branchId: announcement.targetId } }
+      : announcement.targetType === "CLASS"
+        ? { classId: announcement.targetId }
+        : announcement.targetType === "SECTION"
+          ? { sectionId: announcement.targetId }
+          : undefined;
   const students = await prisma.student.findMany({
     where: {
       schoolId: announcement.schoolId,

@@ -22,7 +22,14 @@ function studentSelect(schoolId: string) {
       classId: true,
       sectionId: true,
       academicYear: { select: { id: true, name: true, attendanceMode: true } },
-      class: { select: { id: true, name: true } },
+      class: {
+        select: {
+          id: true,
+          name: true,
+          branchId: true,
+          branch: { select: { syllabusId: true } },
+        },
+      },
       section: { select: { id: true, name: true } },
     },
   },

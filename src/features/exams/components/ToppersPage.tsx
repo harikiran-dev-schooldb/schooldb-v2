@@ -21,6 +21,8 @@ import {
   ClassSelect,
   SectionSelect,
 } from "@/components/common/select";
+import { AcademicBranchSelect } from "@/components/common/select/AcademicBranchSelect";
+import { SyllabusSelect } from "@/components/common/select/SyllabusSelect";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -82,6 +84,8 @@ export function ToppersPage({ schoolSlug }: Props) {
   const [exams, setExams] = useState<ExamOption[]>([]);
   const [academicYearId, setAcademicYearId] = useState("");
   const [examId, setExamId] = useState("");
+  const [syllabusId, setSyllabusId] = useState("");
+  const [branchId, setBranchId] = useState("");
   const [classId, setClassId] = useState("");
   const [sectionId, setSectionId] = useState("");
   const [scope, setScope] = useState<RankingScope>("CLASS");
@@ -242,7 +246,7 @@ export function ToppersPage({ schoolSlug }: Props) {
             </ScopeButton>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <Filter label="Academic year">
               <AcademicYearSelect value={academicYearId} onChange={changeAcademicYear} />
             </Filter>
@@ -254,8 +258,14 @@ export function ToppersPage({ schoolSlug }: Props) {
                 </SelectContent>
               </Select>
             </Filter>
+            <Filter label="Syllabus">
+              <SyllabusSelect value={syllabusId} onChange={(value) => { setSyllabusId(value); setBranchId(""); setClassId(""); setSectionId(""); setData(null); }} />
+            </Filter>
+            <Filter label="Academic branch">
+              <AcademicBranchSelect syllabusId={syllabusId} value={branchId} onChange={(value) => { setBranchId(value); setClassId(""); setSectionId(""); setData(null); }} />
+            </Filter>
             <Filter label="Class">
-              <ClassSelect value={classId} onChange={(value) => { setClassId(value); setSectionId(""); setData(null); }} />
+              <ClassSelect syllabusId={syllabusId} branchId={branchId} value={classId} disabled={!branchId} onChange={(value) => { setClassId(value); setSectionId(""); setData(null); }} />
             </Filter>
             <Filter label="Section" muted={scope === "CLASS"}>
               <SectionSelect classId={classId} value={sectionId} allowAll={false} disabled={scope === "CLASS" || !classId} placeholder={scope === "CLASS" ? "All sections" : "Select section"} onChange={(value) => { setSectionId(value); setData(null); }} />

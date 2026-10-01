@@ -16,6 +16,10 @@ export const classService = {
     const where: Prisma.ClassWhereInput = {
       schoolId,
       active: true,
+      ...(query.branchId ? { branchId: query.branchId } : {}),
+      ...(query.syllabusId
+        ? { branch: { syllabusId: query.syllabusId } }
+        : {}),
 
       ...(query.search && {
         OR: [
@@ -154,8 +158,11 @@ export const classService = {
   );
 },
 
-async options(schoolId: string) {
-  const classes = await classRepository.options(schoolId);
+async options(
+  schoolId: string,
+  filters?: { syllabusId?: string; branchId?: string },
+) {
+  const classes = await classRepository.options(schoolId, filters);
 
   return classes.map((item) => ({
     id: item.id,

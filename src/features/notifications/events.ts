@@ -8,7 +8,14 @@ async function createEventNotification(input: {
   title: string;
   body: string;
   category: string;
-  targetType: "SCHOOL" | "CLASS" | "SECTION" | "STUDENT" | "ADMIN";
+  targetType:
+    | "SCHOOL"
+    | "SYLLABUS"
+    | "BRANCH"
+    | "CLASS"
+    | "SECTION"
+    | "STUDENT"
+    | "ADMIN";
   targetId: string | null;
   targetLabel: string;
   sourceType?: string;

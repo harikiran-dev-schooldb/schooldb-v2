@@ -103,6 +103,10 @@ export async function getWhatsappEligibleRecipientCount(
   const enrollmentWhere = {
     schoolId,
     active: true,
+    ...(targetType === "SYLLABUS"
+      ? { class: { branch: { syllabusId: targetId } } }
+      : {}),
+    ...(targetType === "BRANCH" ? { class: { branchId: targetId } } : {}),
     ...(targetType === "CLASS" ? { classId: targetId } : {}),
     ...(targetType === "SECTION" ? { sectionId: targetId } : {}),
   };
@@ -155,6 +159,12 @@ export async function createWhatsappCampaign(input: CreateCampaignInput) {
   const enrollmentWhere = {
     schoolId: input.schoolId,
     active: true,
+    ...(input.targetType === "SYLLABUS"
+      ? { class: { branch: { syllabusId: audience.targetId! } } }
+      : {}),
+    ...(input.targetType === "BRANCH"
+      ? { class: { branchId: audience.targetId! } }
+      : {}),
     ...(input.targetType === "CLASS" ? { classId: audience.targetId! } : {}),
     ...(input.targetType === "SECTION"
       ? { sectionId: audience.targetId! }

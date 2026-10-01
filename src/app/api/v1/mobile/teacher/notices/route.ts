@@ -17,7 +17,16 @@ async function noticeContext() {
       academicYear: { active: true },
     },
     distinct: ["classId", "sectionId"],
-    select: { classId: true, sectionId: true },
+    select: {
+      classId: true,
+      sectionId: true,
+      class: {
+        select: {
+          branchId: true,
+          branch: { select: { syllabusId: true } },
+        },
+      },
+    },
   });
   const now = new Date();
   return {
@@ -31,6 +40,8 @@ async function noticeContext() {
         {
           OR: [
             { targetType: "SCHOOL", targetId: null },
+            { targetType: "SYLLABUS", targetId: { in: allocations.map((item) => item.class.branch.syllabusId) } },
+            { targetType: "BRANCH", targetId: { in: allocations.map((item) => item.class.branchId) } },
             { targetType: "CLASS", targetId: { in: allocations.map((item) => item.classId) } },
             { targetType: "SECTION", targetId: { in: allocations.map((item) => item.sectionId) } },
           ],

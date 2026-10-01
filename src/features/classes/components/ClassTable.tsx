@@ -18,6 +18,10 @@ export function ClassTable() {
 
     search,
     setSearch,
+    syllabusId,
+    setSyllabusId,
+    branchId,
+    setBranchId,
   } = useClassTable();
 
   return (
@@ -28,7 +32,16 @@ export function ClassTable() {
       page={page}
       totalPages={totalPages}
       onPageChange={setPage}
-      toolbar={<ClassToolbar search={search} onSearch={setSearch} />}
+      toolbar={
+        <ClassToolbar
+          search={search}
+          onSearch={setSearch}
+          syllabusId={syllabusId}
+          branchId={branchId}
+          onSyllabusChange={setSyllabusId}
+          onBranchChange={setBranchId}
+        />
+      }
     />
   );
 }

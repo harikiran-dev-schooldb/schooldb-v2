@@ -6,7 +6,21 @@ const homeworkInclude = {
   academicYear: { select: { id: true, name: true } },
   teacher: { select: { id: true, fullName: true } },
   subject: { select: { id: true, name: true } },
-  class: { select: { id: true, name: true } },
+  class: {
+    select: {
+      id: true,
+      name: true,
+      branchId: true,
+      branch: {
+        select: {
+          id: true,
+          name: true,
+          syllabusId: true,
+          syllabus: { select: { id: true, name: true } },
+        },
+      },
+    },
+  },
   section: { select: { id: true, name: true } },
 } satisfies Prisma.HomeworkInclude;
 

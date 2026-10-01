@@ -8,6 +8,8 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ClassSelect, SectionSelect } from "@/components/common/select";
+import { AcademicBranchSelect } from "@/components/common/select/AcademicBranchSelect";
+import { SyllabusSelect } from "@/components/common/select/SyllabusSelect";
 import { Input } from "@/components/ui/input";
 import { refreshTable } from "@/lib/table-event";
 import { EXAM_GRADES } from "@/features/exams/assessment";
@@ -69,6 +71,8 @@ export function ExamMarksPage({ schoolSlug, examId }: Props) {
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
 
+  const [syllabusId, setSyllabusId] = useState("");
+  const [branchId, setBranchId] = useState("");
   const [selectedClassId, setSelectedClassId] = useState("");
   const [sectionId, setSectionId] = useState("");
 
@@ -432,10 +436,33 @@ export function ExamMarksPage({ schoolSlug, examId }: Props) {
 
       <Card className="w-full rounded-2xl">
         <CardContent className="p-4 sm:p-5">
-          <div className="flex flex-col gap-4 sm:flex-row">
-            <div className="w-full sm:w-64">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <SyllabusSelect
+              value={syllabusId}
+              onChange={(value) => {
+                setSyllabusId(value);
+                setBranchId("");
+                setSelectedClassId("");
+                setSectionId("");
+                setStudents([]);
+              }}
+            />
+            <AcademicBranchSelect
+              syllabusId={syllabusId}
+              value={branchId}
+              onChange={(value) => {
+                setBranchId(value);
+                setSelectedClassId("");
+                setSectionId("");
+                setStudents([]);
+              }}
+            />
+            <div className="w-full">
               <ClassSelect
+                syllabusId={syllabusId}
+                branchId={branchId}
                 value={selectedClassId}
+                disabled={!branchId}
                 onChange={(value) => {
                   setSelectedClassId(value);
                   setSectionId("");
@@ -444,7 +471,7 @@ export function ExamMarksPage({ schoolSlug, examId }: Props) {
               />
             </div>
 
-            <div className="w-full sm:w-64">
+            <div className="w-full">
               <SectionSelect
                 value={sectionId}
                 onChange={(value) => {
