@@ -1,4 +1,7 @@
 package com.schooldb.mobile.teacher
+import androidx.compose.foundation.background
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -56,7 +59,8 @@ fun NoticeScreen(state: NoticeUiState, viewModel: NoticeViewModel) {
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp)) {
+            Column(Modifier.fillMaxWidth().background(Brush.linearGradient(listOf(Color.White,
+                Color(0xFFF1F3FF), Color(0xFFF5F3FF)))).padding(horizontal = 20.dp, vertical = 12.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                     Surface(
                         onClick = viewModel::refresh,
@@ -135,7 +139,8 @@ private fun TeacherNoticeDetails(item: NoticeItem, onBack: () -> Unit) {
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp)) {
+            Column(Modifier.fillMaxWidth().background(Brush.linearGradient(listOf(Color.White,
+                Color(0xFFF1F3FF), Color(0xFFF5F3FF)))).padding(horizontal = 20.dp, vertical = 12.dp)) {
                 Surface(
                     onClick = onBack,
                     modifier = Modifier.size(43.dp),

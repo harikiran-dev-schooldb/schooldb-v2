@@ -1,4 +1,5 @@
 package com.schooldb.mobile.family
+import com.schooldb.mobile.ui.theme.WebTopAppBar as TopAppBar
 
 import android.content.Intent
 import androidx.activity.compose.BackHandler
@@ -111,7 +112,7 @@ private fun StudentPremiumTopBar(
     onSwitchAccount: () -> Unit,
 ) {
     Row(
-        Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background)
+        Modifier.fillMaxWidth().background(Brush.linearGradient(listOf(Color.White, Color(0xFFF1F3FF), Color(0xFFF5F3FF))))
             .statusBarsPadding().padding(start = 20.dp, end = 14.dp, top = 12.dp, bottom = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -140,7 +141,7 @@ private fun StudentPremiumTopBar(
             onClick = onSwitchAccount,
             modifier = Modifier.size(42.dp),
             shape = CircleShape,
-            color = MaterialTheme.colorScheme.onSurface,
+            color = FamilyIndigo,
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Text(studentName.trim().take(1).uppercase().ifBlank { "S" },
@@ -548,30 +549,30 @@ private fun StudentHero(student: FamilyStudent) {
     Box(
         Modifier.fillMaxWidth().padding(horizontal = 20.dp)
             .clip(RoundedCornerShape(28.dp))
-            .background(Brush.linearGradient(listOf(Color(0xFF293A9D), Color(0xFF5B42D8), Color(0xFF8463E8)))),
+            .background(Brush.linearGradient(listOf(Color.White, Color(0xFFF1F3FF), Color(0xFFF5F3FF)))),
     ) {
         Box(Modifier.align(Alignment.TopEnd).offset(x = 60.dp, y = (-65).dp).size(180.dp).background(Color.White.copy(alpha = .07f), CircleShape))
         Box(Modifier.align(Alignment.BottomEnd).offset(x = 38.dp, y = 60.dp).size(145.dp).background(Color.White.copy(alpha = .06f), CircleShape))
         Column(Modifier.fillMaxWidth().padding(22.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.size(42.dp).background(Color.White.copy(alpha = .16f), RoundedCornerShape(14.dp)), contentAlignment = Alignment.Center) {
-                    Icon(Icons.Default.School, contentDescription = null, tint = Color.White, modifier = Modifier.size(22.dp))
+                    Icon(Icons.Default.School, contentDescription = null, tint = FamilyIndigo, modifier = Modifier.size(22.dp))
                 }
                 Spacer(Modifier.width(11.dp))
-                Text("STUDENT PROFILE", color = Color.White.copy(alpha = .78f), fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                Text("STUDENT PROFILE", color = Color(0xFF64748B), fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
             }
             Spacer(Modifier.height(19.dp))
-            Text(student.fullName, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 25.sp, lineHeight = 29.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(student.fullName, color = Color(0xFF0F172A), fontWeight = FontWeight.Bold, fontSize = 25.sp, lineHeight = 29.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
             Text(
                 listOfNotNull(student.className, student.sectionName?.let { "Section $it" }, student.rollNo?.let { "Roll $it" }).joinToString("  ·  ").ifBlank { "Enrollment details unavailable" },
-                Modifier.padding(top = 7.dp), color = Color.White.copy(alpha = .85f), fontSize = 13.sp,
+                Modifier.padding(top = 7.dp), color = Color(0xFF64748B), fontSize = 13.sp,
             )
             if (student.admissionNo.isNotBlank()) {
                 Spacer(Modifier.height(20.dp))
                 Text(
                     "ADMISSION  ${student.admissionNo}",
                     Modifier.background(Color.White.copy(alpha = .14f), RoundedCornerShape(10.dp)).padding(horizontal = 11.dp, vertical = 7.dp),
-                    color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, letterSpacing = .4.sp,
+                    color = Color(0xFF0F172A), fontSize = 11.sp, fontWeight = FontWeight.SemiBold, letterSpacing = .4.sp,
                 )
             }
         }
@@ -590,12 +591,12 @@ private fun StudentSectionHeading(title: String, subtitle: String) {
 private fun StudentMetrics(student: FamilyStudent) {
     Column(Modifier.padding(start = 20.dp, end = 20.dp, top = 12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            StudentMetricCard("Attendance", student.attendancePercentage?.let { "${number(it)}%" } ?: "—", "${student.attendanceAttended} of ${student.attendanceTotal} sessions", Icons.Outlined.CalendarMonth, Color(0xFF14847B), Modifier.weight(1f))
+            StudentMetricCard("Attendance", student.attendancePercentage?.let { "${number(it)}%" } ?: "—", "${student.attendanceAttended} of ${student.attendanceTotal} sessions", Icons.Outlined.CalendarMonth, FamilyIndigo, Modifier.weight(1f))
             StudentMetricCard("Homework", student.pendingHomeworkCount.toString(), "active assignments", Icons.AutoMirrored.Outlined.Assignment, FamilyIndigo, Modifier.weight(1f))
         }
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            StudentMetricCard("Results", student.completedResultCount.toString(), "completed exams", Icons.Default.EmojiEvents, Color(0xFFB87014), Modifier.weight(1f))
-            StudentMetricCard("Fees due", currency(student.outstandingFee), if (student.outstandingFee > 0) "outstanding" else "nothing pending", Icons.Outlined.Payments, Color(0xFFB74E69), Modifier.weight(1f))
+            StudentMetricCard("Results", student.completedResultCount.toString(), "completed exams", Icons.Default.EmojiEvents, FamilyIndigo, Modifier.weight(1f))
+            StudentMetricCard("Fees due", currency(student.outstandingFee), if (student.outstandingFee > 0) "outstanding" else "nothing pending", Icons.Outlined.Payments, FamilyIndigo, Modifier.weight(1f))
         }
     }
 }
@@ -656,7 +657,7 @@ private fun AttendanceTab(
         item {
             Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 if (dashboard.role == "STUDENT") {
-                    StudentMetricCard("Attendance", "${number(attendance.percentage)}%", "${attendance.total} sessions", Icons.Outlined.CalendarMonth, Color(0xFF14847B), Modifier.weight(1f))
+                    StudentMetricCard("Attendance", "${number(attendance.percentage)}%", "${attendance.total} sessions", Icons.Outlined.CalendarMonth, FamilyIndigo, Modifier.weight(1f))
                     StudentMetricCard("Present", attendance.present.toString(), "${attendance.absent} absent", Icons.Default.CheckCircle, FamilyIndigo, Modifier.weight(1f))
                 } else {
                     MetricCard("Attendance", "${number(attendance.percentage)}%", "${attendance.total} sessions", Modifier.weight(1f))
@@ -975,21 +976,21 @@ private fun StudentMoreTab(
         item { FamilyPageIntro(dashboard, student, "More", onSelect) }
         item { StudentSectionHeading("Learning", "Your classes and important dates") }
         item { StudentMoreAction(Icons.Outlined.Schedule, "Class timetable", "See your weekly class schedule", Color(0xFF4F46E5), onOpenTimetable) }
-        item { StudentMoreAction(Icons.Outlined.CalendarMonth, "School calendar", "Exams, holidays and deadlines", Color(0xFF0F8A83), onOpenCalendar) }
+        item { StudentMoreAction(Icons.Outlined.CalendarMonth, "School calendar", "Exams, holidays and deadlines", FamilyIndigo, onOpenCalendar) }
         item { Spacer(Modifier.height(5.dp)) }
         item { StudentSectionHeading("School life", "Updates and daily essentials") }
         item {
             StudentMoreAction(
                 Icons.Outlined.Notifications, "Notifications", "Announcements and school updates",
-                Color(0xFFB87014), onOpenNotifications,
+                FamilyIndigo, onOpenNotifications,
                 if (state.unreadNotificationCount > 0) "${state.unreadNotificationCount} new" else null,
             )
         }
-        item { StudentMoreAction(Icons.Outlined.DirectionsBus, "School transport", "Route, stop and pickup time", Color(0xFF3474B7), onOpenTransport) }
-        item { StudentMoreAction(Icons.AutoMirrored.Outlined.EventNote, "Leave requests", "Request leave and track decisions", Color(0xFF9A58AD), onOpenLeave) }
+        item { StudentMoreAction(Icons.Outlined.DirectionsBus, "School transport", "Route, stop and pickup time", FamilyIndigo, onOpenTransport) }
+        item { StudentMoreAction(Icons.AutoMirrored.Outlined.EventNote, "Leave requests", "Request leave and track decisions", FamilyIndigo, onOpenLeave) }
         item { Spacer(Modifier.height(5.dp)) }
         item { StudentSectionHeading("Account", "Your school account") }
-        item { StudentMoreAction(Icons.Outlined.Payments, "Fees", "Installments and payments", Color(0xFFB74E69), onOpenFees) }
+        item { StudentMoreAction(Icons.Outlined.Payments, "Fees", "Installments and payments", FamilyIndigo, onOpenFees) }
         item { StudentMoreAction(Icons.Default.SwapHoriz, "Switch account or role", "Choose another linked profile", FamilyIndigo, onSwitchAccount) }
         item { StudentMoreAction(Icons.AutoMirrored.Filled.Logout, "Sign out", "Sign out completely on this device", FamilyRed, onSignOut) }
     }
@@ -1550,14 +1551,14 @@ private fun TransportHero(transport: FamilyTransportAssignment) {
     Card(
         Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 6.dp),
         shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF172554)),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFEEF2FF)),
     ) {
         Column(Modifier.padding(20.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Outlined.Route, contentDescription = null, tint = Color(0xFF67E8F9))
-                Text("YOUR DAILY JOURNEY", Modifier.padding(start = 8.dp), color = Color(0xFFA5F3FC), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                Icon(Icons.Outlined.Route, contentDescription = null, tint = FamilyIndigo)
+                Text("YOUR DAILY JOURNEY", Modifier.padding(start = 8.dp), color = FamilyIndigo, fontSize = 11.sp, fontWeight = FontWeight.Bold)
             }
-            Text(transport.routeName, Modifier.padding(top = 12.dp), color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+            Text(transport.routeName, Modifier.padding(top = 12.dp), color = Color(0xFF0F172A), fontSize = 24.sp, fontWeight = FontWeight.Bold)
             Text(
                 listOf(
                     transport.routeCode,
@@ -1569,7 +1570,7 @@ private fun TransportHero(transport: FamilyTransportAssignment) {
                     },
                 ).filter(String::isNotBlank).joinToString(" · "),
                 Modifier.padding(top = 6.dp),
-                color = Color.White.copy(alpha = .75f),
+                color = Color(0xFF64748B),
                 fontSize = 12.sp,
             )
             Card(
@@ -1577,10 +1578,10 @@ private fun TransportHero(transport: FamilyTransportAssignment) {
                 colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = .12f)),
             ) {
                 Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Outlined.LocationOn, contentDescription = null, tint = Color.White)
+                    Icon(Icons.Outlined.LocationOn, contentDescription = null, tint = FamilyIndigo)
                     Column(Modifier.padding(start = 10.dp)) {
-                        Text("Boarding stop", color = Color.White.copy(alpha = .7f), fontSize = 11.sp)
-                        Text(transport.stop.name, color = Color.White, fontWeight = FontWeight.Bold)
+                        Text("Boarding stop", color = Color(0xFF64748B), fontSize = 11.sp)
+                        Text(transport.stop.name, color = Color(0xFF0F172A), fontWeight = FontWeight.Bold)
                     }
                 }
             }

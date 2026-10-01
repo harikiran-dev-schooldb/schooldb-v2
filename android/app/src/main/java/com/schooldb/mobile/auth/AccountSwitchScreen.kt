@@ -1,4 +1,5 @@
 package com.schooldb.mobile.auth
+import androidx.compose.foundation.BorderStroke
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -32,7 +33,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
+import com.schooldb.mobile.ui.theme.WebTopAppBar as TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -100,8 +101,11 @@ fun AccountSwitchScreen(
                         enabled = !account.current && state.switchingId == null,
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(18.dp),
+                        border = BorderStroke(1.dp, Color(0xFFE0E7FF)),
                         colors = CardDefaults.cardColors(
                             containerColor = if (account.current) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
+                            disabledContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                            disabledContentColor = MaterialTheme.colorScheme.onSurface,
                         ),
                     ) {
                         Row(

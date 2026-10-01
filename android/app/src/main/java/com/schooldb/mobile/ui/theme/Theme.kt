@@ -15,12 +15,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-private val RoyalBlue = Color(0xFF3154D9)
-private val ElectricViolet = Color(0xFF7557E8)
+private val RoyalBlue = Color(0xFF4F46E5)
+private val ElectricViolet = Color(0xFF7C3AED)
 private val Midnight = Color(0xFF1C1C1E)
-private val Ink = Color(0xFF172033)
+private val Ink = Color(0xFF0F172A)
 private val Mist = Color(0xFFF5F7FC)
-private val Ice = Color(0xFFE8EEFF)
+private val Ice = Color(0xFFEEF2FF)
 
 private val LightColors = lightColorScheme(
     primary = RoyalBlue,
@@ -37,9 +37,9 @@ private val LightColors = lightColorScheme(
     surface = Color.White,
     onSurface = Ink,
     surfaceVariant = Color(0xFFF0F3FA),
-    onSurfaceVariant = Color(0xFF5C667A),
+    onSurfaceVariant = Color(0xFF64748B),
     outline = Color(0xFFCBD2E1),
-    outlineVariant = Color(0xFFE2E7F1),
+    outlineVariant = Color(0xFFE0E7FF),
     error = Color(0xFFCF2D3A),
 )
 
