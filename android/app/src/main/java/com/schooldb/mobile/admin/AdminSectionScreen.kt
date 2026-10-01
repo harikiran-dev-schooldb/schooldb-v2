@@ -7,6 +7,7 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
@@ -31,11 +32,13 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -49,6 +52,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -92,6 +96,13 @@ private val sectionTitles = mapOf(
 )
 
 private val sectionDescriptions = mapOf(
+    "students" to "Profiles, enrollment and current class placement",
+    "teachers" to "Faculty directory and teaching assignments",
+    "classes" to "Classes, sections and active student strength",
+    "attendance" to "Daily sessions, absences and attendance status",
+    "fees" to "Student fee assignments, payments and balances",
+    "leave" to "Review and decide pending student leave requests",
+    "queries" to "Parent questions and school support requests",
     "timetable" to "Current class periods, subjects and teachers",
     "exams" to "Exam cycles and published schedules",
     "calendar" to "School events, holidays and important dates",
@@ -335,6 +346,12 @@ fun AdminSectionScreen(
                         },
                         singleLine = true,
                         shape = RoundedCornerShape(18.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = AdminWebIndigo,
+                            unfocusedBorderColor = AdminWebBorder,
+                            focusedContainerColor = Color.White,
+                            unfocusedContainerColor = Color.White,
+                        ),
                     )
                 }
                 if (statuses.size > 1) item {
@@ -345,6 +362,17 @@ fun AdminSectionScreen(
                                 selected = statusFilter == status,
                                 onClick = { statusFilter = status },
                                 label = { Text(status.replace('_', ' ')) },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    containerColor = Color.White,
+                                    selectedContainerColor = Color(0xFFEEF2FF),
+                                    selectedLabelColor = AdminWebIndigo,
+                                ),
+                                border = FilterChipDefaults.filterChipBorder(
+                                    enabled = true,
+                                    selected = statusFilter == status,
+                                    borderColor = AdminWebBorder,
+                                    selectedBorderColor = Color(0xFFC7D2FE),
+                                ),
                             )
                         }
                     }
@@ -352,14 +380,15 @@ fun AdminSectionScreen(
                 item {
                     Text(if (statusFilter == "ALL") "${state.total} records" else "${visibleRows.size} shown",
                         style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        color = AdminWebSlate)
                 }
                 state.actionMessage?.let { message ->
                     item {
                         Surface(
-                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.72f),
-                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                            color = Color(0xFFECFDF5),
+                            contentColor = Color(0xFF047857),
                             shape = RoundedCornerShape(16.dp),
+                            border = BorderStroke(1.dp, Color(0xFFA7F3D0)),
                         ) {
                             Row(
                                 Modifier.fillMaxWidth().padding(14.dp),
@@ -373,8 +402,11 @@ fun AdminSectionScreen(
                     }
                 }
                 if (visibleRows.isEmpty()) item {
-                    Text(if (query.isBlank() && statusFilter == "ALL") "No records yet" else "No matching records",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Surface(Modifier.fillMaxWidth(), color = Color.White, shape = RoundedCornerShape(18.dp),
+                        border = BorderStroke(1.dp, AdminWebBorder)) {
+                        Text(if (query.isBlank() && statusFilter == "ALL") "No records yet" else "No matching records",
+                            Modifier.padding(18.dp), color = AdminWebSlate)
+                    }
                 }
                 items(visibleRows, key = { it.id }) { row ->
                     val rowModifier = when (section) {
@@ -383,18 +415,20 @@ fun AdminSectionScreen(
                         else -> Modifier
                     }
                     Surface(modifier = rowModifier,
-                        color = MaterialTheme.colorScheme.surface,
-                        tonalElevation = 1.dp,
-                        shape = RoundedCornerShape(18.dp)) {
+                        color = Color.White,
+                        shadowElevation = 1.dp,
+                        border = BorderStroke(1.dp, AdminWebBorder),
+                        shape = RoundedCornerShape(20.dp)) {
                         Column(Modifier.fillMaxWidth().padding(17.dp)) {
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                 Text(row.title, modifier = Modifier.weight(1f), fontWeight = FontWeight.Bold,
                                     maxLines = 2, overflow = TextOverflow.Ellipsis)
                                 if (row.status.isNotBlank()) {
                                     Surface(
-                                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.72f),
-                                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                        color = Color(0xFFEEF2FF),
+                                        contentColor = AdminWebIndigo,
                                         shape = RoundedCornerShape(50),
+                                        border = BorderStroke(1.dp, Color(0xFFC7D2FE)),
                                     ) {
                                         Text(
                                             row.status.replace('_', ' '),
@@ -406,7 +440,7 @@ fun AdminSectionScreen(
                             }
                             if (row.subtitle.isNotBlank()) Text(row.subtitle,
                                 style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                color = AdminWebSlate)
                             if (row.detail.isNotBlank()) {
                                 Spacer(Modifier.height(7.dp))
                                 Text(row.detail, style = MaterialTheme.typography.bodyMedium,
@@ -455,11 +489,13 @@ fun AdminSectionScreen(
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically) {
                         OutlinedButton(onClick = { viewModel.load(section, state.page - 1, query) },
-                            enabled = !state.loading && state.page > 1) { Text("Previous") }
+                            enabled = !state.loading && state.page > 1,
+                            shape = RoundedCornerShape(14.dp)) { Text("Previous") }
                         Text("Page ${state.page} of ${((state.total + state.pageSize - 1) / state.pageSize).coerceAtLeast(1)}",
-                            style = MaterialTheme.typography.bodySmall)
+                            style = MaterialTheme.typography.bodySmall, color = AdminWebSlate)
                         OutlinedButton(onClick = { viewModel.load(section, state.page + 1, query) },
-                            enabled = !state.loading && state.page * state.pageSize < state.total) { Text("Next") }
+                            enabled = !state.loading && state.page * state.pageSize < state.total,
+                            shape = RoundedCornerShape(14.dp)) { Text("Next") }
                     }
                 }
                 if (state.loading) item { CircularProgressIndicator() }

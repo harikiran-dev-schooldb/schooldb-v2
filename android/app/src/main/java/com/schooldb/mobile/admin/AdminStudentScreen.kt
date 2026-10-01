@@ -2,6 +2,7 @@ package com.schooldb.mobile.admin
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -34,6 +35,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -234,24 +236,33 @@ private fun StudentProfileContent(student: AdminStudent) {
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         item {
-            Card(shape = RoundedCornerShape(26.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
+            Card(shape = RoundedCornerShape(26.dp),
+                border = BorderStroke(1.dp, AdminWebBorder),
+                colors = CardDefaults.cardColors(containerColor = Color.White)) {
                 Box(Modifier.fillMaxWidth().background(Brush.linearGradient(listOf(
-                    MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.tertiaryContainer,
+                    Color.White, AdminWebTint, Color(0xFFF5F3FF),
                 ))).padding(20.dp)) {
                     Column {
-                        Surface(Modifier.size(62.dp), shape = CircleShape, color = MaterialTheme.colorScheme.onPrimaryContainer) {
+                        Surface(Modifier.size(62.dp), shape = CircleShape, color = AdminWebIndigo,
+                            shadowElevation = 5.dp) {
                             Box(contentAlignment = Alignment.Center) {
                                 Text(student.name.split(" ").take(2).mapNotNull { it.firstOrNull() }.joinToString("").uppercase(),
-                                    color = MaterialTheme.colorScheme.primaryContainer, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                                    color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
                             }
                         }
                         Spacer(Modifier.height(16.dp))
-                        Text(student.name, fontSize = 26.sp, lineHeight = 30.sp, fontWeight = FontWeight.ExtraBold)
+                        Text(student.name, color = AdminWebNavy, fontSize = 26.sp, lineHeight = 30.sp,
+                            fontWeight = FontWeight.ExtraBold)
                         Text("${student.admissionNo} · ${student.status.replace('_', ' ')}",
-                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.78f))
+                            color = AdminWebSlate)
                         if (student.className.isNotBlank()) {
                             Spacer(Modifier.height(10.dp))
-                            Text("${student.className} · ${student.sectionName}", fontWeight = FontWeight.Bold)
+                            Surface(shape = RoundedCornerShape(50.dp), color = Color.White.copy(alpha = .86f),
+                                border = BorderStroke(1.dp, AdminWebBorder)) {
+                                Text("${student.className} · ${student.sectionName}",
+                                    Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
+                                    color = AdminWebIndigo, fontWeight = FontWeight.Bold)
+                            }
                         }
                     }
                 }
@@ -287,24 +298,28 @@ private fun StudentProfileContent(student: AdminStudent) {
                 main = currency.format(student.feeOutstanding),
                 detail = "Outstanding · ${currency.format(student.feePaid)} paid of ${currency.format(student.feePayable)}")
         }
-        item { Text("Parent contacts", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) }
+        item { Text("Parent contacts", color = AdminWebNavy,
+            style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) }
         if (student.parents.isEmpty()) item { EmptyStudentCard("No parent contact has been added.") }
         items(student.parents) { parent ->
             StudentInfoCard(parent.name, Lucide.Users, listOf(
                 "Relationship" to parent.relationship, "Phone" to parent.phone, "Email" to parent.email,
             ))
         }
-        item { Text("Recent results", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) }
+        item { Text("Recent results", color = AdminWebNavy,
+            style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) }
         if (student.results.isEmpty()) item { EmptyStudentCard("No exam results have been entered.") }
         items(student.results, key = { it.id }) { result ->
-            Surface(color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(20.dp), tonalElevation = 1.dp) {
+            Surface(color = Color.White, shape = RoundedCornerShape(20.dp), shadowElevation = 1.dp,
+                border = BorderStroke(1.dp, AdminWebBorder)) {
                 Row(Modifier.fillMaxWidth().padding(17.dp), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text(result.subject, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text(result.exam, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(result.exam, style = MaterialTheme.typography.bodySmall, color = AdminWebSlate)
                     }
                     Text(if (result.obtained == null) result.status.replace('_', ' ')
-                        else "${result.obtained.asMarks()} / ${result.maximum.asMarks()}", fontWeight = FontWeight.Bold)
+                        else "${result.obtained.asMarks()} / ${result.maximum.asMarks()}",
+                        color = AdminWebIndigo, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -324,17 +339,22 @@ private fun StudentRoundButton(onClick: () -> Unit, enabled: Boolean = true, con
 @Composable
 private fun StudentInfoCard(title: String, icon: ImageVector, values: List<Pair<String, String>>) {
     val visible = values.filter { it.second.isNotBlank() }
-    Surface(color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(20.dp), tonalElevation = 1.dp) {
+    Surface(color = Color.White, shape = RoundedCornerShape(20.dp), shadowElevation = 1.dp,
+        border = BorderStroke(1.dp, AdminWebBorder)) {
         Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                Surface(shape = RoundedCornerShape(12.dp), color = Color(0xFFEEF2FF),
+                    border = BorderStroke(1.dp, Color(0xFFC7D2FE))) {
+                    Icon(icon, contentDescription = null, tint = AdminWebIndigo,
+                        modifier = Modifier.padding(8.dp).size(18.dp))
+                }
                 Spacer(Modifier.size(10.dp))
                 Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             }
             if (visible.isEmpty()) Text("No details added", color = MaterialTheme.colorScheme.onSurfaceVariant)
             visible.forEach { (label, value) ->
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text(label, Modifier.weight(0.42f), color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    Text(label, Modifier.weight(0.42f), color = AdminWebSlate,
                         style = MaterialTheme.typography.bodySmall)
                     Text(value, Modifier.weight(0.58f), fontWeight = FontWeight.Medium, textAlign = androidx.compose.ui.text.style.TextAlign.End)
                 }
@@ -345,14 +365,20 @@ private fun StudentInfoCard(title: String, icon: ImageVector, values: List<Pair<
 
 @Composable
 private fun StudentMetricCard(title: String, icon: ImageVector, main: String, detail: String) {
-    Surface(color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(20.dp), tonalElevation = 1.dp) {
+    Surface(color = Color.White, shape = RoundedCornerShape(20.dp), shadowElevation = 1.dp,
+        border = BorderStroke(1.dp, AdminWebBorder)) {
         Row(Modifier.fillMaxWidth().padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
+            Surface(shape = RoundedCornerShape(14.dp), color = Color(0xFFEEF2FF),
+                border = BorderStroke(1.dp, Color(0xFFC7D2FE))) {
+                Icon(icon, contentDescription = null, tint = AdminWebIndigo,
+                    modifier = Modifier.padding(10.dp).size(22.dp))
+            }
             Spacer(Modifier.size(14.dp))
             Column {
-                Text(title, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text(main, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold)
-                Text(detail, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(title, style = MaterialTheme.typography.labelLarge, color = AdminWebSlate)
+                Text(main, color = AdminWebNavy, style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.ExtraBold)
+                Text(detail, style = MaterialTheme.typography.bodySmall, color = AdminWebSlate)
             }
         }
     }
@@ -360,7 +386,8 @@ private fun StudentMetricCard(title: String, icon: ImageVector, main: String, de
 
 @Composable
 private fun EmptyStudentCard(message: String) {
-    Surface(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f), shape = RoundedCornerShape(18.dp)) {
-        Text(message, Modifier.fillMaxWidth().padding(18.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
+    Surface(color = Color.White, shape = RoundedCornerShape(18.dp),
+        border = BorderStroke(1.dp, AdminWebBorder)) {
+        Text(message, Modifier.fillMaxWidth().padding(18.dp), color = AdminWebSlate)
     }
 }

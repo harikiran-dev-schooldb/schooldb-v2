@@ -7,6 +7,7 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -31,6 +32,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -45,6 +47,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -191,14 +195,23 @@ fun AdminTicketScreen(id: String, onBack: () -> Unit) {
             LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(18.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 item {
-                    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
-                        shape = RoundedCornerShape(20.dp)) {
-                        Column(Modifier.fillMaxWidth().padding(20.dp)) {
+                    Card(colors = CardDefaults.cardColors(containerColor = Color.White),
+                        border = BorderStroke(1.dp, AdminWebBorder), shape = RoundedCornerShape(22.dp)) {
+                        Column(Modifier.fillMaxWidth().background(Brush.linearGradient(listOf(
+                            Color.White, AdminWebTint, Color(0xFFF5F3FF),
+                        ))).padding(20.dp)) {
                             Text(ticket.number, style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.primary)
-                            Text(ticket.subject, style = MaterialTheme.typography.headlineSmall,
+                                color = AdminWebIndigo, fontWeight = FontWeight.ExtraBold)
+                            Text(ticket.subject, color = AdminWebNavy,
+                                style = MaterialTheme.typography.headlineSmall,
                                 fontWeight = FontWeight.Bold)
-                            Text("${ticket.status.replace('_', ' ')} · ${ticket.priority}")
+                            Spacer(Modifier.height(8.dp))
+                            Surface(shape = RoundedCornerShape(50.dp), color = Color.White.copy(alpha = .86f),
+                                border = BorderStroke(1.dp, AdminWebBorder)) {
+                                Text("${ticket.status.replace('_', ' ')} · ${ticket.priority}",
+                                    Modifier.padding(horizontal = 11.dp, vertical = 6.dp),
+                                    color = AdminWebIndigo, style = MaterialTheme.typography.labelMedium)
+                            }
                         }
                     }
                 }
@@ -210,7 +223,7 @@ fun AdminTicketScreen(id: String, onBack: () -> Unit) {
                 }
                 item {
                     Text("Update status", style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold)
+                        color = AdminWebNavy, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(8.dp))
                     Row(modifier = Modifier.horizontalScroll(rememberScrollState()),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -218,11 +231,22 @@ fun AdminTicketScreen(id: String, onBack: () -> Unit) {
                             FilterChip(selected = ticket.status == status,
                                 onClick = { viewModel.updateStatus(id, status) },
                                 enabled = !state.saving,
+                                colors = FilterChipDefaults.filterChipColors(
+                                    containerColor = Color.White,
+                                    selectedContainerColor = Color(0xFFEEF2FF),
+                                    selectedLabelColor = AdminWebIndigo,
+                                ),
+                                border = FilterChipDefaults.filterChipBorder(
+                                    enabled = !state.saving,
+                                    selected = ticket.status == status,
+                                    borderColor = AdminWebBorder,
+                                    selectedBorderColor = Color(0xFFC7D2FE),
+                                ),
                                 label = { Text(status.replace('_', ' ')) })
                         }
                     }
                 }
-                item { Text("Replies", style = MaterialTheme.typography.titleMedium,
+                item { Text("Replies", color = AdminWebNavy, style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold) }
                 items(ticket.notes, key = { it.id }) { message ->
                     TicketTextCard(message.author, message.body)
@@ -230,9 +254,11 @@ fun AdminTicketScreen(id: String, onBack: () -> Unit) {
                 if (ticket.status != "CLOSED") item {
                     OutlinedTextField(value = note, onValueChange = { note = it.take(5000) },
                         label = { Text("Add reply") }, modifier = Modifier.fillMaxWidth(),
-                        minLines = 3, maxLines = 6)
+                        minLines = 3, maxLines = 6, shape = RoundedCornerShape(16.dp))
                     Spacer(Modifier.height(8.dp))
                     Button(onClick = { viewModel.addNote(id, note) { note = "" } },
+                        modifier = Modifier.fillMaxWidth().height(50.dp),
+                        shape = RoundedCornerShape(16.dp),
                         enabled = note.isNotBlank() && !state.saving) { Text("Send reply") }
                 }
                 if (state.loading || state.saving) item { CircularProgressIndicator() }
@@ -264,11 +290,11 @@ private fun AdminTicketSkeleton(modifier: Modifier = Modifier) {
 
 @Composable
 private fun TicketTextCard(title: String, body: String) {
-    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        shape = RoundedCornerShape(16.dp)) {
+    Card(colors = CardDefaults.cardColors(containerColor = Color.White),
+        border = BorderStroke(1.dp, AdminWebBorder), shape = RoundedCornerShape(18.dp)) {
         Column(Modifier.fillMaxWidth().padding(17.dp)) {
             Text(title, style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                color = AdminWebIndigo, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(5.dp))
             Text(body, style = MaterialTheme.typography.bodyMedium)
         }

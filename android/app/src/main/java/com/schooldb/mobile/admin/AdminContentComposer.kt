@@ -1,6 +1,8 @@
 package com.schooldb.mobile.admin
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,6 +22,7 @@ import androidx.compose.material.icons.automirrored.filled.Assignment
 import androidx.compose.material.icons.filled.Campaign
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -29,7 +32,9 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -42,6 +47,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -289,12 +296,14 @@ internal fun AdminAnnouncementComposerScreen(
             item {
                 OutlinedTextField(title, { title = it.take(160) }, label = { Text("Title") },
                     placeholder = { Text("What should families know?") }, singleLine = true,
-                    modifier = Modifier.fillMaxWidth())
+                    modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp),
+                    colors = composerTextFieldColors())
             }
             item {
                 OutlinedTextField(body, { body = it.take(10000) }, label = { Text("Message") },
                     placeholder = { Text("Write your announcement") }, minLines = 5,
-                    modifier = Modifier.fillMaxWidth())
+                    modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp),
+                    colors = composerTextFieldColors())
             }
             item {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -340,7 +349,7 @@ internal fun AdminAnnouncementComposerScreen(
             state.error?.let { error -> item { ComposerError(error) } }
             item {
                 Button(onClick = { confirm = true }, enabled = !state.saving,
-                    modifier = Modifier.fillMaxWidth().height(54.dp)) {
+                    modifier = Modifier.fillMaxWidth().height(54.dp), shape = RoundedCornerShape(16.dp)) {
                     Icon(Icons.Default.Campaign, null)
                     Spacer(Modifier.size(8.dp))
                     Text("Publish announcement", fontWeight = FontWeight.Bold)
@@ -361,6 +370,7 @@ internal fun AdminAnnouncementComposerScreen(
                 }) { Text("Publish") }
             },
             dismissButton = { TextButton(onClick = { confirm = false }) { Text("Cancel") } },
+            shape = RoundedCornerShape(28.dp),
         )
     }
 }
@@ -402,7 +412,8 @@ internal fun AdminHomeworkComposerScreen(
             item {
                 OutlinedTextField(title, { title = it.take(200) }, label = { Text("Title") },
                     placeholder = { Text("What should students complete?") }, singleLine = true,
-                    modifier = Modifier.fillMaxWidth())
+                    modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp),
+                    colors = composerTextFieldColors())
             }
             item {
                 ComposerPicker("Syllabus", syllabusId, state.syllabi.map { ComposerOption(it.id, it.name) }) {
@@ -427,17 +438,19 @@ internal fun AdminHomeworkComposerScreen(
             item {
                 OutlinedTextField(description, { description = it.take(2000) }, label = { Text("Instructions") },
                     placeholder = { Text("Write clear homework instructions") }, minLines = 5,
-                    modifier = Modifier.fillMaxWidth())
+                    modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp),
+                    colors = composerTextFieldColors())
             }
             item {
                 OutlinedTextField(dueDate, { dueDate = it.take(10) }, label = { Text("Due date") },
                     supportingText = { Text("YYYY-MM-DD") }, singleLine = true,
-                    modifier = Modifier.fillMaxWidth())
+                    modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp),
+                    colors = composerTextFieldColors())
             }
             state.error?.let { error -> item { ComposerError(error) } }
             item {
                 Button(onClick = { confirm = true }, enabled = !state.saving,
-                    modifier = Modifier.fillMaxWidth().height(54.dp)) {
+                    modifier = Modifier.fillMaxWidth().height(54.dp), shape = RoundedCornerShape(16.dp)) {
                     if (state.saving) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
                     else Icon(Icons.AutoMirrored.Filled.Assignment, null)
                     Spacer(Modifier.size(8.dp))
@@ -459,6 +472,7 @@ internal fun AdminHomeworkComposerScreen(
                 }) { Text("Publish") }
             },
             dismissButton = { TextButton(onClick = { confirm = false }) { Text("Cancel") } },
+            shape = RoundedCornerShape(28.dp),
         )
     }
 }
@@ -482,7 +496,7 @@ private fun AdminComposerScaffold(
     saving: Boolean,
     content: @Composable (PaddingValues) -> Unit,
 ) {
-    Scaffold(topBar = {
+    Scaffold(containerColor = MaterialTheme.colorScheme.background, topBar = {
         AdminPremiumPageHeader(
             title = title,
             subtitle = if (title.contains("announcement", ignoreCase = true)) {
@@ -527,8 +541,24 @@ private fun ComposerBody(
             modifier = Modifier.fillMaxSize().padding(padding),
             contentPadding = PaddingValues(18.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
-            content = content,
-        )
+        ) {
+            item {
+                Surface(shape = RoundedCornerShape(20.dp), color = Color.White,
+                    border = BorderStroke(1.dp, AdminWebBorder)) {
+                    Column(Modifier.fillMaxWidth().background(Brush.linearGradient(listOf(
+                        Color.White, AdminWebTint, Color(0xFFF5F3FF),
+                    ))).padding(16.dp)) {
+                        Text("CONTENT DETAILS", color = AdminWebIndigo,
+                            style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.ExtraBold)
+                        Text("Choose the audience and add clear information.", color = AdminWebNavy,
+                            style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Text("The selected syllabus, branch, class and section control who receives it.",
+                            color = AdminWebSlate, style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+            }
+            content()
+        }
     }
 }
 
@@ -552,8 +582,14 @@ private fun ComposerPicker(
                 enabled = enabled && options.isNotEmpty(),
                 modifier = Modifier.fillMaxWidth().height(50.dp),
                 shape = RoundedCornerShape(14.dp),
+                border = BorderStroke(1.dp, if (enabled) Color(0xFFC7D2FE) else Color(0xFFE2E8F0)),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    containerColor = Color.White,
+                    disabledContainerColor = Color(0xFFF8FAFC),
+                ),
             ) {
-                Text(selected?.label ?: "Select ${label.lowercase()}", maxLines = 1,
+                Text(selected?.label ?: "Select ${label.lowercase()}", color = if (enabled) AdminWebNavy else AdminWebSlate,
+                    maxLines = 1,
                     overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
             }
             DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
@@ -569,8 +605,20 @@ private fun ComposerPicker(
 
 @Composable
 private fun ComposerError(message: String) {
-    Text(message, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
+    Surface(color = Color(0xFFFEF2F2), shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(1.dp, Color(0xFFFECACA))) {
+        Text(message, Modifier.fillMaxWidth().padding(14.dp), color = Color(0xFFB91C1C),
+            style = MaterialTheme.typography.bodyMedium)
+    }
 }
+
+@Composable
+private fun composerTextFieldColors() = OutlinedTextFieldDefaults.colors(
+    focusedBorderColor = AdminWebIndigo,
+    unfocusedBorderColor = AdminWebBorder,
+    focusedContainerColor = Color.White,
+    unfocusedContainerColor = Color.White,
+)
 
 private fun audienceLabel(
     audience: String,

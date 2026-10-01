@@ -138,7 +138,13 @@ internal fun AdminLightStatusBarEffect() {
     }
 }
 
-private val HeaderIndigo = Color(0xFF4F46E5)
-private val HeaderNavy = Color(0xFF0F172A)
-private val HeaderSlate = Color(0xFF64748B)
-private val HeaderBorder = Color(0xFFE0E7FF)
+internal val AdminWebIndigo = Color(0xFF4F46E5)
+internal val AdminWebNavy = Color(0xFF0F172A)
+internal val AdminWebSlate = Color(0xFF64748B)
+internal val AdminWebBorder = Color(0xFFE0E7FF)
+internal val AdminWebTint = Color(0xFFF1F3FF)
+
+private val HeaderIndigo = AdminWebIndigo
+private val HeaderNavy = AdminWebNavy
+private val HeaderSlate = AdminWebSlate
+private val HeaderBorder = AdminWebBorder
