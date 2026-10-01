@@ -57,11 +57,7 @@ function createDefaults(): HomeworkFormInput {
   };
 }
 
-export function HomeworkForm({
-  mode,
-  homeworkId,
-  onSuccess = noop,
-}: Props) {
+export function HomeworkForm({ mode, homeworkId, onSuccess = noop }: Props) {
   const [saving, setSaving] = useState(false);
   const [loadingHomework, setLoadingHomework] = useState(
     mode === "edit" && Boolean(homeworkId),
@@ -216,19 +212,6 @@ export function HomeworkForm({
         </p>
       </FormField>
 
-      <FormField
-        label="Instructions"
-        error={form.formState.errors.description?.message}
-      >
-        <Textarea
-          rows={5}
-          maxLength={2000}
-          className="resize-y"
-          placeholder="Write the homework instructions…"
-          {...form.register("description")}
-        />
-      </FormField>
-
       <div className="grid gap-4 sm:grid-cols-2">
         <FormField label="Syllabus" required>
           <SyllabusSelect
@@ -297,6 +280,20 @@ export function HomeworkForm({
               Select a class first
             </div>
           )}
+        </FormField>
+
+        <FormField
+          label="Instructions"
+          error={form.formState.errors.description?.message}
+          className="sm:col-span-2"
+        >
+          <Textarea
+            rows={5}
+            maxLength={2000}
+            className="resize-y"
+            placeholder="Write the homework instructions…"
+            {...form.register("description")}
+          />
         </FormField>
 
         <FormField
