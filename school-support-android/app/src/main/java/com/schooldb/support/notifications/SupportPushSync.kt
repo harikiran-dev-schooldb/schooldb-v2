@@ -52,12 +52,18 @@ class SupportPushSync(context: Context, parameters: WorkerParameters) : Coroutin
     }
 
     companion object {
+        private const val WORK_NAME = "support-push-sync-v2"
+
         fun enqueue(context: Context, replace: Boolean = false) {
             if (!BuildConfig.FIREBASE_CONFIGURED) return
+            // v1 jobs may be deep in exponential backoff after a Firebase console
+            // configuration problem. Cancel that legacy queue once and schedule the
+            // corrected registration immediately without clearing app/session data.
+            WorkManager.getInstance(context).cancelUniqueWork("support-push-sync")
             val work = OneTimeWorkRequestBuilder<SupportPushSync>()
                 .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
                 .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS).build()
-            WorkManager.getInstance(context).enqueueUniqueWork("support-push-sync",
+            WorkManager.getInstance(context).enqueueUniqueWork(WORK_NAME,
                 if (replace) ExistingWorkPolicy.REPLACE else ExistingWorkPolicy.KEEP, work)
         }
     }
