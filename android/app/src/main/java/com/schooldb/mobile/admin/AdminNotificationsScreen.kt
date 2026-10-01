@@ -1,11 +1,13 @@
 package com.schooldb.mobile.admin
 
+import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -24,10 +26,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -37,6 +39,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -44,6 +47,11 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -52,9 +60,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.core.view.WindowCompat
 import com.schooldb.mobile.network.ApiException
 import com.schooldb.mobile.network.AuthenticatedApiClient
 import com.composables.icons.lucide.ArrowLeft
+import com.composables.icons.lucide.Bell
 import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.Megaphone
 import com.composables.icons.lucide.RefreshCw
@@ -168,39 +178,105 @@ fun AdminNotificationsScreen(onBack: () -> Unit, onCreate: () -> Unit) {
             item.target, item.publishedAt, item.read,
         ).matches(filter)
     }
+    val view = LocalView.current
+    DisposableEffect(view) {
+        val window = (view.context as? Activity)?.window
+        val controller = window?.let { WindowCompat.getInsetsController(it, view) }
+        val previous = controller?.isAppearanceLightStatusBars
+        controller?.isAppearanceLightStatusBars = false
+        onDispose {
+            if (previous != null) controller.isAppearanceLightStatusBars = previous
+        }
+    }
     BackHandler(onBack = onBack)
     LaunchedEffect(Unit) { viewModel.load() }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            Column(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 18.dp, vertical = 10.dp)) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Surface(onClick = onBack, shape = CircleShape,
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.78f)) {
-                        Box(Modifier.padding(11.dp), contentAlignment = Alignment.Center) {
-                            Icon(Lucide.ArrowLeft, contentDescription = "Back")
+            val headerShape = RoundedCornerShape(bottomStart = 32.dp, bottomEnd = 32.dp)
+            Box(
+                Modifier.fillMaxWidth()
+                    .shadow(18.dp, headerShape, ambientColor = Color(0xFF312A78).copy(alpha = .24f),
+                        spotColor = Color(0xFF312A78).copy(alpha = .28f))
+                    .clip(headerShape)
+                    .background(Brush.linearGradient(listOf(
+                        Color(0xFF10172D), Color(0xFF31256E), Color(0xFF0B5B69),
+                    )))
+                    .statusBarsPadding(),
+            ) {
+                Box(Modifier.size(180.dp).align(Alignment.TopEnd).padding(top = 6.dp)
+                    .background(Color(0xFF9EC9FF).copy(alpha = .10f), CircleShape))
+                Box(Modifier.size(125.dp).align(Alignment.BottomStart)
+                    .background(Color(0xFFD8A8FF).copy(alpha = .09f), CircleShape))
+                Column(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 14.dp)) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically) {
+                        PremiumHeaderIcon(onClick = onBack, contentDescription = "Back") {
+                            Icon(Lucide.ArrowLeft, contentDescription = null, tint = Color.White,
+                                modifier = Modifier.size(20.dp))
+                        }
+                        Surface(shape = RoundedCornerShape(50.dp), color = Color.White.copy(alpha = .10f),
+                            border = BorderStroke(1.dp, Color.White.copy(alpha = .14f))) {
+                            Row(Modifier.padding(horizontal = 11.dp, vertical = 7.dp),
+                                verticalAlignment = Alignment.CenterVertically) {
+                                Box(Modifier.size(6.dp).background(Color(0xFF5BE0B5), CircleShape))
+                                Text("  LIVE", color = Color(0xFFCFF8EC), fontSize = 9.sp,
+                                    fontWeight = FontWeight.ExtraBold, letterSpacing = 1.sp)
+                            }
+                        }
+                        PremiumHeaderIcon(
+                            onClick = { viewModel.load(forceRefresh = true) },
+                            enabled = !state.loading,
+                            contentDescription = "Refresh announcements",
+                        ) {
+                            if (state.loading && state.items.isNotEmpty()) {
+                                CircularProgressIndicator(Modifier.size(19.dp), strokeWidth = 2.dp,
+                                    color = Color.White)
+                            } else {
+                                Icon(Lucide.RefreshCw, contentDescription = null, tint = Color.White,
+                                    modifier = Modifier.size(20.dp))
+                            }
                         }
                     }
-                    Surface(onClick = { viewModel.load(forceRefresh = true) }, enabled = !state.loading,
-                        shape = CircleShape,
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.78f)) {
-                        Box(Modifier.padding(11.dp), contentAlignment = Alignment.Center) {
-                            Icon(Lucide.RefreshCw, contentDescription = "Refresh announcements")
+                    Spacer(Modifier.height(20.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Surface(shape = RoundedCornerShape(18.dp), color = Color.White.copy(alpha = .12f),
+                            border = BorderStroke(1.dp, Color.White.copy(alpha = .17f))) {
+                            Icon(Lucide.Bell, contentDescription = null, tint = Color(0xFFC7D5FF),
+                                modifier = Modifier.padding(13.dp).size(26.dp))
+                        }
+                        Column(Modifier.padding(start = 14.dp)) {
+                            Text("COMMUNICATION HUB", color = Color(0xFF9EB7FF), fontSize = 9.sp,
+                                fontWeight = FontWeight.ExtraBold, letterSpacing = 1.3.sp)
+                            Text("Announcements", color = Color.White, fontSize = 29.sp, lineHeight = 34.sp,
+                                letterSpacing = (-.45).sp, fontWeight = FontWeight.ExtraBold)
                         }
                     }
-                }
-                Spacer(Modifier.height(14.dp))
-                Text("Notifications", fontSize = 32.sp, lineHeight = 36.sp,
-                    letterSpacing = (-0.5).sp, fontWeight = FontWeight.ExtraBold)
-                Text("${state.items.count { !it.read }} unread",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Spacer(Modifier.height(12.dp))
-                Button(onClick = onCreate, modifier = Modifier.fillMaxWidth().height(48.dp)) {
-                    Icon(Lucide.Megaphone, contentDescription = null)
-                    Spacer(Modifier.size(8.dp))
-                    Text("Create announcement", fontWeight = FontWeight.Bold)
+                    Text("Reach the right families with clear, targeted school updates.",
+                        Modifier.padding(top = 12.dp), color = Color.White.copy(alpha = .68f),
+                        fontSize = 12.sp, lineHeight = 17.sp)
+                    Spacer(Modifier.height(15.dp))
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+                        NotificationMetric("${state.items.count { !it.read }}", "Unread", Modifier.weight(1f))
+                        NotificationMetric("${state.items.size}", "Published", Modifier.weight(1f))
+                    }
+                    Spacer(Modifier.height(14.dp))
+                    Surface(
+                        onClick = onCreate,
+                        modifier = Modifier.fillMaxWidth().height(50.dp),
+                        shape = RoundedCornerShape(17.dp),
+                        color = Color.White,
+                        contentColor = Color(0xFF25205D),
+                        shadowElevation = 6.dp,
+                    ) {
+                        Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Lucide.Megaphone, contentDescription = null, modifier = Modifier.size(20.dp))
+                            Spacer(Modifier.size(9.dp))
+                            Text("Create announcement", fontWeight = FontWeight.ExtraBold)
+                        }
+                    }
                 }
             }
         },
@@ -255,6 +331,42 @@ fun AdminNotificationsScreen(onBack: () -> Unit, onCreate: () -> Unit) {
                 } }
             }
         }
+        }
+    }
+}
+
+@Composable
+private fun PremiumHeaderIcon(
+    onClick: () -> Unit,
+    contentDescription: String,
+    enabled: Boolean = true,
+    content: @Composable () -> Unit,
+) {
+    Surface(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = Modifier.size(42.dp).semantics { this.contentDescription = contentDescription },
+        shape = CircleShape,
+        color = Color.White.copy(alpha = if (enabled) .11f else .06f),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = if (enabled) .16f else .08f)),
+    ) {
+        Box(contentAlignment = Alignment.Center) { content() }
+    }
+}
+
+@Composable
+private fun NotificationMetric(value: String, label: String, modifier: Modifier = Modifier) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(16.dp),
+        color = Color.Black.copy(alpha = .14f),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = .11f)),
+    ) {
+        Row(Modifier.fillMaxWidth().padding(horizontal = 13.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically) {
+            Text(value, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
+            Text("  $label", color = Color.White.copy(alpha = .62f), fontSize = 11.sp,
+                fontWeight = FontWeight.SemiBold)
         }
     }
 }
