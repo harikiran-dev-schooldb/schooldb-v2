@@ -7,6 +7,10 @@ export type SectionListItem = {
 
   className: string;
 
+  branchName: string;
+
+  syllabusName: string;
+
   displayOrder: number;
 
   active: boolean;

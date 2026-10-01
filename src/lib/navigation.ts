@@ -159,6 +159,7 @@ export const navigation: NavigationItem[] = [
     roles: ADMIN_ROLES,
     children: [
       { title: "Academic Years", href: "academic-year" },
+      { title: "Syllabi & Branches", href: "setup/academic-structure" },
       { title: "Classes", href: "classes" },
       { title: "Sections", href: "sections" },
       { title: "Subjects", href: "subjects" },

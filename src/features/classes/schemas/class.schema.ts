@@ -1,6 +1,10 @@
 import { z } from "zod";
 
 export const classSchema = z.object({
+  syllabusId: z.string().min(1, "Syllabus is required"),
+
+  branchId: z.string().min(1, "Academic branch is required"),
+
   name: z.string().min(1, "Class name is required"),
 
   code: z.string().optional(),

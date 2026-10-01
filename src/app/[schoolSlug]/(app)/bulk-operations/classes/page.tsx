@@ -20,6 +20,8 @@ import { useSchool } from "@/contexts/school-context";
 import { postImportInBatches } from "@/lib/batched-import";
 
 type ClassRow = {
+  syllabusName: string;
+  branchName: string;
   name: string;
   code: string;
   sectionName: string;
@@ -30,6 +32,8 @@ type ClassRow = {
 type RowError = { row: number; message: string };
 
 const HEADERS: Array<keyof ClassRow> = [
+  "syllabusName",
+  "branchName",
   "name",
   "code",
   "sectionName",
@@ -39,9 +43,9 @@ const HEADERS: Array<keyof ClassRow> = [
 
 const TEMPLATE = [
   HEADERS.join(","),
-  "Class 1,1,A,1,1",
-  "Class 1,1,B,1,2",
-  "Class 2,2,A,2,1",
+  "CBSE,Primary,Class 1,1,A,1,1",
+  "CBSE,Primary,Class 1,1,B,1,2",
+  "CBSE,Primary,Class 2,2,A,2,1",
 ].join("\n");
 
 function parseCsvLine(line: string) {
@@ -81,10 +85,10 @@ function parseCsv(text: string) {
     const row = Object.fromEntries(
       HEADERS.map((header, columnIndex) => [header, values[columnIndex] ?? ""]),
     ) as ClassRow;
-    if (!row.name || !row.sectionName) {
+    if (!row.syllabusName || !row.branchName || !row.name || !row.sectionName) {
       errors.push({
         row: index + 2,
-        message: "Class name and section name are required.",
+        message: "Syllabus, branch, class, and section names are required.",
       });
       return;
     }
@@ -141,7 +145,7 @@ export default function BulkClassesPage() {
     const seen = new Set<string>();
     let count = 0;
     rows.forEach((row) => {
-      const key = `${row.name.toLowerCase()}::${row.sectionName.toLowerCase()}`;
+      const key = `${row.syllabusName.toLowerCase()}::${row.branchName.toLowerCase()}::${row.name.toLowerCase()}::${row.sectionName.toLowerCase()}`;
       if (seen.has(key)) count += 1;
       seen.add(key);
     });

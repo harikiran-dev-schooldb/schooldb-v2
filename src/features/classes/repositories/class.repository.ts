@@ -13,9 +13,14 @@ export const classRepository = {
     where,
     skip: options?.skip,
     take: options?.take,
-    orderBy: {
-      displayOrder: "asc",
+    include: {
+      branch: { include: { syllabus: true } },
     },
+    orderBy: [
+      { branch: { syllabus: { displayOrder: "asc" } } },
+      { branch: { displayOrder: "asc" } },
+      { displayOrder: "asc" },
+    ],
   });
 },
 
@@ -25,13 +30,15 @@ export const classRepository = {
         id,
         schoolId,
       },
+      include: { branch: { include: { syllabus: true } } },
     });
   },
 
-  findByName(name: string, schoolId: string) {
+  findByName(name: string, branchId: string, schoolId: string) {
     return prisma.class.findFirst({
       where: {
         schoolId,
+        branchId,
         name,
       },
     });
@@ -67,6 +74,12 @@ export const classRepository = {
     select: {
       id: true,
       name: true,
+      branch: {
+        select: {
+          name: true,
+          syllabus: { select: { name: true } },
+        },
+      },
     },
 
     orderBy: {

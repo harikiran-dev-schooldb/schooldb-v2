@@ -37,6 +37,22 @@ export const sectionService = {
               },
             },
           },
+          {
+            class: {
+              branch: {
+                name: { contains: query.search, mode: "insensitive" },
+              },
+            },
+          },
+          {
+            class: {
+              branch: {
+                syllabus: {
+                  name: { contains: query.search, mode: "insensitive" },
+                },
+              },
+            },
+          },
         ],
       }),
     };
@@ -57,6 +73,8 @@ export const sectionService = {
         name: section.name,
         classId: section.classId,
         className: section.class.name,
+        branchName: section.class.branch.name,
+        syllabusName: section.class.branch.syllabus.name,
         displayOrder:
           section.displayOrder,
         active: section.active,

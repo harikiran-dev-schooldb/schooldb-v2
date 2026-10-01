@@ -7,6 +7,7 @@ import {
   CalendarDays,
   CheckCircle2,
   FileBadge2,
+  GitBranch,
   Layers3,
   School,
 } from "lucide-react";
@@ -30,6 +31,13 @@ const setupItems = [
       "Configure academic years, dates and the attendance mode used by the school.",
     href: "academicyear",
     icon: CalendarDays,
+  },
+  {
+    title: "Syllabi & Branches",
+    description:
+      "Configure curricula and academic divisions such as KG, Primary and Secondary.",
+    href: "academic-structure",
+    icon: GitBranch,
   },
   {
     title: "Classes",
@@ -146,12 +154,13 @@ export default function SchoolSetupPage() {
         </CardHeader>
 
         <CardContent className="p-6">
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
             <InfoItem number="01" title="Academic Year" description="Academic calendar and attendance configuration." />
-            <InfoItem number="02" title="Classes" description="Academic classes offered by the school." />
-            <InfoItem number="03" title="Sections" description="Sections organized under each class." />
-            <InfoItem number="04" title="Class Subjects" description="Subjects offered to each class for an academic year." />
-            <InfoItem number="05" title="Certificates" description="Official wording, footer and authorised signatory." />
+            <InfoItem number="02" title="Syllabi & Branches" description="Curricula and academic divisions." />
+            <InfoItem number="03" title="Classes" description="Classes organized under each branch." />
+            <InfoItem number="04" title="Sections" description="Sections organized under each class." />
+            <InfoItem number="05" title="Class Subjects" description="Subjects offered to each class for an academic year." />
+            <InfoItem number="06" title="Certificates" description="Official wording, footer and authorised signatory." />
           </div>
         </CardContent>
       </Card>

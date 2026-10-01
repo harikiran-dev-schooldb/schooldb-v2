@@ -353,12 +353,14 @@ export default function SetupSectionsPage() {
 
       <Card className="premium-card overflow-hidden rounded-2xl border-0">
         <CardContent className="p-5">
-          <div className="grid gap-3 md:grid-cols-3">
+          <div className="grid gap-3 md:grid-cols-4">
             <Step number="1" label="Academic Year" complete />
 
-            <Step number="2" label="Classes" complete />
+            <Step number="2" label="Syllabi & Branches" complete />
 
-            <Step number="3" label="Sections" active />
+            <Step number="3" label="Classes" complete />
+
+            <Step number="4" label="Sections" active />
           </div>
         </CardContent>
       </Card>

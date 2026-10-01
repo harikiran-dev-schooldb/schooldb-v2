@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -11,6 +11,8 @@ import { classSchema, ClassFormInput } from "../schemas/class.schema";
 import { Input } from "@/components/ui/input";
 import { FormField, SubmitButton } from "@/components/common/forms";
 import { refreshTable } from "@/lib/table-event";
+import { SyllabusSelect } from "@/components/common/select/SyllabusSelect";
+import { AcademicBranchSelect } from "@/components/common/select/AcademicBranchSelect";
 
 type Props = {
   mode: "create" | "edit";
@@ -19,6 +21,8 @@ type Props = {
 };
 
 const defaultValues: ClassFormInput = {
+  syllabusId: "",
+  branchId: "",
   name: "",
   code: "",
   description: "",
@@ -33,6 +37,9 @@ export function ClassForm({ mode, classId, onSuccess }: Props) {
     resolver: zodResolver(classSchema),
     defaultValues,
   });
+
+  const syllabusId = useWatch({ control: form.control, name: "syllabusId" });
+  const branchId = useWatch({ control: form.control, name: "branchId" });
 
   useEffect(() => {
     if (mode !== "edit" || !classId) return;
@@ -57,6 +64,8 @@ export function ClassForm({ mode, classId, onSuccess }: Props) {
         const item = result.data;
 
         form.reset({
+          syllabusId: item.branch?.syllabusId ?? "",
+          branchId: item.branchId ?? "",
           name: item.name ?? "",
           code: item.code ?? "",
           description: item.description ?? "",
@@ -139,6 +148,45 @@ export function ClassForm({ mode, classId, onSuccess }: Props) {
         </div>
 
         <div className="grid gap-5 md:grid-cols-2">
+          <FormField
+            label="Syllabus"
+            required
+            error={form.formState.errors.syllabusId?.message}
+          >
+            <SyllabusSelect
+              value={syllabusId}
+              onChange={(value) => {
+                const previousSyllabusId = form.getValues("syllabusId");
+
+                form.setValue("syllabusId", value, {
+                  shouldDirty: previousSyllabusId !== value,
+                  shouldValidate: true,
+                });
+
+                if (previousSyllabusId && previousSyllabusId !== value) {
+                  form.setValue("branchId", "", {
+                    shouldDirty: true,
+                    shouldValidate: true,
+                  });
+                }
+              }}
+            />
+          </FormField>
+
+          <FormField
+            label="Academic Branch"
+            required
+            error={form.formState.errors.branchId?.message}
+          >
+            <AcademicBranchSelect
+              syllabusId={syllabusId}
+              value={branchId}
+              onChange={(value) =>
+                form.setValue("branchId", value, { shouldDirty: true, shouldValidate: true })
+              }
+            />
+          </FormField>
+
           <FormField
             label="Class Name"
             required

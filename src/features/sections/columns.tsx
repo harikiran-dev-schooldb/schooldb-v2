@@ -7,6 +7,14 @@ import { SectionActions } from "./components/SectionActions";
 
 export const sectionColumns: ColumnDef<SectionListItem>[] = [
   {
+    accessorKey: "syllabusName",
+    header: "Syllabus",
+  },
+  {
+    accessorKey: "branchName",
+    header: "Branch",
+  },
+  {
     accessorKey: "displayOrder",
     header: "Order",
     cell: ({ row }) => (

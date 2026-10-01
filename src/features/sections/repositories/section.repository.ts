@@ -12,16 +12,24 @@ export const sectionRepository = {
     return prisma.section.findMany({
       where,
       include: {
-        class: true,
+        class: {
+          include: {
+            branch: { include: { syllabus: true } },
+          },
+        },
       },
       skip: options?.skip,
       take: options?.take,
       orderBy: [
         {
           class: {
-            displayOrder: "asc",
+            branch: {
+              syllabus: { displayOrder: "asc" },
+            },
           },
         },
+        { class: { branch: { displayOrder: "asc" } } },
+        { class: { displayOrder: "asc" } },
         {
           displayOrder: "asc",
         },

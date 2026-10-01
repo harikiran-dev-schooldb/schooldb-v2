@@ -1,3 +1,5 @@
+import { Prisma } from "@/generated/prisma/client";
+import { prisma } from "@/lib/prisma";
 import { classRepository } from "../repositories/class.repository";
 
 import { ListQuery } from "@/types/query";
@@ -11,15 +13,16 @@ export const classService = {
     const page = query.page ?? 1;
     const pageSize = query.pageSize ?? 25;
 
-    const where = {
+    const where: Prisma.ClassWhereInput = {
       schoolId,
       active: true,
 
       ...(query.search && {
-        name: {
-          contains: query.search,
-          mode: "insensitive" as const,
-        },
+        OR: [
+          { name: { contains: query.search, mode: "insensitive" as const } },
+          { branch: { name: { contains: query.search, mode: "insensitive" as const } } },
+          { branch: { syllabus: { name: { contains: query.search, mode: "insensitive" as const } } } },
+        ],
       }),
     };
 
@@ -32,7 +35,13 @@ export const classService = {
 ]);
 
     return {
-      data,
+      data: data.map((item) => ({
+        ...item,
+        branchId: item.branchId,
+        branchName: item.branch.name,
+        syllabusId: item.branch.syllabusId,
+        syllabusName: item.branch.syllabus.name,
+      })),
       total,
       page,
       pageSize,
@@ -44,8 +53,22 @@ export const classService = {
     schoolId: string,
     input: ClassFormOutput
   ) {
+    const branch = await prisma.academicBranch.findFirst({
+      where: {
+        id: input.branchId,
+        syllabusId: input.syllabusId,
+        schoolId,
+        active: true,
+      },
+    });
+
+    if (!branch) {
+      throw new Error("Academic branch not found in the selected syllabus.");
+    }
+
     const exists = await classRepository.findByName(
       input.name,
+      input.branchId,
       schoolId
     );
 
@@ -58,6 +81,7 @@ export const classService = {
       code: input.code,
       description: input.description,
       displayOrder: input.displayOrder,
+      branch: { connect: { id: input.branchId } },
 
       school: {
         connect: {
@@ -94,8 +118,22 @@ export const classService = {
     throw new Error("Class not found.");
   }
 
+  const branch = await prisma.academicBranch.findFirst({
+    where: {
+      id: input.branchId,
+      syllabusId: input.syllabusId,
+      schoolId,
+      active: true,
+    },
+  });
+
+  if (!branch) {
+    throw new Error("Academic branch not found in the selected syllabus.");
+  }
+
   const duplicate = await classRepository.findByName(
     input.name,
+    input.branchId,
     schoolId
   );
 
@@ -111,6 +149,7 @@ export const classService = {
       code: input.code,
       description: input.description,
       displayOrder: input.displayOrder,
+      branch: { connect: { id: input.branchId } },
     }
   );
 },
@@ -120,7 +159,7 @@ async options(schoolId: string) {
 
   return classes.map((item) => ({
     id: item.id,
-    label: item.name,
+    label: `${item.name} · ${item.branch.name} · ${item.branch.syllabus.name}`,
   }));
 },
 };

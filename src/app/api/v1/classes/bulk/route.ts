@@ -6,6 +6,8 @@ import { ApiResponse } from "@/lib/response";
 import { prisma } from "@/lib/prisma";
 
 const rowSchema = z.object({
+  syllabusName: z.string().trim().min(1),
+  branchName: z.string().trim().min(1),
   name: z.string().trim().min(1),
   code: z.string().trim().optional().default(""),
   sectionName: z.string().trim().min(1),
@@ -32,7 +34,7 @@ export async function POST(req: Request) {
 
       for (const [index, row] of body.rows.entries()) {
         const rowNumber = index + 2;
-        const key = `${row.name.toLowerCase()}::${row.sectionName.toLowerCase()}`;
+        const key = `${row.syllabusName.toLowerCase()}::${row.branchName.toLowerCase()}::${row.name.toLowerCase()}::${row.sectionName.toLowerCase()}`;
 
         if (seen.has(key)) {
           skipped += 1;
@@ -41,14 +43,42 @@ export async function POST(req: Request) {
         seen.add(key);
 
         try {
+          let syllabus = await tx.syllabus.findFirst({
+            where: { schoolId: tenant.schoolId, name: { equals: row.syllabusName, mode: "insensitive" } },
+          });
+          if (!syllabus) {
+            syllabus = await tx.syllabus.create({
+              data: { schoolId: tenant.schoolId, name: row.syllabusName, active: true },
+            });
+          }
+
+          let branch = await tx.academicBranch.findFirst({
+            where: {
+              schoolId: tenant.schoolId,
+              syllabusId: syllabus.id,
+              name: { equals: row.branchName, mode: "insensitive" },
+            },
+          });
+          if (!branch) {
+            branch = await tx.academicBranch.create({
+              data: {
+                schoolId: tenant.schoolId,
+                syllabusId: syllabus.id,
+                name: row.branchName,
+                active: true,
+              },
+            });
+          }
+
           let schoolClass = await tx.class.findFirst({
-            where: { schoolId: tenant.schoolId, name: row.name },
+            where: { schoolId: tenant.schoolId, branchId: branch.id, name: row.name },
           });
 
           if (!schoolClass) {
             schoolClass = await tx.class.create({
               data: {
                 schoolId: tenant.schoolId,
+                branchId: branch.id,
                 name: row.name,
                 code: row.code || null,
                 displayOrder: row.displayOrder,

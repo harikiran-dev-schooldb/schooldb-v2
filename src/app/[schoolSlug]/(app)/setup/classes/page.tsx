@@ -21,6 +21,8 @@ import { ClassForm } from "@/features/classes/components/ClassForm";
 
 type SchoolClass = {
   id: string;
+  syllabusName: string;
+  branchName: string;
   name: string;
   code: string | null;
   description: string | null;
@@ -144,6 +146,10 @@ export default function SetupClassesPage() {
   /* ------------------------------------------------------------------ */
 
   const sortedClasses = [...classes].sort((a, b) => {
+    const syllabusOrder = a.syllabusName.localeCompare(b.syllabusName);
+    if (syllabusOrder !== 0) return syllabusOrder;
+    const branchOrder = a.branchName.localeCompare(b.branchName);
+    if (branchOrder !== 0) return branchOrder;
     if (a.displayOrder !== b.displayOrder) {
       return a.displayOrder - b.displayOrder;
     }
@@ -273,7 +279,7 @@ export default function SetupClassesPage() {
                 <CardTitle>Class Configuration</CardTitle>
 
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Classes define the academic structure of your school.
+                  Classes are organized under a syllabus and academic branch.
                 </p>
               </div>
             </div>
@@ -291,13 +297,13 @@ export default function SetupClassesPage() {
 
               <div>
                 <p className="text-sm font-semibold">
-                  Classes are school-level configuration
+                  Classes follow your syllabus and branch structure
                 </p>
 
                 <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                  Once classes are configured, sections can be created under
-                  each class. Students will later be enrolled into these class
-                  and section combinations for an academic year.
+                  Each class belongs to a branch such as Primary or Secondary
+                  within a syllabus such as State, CBSE, ICSE, or IB. Sections
+                  and student enrollments continue beneath the class.
                 </p>
               </div>
             </div>
@@ -370,6 +376,14 @@ export default function SetupClassesPage() {
                     </th>
 
                     <th className="px-5 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                      Syllabus
+                    </th>
+
+                    <th className="px-5 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                      Branch
+                    </th>
+
+                    <th className="px-5 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                       Class
                     </th>
 
@@ -399,6 +413,14 @@ export default function SetupClassesPage() {
                     >
                       <td className="px-5 py-4 text-xs text-muted-foreground">
                         {index + 1}
+                      </td>
+
+                      <td className="px-5 py-4 text-muted-foreground">
+                        {item.syllabusName}
+                      </td>
+
+                      <td className="px-5 py-4 text-muted-foreground">
+                        {item.branchName}
                       </td>
 
                       <td className="px-5 py-4 font-semibold">{item.name}</td>
