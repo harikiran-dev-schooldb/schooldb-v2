@@ -154,6 +154,7 @@ fun TeacherDashboardScreen(
             school = adminContext,
             refreshKey = refreshKey,
             onSwitchAccount = onSwitchAccount ?: viewModel::signOut,
+            onSignOut = onSignOut ?: viewModel::signOut,
         )
         return
     }

@@ -34,7 +34,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.filled.SwapHoriz
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Card
@@ -343,6 +348,7 @@ fun AdminDashboardScreen(
     school: MobileContext,
     refreshKey: Int,
     onSwitchAccount: () -> Unit,
+    onSignOut: () -> Unit,
 ) {
     val viewModel: AdminDashboardViewModel = viewModel(key = "admin-dashboard-${school.schoolSlug}")
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -351,6 +357,7 @@ fun AdminDashboardScreen(
     var selectedTicket by rememberSaveable(school.schoolSlug) { mutableStateOf<String?>(null) }
     var selectedStudent by rememberSaveable(school.schoolSlug) { mutableStateOf<String?>(null) }
     var showAnnouncements by rememberSaveable(school.schoolSlug) { mutableStateOf(false) }
+    var showSignOutConfirmation by rememberSaveable(school.schoolSlug) { mutableStateOf(false) }
     BackHandler(enabled = selectedSection != null || selectedTicket != null || selectedStudent != null || showAnnouncements) {
         when {
             selectedTicket != null -> selectedTicket = null
@@ -486,7 +493,14 @@ fun AdminDashboardScreen(
             if (tab == "Reports") {
                 ReportsTab(state, Modifier.padding(padding)) { viewModel.loadReport(forceRefresh = true) }
             } else if (tab == "More") {
-                MoreTab(school, state.dashboard, Modifier.padding(padding), onSection = { selectedSection = it })
+                MoreTab(
+                    school = school,
+                    dashboard = state.dashboard,
+                    modifier = Modifier.padding(padding),
+                    onSection = { selectedSection = it },
+                    onSwitchAccount = onSwitchAccount,
+                    onSignOut = { showSignOutConfirmation = true },
+                )
             } else if (dashboard == null && state.loading) {
                 AdminDashboardSkeleton(Modifier.padding(padding))
             } else if (dashboard == null) {
@@ -513,6 +527,26 @@ fun AdminDashboardScreen(
             }
         }
         }
+    }
+
+    if (showSignOutConfirmation) {
+        AlertDialog(
+            onDismissRequest = { showSignOutConfirmation = false },
+            title = { Text("Sign out of SchoolDB?") },
+            text = { Text("You will need to verify your mobile number again to sign back in.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showSignOutConfirmation = false
+                        onSignOut()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFDC2626)),
+                ) { Text("Sign out") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showSignOutConfirmation = false }) { Text("Cancel") }
+            },
+        )
     }
 }
 
@@ -1211,6 +1245,8 @@ private fun MoreTab(
     dashboard: AdminDashboard?,
     modifier: Modifier,
     onSection: (String) -> Unit,
+    onSwitchAccount: () -> Unit,
+    onSignOut: () -> Unit,
 ) {
     val darkTheme = MaterialTheme.colorScheme.background.luminance() < 0.5f
     val tools = listOf(
@@ -1267,7 +1303,80 @@ private fun MoreTab(
         item { PremiumSectionTitle("Office & growth", "Money, admissions and front-office momentum") }
         item { WideAdminTool(byId.getValue("fee-collection"), onSection) }
         item { WideAdminTool(byId.getValue("admissions"), onSection) }
+        item { PremiumSectionTitle("Account", "Manage the administrator signed in on this device") }
+        item { AdminAccountActions(school, onSwitchAccount, onSignOut) }
         item { Spacer(Modifier.height(8.dp)) }
+    }
+}
+
+@Composable
+private fun AdminAccountActions(
+    school: MobileContext,
+    onSwitchAccount: () -> Unit,
+    onSignOut: () -> Unit,
+) {
+    val darkTheme = MaterialTheme.colorScheme.background.luminance() < 0.5f
+    val shape = RoundedCornerShape(24.dp)
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = shape,
+        color = if (darkTheme) Color(0xFF121B2A) else Color.White,
+        border = BorderStroke(
+            1.dp,
+            if (darkTheme) Color.White.copy(alpha = .10f) else Color(0xFFD7DFEC),
+        ),
+    ) {
+        Column(Modifier.fillMaxWidth().padding(8.dp)) {
+            Column(Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
+                Text(school.userName, fontWeight = FontWeight.ExtraBold,
+                    color = MaterialTheme.colorScheme.onSurface)
+                Text(school.role.replace('_', ' ').lowercase().replaceFirstChar { it.uppercase() },
+                    fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            AdminAccountAction(
+                icon = Icons.Default.SwapHoriz,
+                title = "Switch account or role",
+                subtitle = "Choose another linked profile",
+                tint = Color(0xFF3154D9),
+                onClick = onSwitchAccount,
+            )
+            AdminAccountAction(
+                icon = Icons.AutoMirrored.Filled.Logout,
+                title = "Sign out",
+                subtitle = "Sign out completely on this device",
+                tint = Color(0xFFDC2626),
+                onClick = onSignOut,
+            )
+        }
+    }
+}
+
+@Composable
+private fun AdminAccountAction(
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+    tint: Color,
+    onClick: () -> Unit,
+) {
+    Surface(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        color = Color.Transparent,
+    ) {
+        Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 13.dp),
+            verticalAlignment = Alignment.CenterVertically) {
+            Surface(shape = RoundedCornerShape(14.dp), color = tint.copy(alpha = .12f)) {
+                Icon(icon, null, tint = tint, modifier = Modifier.padding(10.dp).size(20.dp))
+            }
+            Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
+                Text(title, fontWeight = FontWeight.Bold, color = tint)
+                Text(subtitle, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Icon(Lucide.ArrowRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(18.dp))
+        }
     }
 }
 
