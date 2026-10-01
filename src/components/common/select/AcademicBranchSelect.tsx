@@ -63,7 +63,7 @@ export function AcademicBranchSelect({
         {allowAll && syllabusId && <SelectItem value="ALL">All branches</SelectItem>}
         {(loadedFor === syllabusId ? options : []).map((option) => (
           <SelectItem key={option.id} value={option.id}>
-            {option.name}{option.code ? ` (${option.code})` : ""}
+            {option.name}
           </SelectItem>
         ))}
       </SelectContent>

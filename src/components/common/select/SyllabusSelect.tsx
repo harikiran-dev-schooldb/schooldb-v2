@@ -58,7 +58,7 @@ export function SyllabusSelect({
         {allowAll && <SelectItem value="ALL">All syllabi</SelectItem>}
         {options.map((option) => (
           <SelectItem key={option.id} value={option.id}>
-            {option.name}{option.code ? ` (${option.code})` : ""}
+            {option.name}
           </SelectItem>
         ))}
       </SelectContent>
