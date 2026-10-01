@@ -86,8 +86,8 @@ android {
         applicationId = "com.schooldb.support"
         minSdk = 26
         targetSdk = 36
-        versionCode = versionCodeOverride ?: 3
-        versionName = "0.3.0"
+        versionCode = versionCodeOverride ?: 4
+        versionName = "0.4.0"
         buildConfigField("String", "CLERK_PUBLISHABLE_KEY", "\"$clerkKey\"")
         buildConfigField("boolean", "FIREBASE_CONFIGURED", "false")
         // Safe generic defaults. Each school flavor overrides these values.
@@ -138,7 +138,12 @@ android {
 
     getByName("release") {
         resValue("bool", "uses_cleartext_traffic", "false")
-        isMinifyEnabled = false
+        isMinifyEnabled = true
+        isShrinkResources = true
+        proguardFiles(
+            getDefaultProguardFile("proguard-android-optimize.txt"),
+            "proguard-rules.pro",
+        )
         if (keystorePropertiesFile.exists()) {
             signingConfig = signingConfigs.getByName("release")
         }
@@ -175,6 +180,7 @@ dependencies {
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.10.0")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.10.0")
+    implementation("androidx.profileinstaller:profileinstaller:1.4.1")
     implementation("com.clerk:clerk-android-api:1.1.3")
     implementation("com.google.firebase:firebase-messaging")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")

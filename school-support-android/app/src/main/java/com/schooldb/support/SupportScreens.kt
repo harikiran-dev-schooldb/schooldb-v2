@@ -109,6 +109,7 @@ private fun attachmentSize(sizeBytes: Int): String =
 internal fun TicketDashboard(school: String, tickets: List<TicketSummary>, summary: List<Int>,
     admin: Boolean, canManageAdmins: Boolean, analytics: SupportAnalytics?, analyticsLoading: Boolean,
     analyticsError: String?, busy: Boolean, ticketsLoading: Boolean, ticketsLoaded: Boolean,
+    showingCachedData: Boolean,
     selectedTab: String, query: String, page: Int, total: Int, totalPages: Int,
     onQueryChange: (String) -> Unit, onSearch: () -> Unit, onPage: (Int) -> Unit,
     requestedFilter: String?, onFilterConsumed: () -> Unit,
@@ -132,6 +133,25 @@ internal fun TicketDashboard(school: String, tickets: List<TicketSummary>, summa
     ) {
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 28.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        if (showingCachedData) item(contentType = "offline-banner") {
+            Surface(
+                modifier = Modifier.fillMaxWidth().clickable(enabled = !busy, onClick = onRefresh),
+                color = SchoolGold.copy(alpha = 0.12f),
+                shape = RoundedCornerShape(16.dp),
+                border = BorderStroke(1.dp, SchoolGold.copy(alpha = 0.22f)),
+            ) {
+                Row(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.size(8.dp).background(SchoolGold, CircleShape))
+                    Spacer(Modifier.width(10.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text("Showing saved tickets", color = Ink, fontWeight = FontWeight.SemiBold)
+                        Text("Connect and tap to refresh for the latest updates.", color = Muted,
+                            style = MaterialTheme.typography.bodySmall)
+                    }
+                    Icon(Icons.Outlined.Refresh, contentDescription = "Retry", tint = Indigo)
+                }
+            }
+        }
         if (selectedTab == "Overview") {
 
             item {

@@ -81,6 +81,7 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
     val context = LocalContext.current
     val preferences = context.getSharedPreferences("support_session", 0)
     val api = remember { SupportRepository() }
+    val ticketCache = remember { SupportTicketCache(context) }
     val ticketViewModel: SupportTicketViewModel = viewModel()
     val ticketState by ticketViewModel.state.collectAsStateWithLifecycle()
     val authViewModel: SupportAuthViewModel = viewModel()
@@ -164,6 +165,7 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
 }
 
     fun handleSessionExpired() {
+        ticketCache.clear(school)
         preferences.edit().remove("school").apply()
         ticketViewModel.reset()
         adminViewModel.reset()
@@ -194,7 +196,7 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
         query: String = ticketState.query,
         targetPage: Int = ticketState.page,
     ) {
-        ticketViewModel.loadTickets(school, filter, query, targetPage)
+        ticketViewModel.loadTickets(school, filter, query, targetPage, ticketCache)
     }
 
     suspend fun loadDetail(id: String) {
@@ -204,7 +206,7 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
 
     suspend fun refreshTicketAfterMutation(id: String) {
         ticketViewModel.loadDetail(school, id)
-        ticketViewModel.loadTickets(school)
+        ticketViewModel.loadTickets(school, cache = ticketCache)
         ticketViewModel.invalidateAnalytics()
     }
 
@@ -286,8 +288,9 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
         }
         page = if (clerkUser != null) SupportPage.DASHBOARD else SupportPage.LOGIN
     }
-    LaunchedEffect(page, school, ticketState.ticketsLoaded) {
+    LaunchedEffect(page, school) {
         if (page == SupportPage.DASHBOARD && school.isNotBlank() && !ticketState.ticketsLoaded && Clerk.activeSession != null) {
+            ticketViewModel.restoreCachedTickets(ticketCache, school)
             // Draw the dashboard before starting its first network request.
             withFrameNanos { }
             delay(50)
@@ -298,7 +301,9 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
             } catch (e: SupportSessionExpiredException) {
                 handleSessionExpired()
             } catch (e: Exception) {
-                error = e.message ?: "Could not load tickets. Pull down to retry."
+                if (!ticketViewModel.state.value.ticketsLoaded) {
+                    error = e.message ?: "Could not load tickets. Pull down to retry."
+                }
             }
         }
     }
@@ -394,6 +399,7 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
                                     Log.w("SupportAuth", "Remote sign out cleanup failed", exception)
                                 } finally {
                                     preferences.edit().remove("school").apply()
+                                    ticketCache.clear(school)
                                     ticketViewModel.reset()
                                     adminViewModel.reset()
                                     authViewModel.clearAll(SchoolBrand.defaultSchoolSlug)
@@ -492,6 +498,7 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
                 }
                 SupportPage.DASHBOARD -> TicketDashboard(school, ticketState.tickets, ticketState.summary, ticketState.isAdmin, ticketState.canManageAdmins, ticketState.analytics,
                     ticketState.analyticsLoading, ticketState.analyticsError, busy, ticketState.ticketsLoading, ticketState.ticketsLoaded,
+                    showingCachedData = ticketState.showingCachedData,
                     selectedTab = dashboardTab.label,
                     query = ticketState.query,
                     page = ticketState.page,
@@ -546,7 +553,7 @@ private fun SupportApp(notificationTicketId: String?, onNotificationConsumed: ()
                     }
                     try {
                         loadDetail(createdId)
-                        ticketViewModel.loadTickets(school)
+                        ticketViewModel.loadTickets(school, cache = ticketCache)
                         ticketViewModel.invalidateAnalytics()
                     } catch (_: Exception) {
                         page = SupportPage.DASHBOARD

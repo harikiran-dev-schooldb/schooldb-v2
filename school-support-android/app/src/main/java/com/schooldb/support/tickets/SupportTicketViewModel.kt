@@ -22,6 +22,8 @@ data class SupportTicketUiState(
     val page: Int = 1,
     val total: Int = 0,
     val totalPages: Int = 1,
+    val showingCachedData: Boolean = false,
+    val cachedAt: Long? = null,
 )
 
 class SupportTicketViewModel(
@@ -42,31 +44,47 @@ class SupportTicketViewModel(
         _state.update { it.copy(page = value) }
     }
 
+    fun restoreCachedTickets(cache: SupportTicketCache, school: String) {
+        if (state.value.ticketsLoaded) return
+        val cached = cache.read(school) ?: return
+        applyTicketList(cached.result, showingCachedData = true, cachedAt = cached.savedAt)
+    }
+
     suspend fun loadTickets(
         school: String,
         filter: String = state.value.filter,
         query: String = state.value.query,
         targetPage: Int = state.value.page,
+        cache: SupportTicketCache? = null,
     ) {
         _state.update { it.copy(ticketsLoading = true) }
         try {
             val result = repository.tickets(school, filter, query, targetPage)
-            _state.update {
-                it.copy(
-                    tickets = result.tickets,
-                    ticketsLoading = false,
-                    ticketsLoaded = true,
-                    isAdmin = result.isAdmin,
-                    canManageAdmins = result.canManageAdmins,
-                    summary = listOf(result.open, result.inProgress, result.urgent, result.resolved),
-                    page = result.page,
-                    total = result.total,
-                    totalPages = result.totalPages,
-                )
+            applyTicketList(result, showingCachedData = false, cachedAt = System.currentTimeMillis())
+            if ((filter.isBlank() || filter == "ALL") && query.isBlank() && targetPage == 1) {
+                cache?.write(school, result)
             }
         } catch (error: Throwable) {
             _state.update { it.copy(ticketsLoading = false) }
             throw error
+        }
+    }
+
+    private fun applyTicketList(result: TicketList, showingCachedData: Boolean, cachedAt: Long?) {
+        _state.update {
+            it.copy(
+                tickets = result.tickets,
+                ticketsLoading = false,
+                ticketsLoaded = true,
+                isAdmin = result.isAdmin,
+                canManageAdmins = result.canManageAdmins,
+                summary = listOf(result.open, result.inProgress, result.urgent, result.resolved),
+                page = result.page,
+                total = result.total,
+                totalPages = result.totalPages,
+                showingCachedData = showingCachedData,
+                cachedAt = cachedAt,
+            )
         }
     }
 
