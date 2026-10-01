@@ -1115,7 +1115,7 @@ private fun SectionHeading(title: String) {
 @Composable
 private fun AdminMetric(label: String, value: Int, modifier: Modifier = Modifier) {
     Card(modifier, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        shape = RoundedCornerShape(16.dp)) {
+        shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, Color(0xFFE0E7FF))) {
         Column(Modifier.fillMaxWidth().padding(16.dp)) {
             Text(value.toString(), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary)
@@ -1157,21 +1157,39 @@ private fun ReportsTab(state: AdminUiState, modifier: Modifier, onRetry: () -> U
     LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(18.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)) {
         item {
-            Box(Modifier.fillMaxWidth().background(
-                Brush.linearGradient(listOf(Color(0xFF182554), Color(0xFF3657AD), Color(0xFF5D7DE0))),
-                RoundedCornerShape(24.dp))) {
-                Column(Modifier.padding(22.dp)) {
-                    Text("OFFICIAL SCHOOL REPORT", color = Color(0xFFBFD2FF),
-                        style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
-                    Spacer(Modifier.height(7.dp))
-                    Text(report.academicYear, color = Color.White,
-                        style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                    Text("${report.from} to ${report.to} · All classes",
-                        color = Color(0xFFDBE7FF), style = MaterialTheme.typography.bodySmall)
-                    Spacer(Modifier.height(16.dp))
-                    Text("${formatPercent(report.attendancePercentage)} attendance",
-                        color = Color.White, style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold)
+            val shape = RoundedCornerShape(24.dp)
+            Box(Modifier.fillMaxWidth()
+                .shadow(12.dp, shape, ambientColor = Color(0xFF0F172A).copy(alpha = .06f))
+                .clip(shape)
+                .background(Brush.linearGradient(listOf(
+                    Color.White, Color(0xFFF1F3FF), Color(0xFFF5F3FF),
+                )))
+                .border(1.dp, Color(0xFFE0E7FF), shape)) {
+                Box(Modifier.size(150.dp).align(Alignment.TopEnd).offset(x = 42.dp, y = (-48).dp)
+                    .background(Color(0xFF818CF8).copy(alpha = .09f), CircleShape))
+                Row(Modifier.fillMaxWidth().padding(20.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Surface(shape = RoundedCornerShape(17.dp), color = Color(0xFF4F46E5),
+                        shadowElevation = 5.dp) {
+                        Icon(Lucide.ChartNoAxesColumnIncreasing, null, tint = Color.White,
+                            modifier = Modifier.padding(13.dp).size(25.dp))
+                    }
+                    Column(Modifier.weight(1f).padding(start = 14.dp)) {
+                        Text("OFFICIAL SCHOOL REPORT", color = Color(0xFF4F46E5),
+                            fontSize = 9.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.15.sp)
+                        Text(report.academicYear, color = Color(0xFF0F172A),
+                            style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold)
+                        Text("${report.from} to ${report.to} · All classes",
+                            color = Color(0xFF64748B), style = MaterialTheme.typography.bodySmall)
+                    }
+                    Surface(shape = RoundedCornerShape(16.dp), color = Color.White.copy(alpha = .86f),
+                        border = BorderStroke(1.dp, Color(0xFFE0E7FF))) {
+                        Column(Modifier.padding(horizontal = 13.dp, vertical = 10.dp),
+                            horizontalAlignment = Alignment.End) {
+                            Text(formatPercent(report.attendancePercentage), color = Color(0xFF4F46E5),
+                                style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold)
+                            Text("Attendance", color = Color(0xFF64748B), fontSize = 10.sp)
+                        }
+                    }
                 }
             }
         }
@@ -1242,8 +1260,30 @@ private fun QueriesTab(dashboard: AdminDashboard, modifier: Modifier,
     onTicket: (String) -> Unit, onAllQueries: () -> Unit) {
     LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(18.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        item { Text("Support attention", style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold) }
+        item {
+            val shape = RoundedCornerShape(24.dp)
+            Box(Modifier.fillMaxWidth().clip(shape)
+                .background(Brush.linearGradient(listOf(Color.White, Color(0xFFF1F3FF), Color(0xFFF5F3FF))))
+                .border(1.dp, Color(0xFFE0E7FF), shape)) {
+                Box(Modifier.size(120.dp).align(Alignment.TopEnd).offset(x = 35.dp, y = (-38).dp)
+                    .background(Color(0xFFA78BFA).copy(alpha = .09f), CircleShape))
+                Row(Modifier.fillMaxWidth().padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Surface(shape = RoundedCornerShape(16.dp), color = Color(0xFFEEF2FF),
+                        border = BorderStroke(1.dp, Color(0xFFC7D2FE))) {
+                        Icon(Lucide.MessageSquareText, null, tint = Color(0xFF4F46E5),
+                            modifier = Modifier.padding(12.dp).size(24.dp))
+                    }
+                    Column(Modifier.padding(start = 14.dp)) {
+                        Text("SUPPORT CENTER", color = Color(0xFF4F46E5), fontSize = 9.sp,
+                            fontWeight = FontWeight.ExtraBold, letterSpacing = 1.1.sp)
+                        Text("Support attention", color = Color(0xFF0F172A),
+                            style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold)
+                        Text("Track school and parent requests in one place.", color = Color(0xFF64748B),
+                            style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+            }
+        }
         item { Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             AdminMetric("Open", dashboard.openTickets, Modifier.weight(1f))
             AdminMetric("In progress", dashboard.inProgressTickets, Modifier.weight(1f))
@@ -1254,12 +1294,15 @@ private fun QueriesTab(dashboard: AdminDashboard, modifier: Modifier,
         } }
         item { SectionHeading("Latest tickets") }
         if (dashboard.recentTickets.isEmpty()) item {
-            Text("No tickets yet", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Surface(Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp), color = Color.White,
+                border = BorderStroke(1.dp, Color(0xFFE0E7FF))) {
+                Text("No tickets yet", Modifier.padding(18.dp), color = Color(0xFF64748B))
+            }
         }
         items(dashboard.recentTickets, key = { it.id }) { ticket ->
             Card(onClick = { onTicket(ticket.id) },
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                shape = RoundedCornerShape(16.dp)) {
+                shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, Color(0xFFE0E7FF))) {
                 Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text(ticket.number + if (ticket.parentQuery) " · Parent query" else "",
@@ -1276,7 +1319,8 @@ private fun QueriesTab(dashboard: AdminDashboard, modifier: Modifier,
                 }
             }
         }
-        item { Button(onClick = onAllQueries, modifier = Modifier.fillMaxWidth()) {
+        item { Button(onClick = onAllQueries, modifier = Modifier.fillMaxWidth().height(50.dp),
+            shape = RoundedCornerShape(16.dp)) {
             Text("View all parent queries")
         } }
     }
@@ -1295,26 +1339,26 @@ private fun MoreTab(
 ) {
     val darkTheme = MaterialTheme.colorScheme.background.luminance() < 0.5f
     val tools = listOf(
-        AdminTool("Attendance", "LIVE OPERATIONS", "Sessions, absences and daily status", Lucide.CalendarCheck, "attendance", listOf(Color(0xFF16C7A5), Color(0xFF087E70))),
-        AdminTool("Students", "PEOPLE", "Profiles, enrollment and records", Lucide.UserRoundSearch, "students", listOf(Color(0xFF5A83FF), Color(0xFF3154D9))),
-        AdminTool("Teachers", "TEAM", "Faculty directory and allocations", Lucide.BriefcaseBusiness, "teachers", listOf(Color(0xFFC576F0), Color(0xFF7A42CB))),
-        AdminTool("Classes", "ACADEMICS", "Classes, sections and strength", Lucide.School, "classes", listOf(Color(0xFFFFA45B), Color(0xFFE2632F))),
-        AdminTool("Homework", "ACADEMICS", "Publish work to a class or section", Lucide.BookOpenCheck, "homework", listOf(Color(0xFF7B8CFF), Color(0xFF4A42C8))),
-        AdminTool("Fees", "FINANCE", "Payments and outstanding balances", Lucide.BadgeIndianRupee, "fees", listOf(Color(0xFF48D59B), Color(0xFF0A9367))),
-        AdminTool("Leave", "APPROVALS", "Review requests that need action", Lucide.ClipboardCheck, "leave", listOf(Color(0xFFFFC857), Color(0xFFDA8616))),
-        AdminTool("Timetable", "PLANNING", "The live academic schedule", Lucide.CalendarClock, "timetable", listOf(Color(0xFF70A0FF), Color(0xFF4354C9))),
-        AdminTool("Exams", "ASSESSMENT", "Schedules, marks and results", Lucide.BookOpenCheck, "exams", listOf(Color(0xFFA982F3), Color(0xFF6638C5))),
-        AdminTool("Calendar", "SCHOOL LIFE", "Events, holidays and milestones", Lucide.CalendarRange, "calendar", listOf(Color(0xFFF17D9E), Color(0xFFC93466))),
-        AdminTool("Announcements", "COMMUNICATION", "Send targeted school updates", Lucide.Megaphone, "announcements", listOf(Color(0xFFFF8B7B), Color(0xFFC93D58))),
-        AdminTool("Fee collection", "COLLECTIONS", "Pending installments and follow-up", Lucide.ReceiptIndianRupee, "fee-collection", listOf(Color(0xFF3CD4B0), Color(0xFF057E69))),
-        AdminTool("Admissions", "GROWTH", "New applications and onboarding", Lucide.UserRoundPlus, "admissions", listOf(Color(0xFF56BCEB), Color(0xFF2568C7))),
+        AdminTool("Attendance", "LIVE OPERATIONS", "Sessions, absences and daily status", Lucide.CalendarCheck, "attendance", listOf(Color(0xFF818CF8), Color(0xFF4F46E5))),
+        AdminTool("Students", "PEOPLE", "Profiles, enrollment and records", Lucide.UserRoundSearch, "students", listOf(Color(0xFF93C5FD), Color(0xFF2563EB))),
+        AdminTool("Teachers", "TEAM", "Faculty directory and allocations", Lucide.BriefcaseBusiness, "teachers", listOf(Color(0xFFC4B5FD), Color(0xFF7C3AED))),
+        AdminTool("Classes", "ACADEMICS", "Classes, sections and strength", Lucide.School, "classes", listOf(Color(0xFF818CF8), Color(0xFF4F46E5))),
+        AdminTool("Homework", "ACADEMICS", "Publish work to a class or section", Lucide.BookOpenCheck, "homework", listOf(Color(0xFFC4B5FD), Color(0xFF7C3AED))),
+        AdminTool("Fees", "FINANCE", "Payments and outstanding balances", Lucide.BadgeIndianRupee, "fees", listOf(Color(0xFF93C5FD), Color(0xFF2563EB))),
+        AdminTool("Leave", "APPROVALS", "Review requests that need action", Lucide.ClipboardCheck, "leave", listOf(Color(0xFF818CF8), Color(0xFF4F46E5))),
+        AdminTool("Timetable", "PLANNING", "The live academic schedule", Lucide.CalendarClock, "timetable", listOf(Color(0xFF93C5FD), Color(0xFF2563EB))),
+        AdminTool("Exams", "ASSESSMENT", "Schedules, marks and results", Lucide.BookOpenCheck, "exams", listOf(Color(0xFFC4B5FD), Color(0xFF7C3AED))),
+        AdminTool("Calendar", "SCHOOL LIFE", "Events, holidays and milestones", Lucide.CalendarRange, "calendar", listOf(Color(0xFF818CF8), Color(0xFF4F46E5))),
+        AdminTool("Announcements", "COMMUNICATION", "Send targeted school updates", Lucide.Megaphone, "announcements", listOf(Color(0xFFC4B5FD), Color(0xFF7C3AED))),
+        AdminTool("Fee collection", "COLLECTIONS", "Pending installments and follow-up", Lucide.ReceiptIndianRupee, "fee-collection", listOf(Color(0xFF93C5FD), Color(0xFF2563EB))),
+        AdminTool("Admissions", "GROWTH", "New applications and onboarding", Lucide.UserRoundPlus, "admissions", listOf(Color(0xFF818CF8), Color(0xFF4F46E5))),
     )
     val byId = tools.associateBy { it.destination }
     LazyColumn(
         modifier.fillMaxSize().background(
             Brush.verticalGradient(
                 if (darkTheme) listOf(Color(0xFF060A13), Color(0xFF09101D), Color(0xFF060A13))
-                else listOf(Color(0xFFF8FAFF), Color(0xFFEEF3FC), Color(0xFFF8FAFF)),
+                else listOf(Color(0xFFF8FAFC), Color(0xFFF4F6FF), Color(0xFFF8FAFC)),
             ),
         ),
         contentPadding = PaddingValues(horizontal = 18.dp, vertical = 16.dp),
@@ -1442,25 +1486,26 @@ private data class AdminTool(
 private fun SchoolCommandHero(school: MobileContext, dashboard: AdminDashboard?, toolCount: Int) {
     val shape = RoundedCornerShape(30.dp)
     Box(
-        Modifier.fillMaxWidth().shadow(20.dp, shape, ambientColor = Color(0xFF5747E8).copy(alpha = .22f),
-            spotColor = Color(0xFF5747E8).copy(alpha = .25f)).clip(shape)
-            .background(Brush.linearGradient(listOf(Color(0xFF111629), Color(0xFF312166), Color(0xFF0D5466)))),
+        Modifier.fillMaxWidth().shadow(14.dp, shape, ambientColor = Color(0xFF0F172A).copy(alpha = .06f),
+            spotColor = Color(0xFF0F172A).copy(alpha = .08f)).clip(shape)
+            .background(Brush.linearGradient(listOf(Color.White, Color(0xFFF1F3FF), Color(0xFFF5F3FF))))
+            .border(1.dp, Color(0xFFE0E7FF), shape),
     ) {
         Box(Modifier.size(190.dp).align(Alignment.TopEnd).offset(x = 62.dp, y = (-70).dp)
-            .background(Color(0xFF8BCBFF).copy(alpha = .17f), CircleShape))
+            .background(Color(0xFF818CF8).copy(alpha = .09f), CircleShape))
         Box(Modifier.size(135.dp).align(Alignment.BottomStart).offset(x = (-42).dp, y = 72.dp)
-            .background(Color(0xFFD5A7FF).copy(alpha = .14f), CircleShape))
+            .background(Color(0xFFA78BFA).copy(alpha = .09f), CircleShape))
         Column(Modifier.fillMaxWidth().padding(22.dp)) {
-            Surface(color = Color.White.copy(alpha = .12f), shape = RoundedCornerShape(50.dp),
-                border = BorderStroke(1.dp, Color.White.copy(alpha = .18f))) {
-                Text("  SCHOOL COMMAND  ", Modifier.padding(vertical = 7.dp), color = Color(0xFFDDE6FF),
+            Surface(color = Color(0xFFEEF2FF), shape = RoundedCornerShape(50.dp),
+                border = BorderStroke(1.dp, Color(0xFFC7D2FE))) {
+                Text("  SCHOOL COMMAND  ", Modifier.padding(vertical = 7.dp), color = Color(0xFF4F46E5),
                     fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.3.sp)
             }
             Spacer(Modifier.height(24.dp))
-            Text("See clearly.\nLead decisively.", color = Color.White,
+            Text("See clearly.\nLead decisively.", color = Color(0xFF0F172A),
                 fontSize = 27.sp, lineHeight = 32.sp, fontWeight = FontWeight.ExtraBold,
                 letterSpacing = (-.4).sp)
-            Text(school.schoolName, Modifier.padding(top = 10.dp), color = Color.White.copy(alpha = .72f),
+            Text(school.schoolName, Modifier.padding(top = 10.dp), color = Color(0xFF64748B),
                 fontSize = 13.sp, fontWeight = FontWeight.Medium)
             Spacer(Modifier.height(22.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
@@ -1513,7 +1558,7 @@ private fun DecisionCommandPanel(dashboard: AdminDashboard?, onSection: (String)
                         Icon(
                             if (totalAttention == 0) Lucide.Activity else Lucide.CircleAlert,
                             null,
-                            tint = if (totalAttention == 0) Color(0xFF4CE0B3) else Color(0xFFFFC766),
+                            tint = if (totalAttention == 0) Color(0xFF059669) else Color(0xFFD97706),
                             modifier = Modifier.padding(10.dp).size(20.dp),
                         )
                     }
@@ -1527,7 +1572,7 @@ private fun DecisionCommandPanel(dashboard: AdminDashboard?, onSection: (String)
                     Surface(shape = RoundedCornerShape(50.dp),
                         color = if (darkTheme) Color.White.copy(alpha = .07f) else Color(0xFFE4F7F0)) {
                         Text("LIVE", Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                            color = Color(0xFF72E6C0), fontSize = 9.sp, fontWeight = FontWeight.ExtraBold,
+                            color = Color(0xFF047857), fontSize = 9.sp, fontWeight = FontWeight.ExtraBold,
                             letterSpacing = 1.sp)
                     }
                 }
@@ -1576,8 +1621,9 @@ private fun DecisionSignal(
 
 @Composable
 private fun CommandHeroChip(label: String) {
-    Surface(color = Color.Black.copy(alpha = .15f), shape = RoundedCornerShape(50.dp)) {
-        Text(label, Modifier.padding(horizontal = 12.dp, vertical = 8.dp), color = Color.White.copy(alpha = .86f),
+    Surface(color = Color.White.copy(alpha = .86f), shape = RoundedCornerShape(50.dp),
+        border = BorderStroke(1.dp, Color(0xFFE0E7FF))) {
+        Text(label, Modifier.padding(horizontal = 12.dp, vertical = 8.dp), color = Color(0xFF4338CA),
             fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
     }
 }
@@ -1598,24 +1644,27 @@ private fun FeaturedAdminTool(tool: AdminTool, onSection: (String) -> Unit) {
     val haptic = LocalHapticFeedback.current
     val shape = RoundedCornerShape(25.dp)
     Surface(onClick = { haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove); onSection(tool.destination) },
-        shape = shape, color = Color.Transparent, modifier = Modifier.fillMaxWidth()
-            .shadow(14.dp, shape, ambientColor = tool.colors.last().copy(alpha = .16f),
-                spotColor = tool.colors.last().copy(alpha = .18f))) {
-        Box(Modifier.fillMaxWidth().background(Brush.linearGradient(tool.colors)).padding(20.dp)) {
+        shape = shape, color = Color.Transparent, border = BorderStroke(1.dp, Color(0xFFE0E7FF)),
+        modifier = Modifier.fillMaxWidth()
+            .shadow(10.dp, shape, ambientColor = Color(0xFF0F172A).copy(alpha = .06f))) {
+        Box(Modifier.fillMaxWidth().background(Brush.linearGradient(listOf(
+            Color.White, Color(0xFFF1F3FF), Color(0xFFF5F3FF),
+        ))).padding(20.dp)) {
             Box(Modifier.size(120.dp).align(Alignment.TopEnd).offset(x = 42.dp, y = (-45).dp)
-                .background(Color.White.copy(alpha = .12f), CircleShape))
+                .background(Color(0xFF818CF8).copy(alpha = .09f), CircleShape))
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Surface(shape = RoundedCornerShape(19.dp), color = Color.White.copy(alpha = .17f),
-                    border = BorderStroke(1.dp, Color.White.copy(alpha = .22f))) {
+                Surface(shape = RoundedCornerShape(19.dp), color = Color(0xFF4F46E5),
+                    shadowElevation = 5.dp) {
                     Icon(tool.icon, null, tint = Color.White, modifier = Modifier.padding(15.dp).size(30.dp))
                 }
                 Column(Modifier.weight(1f).padding(horizontal = 16.dp)) {
-                    Text(tool.eyebrow, color = Color.White.copy(alpha = .72f), fontSize = 9.sp,
+                    Text(tool.eyebrow, color = Color(0xFF4F46E5), fontSize = 9.sp,
                         fontWeight = FontWeight.Bold, letterSpacing = 1.1.sp)
-                    Text(tool.label, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold)
-                    Text(tool.description, color = Color.White.copy(alpha = .78f), fontSize = 11.sp)
+                    Text(tool.label, color = Color(0xFF0F172A), fontSize = 20.sp,
+                        fontWeight = FontWeight.ExtraBold)
+                    Text(tool.description, color = Color(0xFF64748B), fontSize = 11.sp)
                 }
-                Icon(Lucide.ArrowRight, null, tint = Color.White, modifier = Modifier.size(22.dp))
+                Icon(Lucide.ArrowRight, null, tint = Color(0xFF4F46E5), modifier = Modifier.size(22.dp))
             }
         }
     }
@@ -1741,7 +1790,7 @@ private fun GlossyLucideIcon(
 @Composable
 private fun ReportMetric(label: String, value: String, modifier: Modifier = Modifier) {
     Card(modifier, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        shape = RoundedCornerShape(16.dp)) {
+        shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, Color(0xFFE0E7FF))) {
         Column(Modifier.fillMaxWidth().padding(15.dp)) {
             Text(value, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary, maxLines = 1)
@@ -1754,7 +1803,7 @@ private fun ReportMetric(label: String, value: String, modifier: Modifier = Modi
 @Composable
 private fun ReportPanel(title: String, subtitle: String, content: @Composable () -> Unit) {
     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        shape = RoundedCornerShape(18.dp)) {
+        shape = RoundedCornerShape(18.dp), border = BorderStroke(1.dp, Color(0xFFE0E7FF))) {
         Column(Modifier.fillMaxWidth().padding(18.dp)) {
             Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             Text(subtitle, style = MaterialTheme.typography.bodySmall,
