@@ -20,6 +20,7 @@ export const BULK_OPERATION_ROUTES = [
   { title: "Student Promotion", href: "bulk-operations/student-promotion" },
   { title: "Teachers", href: "bulk-operations/teachers" },
   { title: "Teacher Allocation", href: "bulk-operations/teacher-allocations" },
+  { title: "Class Teachers", href: "bulk-operations/class-teachers" },
   { title: "Classes & Sections", href: "bulk-operations/classes" },
   { title: "Subjects", href: "bulk-operations/subjects" },
   { title: "Class Subjects", href: "bulk-operations/class-subjects" },

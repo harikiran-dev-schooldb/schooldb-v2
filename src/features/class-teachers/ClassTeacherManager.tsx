@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Edit3, Plus, Search, ShieldCheck } from "lucide-react";
+import Link from "next/link";
+import { Edit3, Plus, Search, ShieldCheck, UploadCloud } from "lucide-react";
 import { toast } from "sonner";
 
 import { AcademicYearSelect } from "@/components/common/select/AcademicYearSelect";
@@ -21,6 +22,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { useSchool } from "@/contexts/school-context";
+import { isRouteAllowed } from "@/lib/route-access";
 import {
   classTeacherAssignmentSchema,
   type ClassTeacherAssignmentInput,
@@ -50,6 +53,7 @@ const emptyForm: ClassTeacherAssignmentInput = {
 };
 
 export function ClassTeacherManager() {
+  const { school } = useSchool();
   const [items, setItems] = useState<Item[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
@@ -152,9 +156,18 @@ export function ClassTeacherManager() {
             className="pl-9"
           />
         </div>
-        <Button onClick={startCreate}>
-          <Plus className="size-4" /> Assign class teacher
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          {isRouteAllowed(school, "bulk-operations/class-teachers") && (
+            <Button asChild variant="outline">
+              <Link href={`/${school.slug}/bulk-operations/class-teachers`}>
+                <UploadCloud className="size-4" /> Bulk import
+              </Link>
+            </Button>
+          )}
+          <Button onClick={startCreate}>
+            <Plus className="size-4" /> Assign class teacher
+          </Button>
+        </div>
       </div>
 
       <div className="overflow-x-auto rounded-2xl border bg-card">

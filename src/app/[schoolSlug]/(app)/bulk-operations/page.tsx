@@ -91,6 +91,14 @@ const operations = [
     status: "Ready",
   },
   {
+    title: "Class Teachers",
+    description:
+      "Assign one class teacher to each academic-year class and section.",
+    href: "bulk-operations/class-teachers",
+    icon: UserRound,
+    status: "Ready",
+  },
+  {
     title: "Classes & Sections",
     description:
       "Create classes and their sections together from one validated CSV.",
