@@ -138,6 +138,18 @@ class SupportRepository {
         request("DELETE", "api/v1/support/devices?installationId=$encoded", school)
     }
 
+    suspend fun profile(school: String): SupportAccountProfile = withContext(Dispatchers.IO) {
+        val data = request("GET", "api/v1/mobile/context", school).getJSONObject("data")
+        SupportAccountProfile(
+            userName = data.optString("userName", "SchoolDB user"),
+            schoolName = data.optString("schoolName", "SchoolDB"),
+            schoolSlug = data.optString("schoolSlug", school),
+            role = data.optString("role", "STAFF"),
+            phone = data.optString("phone").takeUnless { it.isBlank() || it == "null" },
+            email = data.optString("email").takeUnless { it.isBlank() || it == "null" },
+        )
+    }
+
     suspend fun signOut() {
         var succeeded = false
         var failure: String? = null

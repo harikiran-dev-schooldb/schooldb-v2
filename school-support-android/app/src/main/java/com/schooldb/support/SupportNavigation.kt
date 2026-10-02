@@ -16,4 +16,5 @@ enum class DashboardTab(val label: String) {
     OVERVIEW("Overview"),
     TICKETS("Tickets"),
     ANALYTICS("Analytics"),
+    PROFILE("Profile"),
 }

@@ -12,6 +12,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Dashboard
 import androidx.compose.material.icons.outlined.ConfirmationNumber
 import androidx.compose.material.icons.outlined.BarChart
+import androidx.compose.material.icons.outlined.Person
 import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.layout.*
@@ -199,7 +200,7 @@ internal fun SupportNavigationDock(selected: String, onSelect: (String) -> Unit)
         Row(Modifier.background(Brush.linearGradient(listOf(Color.White, Color(0xFFF4F6FF), Color.White)))
             .padding(5.dp)) {
             listOf("Overview" to Icons.Outlined.Dashboard, "Tickets" to Icons.Outlined.ConfirmationNumber,
-                "Analytics" to Icons.Outlined.BarChart).forEach { (tab, icon) ->
+                "Analytics" to Icons.Outlined.BarChart, "Profile" to Icons.Outlined.Person).forEach { (tab, icon) ->
                 val active = selected == tab
                 Column(Modifier.weight(1f).clip(RoundedCornerShape(25.dp))
                     .background(if (active) Color(0xFFE1E9FF) else Color.Transparent)

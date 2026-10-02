@@ -56,3 +56,12 @@ data class TicketDiagnostics(
     val manufacturer: String?,
     val androidVersion: String?,
 )
+
+data class SupportAccountProfile(
+    val userName: String,
+    val schoolName: String,
+    val schoolSlug: String,
+    val role: String,
+    val phone: String?,
+    val email: String?,
+)

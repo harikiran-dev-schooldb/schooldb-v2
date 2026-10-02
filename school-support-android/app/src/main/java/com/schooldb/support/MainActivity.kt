@@ -35,7 +35,7 @@ import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.Dashboard
 import androidx.compose.material.icons.outlined.ConfirmationNumber
 import androidx.compose.material.icons.outlined.BarChart
-import androidx.compose.material.icons.outlined.Logout
+import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.QrCode2
 import androidx.compose.material.icons.outlined.Search
@@ -114,6 +114,10 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
     var dashboardTab by remember { mutableStateOf(DashboardTab.OVERVIEW) }
     var requestedTicketFilter by remember { mutableStateOf<String?>(null) }
     var signingOut by remember { mutableStateOf(false) }
+    var showSignOutConfirmation by remember { mutableStateOf(false) }
+    var accountProfile by remember(school) { mutableStateOf<SupportAccountProfile?>(null) }
+    var profileLoading by remember(school) { mutableStateOf(false) }
+    var profileError by remember(school) { mutableStateOf<String?>(null) }
     var resendSeconds by remember { mutableIntStateOf(0) }
     var resumeVersion by remember { mutableIntStateOf(0) }
     val identitySchool = school.ifBlank { savedSchool }
@@ -216,6 +220,66 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
             }
         }
     }
+
+    fun loadProfile() {
+        if (profileLoading || school.isBlank()) return
+        profileLoading = true
+        profileError = null
+        scope.launch {
+            try {
+                accountProfile = api.profile(school)
+            } catch (e: SupportSessionExpiredException) {
+                handleSessionExpired()
+            } catch (e: Exception) {
+                profileError = e.message ?: "Could not load your profile."
+            } finally {
+                profileLoading = false
+            }
+        }
+    }
+
+    fun signOutNow() {
+        if (signingOut) return
+        signingOut = true
+        page = SupportPage.LOGIN
+        preferences.edit().remove("school").apply()
+        context.getSystemService(android.app.NotificationManager::class.java).cancelAll()
+        context.getSharedPreferences("support_push", 0).edit().putBoolean("delete_token", true).apply()
+        scope.launch {
+            val pushPreferences = context.getSharedPreferences("support_push", 0)
+            try {
+                pushPreferences.getString("installation_id", null)?.let { installationId ->
+                    try {
+                        api.unregisterPushDevice(school, installationId)
+                        pushPreferences.edit()
+                            .remove("pending_unregister_school")
+                            .remove("pending_unregister_installation_id")
+                            .apply()
+                    } catch (_: Exception) {
+                        pushPreferences.edit()
+                            .putString("pending_unregister_school", school)
+                            .putString("pending_unregister_installation_id", installationId)
+                            .apply()
+                    }
+                }
+                api.signOut()
+            } catch (exception: Exception) {
+                Log.w("SupportAuth", "Remote sign out cleanup failed", exception)
+            } finally {
+                preferences.edit().remove("school").apply()
+                ticketCache.clear(school)
+                ticketViewModel.reset()
+                adminViewModel.reset()
+                authViewModel.clearAll()
+                accountProfile = null
+                dashboardTab = DashboardTab.OVERVIEW
+                requestedTicketFilter = null
+                com.schooldb.support.notifications.SupportPushSync.enqueue(context, replace = true)
+                signingOut = false
+                page = SupportPage.LOGIN
+            }
+        }
+    }
     suspend fun loadTickets(
         filter: String = ticketState.filter,
         query: String = ticketState.query,
@@ -233,6 +297,14 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
         ticketViewModel.loadDetail(school, id)
         ticketViewModel.loadTickets(school, cache = ticketCache)
         ticketViewModel.invalidateAnalytics()
+    }
+
+    LaunchedEffect(page, dashboardTab, school, sessionReady) {
+        if (page == SupportPage.DASHBOARD && dashboardTab == DashboardTab.PROFILE &&
+            sessionReady && accountProfile == null && !profileLoading
+        ) {
+            loadProfile()
+        }
     }
 
     val pushUpdate by com.schooldb.support.notifications.SupportMessagingService.updates.collectAsStateWithLifecycle()
@@ -392,7 +464,7 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
                             Text((identity?.name ?: school).uppercase(), maxLines = 1, overflow = TextOverflow.Ellipsis,
                                 style = MaterialTheme.typography.labelSmall, color = Muted, fontWeight = FontWeight.Bold)
                             Text(when (page) {
-                                SupportPage.DASHBOARD -> "Support Desk"
+                                SupportPage.DASHBOARD -> if (dashboardTab == DashboardTab.PROFILE) "My Profile" else "Support Desk"
                                 SupportPage.CREATE_TICKET -> "New ticket"
                                 SupportPage.TICKET_DETAIL -> "Ticket details"
                                 SupportPage.ADMINS -> "Administrators"
@@ -401,50 +473,10 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
                                 style = MaterialTheme.typography.titleMedium, color = Ink, fontWeight = FontWeight.Bold)
                         }
                     }
-                    if (page == SupportPage.DASHBOARD) IconButton(onClick = {
-                        if (page == SupportPage.DASHBOARD && !signingOut) {
-                            // Leave the authenticated UI immediately. Push cleanup is best-effort
-                            // and must never keep the user on an endless loading screen.
-                            signingOut = true
-                            page = SupportPage.LOGIN
-                            preferences.edit().remove("school").apply()
-                            context.getSystemService(android.app.NotificationManager::class.java).cancelAll()
-                            context.getSharedPreferences("support_push", 0).edit().putBoolean("delete_token", true).apply()
-                            scope.launch {
-                                val pushPreferences = context.getSharedPreferences("support_push", 0)
-                                try {
-                                    pushPreferences.getString("installation_id", null)?.let { installationId ->
-                                        try {
-                                            api.unregisterPushDevice(school, installationId)
-                                            pushPreferences.edit()
-                                                .remove("pending_unregister_school")
-                                                .remove("pending_unregister_installation_id")
-                                                .apply()
-                                        } catch (_: Exception) {
-                                            pushPreferences.edit()
-                                                .putString("pending_unregister_school", school)
-                                                .putString("pending_unregister_installation_id", installationId)
-                                                .apply()
-                                        }
-                                    }
-                                    api.signOut()
-                                } catch (exception: Exception) {
-                                    Log.w("SupportAuth", "Remote sign out cleanup failed", exception)
-                                } finally {
-                                    preferences.edit().remove("school").apply()
-                                    ticketCache.clear(school)
-                                    ticketViewModel.reset()
-                                    adminViewModel.reset()
-                                    authViewModel.clearAll()
-                                    dashboardTab = DashboardTab.OVERVIEW
-                                    requestedTicketFilter = null
-                                    com.schooldb.support.notifications.SupportPushSync.enqueue(context, replace = true)
-                                    signingOut = false
-                                    page = SupportPage.LOGIN
-                                }
-                            }
-                        }
-                    }, modifier = Modifier.size(42.dp)) { Icon(Icons.Outlined.Logout, contentDescription = "Sign out", tint = Muted) }
+                    if (page == SupportPage.DASHBOARD) IconButton(
+                        onClick = { dashboardTab = DashboardTab.PROFILE },
+                        modifier = Modifier.size(42.dp),
+                    ) { Icon(Icons.Outlined.Person, contentDescription = "Open profile", tint = Muted) }
                 }
             }
         }
@@ -538,7 +570,21 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
                         }
                     }
                 }
-                SupportPage.DASHBOARD -> TicketDashboard(school, ticketState.tickets, ticketState.summary, ticketState.isAdmin, ticketState.canManageAdmins, ticketState.analytics,
+                SupportPage.DASHBOARD -> if (dashboardTab == DashboardTab.PROFILE) {
+                    SupportProfileScreen(
+                        profile = accountProfile,
+                        schoolIdentity = identity,
+                        loading = profileLoading,
+                        error = profileError,
+                        alertsEnabled = alertsEnabled,
+                        onRetry = ::loadProfile,
+                        onNotificationSettings = {
+                            context.startActivity(Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                                .putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName))
+                        },
+                        onSignOut = { showSignOutConfirmation = true },
+                    )
+                } else TicketDashboard(school, ticketState.tickets, ticketState.summary, ticketState.isAdmin, ticketState.canManageAdmins, ticketState.analytics,
                     ticketState.analyticsLoading, ticketState.analyticsError, busy, ticketState.ticketsLoading, ticketState.ticketsLoaded,
                     showingCachedData = ticketState.showingCachedData,
                     manualRefreshing = manualRefreshing,
@@ -644,5 +690,25 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
                 } }
             }
         }
+    }
+
+    if (showSignOutConfirmation) {
+        AlertDialog(
+            onDismissRequest = { showSignOutConfirmation = false },
+            title = { Text("Sign out of School Support?") },
+            text = { Text("You’ll need a new WhatsApp verification code to sign in again.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showSignOutConfirmation = false
+                        signOutNow()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = SchoolRed),
+                ) { Text("Sign out") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showSignOutConfirmation = false }) { Text("Cancel") }
+            },
+        )
     }
 }
