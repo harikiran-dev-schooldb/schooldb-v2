@@ -78,7 +78,10 @@ export async function PATCH(request: Request, context: Context) {
     });
     const recipients = new Set<string>(current.createdById ? [current.createdById] : []);
     if (ticket.assignedToId) recipients.add(ticket.assignedToId);
-    if (input.data.priority === "URGENT" && current.priority !== "URGENT") {
+    const notifyAllAdmins =
+      (requestedStatus && requestedStatus !== current.status) ||
+      (input.data.priority === "URGENT" && current.priority !== "URGENT");
+    if (notifyAllAdmins) {
       (await supportAdminUserIds(actor.schoolId)).forEach((id) => recipients.add(id));
     }
     const notificationDetail = changes[changes.length - 1]?.detail;
