@@ -2021,6 +2021,7 @@ enum SupportTicketComplaintBy {
   MOTHER
   GUARDIAN
   STUDENT
+  OTHER
 }
 
 model SupportTicket {

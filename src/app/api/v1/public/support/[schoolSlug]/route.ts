@@ -23,6 +23,7 @@ const inputSchema = z.object({
   subject: z.string().trim().min(3).max(160),
   description: z.string().trim().min(10).max(5000),
   complaintBy: z.enum(complaintByOptions),
+  complaintByOtherName: z.string().trim().max(120).optional(),
   website: z.string().max(200).optional(),
 });
 
@@ -35,6 +36,9 @@ export async function POST(request: Request, { params }: Context) {
 
     const parsed = inputSchema.safeParse(await request.json());
     if (!parsed.success) throw new ApiError(400, "Complete all required ticket details.");
+    if (parsed.data.complaintBy === "OTHER" && (parsed.data.complaintByOtherName?.trim().length ?? 0) < 2) {
+      throw new ApiError(400, "Enter the name of the person raising the complaint.");
+    }
     if (parsed.data.website) return ApiResponse.success({ ticketNo: "Submitted" }, "Query submitted.", 201);
 
     const { website: _website, ...input } = parsed.data;

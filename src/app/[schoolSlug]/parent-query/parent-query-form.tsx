@@ -32,6 +32,7 @@ export function ParentQueryForm({ schoolSlug }: { schoolSlug: string }) {
   const [verifyingOtp, setVerifyingOtp] = useState(false);
   const [student, setStudent] = useState<StudentOption | null>(null);
   const [complaintBy, setComplaintBy] = useState("");
+  const [complaintByOtherName, setComplaintByOtherName] = useState("");
   const [students, setStudents] = useState<StudentOption[]>([]);
   const [searching, setSearching] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -108,6 +109,7 @@ export function ParentQueryForm({ schoolSlug }: { schoolSlug: string }) {
       setStudents(matches);
       setStudent(matches.length === 1 ? matches[0] : null);
       setComplaintBy("");
+      setComplaintByOtherName("");
       if (!matches.length) setError("No active student is linked to this registered mobile number.");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Student search failed. Try again.");
@@ -138,6 +140,7 @@ export function ParentQueryForm({ schoolSlug }: { schoolSlug: string }) {
           subject: form.get("subject"),
           description: form.get("description"),
           complaintBy,
+          complaintByOtherName: complaintBy === "OTHER" ? complaintByOtherName.trim() : undefined,
           website: form.get("website"),
         }),
       });
@@ -228,6 +231,7 @@ export function ParentQueryForm({ schoolSlug }: { schoolSlug: string }) {
       ? [{ value: "GUARDIAN", label: `Guardian — ${student.guardianName}` }]
       : []),
     { value: "STUDENT", label: `Student — ${student.name}` },
+    { value: "OTHER", label: "Other person" },
   ] : [];
 
   return (
@@ -243,7 +247,7 @@ export function ParentQueryForm({ schoolSlug }: { schoolSlug: string }) {
       {searching && <p className="rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-600">Loading linked students…</p>}
       {students.length > 0 && <div className="divide-y rounded-xl border border-slate-200" role="listbox" aria-label="Students linked to this mobile number">
           {students.map((item) => <button key={item.id} type="button" role="option" aria-selected={student?.id === item.id} onClick={() => {
-            setStudent(item); setComplaintBy(""); setError("");
+            setStudent(item); setComplaintBy(""); setComplaintByOtherName(""); setError("");
           }} className={`block w-full px-4 py-4 text-left text-sm hover:bg-indigo-50 ${student?.id === item.id ? "bg-indigo-50 ring-2 ring-inset ring-indigo-600" : ""}`}>
             <span className="font-bold text-slate-900">{item.name}</span>
             <span className="ml-2 text-xs text-slate-500">Admission ending {item.admissionHint}</span>
@@ -265,7 +269,7 @@ export function ParentQueryForm({ schoolSlug }: { schoolSlug: string }) {
         />
       </label>
       <button type="button" onClick={() => {
-        setVerificationToken(""); setOtpSent(false); setStudent(null); setStudents([]); setComplaintBy(""); setError("");
+        setVerificationToken(""); setOtpSent(false); setStudent(null); setStudents([]); setComplaintBy(""); setComplaintByOtherName(""); setError("");
       }} className="-mt-3 text-sm font-semibold text-indigo-700">Use a different number</button>
       <div className="border-t border-slate-200 pt-6">
         <h2 className="text-lg font-bold">Your query</h2>
@@ -277,11 +281,26 @@ export function ParentQueryForm({ schoolSlug }: { schoolSlug: string }) {
         </select>
       </label>
       <label className={labelClass}>Complaint by
-        <select required className={fieldClass} value={complaintBy} onChange={(event) => setComplaintBy(event.target.value)} disabled={!student}>
+        <select required className={fieldClass} value={complaintBy} onChange={(event) => {
+          setComplaintBy(event.target.value);
+          if (event.target.value !== "OTHER") setComplaintByOtherName("");
+        }} disabled={!student}>
           <option value="">Select who is raising the complaint</option>
           {complaintOptions.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
         </select>
       </label>
+      {complaintBy === "OTHER" && <label className={labelClass}>Name of person raising the complaint
+        <input
+          required
+          value={complaintByOtherName}
+          onChange={(event) => setComplaintByOtherName(event.target.value)}
+          minLength={2}
+          maxLength={120}
+          className={fieldClass}
+          placeholder="Enter name"
+          autoComplete="name"
+        />
+      </label>}
       <label className={labelClass}>Subject
         <input name="subject" required minLength={3} maxLength={160} className={fieldClass} placeholder="What is your query about?" />
       </label>
@@ -290,7 +309,7 @@ export function ParentQueryForm({ schoolSlug }: { schoolSlug: string }) {
       </label>
       <div className="hidden" aria-hidden="true"><label>Website <input name="website" tabIndex={-1} autoComplete="off" /></label></div>
       {error && <p role="alert" className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
-      <button type="submit" disabled={submitting || !student || !complaintBy} className="w-full rounded-xl bg-indigo-700 px-5 py-3.5 font-bold text-white hover:bg-indigo-800 disabled:opacity-50">
+      <button type="submit" disabled={submitting || !student || !complaintBy || (complaintBy === "OTHER" && complaintByOtherName.trim().length < 2)} className="w-full rounded-xl bg-indigo-700 px-5 py-3.5 font-bold text-white hover:bg-indigo-800 disabled:opacity-50">
         {submitting ? "Submitting…" : "Send query to school"}
       </button>
       <p className="text-center text-xs text-slate-500">Your verified number receives WhatsApp updates as the query moves through resolution.</p>

@@ -8,7 +8,7 @@ import { sendSupportPush, supportAdminUserIds } from "@/lib/support-push";
 import { queueParentQueryWhatsappUpdate } from "@/features/whatsapp/service";
 
 export const parentCategories = ["STUDENT", "ACADEMIC", "FEES", "TRANSPORT", "GENERAL"] as const;
-export const complaintByOptions = ["FATHER", "MOTHER", "GUARDIAN", "STUDENT"] as const;
+export const complaintByOptions = ["FATHER", "MOTHER", "GUARDIAN", "STUDENT", "OTHER"] as const;
 
 export async function parentSupportSchool(schoolSlug: string) {
   const school = await prisma.school.findUnique({
@@ -87,6 +87,7 @@ export async function submitParentSupport(input: {
   subject: string;
   description: string;
   complaintBy: typeof complaintByOptions[number];
+  complaintByOtherName?: string;
   parentPhone: string;
 }) {
   const school = await prisma.school.findUnique({
@@ -132,12 +133,19 @@ export async function submitParentSupport(input: {
     );
   }
 
-  const complaintByName = {
-    FATHER: enrollment.student.fatherName || "Father",
-    MOTHER: enrollment.student.motherName || "Mother",
-    GUARDIAN: enrollment.student.guardianName || "Guardian",
-    STUDENT: enrollment.student.fullName || "Student",
-  }[input.complaintBy];
+  const otherName = input.complaintByOtherName?.trim();
+  if (input.complaintBy === "OTHER" && (!otherName || otherName.length < 2)) {
+    throw new ApiError(400, "Enter the name of the person raising the complaint.");
+  }
+
+  const complaintByName = input.complaintBy === "OTHER"
+    ? otherName!
+    : {
+        FATHER: enrollment.student.fatherName || "Father",
+        MOTHER: enrollment.student.motherName || "Mother",
+        GUARDIAN: enrollment.student.guardianName || "Guardian",
+        STUDENT: enrollment.student.fullName || "Student",
+      }[input.complaintBy];
 
   const ticket = await prisma.supportTicket.create({
     data: {
