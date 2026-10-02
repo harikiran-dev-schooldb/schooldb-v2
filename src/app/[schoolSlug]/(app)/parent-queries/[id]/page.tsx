@@ -13,7 +13,7 @@ export default async function ParentQueryDetailPage({ params }: { params: Promis
     where: { id, schoolId: membership.schoolId, source: "PARENT_QR" },
     select: {
       id: true, ticketNo: true, subject: true, description: true,
-      type: true, status: true, createdAt: true, parentName: true, parentPhone: true,
+      type: true, status: true, createdAt: true, parentName: true, parentPhone: true, complaintBy: true,
       student: {
         select: {
           fullName: true,
@@ -82,7 +82,7 @@ export default async function ParentQueryDetailPage({ params }: { params: Promis
             <dl className="mt-4 space-y-3 text-sm">
               <div><dt className="text-slate-500">Student</dt><dd className="mt-1 font-semibold">{ticket.student?.fullName || "Student"}</dd></div>
               <div><dt className="text-slate-500">Class and section</dt><dd className="mt-1 font-semibold">{[enrollment?.class.name, enrollment?.section.name].filter(Boolean).join(" · ") || "Not available"}</dd></div>
-              <div><dt className="text-slate-500">Parent name</dt><dd className="mt-1 font-semibold">{ticket.parentName || "Not provided"}</dd></div>
+              <div><dt className="text-slate-500">Complaint by</dt><dd className="mt-1 font-semibold">{ticket.complaintBy ? `${ticket.complaintBy.toLowerCase()} · ` : ""}{ticket.parentName || "Not provided"}</dd></div>
               <div><dt className="text-slate-500">Follow-up phone</dt><dd className="mt-1 font-semibold">
                 {ticket.parentPhone ? <a href={`tel:${ticket.parentPhone}`} className="text-indigo-700 hover:underline">{ticket.parentPhone}</a> : "Not provided"}
               </dd></div>

@@ -2016,6 +2016,13 @@ enum SupportTicketStatus {
   REOPENED
 }
 
+enum SupportTicketComplaintBy {
+  FATHER
+  MOTHER
+  GUARDIAN
+  STUDENT
+}
+
 model SupportTicket {
   id           String                  @id @default(cuid())
   schoolId     String
@@ -2030,6 +2037,7 @@ model SupportTicket {
   source       String                  @default("STAFF")
   parentName   String?
   parentPhone  String?
+  complaintBy SupportTicketComplaintBy?
   diagnostics  Json?
   assignedToId String?
   createdAt    DateTime                @default(now())

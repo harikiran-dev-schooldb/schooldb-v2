@@ -2,8 +2,14 @@
 
 import { useState, type FormEvent } from "react";
 
-type SchoolClass = { id: string; name: string; sections: { id: string; name: string }[] };
-type StudentOption = { id: string; name: string; admissionHint: string };
+type StudentOption = {
+  id: string;
+  name: string;
+  admissionHint: string;
+  fatherName: string | null;
+  motherName: string | null;
+  guardianName: string | null;
+};
 type ApiResult<T> = { success: boolean; message: string; data?: T };
 
 const categories = [
@@ -17,10 +23,7 @@ const categories = [
 const fieldClass = "mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-3 text-base outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100";
 const labelClass = "block text-sm font-semibold text-slate-800";
 
-export function ParentQueryForm({ schoolSlug, classes }: { schoolSlug: string; classes: SchoolClass[] }) {
-  const [classId, setClassId] = useState("");
-  const [sectionId, setSectionId] = useState("");
-  const [studentQuery, setStudentQuery] = useState("");
+export function ParentQueryForm({ schoolSlug }: { schoolSlug: string }) {
   const [parentPhone, setParentPhone] = useState("");
   const [otp, setOtp] = useState("");
   const [otpSent, setOtpSent] = useState(false);
@@ -28,12 +31,12 @@ export function ParentQueryForm({ schoolSlug, classes }: { schoolSlug: string; c
   const [sendingOtp, setSendingOtp] = useState(false);
   const [verifyingOtp, setVerifyingOtp] = useState(false);
   const [student, setStudent] = useState<StudentOption | null>(null);
+  const [complaintBy, setComplaintBy] = useState("");
   const [students, setStudents] = useState<StudentOption[]>([]);
   const [searching, setSearching] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [ticketNo, setTicketNo] = useState("");
-  const sections = classes.find((item) => item.id === classId)?.sections ?? [];
 
   async function sendOtp() {
     setError("");
@@ -78,6 +81,7 @@ export function ParentQueryForm({ schoolSlug, classes }: { schoolSlug: string; c
       }
       setVerificationToken(result.token);
       setOtp("");
+      await loadStudents(result.token);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not verify the code. Try again.");
     } finally {
@@ -85,23 +89,13 @@ export function ParentQueryForm({ schoolSlug, classes }: { schoolSlug: string; c
     }
   }
 
-  async function searchStudent() {
+  async function loadStudents(token: string) {
     setError("");
     setStudents([]);
-    if (!classId || !sectionId || !studentQuery.trim() || parentPhone.length !== 10) {
-      setError("Select class and section, then enter the full admission number and registered 10-digit mobile number.");
-      return;
-    }
     setSearching(true);
     try {
-      const query = new URLSearchParams({
-        classId,
-        sectionId,
-        admissionNo: studentQuery.trim(),
-        mobile: parentPhone,
-      });
-      const response = await fetch(`/api/v1/public/support/${schoolSlug}/students?${query}`, {
-        headers: { Authorization: `Bearer ${verificationToken}` },
+      const response = await fetch(`/api/v1/public/support/${schoolSlug}/students`, {
+        headers: { Authorization: `Bearer ${token}` },
       });
       const result: ApiResult<StudentOption[]> = await response.json();
       if (response.status === 401) {
@@ -110,8 +104,11 @@ export function ParentQueryForm({ schoolSlug, classes }: { schoolSlug: string; c
         throw new Error("Your verification expired. Request a new WhatsApp code.");
       }
       if (!response.ok || !result.success) throw new Error(result.message || "Student search failed.");
-      setStudents(result.data ?? []);
-      if (!result.data?.length) setError("No matching student was found in this class and section.");
+      const matches = result.data ?? [];
+      setStudents(matches);
+      setStudent(matches.length === 1 ? matches[0] : null);
+      setComplaintBy("");
+      if (!matches.length) setError("No active student is linked to this registered mobile number.");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Student search failed. Try again.");
     } finally {
@@ -136,14 +133,11 @@ export function ParentQueryForm({ schoolSlug, classes }: { schoolSlug: string; c
           Authorization: `Bearer ${verificationToken}`,
         },
         body: JSON.stringify({
-          classId,
-          sectionId,
           studentId: student.id,
           category: form.get("category"),
           subject: form.get("subject"),
           description: form.get("description"),
-          parentName: form.get("parentName"),
-          parentPhone: form.get("parentPhone"),
+          complaintBy,
           website: form.get("website"),
         }),
       });
@@ -177,7 +171,7 @@ export function ParentQueryForm({ schoolSlug, classes }: { schoolSlug: string; c
       <div>
         <h2 className="text-lg font-bold">Verify your registered number</h2>
         <p className="mt-1 text-sm leading-6 text-slate-600">
-          Only registered parents can raise a ticket. We’ll send a 6-digit verification code on WhatsApp.
+          Only a registered student contact can raise a ticket. We’ll send a 6-digit verification code on WhatsApp.
         </p>
       </div>
       <label className={labelClass}>Registered mobile number
@@ -227,53 +221,40 @@ export function ParentQueryForm({ schoolSlug, classes }: { schoolSlug: string; c
     </div>
   );
 
+  const complaintOptions = student ? [
+    { value: "FATHER", label: `Father — ${student.fatherName || "name not recorded"}` },
+    { value: "MOTHER", label: `Mother — ${student.motherName || "name not recorded"}` },
+    ...(student.guardianName
+      ? [{ value: "GUARDIAN", label: `Guardian — ${student.guardianName}` }]
+      : []),
+    { value: "STUDENT", label: `Student — ${student.name}` },
+  ] : [];
+
   return (
     <form onSubmit={submit} className="space-y-6">
       <div>
-        <h2 className="text-lg font-bold">Choose your child</h2>
-        <p className="mt-1 text-sm text-slate-600">Verify the student using the admission number and a registered family mobile number.</p>
+        <h2 className="text-lg font-bold">Choose the student</h2>
+        <p className="mt-1 text-sm text-slate-600">
+          {students.length > 1
+            ? "More than one student uses this number. Select the student this complaint is about."
+            : "The student linked to the verified mobile number is shown below."}
+        </p>
       </div>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <label className={labelClass}>Class
-          <select required className={fieldClass} value={classId} onChange={(event) => {
-            setClassId(event.target.value); setSectionId(""); setStudent(null); setStudents([]);
-          }}>
-            <option value="">Select class</option>
-            {classes.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
-          </select>
-        </label>
-        <label className={labelClass}>Section
-          <select required className={fieldClass} value={sectionId} disabled={!classId} onChange={(event) => {
-            setSectionId(event.target.value); setStudent(null); setStudents([]);
-          }}>
-            <option value="">Select section</option>
-            {sections.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
-          </select>
-        </label>
-      </div>
-      <div>
-        <label htmlFor="studentSearch" className={labelClass}>Full admission number</label>
-        <div className="mt-2 flex gap-2">
-          <input id="studentSearch" value={studentQuery} onChange={(event) => {
-            setStudentQuery(event.target.value); setStudent(null); setStudents([]);
-          }} className="min-w-0 flex-1 rounded-xl border border-slate-300 px-3 py-3 text-base outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100" placeholder="Enter the complete admission number" maxLength={80} />
-          <button type="button" onClick={searchStudent} disabled={searching || !sectionId} className="rounded-xl bg-indigo-600 px-4 font-semibold text-white disabled:opacity-50">
-            {searching ? "Finding…" : "Find"}
-          </button>
-        </div>
-        {student && <p className="mt-3 rounded-xl bg-indigo-50 px-4 py-3 text-sm font-semibold text-indigo-900">Selected: {student.name} · Admission ending {student.admissionHint}</p>}
-        {students.length > 0 && <div className="mt-2 divide-y rounded-xl border border-slate-200" role="listbox" aria-label="Matching students">
+      {searching && <p className="rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-600">Loading linked students…</p>}
+      {students.length > 0 && <div className="divide-y rounded-xl border border-slate-200" role="listbox" aria-label="Students linked to this mobile number">
           {students.map((item) => <button key={item.id} type="button" role="option" aria-selected={student?.id === item.id} onClick={() => {
-            setStudent(item); setStudents([]); setError("");
-          }} className="block w-full px-4 py-3 text-left text-sm hover:bg-indigo-50">
-            <span className="font-semibold">{item.name}</span> <span className="text-slate-500">· Admission ending {item.admissionHint}</span>
+            setStudent(item); setComplaintBy(""); setError("");
+          }} className={`block w-full px-4 py-4 text-left text-sm hover:bg-indigo-50 ${student?.id === item.id ? "bg-indigo-50 ring-2 ring-inset ring-indigo-600" : ""}`}>
+            <span className="font-bold text-slate-900">{item.name}</span>
+            <span className="ml-2 text-xs text-slate-500">Admission ending {item.admissionHint}</span>
+            <span className="mt-2 grid gap-1 text-slate-600 sm:grid-cols-2">
+              <span>Father: {item.fatherName || "Not recorded"}</span>
+              <span>Mother: {item.motherName || "Not recorded"}</span>
+            </span>
           </button>)}
         </div>}
-      </div>
       <label className={labelClass}>Verified mobile number
         <input
-          name="parentPhone"
-          required
           value={parentPhone}
           readOnly
           maxLength={10}
@@ -284,7 +265,7 @@ export function ParentQueryForm({ schoolSlug, classes }: { schoolSlug: string; c
         />
       </label>
       <button type="button" onClick={() => {
-        setVerificationToken(""); setOtpSent(false); setStudent(null); setStudents([]); setError("");
+        setVerificationToken(""); setOtpSent(false); setStudent(null); setStudents([]); setComplaintBy(""); setError("");
       }} className="-mt-3 text-sm font-semibold text-indigo-700">Use a different number</button>
       <div className="border-t border-slate-200 pt-6">
         <h2 className="text-lg font-bold">Your query</h2>
@@ -295,20 +276,21 @@ export function ParentQueryForm({ schoolSlug, classes }: { schoolSlug: string; c
           {categories.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
         </select>
       </label>
+      <label className={labelClass}>Complaint by
+        <select required className={fieldClass} value={complaintBy} onChange={(event) => setComplaintBy(event.target.value)} disabled={!student}>
+          <option value="">Select who is raising the complaint</option>
+          {complaintOptions.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+        </select>
+      </label>
       <label className={labelClass}>Subject
         <input name="subject" required minLength={3} maxLength={160} className={fieldClass} placeholder="What is your query about?" />
       </label>
       <label className={labelClass}>Description
         <textarea name="description" required minLength={10} maxLength={5000} rows={5} className={fieldClass} placeholder="Tell the school what happened and what help you need." />
       </label>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <label className={labelClass}>Your name <span className="font-normal text-slate-500">(optional)</span>
-          <input name="parentName" maxLength={100} className={fieldClass} autoComplete="name" />
-        </label>
-      </div>
       <div className="hidden" aria-hidden="true"><label>Website <input name="website" tabIndex={-1} autoComplete="off" /></label></div>
       {error && <p role="alert" className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
-      <button type="submit" disabled={submitting || !student} className="w-full rounded-xl bg-indigo-700 px-5 py-3.5 font-bold text-white hover:bg-indigo-800 disabled:opacity-50">
+      <button type="submit" disabled={submitting || !student || !complaintBy} className="w-full rounded-xl bg-indigo-700 px-5 py-3.5 font-bold text-white hover:bg-indigo-800 disabled:opacity-50">
         {submitting ? "Submitting…" : "Send query to school"}
       </button>
       <p className="text-center text-xs text-slate-500">Your verified number receives WhatsApp updates as the query moves through resolution.</p>

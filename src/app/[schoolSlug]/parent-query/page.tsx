@@ -23,7 +23,7 @@ export default async function ParentQueryPage({ params }: { params: Promise<{ sc
           </p>
         </header>
         <section className="mt-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-8">
-          <ParentQueryForm schoolSlug={schoolSlug} classes={school.classes} />
+          <ParentQueryForm schoolSlug={schoolSlug} />
         </section>
         <p className="mt-6 text-center text-xs text-slate-500">Powered by SchoolDB</p>
       </div>

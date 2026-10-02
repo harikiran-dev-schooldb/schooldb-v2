@@ -30,6 +30,7 @@ export default async function QueryDetailPage({
       source: true,
       parentName: true,
       parentPhone: true,
+      complaintBy: true,
       createdAt: true,
       updatedAt: true,
       resolvedAt: true,
@@ -146,7 +147,7 @@ export default async function QueryDetailPage({
               <div><dt className="text-slate-500">Student</dt><dd className="mt-1 font-semibold">{ticket.student?.fullName || "Not linked"}</dd></div>
               <div><dt className="text-slate-500">Admission no.</dt><dd className="mt-1 font-semibold">{ticket.student?.admissionNo || "Not available"}</dd></div>
               <div><dt className="text-slate-500">Class and section</dt><dd className="mt-1 font-semibold">{[enrollment?.class.name, enrollment?.section.name].filter(Boolean).join(" · ") || "Not available"}</dd></div>
-              <div><dt className="text-slate-500">Raised by</dt><dd className="mt-1 font-semibold">{ticket.parentName || creator || "School user"}</dd></div>
+              <div><dt className="text-slate-500">Raised by</dt><dd className="mt-1 font-semibold">{ticket.complaintBy ? `${ticket.complaintBy.toLowerCase()} · ` : ""}{ticket.parentName || creator || "School user"}</dd></div>
               <div><dt className="text-slate-500">Assigned to</dt><dd className="mt-1 font-semibold">{assignee}</dd></div>
               {ticket.parentPhone && <div><dt className="text-slate-500">Contact</dt><dd className="mt-1 font-semibold">{ticket.parentPhone}</dd></div>}
               <div><dt className="text-slate-500">Last updated</dt><dd className="mt-1 font-semibold">{ticket.updatedAt.toLocaleString("en-IN")}</dd></div>

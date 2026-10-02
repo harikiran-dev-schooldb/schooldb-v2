@@ -107,10 +107,9 @@ export async function requireParentSupportVerification(
 export async function claimParentSupportVerification(
   request: Request,
   schoolId: string,
-  expectedPhone: string,
 ) {
   const payload = await requireParentSupportVerification(request, schoolId);
-  if (!payload || payload.phone !== expectedPhone) return null;
+  if (!payload) return null;
 
   const consumedAt = new Date();
   const claim = await prisma.otpChallenge.updateMany({

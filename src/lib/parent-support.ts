@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 
+import { Prisma } from "@/generated/prisma/client";
 import { normalizeIndianMobile } from "@/features/auth/otp";
 import { prisma } from "@/lib/prisma";
 import { ApiError } from "@/lib/errors";
@@ -7,6 +8,7 @@ import { sendSupportPush, supportAdminUserIds } from "@/lib/support-push";
 import { queueParentQueryWhatsappUpdate } from "@/features/whatsapp/service";
 
 export const parentCategories = ["STUDENT", "ACADEMIC", "FEES", "TRANSPORT", "GENERAL"] as const;
+export const complaintByOptions = ["FATHER", "MOTHER", "GUARDIAN", "STUDENT"] as const;
 
 export async function parentSupportSchool(schoolSlug: string) {
   const school = await prisma.school.findUnique({
@@ -14,19 +16,6 @@ export async function parentSupportSchool(schoolSlug: string) {
     select: {
       id: true,
       name: true,
-      classes: {
-        where: { active: true },
-        orderBy: [{ displayOrder: "asc" }, { name: "asc" }],
-        select: {
-          id: true,
-          name: true,
-          sections: {
-            where: { active: true },
-            orderBy: [{ displayOrder: "asc" }, { name: "asc" }],
-            select: { id: true, name: true },
-          },
-        },
-      },
     },
   });
   if (!school) throw new ApiError(404, "School not found.");
@@ -35,9 +24,6 @@ export async function parentSupportSchool(schoolSlug: string) {
 
 export async function searchParentSupportStudents(input: {
   schoolSlug: string;
-  classId: string;
-  sectionId: string;
-  admissionNo: string;
   mobile: string;
 }) {
   const school = await prisma.school.findUnique({
@@ -45,58 +31,62 @@ export async function searchParentSupportStudents(input: {
   });
   if (!school) throw new ApiError(404, "School not found.");
 
-  const enrollment = await prisma.studentEnrollment.findFirst({
+  const matches = await prisma.$queryRaw<{ id: string }[]>(Prisma.sql`
+    SELECT s.id
+    FROM "Student" s
+    WHERE s."schoolId" = ${school.id}
+      AND s.status = 'ACTIVE'
+      AND (
+        RIGHT(regexp_replace(COALESCE(s.phone, ''), '[^0-9]', '', 'g'), 10) = ${input.mobile}
+        OR RIGHT(regexp_replace(COALESCE(s."fatherPhone", ''), '[^0-9]', '', 'g'), 10) = ${input.mobile}
+        OR RIGHT(regexp_replace(COALESCE(s."motherPhone", ''), '[^0-9]', '', 'g'), 10) = ${input.mobile}
+        OR RIGHT(regexp_replace(COALESCE(s."guardianPhone", ''), '[^0-9]', '', 'g'), 10) = ${input.mobile}
+      )
+  `);
+  if (matches.length === 0) return [];
+
+  const students = await prisma.student.findMany({
     where: {
       schoolId: school.id,
-      classId: input.classId,
-      sectionId: input.sectionId,
-      active: true,
-      academicYear: { active: true },
-      class: { active: true },
-      section: { active: true },
-      student: {
-        admissionNo: { equals: input.admissionNo, mode: "insensitive" },
-      },
-    },
-    select: {
-      student: {
-        select: {
-          id: true,
-          fullName: true,
-          admissionNo: true,
-          phone: true,
-          fatherPhone: true,
-          motherPhone: true,
-          guardianPhone: true,
+      id: { in: matches.map((match) => match.id) },
+      status: "ACTIVE",
+      enrollments: {
+        some: {
+          active: true,
+          academicYear: { active: true },
+          class: { active: true },
+          section: { active: true },
         },
       },
     },
+    select: {
+      id: true,
+      fullName: true,
+      admissionNo: true,
+      fatherName: true,
+      motherName: true,
+      guardianName: true,
+    },
+    orderBy: [{ fullName: "asc" }, { admissionNo: "asc" }],
   });
-  if (!enrollment) return [];
-  const { student } = enrollment;
-  const verified = [
-    student.phone,
-    student.fatherPhone,
-    student.motherPhone,
-    student.guardianPhone,
-  ].some((phone) => normalizeIndianMobile(phone || "") === input.mobile);
-  if (!verified) return [];
-  return [{
+
+  return students.map((student) => ({
     id: student.id,
     name: student.fullName || "Student",
     admissionHint: student.admissionNo.slice(-4),
-  }];
+    fatherName: student.fatherName,
+    motherName: student.motherName,
+    guardianName: student.guardianName,
+  }));
 }
 
 export async function submitParentSupport(input: {
   schoolSlug: string;
-  classId: string;
-  sectionId: string;
   studentId: string;
   category: typeof parentCategories[number];
   subject: string;
   description: string;
-  parentName?: string;
+  complaintBy: typeof complaintByOptions[number];
   parentPhone: string;
 }) {
   const school = await prisma.school.findUnique({
@@ -107,8 +97,6 @@ export async function submitParentSupport(input: {
   const enrollment = await prisma.studentEnrollment.findFirst({
     where: {
       schoolId: school.id,
-      classId: input.classId,
-      sectionId: input.sectionId,
       studentId: input.studentId,
       active: true,
       academicYear: { active: true },
@@ -120,8 +108,12 @@ export async function submitParentSupport(input: {
       student: {
         select: {
           phone: true,
+          fullName: true,
+          fatherName: true,
           fatherPhone: true,
+          motherName: true,
           motherPhone: true,
+          guardianName: true,
           guardianPhone: true,
         },
       },
@@ -140,6 +132,13 @@ export async function submitParentSupport(input: {
     );
   }
 
+  const complaintByName = {
+    FATHER: enrollment.student.fatherName || "Father",
+    MOTHER: enrollment.student.motherName || "Mother",
+    GUARDIAN: enrollment.student.guardianName || "Guardian",
+    STUDENT: enrollment.student.fullName || "Student",
+  }[input.complaintBy];
+
   const ticket = await prisma.supportTicket.create({
     data: {
       schoolId: school.id,
@@ -149,8 +148,9 @@ export async function submitParentSupport(input: {
       type: input.category,
       studentId: input.studentId,
       source: "PARENT_QR",
-      parentName: input.parentName || null,
+      parentName: complaintByName,
       parentPhone: input.parentPhone || null,
+      complaintBy: input.complaintBy,
     },
     select: { id: true, ticketNo: true },
   });
@@ -172,7 +172,7 @@ export async function submitParentSupport(input: {
       ticketId: ticket.id,
       ticketNo: ticket.ticketNo,
       phone: input.parentPhone,
-      parentName: input.parentName || null,
+      parentName: complaintByName,
       status: "OPEN",
       eventKey: "created",
   }).catch((error) => console.error("Parent query WhatsApp failed", error));
