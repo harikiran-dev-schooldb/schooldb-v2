@@ -16,7 +16,10 @@ import {
 
 import { useSchool } from "@/contexts/school-context";
 import { SchoolLogo } from "@/components/branding/SchoolLogo";
+import { Switch } from "@/components/ui/switch";
+import { useSupportNavigationView } from "@/hooks/use-support-navigation-view";
 import { navigation } from "@/lib/navigation";
+import { isSupportNavigationHref } from "@/lib/support-workspace";
 import { cn } from "@/lib/utils";
 
 const STORAGE_KEY = "schooldb-sidebar-collapsed";
@@ -79,6 +82,13 @@ export function AppSidebar({ mobile = false, onNavigate }: Props) {
 
   const storedCollapsed = useSidebarCollapsed();
   const collapsed = mobile ? false : storedCollapsed;
+  const { showAll, setShowAll, supportNavigationAvailable } =
+    useSupportNavigationView(school.slug, role);
+  const workspaceHome = showAll
+    ? role === "TEACHER"
+      ? "teacher/dashboard"
+      : "dashboard"
+    : "students";
 
   const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({});
   const [unreadQueries, setUnreadQueries] = useState(0);
@@ -110,9 +120,8 @@ export function AppSidebar({ mobile = false, onNavigate }: Props) {
     return () => controller.abort();
   }, [pathname, role, school.slug]);
 
-  const visibleNavigation = useMemo(
-    () =>
-      navigation.flatMap((item) => {
+  const visibleNavigation = useMemo(() => {
+    const roleNavigation = navigation.flatMap((item) => {
         if (item.roles && !item.roles.includes(role)) return [];
         if (!item.children) return [item];
 
@@ -120,9 +129,21 @@ export function AppSidebar({ mobile = false, onNavigate }: Props) {
           (child) => !child.roles || child.roles.includes(role),
         );
         return children.length ? [{ ...item, children }] : [];
-      }),
-    [role],
-  );
+      });
+
+    if (showAll) return roleNavigation;
+
+    return roleNavigation.flatMap((item) => {
+      if (!item.children) {
+        return isSupportNavigationHref(item.href) ? [item] : [];
+      }
+
+      const children = item.children.filter((child) =>
+        isSupportNavigationHref(child.href),
+      );
+      return children.length ? [{ ...item, children }] : [];
+    });
+  }, [role, showAll]);
 
   const normalizedSearch = searchQuery.trim().toLowerCase();
   const filteredNavigation = useMemo(() => {
@@ -222,7 +243,7 @@ export function AppSidebar({ mobile = false, onNavigate }: Props) {
           )}
         >
           <Link
-            href={`/${school.slug}/${role === "TEACHER" ? "teacher/dashboard" : "dashboard"}`}
+            href={`/${school.slug}/${workspaceHome}`}
             onClick={handleNavigation}
             className={cn(
               "group flex min-w-0 items-center rounded-2xl border border-indigo-100 bg-gradient-to-br from-white via-indigo-50/60 to-violet-50/65 shadow-[0_9px_24px_rgba(79,70,229,.09)] transition hover:border-indigo-200 hover:shadow-[0_12px_30px_rgba(79,70,229,.13)]",
@@ -318,6 +339,27 @@ export function AppSidebar({ mobile = false, onNavigate }: Props) {
                   ⌘K
                 </kbd>
               )}
+            </div>
+          </div>
+        )}
+
+        {!collapsed && supportNavigationAvailable && (
+          <div className="px-3 pt-3">
+            <div className="flex items-center justify-between gap-3 rounded-xl border border-indigo-100 bg-indigo-50/60 px-3 py-2.5">
+              <div className="min-w-0">
+                <p className="text-[11px] font-semibold text-indigo-950">
+                  Show all routes
+                </p>
+                <p className="mt-0.5 text-[9px] leading-3 text-indigo-700/70">
+                  {showAll ? "Full SchoolDB workspace" : "Support app routes only"}
+                </p>
+              </div>
+              <Switch
+                checked={showAll}
+                onCheckedChange={setShowAll}
+                aria-label="Show all routes"
+                className="scale-90"
+              />
             </div>
           </div>
         )}
@@ -688,24 +730,26 @@ export function AppSidebar({ mobile = false, onNavigate }: Props) {
             ================================================================== */}
 
         <div className="border-t border-sidebar-border p-3">
-          {!collapsed && (
+          {!collapsed && (showAll || !mobile) && (
             <div className="mb-2 flex gap-1">
-              <Link
-                href={`/${school.slug}/settings`}
-                onClick={handleNavigation}
-                className={cn(
-                  "flex flex-1 items-center gap-2",
-                  "rounded-lg px-2.5 py-2",
-                  "text-[11px]",
-                  "text-slate-500",
-                  "transition-all duration-200",
-                  "hover:bg-slate-50",
-                  "hover:text-slate-800",
-                )}
-              >
-                <Settings className="size-3.5" />
-                Settings
-              </Link>
+              {showAll && (
+                <Link
+                  href={`/${school.slug}/settings`}
+                  onClick={handleNavigation}
+                  className={cn(
+                    "flex flex-1 items-center gap-2",
+                    "rounded-lg px-2.5 py-2",
+                    "text-[11px]",
+                    "text-slate-500",
+                    "transition-all duration-200",
+                    "hover:bg-slate-50",
+                    "hover:text-slate-800",
+                  )}
+                >
+                  <Settings className="size-3.5" />
+                  Settings
+                </Link>
+              )}
 
               {!mobile && (
                 <button
@@ -718,6 +762,7 @@ export function AppSidebar({ mobile = false, onNavigate }: Props) {
                     "transition-all duration-200",
                     "hover:bg-slate-50",
                     "hover:text-indigo-600",
+                    !showAll && "flex-1 py-2",
                   )}
                   title="Collapse sidebar"
                 >

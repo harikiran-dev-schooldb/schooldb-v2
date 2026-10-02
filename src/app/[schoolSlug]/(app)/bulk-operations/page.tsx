@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import {
   ArrowRight,
@@ -20,6 +22,9 @@ import {
 import { PageHeader } from "@/components/common/PageHeader";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { useSchool } from "@/contexts/school-context";
+import { useSupportNavigationView } from "@/hooks/use-support-navigation-view";
+import { isSupportBulkOperationHref } from "@/lib/support-workspace";
 
 const operations = [
   {
@@ -193,6 +198,14 @@ const operations = [
 ];
 
 export default function BulkOperationsPage() {
+  const { school, role } = useSchool();
+  const { showAll } = useSupportNavigationView(school.slug, role);
+  const visibleOperations = showAll
+    ? operations
+    : operations.filter((operation) =>
+        isSupportBulkOperationHref(operation.href),
+      );
+
   return (
     <div className="space-y-6 p-4 pb-12 sm:p-6">
       {/* ================================================================ */}
@@ -255,7 +268,7 @@ export default function BulkOperationsPage() {
       {/* ================================================================ */}
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {operations.map((operation) => {
+        {visibleOperations.map((operation) => {
           const Icon = operation.icon;
 
           return (
