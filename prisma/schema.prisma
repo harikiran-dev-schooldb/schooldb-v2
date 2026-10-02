@@ -64,6 +64,8 @@ model School {
   directUpiEnabled            Boolean                      @default(false)
   directUpiId                 String?                      @db.VarChar(120)
   directUpiPayeeName          String?                      @db.VarChar(160)
+  routeAccessRestricted       Boolean                      @default(false)
+  allowedRoutes               String[]                     @default([])
   academicPeriods             AcademicPeriod[]
   academicYears               AcademicYear[]
   academicBranches            AcademicBranch[]

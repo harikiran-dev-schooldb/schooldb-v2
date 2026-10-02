@@ -1,4 +1,5 @@
 import { auth } from "@clerk/nextjs/server";
+import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 
 import { syncUser } from "@/lib/sync-user";
@@ -6,6 +7,7 @@ import { getMembership, getSchoolBySlug } from "@/lib/tenant";
 import { SchoolProvider } from "@/contexts/school-context";
 import { AppShell } from "@/components/layout/AppShell";
 import { isOperationalRole, isSelfServiceRole } from "@/lib/access-control";
+import { isSchoolPathAllowed } from "@/lib/route-access";
 
 export default async function SchoolAppLayout({
   children,
@@ -45,6 +47,14 @@ export default async function SchoolAppLayout({
       redirect(`/${schoolSlug}/my`);
     }
     redirect("/");
+  }
+
+  const pathname = (await headers()).get("x-school-pathname");
+  if (
+    pathname &&
+    !isSchoolPathAllowed(school, pathname, schoolSlug, membership.role)
+  ) {
+    notFound();
   }
 
   return (

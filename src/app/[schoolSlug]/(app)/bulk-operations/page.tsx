@@ -23,8 +23,7 @@ import { PageHeader } from "@/components/common/PageHeader";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { useSchool } from "@/contexts/school-context";
-import { useSupportNavigationView } from "@/hooks/use-support-navigation-view";
-import { isSupportBulkOperationHref } from "@/lib/support-workspace";
+import { isRouteAllowed } from "@/lib/route-access";
 
 const operations = [
   {
@@ -198,13 +197,10 @@ const operations = [
 ];
 
 export default function BulkOperationsPage() {
-  const { school, role } = useSchool();
-  const { showAll } = useSupportNavigationView(school.slug, role);
-  const visibleOperations = showAll
-    ? operations
-    : operations.filter((operation) =>
-        isSupportBulkOperationHref(operation.href),
-      );
+  const { school } = useSchool();
+  const visibleOperations = operations.filter((operation) =>
+    isRouteAllowed(school, operation.href),
+  );
 
   return (
     <div className="space-y-6 p-4 pb-12 sm:p-6">

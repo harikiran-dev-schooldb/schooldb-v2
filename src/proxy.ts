@@ -67,7 +67,10 @@ export default clerkMiddleware(async (auth, req) => {
   } else {
     const schoolSlug = schoolSlugFromPath(pathname);
 
-    if (schoolSlug) requestHeaders.set("x-school-slug", schoolSlug);
+    if (schoolSlug) {
+      requestHeaders.set("x-school-slug", schoolSlug);
+      requestHeaders.set("x-school-pathname", pathname);
+    }
   }
 
   return NextResponse.next({

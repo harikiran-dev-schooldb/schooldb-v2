@@ -12,17 +12,18 @@ import {
   Settings2,
   School,
   Smartphone,
+  ListChecks,
   UsersRound,
 } from "lucide-react";
 
-type NavigationChild = {
+export type NavigationChild = {
   title: string;
   href: string;
   exact?: boolean;
   roles?: string[];
 };
 
-type NavigationItem = {
+export type NavigationItem = {
   title: string;
   href?: string;
   icon: LucideIcon;
@@ -59,6 +60,12 @@ export const navigation: NavigationItem[] = [
     title: "Schools",
     href: "schools",
     icon: School,
+    roles: ["SUPER_ADMIN"],
+  },
+  {
+    title: "School Route Access",
+    href: "schools/route-access",
+    icon: ListChecks,
     roles: ["SUPER_ADMIN"],
   },
   {

@@ -7,6 +7,7 @@ import {
   Building2,
   ImageUp,
   Loader2,
+  ListChecks,
   Plus,
   Smartphone,
   Trash2,
@@ -171,6 +172,12 @@ export default function SchoolsPage() {
           description="Create and manage SchoolDB school workspaces."
         />
         <div className="flex flex-wrap gap-3">
+          <Button asChild variant="outline" className="rounded-xl">
+            <Link href={"/" + schoolSlug + "/schools/route-access"}>
+              <ListChecks className="size-4" />
+              Route Access
+            </Link>
+          </Button>
           <Button asChild variant="outline" className="rounded-xl">
             <Link href={"/" + schoolSlug + "/schools/android-app"}>
               <Smartphone className="size-4" />

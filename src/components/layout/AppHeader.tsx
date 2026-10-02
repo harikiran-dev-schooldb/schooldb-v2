@@ -22,6 +22,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { NotificationMenu } from "@/features/notifications/NotificationMenu";
+import { isRouteAllowed } from "@/lib/route-access";
 
 function formatRole(role: string) {
   return role
@@ -36,7 +37,7 @@ type Props = {
 };
 
 export function AppHeader({ onMenuClick }: Props) {
-  const { role, user } = useSchool();
+  const { role, school, user } = useSchool();
   const router = useRouter();
 
   const params = useParams<{ schoolSlug: string }>();
@@ -92,7 +93,9 @@ export function AppHeader({ onMenuClick }: Props) {
             <Search className="size-[18px]" />
           </Button>
 
-          <NotificationMenu schoolSlug={schoolSlug} />
+          {isRouteAllowed(school, "notification-inbox") && (
+            <NotificationMenu schoolSlug={schoolSlug} />
+          )}
 
           <div className="mx-1 hidden h-7 w-px bg-border sm:block md:mx-2" />
 
@@ -147,15 +150,19 @@ export function AppHeader({ onMenuClick }: Props) {
               <DropdownMenuSeparator />
 
               {/* Profile */}
-              <DropdownMenuItem
-                className="cursor-pointer rounded-xl py-2.5"
-                onClick={() => router.push(`/${schoolSlug}/settings`)}
-              >
-                <User className="mr-2 size-4" />
-                Profile
-              </DropdownMenuItem>
+              {isRouteAllowed(school, "settings") && (
+                <>
+                  <DropdownMenuItem
+                    className="cursor-pointer rounded-xl py-2.5"
+                    onClick={() => router.push(`/${schoolSlug}/settings`)}
+                  >
+                    <User className="mr-2 size-4" />
+                    Profile
+                  </DropdownMenuItem>
 
-              <DropdownMenuSeparator />
+                  <DropdownMenuSeparator />
+                </>
+              )}
 
               <DropdownMenuItem
                 className="cursor-pointer rounded-xl py-2.5"
