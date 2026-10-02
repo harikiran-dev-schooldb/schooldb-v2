@@ -67,6 +67,8 @@ test("keeps the public route allowlist narrow", () => {
   assert.equal(isPublicPath("/api/v1/public/whatsapp/not-a-real-route"), false);
   assert.equal(isPublicPath("/api/v1/public/auth/send-otp"), true);
   assert.equal(isPublicPath("/api/v1/public/auth/verify-otp"), true);
+  assert.equal(isPublicPath("/api/v1/public/support/green-valley/verify-otp"), true);
+  assert.equal(isPublicPath("/api/v1/public/support/green-valley/private"), false);
   assert.equal(isPublicPath("/api/v1/public/auth/not-a-real-route"), false);
   assert.equal(isPublicPath("/api/v1/public/schools/green-valley/branding"), true);
   assert.equal(isPublicPath("/api/v1/public/schools/green-valley/logo"), true);

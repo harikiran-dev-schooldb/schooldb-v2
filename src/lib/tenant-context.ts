@@ -37,7 +37,7 @@ const PUBLIC_PATH_PATTERNS = [
   /^\/api\/v1\/public\/auth\/(?:send-otp|verify-otp)$/,
   /^\/api\/v1\/public\/schools\/[^/]+\/(?:branding|logo)\/?$/,
   /^\/api\/v1\/public\/admissions\/[^/]+(?:\/(?:track|documents))?$/,
-  /^\/api\/v1\/public\/support\/[^/]+(?:\/students)?\/?$/,
+  /^\/api\/v1\/public\/support\/[^/]+(?:\/(?:students|verify-otp))?\/?$/,
 ];
 
 export function isPublicPath(pathname: string): boolean {

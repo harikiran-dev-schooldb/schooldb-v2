@@ -19,7 +19,7 @@ export default async function ParentQueryPage({ params }: { params: Promise<{ sc
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-indigo-200">Parent support</p>
           <h1 className="mt-3 text-2xl font-bold sm:text-3xl">Ask {school.name} a question</h1>
           <p className="mt-3 text-sm leading-6 text-indigo-100">
-            Choose your child, describe your query, and send it to the principal and school administration. No login is needed.
+            Verify your registered mobile number on WhatsApp, choose your child, and send your query securely to the school administration.
           </p>
         </header>
         <section className="mt-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-8">

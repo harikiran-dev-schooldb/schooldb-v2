@@ -6,6 +6,11 @@ import { ApiError } from "@/lib/errors";
 import { parentCategories, submitParentSupport } from "@/lib/parent-support";
 import { consumeRateLimit, requestIp } from "@/lib/rate-limit";
 import { ApiResponse } from "@/lib/response";
+import { prisma } from "@/lib/prisma";
+import {
+  claimParentSupportVerification,
+  releaseParentSupportVerification,
+} from "@/lib/parent-support-verification";
 import { requireSchoolSlug } from "@/lib/tenant-context";
 
 type Context = { params: Promise<{ schoolSlug: string }> };
@@ -39,11 +44,28 @@ export async function POST(request: Request, { params }: Context) {
     if (!parentPhone) {
       throw new ApiError(400, "Enter the student's registered Indian mobile number.");
     }
-    const ticket = await submitParentSupport({
-      schoolSlug,
-      ...input,
-      parentPhone: parentPhone.slice(-10),
+    const school = await prisma.school.findUnique({
+      where: { slug: schoolSlug },
+      select: { id: true },
     });
-    return ApiResponse.success({ ticketNo: ticket.ticketNo }, "Query submitted to the school.", 201);
+    if (!school) throw new ApiError(404, "School not found.");
+
+    const claim = await claimParentSupportVerification(request, school.id, parentPhone);
+    if (!claim) {
+      throw new ApiError(401, "Verify the registered mobile number before submitting a query.");
+    }
+
+    try {
+      const ticket = await submitParentSupport({
+        schoolSlug,
+        ...input,
+        parentPhone,
+      });
+      await prisma.otpChallenge.deleteMany({ where: { id: claim.payload.challengeId } });
+      return ApiResponse.success({ ticketNo: ticket.ticketNo }, "Query submitted to the school.", 201);
+    } catch (error) {
+      await releaseParentSupportVerification(claim.payload.challengeId, claim.consumedAt);
+      throw error;
+    }
   });
 }

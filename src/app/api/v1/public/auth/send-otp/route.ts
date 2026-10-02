@@ -153,6 +153,7 @@ export async function POST(request: Request) {
         codeHash,
         expiresAt: new Date(Date.now() + OTP_EXPIRY_MS),
         verifiedAt: null,
+        consumedAt: null,
         attempts: 0,
         lastSentAt: new Date(),
       },
