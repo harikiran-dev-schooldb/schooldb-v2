@@ -51,12 +51,12 @@ export default async function QueryDetailPage({
       createdBy: { select: { firstName: true, lastName: true } },
       assignedTo: { select: { firstName: true, lastName: true } },
       messages: {
-        where: { isInternal: false },
         orderBy: { createdAt: "asc" },
         select: {
           id: true,
           body: true,
           createdAt: true,
+          isInternal: true,
           author: { select: { id: true, firstName: true, lastName: true, memberships: { where: { schoolId: membership.schoolId, isActive: true }, select: { role: true }, take: 1 } } },
         },
       },
@@ -120,7 +120,9 @@ export default async function QueryDetailPage({
 
           <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
             <h2 className="font-bold text-slate-950">Conversation</h2>
-            <p className="mt-1 text-xs text-slate-500">Replies are visible in the support workflow.</p>
+            <p className="mt-1 text-xs text-slate-500">
+              Parent-visible replies and staff-only internal notes are shown here.
+            </p>
             <div className="mt-5 space-y-4">
               {ticket.messages.length === 0 && <p className="text-sm text-slate-500">No replies yet.</p>}
               {ticket.messages.map((message) => {
@@ -128,8 +130,21 @@ export default async function QueryDetailPage({
                 const fromAdmin = message.author.memberships.some((item) => ["SUPER_ADMIN", "SCHOOL_ADMIN"].includes(item.role));
                 return (
                   <div key={message.id} className={`rounded-xl p-4 ${fromAdmin ? "bg-indigo-50" : "bg-slate-50"}`}>
-                    <div className="flex flex-wrap justify-between gap-2 text-xs text-slate-500">
-                      <span className="font-semibold text-slate-800">{author}</span>
+                    <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-semibold text-slate-800">{author}</span>
+                        {ticket.source === "PARENT_QR" && (
+                          <span
+                            className={
+                              message.isInternal
+                                ? "rounded-full bg-amber-100 px-2 py-0.5 font-bold text-amber-800"
+                                : "rounded-full bg-emerald-100 px-2 py-0.5 font-bold text-emerald-800"
+                            }
+                          >
+                            {message.isInternal ? "INTERNAL ONLY" : "SHOWN TO PARENT"}
+                          </span>
+                        )}
+                      </div>
                       <span>{message.createdAt.toLocaleString("en-IN")}</span>
                     </div>
                     <p className="mt-2 whitespace-pre-wrap text-sm text-slate-700">{message.body}</p>
@@ -158,7 +173,12 @@ export default async function QueryDetailPage({
             <h2 className="font-bold text-slate-950">{canReply ? "Manage query" : "Query access"}</h2>
             {canReply ? (
               <div className="mt-4">
-                <QueryActions ticketId={ticket.id} schoolSlug={schoolSlug} status={ticket.status} />
+                <QueryActions
+                  ticketId={ticket.id}
+                  schoolSlug={schoolSlug}
+                  status={ticket.status}
+                  isParentQuery={ticket.source === "PARENT_QR"}
+                />
               </div>
             ) : (
               <p className="mt-3 text-sm leading-6 text-slate-600">

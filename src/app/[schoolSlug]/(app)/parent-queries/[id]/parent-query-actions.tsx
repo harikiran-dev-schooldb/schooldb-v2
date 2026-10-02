@@ -36,6 +36,7 @@ export function ParentQueryActions({
 }) {
   const router = useRouter();
   const [note, setNote] = useState("");
+  const [visibility, setVisibility] = useState<"PARENT" | "INTERNAL">("INTERNAL");
   const [selectedStatus, setSelectedStatus] = useState(status);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -74,7 +75,7 @@ export function ParentQueryActions({
     }
   }
 
-  async function addNote(event: FormEvent<HTMLFormElement>) {
+  async function sendMessage(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!note.trim()) return;
     setError("");
@@ -82,13 +83,13 @@ export function ParentQueryActions({
     try {
       await request(
         `/api/v1/support/tickets/${ticketId}/messages`,
-        { body: note.trim() },
+        { body: note.trim(), isInternal: visibility === "INTERNAL" },
         "POST",
       );
       setNote("");
     } catch (cause) {
       setError(
-        cause instanceof Error ? cause.message : "Could not add the note.",
+        cause instanceof Error ? cause.message : "Could not save the message.",
       );
     } finally {
       setBusy(false);
@@ -98,14 +99,14 @@ export function ParentQueryActions({
   if (showNotes && status === "CLOSED")
     return (
       <p className="mt-5 text-sm text-slate-500">
-        Closed queries cannot receive new notes.
+        Closed queries cannot receive new messages.
       </p>
     );
 
   return showNotes ? (
-    <form onSubmit={addNote} className="mt-5 space-y-3">
+    <form onSubmit={sendMessage} className="mt-5 space-y-3">
       <label htmlFor="parentQueryNote" className="block text-sm font-semibold">
-        Add an internal note
+        Add message
       </label>
       <textarea
         id="parentQueryNote"
@@ -115,6 +116,30 @@ export function ParentQueryActions({
         rows={3}
         className="w-full rounded-xl border border-slate-300 p-3 text-sm focus:border-indigo-600 focus:outline-none"
       />
+      <div>
+        <label
+          htmlFor="parentMessageVisibility"
+          className="block text-sm font-semibold text-slate-800"
+        >
+          Message visibility
+        </label>
+        <select
+          id="parentMessageVisibility"
+          value={visibility}
+          disabled={busy}
+          onChange={(event) =>
+            setVisibility(event.target.value as "PARENT" | "INTERNAL")
+          }
+          className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm focus:border-indigo-600 focus:outline-none"
+        >
+          <option value="INTERNAL">Internal only — school staff</option>
+          <option value="PARENT">Show to parent</option>
+        </select>
+        <p className="mt-2 text-xs leading-5 text-slate-500">
+          Choose “Show to parent” only when this message should be sent to the
+          parent. Internal notes remain inside School Support.
+        </p>
+      </div>
       {error && (
         <p role="alert" className="text-sm text-red-700">
           {error}
@@ -124,7 +149,11 @@ export function ParentQueryActions({
         disabled={busy || !note.trim()}
         className="rounded-xl bg-indigo-700 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
       >
-        {busy ? "Saving…" : "Add note"}
+        {busy
+          ? "Saving…"
+          : visibility === "PARENT"
+            ? "Send to parent"
+            : "Save internal note"}
       </button>
     </form>
   ) : (

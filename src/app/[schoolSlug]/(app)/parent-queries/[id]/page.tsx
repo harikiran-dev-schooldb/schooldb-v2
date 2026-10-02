@@ -27,7 +27,7 @@ export default async function ParentQueryDetailPage({ params }: { params: Promis
       messages: {
         orderBy: { createdAt: "asc" },
         select: {
-          id: true, body: true, createdAt: true,
+          id: true, body: true, createdAt: true, isInternal: true,
           author: { select: { firstName: true, lastName: true } },
         },
       },
@@ -59,15 +59,28 @@ export default async function ParentQueryDetailPage({ params }: { params: Promis
             <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-slate-700">{ticket.description}</p>
           </section>
           <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
-            <h2 className="font-bold text-slate-950">Internal notes</h2>
-            <p className="mt-1 text-xs text-slate-500">Notes in School Support are visible to staff, not sent to the parent.</p>
+            <h2 className="font-bold text-slate-950">Messages and notes</h2>
+            <p className="mt-1 text-xs text-slate-500">
+              Each message is marked as parent-visible or internal to school staff.
+            </p>
             <div className="mt-5 space-y-4">
-              {ticket.messages.length === 0 && <p className="text-sm text-slate-500">No notes yet.</p>}
+              {ticket.messages.length === 0 && <p className="text-sm text-slate-500">No messages yet.</p>}
               {ticket.messages.map((message) => <div key={message.id} className="rounded-xl bg-slate-50 p-4">
-                <div className="flex flex-wrap justify-between gap-2 text-xs text-slate-500">
-                  <span className="font-semibold text-slate-800">
-                    {[message.author.firstName, message.author.lastName].filter(Boolean).join(" ") || "Staff"}
-                  </span>
+                <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-semibold text-slate-800">
+                      {[message.author.firstName, message.author.lastName].filter(Boolean).join(" ") || "Staff"}
+                    </span>
+                    <span
+                      className={
+                        message.isInternal
+                          ? "rounded-full bg-amber-100 px-2 py-0.5 font-bold text-amber-800"
+                          : "rounded-full bg-emerald-100 px-2 py-0.5 font-bold text-emerald-800"
+                      }
+                    >
+                      {message.isInternal ? "INTERNAL ONLY" : "SHOWN TO PARENT"}
+                    </span>
+                  </div>
                   <span>{message.createdAt.toLocaleString("en-IN")}</span>
                 </div>
                 <p className="mt-2 whitespace-pre-wrap text-sm text-slate-700">{message.body}</p>
