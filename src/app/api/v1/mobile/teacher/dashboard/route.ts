@@ -80,22 +80,48 @@ export async function GET() {
       });
     }
 
-    const allocations = await prisma.teacherAllocation.findMany({
-      where: {
-        schoolId: membership.schoolId,
-        academicYearId: academicYear.id,
-        teacherId: teacher.id,
-        active: true,
-      },
-      distinct: ["classId", "sectionId"],
-      orderBy: [{ class: { name: "asc" } }, { section: { name: "asc" } }],
-      select: {
-        classId: true,
-        sectionId: true,
-        class: { select: { name: true } },
-        section: { select: { name: true } },
-      },
-    });
+    const [subjectAllocations, classAssignments] = await Promise.all([
+      prisma.teacherAllocation.findMany({
+        where: {
+          schoolId: membership.schoolId,
+          academicYearId: academicYear.id,
+          teacherId: teacher.id,
+          active: true,
+        },
+        distinct: ["classId", "sectionId"],
+        orderBy: [{ class: { name: "asc" } }, { section: { name: "asc" } }],
+        select: {
+          classId: true,
+          sectionId: true,
+          class: { select: { name: true } },
+          section: { select: { name: true } },
+        },
+      }),
+      prisma.classTeacherAssignment.findMany({
+        where: {
+          schoolId: membership.schoolId,
+          academicYearId: academicYear.id,
+          teacherId: teacher.id,
+          active: true,
+        },
+        distinct: ["classId", "sectionId"],
+        orderBy: [{ class: { name: "asc" } }, { section: { name: "asc" } }],
+        select: {
+          classId: true,
+          sectionId: true,
+          class: { select: { name: true } },
+          section: { select: { name: true } },
+        },
+      }),
+    ]);
+    const combinedScopes = Array.from(
+      new Map(
+        [...subjectAllocations, ...classAssignments].map((item) => [
+          `${item.classId}:${item.sectionId}`,
+          item,
+        ]),
+      ).values(),
+    );
 
     const [timetable, sessions, enrollments] = await Promise.all([
       prisma.timetable.findMany({
@@ -134,7 +160,7 @@ export async function GET() {
           attendanceDate: new Date(`${date}T00:00:00.000Z`),
           OR: [
             { teacherId: teacher.id, sessionType: "PERIOD" },
-            ...(allocations.length > 0
+            ...(classAssignments.length > 0
               ? [{
                   sessionType: {
                     in: [
@@ -143,7 +169,7 @@ export async function GET() {
                       AttendanceSessionType.AFTERNOON,
                     ],
                   },
-                  OR: allocations.map((item) => ({
+                  OR: classAssignments.map((item) => ({
                     classId: item.classId,
                     sectionId: item.sectionId,
                   })),
@@ -160,14 +186,14 @@ export async function GET() {
           _count: { select: { records: true } },
         },
       }),
-      allocations.length > 0
+      combinedScopes.length > 0
         ? prisma.studentEnrollment.findMany({
             where: {
               schoolId: membership.schoolId,
               academicYearId: academicYear.id,
               active: true,
               student: { status: "ACTIVE" },
-              OR: allocations.map((item) => ({
+              OR: combinedScopes.map((item) => ({
                 classId: item.classId,
                 sectionId: item.sectionId,
               })),
@@ -228,7 +254,7 @@ export async function GET() {
       candidate.day !== null && timetable.some((entry) => entry.day === candidate.day),
     );
 
-    const studentGroups = allocations.map((allocation) => ({
+    const studentGroups = combinedScopes.map((allocation) => ({
       academicYearId: academicYear.id,
       classId: allocation.classId,
       sectionId: allocation.sectionId,
@@ -263,7 +289,7 @@ export async function GET() {
       periods: timetable.filter((entry) => entry.day === day).map((entry) => toPeriod(entry, true)),
       dailyTargets: academicYear.attendanceMode === "EVERY_PERIOD"
         ? []
-        : allocations.map((allocation) => {
+        : classAssignments.map((allocation) => {
             const session = sessions.find(
               (item) =>
                 item.classId === allocation.classId &&

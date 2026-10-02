@@ -1,7 +1,7 @@
 import { apiHandler } from "@/lib/api";
 import {
   requireRole,
-  requireTeacherClassSection,
+  requireClassTeacherClassSection,
   requireTeacherTimetable,
 } from "@/lib/auth";
 import { ApiResponse } from "@/lib/response";
@@ -27,7 +27,11 @@ export async function POST(req: Request) {
         }
         await requireTeacherTimetable(body.timetableId);
       } else {
-        await requireTeacherClassSection(body.classId, body.sectionId);
+        await requireClassTeacherClassSection(
+          body.classId,
+          body.sectionId,
+          body.academicYearId,
+        );
       }
     }
 

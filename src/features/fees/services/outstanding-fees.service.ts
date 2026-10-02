@@ -9,6 +9,11 @@ type OutstandingFeesInput = {
   academicYearId?: string;
   page: number;
   pageSize: number;
+  allowedClassSections?: Array<{
+    academicYearId: string;
+    classId: string;
+    sectionId: string;
+  }>;
 };
 
 export const outstandingFeesService = {
@@ -19,6 +24,7 @@ export const outstandingFeesService = {
       classId: input.classId,
       sectionId: input.sectionId,
       academicYearId: input.academicYearId,
+      allowedClassSections: input.allowedClassSections,
     };
 
     const [total, aggregate] = await Promise.all([
@@ -49,6 +55,7 @@ export const outstandingFeesService = {
       academicYearId,
       page,
       pageSize,
+      allowedClassSections,
     } = input;
 
     const filters = {
@@ -57,6 +64,7 @@ export const outstandingFeesService = {
       classId,
       sectionId,
       academicYearId,
+      allowedClassSections,
     };
 
     const [rows, total, aggregate] =

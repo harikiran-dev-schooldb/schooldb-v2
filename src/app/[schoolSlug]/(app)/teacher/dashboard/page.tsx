@@ -1,5 +1,12 @@
 import Link from "next/link";
-import { CalendarCheck, ClipboardList, Clock3, GraduationCap } from "lucide-react";
+import {
+  BellRing,
+  CalendarCheck,
+  CircleDollarSign,
+  ClipboardList,
+  Clock3,
+  GraduationCap,
+} from "lucide-react";
 
 import { requireCurrentTeacher, requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -40,6 +47,26 @@ export default async function TeacherDashboardPage({
       })
     : [];
 
+  const classAssignments = academicYear
+    ? await prisma.classTeacherAssignment.findMany({
+        where: {
+          schoolId: membership.schoolId,
+          academicYearId: academicYear.id,
+          teacherId: teacher.id,
+          active: true,
+        },
+        orderBy: [
+          { class: { displayOrder: "asc" } },
+          { section: { displayOrder: "asc" } },
+        ],
+        select: {
+          id: true,
+          class: { select: { name: true } },
+          section: { select: { name: true } },
+        },
+      })
+    : [];
+
   const links = [
     {
       title: "Mark Attendance",
@@ -65,6 +92,22 @@ export default async function TeacherDashboardPage({
       href: `/${schoolSlug}/timetable/teacher`,
       icon: Clock3,
     },
+    ...(classAssignments.length
+      ? [
+          {
+            title: "Class Announcements",
+            description: "Send notices to students and families in your class.",
+            href: `/${schoolSlug}/notifications`,
+            icon: BellRing,
+          },
+          {
+            title: "Class Fee View",
+            description: "Review outstanding fees for your class (read only).",
+            href: `/${schoolSlug}/fees/outstanding`,
+            icon: CircleDollarSign,
+          },
+        ]
+      : []),
   ];
 
   return (
@@ -85,6 +128,32 @@ export default async function TeacherDashboardPage({
           </p>
         </div>
       </section>
+
+      {classAssignments.length > 0 && (
+        <section className="rounded-3xl border border-indigo-200 bg-indigo-50/60 p-6 shadow-sm">
+          <div className="flex items-end justify-between gap-4">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-indigo-600">
+                Class teacher responsibility
+              </p>
+              <h2 className="mt-1 text-xl font-bold text-slate-900">My class sections</h2>
+              <p className="mt-1 text-sm text-slate-600">
+                You can manage daily attendance, homework, announcements, results and read-only fee follow-up for these sections.
+              </p>
+            </div>
+            <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-indigo-700 shadow-sm">
+              {classAssignments.length} {classAssignments.length === 1 ? "section" : "sections"}
+            </span>
+          </div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {classAssignments.map((assignment) => (
+              <span key={assignment.id} className="rounded-xl border border-indigo-100 bg-white px-3 py-2 text-sm font-semibold text-slate-800">
+                {assignment.class.name} · {assignment.section.name}
+              </span>
+            ))}
+          </div>
+        </section>
+      )}
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {links.map((item) => (

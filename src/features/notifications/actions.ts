@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { requireRole } from "@/lib/auth";
+import { requireCurrentTeacher, requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { notificationContext } from "./service";
 import { resolveAudience } from "@/features/audiences/resolve";
@@ -40,7 +40,7 @@ export async function publishAnnouncement(
   form: FormData,
 ) {
   const membership = await requireRole(
-    ["SUPER_ADMIN", "SCHOOL_ADMIN"],
+    ["SUPER_ADMIN", "SCHOOL_ADMIN", "TEACHER"],
     schoolSlug,
   );
   const parsed = schema.safeParse(Object.fromEntries(form));
@@ -50,6 +50,31 @@ export async function publishAnnouncement(
       success: false,
     };
   const input = parsed.data;
+  if (membership.role === "TEACHER") {
+    if (input.targetType !== "SECTION" || !input.targetId) {
+      return {
+        error: "Class teachers can publish only to their assigned section.",
+        success: false,
+      };
+    }
+    const teacher = await requireCurrentTeacher(membership.schoolId);
+    const assignment = await prisma.classTeacherAssignment.findFirst({
+      where: {
+        schoolId: membership.schoolId,
+        teacherId: teacher.id,
+        sectionId: input.targetId,
+        active: true,
+        academicYear: { active: true },
+      },
+      select: { id: true },
+    });
+    if (!assignment) {
+      return {
+        error: "You are not the active class teacher for this section.",
+        success: false,
+      };
+    }
+  }
   const publishedAt = input.publishedAt
     ? new Date(input.publishedAt)
     : new Date();
@@ -113,11 +138,15 @@ export async function setAnnouncementArchived(
   archived: boolean,
 ) {
   const membership = await requireRole(
-    ["SUPER_ADMIN", "SCHOOL_ADMIN"],
+    ["SUPER_ADMIN", "SCHOOL_ADMIN", "TEACHER"],
     schoolSlug,
   );
   const result = await prisma.announcement.updateMany({
-    where: { id, schoolId: membership.schoolId },
+    where: {
+      id,
+      schoolId: membership.schoolId,
+      ...(membership.role === "TEACHER" ? { createdBy: membership.userId } : {}),
+    },
     data: { archived },
   });
   if (result.count > 0) {

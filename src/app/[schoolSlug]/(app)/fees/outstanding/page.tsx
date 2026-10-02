@@ -1,7 +1,7 @@
 import { CircleDollarSign } from "lucide-react";
 
 import { OutstandingFeesContainer } from "@/features/student-fees/components/OutstandingFeesContainer";
-import { requireTenant } from "@/lib/auth";
+import { requireRole } from "@/lib/auth";
 
 type Props = {
   params: Promise<{
@@ -11,7 +11,10 @@ type Props = {
 
 export default async function OutstandingFeesPage({ params }: Props) {
   const { schoolSlug } = await params;
-  const membership = await requireTenant(schoolSlug);
+  const membership = await requireRole(
+    ["SUPER_ADMIN", "SCHOOL_ADMIN", "ACCOUNTANT", "TEACHER"],
+    schoolSlug,
+  );
   const canSendReminders = [
     "SUPER_ADMIN",
     "SCHOOL_ADMIN",
@@ -35,6 +38,8 @@ export default async function OutstandingFeesPage({ params }: Props) {
       <OutstandingFeesContainer
         schoolSlug={schoolSlug}
         canSendReminders={canSendReminders}
+        canCollect={membership.role !== "TEACHER"}
+        canExport={membership.role !== "TEACHER"}
       />
     </div>
   );

@@ -52,9 +52,63 @@ export async function POST(req: Request) {
     ]);
     const body = await validateBody(req, homeworkSchema);
 
+    if (tenant.role === "TEACHER" && !body.sectionId) {
+      throw new Error("Teachers must select one of their assigned sections.");
+    }
+
     await requireTeacherClassSection(body.classId, body.sectionId || undefined);
 
-    const item = await homeworkService.create(tenant.schoolId, body);
+    let teacherContext:
+      | { teacherId: string; academicYearId: string; subjectId?: string | null }
+      | undefined;
+
+    if (tenant.role === "TEACHER") {
+      const teacher = await requireCurrentTeacher(tenant.schoolId);
+      const classAssignment = await prisma.classTeacherAssignment.findFirst({
+        where: {
+          schoolId: tenant.schoolId,
+          teacherId: teacher.id,
+          classId: body.classId,
+          sectionId: body.sectionId,
+          active: true,
+          academicYear: { active: true },
+        },
+        select: { academicYearId: true },
+      });
+      const subjectAllocation = classAssignment
+        ? null
+        : await prisma.teacherAllocation.findFirst({
+            where: {
+              schoolId: tenant.schoolId,
+              teacherId: teacher.id,
+              classId: body.classId,
+              sectionId: body.sectionId,
+              active: true,
+              academicYear: { active: true },
+            },
+            orderBy: { subject: { displayOrder: "asc" } },
+            select: { academicYearId: true, subjectId: true },
+          });
+
+      if (!classAssignment && !subjectAllocation) {
+        throw new Error(
+          "No active-year class or subject assignment is available for this section.",
+        );
+      }
+
+      teacherContext = {
+        teacherId: teacher.id,
+        academicYearId:
+          classAssignment?.academicYearId ?? subjectAllocation!.academicYearId,
+        subjectId: subjectAllocation?.subjectId ?? null,
+      };
+    }
+
+    const item = await homeworkService.create(
+      tenant.schoolId,
+      body,
+      teacherContext,
+    );
     if (item.active) {
       await notifyHomeworkPublished(item.id, tenant.schoolId);
     }

@@ -1,4 +1,4 @@
-import { requireRole } from "@/lib/auth";
+import { requireCurrentTeacher, requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { PageContainer, PageHeader } from "@/components/common/layout";
 import { AnnouncementForm } from "@/features/notifications/AnnouncementForm";
@@ -10,14 +10,44 @@ import { BellRing } from "lucide-react";
 
 export default async function NotificationsPage({ params }: { params: Promise<{ schoolSlug: string }> }) {
   const { schoolSlug } = await params;
-  const membership = await requireRole(["SUPER_ADMIN", "SCHOOL_ADMIN"], schoolSlug);
-  const [academicYear, announcements] = await Promise.all([
+  const membership = await requireRole(["SUPER_ADMIN", "SCHOOL_ADMIN", "TEACHER"], schoolSlug);
+  const teacher = membership.role === "TEACHER"
+    ? await requireCurrentTeacher(membership.schoolId)
+    : null;
+  const [academicYear, announcements, classAssignments] = await Promise.all([
     prisma.academicYear.findFirst({
       where: { schoolId: membership.schoolId, active: true },
       select: { id: true },
       orderBy: { startDate: "desc" },
     }),
-    prisma.announcement.findMany({ where: { schoolId: membership.schoolId, createdBy: { not: "SYSTEM" } }, orderBy: { createdAt: "desc" }, take: 100, include: { _count: { select: { reads: true } } } }),
+    prisma.announcement.findMany({
+      where: {
+        schoolId: membership.schoolId,
+        createdBy: teacher ? membership.userId : { not: "SYSTEM" },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 100,
+      include: { _count: { select: { reads: true } } },
+    }),
+    teacher
+      ? prisma.classTeacherAssignment.findMany({
+          where: {
+            schoolId: membership.schoolId,
+            teacherId: teacher.id,
+            active: true,
+            academicYear: { active: true },
+          },
+          select: {
+            sectionId: true,
+            class: { select: { name: true } },
+            section: { select: { name: true } },
+          },
+          orderBy: [
+            { class: { displayOrder: "asc" } },
+            { section: { displayOrder: "asc" } },
+          ],
+        })
+      : Promise.resolve([]),
   ]);
   const now = new Date();
   return (
@@ -26,6 +56,10 @@ export default async function NotificationsPage({ params }: { params: Promise<{ 
       <AnnouncementForm
         schoolSlug={schoolSlug}
         academicYearId={academicYear?.id ?? null}
+        teacherSections={teacher ? classAssignments.map((item) => ({
+          id: item.sectionId,
+          label: `${item.class.name} · ${item.section.name}`,
+        })) : undefined}
       />
       <div className="mt-8 space-y-4">
         <div className="flex items-center gap-3">

@@ -9,25 +9,47 @@ import { validateBody } from "@/lib/validation";
 async function noticeContext() {
   const membership = await requireRole(["TEACHER"]);
   const teacher = await requireCurrentTeacher(membership.schoolId);
-  const allocations = await prisma.teacherAllocation.findMany({
-    where: {
-      schoolId: membership.schoolId,
-      teacherId: teacher.id,
-      active: true,
-      academicYear: { active: true },
-    },
-    distinct: ["classId", "sectionId"],
-    select: {
-      classId: true,
-      sectionId: true,
-      class: {
-        select: {
-          branchId: true,
-          branch: { select: { syllabusId: true } },
+  const [subjectAllocations, classAssignments] = await Promise.all([
+    prisma.teacherAllocation.findMany({
+      where: {
+        schoolId: membership.schoolId,
+        teacherId: teacher.id,
+        active: true,
+        academicYear: { active: true },
+      },
+      distinct: ["classId", "sectionId"],
+      select: {
+        classId: true,
+        sectionId: true,
+        class: {
+          select: {
+            branchId: true,
+            branch: { select: { syllabusId: true } },
+          },
         },
       },
-    },
-  });
+    }),
+    prisma.classTeacherAssignment.findMany({
+      where: {
+        schoolId: membership.schoolId,
+        teacherId: teacher.id,
+        active: true,
+        academicYear: { active: true },
+      },
+      distinct: ["classId", "sectionId"],
+      select: {
+        classId: true,
+        sectionId: true,
+        class: {
+          select: {
+            branchId: true,
+            branch: { select: { syllabusId: true } },
+          },
+        },
+      },
+    }),
+  ]);
+  const allocations = [...subjectAllocations, ...classAssignments];
   const now = new Date();
   return {
     membership,

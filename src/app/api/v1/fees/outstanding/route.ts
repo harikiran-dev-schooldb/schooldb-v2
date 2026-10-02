@@ -1,14 +1,21 @@
 import { apiHandler } from "@/lib/api";
-import { requirePermission } from "@/lib/auth";
-import { PERMISSIONS } from "@/lib/access-control";
+import { classTeacherScope, requireRole } from "@/lib/auth";
 import { ApiResponse } from "@/lib/response";
 
 import { outstandingFeesService } from "@/features/fees/services/outstanding-fees.service";
 
 export async function GET(req: Request) {
   return apiHandler(async () => {
-    const tenant =
-      await requirePermission(PERMISSIONS.FEE_READ);
+    const tenant = await requireRole([
+      "SUPER_ADMIN",
+      "SCHOOL_ADMIN",
+      "ACCOUNTANT",
+      "TEACHER",
+    ]);
+    const allowedClassSections =
+      tenant.role === "TEACHER"
+        ? await classTeacherScope(tenant.schoolId)
+        : undefined;
 
     const { searchParams } =
       new URL(req.url);
@@ -66,6 +73,7 @@ export async function GET(req: Request) {
           classId,
           sectionId,
           academicYearId,
+          allowedClassSections,
         })
       : await outstandingFeesService.list({
           schoolId: tenant.schoolId,
@@ -75,6 +83,7 @@ export async function GET(req: Request) {
           academicYearId,
           page,
           pageSize,
+          allowedClassSections,
         });
 
     return ApiResponse.success(

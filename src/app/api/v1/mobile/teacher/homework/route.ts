@@ -31,7 +31,7 @@ export async function GET() {
     const membership = await requireRole(["TEACHER"]);
     const teacher = await requireCurrentTeacher(membership.schoolId);
 
-    const [allocations, items] = await Promise.all([
+    const [subjectAllocations, classAssignments, items] = await Promise.all([
       prisma.teacherAllocation.findMany({
         where: {
           schoolId: membership.schoolId,
@@ -56,6 +56,27 @@ export async function GET() {
           subject: { select: { name: true } },
         },
       }),
+      prisma.classTeacherAssignment.findMany({
+        where: {
+          schoolId: membership.schoolId,
+          teacherId: teacher.id,
+          active: true,
+          academicYear: { active: true },
+        },
+        distinct: ["academicYearId", "classId", "sectionId"],
+        orderBy: [
+          { class: { name: "asc" } },
+          { section: { name: "asc" } },
+        ],
+        select: {
+          id: true,
+          academicYearId: true,
+          classId: true,
+          sectionId: true,
+          class: { select: { name: true } },
+          section: { select: { name: true } },
+        },
+      }),
       prisma.homework.findMany({
         where: { schoolId: membership.schoolId, teacherId: teacher.id },
         take: 30,
@@ -77,6 +98,19 @@ export async function GET() {
         },
       }),
     ]);
+
+    const allocations = [
+      ...subjectAllocations.map((allocation) => ({
+        ...allocation,
+        allocationType: "SUBJECT" as const,
+      })),
+      ...classAssignments.map((assignment) => ({
+        ...assignment,
+        subjectId: null,
+        subject: { name: "Class teacher" },
+        allocationType: "CLASS_TEACHER" as const,
+      })),
+    ];
 
     return ApiResponse.success({
       allocations,
@@ -116,7 +150,27 @@ export async function POST(req: Request) {
       },
     });
 
-    if (!allocation) throw new Error("This class and subject are not assigned to you.");
+    const classAssignment = allocation
+      ? null
+      : await prisma.classTeacherAssignment.findFirst({
+          where: {
+            id: body.allocationId,
+            schoolId: membership.schoolId,
+            teacherId: teacher.id,
+            active: true,
+            academicYear: { active: true },
+          },
+          select: {
+            academicYearId: true,
+            classId: true,
+            sectionId: true,
+          },
+        });
+
+    if (!allocation && !classAssignment) {
+      throw new Error("This class or subject is not assigned to you.");
+    }
+    const target = allocation ?? classAssignment!;
 
     const assignedDate = new Date(`${schoolDate()}T00:00:00.000Z`);
     const dueDate = new Date(`${body.dueDate}T00:00:00.000Z`);
@@ -127,11 +181,11 @@ export async function POST(req: Request) {
     const item = await prisma.homework.create({
       data: {
         schoolId: membership.schoolId,
-        academicYearId: allocation.academicYearId,
+        academicYearId: target.academicYearId,
         teacherId: teacher.id,
-        subjectId: allocation.subjectId,
-        classId: allocation.classId,
-        sectionId: allocation.sectionId,
+        subjectId: allocation?.subjectId ?? null,
+        classId: target.classId,
+        sectionId: target.sectionId,
         title: body.title,
         description: body.description || null,
         assignedDate,

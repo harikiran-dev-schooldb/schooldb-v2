@@ -20,6 +20,8 @@ import { ManualFeeReminderButton } from "@/features/fees/components/ManualFeeRem
 type Props = {
   schoolSlug: string;
   canSendReminders?: boolean;
+  canCollect?: boolean;
+  canExport?: boolean;
 };
 
 const PAGE_SIZE = 25;
@@ -27,6 +29,8 @@ const PAGE_SIZE = 25;
 export function OutstandingFeesContainer({
   schoolSlug,
   canSendReminders = false,
+  canCollect = true,
+  canExport = true,
 }: Props) {
   const [data, setData] = useState<OutstandingFeesData | null>(null);
 
@@ -219,7 +223,7 @@ export function OutstandingFeesContainer({
     <div className="space-y-6">
       <OutstandingFeesSummary summary={data.summary} />
 
-      <div className="flex flex-wrap justify-end gap-2">
+      {canExport && <div className="flex flex-wrap justify-end gap-2">
         <Button asChild>
           <a href={`/api/v1/reports/${schoolSlug}/fees/outstanding?${new URLSearchParams({
             ...(search.trim() ? { search: search.trim() } : {}),
@@ -229,7 +233,7 @@ export function OutstandingFeesContainer({
             <Download className="size-4" /> Export Excel
           </a>
         </Button>
-      </div>
+      </div>}
 
       <OutstandingFeesSearch
         value={search}
@@ -282,7 +286,11 @@ export function OutstandingFeesContainer({
         </Card>
       )}
 
-      <OutstandingFeesTable rows={data.rows} onCollect={handleCollect} />
+      <OutstandingFeesTable
+        rows={data.rows}
+        onCollect={handleCollect}
+        canCollect={canCollect}
+      />
 
       {pagination && pagination.totalPages > 1 && (
         <div className="flex flex-col gap-3 rounded-2xl border border-border/60 bg-card px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
@@ -316,7 +324,7 @@ export function OutstandingFeesContainer({
         </div>
       )}
 
-      {selectedRow && (
+      {canCollect && selectedRow && (
         <RecordFeePaymentDialog
           open={paymentDialogOpen}
           onOpenChange={handlePaymentDialogChange}

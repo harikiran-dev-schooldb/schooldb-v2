@@ -168,7 +168,12 @@ export const homeworkService = {
 
   async create(
     schoolId: string,
-    input: HomeworkFormOutput
+    input: HomeworkFormOutput,
+    teacherContext?: {
+      teacherId: string;
+      academicYearId: string;
+      subjectId?: string | null;
+    },
   ) {
     await validateHomeworkTarget(schoolId, input.classId, input.sectionId);
 
@@ -222,6 +227,16 @@ export const homeworkService = {
           id: schoolId,
         },
       },
+
+      ...(teacherContext
+        ? {
+            teacher: { connect: { id: teacherContext.teacherId } },
+            academicYear: { connect: { id: teacherContext.academicYearId } },
+            ...(teacherContext.subjectId
+              ? { subject: { connect: { id: teacherContext.subjectId } } }
+              : {}),
+          }
+        : {}),
 
       class: {
         connect: {

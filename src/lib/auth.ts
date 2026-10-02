@@ -164,6 +164,36 @@ export async function teacherAllocationScope(schoolId: string) {
   });
 }
 
+export async function classTeacherScope(schoolId: string) {
+  const teacher = await requireCurrentTeacher(schoolId);
+  return prisma.classTeacherAssignment.findMany({
+    where: { schoolId, teacherId: teacher.id, active: true },
+    distinct: ["academicYearId", "classId", "sectionId"],
+    select: {
+      id: true,
+      academicYearId: true,
+      classId: true,
+      sectionId: true,
+    },
+  });
+}
+
+export async function teacherClassScope(schoolId: string) {
+  const [subjectAllocations, classAssignments] = await Promise.all([
+    teacherAllocationScope(schoolId),
+    classTeacherScope(schoolId),
+  ]);
+  const unique = new Map<string, { academicYearId: string; classId: string; sectionId: string }>();
+  for (const item of [...subjectAllocations, ...classAssignments]) {
+    unique.set(`${item.academicYearId}:${item.classId}:${item.sectionId}`, {
+      academicYearId: item.academicYearId,
+      classId: item.classId,
+      sectionId: item.sectionId,
+    });
+  }
+  return Array.from(unique.values());
+}
+
 export async function requireTeacherStudent(
   studentId: string,
   academicYearId?: string,
@@ -172,7 +202,7 @@ export async function requireTeacherStudent(
   const membership = await requireTenant(schoolSlug);
   if (membership.role !== "TEACHER") return membership;
 
-  const scope = await teacherAllocationScope(membership.schoolId);
+  const scope = await teacherClassScope(membership.schoolId);
   const enrollment = await prisma.studentEnrollment.findFirst({
     where: {
       schoolId: membership.schoolId,
@@ -304,7 +334,7 @@ export async function requireTeacherAttendanceSession(
     return membership;
   }
 
-  const allocation = await prisma.teacherAllocation.findFirst({
+  const assignment = await prisma.classTeacherAssignment.findFirst({
     where: {
       schoolId: membership.schoolId,
       academicYearId: session.academicYearId,
@@ -316,7 +346,7 @@ export async function requireTeacherAttendanceSession(
     select: { id: true },
   });
 
-  if (!allocation) {
+  if (!assignment) {
     throw new ApiError(403, "This attendance session is not assigned to you");
   }
 
@@ -341,18 +371,66 @@ export async function requireTeacherClassSection(
   }
 
   const teacher = await requireCurrentTeacher(membership.schoolId);
-  const allocation = await prisma.teacherAllocation.findFirst({
+  const [allocation, classTeacherAssignment] = await Promise.all([
+    prisma.teacherAllocation.findFirst({
+      where: {
+        schoolId: membership.schoolId,
+        teacherId: teacher.id,
+        classId,
+        ...(sectionId ? { sectionId } : {}),
+        active: true,
+      },
+      select: { id: true },
+    }),
+    prisma.classTeacherAssignment.findFirst({
+      where: {
+        schoolId: membership.schoolId,
+        teacherId: teacher.id,
+        classId,
+        ...(sectionId ? { sectionId } : {}),
+        active: true,
+      },
+      select: { id: true },
+    }),
+  ]);
+
+  if (!allocation && !classTeacherAssignment) {
+    throw new ApiError(403, "This class or section is not assigned to you");
+  }
+
+  return membership;
+}
+
+export async function requireClassTeacherClassSection(
+  classId: string,
+  sectionId: string,
+  academicYearId?: string,
+  schoolSlug?: string,
+) {
+  const membership = await requireTenant(schoolSlug);
+
+  if (membership.role !== "TEACHER") {
+    if (!["SUPER_ADMIN", "SCHOOL_ADMIN"].includes(membership.role)) {
+      throw new ApiError(403, "You do not have permission to perform this action");
+    }
+    return membership;
+  }
+
+  const teacher = await requireCurrentTeacher(membership.schoolId);
+  const assignment = await prisma.classTeacherAssignment.findFirst({
     where: {
       schoolId: membership.schoolId,
       teacherId: teacher.id,
       classId,
-      ...(sectionId ? { sectionId } : {}),
+      sectionId,
+      ...(academicYearId ? { academicYearId } : {}),
       active: true,
     },
+    select: { id: true },
   });
 
-  if (!allocation) {
-    throw new ApiError(403, "This class or section is not assigned to you");
+  if (!assignment) {
+    throw new ApiError(403, "Only the assigned class teacher can manage this class-level workflow");
   }
 
   return membership;
@@ -401,19 +479,33 @@ export async function requireTeacherExamSchedule(
     throw new ApiError(403, "This exam schedule is not assigned to you");
   }
 
-  const allocation = await prisma.teacherAllocation.findFirst({
-    where: {
-      schoolId: membership.schoolId,
-      teacherId: teacher.id,
-      academicYearId: schedule.exam.academicYearId,
-      classId: schedule.classId,
-      subjectId: schedule.subjectId,
-      sectionId,
-      active: true,
-    },
-  });
+  const [allocation, classTeacherAssignment] = await Promise.all([
+    prisma.teacherAllocation.findFirst({
+      where: {
+        schoolId: membership.schoolId,
+        teacherId: teacher.id,
+        academicYearId: schedule.exam.academicYearId,
+        classId: schedule.classId,
+        subjectId: schedule.subjectId,
+        sectionId,
+        active: true,
+      },
+      select: { id: true },
+    }),
+    prisma.classTeacherAssignment.findFirst({
+      where: {
+        schoolId: membership.schoolId,
+        teacherId: teacher.id,
+        academicYearId: schedule.exam.academicYearId,
+        classId: schedule.classId,
+        sectionId,
+        active: true,
+      },
+      select: { id: true },
+    }),
+  ]);
 
-  if (!allocation) {
+  if (!allocation && !classTeacherAssignment) {
     throw new ApiError(403, "This exam subject is not assigned to you");
   }
 

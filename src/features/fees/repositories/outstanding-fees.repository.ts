@@ -7,6 +7,11 @@ type OutstandingFeesFilters = {
   classId?: string;
   sectionId?: string;
   academicYearId?: string;
+  allowedClassSections?: Array<{
+    academicYearId: string;
+    classId: string;
+    sectionId: string;
+  }>;
 };
 
 const whereClause = ({
@@ -15,6 +20,7 @@ const whereClause = ({
   classId,
   sectionId,
   academicYearId,
+  allowedClassSections,
 }: OutstandingFeesFilters): Prisma.StudentFeeInstallmentWhereInput => ({
   status: {
     in: ["PENDING", "PARTIAL"],
@@ -34,6 +40,17 @@ const whereClause = ({
         : {}),
 
       studentEnrollment: {
+        ...(allowedClassSections
+          ? allowedClassSections.length > 0
+            ? {
+              OR: allowedClassSections.map((scope) => ({
+                academicYearId: scope.academicYearId,
+                classId: scope.classId,
+                sectionId: scope.sectionId,
+              })),
+            }
+            : { id: { in: [] } }
+          : {}),
         ...(classId
           ? {
               classId,

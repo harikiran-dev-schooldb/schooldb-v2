@@ -12,7 +12,6 @@ import {
   Settings2,
   School,
   Smartphone,
-  ListChecks,
   UsersRound,
 } from "lucide-react";
 
@@ -35,6 +34,7 @@ const ADMIN_ROLES = ["SUPER_ADMIN", "SCHOOL_ADMIN"];
 const STAFF_ROLES = [...ADMIN_ROLES, "TEACHER", "ACCOUNTANT", "RECEPTIONIST"];
 const ATTENDANCE_ROLES = [...ADMIN_ROLES, "TEACHER"];
 const FEE_ROLES = [...ADMIN_ROLES, "ACCOUNTANT"];
+const FEE_VIEW_ROLES = [...FEE_ROLES, "TEACHER"];
 const TEACHING_ROLES = [...ADMIN_ROLES, "TEACHER"];
 const STUDENT_DIRECTORY_ROLES = [
   ...ADMIN_ROLES,
@@ -108,12 +108,12 @@ export const navigation: NavigationItem[] = [
     roles: ATTENDANCE_ROLES,
     children: [
       { title: "Mark Attendance", href: "attendance", exact: true },
-      { title: "Attendance Overview", href: "attendance/dashboard" },
-      { title: "Session History", href: "attendance/history" },
-      { title: "Class Report", href: "attendance/reports/class" },
-      { title: "Student Report", href: "attendance/reports/student" },
-      { title: "Low Attendance", href: "attendance/reports/low" },
-      { title: "Attendance Ranking", href: "attendance/ranking" },
+      { title: "Attendance Overview", href: "attendance/dashboard", roles: ADMIN_ROLES },
+      { title: "Session History", href: "attendance/history", roles: ADMIN_ROLES },
+      { title: "Class Report", href: "attendance/reports/class", roles: ATTENDANCE_ROLES },
+      { title: "Student Report", href: "attendance/reports/student", roles: ATTENDANCE_ROLES },
+      { title: "Low Attendance", href: "attendance/reports/low", roles: ADMIN_ROLES },
+      { title: "Attendance Ranking", href: "attendance/ranking", roles: ATTENDANCE_ROLES },
     ],
   },
   {
@@ -129,21 +129,21 @@ export const navigation: NavigationItem[] = [
   {
     title: "Fees",
     icon: IndianRupee,
-    roles: FEE_ROLES,
+    roles: FEE_VIEW_ROLES,
     children: [
-      { title: "Fee Overview", href: "fees/dashboard" },
-      { title: "Collect Fees", href: "fees/collection" },
-      { title: "Outstanding Fees", href: "fees/outstanding" },
-      { title: "Payment History", href: "fees/payments" },
-      { title: "UPI Verification", href: "fees/upi-verification" },
-      { title: "Receipts", href: "fees/receipts" },
+      { title: "Fee Overview", href: "fees/dashboard", roles: FEE_ROLES },
+      { title: "Collect Fees", href: "fees/collection", roles: FEE_ROLES },
+      { title: "Outstanding Fees", href: "fees/outstanding", roles: FEE_VIEW_ROLES },
+      { title: "Payment History", href: "fees/payments", roles: FEE_ROLES },
+      { title: "UPI Verification", href: "fees/upi-verification", roles: FEE_ROLES },
+      { title: "Receipts", href: "fees/receipts", roles: FEE_ROLES },
       {
         title: "Expenses",
         href: "expenses",
         roles: [...ADMIN_ROLES, "ACCOUNTANT"],
       },
-      { title: "Fee Plans", href: "fees/plans" },
-      { title: "Fee Categories", href: "fees/categories" },
+      { title: "Fee Plans", href: "fees/plans", roles: FEE_ROLES },
+      { title: "Fee Categories", href: "fees/categories", roles: FEE_ROLES },
     ],
   },
   {
@@ -179,6 +179,7 @@ export const navigation: NavigationItem[] = [
       { title: "Subjects", href: "subjects" },
       { title: "Class Subjects", href: "setup/class-subjects" },
       { title: "Teacher Allocations", href: "teacher-allocations" },
+      { title: "Class Teachers", href: "class-teachers" },
     ],
   },
   {
@@ -200,7 +201,7 @@ export const navigation: NavigationItem[] = [
     icon: Megaphone,
     roles: STAFF_ROLES,
     children: [
-      { title: "Notifications", href: "notifications", roles: ADMIN_ROLES },
+      { title: "Notifications", href: "notifications", roles: TEACHING_ROLES },
       { title: "Queries", href: "queries", roles: STAFF_ROLES },
       { title: "Parent Queries", href: "parent-queries", roles: ADMIN_ROLES },
       { title: "WhatsApp Messages", href: "whatsapp", roles: ADMIN_ROLES },

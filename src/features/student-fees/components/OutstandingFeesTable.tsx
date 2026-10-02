@@ -16,7 +16,8 @@ import type { OutstandingRow } from "@/features/student-fees/types/outstanding-f
 
 type Props = {
   rows: OutstandingRow[];
-  onCollect: (row: OutstandingRow) => void;
+  onCollect?: (row: OutstandingRow) => void;
+  canCollect?: boolean;
 };
 
 function money(value: number) {
@@ -44,7 +45,7 @@ function statusLabel(status: string) {
   }
 }
 
-export function OutstandingFeesTable({ rows, onCollect }: Props) {
+export function OutstandingFeesTable({ rows, onCollect, canCollect = true }: Props) {
   return (
     <Card className="w-full overflow-hidden rounded-2xl border-border/60 bg-card shadow-[0_8px_30px_rgba(15,23,42,0.045)]">
       {/* ------------------------------------------------------------------ */}
@@ -148,9 +149,11 @@ export function OutstandingFeesTable({ rows, onCollect }: Props) {
                     Status
                   </th>
 
-                  <th className="px-5 py-3.5 text-right text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
-                    Action
-                  </th>
+                  {canCollect && (
+                    <th className="px-5 py-3.5 text-right text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+                      Action
+                    </th>
+                  )}
                 </tr>
               </thead>
 
@@ -257,15 +260,17 @@ export function OutstandingFeesTable({ rows, onCollect }: Props) {
                     </td>
 
                     {/* Action */}
-                    <td className="px-5 py-4 text-right">
-                      <Button
-                        size="sm"
-                        onClick={() => onCollect(row)}
-                        className="rounded-lg px-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md"
-                      >
-                        Collect
-                      </Button>
-                    </td>
+                    {canCollect && (
+                      <td className="px-5 py-4 text-right">
+                        <Button
+                          size="sm"
+                          onClick={() => onCollect?.(row)}
+                          className="rounded-lg px-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md"
+                        >
+                          Collect
+                        </Button>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>

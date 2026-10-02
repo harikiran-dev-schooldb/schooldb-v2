@@ -25,9 +25,11 @@ const field =
 export function AnnouncementForm({
   schoolSlug,
   academicYearId,
+  teacherSections,
 }: {
   schoolSlug: string;
   academicYearId: string | null;
+  teacherSections?: Array<{ id: string; label: string }>;
 }) {
   const formRef = useRef<HTMLFormElement>(null);
   const [state, action, pending] = useActionState(
@@ -35,8 +37,11 @@ export function AnnouncementForm({
     { error: "", success: false },
   );
   const [confirmationOpen, setConfirmationOpen] = useState(false);
-  const [target, setTarget] = useState<AudienceType>("SCHOOL");
-  const [audienceReady, setAudienceReady] = useState(true);
+  const restrictedToSections = teacherSections !== undefined;
+  const [target, setTarget] = useState<AudienceType>(
+    restrictedToSections ? "SECTION" : "SCHOOL",
+  );
+  const [audienceReady, setAudienceReady] = useState(!restrictedToSections);
 
   return (
     <form
@@ -89,13 +94,32 @@ export function AnnouncementForm({
           </select>
         </label>
 
-        <AudienceSelector
-          academicYearId={academicYearId}
-          onReadyChange={(ready, nextTarget) => {
-            setAudienceReady(ready);
-            setTarget(nextTarget);
-          }}
-        />
+        {restrictedToSections ? (
+          <label className="grid gap-2 text-sm font-medium">
+            Assigned section
+            <select
+              name="targetId"
+              required
+              className={field}
+              defaultValue=""
+              onChange={(event) => setAudienceReady(Boolean(event.target.value))}
+            >
+              <option value="" disabled>Select your class and section</option>
+              {teacherSections.map((section) => (
+                <option key={section.id} value={section.id}>{section.label}</option>
+              ))}
+            </select>
+            <input type="hidden" name="targetType" value="SECTION" />
+          </label>
+        ) : (
+          <AudienceSelector
+            academicYearId={academicYearId}
+            onReadyChange={(ready, nextTarget) => {
+              setAudienceReady(ready);
+              setTarget(nextTarget);
+            }}
+          />
+        )}
 
         <label className="grid gap-2 text-sm font-medium">
           Publish at (optional)
@@ -133,8 +157,9 @@ export function AnnouncementForm({
       </div>
 
       <p className="text-xs text-muted-foreground">
-        Times use your device’s timezone. Leave publication empty to publish
-        immediately. Notices appear in the student and parent inbox.
+        {restrictedToSections
+          ? "Your notice will be visible to students and families in the selected section."
+          : "Times use your device’s timezone. Leave publication empty to publish immediately. Notices appear in the student and parent inbox."}
       </p>
 
       {state.error && (
