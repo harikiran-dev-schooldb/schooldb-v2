@@ -63,12 +63,6 @@ export const navigation: NavigationItem[] = [
     roles: ["SUPER_ADMIN"],
   },
   {
-    title: "School Route Access",
-    href: "schools/route-access",
-    icon: ListChecks,
-    roles: ["SUPER_ADMIN"],
-  },
-  {
     title: "Support Android App",
     href: "schools/android-app",
     icon: Smartphone,
@@ -94,7 +88,11 @@ export const navigation: NavigationItem[] = [
       { title: "Enrollments", href: "enrollments", roles: ADMIN_ROLES },
       { title: "Student Houses", href: "student-houses", roles: ADMIN_ROLES },
       { title: "Birthdays", href: "birthdays", roles: ADMIN_ROLES },
-      { title: "Student ID Cards", href: "id-cards", roles: [...ADMIN_ROLES, "RECEPTIONIST"] },
+      {
+        title: "Student ID Cards",
+        href: "id-cards",
+        roles: [...ADMIN_ROLES, "RECEPTIONIST"],
+      },
       {
         title: "Certificate Register",
         href: "certificates",
@@ -153,10 +151,19 @@ export const navigation: NavigationItem[] = [
     icon: CalendarRange,
     roles: TEACHING_ROLES,
     children: [
-      { title: "Build Timetable", href: "timetable", exact: true, roles: ADMIN_ROLES },
+      {
+        title: "Build Timetable",
+        href: "timetable",
+        exact: true,
+        roles: ADMIN_ROLES,
+      },
       { title: "Daily View", href: "timetable/daily", roles: TEACHING_ROLES },
       { title: "Class View", href: "timetable/class", roles: TEACHING_ROLES },
-      { title: "Teacher View", href: "timetable/teacher", roles: TEACHING_ROLES },
+      {
+        title: "Teacher View",
+        href: "timetable/teacher",
+        roles: TEACHING_ROLES,
+      },
       { title: "School Periods", href: "periods", roles: ADMIN_ROLES },
     ],
   },
