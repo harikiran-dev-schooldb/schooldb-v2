@@ -36,7 +36,7 @@ export function QueryActions({
 }) {
   const router = useRouter();
   const [reply, setReply] = useState("");
-  const [visibility, setVisibility] = useState<"PARENT" | "INTERNAL">("PARENT");
+  const [visibility, setVisibility] = useState<"PARENT" | "INTERNAL">("INTERNAL");
   const [selectedStatus, setSelectedStatus] = useState(status);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
