@@ -707,11 +707,12 @@ internal fun CreateTicket(api: SupportRepository, school: String, busy: Boolean,
 
 @Composable
 internal fun TicketDetails(ticket: TicketDetail, admin: Boolean, busy: Boolean, staff: List<StaffOption>,
-    onReply: (String) -> Unit, onStatus: (TicketStatus) -> Unit,
+    onReply: (String, Boolean) -> Unit, onStatus: (TicketStatus) -> Unit,
     onPriority: (TicketPriority) -> Unit, onAssign: (String?) -> Unit,
     onOpenAttachment: (TicketAttachment) -> Unit,
     onAddAttachment: (PendingAttachment) -> Unit) {
     var reply by remember(ticket.id) { mutableStateOf("") }
+    var replyVisibility by remember(ticket.id) { mutableStateOf("INTERNAL_ONLY") }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Spacer(Modifier.height(2.dp))
@@ -843,12 +844,12 @@ internal fun TicketDetails(ticket: TicketDetail, admin: Boolean, busy: Boolean, 
         }
         SurfaceCard(Modifier.fillMaxWidth()) {
             SectionTitle(
-                if (ticket.source == "PARENT_QR") "Internal notes" else "Conversation",
+                if (ticket.source == "PARENT_QR") "Messages and notes" else "Conversation",
                 ticket.messages.size.toString() + " replies"
             )
             Spacer(Modifier.height(14.dp))
             if (ticket.messages.isEmpty()) Text(if (ticket.source == "PARENT_QR")
-                "No notes yet. Use the follow-up number above to contact the parent."
+                "No messages yet. Internal notes stay with school staff; parent-visible replies are sent to the parent."
                 else "No replies yet. Start the conversation below.",
                 style = MaterialTheme.typography.bodyMedium, color = Muted)
             ticket.messages.forEach { message ->
@@ -858,18 +859,76 @@ internal fun TicketDetails(ticket: TicketDetail, admin: Boolean, busy: Boolean, 
                         Text(message.author.take(1).uppercase(), color = Indigo, fontWeight = FontWeight.Bold)
                     }
                     Column(Modifier.weight(1f).background(Color(0xFFF1F3FF), RoundedCornerShape(18.dp)).padding(14.dp)) {
-                        Text(message.author, style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.Bold, color = Ink)
+                        Row(
+                            Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                message.author,
+                                modifier = Modifier.weight(1f),
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = Ink,
+                            )
+                            if (ticket.source == "PARENT_QR") {
+                                Pill(
+                                    if (message.isInternal) "INTERNAL ONLY" else "SHOWN TO PARENT",
+                                    if (message.isInternal) SchoolGold else SchoolGreen,
+                                )
+                            }
+                        }
+                        Spacer(Modifier.height(4.dp))
                         Text(message.body, style = MaterialTheme.typography.bodyMedium, color = Ink)
                     }
                 }
             }
             if (ticket.status != "CLOSED") {
                 Spacer(Modifier.height(8.dp))
-                SupportField(reply, { reply = it }, if (ticket.source == "PARENT_QR") "Write an internal note" else "Write a reply", minLines = 3)
+                SupportField(
+                    reply,
+                    { reply = it },
+                    if (ticket.source == "PARENT_QR") "Write a message" else "Write a reply",
+                    minLines = 3,
+                )
+                if (ticket.source == "PARENT_QR") {
+                    Spacer(Modifier.height(12.dp))
+                    Text(
+                        "MESSAGE VISIBILITY",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Muted,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    OptionMenu(
+                        replyVisibility,
+                        listOf("INTERNAL_ONLY", "SHOW_TO_PARENT"),
+                        "Message visibility",
+                    ) { replyVisibility = it }
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        if (replyVisibility == "INTERNAL_ONLY")
+                            "This note stays inside School Support and is not sent to the parent."
+                        else
+                            "This reply will be sent to the parent through the parent support channel.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Muted,
+                    )
+                }
                 Spacer(Modifier.height(10.dp))
-                PrimaryAction(if (ticket.source == "PARENT_QR") "Add internal note" else "Send reply",
-                    !busy && reply.isNotBlank(), onClick = { onReply(reply.trim()); reply = "" })
+                PrimaryAction(
+                    if (ticket.source == "PARENT_QR")
+                        if (replyVisibility == "INTERNAL_ONLY") "Save internal note" else "Send to parent"
+                    else "Send reply",
+                    !busy && reply.isNotBlank(),
+                    onClick = {
+                        onReply(
+                            reply.trim(),
+                            ticket.source == "PARENT_QR" && replyVisibility == "INTERNAL_ONLY",
+                        )
+                        reply = ""
+                    },
+                )
             }
         }
         Spacer(Modifier.height(20.dp))

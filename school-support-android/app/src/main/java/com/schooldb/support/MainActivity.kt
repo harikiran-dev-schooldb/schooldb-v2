@@ -655,7 +655,10 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
                     }
                 } }
                 SupportPage.TICKET_DETAIL -> ticketState.detail?.let { ticket -> TicketDetails(ticket, ticketState.isAdmin, busy, ticketState.staff,
-                    onReply = { body -> run { api.reply(school, ticket.id, body); refreshTicketAfterMutation(ticket.id) } },
+                    onReply = { body, isInternal -> run {
+                        api.reply(school, ticket.id, body, isInternal)
+                        refreshTicketAfterMutation(ticket.id)
+                    } },
                     onStatus = { status -> run { api.updateStatus(school, ticket.id, status); refreshTicketAfterMutation(ticket.id) } },
                     onPriority = { priority -> run { api.updatePriority(school, ticket.id, priority); refreshTicketAfterMutation(ticket.id) } },
                     onAssign = { userId -> run { api.assign(school, ticket.id, userId); refreshTicketAfterMutation(ticket.id) } },

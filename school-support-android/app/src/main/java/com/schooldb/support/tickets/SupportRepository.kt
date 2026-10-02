@@ -44,7 +44,7 @@ data class TicketDetail(
     val activities: List<TicketActivity>,
 )
 
-data class TicketMessage(val body: String, val author: String)
+data class TicketMessage(val body: String, val author: String, val isInternal: Boolean)
 data class TicketActivity(val action: String, val detail: String, val actor: String, val createdAt: String)
 data class StaffOption(val id: String, val name: String, val role: String)
 data class AdminAccount(val id: String, val userId: String, val fullName: String,
@@ -236,8 +236,14 @@ class SupportRepository {
             messages = (0 until messages.length()).map { index ->
                 val message = messages.getJSONObject(index)
                 val author = message.getJSONObject("author")
-                TicketMessage(message.getString("body"),
-                    listOf(author.optString("firstName"), author.optString("lastName")).filter { it.isNotBlank() }.joinToString(" ").ifBlank { "Staff" })
+                TicketMessage(
+                    body = message.getString("body"),
+                    author = listOf(author.optString("firstName"), author.optString("lastName"))
+                        .filter { it.isNotBlank() }
+                        .joinToString(" ")
+                        .ifBlank { "Staff" },
+                    isInternal = message.optBoolean("isInternal", false),
+                )
             },
             activities = (0 until activities.length()).map { index ->
                 val activity = activities.getJSONObject(index)
@@ -301,9 +307,17 @@ class SupportRepository {
         )
     }
 
-    suspend fun reply(school: String, id: String, body: String) = withContext(Dispatchers.IO) {
-        request("POST", "api/v1/support/tickets/$id/messages", school, JSONObject().put("body", body))
-    }
+    suspend fun reply(school: String, id: String, body: String, isInternal: Boolean = false) =
+        withContext(Dispatchers.IO) {
+            request(
+                "POST",
+                "api/v1/support/tickets/$id/messages",
+                school,
+                JSONObject()
+                    .put("body", body)
+                    .put("isInternal", isInternal),
+            )
+        }
 
     suspend fun updateStatus(school: String, id: String, status: TicketStatus) = withContext(Dispatchers.IO) {
         request("POST", "api/v1/support/tickets/$id", school, JSONObject().put("status", status.name))
