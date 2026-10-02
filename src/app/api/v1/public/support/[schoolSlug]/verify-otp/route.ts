@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { Prisma } from "@/generated/prisma/client";
 import {
   normalizeIndianMobile,
   otpHash,
@@ -20,16 +21,12 @@ export const runtime = "nodejs";
 
 type Context = { params: Promise<{ schoolSlug: string }> };
 
+type StudentContactRow = { id: string };
+
 const inputSchema = z.object({
   phone: z.string(),
   otp: z.string().regex(/^\d{6}$/),
 });
-
-function candidateIds(value: unknown) {
-  return Array.isArray(value)
-    ? [...new Set(value.filter((item): item is string => typeof item === "string"))]
-    : [];
-}
 
 export async function POST(request: Request, { params }: Context) {
   try {
@@ -71,7 +68,6 @@ export async function POST(request: Request, { params }: Context) {
           attempts: true,
           verifiedAt: true,
           consumedAt: true,
-          candidateUserIds: true,
         },
       });
       if (
@@ -94,15 +90,22 @@ export async function POST(request: Request, { params }: Context) {
         return { ok: false as const, exhausted: attempts >= OTP_MAX_ATTEMPTS };
       }
 
-      const parent = await tx.user.findFirst({
-        where: {
-          id: { in: candidateIds(challenge.candidateUserIds) },
-          memberships: { some: { schoolId: school.id, role: "PARENT", isActive: true } },
-          parentStudentLinks: { some: { schoolId: school.id, active: true } },
-        },
-        select: { id: true },
-      });
-      if (!parent) return { ok: false as const, parentRequired: true };
+      const registeredStudents = await tx.$queryRaw<StudentContactRow[]>(Prisma.sql`
+        SELECT s.id
+        FROM "Student" s
+        WHERE s."schoolId" = ${school.id}
+          AND s.status = 'ACTIVE'
+          AND (
+            RIGHT(regexp_replace(COALESCE(s.phone, ''), '[^0-9]', '', 'g'), 10) = ${phone}
+            OR RIGHT(regexp_replace(COALESCE(s."fatherPhone", ''), '[^0-9]', '', 'g'), 10) = ${phone}
+            OR RIGHT(regexp_replace(COALESCE(s."motherPhone", ''), '[^0-9]', '', 'g'), 10) = ${phone}
+            OR RIGHT(regexp_replace(COALESCE(s."guardianPhone", ''), '[^0-9]', '', 'g'), 10) = ${phone}
+          )
+        LIMIT 1
+      `);
+      if (registeredStudents.length === 0) {
+        return { ok: false as const, studentRequired: true };
+      }
 
       const expiresAt = new Date(Date.now() + PARENT_SUPPORT_VERIFICATION_MS);
       await tx.otpChallenge.update({
@@ -115,8 +118,8 @@ export async function POST(request: Request, { params }: Context) {
     if (!verification.ok) {
       return Response.json(
         {
-          error: "parentRequired" in verification
-            ? "This number is not registered to an active parent account."
+          error: "studentRequired" in verification
+            ? "This number is not registered to an active student."
             : verification.exhausted
               ? "The code expired or too many attempts were made. Request a new code."
               : "Invalid code.",
