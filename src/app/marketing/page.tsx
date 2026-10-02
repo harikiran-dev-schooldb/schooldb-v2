@@ -180,6 +180,30 @@ const assurances = [
   ],
 ] as const;
 
+const studentMobileScreens = [
+  {
+    src: "/product-screenshots/student-overview.png",
+    alt: "SchoolDB Android student dashboard showing profile, attendance, homework, results and fees",
+    eyebrow: "A clear daily view",
+    title: "Student overview",
+    text: "One place for the learner’s profile and the school information families check most often.",
+  },
+  {
+    src: "/product-screenshots/student-attendance.png",
+    alt: "SchoolDB Android attendance history with present and absent records",
+    eyebrow: "Easy to understand",
+    title: "Attendance history",
+    text: "Families can see the overall position and the status of each recorded school day.",
+  },
+  {
+    src: "/product-screenshots/student-homework.png",
+    alt: "SchoolDB Android homework screen showing an assignment and due date",
+    eyebrow: "Work stays visible",
+    title: "Homework and deadlines",
+    text: "Assignments, descriptions and due dates are presented in a focused student workspace.",
+  },
+] as const;
+
 const faqs = [
   [
     "Can SchoolDB fit our existing academic structure?",
@@ -196,6 +220,14 @@ const faqs = [
   [
     "How is pricing decided?",
     "Pricing is provided in a written INR quotation based on student count, selected modules, onboarding needs and subscription term. Scope, taxes and payment schedule are shown before payment.",
+  ],
+  [
+    "How does SchoolDB protect school data?",
+    "SchoolDB combines authenticated accounts, active school membership, role and permission checks, school-scoped records, private file delivery and operational audit records.",
+  ],
+  [
+    "Can families use SchoolDB on Android?",
+    "Yes. The Android experience gives students and families focused access to information such as attendance, homework, fees, results and school notices.",
   ],
 ] as const;
 
@@ -215,12 +247,15 @@ export default function MarketingPage() {
             <a href="#roles" className="transition hover:text-indigo-600">
               For your team
             </a>
+            <a href="#mobile" className="transition hover:text-indigo-600">
+              Mobile app
+            </a>
             <a href="#onboarding" className="transition hover:text-indigo-600">
               Onboarding
             </a>
-            <a href="#trust" className="transition hover:text-indigo-600">
-              Trust
-            </a>
+            <Link href="/security" className="transition hover:text-indigo-600">
+              Security
+            </Link>
             <a href="#pricing" className="transition hover:text-indigo-600">
               Pricing
             </a>
@@ -379,10 +414,19 @@ export default function MarketingPage() {
         </div>
       </section>
 
-      <section className="px-5 py-20 sm:px-8 lg:py-24">
-        <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[1.05fr_.95fr] lg:items-center">
-          <div className="overflow-hidden rounded-[1.75rem] border border-indigo-100 bg-gradient-to-br from-white via-indigo-50/65 to-violet-50/70 p-6 shadow-[0_18px_50px_rgba(79,70,229,0.08)] sm:p-8">
-            <div className="flex items-center justify-between gap-4">
+      <section
+        id="mobile"
+        className="scroll-mt-24 overflow-hidden px-5 py-20 sm:px-8 lg:py-24"
+      >
+        <div className="mx-auto max-w-7xl">
+          <div className="grid gap-8 lg:grid-cols-[.9fr_1.1fr] lg:items-end">
+            <SectionHeading
+              icon={<MonitorSmartphone className="size-4" />}
+              eyebrow="A real look at SchoolDB Mobile"
+              title="The school day in every family’s reach."
+              text="SchoolDB gives students and families a calm, focused Android experience for the information they need—without exposing the complexity of the administrative workspace."
+            />
+            <div className="overflow-hidden rounded-2xl border border-indigo-100 bg-gradient-to-br from-white via-indigo-50/65 to-violet-50/70 p-5 shadow-[0_18px_50px_rgba(79,70,229,0.08)] sm:p-6">
               <div className="flex items-center gap-3">
                 <Image
                   src="/schooldb-app-logo.png"
@@ -393,38 +437,65 @@ export default function MarketingPage() {
                 />
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-indigo-600">
-                    SchoolDB Mobile
+                    SchoolDB for Android
                   </p>
                   <p className="mt-1 font-bold text-slate-900">
-                    The school day, in reach
+                    Built for students, families and school teams
                   </p>
                 </div>
               </div>
-              <MonitorSmartphone className="size-6 text-indigo-500" />
-            </div>
-            <div className="mt-7 grid gap-3 sm:grid-cols-2">
-              {[
-                "Administrative overview",
-                "Teacher daily workspace",
-                "Family and student access",
-                "School notices and notifications",
-              ].map((item) => (
-                <div
-                  key={item}
-                  className="flex items-center gap-3 rounded-xl border border-white/80 bg-white/80 px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm"
-                >
-                  <Check className="size-4 shrink-0 text-indigo-600" />
-                  {item}
-                </div>
-              ))}
+              <div className="mt-5 grid gap-2 sm:grid-cols-2">
+                {[
+                  "Live student information",
+                  "Attendance by school day",
+                  "Homework and due dates",
+                  "Fees, results and notices",
+                ].map((item) => (
+                  <div
+                    key={item}
+                    className="flex items-center gap-2.5 rounded-xl border border-white/80 bg-white/80 px-3.5 py-3 text-xs font-semibold text-slate-700 shadow-sm"
+                  >
+                    <Check className="size-4 shrink-0 text-indigo-600" />
+                    {item}
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
-          <SectionHeading
-            icon={<MonitorSmartphone className="size-4" />}
-            eyebrow="Web and Android"
-            title="Continue the work beyond the office desk."
-            text="The full web workspace supports detailed administration, while the SchoolDB Android experience brings focused school, teacher and family workflows to mobile devices."
-          />
+
+          <div className="mt-12 flex snap-x snap-mandatory gap-5 overflow-x-auto pb-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:grid lg:grid-cols-3 lg:overflow-visible lg:pb-0">
+            {studentMobileScreens.map((screen) => (
+              <article
+                key={screen.title}
+                className="min-w-[82vw] snap-center overflow-hidden rounded-[1.75rem] border border-slate-200/80 bg-white p-3 shadow-[0_18px_55px_rgba(15,23,42,0.09)] sm:min-w-[390px] lg:min-w-0"
+              >
+                <div className="overflow-hidden rounded-[1.35rem] bg-gradient-to-b from-indigo-50/80 to-slate-50">
+                  <Image
+                    src={screen.src}
+                    alt={screen.alt}
+                    width={1187}
+                    height={2513}
+                    sizes="(max-width: 640px) 82vw, (max-width: 1024px) 390px, 30vw"
+                    className="h-auto w-full"
+                  />
+                </div>
+                <div className="px-3 pb-4 pt-5 sm:px-4">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-indigo-600">
+                    {screen.eyebrow}
+                  </p>
+                  <h3 className="mt-2 text-lg font-bold tracking-tight text-slate-950">
+                    {screen.title}
+                  </h3>
+                  <p className="mt-2 text-sm leading-6 text-slate-500">
+                    {screen.text}
+                  </p>
+                </div>
+              </article>
+            ))}
+          </div>
+          <p className="mt-2 text-center text-xs text-slate-400 lg:hidden">
+            Swipe to explore the SchoolDB mobile experience
+          </p>
         </div>
       </section>
 
@@ -463,33 +534,41 @@ export default function MarketingPage() {
         </div>
       </section>
 
-      <section id="trust" className="scroll-mt-24 px-5 py-20 sm:px-8 lg:py-24">
-        <div className="mx-auto max-w-7xl overflow-hidden rounded-[1.8rem] bg-slate-950 px-6 py-10 shadow-[0_22px_65px_rgba(15,23,42,0.16)] sm:px-10 lg:px-14 lg:py-14">
+      <section
+        id="trust"
+        className="scroll-mt-24 px-5 py-16 sm:px-8 lg:py-20"
+      >
+        <div className="relative mx-auto max-w-7xl overflow-hidden rounded-[1.8rem] border border-indigo-100 bg-gradient-to-br from-white via-indigo-50/55 to-violet-50/70 px-6 py-10 shadow-[0_18px_55px_rgba(79,70,229,0.09)] sm:px-10 lg:px-14 lg:py-14">
+          <div className="pointer-events-none absolute -right-24 -top-28 size-72 rounded-full bg-indigo-200/35 blur-3xl" />
           <div className="grid gap-10 lg:grid-cols-[.8fr_1.2fr] lg:items-center">
-            <div>
-              <div className="flex size-11 items-center justify-center rounded-xl bg-white/10 text-indigo-200 ring-1 ring-white/10">
+            <div className="relative">
+              <div className="flex size-11 items-center justify-center rounded-xl bg-white text-indigo-600 shadow-sm ring-1 ring-indigo-100">
                 <ShieldCheck className="size-5" />
               </div>
-              <p className="mt-6 text-[10px] font-bold uppercase tracking-[0.18em] text-indigo-300">
+              <p className="mt-6 text-[10px] font-bold uppercase tracking-[0.18em] text-indigo-600">
                 Confidence by design
               </p>
-              <h2 className="mt-3 text-3xl font-bold tracking-tight text-white sm:text-4xl">
+              <h2 className="mt-3 text-3xl font-bold tracking-[-0.035em] text-slate-950 sm:text-4xl">
                 A school workspace with clear boundaries.
               </h2>
-              <p className="mt-4 text-sm leading-6 text-slate-400 sm:text-base">
+              <p className="mt-4 text-sm leading-6 text-slate-600 sm:text-base">
                 SchoolDB combines role-aware access, school-specific context and
                 operational visibility with a direct onboarding relationship.
               </p>
             </div>
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="relative grid gap-3 sm:grid-cols-2">
               {assurances.map(([Icon, title, text]) => (
                 <article
                   key={title}
-                  className="rounded-2xl border border-white/10 bg-white/[0.06] p-5"
+                  className="rounded-2xl border border-slate-200/80 bg-white/90 p-5 shadow-[0_8px_24px_rgba(15,23,42,0.045)]"
                 >
-                  <Icon className="size-5 text-indigo-300" />
-                  <h3 className="mt-4 text-sm font-bold text-white">{title}</h3>
-                  <p className="mt-2 text-xs leading-5 text-slate-400">
+                  <div className="flex size-9 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 ring-1 ring-indigo-100">
+                    <Icon className="size-4" />
+                  </div>
+                  <h3 className="mt-4 text-sm font-bold text-slate-900">
+                    {title}
+                  </h3>
+                  <p className="mt-2 text-sm leading-6 text-slate-500">
                     {text}
                   </p>
                 </article>
@@ -566,20 +645,35 @@ export default function MarketingPage() {
               </details>
             ))}
           </div>
+          <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+            <Link
+              href="/faq"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-5 py-3 text-sm font-bold text-white transition hover:bg-indigo-700"
+            >
+              View all FAQs <ArrowRight className="size-4" />
+            </Link>
+            <Link
+              href="/security"
+              className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-700 transition hover:border-indigo-200 hover:text-indigo-700"
+            >
+              Data security & trust
+            </Link>
+          </div>
         </div>
       </section>
 
-      <section className="px-5 pb-20 sm:px-8 lg:pb-24">
-        <div className="mx-auto max-w-7xl overflow-hidden rounded-[1.8rem] border border-indigo-100 bg-gradient-to-br from-indigo-600 via-indigo-600 to-violet-700 px-7 py-12 text-white shadow-[0_24px_65px_rgba(79,70,229,0.23)] sm:px-10 lg:px-14 lg:py-14">
-          <div className="grid gap-8 lg:grid-cols-[1fr_auto] lg:items-center">
+      <section className="px-5 pb-16 sm:px-8 lg:pb-20">
+        <div className="relative mx-auto max-w-7xl overflow-hidden rounded-[1.8rem] border border-indigo-100 bg-gradient-to-br from-white via-indigo-50/70 to-violet-50/80 px-7 py-12 shadow-[0_18px_55px_rgba(79,70,229,0.10)] sm:px-10 lg:px-14 lg:py-14">
+          <div className="pointer-events-none absolute -bottom-28 -right-20 size-72 rounded-full bg-violet-200/35 blur-3xl" />
+          <div className="relative grid gap-8 lg:grid-cols-[1fr_auto] lg:items-center">
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-[0.19em] text-indigo-100">
+              <p className="text-[10px] font-bold uppercase tracking-[0.19em] text-indigo-600">
                 See SchoolDB with your workflow
               </p>
-              <h2 className="mt-3 max-w-3xl text-3xl font-bold tracking-tight sm:text-4xl">
+              <h2 className="mt-3 max-w-3xl text-3xl font-bold tracking-[-0.035em] text-slate-950 sm:text-4xl">
                 Give your team one clearer way to run the school day.
               </h2>
-              <p className="mt-4 max-w-2xl text-sm leading-6 text-indigo-100 sm:text-base">
+              <p className="mt-4 max-w-2xl text-sm leading-6 text-slate-600 sm:text-base">
                 Tell us how your school works today. We will show the relevant
                 SchoolDB workflows and discuss a practical path to launch.
               </p>
@@ -587,13 +681,13 @@ export default function MarketingPage() {
             <div className="flex flex-col gap-3 sm:flex-row lg:flex-col">
               <a
                 href={demoMailto}
-                className="inline-flex min-w-48 items-center justify-center gap-2 rounded-xl bg-white px-6 py-3.5 text-sm font-black text-indigo-700 transition hover:bg-indigo-50"
+                className="inline-flex min-w-48 items-center justify-center gap-2 rounded-xl bg-indigo-600 px-6 py-3.5 text-sm font-black text-white shadow-[0_10px_25px_rgba(79,70,229,0.22)] transition hover:bg-indigo-700"
               >
                 Book a demo <ArrowRight className="size-4" />
               </a>
               <a
                 href={`tel:${publicBusiness.phoneHref}`}
-                className="inline-flex min-w-48 items-center justify-center rounded-xl border border-white/20 bg-white/10 px-6 py-3.5 text-sm font-bold text-white transition hover:bg-white/15"
+                className="inline-flex min-w-48 items-center justify-center rounded-xl border border-slate-200 bg-white px-6 py-3.5 text-sm font-bold text-slate-700 shadow-sm transition hover:border-indigo-200 hover:bg-indigo-50/40 hover:text-indigo-700"
               >
                 Call {publicBusiness.phone}
               </a>
@@ -802,6 +896,8 @@ function Footer() {
         >
           {[
             ["About", "/about"],
+            ["FAQ", "/faq"],
+            ["Data security", "/security"],
             ["Contact", "/contact"],
             ["Privacy", "/privacy-policy"],
             ["Terms", "/terms"],

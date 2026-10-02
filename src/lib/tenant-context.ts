@@ -5,6 +5,7 @@ const RESERVED_PATH_SEGMENTS = new Set([
   "about",
   "api",
   "contact",
+  "faq",
   "choose-school",
   "login",
   "marketing",
@@ -13,12 +14,13 @@ const RESERVED_PATH_SEGMENTS = new Set([
   "privacy-policy",
   "refund-policy",
   "register",
+  "security",
   "terms",
 ]);
 
 const PUBLIC_PATH_PATTERNS = [
   /^\/$/,
-  /^\/(?:account-deletion|about|contact|privacy-policy|refund-policy|terms)\/?$/,
+  /^\/(?:account-deletion|about|contact|faq|privacy-policy|refund-policy|security|terms)\/?$/,
   /^\/marketing(?:\/.*)?$/,
   /^\/choose-school\/?$/,
   /^\/login(?:\/.*)?$/,

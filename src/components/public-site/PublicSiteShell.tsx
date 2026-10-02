@@ -1,11 +1,14 @@
 import type { ReactNode } from "react";
+import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, GraduationCap } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 
 import { publicBusiness } from "@/lib/public-business";
 
 const policyLinks = [
   ["About", "/about"],
+  ["FAQ", "/faq"],
+  ["Data security", "/security"],
   ["Contact", "/contact"],
   ["Privacy", "/privacy-policy"],
   ["Terms", "/terms"],
@@ -19,9 +22,13 @@ export function PublicSiteShell({ children }: { children: ReactNode }) {
       <header className="border-b border-slate-200/70 bg-white/95 backdrop-blur-xl">
         <div className="mx-auto flex h-[72px] max-w-6xl items-center justify-between px-5 sm:px-8">
           <Link href="/" className="flex items-center gap-3">
-            <span className="flex size-10 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-[0_8px_22px_rgba(79,70,229,0.20)]">
-              <GraduationCap className="size-5" strokeWidth={2.2} />
-            </span>
+            <Image
+              src="/schooldb-app-logo.png"
+              alt=""
+              width={42}
+              height={42}
+              className="size-10 rounded-xl object-cover shadow-[0_8px_22px_rgba(30,64,175,0.20)]"
+            />
             <span>
               <span className="block text-[17px] font-bold tracking-tight">
                 SchoolDB
