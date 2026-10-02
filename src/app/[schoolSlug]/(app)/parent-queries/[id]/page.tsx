@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { requireMembership } from "@/lib/auth";
+import { formatSchoolDateTime } from "@/lib/date-time";
 import { prisma } from "@/lib/prisma";
 import { ParentQueryActions } from "./parent-query-actions";
 
@@ -45,7 +46,7 @@ export default async function ParentQueryDetailPage({ params }: { params: Promis
         <div className="flex flex-wrap items-center gap-3 text-sm text-slate-500">
           <span className="font-semibold text-indigo-700">{ticket.ticketNo}</span>
           <span>·</span>
-          <span>{ticket.createdAt.toLocaleString("en-IN")}</span>
+          <span>{formatSchoolDateTime(ticket.createdAt)}</span>
           <span className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-bold text-indigo-700">PARENT QUERY</span>
         </div>
         <h1 className="mt-3 text-2xl font-bold text-slate-950">{ticket.subject}</h1>
@@ -81,7 +82,7 @@ export default async function ParentQueryDetailPage({ params }: { params: Promis
                       {message.isInternal ? "INTERNAL ONLY" : "SHOWN TO PARENT"}
                     </span>
                   </div>
-                  <span>{message.createdAt.toLocaleString("en-IN")}</span>
+                  <span>{formatSchoolDateTime(message.createdAt)}</span>
                 </div>
                 <p className="mt-2 whitespace-pre-wrap text-sm text-slate-700">{message.body}</p>
               </div>)}

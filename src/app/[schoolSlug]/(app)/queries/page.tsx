@@ -16,6 +16,7 @@ import { PageContainer, PageHeader } from "@/components/common/layout";
 import { Button } from "@/components/ui/button";
 import type { Prisma } from "@/generated/prisma/client";
 import { requireMembership } from "@/lib/auth";
+import { formatSchoolDate } from "@/lib/date-time";
 import { prisma } from "@/lib/prisma";
 
 type Params = Promise<{ schoolSlug: string }>;
@@ -215,7 +216,7 @@ export default async function QueriesPage({ params, searchParams }: { params: Pa
                       <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold text-muted-foreground">
                         <span className="font-bold text-primary">{ticket.ticketNo}</span>
                         {unread && <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-rose-700"><span className="size-1.5 rounded-full bg-rose-500" />Unread</span>}
-                        <span>·</span><span>{ticket.type.replaceAll("_", " ")}</span><span>·</span><span>{ticket.createdAt.toLocaleDateString("en-IN")}</span>
+                        <span>·</span><span>{ticket.type.replaceAll("_", " ")}</span><span>·</span><span>{formatSchoolDate(ticket.createdAt)}</span>
                       </div>
                       <h3 className="mt-1.5 truncate font-bold text-foreground">{ticket.subject}</h3>
                       <p className="mt-1 truncate text-sm text-muted-foreground">{ticket.student?.fullName || requester}{ticket.student?.admissionNo ? ` · ${ticket.student.admissionNo}` : ""} · {ticket.source.replaceAll("_", " ")}</p>

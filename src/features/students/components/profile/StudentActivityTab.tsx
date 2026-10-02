@@ -18,6 +18,7 @@ import {
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { formatSchoolDateMedium, formatSchoolTime } from "@/lib/date-time";
 
 import { Badge } from "@/components/ui/badge";
 
@@ -72,18 +73,11 @@ type Props = {
 };
 
 function formatDate(value: string) {
-  return new Intl.DateTimeFormat("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  }).format(new Date(value));
+  return formatSchoolDateMedium(value);
 }
 
 function formatTime(value: string) {
-  return new Intl.DateTimeFormat("en-IN", {
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(value));
+  return formatSchoolTime(value);
 }
 
 function getActivityConfig(type: ActivityType) {

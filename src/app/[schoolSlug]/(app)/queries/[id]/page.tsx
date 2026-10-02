@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { notFound } from "next/navigation";
 import { requireMembership } from "@/lib/auth";
+import { formatSchoolDateTime } from "@/lib/date-time";
 import { prisma } from "@/lib/prisma";
 import { QueryActions } from "./query-actions";
 
@@ -97,7 +98,7 @@ export default async function QueryDetailPage({
         <div className="flex flex-wrap items-center gap-3 text-sm text-slate-500">
           <span className="font-semibold text-indigo-700">{ticket.ticketNo}</span>
           <span>·</span>
-          <span>{ticket.createdAt.toLocaleString("en-IN")}</span>
+          <span>{formatSchoolDateTime(ticket.createdAt)}</span>
           <span>·</span>
           <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700">
             {ticket.source.replaceAll("_", " ")}
@@ -145,7 +146,7 @@ export default async function QueryDetailPage({
                           </span>
                         )}
                       </div>
-                      <span>{message.createdAt.toLocaleString("en-IN")}</span>
+                      <span>{formatSchoolDateTime(message.createdAt)}</span>
                     </div>
                     <p className="mt-2 whitespace-pre-wrap text-sm text-slate-700">{message.body}</p>
                   </div>
@@ -165,7 +166,7 @@ export default async function QueryDetailPage({
               <div><dt className="text-slate-500">Raised by</dt><dd className="mt-1 font-semibold">{ticket.complaintBy ? `${ticket.complaintBy.toLowerCase()} · ` : ""}{ticket.parentName || creator || "School user"}</dd></div>
               <div><dt className="text-slate-500">Assigned to</dt><dd className="mt-1 font-semibold">{assignee}</dd></div>
               {ticket.parentPhone && <div><dt className="text-slate-500">Contact</dt><dd className="mt-1 font-semibold">{ticket.parentPhone}</dd></div>}
-              <div><dt className="text-slate-500">Last updated</dt><dd className="mt-1 font-semibold">{ticket.updatedAt.toLocaleString("en-IN")}</dd></div>
+              <div><dt className="text-slate-500">Last updated</dt><dd className="mt-1 font-semibold">{formatSchoolDateTime(ticket.updatedAt)}</dd></div>
             </dl>
           </section>
 

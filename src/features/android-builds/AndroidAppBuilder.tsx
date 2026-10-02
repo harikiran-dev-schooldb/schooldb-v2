@@ -12,6 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useSchool } from "@/contexts/school-context";
+import { formatSchoolDateTime } from "@/lib/date-time";
 
 type BuildItem = {
   id: string;
@@ -184,7 +185,7 @@ function BuildRow({ build, schoolSlug }: { build: BuildItem; schoolSlug: string 
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2"><p className="font-semibold">{build.configuration.appName}</p><span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold tracking-wide">{build.status}</span></div>
         <p className="mt-1 truncate text-xs text-muted-foreground">{build.configuration.applicationId} · requested from {build.school.name}</p>
-        <p className="mt-1 text-xs text-muted-foreground">{build.message || "Waiting for an update."} · {new Date(build.createdAt).toLocaleString()}</p>
+        <p className="mt-1 text-xs text-muted-foreground">{build.message || "Waiting for an update."} · {formatSchoolDateTime(build.createdAt)}</p>
       </div>
       <div className="flex shrink-0 gap-2">
         {build.githubRunUrl && <Button asChild variant="outline" size="sm"><a href={build.githubRunUrl} target="_blank" rel="noreferrer"><ExternalLink className="size-4" />Logs</a></Button>}

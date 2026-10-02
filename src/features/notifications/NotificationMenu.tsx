@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { SCHOOL_TIME_ZONE } from "@/lib/date-time";
 import { isSchoolDbProductionHost } from "@/lib/production-domain";
 import {
   DropdownMenu,
@@ -58,6 +59,7 @@ function notificationDate(value: string) {
   return new Intl.DateTimeFormat("en-IN", {
     day: "numeric",
     month: "short",
+    timeZone: SCHOOL_TIME_ZONE,
   }).format(new Date(value));
 }
 

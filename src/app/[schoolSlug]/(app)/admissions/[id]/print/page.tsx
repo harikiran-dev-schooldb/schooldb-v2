@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { PrintDocumentButton } from "@/features/students/components/profile/PrintDocumentButton";
 import { requireRole } from "@/lib/auth";
+import { formatSchoolDateTime } from "@/lib/date-time";
 import { prisma } from "@/lib/prisma";
 
 const show = (value: string | null | undefined) => value || "—";
@@ -129,7 +130,7 @@ export default async function AdmissionPrintPage({
           <div className="border-t pt-2">Admissions office</div>
         </footer>
         <p className="mt-12 text-center text-[10px] text-slate-400">
-          Generated from SchoolDB on {new Date().toLocaleString("en-IN")}
+          Generated from SchoolDB on {formatSchoolDateTime(new Date())}
         </p>
       </main>
     </div>

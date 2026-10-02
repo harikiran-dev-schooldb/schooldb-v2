@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AUDIT_ACTIONS, AUDIT_MODULES } from "@/lib/audit";
 import { requireRole } from "@/lib/auth";
+import { formatSchoolDateTimeMedium } from "@/lib/date-time";
 import { prisma } from "@/lib/prisma";
 
 const PAGE_SIZE = 25;
@@ -45,13 +46,6 @@ function humanize(value: string) {
     .replaceAll("_", " ")
     .toLowerCase()
     .replace(/^./, (letter) => letter.toUpperCase());
-}
-
-function dateTime(value: Date) {
-  return new Intl.DateTimeFormat("en-IN", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(value);
 }
 
 function badgeVariant(action: string) {
@@ -320,7 +314,7 @@ export default async function AuditLogsPage({ params, searchParams }: Props) {
                   className="text-xs font-medium text-muted-foreground lg:text-right"
                   dateTime={log.createdAt.toISOString()}
                 >
-                  {dateTime(log.createdAt)}
+                    {formatSchoolDateTimeMedium(log.createdAt)}
                 </time>
               </article>
             ))}

@@ -12,6 +12,7 @@ import {
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { formatSchoolDateTimeMedium } from "@/lib/date-time";
 
 import type { StudentProfileData } from "./StudentProfile";
 
@@ -40,13 +41,7 @@ function formatDateTime(value: string | null) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "—";
 
-  return new Intl.DateTimeFormat("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(date);
+  return formatSchoolDateTimeMedium(date);
 }
 
 function formatEnum(value: string | null) {

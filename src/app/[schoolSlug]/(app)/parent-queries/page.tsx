@@ -16,6 +16,7 @@ import { PageContainer, PageHeader } from "@/components/common/layout";
 import { Button } from "@/components/ui/button";
 import type { Prisma } from "@/generated/prisma/client";
 import { requireMembership } from "@/lib/auth";
+import { formatSchoolDate } from "@/lib/date-time";
 import { prisma } from "@/lib/prisma";
 
 type Params = Promise<{ schoolSlug: string }>;
@@ -140,7 +141,7 @@ export default async function ParentQueriesPage({ params, searchParams }: { para
           <div className="divide-y divide-border/60">
             {tickets.map((ticket) => (
               <Link key={ticket.id} href={`/${schoolSlug}/parent-queries/${ticket.id}`} className="group flex flex-col gap-4 p-5 transition hover:bg-primary/[0.025] sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex min-w-0 gap-4"><div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-muted text-muted-foreground transition group-hover:bg-primary/10 group-hover:text-primary"><UserRound className="size-5" /></div><div className="min-w-0"><div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold text-muted-foreground"><span className="font-bold text-primary">{ticket.ticketNo}</span><span>·</span><span>{ticket.type.replaceAll("_", " ")}</span><span>·</span><span>{ticket.createdAt.toLocaleDateString("en-IN")}</span></div><h3 className="mt-1.5 truncate font-bold text-foreground">{ticket.subject}</h3><p className="mt-1 truncate text-sm text-muted-foreground">{ticket.student?.fullName || "Student"}{ticket.parentName ? ` · From ${ticket.complaintBy ? `${ticket.complaintBy.toLowerCase()} ` : ""}${ticket.parentName}` : ""}</p></div></div>
+                <div className="flex min-w-0 gap-4"><div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-muted text-muted-foreground transition group-hover:bg-primary/10 group-hover:text-primary"><UserRound className="size-5" /></div><div className="min-w-0"><div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold text-muted-foreground"><span className="font-bold text-primary">{ticket.ticketNo}</span><span>·</span><span>{ticket.type.replaceAll("_", " ")}</span><span>·</span><span>{formatSchoolDate(ticket.createdAt)}</span></div><h3 className="mt-1.5 truncate font-bold text-foreground">{ticket.subject}</h3><p className="mt-1 truncate text-sm text-muted-foreground">{ticket.student?.fullName || "Student"}{ticket.parentName ? ` · From ${ticket.complaintBy ? `${ticket.complaintBy.toLowerCase()} ` : ""}${ticket.parentName}` : ""}</p></div></div>
                 <div className="flex shrink-0 items-center gap-3 pl-[3.75rem] sm:pl-0"><span className="rounded-full bg-primary/10 px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-primary">{ticket.status.replaceAll("_", " ")}</span><ArrowRight className="size-4 text-muted-foreground transition group-hover:translate-x-1 group-hover:text-primary" /></div>
               </Link>
             ))}

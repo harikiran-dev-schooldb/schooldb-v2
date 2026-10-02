@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { AdmissionReviewActions } from "@/features/admissions/AdmissionReviewActions";
 import { AdmissionNumberSettings } from "@/features/admissions/AdmissionNumberSettings";
 import { requireRole } from "@/lib/auth";
+import { formatSchoolDateTime } from "@/lib/date-time";
 import { prisma } from "@/lib/prisma";
 
 const statuses = [
@@ -309,7 +310,7 @@ export default async function AdmissionsPage({
                   />
                   <Info
                     label="Submitted"
-                    value={item.submittedAt.toLocaleString("en-IN")}
+                    value={formatSchoolDateTime(item.submittedAt)}
                   />
                 </div>
                 {item.address && (
@@ -369,7 +370,7 @@ export default async function AdmissionsPage({
                         key={entry.id}
                         className="text-xs text-muted-foreground"
                       >
-                        {entry.createdAt.toLocaleString("en-IN")} ·{" "}
+                        {formatSchoolDateTime(entry.createdAt)} ·{" "}
                         {label(entry.toStatus)} · {entry.changedBy}
                         {entry.note ? ` — ${entry.note}` : ""}
                       </p>
