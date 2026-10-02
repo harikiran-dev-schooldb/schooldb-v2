@@ -5,7 +5,7 @@ import QRCode from "react-qr-code";
 export function ParentQueryQr({ schoolName, schoolSlug }: { schoolName: string; schoolSlug: string }) {
   const url = `https://www.schooldb.co.in/${encodeURIComponent(schoolSlug)}/parent-query`;
   return (
-    <main className="min-h-screen bg-slate-100 px-4 py-8 text-slate-900 print:bg-white">
+    <main className="parent-query-qr-print min-h-screen bg-slate-100 px-4 py-8 text-slate-900 print:bg-white">
       <div className="mx-auto max-w-xl rounded-3xl bg-white p-8 text-center shadow-xl print:shadow-none sm:p-12">
         <p className="text-sm font-bold uppercase tracking-[0.2em] text-indigo-700">{schoolName}</p>
         <h1 className="mt-5 text-3xl font-extrabold">Parents, have a query?</h1>

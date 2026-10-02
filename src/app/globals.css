@@ -1204,8 +1204,35 @@
   .certificate-print,
   .certificate-print *,
   .id-card-print,
-  .id-card-print * {
+  .id-card-print *,
+  .parent-query-qr-print,
+  .parent-query-qr-print * {
     visibility: visible !important;
+  }
+
+  .parent-query-qr-print {
+    position: absolute !important;
+    inset: 0 auto auto 0 !important;
+    width: 100% !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+  }
+
+  .parent-query-qr-print > div {
+    max-width: 150mm !important;
+    margin: 0 auto !important;
+    padding: 12mm !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  .parent-query-qr-print svg {
+    width: 64mm !important;
+    height: 64mm !important;
   }
 
   .certificate-print {
