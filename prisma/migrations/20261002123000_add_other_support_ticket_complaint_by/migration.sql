@@ -1,1 +1,1 @@
-ALTER TYPE "SupportTicketComplaintBy" ADD VALUE 'OTHER';
+ALTER TYPE "SupportTicketComplaintBy" ADD VALUE IF NOT EXISTS 'OTHER';
