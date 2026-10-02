@@ -122,7 +122,15 @@ export async function sendAnnouncementPush(announcement: PushAnnouncement) {
       const notificationBody = announcement.body.length > 500
         ? `${announcement.body.slice(0, 499)}…`
         : announcement.body;
-      const messages: Message[] = chunk.map((device) => {
+      const firebaseDevices = chunk.filter((device) => device.platform !== "IOS");
+      const iosDevices = chunk.filter((device) => device.platform === "IOS");
+      // Native iOS devices are registered now, but APNs delivery is intentionally
+      // excluded from Firebase sends until the APNs provider is configured.
+      // This prevents raw APNs tokens from being treated as Firebase installation IDs.
+      if (iosDevices.length > 0) {
+        console.info("APNs devices awaiting provider configuration", { count: iosDevices.length });
+      }
+      const messages: Message[] = firebaseDevices.map((device) => {
         const data = {
           announcementId: announcement.id,
           schoolId: announcement.schoolId,
@@ -155,6 +163,7 @@ export async function sendAnnouncementPush(announcement: PushAnnouncement) {
           },
         };
       });
+      if (messages.length === 0) continue;
       const result = await messaging.sendEach(messages);
       sent += result.successCount;
       failed += result.failureCount;
@@ -165,7 +174,7 @@ export async function sendAnnouncementPush(announcement: PushAnnouncement) {
           "messaging/invalid-registration-token",
           "messaging/installation-id-not-registered",
         ].includes(response.error?.code ?? "")) {
-          invalidDeviceIds.push(chunk[index].id);
+          invalidDeviceIds.push(firebaseDevices[index].id);
         }
       });
     }

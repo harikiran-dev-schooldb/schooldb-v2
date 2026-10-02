@@ -9,6 +9,7 @@ import { validateBody } from "@/lib/validation";
 const deviceSchema = z.object({
   installationId: z.string().trim().min(10).max(200),
   appVersion: z.string().trim().max(40).optional(),
+  platform: z.enum(["ANDROID", "IOS"]).default("ANDROID"),
 });
 
 export async function POST(request: Request) {
@@ -22,11 +23,13 @@ export async function POST(request: Request) {
         userId: membership.userId,
         installationId: input.installationId,
         appVersion: input.appVersion,
+        platform: input.platform,
       },
       update: {
         schoolId: membership.schoolId,
         userId: membership.userId,
         appVersion: input.appVersion,
+        platform: input.platform,
         enabled: true,
         lastSeenAt: new Date(),
       },
