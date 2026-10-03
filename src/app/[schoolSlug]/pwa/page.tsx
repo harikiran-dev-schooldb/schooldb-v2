@@ -21,7 +21,10 @@ export default async function PwaSettingsPage({ params }: { params: Promise<{ sc
         title="PWA & device settings"
         description="Notifications, offline access, updates, passkeys, sharing, and device diagnostics."
       />
-      <PwaControlCenter schoolSlug={schoolSlug} />
+      <PwaControlCenter
+        schoolSlug={schoolSlug}
+        canViewDeliveryReports={["SUPER_ADMIN", "SCHOOL_ADMIN"].includes(membership.role)}
+      />
     </PageContainer>
   );
 }

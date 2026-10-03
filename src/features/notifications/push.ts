@@ -23,6 +23,52 @@ type PushAnnouncement = {
   targetId: string | null;
 };
 
+export type PushDeliveryReportInput = {
+  schoolId: string;
+  announcementId?: string | null;
+  initiatedByUserId?: string | null;
+  kind?: "ANNOUNCEMENT" | "TEST";
+  title: string;
+  audienceUsers?: number;
+  preferenceEnabledUsers?: number;
+  eligibleDevices?: number;
+  noDeviceUsers?: number;
+  iosDevices?: number;
+  standardWebDevices?: number;
+  firebaseDevices?: number;
+  accepted?: number;
+  failed?: number;
+  invalidDevices?: number;
+  status: "ACCEPTED" | "PARTIAL" | "FAILED" | "NO_DEVICE" | "NO_AUDIENCE" | "PREFERENCES_DISABLED" | "ERROR";
+};
+
+export async function recordPushDeliveryReport(input: PushDeliveryReportInput) {
+  try {
+    await prisma.pushDeliveryReport.create({
+      data: {
+        schoolId: input.schoolId,
+        announcementId: input.announcementId ?? null,
+        initiatedByUserId: input.initiatedByUserId ?? null,
+        kind: input.kind ?? "ANNOUNCEMENT",
+        title: input.title,
+        audienceUsers: input.audienceUsers ?? 0,
+        preferenceEnabledUsers: input.preferenceEnabledUsers ?? 0,
+        eligibleDevices: input.eligibleDevices ?? 0,
+        noDeviceUsers: input.noDeviceUsers ?? 0,
+        iosDevices: input.iosDevices ?? 0,
+        standardWebDevices: input.standardWebDevices ?? 0,
+        firebaseDevices: input.firebaseDevices ?? 0,
+        accepted: input.accepted ?? 0,
+        failed: input.failed ?? 0,
+        invalidDevices: input.invalidDevices ?? 0,
+        status: input.status,
+      },
+    });
+  } catch (error) {
+    console.error("Unable to save push delivery report", error);
+  }
+}
+
 async function audienceUserIds(announcement: PushAnnouncement) {
   if (announcement.targetType === "ADMIN") {
     const memberships = await prisma.membership.findMany({
@@ -99,7 +145,15 @@ async function audienceUserIds(announcement: PushAnnouncement) {
 export async function sendAnnouncementPush(announcement: PushAnnouncement) {
   try {
     const userIds = await audienceUserIds(announcement);
-    if (userIds.length === 0) return { sent: 0, failed: 0, skipped: false };
+    if (userIds.length === 0) {
+      await recordPushDeliveryReport({
+        schoolId: announcement.schoolId,
+        announcementId: announcement.id,
+        title: announcement.title,
+        status: "NO_AUDIENCE",
+      });
+      return { sent: 0, failed: 0, skipped: false };
+    }
 
     const [preferences, school] = await Promise.all([
       prisma.notificationPreference.findMany({
@@ -137,6 +191,7 @@ export async function sendAnnouncementPush(announcement: PushAnnouncement) {
           },
           select: {
             id: true,
+            userId: true,
             installationId: true,
             fcmToken: true,
             webPushSubscription: true,
@@ -159,6 +214,8 @@ export async function sendAnnouncementPush(announcement: PushAnnouncement) {
     let sent = 0;
     let failed = 0;
     const invalidDeviceIds: string[] = [];
+    const usersWithDevices = new Set(devices.map((device) => device.userId));
+    const noDeviceUsers = enabledUserIds.filter((userId) => !usersWithDevices.has(userId)).length;
 
     const iosDevices = devices.filter((device) => device.platform === "IOS");
     if (iosDevices.length) {
@@ -197,6 +254,7 @@ export async function sendAnnouncementPush(announcement: PushAnnouncement) {
               body: notificationBody,
               link,
               tag: `announcement-${announcement.id}`,
+              appBadge: 1,
               data,
             });
             return { status: "fulfilled" as const };
@@ -284,11 +342,38 @@ export async function sendAnnouncementPush(announcement: PushAnnouncement) {
       });
     }
 
+    const status = sent > 0
+      ? failed > 0 ? "PARTIAL" : "ACCEPTED"
+      : failed > 0
+        ? "FAILED"
+        : noDeviceUsers > 0
+          ? "NO_DEVICE"
+          : enabledUserIds.length === 0
+            ? "PREFERENCES_DISABLED"
+            : "ERROR";
+    await recordPushDeliveryReport({
+      schoolId: announcement.schoolId,
+      announcementId: announcement.id,
+      title: announcement.title,
+      audienceUsers: userIds.length,
+      preferenceEnabledUsers: enabledUserIds.length,
+      eligibleDevices: devices.length,
+      noDeviceUsers,
+      iosDevices: iosDevices.length,
+      standardWebDevices: standardWebDevices.length,
+      firebaseDevices: firebaseDevices.length,
+      accepted: sent,
+      failed,
+      invalidDevices: new Set(invalidDeviceIds).size,
+      status,
+    });
+
     console.info("Announcement push delivery completed", {
       announcementId: announcement.id,
       audienceUsers: userIds.length,
       preferenceEnabledUsers: enabledUserIds.length,
       eligibleDevices: devices.length,
+      noDeviceUsers,
       iosDevices: iosDevices.length,
       standardWebDevices: standardWebDevices.length,
       firebaseDevices: firebaseDevices.length,
@@ -296,7 +381,7 @@ export async function sendAnnouncementPush(announcement: PushAnnouncement) {
       failed,
       invalidDevices: invalidDeviceIds.length,
     });
-    return { sent, failed, skipped: false };
+    return { sent, failed, noDeviceUsers, skipped: false };
   } catch (error) {
     console.error("Unable to deliver announcement push notifications", error);
     return { sent: 0, failed: 0, skipped: true };

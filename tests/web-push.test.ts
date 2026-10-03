@@ -13,11 +13,13 @@ test("builds a declarative payload with a service-worker fallback", () => {
     body: "Classes are closed tomorrow.",
     link: "https://schooldb.co.in/demo/notifications/open",
     tag: "announcement-1",
+    appBadge: 3,
     data: { announcementId: "announcement-1" },
   }));
 
   assert.equal(payload.web_push, 8030);
   assert.equal(payload.notification.navigate, "https://schooldb.co.in/demo/notifications/open");
+  assert.equal(payload.notification.app_badge, "3");
   assert.equal(payload.data.link, "https://schooldb.co.in/demo/notifications/open");
   assert.equal(payload.data.announcementId, "announcement-1");
 });

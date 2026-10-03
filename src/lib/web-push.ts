@@ -11,6 +11,7 @@ export type SchoolWebPushPayload = {
   icon?: string;
   badge?: string;
   tag?: string;
+  appBadge?: number;
   data?: Record<string, string>;
 };
 
@@ -53,6 +54,7 @@ export function buildWebPushPayload(payload: SchoolWebPushPayload) {
       icon: payload.icon ?? "/pwa-192.png",
       badge: payload.badge ?? "/pwa-192.png",
       tag: payload.tag,
+      app_badge: payload.appBadge === undefined ? undefined : String(payload.appBadge),
     },
     data: {
       ...payload.data,
@@ -76,6 +78,7 @@ export async function sendStandardWebPush(
       TTL: 24 * 60 * 60,
       urgency: "normal",
       topic: payload.tag?.slice(0, 32),
+      headers: { "Content-Type": "application/notification+json" },
     },
   );
 }

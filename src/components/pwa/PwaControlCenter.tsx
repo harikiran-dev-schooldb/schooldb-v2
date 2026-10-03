@@ -3,6 +3,7 @@
 import { useAuth, useUser } from "@clerk/nextjs";
 import {
   BellRing,
+  BarChart3,
   CheckCircle2,
   Cloud,
   Database,
@@ -10,6 +11,7 @@ import {
   HardDrive,
   RefreshCw,
   Share2,
+  Send,
   Smartphone,
   Wifi,
 } from "lucide-react";
@@ -49,7 +51,27 @@ const preferenceLabels: Array<[keyof NotificationPreferenceValues, string, strin
   ["urgent", "Urgent alerts", "Time-sensitive school safety and priority notices"],
 ];
 
-export function PwaControlCenter({ schoolSlug }: { schoolSlug: string }) {
+type PushReport = {
+  id: string;
+  kind: string;
+  title: string;
+  audienceUsers: number;
+  eligibleDevices: number;
+  noDeviceUsers: number;
+  accepted: number;
+  failed: number;
+  invalidDevices: number;
+  status: string;
+  createdAt: string;
+};
+
+export function PwaControlCenter({
+  schoolSlug,
+  canViewDeliveryReports,
+}: {
+  schoolSlug: string;
+  canViewDeliveryReports: boolean;
+}) {
   const { userId } = useAuth();
   const { user } = useUser();
   const ownerKey = useMemo(() => userId ? `${userId}:${schoolSlug}` : null, [schoolSlug, userId]);
@@ -60,6 +82,8 @@ export function PwaControlCenter({ schoolSlug }: { schoolSlug: string }) {
   const [storage, setStorage] = useState<{ usage: number; quota: number } | null>(null);
   const [serviceWorker, setServiceWorker] = useState("Checking");
   const [installed, setInstalled] = useState(false);
+  const [testResult, setTestResult] = useState<string | null>(null);
+  const [reports, setReports] = useState<PushReport[]>([]);
   const [busy, setBusy] = useState(false);
 
   const loadLocalStatus = useCallback(async () => {
@@ -83,6 +107,15 @@ export function PwaControlCenter({ schoolSlug }: { schoolSlug: string }) {
     }
   }, [ownerKey, schoolSlug]);
 
+  const loadDeliveryReports = useCallback(async () => {
+    if (!canViewDeliveryReports) return;
+    const response = await fetch(`/api/v1/pwa/push-reports?schoolSlug=${encodeURIComponent(schoolSlug)}`, {
+      cache: "no-store",
+    });
+    const result = await response.json();
+    if (response.ok && result.success) setReports(result.data);
+  }, [canViewDeliveryReports, schoolSlug]);
+
   useEffect(() => {
     const timeout = window.setTimeout(() => void loadLocalStatus(), 0);
     return () => window.clearTimeout(timeout);
@@ -100,6 +133,11 @@ export function PwaControlCenter({ schoolSlug }: { schoolSlug: string }) {
       cancelled = true;
     };
   }, [schoolSlug]);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => void loadDeliveryReports().catch(() => undefined), 0);
+    return () => window.clearTimeout(timeout);
+  }, [loadDeliveryReports]);
 
   async function enableNotifications() {
     setBusy(true);
@@ -130,6 +168,30 @@ export function PwaControlCenter({ schoolSlug }: { schoolSlug: string }) {
     } catch (error) {
       setPreferences(previous);
       toast.error(error instanceof Error ? error.message : "Unable to save preferences.");
+    }
+  }
+
+  async function sendTestNotification() {
+    setBusy(true);
+    setTestResult(null);
+    try {
+      const response = await fetch("/api/v1/pwa/test-notification", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ schoolSlug }),
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) throw new Error(result.message || "Test notification failed.");
+      setTestResult(result.message);
+      toast.success("Test sent. Check the iPhone Lock Screen or Notification Centre.");
+      await loadDeliveryReports();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Test notification failed.";
+      setTestResult(message);
+      toast.error(message);
+      await loadDeliveryReports();
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -207,6 +269,10 @@ export function PwaControlCenter({ schoolSlug }: { schoolSlug: string }) {
               <BellRing className="size-4" /> Enable notifications
             </Button>
           )}
+          <Button type="button" variant="outline" disabled={busy || pushState !== "enabled"} onClick={() => void sendTestNotification()}>
+            <Send className="size-4" /> Send test notification
+          </Button>
+          {testResult && <p role="status" className="rounded-xl border border-border/70 bg-muted/35 px-3 py-2 text-sm text-muted-foreground">{testResult}</p>}
           {pushState === "requires-install" && <p className="text-sm text-muted-foreground">On iPhone, first add SchoolDB to the Home Screen, open the installed app, then return here.</p>}
           {pushState === "denied" && <p className="text-sm text-muted-foreground">Notifications are blocked in device settings. Allow SchoolDB there, then reopen the app.</p>}
           <div className="divide-y rounded-2xl border border-border/70">
@@ -254,6 +320,42 @@ export function PwaControlCenter({ schoolSlug }: { schoolSlug: string }) {
           </CardContent>
         </Card>
       </div>
+
+      {canViewDeliveryReports && (
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2"><BarChart3 className="size-5 text-primary" /> Notification delivery reports</CardTitle>
+            <CardDescription>“Accepted” means Apple, Firebase, or the push provider accepted the message. Web Push does not provide a read receipt.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {reports.length === 0 ? (
+              <p className="rounded-2xl border border-dashed p-6 text-center text-sm text-muted-foreground">No delivery reports yet. New announcements and test notifications will appear here.</p>
+            ) : (
+              <div className="overflow-x-auto rounded-2xl border border-border/70">
+                <table className="w-full min-w-[760px] text-sm">
+                  <thead className="bg-muted/45 text-left text-xs uppercase tracking-wide text-muted-foreground">
+                    <tr><th className="px-4 py-3">Notification</th><th className="px-3 py-3">Status</th><th className="px-3 py-3">Audience</th><th className="px-3 py-3">Devices</th><th className="px-3 py-3">Accepted</th><th className="px-3 py-3">Failed</th><th className="px-3 py-3">No device</th><th className="px-4 py-3">Time</th></tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/70">
+                    {reports.map((report) => (
+                      <tr key={report.id}>
+                        <td className="px-4 py-3"><p className="max-w-xs truncate font-semibold">{report.title}</p><p className="mt-1 text-xs text-muted-foreground">{report.kind === "TEST" ? "Test" : "Announcement"}{report.invalidDevices ? ` · ${report.invalidDevices} expired` : ""}</p></td>
+                        <td className="px-3 py-3"><Badge variant={reportVariant(report.status)}>{reportStatusLabel(report.status)}</Badge></td>
+                        <td className="px-3 py-3">{report.audienceUsers}</td>
+                        <td className="px-3 py-3">{report.eligibleDevices}</td>
+                        <td className="px-3 py-3 font-semibold text-emerald-700">{report.accepted}</td>
+                        <td className="px-3 py-3 font-semibold text-destructive">{report.failed}</td>
+                        <td className="px-3 py-3">{report.noDeviceUsers}</td>
+                        <td className="whitespace-nowrap px-4 py-3 text-xs text-muted-foreground">{new Date(report.createdAt).toLocaleString("en-IN")}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
@@ -274,4 +376,21 @@ function pushStateLabel(state: BrowserPushState) {
   if (state === "requires-install") return "Install required";
   if (state === "unsupported") return "Unavailable";
   return "Ready to enable";
+}
+
+function reportStatusLabel(status: string) {
+  if (status === "ACCEPTED") return "Accepted";
+  if (status === "PARTIAL") return "Partial";
+  if (status === "FAILED") return "Failed";
+  if (status === "NO_DEVICE") return "No device";
+  if (status === "NO_AUDIENCE") return "No audience";
+  if (status === "PREFERENCES_DISABLED") return "Preferences off";
+  return "Error";
+}
+
+function reportVariant(status: string): "success" | "warning" | "destructive" | "secondary" {
+  if (status === "ACCEPTED") return "success";
+  if (status === "PARTIAL") return "warning";
+  if (status === "FAILED" || status === "ERROR") return "destructive";
+  return "secondary";
 }

@@ -98,6 +98,7 @@ model School {
   parentStudentLinks          ParentStudentLink[]
   periods                     Period[]
   pushDevices                 PushDevice[]
+  pushDeliveryReports         PushDeliveryReport[]
   notificationPreferences     NotificationPreference[]
   admissionSetting            SchoolAdmissionSetting?
   calendarEvents              SchoolCalendarEvent[]
@@ -181,6 +182,7 @@ model User {
   otpChallenges               OtpChallenge[]
   parentStudentLinks          ParentStudentLink[]
   pushDevices                 PushDevice[]
+  initiatedPushReports        PushDeliveryReport[]         @relation("PushDeliveryReportInitiator")
   notificationPreferences     NotificationPreference[]
   createdSupportTickets       SupportTicket[]              @relation("SupportTicketCreator")
   assignedSupportTickets      SupportTicket[]              @relation("SupportTicketAssignee")
@@ -305,6 +307,33 @@ model NotificationPreference {
 
   @@unique([schoolId, userId])
   @@index([userId])
+}
+
+model PushDeliveryReport {
+  id                     String   @id @default(cuid())
+  schoolId               String
+  announcementId         String?
+  initiatedByUserId      String?
+  kind                   String   @default("ANNOUNCEMENT")
+  title                  String
+  audienceUsers          Int      @default(0)
+  preferenceEnabledUsers Int      @default(0)
+  eligibleDevices        Int      @default(0)
+  noDeviceUsers          Int      @default(0)
+  iosDevices             Int      @default(0)
+  standardWebDevices     Int      @default(0)
+  firebaseDevices        Int      @default(0)
+  accepted               Int      @default(0)
+  failed                 Int      @default(0)
+  invalidDevices         Int      @default(0)
+  status                 String
+  createdAt              DateTime @default(now())
+  school                 School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  initiatedByUser        User?    @relation("PushDeliveryReportInitiator", fields: [initiatedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([schoolId, createdAt])
+  @@index([schoolId, announcementId])
+  @@index([initiatedByUserId, createdAt])
 }
 
 model SchoolCalendarEvent {
