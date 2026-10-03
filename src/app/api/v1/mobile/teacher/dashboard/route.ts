@@ -183,6 +183,7 @@ export async function GET() {
           classId: true,
           sectionId: true,
           locked: true,
+          sessionType: true,
           _count: { select: { records: true } },
         },
       }),
@@ -303,6 +304,7 @@ export async function GET() {
               className: allocation.class.name,
               sectionName: allocation.section.name,
               attendanceSessionId: session?.id ?? null,
+              attendanceSessionType: session?.sessionType ?? null,
               attendanceCount: session?._count.records ?? 0,
               attendanceLocked: session?.locked ?? false,
             };

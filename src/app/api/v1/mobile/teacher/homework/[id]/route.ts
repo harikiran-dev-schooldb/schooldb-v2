@@ -33,7 +33,24 @@ export async function PUT(req: Request, { params }: Props) {
     ]);
 
     if (!homework) throw new Error("Homework not found or not owned by this teacher.");
-    if (!allocation) throw new Error("This class and subject are not assigned to you.");
+
+    const classAssignment = allocation
+      ? null
+      : await prisma.classTeacherAssignment.findFirst({
+          where: {
+            id: body.allocationId,
+            schoolId: membership.schoolId,
+            teacherId: teacher.id,
+            active: true,
+            academicYear: { active: true },
+          },
+          select: { academicYearId: true, classId: true, sectionId: true },
+        });
+
+    if (!allocation && !classAssignment) {
+      throw new Error("This class or subject is not assigned to you.");
+    }
+    const target = allocation ?? classAssignment!;
 
     const dueDate = new Date(`${body.dueDate}T00:00:00.000Z`);
     if (Number.isNaN(dueDate.getTime()) || dueDate < homework.assignedDate) {
@@ -43,10 +60,10 @@ export async function PUT(req: Request, { params }: Props) {
     const item = await prisma.homework.update({
       where: { id: homework.id },
       data: {
-        academicYearId: allocation.academicYearId,
-        classId: allocation.classId,
-        sectionId: allocation.sectionId,
-        subjectId: allocation.subjectId,
+        academicYearId: target.academicYearId,
+        classId: target.classId,
+        sectionId: target.sectionId,
+        subjectId: allocation?.subjectId ?? null,
         title: body.title,
         description: body.description || null,
         dueDate,
