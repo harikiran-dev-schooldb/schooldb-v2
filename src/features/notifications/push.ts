@@ -1,5 +1,6 @@
 import type { Message } from "firebase-admin/messaging";
 
+import { sendApnsPush } from "@/lib/apns";
 import { firebaseMessaging } from "@/lib/firebase-admin";
 import { prisma } from "@/lib/prisma";
 
@@ -88,12 +89,10 @@ async function audienceUserIds(announcement: PushAnnouncement) {
 }
 
 export async function sendAnnouncementPush(announcement: PushAnnouncement) {
-  const messaging = firebaseMessaging();
-  if (!messaging) return { sent: 0, failed: 0, skipped: true };
-
   try {
     const userIds = await audienceUserIds(announcement);
     if (userIds.length === 0) return { sent: 0, failed: 0, skipped: false };
+
     const [devices, school] = await Promise.all([
       prisma.pushDevice.findMany({
         where: {
@@ -114,80 +113,103 @@ export async function sendAnnouncementPush(announcement: PushAnnouncement) {
       }),
     ]);
 
+    const notificationBody = announcement.body.length > 500
+      ? `${announcement.body.slice(0, 499)}…`
+      : announcement.body;
+    const data = {
+      announcementId: announcement.id,
+      schoolId: announcement.schoolId,
+      category: announcement.category,
+      priority: announcement.priority,
+      link: school ? `/${school.slug}/notifications/open` : "/",
+    };
+
     let sent = 0;
     let failed = 0;
     const invalidDeviceIds: string[] = [];
-    for (let offset = 0; offset < devices.length; offset += 500) {
-      const chunk = devices.slice(offset, offset + 500);
-      const notificationBody = announcement.body.length > 500
-        ? `${announcement.body.slice(0, 499)}…`
-        : announcement.body;
-      const firebaseDevices = chunk.filter((device) => device.platform !== "IOS");
-      const iosDevices = chunk.filter((device) => device.platform === "IOS");
-      // Native iOS devices are registered now, but APNs delivery is intentionally
-      // excluded from Firebase sends until the APNs provider is configured.
-      // This prevents raw APNs tokens from being treated as Firebase installation IDs.
-      if (iosDevices.length > 0) {
-        console.info("APNs devices awaiting provider configuration", { count: iosDevices.length });
-      }
-      const messages: Message[] = firebaseDevices.map((device) => {
-        const data = {
-          announcementId: announcement.id,
-          schoolId: announcement.schoolId,
-          category: announcement.category,
-          priority: announcement.priority,
-          link: school ? `/${school.slug}/notifications/open` : "/",
-        };
-        if (device.platform === "WEB" && device.fcmToken) {
+
+    const iosDevices = devices.filter((device) => device.platform === "IOS");
+    if (iosDevices.length) {
+      const apns = await sendApnsPush(
+        iosDevices.map((device) => device.installationId),
+        {
+          title: announcement.title,
+          body: notificationBody,
+          data,
+          collapseId: `announcement-${announcement.id}`,
+        },
+      );
+      sent += apns.sent;
+      failed += apns.failed;
+      const invalidTokens = new Set(apns.invalidTokens);
+      invalidDeviceIds.push(
+        ...iosDevices.filter((device) => invalidTokens.has(device.installationId)).map((device) => device.id),
+      );
+    }
+
+    const firebaseDevices = devices.filter((device) => device.platform !== "IOS");
+    const messaging = firebaseMessaging();
+    if (firebaseDevices.length && messaging) {
+      for (let offset = 0; offset < firebaseDevices.length; offset += 500) {
+        const chunk = firebaseDevices.slice(offset, offset + 500);
+        const messages: Message[] = chunk.map((device) => {
+          if (device.platform === "WEB" && device.fcmToken) {
+            return {
+              token: device.fcmToken,
+              notification: { title: announcement.title, body: notificationBody },
+              data,
+              webpush: {
+                notification: {
+                  icon: "/pwa-192.png",
+                  badge: "/pwa-192.png",
+                  tag: `announcement-${announcement.id}`,
+                },
+                fcmOptions: { link: data.link },
+              },
+            };
+          }
           return {
-            token: device.fcmToken,
+            fid: device.installationId,
             notification: { title: announcement.title, body: notificationBody },
             data,
-            webpush: {
-              notification: {
-                icon: "/pwa-192.png",
-                badge: "/pwa-192.png",
-                tag: `announcement-${announcement.id}`,
-              },
-              fcmOptions: { link: data.link },
+            android: {
+              priority: announcement.priority === "URGENT" ? "high" : "normal",
+              notification: { channelId: "school_updates", sound: "default" },
             },
           };
-        }
-        return {
-          fid: device.installationId,
-          notification: { title: announcement.title, body: notificationBody },
-          data,
-          android: {
-            priority: announcement.priority === "URGENT" ? "high" : "normal",
-            notification: { channelId: "school_updates", sound: "default" },
-          },
-        };
-      });
-      if (messages.length === 0) continue;
-      const result = await messaging.sendEach(messages);
-      sent += result.successCount;
-      failed += result.failureCount;
-      result.responses.forEach((response, index) => {
-        if (response.success) return;
-        if ([
-          "messaging/registration-token-not-registered",
-          "messaging/invalid-registration-token",
-          "messaging/installation-id-not-registered",
-        ].includes(response.error?.code ?? "")) {
-          invalidDeviceIds.push(firebaseDevices[index].id);
-        }
-      });
+        });
+        const result = await messaging.sendEach(messages);
+        sent += result.successCount;
+        failed += result.failureCount;
+        result.responses.forEach((response, index) => {
+          if (response.success) return;
+          if ([
+            "messaging/registration-token-not-registered",
+            "messaging/invalid-registration-token",
+            "messaging/installation-id-not-registered",
+          ].includes(response.error?.code ?? "")) {
+            invalidDeviceIds.push(chunk[index].id);
+          }
+        });
+      }
+    } else if (firebaseDevices.length) {
+      failed += firebaseDevices.length;
+      console.warn("Firebase push skipped: provider credentials are unavailable.");
     }
+
     if (invalidDeviceIds.length > 0) {
       await prisma.pushDevice.updateMany({
-        where: { id: { in: invalidDeviceIds } },
+        where: { id: { in: [...new Set(invalidDeviceIds)] } },
         data: { enabled: false },
       });
     }
+
     console.info("Announcement push delivery completed", {
       announcementId: announcement.id,
       audienceUsers: userIds.length,
       eligibleDevices: devices.length,
+      iosDevices: iosDevices.length,
+      firebaseDevices: firebaseDevices.length,
       sent,
       failed,
       invalidDevices: invalidDeviceIds.length,
