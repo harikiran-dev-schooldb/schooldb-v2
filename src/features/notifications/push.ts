@@ -10,6 +10,7 @@ import {
   standardWebPushConfigured,
 } from "@/lib/web-push";
 import { mapWithConcurrency } from "./batch";
+import { notificationEnabled } from "./preferences";
 
 type PushAnnouncement = {
   id: string;
@@ -100,19 +101,18 @@ export async function sendAnnouncementPush(announcement: PushAnnouncement) {
     const userIds = await audienceUserIds(announcement);
     if (userIds.length === 0) return { sent: 0, failed: 0, skipped: false };
 
-    const [devices, school] = await Promise.all([
-      prisma.pushDevice.findMany({
-        where: {
-          schoolId: announcement.schoolId,
-          userId: { in: userIds },
-          enabled: true,
-        },
+    const [preferences, school] = await Promise.all([
+      prisma.notificationPreference.findMany({
+        where: { schoolId: announcement.schoolId, userId: { in: userIds } },
         select: {
-          id: true,
-          installationId: true,
-          fcmToken: true,
-          webPushSubscription: true,
-          platform: true,
+          userId: true,
+          announcements: true,
+          homework: true,
+          attendance: true,
+          fees: true,
+          exams: true,
+          leaveUpdates: true,
+          urgent: true,
         },
       }),
       prisma.school.findUnique({
@@ -120,6 +120,30 @@ export async function sendAnnouncementPush(announcement: PushAnnouncement) {
         select: { slug: true },
       }),
     ]);
+    const preferencesByUser = new Map(preferences.map((item) => [item.userId, item]));
+    const enabledUserIds = userIds.filter((userId) =>
+      notificationEnabled(
+        preferencesByUser.get(userId),
+        announcement.category,
+        announcement.priority,
+      ),
+    );
+    const devices = enabledUserIds.length
+      ? await prisma.pushDevice.findMany({
+          where: {
+            schoolId: announcement.schoolId,
+            userId: { in: enabledUserIds },
+            enabled: true,
+          },
+          select: {
+            id: true,
+            installationId: true,
+            fcmToken: true,
+            webPushSubscription: true,
+            platform: true,
+          },
+        })
+      : [];
 
     const notificationBody = announcement.body.length > 500
       ? `${announcement.body.slice(0, 499)}…`
@@ -129,7 +153,7 @@ export async function sendAnnouncementPush(announcement: PushAnnouncement) {
       schoolId: announcement.schoolId,
       category: announcement.category,
       priority: announcement.priority,
-      link: school ? `/${school.slug}/notifications/open` : "/",
+      link: school ? `/${school.slug}/notifications/open?announcementId=${encodeURIComponent(announcement.id)}` : "/",
     };
 
     let sent = 0;
@@ -263,6 +287,7 @@ export async function sendAnnouncementPush(announcement: PushAnnouncement) {
     console.info("Announcement push delivery completed", {
       announcementId: announcement.id,
       audienceUsers: userIds.length,
+      preferenceEnabledUsers: enabledUserIds.length,
       eligibleDevices: devices.length,
       iosDevices: iosDevices.length,
       standardWebDevices: standardWebDevices.length,

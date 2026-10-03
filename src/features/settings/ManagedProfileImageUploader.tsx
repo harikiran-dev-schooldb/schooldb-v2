@@ -119,6 +119,7 @@ export function ManagedProfileImageUploader({
           ref={inputRef}
           type="file"
           accept="image/jpeg,image/png,image/webp"
+          capture="user"
           disabled={busy}
           className="sr-only"
           aria-label={`Choose ${targetType.toLowerCase()} profile image`}

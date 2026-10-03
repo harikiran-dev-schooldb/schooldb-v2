@@ -1,4 +1,4 @@
-const CACHE_NAME = "schooldb-pwa-v5";
+const CACHE_NAME = "schooldb-pwa-v7";
 const OFFLINE_URL = "/offline";
 const HOSTNAME = self.location.hostname.toLowerCase();
 const ALLOWED_HOST = HOSTNAME === "schooldb.co.in" || HOSTNAME.endsWith(".schooldb.co.in");
@@ -9,14 +9,23 @@ const APP_ASSETS = [
   "/apple-touch-icon.png",
 ];
 
+async function cacheOfflineShell() {
+  const cache = await caches.open(CACHE_NAME);
+  await cache.addAll(APP_ASSETS.filter((asset) => asset !== OFFLINE_URL));
+  const response = await fetch(OFFLINE_URL, { cache: "no-store" });
+  if (!response.ok) throw new Error("Offline page could not be cached");
+  await cache.put(OFFLINE_URL, response.clone());
+  const html = await response.text();
+  const staticAssets = [...new Set(html.match(/\/_next\/static\/[^"'<>\s]+/g) || [])];
+  await Promise.all(staticAssets.map((asset) => cache.add(asset).catch(() => undefined)));
+}
+
 self.addEventListener("install", (event) => {
   if (!ALLOWED_HOST) {
     event.waitUntil(self.registration.unregister());
     return;
   }
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_ASSETS)),
-  );
+  event.waitUntil(cacheOfflineShell());
   self.skipWaiting();
 });
 
@@ -43,6 +52,10 @@ self.addEventListener("activate", (event) => {
   );
 });
 
+self.addEventListener("message", (event) => {
+  if (event.data?.type === "SKIP_WAITING") self.skipWaiting();
+});
+
 self.addEventListener("fetch", (event) => {
   if (!ALLOWED_HOST) return;
   const request = event.request;
@@ -62,7 +75,7 @@ self.addEventListener("fetch", (event) => {
 
   // Next.js fingerprints production assets and controls their caching headers.
   // Caching dev chunks here can keep old environment variables in the browser.
-  const isStaticAsset = APP_ASSETS.includes(url.pathname);
+  const isStaticAsset = APP_ASSETS.includes(url.pathname) || url.pathname.startsWith("/_next/static/");
 
   if (!isStaticAsset) return;
 

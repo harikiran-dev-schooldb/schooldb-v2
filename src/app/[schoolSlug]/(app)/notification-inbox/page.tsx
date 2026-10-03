@@ -10,13 +10,15 @@ import { formatDate } from "@/lib/self-service-format";
 
 export default async function NotificationInboxPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ schoolSlug: string }>;
+  searchParams: Promise<{ announcementId?: string }>;
 }) {
-  const { schoolSlug } = await params;
+  const [{ schoolSlug }, query] = await Promise.all([params, searchParams]);
   const { membership, where } = await notificationContext(schoolSlug);
   const items = await prisma.announcement.findMany({
-    where,
+    where: { ...where, ...(query.announcementId ? { id: query.announcementId } : {}) },
     orderBy: [{ publishedAt: "desc" }, { id: "desc" }],
     take: 100,
     include: {
@@ -48,8 +50,9 @@ export default async function NotificationInboxPage({
             return (
               <article
                 key={item.id}
-                className={`rounded-3xl border bg-card p-5 shadow-sm ${
-                  read ? "border-border/70" : "border-primary/30 ring-1 ring-primary/10"
+                id={`announcement-${item.id}`}
+                className={`scroll-mt-24 rounded-3xl border bg-card p-5 shadow-sm ${
+                  query.announcementId === item.id ? "border-primary ring-4 ring-primary/15" : read ? "border-border/70" : "border-primary/30 ring-1 ring-primary/10"
                 }`}
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">

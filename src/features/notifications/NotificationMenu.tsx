@@ -1,13 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Bell, BellOff, Check, Loader2, Settings2 } from "lucide-react";
+import { Bell, Check, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { SCHOOL_TIME_ZONE } from "@/lib/date-time";
-import { isSchoolDbProductionHost } from "@/lib/production-domain";
+import { isApplePlatform } from "@/lib/browser-push";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -32,49 +32,6 @@ type Feed = {
   unreadCount: number;
   items: NotificationItem[];
 };
-
-const standardWebPushVapidKey = process.env.NEXT_PUBLIC_WEB_PUSH_VAPID_KEY;
-
-function withTimeout<T>(promise: Promise<T>, milliseconds: number, message: string) {
-  return new Promise<T>((resolve, reject) => {
-    const timeout = window.setTimeout(() => reject(new Error(message)), milliseconds);
-    promise.then(
-      (value) => {
-        window.clearTimeout(timeout);
-        resolve(value);
-      },
-      (error) => {
-        window.clearTimeout(timeout);
-        reject(error);
-      },
-    );
-  });
-}
-
-function browserDeviceKey(schoolSlug: string) {
-  return `schooldb:web-push:v1:${schoolSlug}`;
-}
-
-function isApplePlatform() {
-  return /iPhone|iPad|iPod|Macintosh/i.test(navigator.userAgent)
-    || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-}
-
-function isAppleMobile() {
-  return /iPhone|iPad|iPod/i.test(navigator.userAgent)
-    || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-}
-
-function isStandalone() {
-  return window.matchMedia("(display-mode: standalone)").matches
-    || (navigator as Navigator & { standalone?: boolean }).standalone === true;
-}
-
-function applicationServerKey(value: string) {
-  const padding = "=".repeat((4 - (value.length % 4)) % 4);
-  const base64 = (value + padding).replace(/-/g, "+").replace(/_/g, "/");
-  return Uint8Array.from(window.atob(base64), (character) => character.charCodeAt(0));
-}
 
 async function updateAppBadge(count: number) {
   if (!("setAppBadge" in navigator)) return;
@@ -109,9 +66,6 @@ export function NotificationMenu({
     items: [],
   }));
   const [loading, setLoading] = useState(true);
-  const [pushBusy, setPushBusy] = useState(false);
-  const [pushStage, setPushStage] = useState("");
-  const [pushEnabled, setPushEnabled] = useState(false);
 
   const loadFeed = useCallback(async () => {
     try {
@@ -129,67 +83,8 @@ export function NotificationMenu({
     }
   }, [schoolSlug]);
 
-  const rebindPush = useCallback(async () => {
-    if (!isSchoolDbProductionHost(window.location.hostname)) return;
-
-    if (
-      !("Notification" in window) ||
-      !("serviceWorker" in navigator) ||
-      Notification.permission !== "granted" ||
-      (isApplePlatform() && !("PushManager" in window))
-    ) return;
-
-    const key = browserDeviceKey(schoolSlug);
-    const installationId = localStorage.getItem(key);
-    if (!installationId) return;
-
-    try {
-      const registration =
-        (await navigator.serviceWorker.getRegistration("/")) ??
-        (await navigator.serviceWorker.register("/sw.js", { scope: "/" }));
-
-      let registrationBody: { fcmToken: string } | { webPushSubscription: PushSubscriptionJSON };
-      if (isApplePlatform()) {
-        const subscription = await registration.pushManager.getSubscription();
-        if (!subscription) return;
-        registrationBody = { webPushSubscription: subscription.toJSON() };
-      } else {
-        const [{ getToken }, firebaseClient] = await Promise.all([
-          import("firebase/messaging"),
-          import("@/lib/firebase-client"),
-        ]);
-        if (!firebaseClient.firebaseWebPushConfigured || !firebaseClient.firebaseVapidKey) return;
-        const messaging = await firebaseClient.webMessaging();
-        if (!messaging) return;
-        const fcmToken = await getToken(messaging, {
-          vapidKey: firebaseClient.firebaseVapidKey,
-          serviceWorkerRegistration: registration,
-        });
-        if (!fcmToken) return;
-        registrationBody = { fcmToken };
-      }
-
-      const response = await fetch("/api/v1/web-push/devices", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ schoolSlug, installationId, ...registrationBody }),
-      });
-      if (response.ok) setPushEnabled(true);
-    } catch (error) {
-      console.warn("Unable to refresh browser push registration.", error);
-    }
-  }, [schoolSlug]);
-
   useEffect(() => {
-    // The subscription flag is browser-local and is only available after hydration.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setPushEnabled(
-      Boolean(localStorage.getItem(browserDeviceKey(schoolSlug)))
-        && "Notification" in window
-        && Notification.permission === "granted",
-    );
     void loadFeed();
-    void rebindPush();
     const refresh = () => {
       if (document.visibilityState === "visible") void loadFeed();
     };
@@ -202,12 +97,11 @@ export function NotificationMenu({
       document.removeEventListener("visibilitychange", refresh);
       navigator.serviceWorker?.removeEventListener("message", pushMessage);
     };
-  }, [loadFeed, rebindPush, schoolSlug]);
+  }, [loadFeed]);
 
   useEffect(() => {
     if (
-      !pushEnabled
-      || isApplePlatform()
+      isApplePlatform()
       || !("Notification" in window)
       || Notification.permission !== "granted"
     ) {
@@ -232,7 +126,7 @@ export function NotificationMenu({
     });
 
     return () => unsubscribe?.();
-  }, [loadFeed, pushEnabled]);
+  }, [loadFeed]);
 
   async function markRead(item: NotificationItem) {
     if (!item.read) {
@@ -254,142 +148,6 @@ export function NotificationMenu({
       void updateAppBadge(Math.max(0, feed.unreadCount - 1));
     }
     router.push(notificationsHref);
-  }
-
-  async function enablePush() {
-    if (!isSchoolDbProductionHost(window.location.hostname)) {
-      toast.error("Browser notifications are available only on schooldb.co.in.");
-      return;
-    }
-    if (isAppleMobile() && !isStandalone()) {
-      toast.info("On iPhone or iPad, first tap Share → Add to Home Screen. Then open SchoolDB from the Home Screen and enable alerts.", {
-        duration: 8_000,
-      });
-      return;
-    }
-    if (!("Notification" in window) || !("serviceWorker" in navigator) || !("PushManager" in window)) {
-      toast.error("This browser does not support push notifications.");
-      return;
-    }
-
-    setPushBusy(true);
-    try {
-      setPushStage("Requesting permission");
-      const permission = await Notification.requestPermission();
-      if (permission !== "granted") {
-        toast.error("Notification permission was not granted.");
-        return;
-      }
-
-      setPushStage("Starting service worker");
-      const existingRegistration =
-        await navigator.serviceWorker.getRegistration("/");
-      if (!existingRegistration) {
-        await navigator.serviceWorker.register("/sw.js", { scope: "/" });
-      }
-      const registration = await withTimeout(
-        navigator.serviceWorker.ready,
-        10_000,
-        "The notification service worker did not become ready. Reload the page and try again.",
-      );
-      let registrationBody: { fcmToken: string } | { webPushSubscription: PushSubscriptionJSON };
-      if (isApplePlatform()) {
-        if (!standardWebPushVapidKey) {
-          throw new Error("iPhone and Safari push needs the Web Push VAPID key to be configured.");
-        }
-        setPushStage("Registering Safari");
-        const subscription = (await registration.pushManager.getSubscription())
-          ?? await withTimeout(
-            registration.pushManager.subscribe({
-              userVisibleOnly: true,
-              applicationServerKey: applicationServerKey(standardWebPushVapidKey),
-            }),
-            20_000,
-            "Safari did not create a push subscription. Check notification settings and try again.",
-          );
-        registrationBody = { webPushSubscription: subscription.toJSON() };
-      } else {
-        const [{ getToken }, firebaseClient] = await Promise.all([
-          import("firebase/messaging"),
-          import("@/lib/firebase-client"),
-        ]);
-        const { firebaseVapidKey, firebaseWebPushConfigured, webMessaging } = firebaseClient;
-        if (!firebaseWebPushConfigured || !firebaseVapidKey) {
-          throw new Error("Browser push needs the Firebase web keys to be configured.");
-        }
-        setPushStage("Starting Firebase");
-        const messaging = await withTimeout(
-          webMessaging(),
-          10_000,
-          "Firebase messaging did not start. Check browser storage access and reload.",
-        );
-        if (!messaging) throw new Error("Push messaging is unavailable.");
-        setPushStage("Registering browser");
-        const fcmToken = await withTimeout(
-          getToken(messaging, {
-            vapidKey: firebaseVapidKey,
-            serviceWorkerRegistration: registration,
-          }),
-          20_000,
-          "Firebase did not return a browser token. Confirm that the VAPID key belongs to this Firebase project.",
-        );
-        if (!fcmToken) throw new Error("The browser did not return a push token.");
-        registrationBody = { fcmToken };
-      }
-
-      const key = browserDeviceKey(schoolSlug);
-      const installationId =
-        localStorage.getItem(key) ?? `web:${crypto.randomUUID()}`;
-      const response = await fetch("/api/v1/web-push/devices", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ schoolSlug, installationId, ...registrationBody }),
-      });
-      const result = await response.json();
-      if (!response.ok || !result.success) {
-        throw new Error(result.message || "Unable to enable browser alerts.");
-      }
-      localStorage.setItem(key, installationId);
-      setPushEnabled(true);
-      toast.success("Browser notifications are enabled.");
-    } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Unable to enable browser alerts.",
-      );
-    } finally {
-      setPushBusy(false);
-      setPushStage("");
-    }
-  }
-
-  async function disablePush() {
-    const key = browserDeviceKey(schoolSlug);
-    const installationId = localStorage.getItem(key);
-    if (!installationId) {
-      setPushEnabled(false);
-      return;
-    }
-
-    setPushBusy(true);
-    try {
-      const response = await fetch("/api/v1/web-push/devices", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ schoolSlug, installationId }),
-      });
-      if (!response.ok) throw new Error("Unable to disable browser alerts.");
-      localStorage.removeItem(key);
-      setPushEnabled(false);
-      toast.success("Browser notifications are disabled for this school.");
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Unable to disable browser alerts.",
-      );
-    } finally {
-      setPushBusy(false);
-    }
   }
 
   return (
@@ -463,33 +221,12 @@ export function NotificationMenu({
           ))
         )}
         <DropdownMenuSeparator />
-        <div className="grid grid-cols-2 gap-1">
+        <div>
           <DropdownMenuItem
             className="cursor-pointer justify-center rounded-xl"
             onSelect={() => router.push(notificationsHref)}
           >
             <Check className="size-4" /> View all
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            disabled={pushBusy}
-            className="cursor-pointer justify-center rounded-xl"
-            onSelect={(event) => {
-              event.preventDefault();
-              void (pushEnabled ? disablePush() : enablePush());
-            }}
-          >
-            {pushBusy ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : pushEnabled ? (
-              <BellOff className="size-4" />
-            ) : (
-              <Settings2 className="size-4" />
-            )}
-            {pushBusy
-              ? pushStage || "Connecting"
-              : pushEnabled
-                ? "Disable alerts"
-                : "Browser alerts"}
           </DropdownMenuItem>
         </div>
       </DropdownMenuContent>

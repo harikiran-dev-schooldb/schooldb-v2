@@ -98,6 +98,7 @@ model School {
   parentStudentLinks          ParentStudentLink[]
   periods                     Period[]
   pushDevices                 PushDevice[]
+  notificationPreferences     NotificationPreference[]
   admissionSetting            SchoolAdmissionSetting?
   calendarEvents              SchoolCalendarEvent[]
   certificateSetting          SchoolCertificateSetting?
@@ -180,6 +181,7 @@ model User {
   otpChallenges               OtpChallenge[]
   parentStudentLinks          ParentStudentLink[]
   pushDevices                 PushDevice[]
+  notificationPreferences     NotificationPreference[]
   createdSupportTickets       SupportTicket[]              @relation("SupportTicketCreator")
   assignedSupportTickets      SupportTicket[]              @relation("SupportTicketAssignee")
   supportTicketMessages       SupportTicketMessage[]
@@ -283,6 +285,26 @@ model PushDevice {
 
   @@index([schoolId, enabled])
   @@index([userId, enabled])
+}
+
+model NotificationPreference {
+  id            String   @id @default(cuid())
+  schoolId      String
+  userId        String
+  announcements Boolean  @default(true)
+  homework      Boolean  @default(true)
+  attendance    Boolean  @default(true)
+  fees          Boolean  @default(true)
+  exams         Boolean  @default(true)
+  leaveUpdates  Boolean  @default(true)
+  urgent        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  school        School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, userId])
+  @@index([userId])
 }
 
 model SchoolCalendarEvent {
@@ -1019,26 +1041,27 @@ enum LeaveRequestType {
 }
 
 model LeaveRequest {
-  id           String            @id @default(cuid())
-  schoolId     String
-  studentId    String
-  enrollmentId String
-  requestedBy  String
-  startDate    DateTime          @db.Date
-  endDate      DateTime          @db.Date
-  reason       String
-  requestType  LeaveRequestType  @default(LEAVE)
-  startTime    String?
-  endTime      String?
-  status       String            @default("PENDING")
-  decisionNote String?
-  decidedBy    String?
-  decidedAt    DateTime?
-  createdAt    DateTime          @default(now())
-  updatedAt    DateTime          @updatedAt
-  enrollment   StudentEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
-  school       School            @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  student      Student           @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  id              String            @id @default(cuid())
+  clientRequestId String?           @unique
+  schoolId        String
+  studentId       String
+  enrollmentId    String
+  requestedBy     String
+  startDate       DateTime          @db.Date
+  endDate         DateTime          @db.Date
+  reason          String
+  requestType     LeaveRequestType  @default(LEAVE)
+  startTime       String?
+  endTime         String?
+  status          String            @default("PENDING")
+  decisionNote    String?
+  decidedBy       String?
+  decidedAt       DateTime?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  enrollment      StudentEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  school          School            @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student         Student           @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   @@index([schoolId, status, createdAt])
   @@index([schoolId, requestType, startDate])

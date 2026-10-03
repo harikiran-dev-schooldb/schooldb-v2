@@ -1,6 +1,7 @@
 import { Award, CalendarDays, GraduationCap, ScrollText } from "lucide-react";
 
 import { PrintReportButton } from "@/components/self-service/PrintReportButton";
+import { ShareButton } from "@/components/pwa/ShareButton";
 import { SelfServiceEmptyState, SelfServicePage } from "@/components/self-service/SelfServicePage";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -41,7 +42,8 @@ export default async function StudentReportCardPage({
       title="Report card"
       description="A printable academic summary using completed exam results."
     >
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-2 print:hidden">
+        <ShareButton title={`${student.fullName} report card`} text={`View ${student.fullName}'s SchoolDB report card.`} />
         <PrintReportButton />
       </div>
 

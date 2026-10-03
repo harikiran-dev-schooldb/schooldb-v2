@@ -7,6 +7,7 @@ import {
   LogOut,
   Repeat2,
   ShieldCheck,
+  Smartphone,
   UserRound,
 } from "lucide-react";
 
@@ -180,6 +181,12 @@ export function AccountSettingsPage({
                 <Link href={notificationsHref}>
                   <Bell className="size-4" />
                   Notification inbox
+                </Link>
+              </Button>
+              <Button asChild variant="outline" className="w-full justify-start">
+                <Link href={`/${schoolSlug}/pwa`}>
+                  <Smartphone className="size-4" />
+                  PWA & device settings
                 </Link>
               </Button>
               <div className="flex items-start gap-3 rounded-2xl border border-border/70 p-4">

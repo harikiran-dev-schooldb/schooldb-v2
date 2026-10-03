@@ -14,6 +14,22 @@ export default function manifest(): MetadataRoute.Manifest {
     theme_color: "#4f46e5",
     orientation: "portrait-primary",
     categories: ["education", "productivity"],
+    shortcuts: [
+      {
+        name: "Choose school",
+        short_name: "Schools",
+        description: "Open your SchoolDB workspace",
+        url: "/choose-school",
+        icons: [{ src: "/pwa-192.png", sizes: "192x192", type: "image/png" }],
+      },
+      {
+        name: "Notifications",
+        short_name: "Updates",
+        description: "Open recent SchoolDB notifications",
+        url: "/choose-school?next=notifications",
+        icons: [{ src: "/pwa-192.png", sizes: "192x192", type: "image/png" }],
+      },
+    ],
     icons: [
       {
         src: "/pwa-192.png",

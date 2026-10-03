@@ -3,10 +3,11 @@ import Link from "next/link";
 import { WifiOff } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { OfflineSnapshotViewer } from "@/components/pwa/OfflineSnapshotViewer";
 
 export default function OfflinePage() {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-50 via-indigo-50/70 to-violet-50 p-6">
+    <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-slate-50 via-indigo-50/70 to-violet-50 p-6">
       <section className="w-full max-w-md rounded-3xl border border-white/80 bg-white/90 p-8 text-center shadow-[0_28px_80px_rgba(30,41,59,0.12)] backdrop-blur-xl">
         <Image
           src="/pwa-192.png"
@@ -27,6 +28,7 @@ export default function OfflinePage() {
           <Link href="/">Try again</Link>
         </Button>
       </section>
+      <OfflineSnapshotViewer />
     </main>
   );
 }

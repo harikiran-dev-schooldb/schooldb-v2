@@ -10,13 +10,17 @@ import { formatDate } from "@/lib/self-service-format";
 
 export default async function NotificationInbox({ params, searchParams }: {
   params: Promise<{ schoolSlug: string }>;
-  searchParams: Promise<{ page?: string; unread?: string }>;
+  searchParams: Promise<{ page?: string; unread?: string; announcementId?: string }>;
 }) {
   const { schoolSlug } = await params;
   const query = await searchParams;
   const page = Math.max(1, Math.min(10000, Number(query.page) || 1));
   const { membership, where } = await notificationContext(schoolSlug);
-  const filtered = { ...where, ...(query.unread === "1" ? { reads: { none: { userId: membership.userId } } } : {}) };
+  const filtered = {
+    ...where,
+    ...(query.unread === "1" ? { reads: { none: { userId: membership.userId } } } : {}),
+    ...(query.announcementId ? { id: query.announcementId } : {}),
+  };
   const [items, total] = await Promise.all([
     prisma.announcement.findMany({
       where: filtered, orderBy: [{ publishedAt: "desc" }, { id: "desc" }], take: 25, skip: (Math.floor(page) - 1) * 25,
@@ -42,7 +46,7 @@ export default async function NotificationInbox({ params, searchParams }: {
       </div>
       {items.length === 0 && <SelfServiceEmptyState icon={Bell} title={query.unread === "1" ? "All caught up" : "No notifications yet"} description="New school updates will appear here when published." />}
       {items.map((item) => (
-        <article key={item.id} className={`space-y-4 rounded-[24px] border bg-card/90 p-5 shadow-[0_16px_45px_rgba(15,23,42,0.05)] sm:p-6 ${item.reads.length ? "border-border/60" : "border-indigo-300 shadow-[0_16px_45px_rgba(79,70,229,0.1)]"}`}>
+        <article id={`announcement-${item.id}`} key={item.id} className={`scroll-mt-24 space-y-4 rounded-[24px] border bg-card/90 p-5 shadow-[0_16px_45px_rgba(15,23,42,0.05)] sm:p-6 ${query.announcementId === item.id ? "border-indigo-500 ring-4 ring-indigo-500/15" : item.reads.length ? "border-border/60" : "border-indigo-300 shadow-[0_16px_45px_rgba(79,70,229,0.1)]"}`}>
           <div className="flex flex-wrap gap-2">
             {!item.reads.length && <Badge>New</Badge>}
             <Badge variant="outline">{item.category}</Badge>

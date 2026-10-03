@@ -141,6 +141,7 @@ export function ProfileImageUploader({
           id="profile-image"
           type="file"
           accept="image/jpeg,image/png,image/webp"
+          capture="user"
           disabled={busy}
           className="sr-only"
           onChange={(event) => {

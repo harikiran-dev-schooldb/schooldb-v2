@@ -1,7 +1,9 @@
 "use client";
 
 import { useActionState, useRef, useState } from "react";
+import { useAuth } from "@clerk/nextjs";
 import { CalendarRange, Clock3, Send, Sparkles } from "lucide-react";
+import { toast } from "sonner";
 
 import {
   AlertDialog,
@@ -15,6 +17,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { queuePwaAction } from "@/lib/pwa-storage";
 
 import { createLeaveRequest } from "./actions";
 
@@ -29,8 +32,10 @@ const requestTypes = [
 type RequestType = (typeof requestTypes)[number]["value"];
 
 export function LeaveRequestForm({ schoolSlug, studentId }: { schoolSlug: string; studentId: string }) {
+  const { userId } = useAuth();
   const formRef = useRef<HTMLFormElement>(null);
   const [confirmationOpen, setConfirmationOpen] = useState(false);
+  const [offlineQueued, setOfflineQueued] = useState(false);
   const [requestType, setRequestType] = useState<RequestType>("LEAVE");
   const [state, action, pending] = useActionState(
     createLeaveRequest.bind(null, schoolSlug, studentId),
@@ -39,6 +44,45 @@ export function LeaveRequestForm({ schoolSlug, studentId }: { schoolSlug: string
 
   const isLeave = requestType === "LEAVE";
   const isTimed = requestType === "LATE_ARRIVAL" || requestType === "EARLY_DEPARTURE" || requestType === "PERMISSION";
+
+  async function submitOrQueue() {
+    const form = formRef.current;
+    if (!form) return;
+    if (navigator.onLine) {
+      form.requestSubmit();
+      return;
+    }
+    if (!userId) {
+      toast.error("Reconnect to submit this request.");
+      return;
+    }
+
+    const formData = new FormData(form);
+    const id = crypto.randomUUID();
+    await queuePwaAction({
+      id,
+      ownerKey: `${userId}:${schoolSlug}`,
+      url: "/api/v1/pwa/leave-requests",
+      method: "POST",
+      createdAt: new Date().toISOString(),
+      body: {
+        schoolSlug,
+        studentId,
+        clientRequestId: id,
+        requestType: String(formData.get("requestType") || "LEAVE"),
+        startDate: String(formData.get("startDate") || ""),
+        endDate: String(formData.get("endDate") || ""),
+        startTime: String(formData.get("startTime") || ""),
+        endTime: String(formData.get("endTime") || ""),
+        reason: String(formData.get("reason") || ""),
+      },
+    });
+    setConfirmationOpen(false);
+    setOfflineQueued(true);
+    form.reset();
+    setRequestType("LEAVE");
+    toast.success("Request saved. It will submit when you reconnect.");
+  }
 
   return (
     <form ref={formRef} action={action} onSubmit={() => setConfirmationOpen(false)} className="relative overflow-hidden rounded-[28px] border border-border/60 bg-card/95 shadow-[0_24px_70px_rgba(79,70,229,0.12)]">
@@ -105,6 +149,7 @@ export function LeaveRequestForm({ schoolSlug, studentId }: { schoolSlug: string
 
         {state.error && <p role="alert" className="text-sm font-medium text-destructive sm:col-span-2">{state.error}</p>}
         {state.success && <p role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700 sm:col-span-2">Request submitted for school review.</p>}
+        {offlineQueued && <p role="status" className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800 sm:col-span-2">Saved offline. SchoolDB will submit it automatically after you reconnect.</p>}
 
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border/60 pt-5 sm:col-span-2">
           <p className="text-xs leading-5 text-muted-foreground">The school will notify you after reviewing this request.</p>
@@ -122,7 +167,7 @@ export function LeaveRequestForm({ schoolSlug, studentId }: { schoolSlug: string
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={pending}>Cancel</AlertDialogCancel>
-            <Button type="button" disabled={pending} onClick={() => formRef.current?.requestSubmit()}>{pending ? "Submitting…" : "Submit request"}</Button>
+            <Button type="button" disabled={pending} onClick={() => void submitOrQueue()}>{pending ? "Submitting…" : "Submit request"}</Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
