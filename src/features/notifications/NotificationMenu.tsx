@@ -33,7 +33,6 @@ type Feed = {
   items: NotificationItem[];
 };
 
-const emptyFeed: Feed = { unreadCount: 0, items: [] };
 const standardWebPushVapidKey = process.env.NEXT_PUBLIC_WEB_PUSH_VAPID_KEY;
 
 function withTimeout<T>(promise: Promise<T>, milliseconds: number, message: string) {
@@ -95,9 +94,20 @@ function notificationDate(value: string) {
   }).format(new Date(value));
 }
 
-export function NotificationMenu({ schoolSlug }: { schoolSlug: string }) {
+export function NotificationMenu({
+  schoolSlug,
+  notificationsHref = `/${schoolSlug}/notification-inbox`,
+  initialUnreadCount = 0,
+}: {
+  schoolSlug: string;
+  notificationsHref?: string;
+  initialUnreadCount?: number;
+}) {
   const router = useRouter();
-  const [feed, setFeed] = useState<Feed>(emptyFeed);
+  const [feed, setFeed] = useState<Feed>(() => ({
+    unreadCount: initialUnreadCount,
+    items: [],
+  }));
   const [loading, setLoading] = useState(true);
   const [pushBusy, setPushBusy] = useState(false);
   const [pushStage, setPushStage] = useState("");
@@ -243,7 +253,7 @@ export function NotificationMenu({ schoolSlug }: { schoolSlug: string }) {
       });
       void updateAppBadge(Math.max(0, feed.unreadCount - 1));
     }
-    router.push(`/${schoolSlug}/notification-inbox`);
+    router.push(notificationsHref);
   }
 
   async function enablePush() {
@@ -456,7 +466,7 @@ export function NotificationMenu({ schoolSlug }: { schoolSlug: string }) {
         <div className="grid grid-cols-2 gap-1">
           <DropdownMenuItem
             className="cursor-pointer justify-center rounded-xl"
-            onSelect={() => router.push(`/${schoolSlug}/notification-inbox`)}
+            onSelect={() => router.push(notificationsHref)}
           >
             <Check className="size-4" /> View all
           </DropdownMenuItem>
