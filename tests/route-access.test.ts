@@ -83,3 +83,15 @@ test("restricted page URLs require an assigned route", () => {
     false,
   );
 });
+
+test("new school operations routes can be granted independently", () => {
+  const config = {
+    routeAccessRestricted: true,
+    allowedRoutes: ["staff-operations", "inventory", "management-analytics"],
+  };
+
+  assert.equal(isSchoolPathAllowed(config, "/demo/staff-operations", "demo", "SCHOOL_ADMIN"), true);
+  assert.equal(isSchoolPathAllowed(config, "/demo/staff-operations/payslips/entry-1", "demo", "SCHOOL_ADMIN"), true);
+  assert.equal(isSchoolPathAllowed(config, "/demo/inventory", "demo", "SCHOOL_ADMIN"), true);
+  assert.equal(isSchoolPathAllowed(config, "/demo/visitors", "demo", "SCHOOL_ADMIN"), false);
+});

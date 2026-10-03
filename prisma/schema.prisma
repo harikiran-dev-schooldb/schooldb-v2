@@ -132,6 +132,18 @@ model School {
   androidAppBuilds            AndroidAppBuild[]
   studentProfileImageRequests StudentProfileImageRequest[]
   reportExportJobs            ReportExportJob[]
+  staffAttendances            StaffAttendance[]
+  staffLeaveRequests          StaffLeaveRequest[]
+  salaryStructures            SalaryStructure[]
+  payrollRuns                 PayrollRun[]
+  payrollEntries              PayrollEntry[]
+  visitors                    VisitorLog[]
+  studentHealthRecords        StudentHealthRecord[]
+  studentHealthVisits         StudentHealthVisit[]
+  inventoryItems              InventoryItem[]
+  inventoryMovements          InventoryMovement[]
+  pickupAuthorizations        PickupAuthorization[]
+  maintenanceTickets          MaintenanceTicket[]
 }
 
 model SchoolIdCardSetting {
@@ -469,6 +481,9 @@ model Student {
   houseAssignments      StudentHouse[]
   supportTickets        SupportTicket[]
   profileImageRequest   StudentProfileImageRequest?
+  healthRecord          StudentHealthRecord?
+  healthVisits          StudentHealthVisit[]
+  pickupAuthorizations  PickupAuthorization[]
 
   @@unique([schoolId, admissionNo])
   @@index([schoolId])
@@ -476,6 +491,169 @@ model Student {
   @@index([schoolId, fullName])
   @@index([schoolId, phone])
   @@index([schoolId, status, createdAt])
+}
+
+model VisitorLog {
+  id              String    @id @default(cuid())
+  schoolId        String
+  visitorName     String    @db.VarChar(160)
+  phone           String    @db.VarChar(24)
+  purpose         String    @db.VarChar(300)
+  personToMeet    String?   @db.VarChar(160)
+  idProofType     String?   @db.VarChar(60)
+  idProofLastFour String?   @db.VarChar(4)
+  gatePassCode    String    @db.VarChar(20)
+  vehicleNumber   String?   @db.VarChar(30)
+  checkInAt       DateTime  @default(now())
+  checkOutAt      DateTime?
+  status          String    @default("CHECKED_IN") @db.VarChar(24)
+  recordedBy      String
+  notes           String?   @db.VarChar(500)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  school          School    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, gatePassCode])
+  @@index([schoolId, status, checkInAt(sort: Desc)])
+  @@index([schoolId, phone])
+}
+
+model StudentHealthRecord {
+  id                 String   @id @default(cuid())
+  schoolId           String
+  studentId          String   @unique
+  bloodGroup         String?  @db.VarChar(12)
+  allergies          String?  @db.VarChar(1000)
+  medicalConditions  String?  @db.VarChar(1000)
+  medications        String?  @db.VarChar(1000)
+  accessibilityNeeds String?  @db.VarChar(1000)
+  emergencyContact   String?  @db.VarChar(160)
+  emergencyPhone     String?  @db.VarChar(24)
+  physicianName      String?  @db.VarChar(160)
+  physicianPhone     String?  @db.VarChar(24)
+  insuranceDetails   String?  @db.VarChar(500)
+  consentNotes       String?  @db.VarChar(1000)
+  updatedBy          String
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  school             School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student            Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId, updatedAt(sort: Desc)])
+}
+
+model StudentHealthVisit {
+  id               String    @id @default(cuid())
+  schoolId         String
+  studentId        String
+  occurredAt       DateTime  @default(now())
+  complaint        String    @db.VarChar(500)
+  actionTaken      String    @db.VarChar(1000)
+  disposition      String    @default("RETURNED_TO_CLASS") @db.VarChar(40)
+  guardianNotified Boolean   @default(false)
+  followUpAt       DateTime?
+  recordedBy       String
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  school           School    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student          Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId, occurredAt(sort: Desc)])
+  @@index([studentId, occurredAt(sort: Desc)])
+}
+
+model InventoryItem {
+  id            String              @id @default(cuid())
+  schoolId      String
+  assetCode     String
+  name          String              @db.VarChar(160)
+  category      String              @db.VarChar(80)
+  location      String?             @db.VarChar(120)
+  quantity      Int                 @default(0)
+  reorderLevel  Int                 @default(0)
+  unitCost      Decimal?            @db.Decimal(12, 2)
+  condition     String              @default("GOOD") @db.VarChar(24)
+  custodian     String?             @db.VarChar(160)
+  purchaseDate  DateTime?           @db.Date
+  warrantyUntil DateTime?           @db.Date
+  active        Boolean             @default(true)
+  createdBy     String
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  school        School              @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  movements     InventoryMovement[]
+
+  @@unique([schoolId, assetCode])
+  @@index([schoolId, active, category])
+  @@index([schoolId, quantity, reorderLevel])
+}
+
+model InventoryMovement {
+  id         String        @id @default(cuid())
+  schoolId   String
+  itemId     String
+  type       String        @db.VarChar(24)
+  quantity   Int
+  reference  String?       @db.VarChar(120)
+  notes      String?       @db.VarChar(500)
+  recordedBy String
+  createdAt  DateTime      @default(now())
+  school     School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  item       InventoryItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId, createdAt(sort: Desc)])
+  @@index([itemId, createdAt(sort: Desc)])
+}
+
+model PickupAuthorization {
+  id             String    @id @default(cuid())
+  schoolId       String
+  studentId      String
+  authorizedName String    @db.VarChar(160)
+  relationship   String    @db.VarChar(80)
+  phone          String    @db.VarChar(24)
+  photoUrl       String?
+  validFrom      DateTime  @db.Date
+  validUntil     DateTime? @db.Date
+  pickupCode     String    @db.VarChar(20)
+  recurring      Boolean   @default(false)
+  status         String    @default("ACTIVE") @db.VarChar(24)
+  approvedBy     String
+  notes          String?   @db.VarChar(500)
+  lastUsedAt     DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  school         School    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student        Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, pickupCode])
+  @@index([schoolId, status, validFrom])
+  @@index([studentId, status])
+}
+
+model MaintenanceTicket {
+  id            String    @id @default(cuid())
+  schoolId      String
+  ticketNo      String
+  title         String    @db.VarChar(180)
+  description   String    @db.VarChar(1500)
+  category      String    @db.VarChar(80)
+  location      String?   @db.VarChar(120)
+  priority      String    @default("MEDIUM") @db.VarChar(24)
+  status        String    @default("OPEN") @db.VarChar(24)
+  assignedTo    String?   @db.VarChar(160)
+  estimatedCost Decimal?  @db.Decimal(12, 2)
+  actualCost    Decimal?  @db.Decimal(12, 2)
+  dueDate       DateTime? @db.Date
+  resolvedAt    DateTime?
+  resolution    String?   @db.VarChar(1000)
+  reportedBy    String
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  school        School    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, ticketNo])
+  @@index([schoolId, status, priority, createdAt(sort: Desc)])
 }
 
 model StudentProfileImageRequest {
@@ -1151,11 +1329,122 @@ model Teacher {
   school                  School                   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   allocations             TeacherAllocation[]
   classTeacherAssignments ClassTeacherAssignment[]
+  staffAttendances        StaffAttendance[]
+  staffLeaveRequests      StaffLeaveRequest[]
+  salaryStructures        SalaryStructure[]
+  payrollEntries          PayrollEntry[]
 
   @@unique([schoolId, employeeId])
   @@index([schoolId])
   @@index([schoolId, active, fullName])
   @@index([schoolId, clerkId, active])
+}
+
+model StaffAttendance {
+  id         String   @id @default(cuid())
+  schoolId   String
+  teacherId  String
+  date       DateTime @db.Date
+  status     String   @default("PRESENT") @db.VarChar(24)
+  checkIn    String?  @db.VarChar(8)
+  checkOut   String?  @db.VarChar(8)
+  source     String   @default("MANUAL") @db.VarChar(24)
+  deviceRef  String?  @db.VarChar(120)
+  remarks    String?  @db.VarChar(500)
+  recordedBy String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  school     School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  teacher    Teacher  @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, teacherId, date])
+  @@index([schoolId, date, status])
+}
+
+model StaffLeaveRequest {
+  id           String    @id @default(cuid())
+  schoolId     String
+  teacherId    String
+  leaveType    String    @default("CASUAL") @db.VarChar(40)
+  startDate    DateTime  @db.Date
+  endDate      DateTime  @db.Date
+  days         Decimal   @db.Decimal(5, 2)
+  reason       String    @db.VarChar(1000)
+  status       String    @default("PENDING") @db.VarChar(24)
+  decisionNote String?   @db.VarChar(500)
+  requestedBy  String
+  decidedBy    String?
+  decidedAt    DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  school       School    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  teacher      Teacher   @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId, status, startDate])
+  @@index([teacherId, startDate])
+}
+
+model SalaryStructure {
+  id            String   @id @default(cuid())
+  schoolId      String
+  teacherId     String
+  effectiveFrom DateTime @db.Date
+  basicSalary   Decimal  @db.Decimal(12, 2)
+  allowances    Json     @default("{}")
+  deductions    Json     @default("{}")
+  active        Boolean  @default(true)
+  createdBy     String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  school        School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  teacher       Teacher  @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@unique([teacherId, effectiveFrom])
+  @@index([schoolId, active, effectiveFrom])
+}
+
+model PayrollRun {
+  id          String         @id @default(cuid())
+  schoolId    String
+  year        Int
+  month       Int
+  status      String         @default("DRAFT") @db.VarChar(24)
+  processedBy String
+  processedAt DateTime?
+  paidAt      DateTime?
+  notes       String?        @db.VarChar(1000)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  school      School         @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  entries     PayrollEntry[]
+
+  @@unique([schoolId, year, month])
+  @@index([schoolId, year, month])
+}
+
+model PayrollEntry {
+  id             String     @id @default(cuid())
+  schoolId       String
+  payrollRunId   String
+  teacherId      String
+  basicSalary    Decimal    @db.Decimal(12, 2)
+  allowanceTotal Decimal    @default(0) @db.Decimal(12, 2)
+  deductionTotal Decimal    @default(0) @db.Decimal(12, 2)
+  grossSalary    Decimal    @db.Decimal(12, 2)
+  netSalary      Decimal    @db.Decimal(12, 2)
+  breakdown      Json       @default("{}")
+  paymentStatus  String     @default("PENDING") @db.VarChar(24)
+  paymentMode    String?    @db.VarChar(40)
+  paymentRef     String?    @db.VarChar(120)
+  paidAt         DateTime?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  school         School     @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  payrollRun     PayrollRun @relation(fields: [payrollRunId], references: [id], onDelete: Cascade)
+  teacher        Teacher    @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@unique([payrollRunId, teacherId])
+  @@index([schoolId, paymentStatus])
 }
 
 model TeacherAllocation {

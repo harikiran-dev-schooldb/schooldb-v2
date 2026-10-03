@@ -11,7 +11,6 @@ import {
   Megaphone,
   Settings2,
   School,
-  Smartphone,
   UsersRound,
 } from "lucide-react";
 
@@ -63,14 +62,14 @@ export const navigation: NavigationItem[] = [
     roles: ["SUPER_ADMIN"],
   },
   {
-    title: "Support Android App",
-    href: "schools/android-app",
-    icon: Smartphone,
-    roles: ["SUPER_ADMIN"],
-  },
-  {
     title: "Reports & Analytics",
     href: "reports",
+    icon: ChartNoAxesCombined,
+    roles: ADMIN_ROLES,
+  },
+  {
+    title: "Management Analytics",
+    href: "management-analytics",
     icon: ChartNoAxesCombined,
     roles: ADMIN_ROLES,
   },
@@ -108,12 +107,36 @@ export const navigation: NavigationItem[] = [
     roles: ATTENDANCE_ROLES,
     children: [
       { title: "Mark Attendance", href: "attendance", exact: true },
-      { title: "Attendance Overview", href: "attendance/dashboard", roles: ADMIN_ROLES },
-      { title: "Session History", href: "attendance/history", roles: ADMIN_ROLES },
-      { title: "Class Report", href: "attendance/reports/class", roles: ATTENDANCE_ROLES },
-      { title: "Student Report", href: "attendance/reports/student", roles: ATTENDANCE_ROLES },
-      { title: "Low Attendance", href: "attendance/reports/low", roles: ADMIN_ROLES },
-      { title: "Attendance Ranking", href: "attendance/ranking", roles: ATTENDANCE_ROLES },
+      {
+        title: "Attendance Overview",
+        href: "attendance/dashboard",
+        roles: ADMIN_ROLES,
+      },
+      {
+        title: "Session History",
+        href: "attendance/history",
+        roles: ADMIN_ROLES,
+      },
+      {
+        title: "Class Report",
+        href: "attendance/reports/class",
+        roles: ATTENDANCE_ROLES,
+      },
+      {
+        title: "Student Report",
+        href: "attendance/reports/student",
+        roles: ATTENDANCE_ROLES,
+      },
+      {
+        title: "Low Attendance",
+        href: "attendance/reports/low",
+        roles: ADMIN_ROLES,
+      },
+      {
+        title: "Attendance Ranking",
+        href: "attendance/ranking",
+        roles: ATTENDANCE_ROLES,
+      },
     ],
   },
   {
@@ -133,9 +156,17 @@ export const navigation: NavigationItem[] = [
     children: [
       { title: "Fee Overview", href: "fees/dashboard", roles: FEE_ROLES },
       { title: "Collect Fees", href: "fees/collection", roles: FEE_ROLES },
-      { title: "Outstanding Fees", href: "fees/outstanding", roles: FEE_VIEW_ROLES },
+      {
+        title: "Outstanding Fees",
+        href: "fees/outstanding",
+        roles: FEE_VIEW_ROLES,
+      },
       { title: "Payment History", href: "fees/payments", roles: FEE_ROLES },
-      { title: "UPI Verification", href: "fees/upi-verification", roles: FEE_ROLES },
+      {
+        title: "UPI Verification",
+        href: "fees/upi-verification",
+        roles: FEE_ROLES,
+      },
       { title: "Receipts", href: "fees/receipts", roles: FEE_ROLES },
       {
         title: "Expenses",
@@ -186,6 +217,36 @@ export const navigation: NavigationItem[] = [
     title: "School Operations",
     icon: BriefcaseBusiness,
     children: [
+      {
+        title: "Staff Attendance & Payroll",
+        href: "staff-operations",
+        roles: [...ADMIN_ROLES, "ACCOUNTANT"],
+      },
+      {
+        title: "Visitors & Gate Passes",
+        href: "visitors",
+        roles: [...ADMIN_ROLES, "RECEPTIONIST"],
+      },
+      {
+        title: "Student Health",
+        href: "student-health",
+        roles: [...ADMIN_ROLES, "RECEPTIONIST"],
+      },
+      {
+        title: "Inventory & Assets",
+        href: "inventory",
+        roles: [...ADMIN_ROLES, "ACCOUNTANT"],
+      },
+      {
+        title: "Student Pickup",
+        href: "student-pickup",
+        roles: [...ADMIN_ROLES, "RECEPTIONIST"],
+      },
+      {
+        title: "Maintenance Tickets",
+        href: "maintenance",
+        roles: [...ADMIN_ROLES, "RECEPTIONIST"],
+      },
       { title: "Library", href: "library", roles: ADMIN_ROLES },
       { title: "Transport", href: "transport", roles: ADMIN_ROLES },
       { title: "School Calendar", href: "calendar", roles: ADMIN_ROLES },
