@@ -1,4 +1,4 @@
-const CACHE_NAME = "schooldb-pwa-v3";
+const CACHE_NAME = "schooldb-pwa-v4";
 const OFFLINE_URL = "/offline";
 const HOSTNAME = self.location.hostname.toLowerCase();
 const ALLOWED_HOST = HOSTNAME === "schooldb.co.in" || HOSTNAME.endsWith(".schooldb.co.in");
@@ -101,11 +101,21 @@ self.addEventListener("push", (event) => {
     badge: notification.badge || "/pwa-192.png",
     tag: notification.tag || data.announcementId || "schooldb-update",
     data: {
-      url: data.link || payload.fcmOptions?.link || "/",
+      url: notification.navigate || data.link || payload.fcmOptions?.link || "/",
     },
   };
 
-  event.waitUntil(self.registration.showNotification(title, options));
+  event.waitUntil(
+    self.registration.showNotification(title, options).then(async () => {
+      const clients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+      clients.forEach((client) => client.postMessage({ type: "SCHOOLDB_PUSH_RECEIVED" }));
+
+      if (typeof self.navigator?.setAppBadge === "function") {
+        const notifications = await self.registration.getNotifications();
+        await self.navigator.setAppBadge(notifications.length);
+      }
+    }),
+  );
 });
 
 self.addEventListener("notificationclick", (event) => {
@@ -114,7 +124,12 @@ self.addEventListener("notificationclick", (event) => {
   const targetUrl = new URL(event.notification.data?.url || "/", self.location.origin).href;
 
   event.waitUntil(
-    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(async (clients) => {
+      if (typeof self.navigator?.setAppBadge === "function") {
+        const notifications = await self.registration.getNotifications();
+        if (notifications.length) await self.navigator.setAppBadge(notifications.length);
+        else if (typeof self.navigator.clearAppBadge === "function") await self.navigator.clearAppBadge();
+      }
       const existing = clients.find((client) => client.url === targetUrl);
       if (existing) return existing.focus();
       return self.clients.openWindow(targetUrl);

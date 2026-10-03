@@ -34,6 +34,7 @@ type Feed = {
 };
 
 const emptyFeed: Feed = { unreadCount: 0, items: [] };
+const standardWebPushVapidKey = process.env.NEXT_PUBLIC_WEB_PUSH_VAPID_KEY;
 
 function withTimeout<T>(promise: Promise<T>, milliseconds: number, message: string) {
   return new Promise<T>((resolve, reject) => {
@@ -53,6 +54,37 @@ function withTimeout<T>(promise: Promise<T>, milliseconds: number, message: stri
 
 function browserDeviceKey(schoolSlug: string) {
   return `schooldb:web-push:v1:${schoolSlug}`;
+}
+
+function isApplePlatform() {
+  return /iPhone|iPad|iPod|Macintosh/i.test(navigator.userAgent)
+    || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+}
+
+function isAppleMobile() {
+  return /iPhone|iPad|iPod/i.test(navigator.userAgent)
+    || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+}
+
+function isStandalone() {
+  return window.matchMedia("(display-mode: standalone)").matches
+    || (navigator as Navigator & { standalone?: boolean }).standalone === true;
+}
+
+function applicationServerKey(value: string) {
+  const padding = "=".repeat((4 - (value.length % 4)) % 4);
+  const base64 = (value + padding).replace(/-/g, "+").replace(/_/g, "/");
+  return Uint8Array.from(window.atob(base64), (character) => character.charCodeAt(0));
+}
+
+async function updateAppBadge(count: number) {
+  if (!("setAppBadge" in navigator)) return;
+  try {
+    if (count > 0) await navigator.setAppBadge(count);
+    else if ("clearAppBadge" in navigator) await navigator.clearAppBadge();
+  } catch {
+    // Badging is optional and can be unavailable despite feature detection.
+  }
 }
 
 function notificationDate(value: string) {
@@ -78,7 +110,10 @@ export function NotificationMenu({ schoolSlug }: { schoolSlug: string }) {
         { cache: "no-store" },
       );
       const result = await response.json();
-      if (response.ok && result.success) setFeed(result.data);
+      if (response.ok && result.success) {
+        setFeed(result.data);
+        void updateAppBadge(result.data.unreadCount);
+      }
     } finally {
       setLoading(false);
     }
@@ -90,7 +125,8 @@ export function NotificationMenu({ schoolSlug }: { schoolSlug: string }) {
     if (
       !("Notification" in window) ||
       !("serviceWorker" in navigator) ||
-      Notification.permission !== "granted"
+      Notification.permission !== "granted" ||
+      (isApplePlatform() && !("PushManager" in window))
     ) return;
 
     const key = browserDeviceKey(schoolSlug);
@@ -98,26 +134,35 @@ export function NotificationMenu({ schoolSlug }: { schoolSlug: string }) {
     if (!installationId) return;
 
     try {
-      const [{ getToken }, firebaseClient] = await Promise.all([
-        import("firebase/messaging"),
-        import("@/lib/firebase-client"),
-      ]);
-      if (!firebaseClient.firebaseWebPushConfigured || !firebaseClient.firebaseVapidKey) return;
-      const messaging = await firebaseClient.webMessaging();
-      if (!messaging) return;
       const registration =
         (await navigator.serviceWorker.getRegistration("/")) ??
         (await navigator.serviceWorker.register("/sw.js", { scope: "/" }));
-      const fcmToken = await getToken(messaging, {
-        vapidKey: firebaseClient.firebaseVapidKey,
-        serviceWorkerRegistration: registration,
-      });
-      if (!fcmToken) return;
+
+      let registrationBody: { fcmToken: string } | { webPushSubscription: PushSubscriptionJSON };
+      if (isApplePlatform()) {
+        const subscription = await registration.pushManager.getSubscription();
+        if (!subscription) return;
+        registrationBody = { webPushSubscription: subscription.toJSON() };
+      } else {
+        const [{ getToken }, firebaseClient] = await Promise.all([
+          import("firebase/messaging"),
+          import("@/lib/firebase-client"),
+        ]);
+        if (!firebaseClient.firebaseWebPushConfigured || !firebaseClient.firebaseVapidKey) return;
+        const messaging = await firebaseClient.webMessaging();
+        if (!messaging) return;
+        const fcmToken = await getToken(messaging, {
+          vapidKey: firebaseClient.firebaseVapidKey,
+          serviceWorkerRegistration: registration,
+        });
+        if (!fcmToken) return;
+        registrationBody = { fcmToken };
+      }
 
       const response = await fetch("/api/v1/web-push/devices", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ schoolSlug, installationId, fcmToken }),
+        body: JSON.stringify({ schoolSlug, installationId, ...registrationBody }),
       });
       if (response.ok) setPushEnabled(true);
     } catch (error) {
@@ -128,17 +173,56 @@ export function NotificationMenu({ schoolSlug }: { schoolSlug: string }) {
   useEffect(() => {
     // The subscription flag is browser-local and is only available after hydration.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setPushEnabled(Boolean(localStorage.getItem(browserDeviceKey(schoolSlug))));
+    setPushEnabled(
+      Boolean(localStorage.getItem(browserDeviceKey(schoolSlug)))
+        && "Notification" in window
+        && Notification.permission === "granted",
+    );
     void loadFeed();
     void rebindPush();
     const refresh = () => {
       if (document.visibilityState === "visible") void loadFeed();
     };
     document.addEventListener("visibilitychange", refresh);
+    const pushMessage = (event: MessageEvent) => {
+      if (event.data?.type === "SCHOOLDB_PUSH_RECEIVED") void loadFeed();
+    };
+    navigator.serviceWorker?.addEventListener("message", pushMessage);
     return () => {
       document.removeEventListener("visibilitychange", refresh);
+      navigator.serviceWorker?.removeEventListener("message", pushMessage);
     };
   }, [loadFeed, rebindPush, schoolSlug]);
+
+  useEffect(() => {
+    if (
+      !pushEnabled
+      || isApplePlatform()
+      || !("Notification" in window)
+      || Notification.permission !== "granted"
+    ) {
+      return;
+    }
+
+    let unsubscribe: (() => void) | undefined;
+    void Promise.all([
+      import("firebase/messaging"),
+      import("@/lib/firebase-client"),
+    ]).then(async ([firebaseMessaging, firebaseClient]) => {
+      const messaging = await firebaseClient.webMessaging();
+      if (!messaging) return;
+      unsubscribe = firebaseMessaging.onMessage(messaging, (payload) => {
+        void loadFeed();
+        const title = payload.notification?.title || payload.data?.title;
+        const body = payload.notification?.body || payload.data?.body;
+        if (title) toast.info(title, { description: body });
+      });
+    }).catch(() => {
+      // Foreground refresh is an enhancement; background delivery remains active.
+    });
+
+    return () => unsubscribe?.();
+  }, [loadFeed, pushEnabled]);
 
   async function markRead(item: NotificationItem) {
     if (!item.read) {
@@ -157,6 +241,7 @@ export function NotificationMenu({ schoolSlug }: { schoolSlug: string }) {
           read: true,
         }),
       });
+      void updateAppBadge(Math.max(0, feed.unreadCount - 1));
     }
     router.push(`/${schoolSlug}/notification-inbox`);
   }
@@ -166,7 +251,13 @@ export function NotificationMenu({ schoolSlug }: { schoolSlug: string }) {
       toast.error("Browser notifications are available only on schooldb.co.in.");
       return;
     }
-    if (!("Notification" in window) || !("serviceWorker" in navigator)) {
+    if (isAppleMobile() && !isStandalone()) {
+      toast.info("On iPhone or iPad, first tap Share → Add to Home Screen. Then open SchoolDB from the Home Screen and enable alerts.", {
+        duration: 8_000,
+      });
+      return;
+    }
+    if (!("Notification" in window) || !("serviceWorker" in navigator) || !("PushManager" in window)) {
       toast.error("This browser does not support push notifications.");
       return;
     }
@@ -180,23 +271,6 @@ export function NotificationMenu({ schoolSlug }: { schoolSlug: string }) {
         return;
       }
 
-      const [{ getToken }, firebaseClient] = await Promise.all([
-        import("firebase/messaging"),
-        import("@/lib/firebase-client"),
-      ]);
-      const { firebaseVapidKey, firebaseWebPushConfigured, webMessaging } =
-        firebaseClient;
-      if (!firebaseWebPushConfigured || !firebaseVapidKey) {
-        throw new Error("Browser push needs the Firebase web keys to be configured.");
-      }
-
-      setPushStage("Starting Firebase");
-      const messaging = await withTimeout(
-        webMessaging(),
-        10_000,
-        "Firebase messaging did not start. Check browser storage access and reload.",
-      );
-      if (!messaging) throw new Error("Push messaging is unavailable.");
       setPushStage("Starting service worker");
       const existingRegistration =
         await navigator.serviceWorker.getRegistration("/");
@@ -208,16 +282,50 @@ export function NotificationMenu({ schoolSlug }: { schoolSlug: string }) {
         10_000,
         "The notification service worker did not become ready. Reload the page and try again.",
       );
-      setPushStage("Registering browser");
-      const fcmToken = await withTimeout(
-        getToken(messaging, {
-          vapidKey: firebaseVapidKey,
-          serviceWorkerRegistration: registration,
-        }),
-        20_000,
-        "Firebase did not return a browser token. Confirm that the VAPID key belongs to this Firebase project.",
-      );
-      if (!fcmToken) throw new Error("The browser did not return a push token.");
+      let registrationBody: { fcmToken: string } | { webPushSubscription: PushSubscriptionJSON };
+      if (isApplePlatform()) {
+        if (!standardWebPushVapidKey) {
+          throw new Error("iPhone and Safari push needs the Web Push VAPID key to be configured.");
+        }
+        setPushStage("Registering Safari");
+        const subscription = (await registration.pushManager.getSubscription())
+          ?? await withTimeout(
+            registration.pushManager.subscribe({
+              userVisibleOnly: true,
+              applicationServerKey: applicationServerKey(standardWebPushVapidKey),
+            }),
+            20_000,
+            "Safari did not create a push subscription. Check notification settings and try again.",
+          );
+        registrationBody = { webPushSubscription: subscription.toJSON() };
+      } else {
+        const [{ getToken }, firebaseClient] = await Promise.all([
+          import("firebase/messaging"),
+          import("@/lib/firebase-client"),
+        ]);
+        const { firebaseVapidKey, firebaseWebPushConfigured, webMessaging } = firebaseClient;
+        if (!firebaseWebPushConfigured || !firebaseVapidKey) {
+          throw new Error("Browser push needs the Firebase web keys to be configured.");
+        }
+        setPushStage("Starting Firebase");
+        const messaging = await withTimeout(
+          webMessaging(),
+          10_000,
+          "Firebase messaging did not start. Check browser storage access and reload.",
+        );
+        if (!messaging) throw new Error("Push messaging is unavailable.");
+        setPushStage("Registering browser");
+        const fcmToken = await withTimeout(
+          getToken(messaging, {
+            vapidKey: firebaseVapidKey,
+            serviceWorkerRegistration: registration,
+          }),
+          20_000,
+          "Firebase did not return a browser token. Confirm that the VAPID key belongs to this Firebase project.",
+        );
+        if (!fcmToken) throw new Error("The browser did not return a push token.");
+        registrationBody = { fcmToken };
+      }
 
       const key = browserDeviceKey(schoolSlug);
       const installationId =
@@ -225,7 +333,7 @@ export function NotificationMenu({ schoolSlug }: { schoolSlug: string }) {
       const response = await fetch("/api/v1/web-push/devices", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ schoolSlug, installationId, fcmToken }),
+        body: JSON.stringify({ schoolSlug, installationId, ...registrationBody }),
       });
       const result = await response.json();
       if (!response.ok || !result.success) {

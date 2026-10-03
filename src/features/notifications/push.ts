@@ -3,6 +3,13 @@ import type { Message } from "firebase-admin/messaging";
 import { sendApnsPush } from "@/lib/apns";
 import { firebaseMessaging } from "@/lib/firebase-admin";
 import { prisma } from "@/lib/prisma";
+import {
+  isExpiredWebPushError,
+  parseStoredWebPushSubscription,
+  sendStandardWebPush,
+  standardWebPushConfigured,
+} from "@/lib/web-push";
+import { mapWithConcurrency } from "./batch";
 
 type PushAnnouncement = {
   id: string;
@@ -104,6 +111,7 @@ export async function sendAnnouncementPush(announcement: PushAnnouncement) {
           id: true,
           installationId: true,
           fcmToken: true,
+          webPushSubscription: true,
           platform: true,
         },
       }),
@@ -147,7 +155,55 @@ export async function sendAnnouncementPush(announcement: PushAnnouncement) {
       );
     }
 
-    const firebaseDevices = devices.filter((device) => device.platform !== "IOS");
+    const standardWebDevices = devices.flatMap((device) => {
+      if (device.platform !== "WEB") return [];
+      const subscription = parseStoredWebPushSubscription(device.webPushSubscription);
+      return subscription ? [{ ...device, subscription }] : [];
+    });
+    if (standardWebDevices.length && standardWebPushConfigured()) {
+      const origin = process.env.NEXT_PUBLIC_BASE_URL || "https://schooldb.co.in";
+      const link = new URL(data.link, origin).href;
+      const results = await mapWithConcurrency(
+        standardWebDevices,
+        20,
+        async (device) => {
+          try {
+            await sendStandardWebPush(device.subscription, {
+              title: announcement.title,
+              body: notificationBody,
+              link,
+              tag: `announcement-${announcement.id}`,
+              data,
+            });
+            return { status: "fulfilled" as const };
+          } catch (reason) {
+            return { status: "rejected" as const, reason };
+          }
+        },
+      );
+      results.forEach((result, index) => {
+        if (result.status === "fulfilled") {
+          sent += 1;
+          return;
+        }
+        failed += 1;
+        if (isExpiredWebPushError(result.reason)) {
+          invalidDeviceIds.push(standardWebDevices[index].id);
+        } else {
+          console.error("Standards-based Web Push delivery failed", result.reason);
+        }
+      });
+    } else if (standardWebDevices.length) {
+      failed += standardWebDevices.length;
+      console.warn("Standards-based Web Push skipped: VAPID credentials are unavailable.");
+    }
+
+    const standardWebDeviceIds = new Set(standardWebDevices.map((device) => device.id));
+    const firebaseDevices = devices.filter(
+      (device) => device.platform !== "IOS"
+        && !standardWebDeviceIds.has(device.id)
+        && (device.platform !== "WEB" || Boolean(device.fcmToken)),
+    );
     const messaging = firebaseMessaging();
     if (firebaseDevices.length && messaging) {
       for (let offset = 0; offset < firebaseDevices.length; offset += 500) {
@@ -209,6 +265,7 @@ export async function sendAnnouncementPush(announcement: PushAnnouncement) {
       audienceUsers: userIds.length,
       eligibleDevices: devices.length,
       iosDevices: iosDevices.length,
+      standardWebDevices: standardWebDevices.length,
       firebaseDevices: firebaseDevices.length,
       sent,
       failed,

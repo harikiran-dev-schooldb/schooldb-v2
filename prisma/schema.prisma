@@ -265,20 +265,21 @@ model AnnouncementRead {
 }
 
 model PushDevice {
-  id             String   @id @default(cuid())
-  schoolId       String
-  userId         String
-  installationId String   @unique
-  fcmToken       String?
-  app            String   @default("SCHOOLDB")
-  platform       String   @default("ANDROID")
-  appVersion     String?
-  enabled        Boolean  @default(true)
-  lastSeenAt     DateTime @default(now())
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  school         School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                  String   @id @default(cuid())
+  schoolId            String
+  userId              String
+  installationId      String   @unique
+  fcmToken            String?
+  webPushSubscription Json?
+  app                 String   @default("SCHOOLDB")
+  platform            String   @default("ANDROID")
+  appVersion          String?
+  enabled             Boolean  @default(true)
+  lastSeenAt          DateTime @default(now())
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  school              School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([schoolId, enabled])
   @@index([userId, enabled])
