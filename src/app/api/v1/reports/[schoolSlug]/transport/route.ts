@@ -8,7 +8,7 @@ export const runtime = "nodejs";
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ schoolSlug: string }> }) {
   const { schoolSlug } = await params;
-  const tenant = await requireRole(["SUPER_ADMIN", "SCHOOL_ADMIN"]);
+  const tenant = await requireRole(["SUPER_ADMIN", "SCHOOL_ADMIN"], schoolSlug);
   const q = request.nextUrl.searchParams;
   const report = q.get("report") === "students" ? "students" : q.get("report") === "routes" ? "routes" : "fleet";
   const school = await prisma.school.findFirst({ where: { id: tenant.schoolId, slug: schoolSlug }, select: { name: true } });

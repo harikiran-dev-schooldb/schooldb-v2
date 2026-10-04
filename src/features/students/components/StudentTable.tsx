@@ -1,7 +1,5 @@
 "use client";
 
-import { useParams } from "next/navigation";
-
 import { DataGrid } from "@/components/datagrid/DataGrid";
 import { studentColumns } from "../columns";
 import { useStudentTable } from "../hooks/useStudentTable";
@@ -10,7 +8,6 @@ import { AddStudentButton } from "./AddStudentButton";
 import { useSchool } from "@/contexts/school-context";
 
 export function StudentTable() {
-  const params = useParams<{ schoolSlug: string }>();
   const { role } = useSchool();
   const canManageStudents = ["SUPER_ADMIN", "SCHOOL_ADMIN", "RECEPTIONIST"].includes(role);
   const {
@@ -28,13 +25,6 @@ export function StudentTable() {
     sectionId,
     setSectionId,
   } = useStudentTable();
-
-  const exportQuery = new URLSearchParams();
-  if (search.trim()) exportQuery.set("search", search.trim());
-  if (status) exportQuery.set("status", status);
-  if (classId) exportQuery.set("classId", classId);
-  if (sectionId) exportQuery.set("sectionId", sectionId);
-  const exportHref = `/api/v1/reports/${params.schoolSlug}/students?${exportQuery.toString()}`;
 
   return (
     <DataGrid
@@ -63,7 +53,6 @@ export function StudentTable() {
           onClassChange={setClassId}
           sectionId={sectionId}
           onSectionChange={setSectionId}
-          exportHref={exportHref}
         />
       }
     />

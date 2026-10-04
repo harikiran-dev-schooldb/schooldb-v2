@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-import { AlertCircle, CreditCard, Download, Loader2, RefreshCw } from "lucide-react";
+import { AlertCircle, CreditCard, Loader2, RefreshCw } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -239,16 +239,6 @@ export function PaymentHistoryContainer({ params }: Props) {
     void loadPayments(filters, 1);
   }
 
-  const exportQuery = new URLSearchParams();
-  if (filters.search.trim()) exportQuery.set("search", filters.search.trim());
-  if (filters.paymentMode) exportQuery.set("paymentMode", filters.paymentMode);
-  if (filters.installmentName) exportQuery.set("installmentName", filters.installmentName);
-  if (filters.fromDate) exportQuery.set("fromDate", filters.fromDate);
-  if (filters.toDate) exportQuery.set("toDate", filters.toDate);
-  const exportHref = schoolSlug
-    ? `/api/v1/reports/${schoolSlug}/fees/payments${exportQuery.size ? `?${exportQuery.toString()}` : ""}`
-    : "#";
-
   function clearFilters() {
     setFilters(EMPTY_FILTERS);
 
@@ -354,9 +344,6 @@ export function PaymentHistoryContainer({ params }: Props) {
         </div>
 
         <div className="flex flex-wrap gap-2 sm:justify-end">
-          <Button asChild={!(!schoolSlug || loading)} disabled={!schoolSlug || loading}>
-            {schoolSlug && !loading ? <a href={exportHref}><Download className="mr-2 size-4" />Export Excel</a> : <span><Download className="mr-2 size-4" />Export Excel</span>}
-          </Button>
           <Button variant="outline" className="rounded-xl" onClick={() => void loadPayments()} disabled={loading}>
             <RefreshCw className={`mr-2 size-4 ${loading ? "animate-spin" : ""}`} />
             Refresh

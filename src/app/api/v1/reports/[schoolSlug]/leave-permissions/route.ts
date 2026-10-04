@@ -23,7 +23,7 @@ function dateText(date: Date) {
 export async function GET(request: NextRequest, { params }: { params: Promise<{ schoolSlug: string }> }) {
   const { schoolSlug } = await params;
   const membership = await requireRole(
-    ["SUPER_ADMIN", "SCHOOL_ADMIN", "TEACHER"],
+    ["SUPER_ADMIN", "SCHOOL_ADMIN"],
     schoolSlug,
   );
   const search = request.nextUrl.searchParams;

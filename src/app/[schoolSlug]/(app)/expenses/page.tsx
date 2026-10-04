@@ -3,7 +3,6 @@ import {
   CalendarDays,
   ChartNoAxesColumnIncreasing,
   CircleDollarSign,
-  Download,
   Landmark,
   ReceiptIndianRupee,
   Tags,
@@ -11,7 +10,6 @@ import {
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ExpenseForm } from "@/features/expenses/ExpenseForm";
 import { VoidExpenseButton } from "@/features/expenses/VoidExpenseButton";
@@ -183,12 +181,6 @@ export default async function ExpensesPage({ params }: { params: Promise<{ schoo
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button asChild variant="outline" className="rounded-xl">
-            <a href={`/api/v1/reports/${schoolSlug}/expenses`}>
-              <Download className="size-4" />
-              Export Excel
-            </a>
-          </Button>
           <Badge variant="outline" className="w-fit gap-2 rounded-xl border-primary/20 bg-primary/5 px-3 py-2 text-primary">
             <CalendarDays className="size-3.5" />
             {now.toLocaleDateString("en-IN", { month: "long", year: "numeric" })}

@@ -9,7 +9,7 @@ export const runtime = "nodejs";
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ schoolSlug: string }> }) {
   const { schoolSlug } = await params;
-  const tenant = await requireRole(["SUPER_ADMIN", "SCHOOL_ADMIN"]);
+  const tenant = await requireRole(["SUPER_ADMIN", "SCHOOL_ADMIN"], schoolSlug);
   const search = request.nextUrl.searchParams.get("search")?.trim() || undefined;
   const activeParam = request.nextUrl.searchParams.get("active");
   const active = activeParam === "false" ? false : activeParam === "all" ? undefined : true;

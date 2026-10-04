@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { StudentStatus } from "@/generated/prisma/client";
-import { PERMISSIONS } from "@/lib/access-control";
-import { requireCurrentTeacher, requirePermission } from "@/lib/auth";
+import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createSchoolReportWorkbook, safeReportFilename } from "@/lib/reports/excel";
 import { EXPORT_QUERY_ROW_LIMIT, exportRowLimitResponse } from "@/lib/reports/limits";
@@ -11,7 +10,7 @@ export const runtime = "nodejs";
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ schoolSlug: string }> }) {
   const { schoolSlug } = await params;
-  const tenant = await requirePermission(PERMISSIONS.STUDENT_DIRECTORY_READ);
+  const tenant = await requireRole(["SUPER_ADMIN", "SCHOOL_ADMIN"], schoolSlug);
   const q = request.nextUrl.searchParams;
   const search = q.get("search")?.trim() || undefined;
   const classId = q.get("classId") || undefined;
@@ -19,21 +18,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   const statusValue = q.get("status") || "ACTIVE";
   const status = Object.values(StudentStatus).includes(statusValue as StudentStatus) ? statusValue as StudentStatus : StudentStatus.ACTIVE;
 
-  let teacherScope: Array<{ classId: string; sectionId: string }> | undefined;
-  if (tenant.role === "TEACHER") {
-    const teacher = await requireCurrentTeacher(tenant.schoolId);
-    teacherScope = await prisma.teacherAllocation.findMany({
-      where: { schoolId: tenant.schoolId, teacherId: teacher.id, active: true },
-      distinct: ["classId", "sectionId"],
-      select: { classId: true, sectionId: true },
-    });
-  }
-
   const enrollmentFilter = {
     active: true,
     ...(classId ? { classId } : {}),
     ...(sectionId ? { sectionId } : {}),
-    ...(teacherScope ? { OR: teacherScope.map((scope) => ({ classId: scope.classId, sectionId: scope.sectionId })) } : {}),
   };
 
   const [school, students] = await Promise.all([
@@ -46,7 +34,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
           { fullName: { contains: search, mode: "insensitive" } },
           { admissionNo: { contains: search, mode: "insensitive" } },
         ] } : {}),
-        ...(classId || sectionId || teacherScope ? { enrollments: { some: enrollmentFilter } } : {}),
+        ...(classId || sectionId ? { enrollments: { some: enrollmentFilter } } : {}),
       },
       orderBy: [{ fullName: "asc" }, { admissionNo: "asc" }],
       take: EXPORT_QUERY_ROW_LIMIT,

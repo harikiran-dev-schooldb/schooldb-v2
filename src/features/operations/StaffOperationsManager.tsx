@@ -5,7 +5,6 @@ import { useParams, useRouter } from "next/navigation";
 import {
   Banknote,
   CalendarCheck2,
-  Download,
   IndianRupee,
   Plus,
   UserCheck,
@@ -464,16 +463,6 @@ export function StaffOperationsManager({ data }: { data: OperationsData }) {
               </CardContent>
             </Card>
             <PayrollRuns rows={data.payrollRuns ?? []} />
-          </div>
-          <div className="flex flex-wrap justify-end gap-2">
-            <Button asChild variant="outline">
-              <a
-                href={`/api/v1/operations?kind=payroll-report&year=${now.getFullYear()}&month=${now.getMonth() + 1}`}
-              >
-                <Download className="size-4" />
-                Download current-month CSV
-              </a>
-            </Button>
           </div>
           <PayrollTable
             rows={entries}

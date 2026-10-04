@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { Prisma } from "@/generated/prisma/client";
-import { PERMISSIONS } from "@/lib/access-control";
-import { requirePermission } from "@/lib/auth";
+import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createSchoolReportWorkbook, reportDateRange, safeReportFilename } from "@/lib/reports/excel";
 import { EXPORT_QUERY_ROW_LIMIT, exportRowLimitResponse } from "@/lib/reports/limits";
@@ -11,7 +10,7 @@ export const runtime = "nodejs";
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ schoolSlug: string }> }) {
   const { schoolSlug } = await params;
-  const tenant = await requirePermission(PERMISSIONS.FEE_READ);
+  const tenant = await requireRole(["SUPER_ADMIN", "SCHOOL_ADMIN"], schoolSlug);
   const searchParams = request.nextUrl.searchParams;
   const search = searchParams.get("search")?.trim() || undefined;
   const paymentMode = searchParams.get("paymentMode") || undefined;

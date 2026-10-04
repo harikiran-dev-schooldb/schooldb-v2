@@ -12,7 +12,6 @@ import {
   TrendingUp,
   TrendingDown,
   ClipboardList,
-  Download,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -244,19 +243,6 @@ export function ExamResultsPage({ schoolSlug, examId }: Props) {
         </div>
 
         <div className="flex gap-2">
-          <Button
-            disabled={!selectedClassId || loading}
-            onClick={() => {
-              const params = new URLSearchParams({ classId: selectedClassId });
-              if (sectionId) params.set("sectionId", sectionId);
-              const link = document.createElement("a");
-              link.href = `/api/v1/reports/${schoolSlug}/exams/${examId}/results?${params.toString()}`;
-              link.click();
-            }}
-          >
-            <Download className="mr-2 size-4" />
-            Export Excel
-          </Button>
           <Button variant="outline" disabled={!selectedClassId || loading} onClick={() => void loadResults()}>
             <RefreshCw className={`mr-2 size-4 ${loading ? "animate-spin" : ""}`} />
             Refresh

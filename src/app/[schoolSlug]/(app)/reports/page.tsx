@@ -14,8 +14,10 @@ import { PageContainer, PageHeader } from "@/components/common/layout";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { ReportsFilters } from "@/features/reports/ReportsFilters";
+import { ReportExportCenter } from "@/features/reports/ReportExportCenter";
 import { getSchoolReport } from "@/features/reports/report.service";
 import { requireRole } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 
 type Props = {
   params: Promise<{ schoolSlug: string }>;
@@ -71,11 +73,21 @@ export default async function ReportsPage({ params, searchParams }: Props) {
             </p>
           </CardContent>
         </Card>
+        <ReportExportCenter
+          schoolSlug={schoolSlug}
+          filters={{ academicYearId: "", classId: "", sectionId: "", from: "", to: "" }}
+          exams={[]}
+        />
       </PageContainer>
     );
   }
 
   const hasCustomAttendanceRange = Boolean(filters.from || filters.to);
+  const exams = await prisma.exam.findMany({
+    where: { schoolId: membership.schoolId, academicYearId: report.scope.academicYearId, active: true },
+    orderBy: [{ startDate: "desc" }, { name: "asc" }],
+    select: { id: true, name: true },
+  });
   const attendanceTrendStart = new Date(`${report.scope.to}T00:00:00`);
   attendanceTrendStart.setDate(attendanceTrendStart.getDate() - 29);
   const attendanceTrendStartKey = [
@@ -133,6 +145,18 @@ export default async function ReportsPage({ params, searchParams }: Props) {
           from: report.scope.from,
           to: report.scope.to,
         }}
+      />
+
+      <ReportExportCenter
+        schoolSlug={schoolSlug}
+        filters={{
+          academicYearId: report.scope.academicYearId,
+          classId: report.scope.classId === "ALL" ? "" : report.scope.classId,
+          sectionId: report.scope.sectionId === "ALL" ? "" : report.scope.sectionId,
+          from: report.scope.from,
+          to: report.scope.to,
+        }}
+        exams={exams}
       />
 
       <section className="relative mt-6 overflow-hidden rounded-3xl border border-indigo-100 bg-gradient-to-br from-white via-indigo-50/70 to-violet-50/70 p-6 shadow-[0_18px_50px_rgba(15,23,42,0.07)] print:bg-white print:shadow-none sm:p-8">

@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { PERMISSIONS } from "@/lib/access-control";
-import { requirePermission } from "@/lib/auth";
+import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { studentFeeLedgerService } from "@/features/student-fees/services/student-fee-ledger.service";
 import { createSchoolReportWorkbook, safeReportFilename } from "@/lib/reports/excel";
@@ -10,7 +9,7 @@ export const runtime = "nodejs";
 
 export async function GET(_request: Request, { params }: { params: Promise<{ schoolSlug: string; studentFeeId: string }> }) {
   const { schoolSlug, studentFeeId } = await params;
-  const tenant = await requirePermission(PERMISSIONS.FEE_READ);
+  const tenant = await requireRole(["SUPER_ADMIN", "SCHOOL_ADMIN"], schoolSlug);
   const [school, ledger] = await Promise.all([
     prisma.school.findFirst({ where: { id: tenant.schoolId, slug: schoolSlug }, select: { name: true } }),
     studentFeeLedgerService.get(studentFeeId, tenant.schoolId),

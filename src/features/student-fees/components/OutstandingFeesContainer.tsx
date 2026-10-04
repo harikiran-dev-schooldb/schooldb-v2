@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AlertCircle, Download, Loader2, RefreshCw } from "lucide-react";
+import { AlertCircle, Loader2, RefreshCw } from "lucide-react";
 
 import { OutstandingFeesSummary } from "@/features/student-fees/components/OutstandingFeesSummary";
 import { OutstandingFeesSearch } from "@/features/student-fees/components/OutstandingFeesSearch";
@@ -21,7 +21,6 @@ type Props = {
   schoolSlug: string;
   canSendReminders?: boolean;
   canCollect?: boolean;
-  canExport?: boolean;
 };
 
 const PAGE_SIZE = 25;
@@ -30,7 +29,6 @@ export function OutstandingFeesContainer({
   schoolSlug,
   canSendReminders = false,
   canCollect = true,
-  canExport = true,
 }: Props) {
   const [data, setData] = useState<OutstandingFeesData | null>(null);
 
@@ -222,18 +220,6 @@ export function OutstandingFeesContainer({
   return (
     <div className="space-y-6">
       <OutstandingFeesSummary summary={data.summary} />
-
-      {canExport && <div className="flex flex-wrap justify-end gap-2">
-        <Button asChild>
-          <a href={`/api/v1/reports/${schoolSlug}/fees/outstanding?${new URLSearchParams({
-            ...(search.trim() ? { search: search.trim() } : {}),
-            ...(classId ? { classId } : {}),
-            ...(sectionId ? { sectionId } : {}),
-          }).toString()}`}>
-            <Download className="size-4" /> Export Excel
-          </a>
-        </Button>
-      </div>}
 
       <OutstandingFeesSearch
         value={search}

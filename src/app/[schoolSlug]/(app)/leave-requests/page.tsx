@@ -1,13 +1,11 @@
 import Link from "next/link";
-import { CalendarClock, CalendarDays, CircleCheckBig, Clock3, Download, MessageSquareText, Sparkles } from "lucide-react";
+import { CalendarClock, CalendarDays, CircleCheckBig, Clock3, MessageSquareText, Sparkles } from "lucide-react";
 
 import { PageContainer, PageHeader } from "@/components/common/layout";
 import { Badge } from "@/components/ui/badge";
-import { buttonVariants } from "@/components/ui/button";
 import { LeaveDecisionControl } from "@/features/leave-requests/LeaveDecisionControl";
 import { leaveRequestFilterOptions, listStaffLeaveRequests } from "@/features/leave-requests/service";
 import { formatDate } from "@/lib/self-service-format";
-import { cn } from "@/lib/utils";
 
 const statusStyle: Record<string, string> = {
   PENDING: "border-amber-200 bg-amber-50 text-amber-800",
@@ -62,14 +60,6 @@ export default async function LeaveRequestsManagementPage({
   const requests = selectedType === "ALL" ? allRequests : allRequests.filter((request) => request.requestType === selectedType);
   const pending = requests.filter((request) => request.status === "PENDING");
   const completed = requests.filter((request) => request.status !== "PENDING");
-  const exportQuery = new URLSearchParams();
-  if (selectedType !== "ALL") exportQuery.set("type", selectedType);
-  if (query.classId) exportQuery.set("classId", query.classId);
-  if (query.sectionId) exportQuery.set("sectionId", query.sectionId);
-  if (query.from) exportQuery.set("from", query.from);
-  if (query.to) exportQuery.set("to", query.to);
-  const exportHref = `/api/v1/reports/${schoolSlug}/leave-permissions${exportQuery.size ? `?${exportQuery.toString()}` : ""}`;
-
   return (
     <PageContainer>
       <PageHeader title="Leave & permissions" description="Review student leave, late arrival, early departure, half-day and short permission requests. Teachers only see assigned classes and sections." />
@@ -84,12 +74,6 @@ export default async function LeaveRequestsManagementPage({
             <div className="rounded-2xl border border-white/15 bg-white/10 p-4 backdrop-blur-sm"><CircleCheckBig className="size-5 text-emerald-300" /><p className="mt-3 text-3xl font-black">{completed.length}</p><p className="text-xs font-medium text-indigo-100">Decisions recorded</p></div>
           </div>
         </div>
-      </div>
-
-      <div className="mt-6 flex justify-stretch sm:justify-end">
-        <a href={exportHref} className={cn(buttonVariants(), "w-full sm:w-auto")}>
-          <Download className="size-4" />Export Excel
-        </a>
       </div>
 
       <form className="mt-3 grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:grid-cols-2 lg:grid-cols-5">

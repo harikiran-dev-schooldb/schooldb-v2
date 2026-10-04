@@ -1,11 +1,10 @@
 "use client";
 
 import { FormEvent, useMemo, useState, useTransition } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import {
   BusFront,
   CircleParking,
-  Download,
   MapPin,
   Navigation,
   Phone,
@@ -135,7 +134,6 @@ export function TransportManager({
   academicYearId: string | null;
 }) {
   const router = useRouter();
-  const params = useParams<{ schoolSlug: string }>();
   const [pending, startTransition] = useTransition();
   const activeVehicles = useMemo(() => data.vehicles.filter((vehicle) => vehicle.active), [data.vehicles]);
   const activeRoutes = useMemo(() => data.routes.filter((route) => route.active), [data.routes]);
@@ -223,11 +221,6 @@ export function TransportManager({
         </div>
       </section>
 
-      <div className="flex flex-wrap justify-end gap-2">
-        <Button asChild><a href={`/api/v1/reports/${params.schoolSlug}/transport?report=fleet`}><Download className="size-4" />Fleet Excel</a></Button>
-        <Button asChild variant="outline" className="rounded-xl"><a href={`/api/v1/reports/${params.schoolSlug}/transport?report=routes`}><Download className="size-4" />Routes Excel</a></Button>
-        <Button asChild variant="outline" className="rounded-xl"><a href={`/api/v1/reports/${params.schoolSlug}/transport?report=students`}><Download className="size-4" />Students Excel</a></Button>
-      </div>
       <Tabs defaultValue="fleet">
         <TabsList className="w-full justify-start overflow-x-auto sm:w-auto">
           <TabsTrigger value="fleet">

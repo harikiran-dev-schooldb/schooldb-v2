@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { examResultService } from "@/features/exams/services/exam-result.service";
-import { requireTenant } from "@/lib/auth";
+import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createSchoolReportWorkbook, safeReportFilename } from "@/lib/reports/excel";
 import { exportRowLimitResponse } from "@/lib/reports/limits";
@@ -10,7 +10,7 @@ export const runtime = "nodejs";
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ schoolSlug: string; examId: string }> }) {
   const { schoolSlug, examId } = await params;
-  const tenant = await requireTenant();
+  const tenant = await requireRole(["SUPER_ADMIN", "SCHOOL_ADMIN"], schoolSlug);
   const classId = request.nextUrl.searchParams.get("classId");
   const sectionId = request.nextUrl.searchParams.get("sectionId");
   if (!classId) return NextResponse.json({ error: "Select a class." }, { status: 400 });

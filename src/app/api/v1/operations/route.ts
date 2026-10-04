@@ -73,8 +73,12 @@ export async function POST(request: Request) {
 
 export async function GET(request: Request) {
   return apiHandler(async () => {
-    const membership = await requireRole(["SUPER_ADMIN", "SCHOOL_ADMIN", "ACCOUNTANT"]);
     const url = new URL(request.url);
+    const membership = await requireRole(
+      url.searchParams.get("kind") === "payroll-report"
+        ? ["SUPER_ADMIN", "SCHOOL_ADMIN"]
+        : ["SUPER_ADMIN", "SCHOOL_ADMIN", "ACCOUNTANT"],
+    );
     if (url.searchParams.get("kind") === "staff-attendance-report") {
       const from = url.searchParams.get("from");
       const to = url.searchParams.get("to");

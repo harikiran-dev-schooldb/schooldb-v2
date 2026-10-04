@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { attendanceService } from "@/features/attendance/services/attendance.service";
-import { PERMISSIONS } from "@/lib/access-control";
-import { requirePermission, requireTeacherClassSection } from "@/lib/auth";
+import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createSchoolReportWorkbook, reportDateRange, safeReportFilename } from "@/lib/reports/excel";
 import { exportRowLimitResponse } from "@/lib/reports/limits";
@@ -11,7 +10,7 @@ export const runtime = "nodejs";
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ schoolSlug: string }> }) {
   const { schoolSlug } = await params;
-  const tenant = await requirePermission(PERMISSIONS.ATTENDANCE_READ);
+  const tenant = await requireRole(["SUPER_ADMIN", "SCHOOL_ADMIN"], schoolSlug);
   const search = request.nextUrl.searchParams;
   const academicYearId = search.get("academicYearId") ?? "";
   const classId = search.get("classId") ?? "";
@@ -22,8 +21,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   if (!academicYearId || !classId || !sectionId) {
     return NextResponse.json({ error: "Academic year, class and section are required." }, { status: 400 });
   }
-
-  await requireTeacherClassSection(classId, sectionId);
 
   const [school, classInfo, section, report] = await Promise.all([
     prisma.school.findFirst({ where: { id: tenant.schoolId, slug: schoolSlug }, select: { name: true } }),

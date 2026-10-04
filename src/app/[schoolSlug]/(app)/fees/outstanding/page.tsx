@@ -40,7 +40,6 @@ export default async function OutstandingFeesPage({ params }: Props) {
         schoolSlug={schoolSlug}
         canSendReminders={canSendReminders}
         canCollect={membership.role !== "TEACHER"}
-        canExport={membership.role !== "TEACHER"}
       />
     </div>
   );

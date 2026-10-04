@@ -5,9 +5,8 @@ import {
   EXPENSE_CATEGORIES,
   EXPENSE_PAYMENT_MODES,
 } from "@/features/expenses/schema";
-import { PERMISSIONS } from "@/lib/access-control";
 import { recordAuditLog } from "@/lib/audit";
-import { requirePermission } from "@/lib/auth";
+import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import {
   createSchoolReportWorkbook,
@@ -42,7 +41,7 @@ export async function GET(
   { params }: { params: Promise<{ schoolSlug: string }> },
 ) {
   const { schoolSlug } = await params;
-  const membership = await requirePermission(PERMISSIONS.FEE_READ, schoolSlug);
+  const membership = await requireRole(["SUPER_ADMIN", "SCHOOL_ADMIN"], schoolSlug);
   const query = request.nextUrl.searchParams;
   const from = query.get("from");
   const to = query.get("to");

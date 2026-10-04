@@ -1,10 +1,8 @@
-import Link from "next/link";
 import {
   Activity,
   ArchiveRestore,
   CheckCircle2,
   Cloud,
-  Download,
   HardDrive,
   MessageCircleMore,
   ShieldCheck,
@@ -14,7 +12,6 @@ import {
 
 import { PageContainer, PageHeader } from "@/components/common/layout";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -164,13 +161,6 @@ export default async function SystemHealthPage({
       <PageHeader
         title="System Health"
         description="A single view of deployment safety, data protection, storage and communication readiness."
-        actions={
-          <Button asChild variant="outline">
-            <Link href="/api/v1/system/export">
-              <Download className="size-4" /> Download data snapshot
-            </Link>
-          </Button>
-        }
       />
 
       <section className="overflow-hidden rounded-3xl bg-gradient-to-br from-slate-950 via-indigo-950 to-violet-950 p-6 text-white shadow-xl md:p-8">
