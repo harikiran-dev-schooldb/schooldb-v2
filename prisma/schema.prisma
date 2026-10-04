@@ -1321,14 +1321,14 @@ model Teacher {
   state                   String?
   pincode                 String?
   active                  Boolean                  @default(true)
-  studentDetailsAccess    Boolean                  @default(true)
-  feeAccess               Boolean                  @default(true)
-  resultAccess            Boolean                  @default(true)
-  timetableAccess         Boolean                  @default(true)
-  attendanceAccess        Boolean                  @default(true)
-  homeworkAccess          Boolean                  @default(true)
-  examAccess              Boolean                  @default(true)
-  marksEntryAccess        Boolean                  @default(true)
+  studentDetailsAccess    Boolean                  @default(false)
+  feeAccess               Boolean                  @default(false)
+  resultAccess            Boolean                  @default(false)
+  timetableAccess         Boolean                  @default(false)
+  attendanceAccess        Boolean                  @default(false)
+  homeworkAccess          Boolean                  @default(false)
+  examAccess              Boolean                  @default(false)
+  marksEntryAccess        Boolean                  @default(false)
   createdAt               DateTime                 @default(now())
   updatedAt               DateTime                 @updatedAt
   attendanceSessions      AttendanceSession[]
