@@ -27,11 +27,19 @@ function TabsList({
 
 function TabsTrigger({
   className,
+  disabled,
   ...props
 }: React.ComponentProps<typeof TabsPrimitive.Trigger>) {
+  const [hydrated, setHydrated] = React.useState(false);
+
+  React.useEffect(() => {
+    setHydrated(true);
+  }, []);
+
   return (
     <TabsPrimitive.Trigger
       data-slot="tabs-trigger"
+      disabled={!hydrated || disabled}
       className={cn(
         "inline-flex h-9 items-center justify-center whitespace-nowrap rounded-lg px-3.5 text-sm font-semibold",
         "text-muted-foreground transition-all duration-200",
