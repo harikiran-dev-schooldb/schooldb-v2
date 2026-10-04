@@ -5,7 +5,10 @@ import { resolveAudience } from "@/features/audiences/resolve";
 import type { AudienceType } from "@/features/audiences/types";
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
-import { isAutomatedWhatsappSourceAllowed } from "./policy";
+import {
+  isAutomatedWhatsappSourceAllowed,
+  staffAttendanceWhatsappTemplateParameters,
+} from "./policy";
 
 type CreateCampaignInput = {
   schoolId: string;
@@ -702,6 +705,7 @@ export async function processWhatsappCampaignBatch(
       message: true,
       templateName: true,
       sourceType: true,
+      sourceId: true,
       automationKey: true,
       targetLabel: true,
       school: { select: { name: true } },
@@ -748,13 +752,18 @@ export async function processWhatsappCampaignBatch(
     await Promise.all(
       group.map(async (recipient) => {
         try {
-          const parameters =
-            campaign.sourceType === "PARENT_QUERY"
-              ? [
-                  campaign.school.name,
-                  campaign.targetLabel ?? "Parent Query",
-                  campaign.message,
-                ]
+          const parameters = campaign.sourceType === "PARENT_QUERY"
+            ? [
+                campaign.school.name,
+                campaign.targetLabel ?? "Parent Query",
+                campaign.message,
+              ]
+            : campaign.sourceType === "STAFF_ATTENDANCE"
+              ? staffAttendanceWhatsappTemplateParameters({
+                  teacherName: campaign.targetLabel ?? "Staff member",
+                  attendanceDate: campaign.sourceId?.split(":").at(-1) ?? "",
+                  schoolName: campaign.school.name,
+                })
               : [campaign.title, campaign.message];
 
           const providerMessageId = await sendTemplate(
