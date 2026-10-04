@@ -20,6 +20,7 @@ export const studentRepository = {
         fullName: true,
         imageUrl: true,
         gender: true,
+        isRte: true,
         phone: true,
         fatherName: true,
         status: true,

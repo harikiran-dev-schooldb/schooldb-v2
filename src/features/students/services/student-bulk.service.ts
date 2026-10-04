@@ -8,6 +8,7 @@ import {
   type BulkStudentUpdateField,
 } from "../schemas/bulk-student.schema";
 import { updateStudentFieldsSchema } from "../schemas/student.schema";
+import { syncStudentRteWaivers } from "@/features/student-fees/services/rte-waiver.service";
 
 type EnrollmentInput = Pick<
   BulkStudentRow,
@@ -120,6 +121,7 @@ export const studentBulkService = {
       admissionNo: string;
       fullName: string | null;
       data: Prisma.StudentUpdateInput;
+      isRte?: boolean;
     }> = [];
 
     for (const [index, requested] of students.entries()) {
@@ -168,7 +170,11 @@ export const studentBulkService = {
           : null;
       }
 
-      changes.push({ ...student, data });
+      changes.push({
+        ...student,
+        data,
+        isRte: fields.includes("isRte") ? parsedPatch.data.isRte : undefined,
+      });
     }
 
     if (errors.length > 0) {
@@ -182,6 +188,15 @@ export const studentBulkService = {
             where: { id: student.id, schoolId },
             data: student.data,
           });
+
+          if (student.isRte !== undefined) {
+            await syncStudentRteWaivers(
+              tx,
+              schoolId,
+              student.id,
+              student.isRte,
+            );
+          }
         }
 
         await tx.studentActivity.createMany({
@@ -195,6 +210,9 @@ export const studentBulkService = {
             metadata: { fields },
           })),
         });
+      }, {
+        maxWait: 5_000,
+        timeout: 120_000,
       });
     }
 

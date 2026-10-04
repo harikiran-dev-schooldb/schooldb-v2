@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 type Props = {
   totalAmount: number;
+  totalRteWaiver: number;
   totalConcession: number;
   totalPayable: number;
   totalPaid: number;
@@ -21,6 +22,7 @@ function money(value: number) {
 
 export function FeeSummaryCard({
   totalAmount,
+  totalRteWaiver,
   totalConcession,
   totalPayable,
   totalPaid,
@@ -60,6 +62,21 @@ export function FeeSummaryCard({
             </div>
 
             <span className="font-semibold">{money(totalAmount)}</span>
+          </div>
+
+          {/* Concession */}
+          <div className="flex items-center justify-between gap-4 rounded-xl px-3 py-3">
+            <div className="flex items-center gap-3">
+              <div className="flex size-9 items-center justify-center rounded-lg bg-emerald-50">
+                <TrendingDown className="size-4 text-emerald-600" />
+              </div>
+
+              <span className="text-sm text-muted-foreground">RTE Waiver</span>
+            </div>
+
+            <span className="font-semibold text-emerald-600">
+              − {money(totalRteWaiver)}
+            </span>
           </div>
 
           {/* Concession */}

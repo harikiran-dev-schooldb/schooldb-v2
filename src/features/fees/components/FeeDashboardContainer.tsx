@@ -208,6 +208,7 @@ export function FeeDashboardContainer() {
       <div className="grid gap-6 lg:grid-cols-2">
         <FeeSummaryCard
           totalAmount={summary.totalAmount}
+          totalRteWaiver={summary.totalRteWaiver}
           totalConcession={summary.totalConcession}
           totalPayable={summary.totalPayable}
           totalPaid={summary.totalPaid}

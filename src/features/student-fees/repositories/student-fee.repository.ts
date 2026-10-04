@@ -1,5 +1,4 @@
 import { prisma } from "@/lib/prisma";
-import { isRteFeeExempt } from "../rte-fee-policy";
 
 const FEE_ASSIGNMENT_BATCH_SIZE = 250;
 const BULK_WRITE_BATCH_SIZE = 500;
@@ -212,10 +211,6 @@ export const studentFeeRepository = {
         );
       }
 
-      if (isRteFeeExempt(enrollment.student)) {
-        throw new Error("Fees cannot be assigned to an RTE student.");
-      }
-
       if (
         enrollment.academicYearId !==
         plan.academicYearId
@@ -259,10 +254,12 @@ export const studentFeeRepository = {
                   amount:
                     planItem.amount,
 
+                  rteWaiver: enrollment.student.isRte ? planItem.amount : 0,
+
                   concession: 0,
 
                   finalAmount:
-                    planItem.amount,
+                    enrollment.student.isRte ? 0 : planItem.amount,
 
                   installments: {
                     create:
@@ -277,10 +274,14 @@ export const studentFeeRepository = {
                           amount:
                             installment.amount,
 
+                          rteWaiver: enrollment.student.isRte
+                            ? installment.amount
+                            : 0,
+
                           concession: 0,
 
                           payableAmount:
-                            installment.amount,
+                            enrollment.student.isRte ? 0 : installment.amount,
 
                           paidAmount: 0,
 
@@ -288,7 +289,7 @@ export const studentFeeRepository = {
                             installment.dueDate,
 
                           status:
-                            "PENDING",
+                            enrollment.student.isRte ? "WAIVED" : "PENDING",
 
                           sequence:
                             installment.sequence,
@@ -440,18 +441,13 @@ export const studentFeeRepository = {
       },
     });
 
-    const feeEligibleEnrollments = enrollments.filter(
-      (enrollment) => !isRteFeeExempt(enrollment.student),
-    );
-    const rteExcluded = enrollments.length - feeEligibleEnrollments.length;
-
-    if (feeEligibleEnrollments.length === 0) {
+    if (enrollments.length === 0) {
       return {
-        totalStudents: enrollments.length,
+        totalStudents: 0,
         created: 0,
         existing: 0,
         failed: 0,
-        rteExcluded,
+        rteWaived: 0,
       };
     }
 
@@ -459,7 +455,7 @@ export const studentFeeRepository = {
       where: {
         feePlanId,
         studentEnrollmentId: {
-          in: feeEligibleEnrollments.map((enrollment) => enrollment.id),
+          in: enrollments.map((enrollment) => enrollment.id),
         },
       },
       select: {
@@ -471,7 +467,7 @@ export const studentFeeRepository = {
       existingAssignments.map((assignment) => assignment.studentEnrollmentId),
     );
 
-    const pendingEnrollments = feeEligibleEnrollments.filter(
+    const pendingEnrollments = enrollments.filter(
       (enrollment) => !existingEnrollmentIds.has(enrollment.id),
     );
 
@@ -503,14 +499,32 @@ export const studentFeeRepository = {
               return 0;
             }
 
+            const enrollmentById = new Map(
+              enrollmentBatch.map((enrollment) => [enrollment.id, enrollment]),
+            );
+            const rteStudentFeeIds = new Set(
+              studentFees
+                .filter(
+                  (studentFee) =>
+                    enrollmentById.get(studentFee.studentEnrollmentId)?.student
+                      .isRte,
+                )
+                .map((studentFee) => studentFee.id),
+            );
+
             const studentFeeItemRows = studentFees.flatMap((studentFee) =>
               plan.items.map((planItem) => ({
                 studentFeeId: studentFee.id,
                 feePlanItemId: planItem.id,
                 feeCategoryId: planItem.feeCategoryId,
                 amount: planItem.amount,
+                rteWaiver: rteStudentFeeIds.has(studentFee.id)
+                  ? planItem.amount
+                  : 0,
                 concession: 0,
-                finalAmount: planItem.amount,
+                finalAmount: rteStudentFeeIds.has(studentFee.id)
+                  ? 0
+                  : planItem.amount,
               })),
             );
 
@@ -549,11 +563,18 @@ export const studentFeeRepository = {
                 feeInstallmentId: installment.id,
                 name: installment.name,
                 amount: installment.amount,
+                rteWaiver: rteStudentFeeIds.has(studentFeeItem.studentFeeId)
+                  ? installment.amount
+                  : 0,
                 concession: 0,
-                payableAmount: installment.amount,
+                payableAmount: rteStudentFeeIds.has(studentFeeItem.studentFeeId)
+                  ? 0
+                  : installment.amount,
                 paidAmount: 0,
                 dueDate: installment.dueDate,
-                status: "PENDING" as const,
+                status: rteStudentFeeIds.has(studentFeeItem.studentFeeId)
+                  ? ("WAIVED" as const)
+                  : ("PENDING" as const),
                 sequence: installment.sequence,
                 periodStart: installment.periodStart,
                 periodEnd: installment.periodEnd,
@@ -568,10 +589,6 @@ export const studentFeeRepository = {
                 data: installmentBatch,
               });
             }
-
-            const enrollmentById = new Map(
-              enrollmentBatch.map((enrollment) => [enrollment.id, enrollment]),
-            );
 
             await tx.studentActivity.createMany({
               data: studentFees.map((studentFee) => {
@@ -626,7 +643,8 @@ export const studentFeeRepository = {
       created,
       existing,
       failed,
-      rteExcluded,
+      rteWaived: enrollments.filter((enrollment) => enrollment.student.isRte)
+        .length,
     };
   },
 };

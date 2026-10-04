@@ -155,7 +155,7 @@ export async function GET(
 
     const feeSummary = ledgers.reduce(
       (total, ledger) => ({
-        payable: total.payable + ledger.summary.total - ledger.summary.concession,
+        payable: total.payable + ledger.summary.payable,
         paid: total.paid + ledger.summary.paid,
         outstanding: total.outstanding + ledger.summary.outstanding,
       }),

@@ -4,6 +4,8 @@ import { StudentStatus } from "@/generated/prisma/enums";
 import { ListQuery } from "@/types/query";
 import { studentActivityService } from "./student-activity.service";
 import { safelyProvisionStudentLogin } from "@/features/auth/account-provisioning";
+import { prisma } from "@/lib/prisma";
+import { syncStudentRteWaivers } from "@/features/student-fees/services/rte-waiver.service";
 
 type StudentCreateInput = Pick<
   StudentFormOutput,
@@ -29,6 +31,8 @@ export const studentService = {
       schoolId,
 
       status: query.status ?? StudentStatus.ACTIVE,
+
+      ...(query.isRte !== undefined ? { isRte: query.isRte } : {}),
 
       ...(query.teacherScope
         ? {
@@ -268,6 +272,12 @@ export const studentService = {
       dob: new Date(`${dob}T00:00:00`),
       joinedDate: joinedDate ? new Date(`${joinedDate}T00:00:00`) : null,
     });
+
+    if (student.isRte !== updated.isRte) {
+      await prisma.$transaction((tx) =>
+        syncStudentRteWaivers(tx, schoolId, id, updated.isRte),
+      );
+    }
 
     /* -------------------------------------------------------------- */
     /* Activity                                                        */

@@ -63,6 +63,9 @@ export async function GET(req: Request) {
     const search = searchParams.get("search") ?? undefined;
     const classId = searchParams.get("classId") || undefined;
     const sectionId = searchParams.get("sectionId") || undefined;
+    const isRteParam = searchParams.get("isRte");
+    const isRte =
+      isRteParam === "true" ? true : isRteParam === "false" ? false : undefined;
 
     let teacherScope:
       | Array<{ classId: string; sectionId: string }>
@@ -93,6 +96,7 @@ export async function GET(req: Request) {
       status,
       classId,
       sectionId,
+      isRte,
       teacherScope,
     });
     return ApiResponse.success(students);

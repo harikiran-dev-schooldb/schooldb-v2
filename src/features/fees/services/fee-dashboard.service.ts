@@ -89,6 +89,7 @@ export async function getFeeDashboard(
       where: installmentWhere,
       _sum: {
         amount: true,
+        rteWaiver: true,
         concession: true,
         payableAmount: true,
         paidAmount: true,
@@ -146,6 +147,7 @@ export async function getFeeDashboard(
     ]),
   );
   const totalAmount = money(ledgerTotals._sum.amount);
+  const totalRteWaiver = money(ledgerTotals._sum.rteWaiver);
   const totalConcession = money(ledgerTotals._sum.concession);
   const totalPayable = money(ledgerTotals._sum.payableAmount);
   const totalPaid = money(ledgerTotals._sum.paidAmount);
@@ -153,6 +155,7 @@ export async function getFeeDashboard(
   return {
     summary: {
       totalAmount,
+      totalRteWaiver,
       totalConcession,
       totalPayable,
       totalPaid,

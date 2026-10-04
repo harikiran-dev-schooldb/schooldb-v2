@@ -42,6 +42,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ sch
       { header: "Installment / Term", key: "term", width: 20, value:r=>r.name },
       { header: "Due Date", key: "due", width: 15, value:r=>r.dueDate, numFmt:"dd-mm-yyyy" },
       { header: "Amount", key: "amount", width: 14, value:r=>r.amount, numFmt:"₹#,##0.00" },
+      { header: "RTE Waiver", key: "rteWaiver", width: 14, value:r=>r.rteWaiver, numFmt:"₹#,##0.00" },
       { header: "Concession", key: "concession", width: 14, value:r=>r.concession, numFmt:"₹#,##0.00" },
       { header: "Payable", key: "payable", width: 14, value:r=>r.payableAmount, numFmt:"₹#,##0.00" },
       { header: "Paid", key: "paid", width: 14, value:r=>r.paidAmount, numFmt:"₹#,##0.00" },
@@ -64,8 +65,8 @@ export async function GET(_request: Request, { params }: { params: Promise<{ sch
   payments.getColumn(2).numFmt="dd-mm-yyyy";payments.getColumn(7).numFmt="₹#,##0.00";payments.getColumn(8).numFmt="₹#,##0.00";payments.columns=[{width:24},{width:16},{width:18},{width:22},{width:22},{width:22},{width:18},{width:18},{width:30},{width:14}];payments.views=[{state:"frozen",ySplit:5}];
 
   const summary=workbook.addWorksheet("Summary"); summary.addRow([school.name]);summary.mergeCells("A1:B1");summary.addRow(["Student Fee Ledger - Summary"]);summary.mergeCells("A2:B2");summary.addRow([`Academic Year: ${ledger.academicYear.name}`]);summary.mergeCells("A3:B3");summary.addRow([]);
-  [["Admission No",ledger.student.admissionNo],["Student",ledger.student.fullName||""],["Class",ledger.student.class.name],["Section",ledger.student.section.name],["Fee Plan",ledger.studentFee.feePlan.name],["Total Fee",ledger.summary.total],["Concession",ledger.summary.concession],["Payable",Math.max(0,ledger.summary.total-ledger.summary.concession)],["Paid",ledger.summary.paid],["Outstanding",ledger.summary.outstanding]].forEach(r=>summary.addRow(r));
-  summary.getColumn(1).width=24;summary.getColumn(2).width=32;for(let r=10;r<=14;r++)summary.getCell(r,2).numFmt="₹#,##0.00";
+  [["Admission No",ledger.student.admissionNo],["Student",ledger.student.fullName||""],["Class",ledger.student.class.name],["Section",ledger.student.section.name],["Fee Plan",ledger.studentFee.feePlan.name],["Total Fee",ledger.summary.total],["RTE Waiver",ledger.summary.rteWaiver],["Concession",ledger.summary.concession],["Payable",ledger.summary.payable],["Paid",ledger.summary.paid],["Outstanding",ledger.summary.outstanding]].forEach(r=>summary.addRow(r));
+  summary.getColumn(1).width=24;summary.getColumn(2).width=32;for(let r=10;r<=15;r++)summary.getCell(r,2).numFmt="₹#,##0.00";
 
   const buffer=await workbook.xlsx.writeBuffer();
   return new NextResponse(Buffer.from(buffer),{headers:{"Content-Type":"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet","Content-Disposition":`attachment; filename="${safeReportFilename(ledger.student.admissionNo)}-fee-ledger-${safeReportFilename(ledger.academicYear.name)}.xlsx"`,"Cache-Control":"no-store"}});

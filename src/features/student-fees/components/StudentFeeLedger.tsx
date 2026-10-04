@@ -42,6 +42,7 @@ type Installment = {
   name: string;
 
   amount: number;
+  rteWaiver: number;
   concession: number;
   payableAmount: number;
   paidAmount: number;
@@ -96,6 +97,7 @@ type Ledger = {
     id: string;
     admissionNo: string;
     fullName: string | null;
+    isRte: boolean;
 
     class: {
       id: string;
@@ -115,7 +117,9 @@ type Ledger = {
 
   summary: {
     total: number;
+    rteWaiver: number;
     concession: number;
+    payable: number;
     paid: number;
     outstanding: number;
   };
@@ -332,13 +336,17 @@ export function StudentFeeLedger({ studentFeeIds }: Props) {
     return ledgers.reduce(
       (total, ledger) => ({
         total: total.total + ledger.summary.total,
+        rteWaiver: total.rteWaiver + ledger.summary.rteWaiver,
         concession: total.concession + ledger.summary.concession,
+        payable: total.payable + ledger.summary.payable,
         paid: total.paid + ledger.summary.paid,
         outstanding: total.outstanding + ledger.summary.outstanding,
       }),
       {
         total: 0,
+        rteWaiver: 0,
         concession: 0,
+        payable: 0,
         paid: 0,
         outstanding: 0,
       },
@@ -361,7 +369,7 @@ export function StudentFeeLedger({ studentFeeIds }: Props) {
   /* COLLECTION                                                             */
   /* ====================================================================== */
 
-  const totalPayable = Math.max(summary.total - summary.concession, 0);
+  const totalPayable = summary.payable;
 
   const collectionPercentage =
     totalPayable > 0
@@ -512,6 +520,12 @@ export function StudentFeeLedger({ studentFeeIds }: Props) {
                     {ledgers.length} Fee Plan
                     {ledgers.length > 1 ? "s" : ""}
                   </span>
+
+                  {student.isRte && (
+                    <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[10px] font-bold tracking-wider text-emerald-700 uppercase shadow-sm">
+                      RTE Student
+                    </span>
+                  )}
                 </div>
 
                 <div className="mt-4 flex flex-wrap items-center gap-2 text-sm">
@@ -603,7 +617,7 @@ export function StudentFeeLedger({ studentFeeIds }: Props) {
       {/* FINANCIAL SUMMARY                                                  */}
       {/* ================================================================== */}
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <Card className="group overflow-hidden rounded-3xl border-slate-200 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-slate-200/60">
           <CardContent className="p-5">
             <div className="flex items-start justify-between">
@@ -625,6 +639,30 @@ export function StudentFeeLedger({ studentFeeIds }: Props) {
             <div className="mt-5 flex items-center gap-2 text-xs font-medium text-slate-400">
               <Banknote className="size-3.5" />
               All assigned fee plans
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="group overflow-hidden rounded-3xl border-emerald-100 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-emerald-100/60">
+          <CardContent className="p-5">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-[10px] font-bold tracking-[0.16em] text-emerald-500 uppercase">
+                  RTE Waiver
+                </p>
+
+                <p className="mt-3 text-2xl font-black tracking-tight text-emerald-600">
+                  {money(summary.rteWaiver)}
+                </p>
+              </div>
+
+              <div className="flex size-11 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
+                <GraduationCap className="size-5" />
+              </div>
+            </div>
+
+            <div className="mt-5 text-xs font-medium text-slate-400">
+              RTE fee entitlement
             </div>
           </CardContent>
         </Card>
@@ -985,6 +1023,12 @@ export function StudentFeeLedger({ studentFeeIds }: Props) {
                         {installment.concession > 0 && (
                           <p className="mt-1 text-[10px] font-semibold text-indigo-500">
                             − {money(installment.concession)}
+                          </p>
+                        )}
+
+                        {installment.rteWaiver > 0 && (
+                          <p className="mt-1 text-[10px] font-semibold text-emerald-600">
+                            RTE − {money(installment.rteWaiver)}
                           </p>
                         )}
                       </td>

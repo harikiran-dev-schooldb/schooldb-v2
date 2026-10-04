@@ -25,6 +25,7 @@ export function useStudentTable() {
   const [search, setSearch] = useState("");
   const [classId, setClassId] = useState("");
   const [sectionId, setSectionId] = useState("");
+  const [rteFilter, setRteFilter] = useState<"ALL" | "RTE" | "NON_RTE">("ALL");
 
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
@@ -69,6 +70,12 @@ export function useStudentTable() {
     setPage(1);
   };
 
+  const handleRteFilter = (value: "ALL" | "RTE" | "NON_RTE") => {
+    setLoading(true);
+    setRteFilter(value);
+    setPage(1);
+  };
+
   useEffect(() => {
     let active = true;
 
@@ -82,6 +89,7 @@ export function useStudentTable() {
         });
         if (classId) params.set("classId", classId);
         if (sectionId) params.set("sectionId", sectionId);
+        if (rteFilter !== "ALL") params.set("isRte", String(rteFilter === "RTE"));
 
         const res = await fetch(`/api/v1/students?${params.toString()}`);
         const result = await res.json();
@@ -103,7 +111,7 @@ export function useStudentTable() {
     return () => {
       active = false;
     };
-  }, [page, pageSize, debouncedSearch, status, classId, sectionId, reloadVersion]);
+  }, [page, pageSize, debouncedSearch, status, classId, sectionId, rteFilter, reloadVersion]);
 
   useEffect(() => {
       return subscribeTableRefresh("students", reload);
@@ -133,5 +141,7 @@ export function useStudentTable() {
     setClassId: handleClass,
     sectionId,
     setSectionId: handleSection,
+    rteFilter,
+    setRteFilter: handleRteFilter,
   };
 }

@@ -24,7 +24,7 @@ export async function POST(req: Request, { params }: Props) {
 
     return ApiResponse.success(
       result,
-      `Fee plan applied successfully. ${result.created} student fees created.${result.rteExcluded ? ` ${result.rteExcluded} RTE student${result.rteExcluded === 1 ? " was" : "s were"} excluded.` : ""}`,
+      `Fee plan applied successfully. ${result.created} student fees created.${result.rteWaived ? ` ${result.rteWaived} RTE student${result.rteWaived === 1 ? " has" : "s have"} a full RTE waiver.` : ""}`,
     );
   });
 }

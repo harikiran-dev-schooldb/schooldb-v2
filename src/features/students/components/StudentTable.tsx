@@ -24,6 +24,8 @@ export function StudentTable() {
     setClassId,
     sectionId,
     setSectionId,
+    rteFilter,
+    setRteFilter,
   } = useStudentTable();
 
   return (
@@ -38,7 +40,7 @@ export function StudentTable() {
       onPageChange={setPage}
       emptyTitle="No students found"
       emptyDescription={
-        search || classId || sectionId
+        search || classId || sectionId || rteFilter !== "ALL"
           ? "No student records match the current search and filters."
           : "Add the first student to begin building your school directory."
       }
@@ -53,6 +55,8 @@ export function StudentTable() {
           onClassChange={setClassId}
           sectionId={sectionId}
           onSectionChange={setSectionId}
+          rteFilter={rteFilter}
+          onRteFilterChange={setRteFilter}
         />
       }
     />

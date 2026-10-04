@@ -110,12 +110,12 @@ export function FeePlanActions({ feePlanId, active, feePlanName }: Props) {
         created: number;
         existing: number;
         failed: number;
-        rteExcluded?: number;
+        rteWaived?: number;
       };
-      const rteExcluded = data.rteExcluded ?? 0;
+      const rteWaived = data.rteWaived ?? 0;
 
       toast.success(
-        `Applied successfully. Created: ${data.created}, Existing: ${data.existing}, RTE excluded: ${rteExcluded}.`,
+        `Applied successfully. Created: ${data.created}, Existing: ${data.existing}, RTE waived: ${rteWaived}.`,
       );
 
       if (data.failed > 0) {
@@ -173,8 +173,8 @@ export function FeePlanActions({ feePlanId, active, feePlanName }: Props) {
             <AlertDialogTitle>Apply “{feePlanName}” to students?</AlertDialogTitle>
             <AlertDialogDescription>
               This assigns the fee plan to eligible active students in its
-              academic year and selected classes. RTE students will be excluded,
-              and existing assignments will not be duplicated.
+              academic year and selected classes. RTE students will receive a
+              full RTE waiver, and existing assignments will not be duplicated.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -186,7 +186,7 @@ export function FeePlanActions({ feePlanId, active, feePlanName }: Props) {
                 void applyToStudents();
               }}
             >
-              {applying ? "Applying…" : "Apply to Eligible Students"}
+              {applying ? "Applying…" : "Apply to Students"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

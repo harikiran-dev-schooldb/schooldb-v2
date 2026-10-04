@@ -52,6 +52,7 @@ export async function PATCH(req: Request, { params }: Params) {
 
     const amount = Number(installment.amount);
     const paidAmount = Number(installment.paidAmount);
+    const hasRteWaiver = Number(installment.rteWaiver) > 0;
 
     if (concession > amount) {
       throw new Error(
@@ -59,7 +60,8 @@ export async function PATCH(req: Request, { params }: Params) {
       );
     }
 
-    const payableAmount = amount - concession;
+    const rteWaiver = hasRteWaiver ? Math.max(amount - concession, 0) : 0;
+    const payableAmount = Math.max(amount - rteWaiver - concession, 0);
 
     if (paidAmount > payableAmount) {
       throw new Error(
@@ -82,7 +84,19 @@ export async function PATCH(req: Request, { params }: Params) {
     const updated = await prisma.$transaction(async (tx) => {
       const saved = await tx.studentFeeInstallment.update({
         where: { id },
-        data: { concession, payableAmount, status },
+        data: { concession, rteWaiver, payableAmount, status },
+      });
+      const itemTotals = await tx.studentFeeInstallment.aggregate({
+        where: { studentFeeItemId: installment.studentFeeItemId },
+        _sum: { concession: true, rteWaiver: true, payableAmount: true },
+      });
+      await tx.studentFeeItem.update({
+        where: { id: installment.studentFeeItemId },
+        data: {
+          concession: itemTotals._sum.concession ?? 0,
+          rteWaiver: itemTotals._sum.rteWaiver ?? 0,
+          finalAmount: itemTotals._sum.payableAmount ?? 0,
+        },
       });
       const enrollment = installment.studentFeeItem.studentFee.studentEnrollment;
       await tx.studentActivity.create({

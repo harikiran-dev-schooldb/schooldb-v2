@@ -1,6 +1,7 @@
 export type FeeDashboardData = {
   summary: {
     totalAmount: number;
+    totalRteWaiver: number;
     totalConcession: number;
     totalPayable: number;
     totalPaid: number;

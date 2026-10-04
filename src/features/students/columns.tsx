@@ -58,6 +58,12 @@ export const studentColumns: ColumnDef<StudentListItem>[] = [
                 {student.fullName ?? "Unnamed student"}
               </p>
 
+              {student.isRte && (
+                <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[9px] font-bold tracking-wide text-emerald-700 uppercase">
+                  RTE
+                </span>
+              )}
+
               <ChevronRight className="size-3.5 shrink-0 text-muted-foreground/40 transition-all group-hover:translate-x-0.5 group-hover:text-primary" />
             </div>
 

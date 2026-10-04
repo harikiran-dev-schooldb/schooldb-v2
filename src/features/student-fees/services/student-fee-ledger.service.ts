@@ -99,7 +99,9 @@ export const studentFeeLedgerService = {
       });
 
     let total = 0;
+    let rteWaiver = 0;
     let concession = 0;
+    let payable = 0;
     let paid = 0;
 
     /*
@@ -114,6 +116,9 @@ export const studentFeeLedgerService = {
       const installmentConcession =
         Number(installment.concession);
 
+      const installmentRteWaiver =
+        Number(installment.rteWaiver);
+
       const payableAmount =
         Number(installment.payableAmount);
 
@@ -124,6 +129,10 @@ export const studentFeeLedgerService = {
 
       concession +=
         installmentConcession;
+
+      rteWaiver += installmentRteWaiver;
+
+      payable += payableAmount;
 
       paid += paidAmount;
 
@@ -142,6 +151,8 @@ export const studentFeeLedgerService = {
 
         concession:
           installmentConcession,
+
+        rteWaiver: installmentRteWaiver,
 
         payableAmount,
 
@@ -191,13 +202,7 @@ installments.sort((a, b) => {
 });
     
 
-    const outstanding =
-      Math.max(
-        total -
-          concession -
-          paid,
-        0,
-      );
+    const outstanding = Math.max(payable - paid, 0);
 
     return {
       studentFee: {
@@ -233,6 +238,10 @@ installments.sort((a, b) => {
           studentFee.studentEnrollment
             .student.fullName,
 
+        isRte:
+          studentFee.studentEnrollment
+            .student.isRte,
+
         class: {
           id:
             studentFee.studentEnrollment
@@ -260,7 +269,9 @@ installments.sort((a, b) => {
 
       summary: {
         total,
+        rteWaiver,
         concession,
+        payable,
         paid,
         outstanding,
       },

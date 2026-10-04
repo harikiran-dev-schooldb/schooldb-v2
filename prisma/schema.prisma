@@ -492,6 +492,7 @@ model Student {
   @@index([schoolId, fullName])
   @@index([schoolId, phone])
   @@index([schoolId, status, createdAt])
+  @@index([schoolId, isRte, status])
 }
 
 model VisitorLog {
@@ -1764,6 +1765,7 @@ model StudentFeeItem {
   feePlanItemId String
   feeCategoryId String
   amount        Decimal                 @db.Decimal(12, 2)
+  rteWaiver     Decimal                 @default(0) @db.Decimal(12, 2)
   concession    Decimal                 @default(0) @db.Decimal(12, 2)
   finalAmount   Decimal                 @db.Decimal(12, 2)
   createdAt     DateTime                @default(now())
@@ -1784,6 +1786,7 @@ model StudentFeeInstallment {
   feeInstallmentId     String?
   name                 String
   amount               Decimal                      @db.Decimal(12, 2)
+  rteWaiver            Decimal                      @default(0) @db.Decimal(12, 2)
   concession           Decimal                      @default(0) @db.Decimal(12, 2)
   payableAmount        Decimal                      @db.Decimal(12, 2)
   paidAmount           Decimal                      @default(0) @db.Decimal(12, 2)

@@ -2,6 +2,12 @@ type RteStudent = {
   isRte: boolean;
 };
 
-export function isRteFeeExempt(student: RteStudent) {
-  return student.isRte;
+export function calculateRteWaiver(
+  amount: number,
+  concession: number,
+  student: RteStudent,
+) {
+  if (!student.isRte) return 0;
+
+  return Math.max(amount - concession, 0);
 }

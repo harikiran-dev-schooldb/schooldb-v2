@@ -1,12 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { isRteFeeExempt } from "../src/features/student-fees/rte-fee-policy.ts";
+import { calculateRteWaiver } from "../src/features/student-fees/rte-fee-policy.ts";
 
-test("exempts students explicitly marked as RTE from fee assignment", () => {
-  assert.equal(isRteFeeExempt({ isRte: true }), true);
+test("waives the full remaining fee for an RTE student", () => {
+  assert.equal(calculateRteWaiver(10_000, 500, { isRte: true }), 9_500);
 });
 
-test("allows fee assignment for non-RTE students", () => {
-  assert.equal(isRteFeeExempt({ isRte: false }), false);
+test("does not add an RTE waiver for a non-RTE student", () => {
+  assert.equal(calculateRteWaiver(10_000, 500, { isRte: false }), 0);
 });

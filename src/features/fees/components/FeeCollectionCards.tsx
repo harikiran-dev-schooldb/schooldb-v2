@@ -52,7 +52,7 @@ export function FeeCollectionCards({
     {
       title: "Total Payable",
       value: money(totalPayable),
-      description: "Net amount after concessions",
+      description: "Net after RTE waivers and concessions",
       icon: WalletCards,
       iconClass: "bg-muted text-muted-foreground",
       valueClass: "text-foreground",

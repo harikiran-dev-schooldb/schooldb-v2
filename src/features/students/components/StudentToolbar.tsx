@@ -25,6 +25,8 @@ type Props = {
   onClassChange: (value: string) => void;
   sectionId: string;
   onSectionChange: (value: string) => void;
+  rteFilter: "ALL" | "RTE" | "NON_RTE";
+  onRteFilterChange: (value: "ALL" | "RTE" | "NON_RTE") => void;
 };
 
 export function StudentToolbar({
@@ -36,6 +38,8 @@ export function StudentToolbar({
   onClassChange,
   sectionId,
   onSectionChange,
+  rteFilter,
+  onRteFilterChange,
 }: Props) {
   return (
     <CrudToolbar
@@ -64,6 +68,23 @@ export function StudentToolbar({
           placeholder="All Sections"
           triggerClassName="h-10 w-full min-w-36 rounded-xl border-border/70 bg-background/80 sm:w-40"
         />
+
+        <Select
+          value={rteFilter}
+          onValueChange={(value) =>
+            onRteFilterChange(value as "ALL" | "RTE" | "NON_RTE")
+          }
+        >
+          <SelectTrigger className="h-10 w-full min-w-36 rounded-xl border-border/70 bg-background/80 px-3 font-medium shadow-sm transition-all hover:border-primary/30 hover:bg-card focus:ring-primary/20 sm:w-40">
+            <SelectValue placeholder="RTE status" />
+          </SelectTrigger>
+
+          <SelectContent className="rounded-xl border-border/70 bg-popover/95 p-1.5 shadow-xl backdrop-blur-xl">
+            <SelectItem value="ALL">All Students</SelectItem>
+            <SelectItem value="RTE">RTE Students</SelectItem>
+            <SelectItem value="NON_RTE">Non-RTE Students</SelectItem>
+          </SelectContent>
+        </Select>
 
         <Select
           value={status}
