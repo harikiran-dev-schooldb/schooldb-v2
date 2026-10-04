@@ -54,6 +54,7 @@ import {
   titleCase,
   useOperationMutation,
 } from "./shared";
+import { StaffAttendanceMarker } from "./StaffAttendanceMarker";
 
 const attendanceStatuses = [
   "PRESENT",
@@ -243,6 +244,7 @@ export function StaffOperationsManager({ data }: { data: OperationsData }) {
           <TabsTrigger value="payroll">Payroll & payslips</TabsTrigger>
         </TabsList>
         <TabsContent value="attendance" className="space-y-5">
+          <StaffAttendanceMarker teachers={teachers} attendance={attendance} />
           <div className="grid gap-5 xl:grid-cols-[1fr_0.8fr]">
             <Card>
               <CardHeader>
