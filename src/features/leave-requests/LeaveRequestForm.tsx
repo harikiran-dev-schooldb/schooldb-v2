@@ -104,8 +104,8 @@ export function LeaveRequestForm({ schoolSlug, studentId }: { schoolSlug: string
           <legend className="mb-3 text-sm font-semibold">Request type</legend>
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
             {requestTypes.map((type) => (
-              <label key={type.value} className={`cursor-pointer rounded-2xl border p-3 transition ${requestType === type.value ? "border-indigo-400 bg-indigo-500/10 ring-2 ring-indigo-500/10" : "border-border bg-background/70 hover:border-indigo-400/50"}`}>
-                <input type="radio" name="requestType" value={type.value} checked={requestType === type.value} onChange={() => setRequestType(type.value)} className="sr-only" />
+              <label htmlFor={`leave-request-type-${type.value}`} key={type.value} className={`min-h-16 cursor-pointer rounded-2xl border p-3 transition ${requestType === type.value ? "border-indigo-400 bg-indigo-500/10 ring-2 ring-indigo-500/10" : "border-border bg-background/70 hover:border-indigo-400/50"}`}>
+                <input id={`leave-request-type-${type.value}`} type="radio" name="requestType" value={type.value} checked={requestType === type.value} onChange={() => setRequestType(type.value)} className="sr-only" />
                 <span className="block text-sm font-bold text-foreground">{type.label}</span>
                 <span className="mt-1 block text-xs leading-4 text-muted-foreground">{type.description}</span>
               </label>
@@ -113,15 +113,15 @@ export function LeaveRequestForm({ schoolSlug, studentId }: { schoolSlug: string
           </div>
         </fieldset>
 
-        <label className="grid gap-2 text-sm font-semibold">
+        <label htmlFor="leave-start-date" className="grid gap-2 text-sm font-semibold">
           {isLeave ? "From" : "Date"}
-          <Input name="startDate" type="date" required className="h-12 rounded-2xl border-border bg-background/70 px-4" />
+          <Input id="leave-start-date" name="startDate" type="date" required className="h-12 rounded-2xl border-border bg-background/70 px-4" />
         </label>
 
         {isLeave ? (
-          <label className="grid gap-2 text-sm font-semibold">
+          <label htmlFor="leave-end-date" className="grid gap-2 text-sm font-semibold">
             To
-            <Input name="endDate" type="date" required className="h-12 rounded-2xl border-border bg-background/70 px-4" />
+            <Input id="leave-end-date" name="endDate" type="date" required className="h-12 rounded-2xl border-border bg-background/70 px-4" />
           </label>
         ) : (
           <input type="hidden" name="endDate" value="" />
@@ -129,22 +129,22 @@ export function LeaveRequestForm({ schoolSlug, studentId }: { schoolSlug: string
 
         {isTimed && (
           <>
-            <label className="grid gap-2 text-sm font-semibold">
+            <label htmlFor="leave-start-time" className="grid gap-2 text-sm font-semibold">
               <span className="flex items-center gap-2"><Clock3 className="size-4 text-indigo-500" />{requestType === "EARLY_DEPARTURE" ? "Departure time" : requestType === "LATE_ARRIVAL" ? "Expected arrival time" : "From time"}</span>
-              <Input name="startTime" type="time" required className="h-12 rounded-2xl border-border bg-background/70 px-4" />
+              <Input id="leave-start-time" name="startTime" type="time" required className="h-12 rounded-2xl border-border bg-background/70 px-4" />
             </label>
             {requestType === "PERMISSION" && (
-              <label className="grid gap-2 text-sm font-semibold">
+              <label htmlFor="leave-end-time" className="grid gap-2 text-sm font-semibold">
                 To time
-                <Input name="endTime" type="time" required className="h-12 rounded-2xl border-border bg-background/70 px-4" />
+                <Input id="leave-end-time" name="endTime" type="time" required className="h-12 rounded-2xl border-border bg-background/70 px-4" />
               </label>
             )}
           </>
         )}
 
-        <label className="grid gap-2 text-sm font-semibold sm:col-span-2">
+        <label htmlFor="leave-reason" className="grid gap-2 text-sm font-semibold sm:col-span-2">
           Reason
-          <Textarea name="reason" required minLength={5} maxLength={2000} className="min-h-32 rounded-2xl border-border bg-background/70 px-4" placeholder="For example: medical appointment, family requirement…" />
+          <Textarea id="leave-reason" name="reason" required minLength={5} maxLength={2000} className="min-h-32 rounded-2xl border-border bg-background/70 px-4" placeholder="For example: medical appointment, family requirement…" />
         </label>
 
         {state.error && <p role="alert" className="text-sm font-medium text-destructive sm:col-span-2">{state.error}</p>}

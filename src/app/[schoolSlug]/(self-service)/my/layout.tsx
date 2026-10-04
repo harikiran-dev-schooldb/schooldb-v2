@@ -42,7 +42,7 @@ export default async function SelfServiceLayout({
         showStudentPicker={students.length > 1}
         unreadCount={unreadCount}
       />
-      <main className="mx-auto w-full max-w-7xl px-4 py-6 print:max-w-none print:p-0 sm:px-6 sm:py-8 lg:px-8">
+      <main className="mx-auto w-full max-w-7xl px-4 pt-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] print:max-w-none print:p-0 sm:px-6 sm:py-8 lg:px-8">
         {children}
       </main>
     </div>

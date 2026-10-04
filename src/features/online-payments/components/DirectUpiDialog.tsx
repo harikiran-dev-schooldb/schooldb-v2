@@ -21,6 +21,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { formatCurrency } from "@/lib/self-service-format";
 import {
   buildDirectUpiUri,
@@ -175,14 +176,20 @@ export function DirectUpiDialog({
                   The school will verify the bank credit before your fee is
                   marked paid.
                 </p>
-                <Input
-                  value={utr}
-                  onChange={(event) => setUtr(event.target.value)}
-                  placeholder="UPI UTR / transaction ID"
-                  autoComplete="off"
-                  className="mt-3 bg-white"
-                  maxLength={80}
-                />
+                <div className="mt-4 space-y-2">
+                  <Label htmlFor="direct-upi-utr">UPI UTR / transaction reference</Label>
+                  <Input
+                    id="direct-upi-utr"
+                    value={utr}
+                    onChange={(event) => setUtr(event.target.value)}
+                    placeholder="For example, 421845739012"
+                    autoComplete="off"
+                    autoCapitalize="characters"
+                    spellCheck={false}
+                    className="bg-white"
+                    maxLength={80}
+                  />
+                </div>
                 <Button
                   type="button"
                   className="mt-3 w-full bg-emerald-700 hover:bg-emerald-800"

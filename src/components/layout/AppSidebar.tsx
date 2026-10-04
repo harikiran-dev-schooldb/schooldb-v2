@@ -216,7 +216,7 @@ export function AppSidebar({ mobile = false, onNavigate }: Props) {
         "z-50 h-dvh shrink-0",
         "transition-[width] duration-300 ease-out",
         mobile
-          ? "w-full p-0 [padding-bottom:env(safe-area-inset-bottom)]"
+          ? "w-full p-0 [padding-top:env(safe-area-inset-top)] [padding-bottom:env(safe-area-inset-bottom)]"
           : ["sticky top-0 p-3", collapsed ? "w-[82px]" : "w-[286px]"],
       )}
     >

@@ -154,11 +154,7 @@ export function enableBrowserPush(schoolSlug: string) {
 }
 
 export async function refreshBrowserPush(schoolSlug: string) {
-  if (
-    !("Notification" in window)
-    || Notification.permission !== "granted"
-    || !localStorage.getItem(browserDeviceKey(schoolSlug))
-  ) return false;
+  if (browserPushState(schoolSlug) !== "enabled") return false;
   try {
     return await saveRegistration(schoolSlug, false);
   } catch (error) {

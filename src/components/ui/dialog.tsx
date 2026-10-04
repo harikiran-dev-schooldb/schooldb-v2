@@ -76,7 +76,7 @@ function DialogContent({
         {children}
 
         {showCloseButton && (
-          <DialogPrimitive.Close className="absolute top-4 right-4 rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus:outline-none focus:ring-4 focus:ring-primary/10">
+          <DialogPrimitive.Close className="absolute top-2 right-2 flex size-11 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus:outline-none focus:ring-4 focus:ring-primary/10 sm:top-4 sm:right-4 sm:size-9">
             <X className="size-4" />
             <span className="sr-only">Close</span>
           </DialogPrimitive.Close>

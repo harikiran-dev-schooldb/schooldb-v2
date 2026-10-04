@@ -51,8 +51,8 @@ export function AppHeader({ onMenuClick }: Props) {
   };
 
   return (
-    <header className="sticky top-0 z-40 h-16 border-b border-border/70 bg-background/90 backdrop-blur-xl sm:h-[72px]">
-      <div className="mx-auto flex h-full w-full max-w-[1920px] items-center justify-between gap-2 px-3 sm:px-5 md:px-6 xl:px-8 2xl:px-10">
+    <header className="sticky top-0 z-40 border-b border-border/70 bg-background/90 pt-[env(safe-area-inset-top)] backdrop-blur-xl">
+      <div className="mx-auto flex h-16 w-full max-w-[1920px] items-center justify-between gap-2 px-3 sm:h-[72px] sm:px-5 md:px-6 xl:px-8 2xl:px-10">
         {/* Workspace context */}
         <div className="flex min-w-0 items-center gap-2 sm:gap-3">
           <Button

@@ -73,7 +73,7 @@ export function AppShell({ children }: Props) {
           </div>
 
           <main className="min-w-0 flex-1">
-            <div className="mx-auto w-full max-w-[1920px] px-3 py-4 print:max-w-none print:p-0 sm:px-5 sm:py-6 md:px-6 xl:px-8 2xl:px-10">
+            <div className="mx-auto w-full max-w-[1920px] px-3 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] print:max-w-none print:p-0 sm:px-5 sm:py-6 md:px-6 xl:px-8 2xl:px-10">
               {children}
             </div>
           </main>

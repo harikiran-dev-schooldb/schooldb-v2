@@ -36,12 +36,12 @@ const buttonVariants = cva(
       },
 
       size: {
-        default: "h-10 px-4 py-2",
-        sm: "h-9 rounded-lg px-3 text-xs",
-        lg: "h-11 px-6 text-sm",
+        default: "h-11 px-4 py-2 sm:h-10",
+        sm: "h-11 rounded-lg px-3 text-xs sm:h-9",
+        lg: "h-12 px-6 text-sm sm:h-11",
         xl: "h-12 px-7 text-base",
-        icon: "size-10 p-0",
-        "icon-sm": "size-9 rounded-lg p-0",
+        icon: "size-11 p-0 sm:size-10",
+        "icon-sm": "size-11 rounded-lg p-0 sm:size-9",
         "icon-lg": "size-11 p-0",
       },
     },

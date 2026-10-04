@@ -264,7 +264,7 @@ export function PwaRegistration() {
   return (
     <>
       {!online && (
-        <div className="fixed inset-x-0 top-0 z-[70] flex items-center justify-center gap-2 bg-amber-500 px-3 py-2 text-center text-xs font-semibold text-amber-950 shadow-lg">
+        <div className="fixed inset-x-0 top-0 z-[70] flex items-center justify-center gap-2 bg-amber-500 px-3 pt-[max(0.5rem,env(safe-area-inset-top))] pb-2 text-center text-xs font-semibold text-amber-950 shadow-lg">
           <CloudOff className="size-4" /> Offline mode · saved information remains available
         </div>
       )}
