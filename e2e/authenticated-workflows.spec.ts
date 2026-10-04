@@ -1,8 +1,21 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 import { expectUsablePage } from "./support";
 
 const schoolSlug = process.env.E2E_SCHOOL_SLUG?.trim();
+
+async function activateTab(page: Page, name: RegExp) {
+  const tab = page.getByRole("tab", { name }).first();
+  await expect(tab).toBeVisible();
+
+  // A tab can be present in the server-rendered HTML before its client
+  // event handlers are hydrated. Retry the click until Radix confirms that
+  // the tab actually became active instead of racing hydration.
+  await expect(async () => {
+    await tab.click();
+    await expect(tab).toHaveAttribute("data-state", "active");
+  }).toPass({ timeout: 10_000 });
+}
 
 test.describe("authenticated school workflows", () => {
   test.skip(!schoolSlug, "Set E2E_SCHOOL_SLUG for authenticated workflow tests.");
@@ -40,10 +53,10 @@ test.describe("authenticated school workflows", () => {
       // Library and Transport place their student controls inside a secondary
       // tab; activate that tab before asserting its filters are available.
       if (workflow.path === "library") {
-        await page.getByRole("tab", { name: /Issue & return/i }).click();
+        await activateTab(page, /Issue & return/i);
       }
       if (workflow.path === "transport") {
-        await page.getByRole("tab", { name: /Student assignments/i }).click();
+        await activateTab(page, /Student assignments/i);
       }
       await expect(page.getByLabel("Syllabus").first()).toBeVisible();
       await expect(page.getByLabel("Branch").first()).toBeVisible();
