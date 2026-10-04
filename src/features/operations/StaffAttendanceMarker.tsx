@@ -60,17 +60,18 @@ export function StaffAttendanceMarker({
     [todayRows],
   );
 
-  const [started, setStarted] = useState(todayRows.length > 0);
+  const initialStarted = teachers.length > 0 && todayRows.length >= teachers.length;
+  const [started, setStarted] = useState(initialStarted);
   const [locked, setLocked] = useState(
     todayRows.some((row) => Boolean(row.lockedAt)),
   );
   const [absentIds, setAbsentIds] = useState<Set<string>>(initialAbsent);
 
   useEffect(() => {
-    setStarted(todayRows.length > 0);
+    setStarted(teachers.length > 0 && todayRows.length >= teachers.length);
     setLocked(todayRows.some((row) => Boolean(row.lockedAt)));
     setAbsentIds(initialAbsent);
-  }, [todayRows, initialAbsent]);
+  }, [teachers.length, todayRows, initialAbsent]);
 
   const present = started ? Math.max(teachers.length - absentIds.size, 0) : 0;
 
@@ -114,7 +115,7 @@ export function StaffAttendanceMarker({
         };
         setLocked(true);
         toast.success(
-          `Attendance locked: ${result.present ?? present} present, ${result.absent ?? absentIds.size} absent. Absence notifications sent.`,
+          `Attendance locked: ${result.present ?? present} present, ${result.absent ?? absentIds.size} absent. Absence notifications processed.`,
         );
         router.refresh();
       } catch (error) {
