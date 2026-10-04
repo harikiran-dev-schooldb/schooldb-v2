@@ -6,12 +6,12 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 
-type Props = { query: string };
+type Props = { query: string; label?: string; className?: string };
 type ApiEnvelope<T> = { success: boolean; message: string; data: T };
 const wait = (milliseconds: number) =>
   new Promise((resolve) => setTimeout(resolve, milliseconds));
 
-export function ReportExportButton({ query }: Props) {
+export function ReportExportButton({ query, label = "Download CSV", className }: Props) {
   const [preparing, setPreparing] = useState(false);
 
   async function prepareReport() {
@@ -59,13 +59,13 @@ export function ReportExportButton({ query }: Props) {
   }
 
   return (
-    <Button variant="outline" size="sm" disabled={preparing} onClick={prepareReport}>
+    <Button variant="outline" size="sm" className={className} disabled={preparing} onClick={prepareReport}>
+      {preparing ? "Preparing…" : label}
       {preparing ? (
         <LoaderCircle className="size-3.5 animate-spin" />
       ) : (
         <Download className="size-3.5" />
       )}
-      {preparing ? "Preparing…" : "Download CSV"}
     </Button>
   );
 }

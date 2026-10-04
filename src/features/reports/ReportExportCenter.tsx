@@ -7,6 +7,7 @@ import { SearchableStudentSelect } from "@/components/common/select/SearchableSt
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ReportExportButton } from "@/features/reports/ReportExportButton";
 
 type Props = {
   schoolSlug: string;
@@ -104,6 +105,15 @@ export function ReportExportCenter({ schoolSlug, filters, exams }: Props) {
 
       <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
         <ExportGroup title="People & academics" icon={GraduationCap}>
+          {filters.academicYearId ? (
+            <ReportExportButton
+              query={query.toString()}
+              label="School summary CSV"
+              className="h-auto min-h-11 w-full justify-between whitespace-normal py-2 text-left"
+            />
+          ) : (
+            <ExportLink href="#" label="School summary CSV" disabled />
+          )}
           <ExportLink href={reportUrl("students")} label="Student master report" />
           <ExportLink href={reportUrl("teachers")} label="Teacher master report" />
           <ExportLink href={reportUrl("attendance/class")} label="Class attendance report" disabled={!attendanceReady} />

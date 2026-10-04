@@ -2,17 +2,17 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Filter, Printer, RotateCcw } from "lucide-react";
+import { Filter, RotateCcw } from "lucide-react";
 
 import { AcademicYearSelect } from "@/components/common/select/AcademicYearSelect";
 import { ClassSelect } from "@/components/common/select/ClassSelect";
 import { SectionSelect } from "@/components/common/select/SectionSelect";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ReportExportButton } from "@/features/reports/ReportExportButton";
 
 type Props = {
   schoolSlug: string;
+  routePath?: "reports" | "management-analytics";
   initial: {
     academicYearId: string;
     classId: string;
@@ -22,7 +22,7 @@ type Props = {
   };
 };
 
-export function ReportsFilters({ schoolSlug, initial }: Props) {
+export function ReportsFilters({ schoolSlug, routePath = "reports", initial }: Props) {
   const router = useRouter();
   const [academicYearId, setAcademicYearId] = useState(initial.academicYearId);
   const [classId, setClassId] = useState(initial.classId);
@@ -38,11 +38,11 @@ export function ReportsFilters({ schoolSlug, initial }: Props) {
   }, [academicYearId, classId, sectionId, from, to]);
 
   function applyFilters() {
-    router.push(`/${schoolSlug}/reports?${query}`);
+    router.push(`/${schoolSlug}/${routePath}?${query}`);
   }
 
   function resetFilters() {
-    router.push(`/${schoolSlug}/reports`);
+    router.push(`/${schoolSlug}/${routePath}`);
   }
 
   return (
@@ -53,7 +53,7 @@ export function ReportsFilters({ schoolSlug, initial }: Props) {
           <div>
             <h2 className="font-bold">Report filters</h2>
             <p className="text-xs text-muted-foreground">
-              Every metric below follows this scope.
+              Every download below follows this scope.
             </p>
           </div>
         </div>
@@ -61,11 +61,6 @@ export function ReportsFilters({ schoolSlug, initial }: Props) {
           <Button variant="outline" size="sm" onClick={resetFilters}>
             <RotateCcw className="size-3.5" />
             Reset
-          </Button>
-          <ReportExportButton query={query} />
-          <Button variant="outline" size="sm" onClick={() => window.print()}>
-            <Printer className="size-3.5" />
-            Print / PDF
           </Button>
         </div>
       </div>
@@ -81,7 +76,7 @@ export function ReportsFilters({ schoolSlug, initial }: Props) {
               setSectionId("");
 
               router.push(
-                `/${schoolSlug}/reports?academicYearId=${encodeURIComponent(value)}`,
+                `/${schoolSlug}/${routePath}?academicYearId=${encodeURIComponent(value)}`,
               );
             }}
           />
