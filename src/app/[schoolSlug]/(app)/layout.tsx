@@ -8,6 +8,8 @@ import { SchoolProvider } from "@/contexts/school-context";
 import { AppShell } from "@/components/layout/AppShell";
 import { isOperationalRole, isSelfServiceRole } from "@/lib/access-control";
 import { isSchoolPathAllowed } from "@/lib/route-access";
+import { currentTeacherAccess } from "@/lib/auth";
+import { isTeacherRouteAllowed } from "@/lib/teacher-access";
 
 export default async function SchoolAppLayout({
   children,
@@ -50,9 +52,17 @@ export default async function SchoolAppLayout({
   }
 
   const pathname = (await headers()).get("x-school-pathname");
+  const teacherAccess = membership.role === "TEACHER"
+    ? await currentTeacherAccess(school.id)
+    : null;
   if (
     pathname &&
-    !isSchoolPathAllowed(school, pathname, schoolSlug, membership.role)
+    (!isSchoolPathAllowed(school, pathname, schoolSlug, membership.role) ||
+      (membership.role === "TEACHER" &&
+        !isTeacherRouteAllowed(
+          teacherAccess,
+          pathname.slice(`/${schoolSlug}/`.length).replace(/\/+$/, ""),
+        )))
   ) {
     notFound();
   }
@@ -64,6 +74,7 @@ export default async function SchoolAppLayout({
         membership,
         user,
         role: membership.role,
+        teacherAccess,
       }}
     >
       <AppShell>{children}</AppShell>

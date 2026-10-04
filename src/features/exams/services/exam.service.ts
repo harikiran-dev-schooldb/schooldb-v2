@@ -39,10 +39,32 @@ export const examService = {
   /*
    * Get all exams for a school.
    */
-  async getAll(schoolId: string) {
+  async getAll(
+    schoolId: string,
+    teacherScope?: Array<{
+      academicYearId: string;
+      classId: string;
+      sectionId: string;
+      subjectId?: string;
+    }>,
+  ) {
     return prisma.exam.findMany({
       where: {
         schoolId,
+        ...(teacherScope
+          ? {
+              OR: teacherScope.map((item) => ({
+                academicYearId: item.academicYearId,
+                schedules: {
+                  some: {
+                    classId: item.classId,
+                    OR: [{ sectionId: item.sectionId }, { sectionId: null }],
+                    ...(item.subjectId ? { subjectId: item.subjectId } : {}),
+                  },
+                },
+              })),
+            }
+          : {}),
       },
 
       include: {

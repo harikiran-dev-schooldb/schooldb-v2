@@ -3,6 +3,7 @@ import {
   requireRole,
   requireTeacherAttendanceSession,
   requireTenant,
+  requireTeacherFeatureAccess,
 } from "@/lib/auth";
 import { ApiResponse } from "@/lib/response";
 import { validateBody } from "@/lib/validation";
@@ -14,6 +15,7 @@ import { recordAuditLog } from "@/lib/audit";
 export async function GET(req: Request) {
   return apiHandler(async () => {
     const tenant = await requireTenant();
+    if (tenant.role === "TEACHER") await requireTeacherFeatureAccess("ATTENDANCE");
     const { searchParams } = new URL(req.url);
     const page = Number(searchParams.get("page") ?? 1);
     const pageSize = Number(searchParams.get("pageSize") ?? 25);
@@ -37,6 +39,8 @@ export async function POST(req: Request) {
       "TEACHER",
     ]);
     const body = await validateBody(req, attendanceSchema);
+
+    if (tenant.role === "TEACHER") await requireTeacherFeatureAccess("ATTENDANCE");
 
     await requireTeacherAttendanceSession(body.sessionId);
 

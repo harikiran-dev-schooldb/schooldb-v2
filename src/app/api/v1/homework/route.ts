@@ -4,6 +4,8 @@ import {
   requireRole,
   requireCurrentTeacher,
   requireTeacherClassSection,
+  requireTeacherFeatureAccess,
+  teacherClassScope,
 } from "@/lib/auth";
 import { validateBody } from "@/lib/validation";
 
@@ -16,6 +18,7 @@ import { notifyHomeworkPublished } from "@/features/notifications/events";
 export async function GET(req: Request) {
   return apiHandler(async () => {
     const tenant = await requireRole(["SUPER_ADMIN", "SCHOOL_ADMIN", "TEACHER"]);
+    if (tenant.role === "TEACHER") await requireTeacherFeatureAccess("HOMEWORK");
     const { searchParams } = new URL(req.url);
     const page = Number(searchParams.get("page") ?? 1);
     const pageSize = Number(searchParams.get("pageSize") ?? 25);
@@ -23,13 +26,7 @@ export async function GET(req: Request) {
     const syllabusId = searchParams.get("syllabusId") ?? undefined;
     const branchId = searchParams.get("branchId") ?? undefined;
     const teacherScope = tenant.role === "TEACHER"
-      ? await requireCurrentTeacher(tenant.schoolId).then((teacher) =>
-          prisma.teacherAllocation.findMany({
-            where: { schoolId: tenant.schoolId, teacherId: teacher.id, active: true },
-            distinct: ["classId", "sectionId"],
-            select: { classId: true, sectionId: true },
-          }),
-        )
+      ? await teacherClassScope(tenant.schoolId)
       : undefined;
     const homework = await homeworkService.list(tenant.schoolId, {
       page,
@@ -51,6 +48,8 @@ export async function POST(req: Request) {
       "TEACHER",
     ]);
     const body = await validateBody(req, homeworkSchema);
+
+    if (tenant.role === "TEACHER") await requireTeacherFeatureAccess("HOMEWORK");
 
     if (tenant.role === "TEACHER" && !body.sectionId) {
       throw new Error("Teachers must select one of their assigned sections.");

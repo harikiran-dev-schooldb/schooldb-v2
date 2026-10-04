@@ -1,5 +1,5 @@
 import { apiHandler } from "@/lib/api";
-import { requireCurrentTeacher, requireTenant } from "@/lib/auth";
+import { requireCurrentTeacher, requireTeacherFeatureAccess, requireTenant } from "@/lib/auth";
 import { ApiResponse } from "@/lib/response";
 
 import { WeekDay } from "@/generated/prisma/client";
@@ -18,6 +18,8 @@ export async function GET(req: Request) {
     const day =
       (searchParams.get("day") as WeekDay) ??
       "MONDAY";
+
+    if (tenant.role === "TEACHER") await requireTeacherFeatureAccess("TIMETABLE");
 
     const data = tenant.role === "TEACHER"
       ? await timetableService.teacherView(

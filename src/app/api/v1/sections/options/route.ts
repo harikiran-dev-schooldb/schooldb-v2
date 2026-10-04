@@ -1,5 +1,5 @@
 import { apiHandler } from "@/lib/api";
-import { requireTenant } from "@/lib/auth";
+import { requireTeacherClassSection, requireTenant } from "@/lib/auth";
 import { ApiResponse } from "@/lib/response";
 
 import { sectionService } from "@/features/sections/services/section.service";
@@ -14,6 +14,10 @@ export async function GET(request: Request) {
 
     if (!classId) {
       throw new Error("classId is required.");
+    }
+
+    if (tenant.role === "TEACHER") {
+      await requireTeacherClassSection(classId);
     }
 
     const sections = await sectionService.options(

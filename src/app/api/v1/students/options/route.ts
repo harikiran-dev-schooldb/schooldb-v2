@@ -1,5 +1,5 @@
 import { apiHandler } from "@/lib/api";
-import { requireTenant } from "@/lib/auth";
+import { requireTeacherFeatureAccess, requireTenant, teacherClassScope } from "@/lib/auth";
 import { ApiResponse } from "@/lib/response";
 
 import { studentService } from "@/features/students/services/student.service";
@@ -25,6 +25,16 @@ export async function GET(request: Request) {
       throw new Error("Academic year is required.");
     }
 
+    const teacherScope = tenant.role === "TEACHER"
+      ? await teacherClassScope(tenant.schoolId)
+      : undefined;
+    if (tenant.role === "TEACHER") {
+      await requireTeacherFeatureAccess("STUDENTS");
+      if (mode !== "ENROLLED") {
+        throw new Error("Teachers can only select students already enrolled in their assigned classes.");
+      }
+    }
+
     const students = await studentService.options(
       tenant.schoolId,
       academicYearId,
@@ -32,6 +42,7 @@ export async function GET(request: Request) {
       mode,
       classId,
       sectionId,
+      teacherScope,
     );
 
     return ApiResponse.success(students);

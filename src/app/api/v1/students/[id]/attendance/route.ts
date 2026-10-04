@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
-import { requireTenant } from "@/lib/auth";
+import { requireTeacherFeatureAccess, requireTeacherStudent, requireTenant } from "@/lib/auth";
 
 type Props = {
   params: Promise<{
@@ -15,14 +15,9 @@ export async function GET(req: Request, { params }: Props) {
 
     const tenant = await requireTenant();
 
-    if (!tenant) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Unauthorized.",
-        },
-        { status: 401 },
-      );
+    if (tenant.role === "TEACHER") {
+      await requireTeacherFeatureAccess("ATTENDANCE");
+      await requireTeacherStudent(studentId);
     }
 
     const { searchParams } = new URL(req.url);

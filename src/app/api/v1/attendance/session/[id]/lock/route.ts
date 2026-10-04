@@ -1,5 +1,5 @@
 import { apiHandler } from "@/lib/api";
-import { requireRole, requireTeacherAttendanceSession } from "@/lib/auth";
+import { requireRole, requireTeacherAttendanceSession, requireTeacherFeatureAccess } from "@/lib/auth";
 import { ApiResponse } from "@/lib/response";
 import { after } from "next/server";
 
@@ -23,6 +23,8 @@ export async function POST(req: Request, { params }: Props) {
     ]);
 
     const { id } = await params;
+
+    if (tenant.role === "TEACHER") await requireTeacherFeatureAccess("ATTENDANCE");
 
     await requireTeacherAttendanceSession(id);
 

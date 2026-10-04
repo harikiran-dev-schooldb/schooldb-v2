@@ -1,5 +1,5 @@
 import { apiHandler } from "@/lib/api";
-import { requireTeacherClassSection, requireTenant } from "@/lib/auth";
+import { requireTeacherClassSection, requireTeacherFeatureAccess, requireTenant } from "@/lib/auth";
 import { ApiResponse } from "@/lib/response";
 
 import { timetableService } from "@/features/timetable/services/timetable.service";
@@ -18,6 +18,8 @@ export async function GET(req: Request) {
 
     const sectionId =
       searchParams.get("sectionId") ?? "";
+
+    if (tenant.role === "TEACHER") await requireTeacherFeatureAccess("TIMETABLE");
 
     await requireTeacherClassSection(classId, sectionId);
 

@@ -160,7 +160,7 @@ export const classService = {
 
 async options(
   schoolId: string,
-  filters?: { syllabusId?: string; branchId?: string },
+  filters?: { syllabusId?: string; branchId?: string; classIds?: string[] },
 ) {
   const classes = await classRepository.options(schoolId, filters);
 

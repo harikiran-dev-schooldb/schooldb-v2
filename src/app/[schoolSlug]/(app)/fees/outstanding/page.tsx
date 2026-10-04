@@ -1,7 +1,7 @@
 import { CircleDollarSign } from "lucide-react";
 
 import { OutstandingFeesContainer } from "@/features/student-fees/components/OutstandingFeesContainer";
-import { requireRole } from "@/lib/auth";
+import { requireRole, requireTeacherFeatureAccess } from "@/lib/auth";
 
 type Props = {
   params: Promise<{
@@ -15,6 +15,7 @@ export default async function OutstandingFeesPage({ params }: Props) {
     ["SUPER_ADMIN", "SCHOOL_ADMIN", "ACCOUNTANT", "TEACHER"],
     schoolSlug,
   );
+  if (membership.role === "TEACHER") await requireTeacherFeatureAccess("FEES", schoolSlug);
   const canSendReminders = [
     "SUPER_ADMIN",
     "SCHOOL_ADMIN",

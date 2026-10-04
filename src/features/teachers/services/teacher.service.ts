@@ -128,6 +128,15 @@ export const teacherService = {
 
       active: input.active,
 
+      studentDetailsAccess: input.studentDetailsAccess,
+      feeAccess: input.feeAccess,
+      resultAccess: input.resultAccess,
+      timetableAccess: input.timetableAccess,
+      attendanceAccess: input.attendanceAccess,
+      homeworkAccess: input.homeworkAccess,
+      examAccess: input.examAccess,
+      marksEntryAccess: input.marksEntryAccess,
+
       school: {
         connect: {
           id: schoolId,
@@ -231,6 +240,15 @@ export const teacherService = {
             : input.designation,
 
         active: input.active,
+
+        studentDetailsAccess: input.studentDetailsAccess,
+        feeAccess: input.feeAccess,
+        resultAccess: input.resultAccess,
+        timetableAccess: input.timetableAccess,
+        attendanceAccess: input.attendanceAccess,
+        homeworkAccess: input.homeworkAccess,
+        examAccess: input.examAccess,
+        marksEntryAccess: input.marksEntryAccess,
       },
     );
 

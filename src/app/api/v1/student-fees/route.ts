@@ -1,5 +1,5 @@
 import { apiHandler } from "@/lib/api";
-import { requireRole, requireTenant } from "@/lib/auth";
+import { requireRole, requireTeacherFeatureAccess, requireTeacherStudent, requireTenant } from "@/lib/auth";
 import { ApiResponse } from "@/lib/response";
 import { validateBody } from "@/lib/validation";
 
@@ -17,6 +17,12 @@ export async function GET(req: Request) {
 
     const { searchParams } = new URL(req.url);
     const studentId = searchParams.get("studentId") || undefined;
+
+    if (tenant.role === "TEACHER") {
+      await requireTeacherFeatureAccess("FEES");
+      if (!studentId) throw new Error("Student is required for teacher fee access.");
+      await requireTeacherStudent(studentId);
+    }
 
     const fees = await studentFeeService.list(
       tenant.schoolId,

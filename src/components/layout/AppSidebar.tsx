@@ -19,6 +19,7 @@ import { SchoolLogo } from "@/components/branding/SchoolLogo";
 import { navigation } from "@/lib/navigation";
 import { isRouteAllowed } from "@/lib/route-access";
 import { cn } from "@/lib/utils";
+import { isTeacherRouteAllowed } from "@/lib/teacher-access";
 
 const STORAGE_KEY = "schooldb-sidebar-collapsed";
 
@@ -76,7 +77,7 @@ type Props = {
 
 export function AppSidebar({ mobile = false, onNavigate }: Props) {
   const pathname = usePathname();
-  const { school, role } = useSchool();
+  const { school, role, teacherAccess } = useSchool();
 
   const storedCollapsed = useSidebarCollapsed();
   const collapsed = mobile ? false : storedCollapsed;
@@ -118,10 +119,16 @@ export function AppSidebar({ mobile = false, onNavigate }: Props) {
     };
     const roleNavigation = navigation.flatMap((item) => {
         if (item.roles && !item.roles.includes(role)) return [];
-        if (!item.children) return [item];
+        if (!item.children) {
+          return role !== "TEACHER" || isTeacherRouteAllowed(teacherAccess, item.href)
+            ? [item]
+            : [];
+        }
 
         const children = item.children.filter(
-          (child) => !child.roles || child.roles.includes(role),
+          (child) =>
+            (!child.roles || child.roles.includes(role)) &&
+            (role !== "TEACHER" || isTeacherRouteAllowed(teacherAccess, child.href)),
         );
         return children.length ? [{ ...item, children }] : [];
       });
@@ -136,7 +143,7 @@ export function AppSidebar({ mobile = false, onNavigate }: Props) {
       );
       return children.length ? [{ ...item, children }] : [];
     });
-  }, [role, school.allowedRoutes, school.routeAccessRestricted]);
+  }, [role, school.allowedRoutes, school.routeAccessRestricted, teacherAccess]);
 
   const workspaceHome =
     visibleNavigation.find((item) => item.href)?.href ??

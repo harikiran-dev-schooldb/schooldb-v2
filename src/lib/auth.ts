@@ -5,7 +5,12 @@ import { cache } from "react";
 import { ApiError } from "./errors";
 import { prisma } from "./prisma";
 import { requireSchoolSlug } from "./tenant-context";
-import { hasPermission, isOperationalRole, type Permission } from "./access-control";
+import { hasPermission, isOperationalRole, PERMISSIONS, type Permission } from "./access-control";
+import {
+  TEACHER_ACCESS_FIELDS,
+  teacherAccessSelect,
+  type TeacherAccessFeature,
+} from "./teacher-access";
 
 export const requireMembership = cache(async function requireMembership(schoolSlug?: string) {
   const { userId } = await auth();
@@ -93,6 +98,21 @@ export async function requirePermission(
   if (!hasPermission(membership.role, permission)) {
     throw new ApiError(403, "You do not have permission to access this resource");
   }
+  if (membership.role === "TEACHER") {
+    const feature = permission === PERMISSIONS.STUDENT_DIRECTORY_READ
+      ? "STUDENTS"
+      : permission === PERMISSIONS.ATTENDANCE_READ
+        ? "ATTENDANCE"
+        : permission === PERMISSIONS.FEE_READ
+          ? "FEES"
+          : null;
+    if (feature) {
+      const teacher = await requireCurrentTeacher(membership.schoolId);
+      if (!teacher[TEACHER_ACCESS_FIELDS[feature]]) {
+        throw new ApiError(403, "This teacher access has been disabled by the school administrator");
+      }
+    }
+  }
   return membership;
 }
 
@@ -148,6 +168,28 @@ export async function requireCurrentTeacher(schoolId: string) {
     403,
     "You are not linked to an active teacher account for this school",
   );
+}
+
+export async function requireTeacherFeatureAccess(
+  feature: TeacherAccessFeature,
+  schoolSlug?: string,
+) {
+  const membership = await requireTenant(schoolSlug);
+  if (membership.role !== "TEACHER") return membership;
+
+  const teacher = await requireCurrentTeacher(membership.schoolId);
+  if (!teacher[TEACHER_ACCESS_FIELDS[feature]]) {
+    throw new ApiError(403, "This teacher access has been disabled by the school administrator");
+  }
+  return membership;
+}
+
+export async function currentTeacherAccess(schoolId: string) {
+  const teacher = await requireCurrentTeacher(schoolId);
+  return prisma.teacher.findUniqueOrThrow({
+    where: { id: teacher.id },
+    select: teacherAccessSelect,
+  });
 }
 
 export async function teacherAllocationScope(schoolId: string) {

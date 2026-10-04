@@ -1,5 +1,10 @@
 import { apiHandler } from "@/lib/api";
-import { requireRole } from "@/lib/auth";
+import {
+  classTeacherScope,
+  requireRole,
+  requireTeacherFeatureAccess,
+  teacherAllocationScope,
+} from "@/lib/auth";
 import { ApiResponse } from "@/lib/response";
 
 import { examService } from "@/features/exams/services/exam.service";
@@ -9,7 +14,17 @@ import { recordAuditLog } from "@/lib/audit";
 export async function GET() {
   return apiHandler(async () => {
     const tenant = await requireRole(["SUPER_ADMIN", "SCHOOL_ADMIN", "TEACHER"]);
-    const exams = await examService.getAll(tenant.schoolId);
+    if (tenant.role === "TEACHER") await requireTeacherFeatureAccess("EXAMS");
+    const teacherScope = tenant.role === "TEACHER"
+      ? await Promise.all([
+          teacherAllocationScope(tenant.schoolId),
+          classTeacherScope(tenant.schoolId),
+        ]).then(([subjectAllocations, classAssignments]) => [
+          ...subjectAllocations,
+          ...classAssignments.map((item) => ({ ...item, subjectId: undefined })),
+        ])
+      : undefined;
+    const exams = await examService.getAll(tenant.schoolId, teacherScope);
     return ApiResponse.success(exams);
   });
 }

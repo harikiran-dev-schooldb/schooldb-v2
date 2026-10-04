@@ -66,12 +66,13 @@ export const classRepository = {
 
   options(
   schoolId: string,
-  filters?: { syllabusId?: string; branchId?: string },
+  filters?: { syllabusId?: string; branchId?: string; classIds?: string[] },
 ) {
   return prisma.class.findMany({
     where: {
       schoolId,
       active: true,
+      ...(filters?.classIds ? { id: { in: filters.classIds } } : {}),
       ...(filters?.branchId ? { branchId: filters.branchId } : {}),
       ...(filters?.syllabusId
         ? { branch: { syllabusId: filters.syllabusId } }

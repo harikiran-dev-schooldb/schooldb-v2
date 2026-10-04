@@ -3,6 +3,7 @@ import {
   requireRole,
   requireClassTeacherClassSection,
   requireTeacherTimetable,
+  requireTeacherFeatureAccess,
 } from "@/lib/auth";
 import { ApiResponse } from "@/lib/response";
 import { validateBody } from "@/lib/validation";
@@ -21,6 +22,7 @@ export async function POST(req: Request) {
     const body = await validateBody(req, attendanceSessionSchema);
 
     if (tenant.role === "TEACHER") {
+      await requireTeacherFeatureAccess("ATTENDANCE");
       if (body.sessionType === "PERIOD") {
         if (!body.timetableId) {
           throw new Error("Timetable is required for period attendance.");

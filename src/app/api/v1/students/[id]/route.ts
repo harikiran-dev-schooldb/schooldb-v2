@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 
 import { ApiResponse } from "@/lib/response";
 import { apiHandler } from "@/lib/api";
-import { requireRole, requireTenant } from "@/lib/auth";
+import { requireRole, requireTeacherFeatureAccess, requireTeacherStudent, requireTenant } from "@/lib/auth";
 
 import { createStudentSchema } from "@/features/students/schemas/student.schema";
 import { studentService } from "@/features/students/services/student.service";
@@ -45,6 +45,10 @@ export async function GET(
   return apiHandler(async () => {
     const tenant = await requireTenant();
     const { id } = await params;
+    if (tenant.role === "TEACHER") {
+      await requireTeacherFeatureAccess("STUDENTS");
+      await requireTeacherStudent(id);
+    }
     const student = await studentService.get(id, tenant.schoolId);
     return ApiResponse.success(student);
   });

@@ -1,9 +1,15 @@
+"use client";
+
 import { PageHeader } from "@/components/common/PageHeader";
 import { AddStudentButton } from "@/features/students/components/AddStudentButton";
 import { StudentTable } from "@/features/students/components/StudentTable";
 import { GraduationCap, Users, Sparkles } from "lucide-react";
+import { useSchool } from "@/contexts/school-context";
 
 export default function StudentPage() {
+  const { role } = useSchool();
+  const canManageStudents = ["SUPER_ADMIN", "SCHOOL_ADMIN", "RECEPTIONIST"].includes(role);
+
   return (
     <div className="schooldb-page-enter space-y-6 pb-10">
       {/* ======================================================================
@@ -13,7 +19,7 @@ export default function StudentPage() {
       <PageHeader
         title="Students"
         description="Manage student records, admissions, enrollment details, and academic information."
-        action={<AddStudentButton />}
+        action={canManageStudents ? <AddStudentButton /> : undefined}
       />
 
       {/* ======================================================================

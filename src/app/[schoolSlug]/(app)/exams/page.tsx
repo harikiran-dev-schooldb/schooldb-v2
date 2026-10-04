@@ -6,9 +6,12 @@ import { useParams } from "next/navigation";
 import { PageHeader } from "@/components/common/PageHeader";
 import { ExamList } from "@/features/exams/components/ExamList";
 import { CreateExamDialog } from "@/features/exams/components/CreateExamDialog";
+import { useSchool } from "@/contexts/school-context";
 
 export default function ExamsPage() {
   const params = useParams<{ schoolSlug: string }>();
+  const { role } = useSchool();
+  const canManageExams = role === "SUPER_ADMIN" || role === "SCHOOL_ADMIN";
 
   const schoolSlug = params.schoolSlug;
 
@@ -24,7 +27,7 @@ export default function ExamsPage() {
       <PageHeader
         title="Exams"
         description="Plan examinations, schedules, marks and results."
-        action={
+        action={canManageExams ? (
           <button
             type="button"
             onClick={() => setCreateOpen(true)}
@@ -33,20 +36,22 @@ export default function ExamsPage() {
             <span className="text-base">+</span>
             Create Exam
           </button>
-        }
+        ) : undefined}
       />
 
       <ExamList
         key={refreshKey}
         schoolSlug={schoolSlug}
-        onCreate={() => setCreateOpen(true)}
+        onCreate={canManageExams ? () => setCreateOpen(true) : undefined}
       />
 
-      <CreateExamDialog
-        open={createOpen}
-        onOpenChange={setCreateOpen}
-        onSuccess={handleSuccess}
-      />
+      {canManageExams ? (
+        <CreateExamDialog
+          open={createOpen}
+          onOpenChange={setCreateOpen}
+          onSuccess={handleSuccess}
+        />
+      ) : null}
     </div>
   );
 }

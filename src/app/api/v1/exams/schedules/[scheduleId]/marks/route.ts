@@ -1,7 +1,7 @@
 import { StudentExamStatus } from "@/generated/prisma/client";
 
 import { apiHandler } from "@/lib/api";
-import { requireTeacherExamSchedule } from "@/lib/auth";
+import { requireTeacherExamSchedule, requireTeacherFeatureAccess } from "@/lib/auth";
 import { ApiResponse } from "@/lib/response";
 
 import { studentExamMarkService } from "@/features/exams/services/student-exam-mark.service";
@@ -32,6 +32,7 @@ export async function GET(
       scheduleId,
       sectionId,
     );
+    if (tenant.role === "TEACHER") await requireTeacherFeatureAccess("RESULTS");
 
     const data = await studentExamMarkService.listForSchedule(
       scheduleId,
@@ -63,6 +64,7 @@ export async function PUT(
       scheduleId,
       sectionId,
     );
+    if (tenant.role === "TEACHER") await requireTeacherFeatureAccess("MARKS_ENTRY");
 
     const body = await req.json();
 

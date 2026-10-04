@@ -3,12 +3,13 @@
 import { useEffect, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { GraduationCap, UserRound } from "lucide-react";
+import { GraduationCap, ShieldCheck, UserRound } from "lucide-react";
 
 import { teacherSchema, TeacherFormInput } from "../schemas/teacher.schema";
 import { toast } from "sonner";
 
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 
 import { GenderSelect } from "@/components/common/select/GenderSelect";
 import { FormField, SubmitButton } from "@/components/common/forms";
@@ -34,7 +35,49 @@ const defaultValues: TeacherFormInput = {
   qualification: "",
   designation: "",
   active: true,
+  studentDetailsAccess: true,
+  feeAccess: true,
+  resultAccess: true,
+  timetableAccess: true,
+  attendanceAccess: true,
+  homeworkAccess: true,
+  examAccess: true,
+  marksEntryAccess: true,
 };
+
+const accessOptions: Array<{
+  name:
+    | "studentDetailsAccess"
+    | "feeAccess"
+    | "resultAccess"
+    | "timetableAccess"
+    | "attendanceAccess"
+    | "homeworkAccess"
+    | "examAccess"
+    | "marksEntryAccess";
+  label: string;
+  description: string;
+}> = [
+  { name: "studentDetailsAccess", label: "Student details", description: "View students from assigned subjects or class-teacher sections." },
+  { name: "feeAccess", label: "Student fees", description: "View fee status for students in assigned sections." },
+  { name: "resultAccess", label: "Results", description: "View results belonging to assigned students and subjects." },
+  { name: "timetableAccess", label: "Timetable", description: "View assigned teacher and class timetables." },
+  { name: "attendanceAccess", label: "Attendance", description: "View or record attendance within assigned sections." },
+  { name: "homeworkAccess", label: "Homework", description: "View and manage homework for assigned teaching allocations." },
+  { name: "examAccess", label: "Exams", description: "View exams and schedules related to assigned classes or subjects." },
+  { name: "marksEntryAccess", label: "Marks entry", description: "Enter marks only for allocated subjects; class teachers can cover their class." },
+];
+
+const accessFieldNames = [
+  "studentDetailsAccess",
+  "feeAccess",
+  "resultAccess",
+  "timetableAccess",
+  "attendanceAccess",
+  "homeworkAccess",
+  "examAccess",
+  "marksEntryAccess",
+] as const;
 
 export function TeacherForm({ mode, teacherId, onSuccess }: Props) {
   const { role } = useSchool();
@@ -52,6 +95,10 @@ export function TeacherForm({ mode, teacherId, onSuccess }: Props) {
     name: "gender",
   });
   const fullName = useWatch({ control: form.control, name: "fullName" });
+  const accessValues = useWatch({
+    control: form.control,
+    name: accessFieldNames,
+  });
 
   useEffect(() => {
     if (mode !== "edit" || !teacherId) return;
@@ -89,6 +136,14 @@ export function TeacherForm({ mode, teacherId, onSuccess }: Props) {
           qualification: teacher.qualification ?? "",
           designation: teacher.designation ?? "",
           active: teacher.active ?? true,
+          studentDetailsAccess: teacher.studentDetailsAccess ?? true,
+          feeAccess: teacher.feeAccess ?? true,
+          resultAccess: teacher.resultAccess ?? true,
+          timetableAccess: teacher.timetableAccess ?? true,
+          attendanceAccess: teacher.attendanceAccess ?? true,
+          homeworkAccess: teacher.homeworkAccess ?? true,
+          examAccess: teacher.examAccess ?? true,
+          marksEntryAccess: teacher.marksEntryAccess ?? true,
         });
       } catch {
         if (!cancelled) {
@@ -297,6 +352,47 @@ export function TeacherForm({ mode, teacherId, onSuccess }: Props) {
               />
             </FormField>
           </div>
+        </div>
+      </div>
+
+      <div className="border-t border-border pt-6">
+        <div className="mb-4 flex items-center gap-3">
+          <div className="flex size-9 items-center justify-center rounded-xl bg-indigo-500/10">
+            <ShieldCheck className="size-4 text-indigo-600" />
+          </div>
+          <div>
+            <h3 className="text-sm font-bold text-foreground">Teacher login access</h3>
+            <p className="text-xs text-muted-foreground">
+              Access is always limited to subject allocations and class-teacher assignments.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid gap-3 md:grid-cols-2">
+          {accessOptions.map((option, index) => {
+            const enabled = accessValues[index];
+            return (
+              <div key={option.name} className="flex items-start justify-between gap-4 rounded-2xl border border-border p-4">
+                <div>
+                  <p className="text-sm font-semibold">{option.label}</p>
+                  <p className="mt-1 text-xs leading-5 text-muted-foreground">{option.description}</p>
+                </div>
+                <Switch
+                  checked={enabled}
+                  onCheckedChange={(checked) => {
+                    form.setValue(option.name, checked, { shouldDirty: true });
+                    if (option.name === "examAccess" && !checked) {
+                      form.setValue("marksEntryAccess", false, { shouldDirty: true });
+                    }
+                    if (option.name === "marksEntryAccess" && checked) {
+                      form.setValue("examAccess", true, { shouldDirty: true });
+                    }
+                  }}
+                  aria-label={`Allow ${option.label}`}
+                />
+              </div>
+            );
+          })}
         </div>
       </div>
 

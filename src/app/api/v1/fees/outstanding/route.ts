@@ -1,5 +1,5 @@
 import { apiHandler } from "@/lib/api";
-import { classTeacherScope, requireRole } from "@/lib/auth";
+import { requireRole, requireTeacherFeatureAccess, teacherClassScope } from "@/lib/auth";
 import { ApiResponse } from "@/lib/response";
 
 import { outstandingFeesService } from "@/features/fees/services/outstanding-fees.service";
@@ -14,7 +14,7 @@ export async function GET(req: Request) {
     ]);
     const allowedClassSections =
       tenant.role === "TEACHER"
-        ? await classTeacherScope(tenant.schoolId)
+        ? await requireTeacherFeatureAccess("FEES").then(() => teacherClassScope(tenant.schoolId))
         : undefined;
 
     const { searchParams } =

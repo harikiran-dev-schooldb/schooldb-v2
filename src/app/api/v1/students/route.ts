@@ -1,5 +1,5 @@
 import { apiHandler } from "@/lib/api";
-import { requireCurrentTeacher, requirePermission, requireRole } from "@/lib/auth";
+import { requirePermission, requireRole, requireTeacherFeatureAccess, teacherClassScope } from "@/lib/auth";
 import { PERMISSIONS } from "@/lib/access-control";
 import { ApiResponse } from "@/lib/response";
 
@@ -7,7 +7,6 @@ import { createStudentSchema } from "@/features/students/schemas/student.schema"
 import { studentService } from "@/features/students/services/student.service";
 import { StudentStatus } from "@/features/students/constants/student-status";
 import { recordAuditLog } from "@/lib/audit";
-import { prisma } from "@/lib/prisma";
 
 export async function POST(req: Request) {
   return apiHandler(async () => {
@@ -70,16 +69,8 @@ export async function GET(req: Request) {
       | undefined;
 
     if (tenant.role === "TEACHER") {
-      const teacher = await requireCurrentTeacher(tenant.schoolId);
-      const allocations = await prisma.teacherAllocation.findMany({
-        where: {
-          schoolId: tenant.schoolId,
-          teacherId: teacher.id,
-          active: true,
-        },
-        distinct: ["classId", "sectionId"],
-        select: { classId: true, sectionId: true },
-      });
+      await requireTeacherFeatureAccess("STUDENTS");
+      const allocations = await teacherClassScope(tenant.schoolId);
 
       teacherScope = allocations;
 

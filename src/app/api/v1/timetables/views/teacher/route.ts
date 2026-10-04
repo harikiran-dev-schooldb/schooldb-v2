@@ -1,5 +1,5 @@
 import { apiHandler } from "@/lib/api";
-import { requireCurrentTeacher, requireTenant } from "@/lib/auth";
+import { requireCurrentTeacher, requireTeacherFeatureAccess, requireTenant } from "@/lib/auth";
 import { ApiResponse } from "@/lib/response";
 
 import { timetableService } from "@/features/timetable/services/timetable.service";
@@ -17,6 +17,7 @@ export async function GET(req: Request) {
       searchParams.get("teacherId") ?? "";
 
     if (tenant.role === "TEACHER") {
+      await requireTeacherFeatureAccess("TIMETABLE");
       const teacher = await requireCurrentTeacher(tenant.schoolId);
       teacherId = teacher.id;
     }

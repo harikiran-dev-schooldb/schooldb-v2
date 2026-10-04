@@ -1,6 +1,13 @@
 import { apiHandler } from "@/lib/api";
 import { ApiResponse } from "@/lib/response";
-import { requirePermission } from "@/lib/auth";
+import {
+  classTeacherScope,
+  requireCurrentTeacher,
+  requirePermission,
+  requireTeacherFeatureAccess,
+  requireTeacherStudent,
+  requireTenant,
+} from "@/lib/auth";
 import { PERMISSIONS } from "@/lib/access-control";
 import { prisma } from "@/lib/prisma";
 
@@ -15,7 +22,13 @@ type Props = {
 export async function GET(request: Request, { params }: Props) {
   return apiHandler(async () => {
     const { id: studentId } = await params;
-    const tenant = await requirePermission(PERMISSIONS.STUDENT_PRIVATE_READ);
+    const tenant = await requireTenant();
+    if (tenant.role === "TEACHER") {
+      await requireTeacherFeatureAccess("RESULTS");
+      await requireTeacherStudent(studentId);
+    } else {
+      await requirePermission(PERMISSIONS.STUDENT_PRIVATE_READ);
+    }
     const url = new URL(request.url);
     const examId = url.searchParams.get("examId");
 
@@ -107,7 +120,55 @@ export async function GET(request: Request, { params }: Props) {
       sectionId: enrollment.sectionId,
     });
 
-    const result = examResults.results.find((item) => item.studentId === studentId) ?? null;
+    let result = examResults.results.find((item) => item.studentId === studentId) ?? null;
+
+    if (tenant.role === "TEACHER" && result) {
+      const [teacher, classAssignments] = await Promise.all([
+        requireCurrentTeacher(tenant.schoolId),
+        classTeacherScope(tenant.schoolId),
+      ]);
+      const isClassTeacher = classAssignments.some(
+        (item) =>
+          item.academicYearId === selectedExam.academicYearId &&
+          item.classId === enrollment.classId &&
+          item.sectionId === enrollment.sectionId,
+      );
+
+      if (!isClassTeacher) {
+        const allocations = await prisma.teacherAllocation.findMany({
+          where: {
+            schoolId: tenant.schoolId,
+            teacherId: teacher.id,
+            academicYearId: selectedExam.academicYearId,
+            classId: enrollment.classId,
+            sectionId: enrollment.sectionId,
+            active: true,
+          },
+          select: { subjectId: true },
+        });
+        const subjectIds = new Set(allocations.map((item) => item.subjectId));
+        const subjectResults = result.subjectResults.filter((item) => subjectIds.has(item.subject.id));
+        const counted = subjectResults.filter((item) => item.status !== "EXEMPTED" && item.assessmentType !== "GRADE");
+        const totalObtained = counted.reduce((sum, item) => sum + (item.marksObtained ?? 0), 0);
+        const totalMaxMarks = counted.reduce((sum, item) => sum + item.maxMarks, 0);
+        const countStatus = (status: string) => subjectResults.filter((item) => item.status === status).length;
+        result = {
+          ...result,
+          subjectResults,
+          subjects: subjectResults.length,
+          totalObtained,
+          totalMaxMarks,
+          percentage: totalMaxMarks ? Number(((totalObtained / totalMaxMarks) * 100).toFixed(2)) : 0,
+          passedSubjects: countStatus("PASS"),
+          failedSubjects: countStatus("FAIL") + countStatus("ABSENT"),
+          absentSubjects: countStatus("ABSENT"),
+          pendingSubjects: countStatus("PENDING"),
+          exemptedSubjects: countStatus("EXEMPTED"),
+          status: countStatus("PENDING") ? "PENDING" : countStatus("FAIL") || countStatus("ABSENT") ? "FAIL" : "PASS",
+          rank: null,
+        };
+      }
+    }
 
     return ApiResponse.success({
       exams: examOptions,

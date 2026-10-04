@@ -391,6 +391,7 @@ export const studentService = {
     mode: "AVAILABLE" | "ENROLLED" = "AVAILABLE",
     classId?: string,
     sectionId?: string,
+    allowedClassSections?: Array<{ classId: string; sectionId: string }>,
   ) {
     const students = await studentRepository.options(
       schoolId,
@@ -399,6 +400,7 @@ export const studentService = {
       mode,
       classId,
       sectionId,
+      allowedClassSections,
     );
 
     return students.map((student) => {

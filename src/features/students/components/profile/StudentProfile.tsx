@@ -26,6 +26,8 @@ import { StudentDocumentsTab } from "./StudentDocumentsTab";
 import { StudentActivityTab } from "./StudentActivityTab";
 import { StudentParentsTab } from "./StudentParents";
 import { StudentDetailsTab } from "./StudentDetailsTab";
+import { useSchool } from "@/contexts/school-context";
+import { hasTeacherAccess } from "@/lib/teacher-access";
 
 type Enrollment = {
   id: string;
@@ -159,6 +161,7 @@ function StudentProfileNotFound() {
 }
 
 export function StudentProfile({ studentId }: Props) {
+  const { role, teacherAccess } = useSchool();
   const [student, setStudent] = useState<StudentProfileData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -191,6 +194,15 @@ export function StudentProfile({ studentId }: Props) {
   if (loading) return <StudentProfileSkeleton />;
   if (!student) return <StudentProfileNotFound />;
 
+  const visibleTabs = role !== "TEACHER"
+    ? tabs
+    : tabs.filter((tab) => {
+        if (tab.value === "attendance") return hasTeacherAccess(teacherAccess, "ATTENDANCE");
+        if (tab.value === "fees") return hasTeacherAccess(teacherAccess, "FEES");
+        if (tab.value === "results") return hasTeacherAccess(teacherAccess, "RESULTS");
+        return !["documents", "activity"].includes(tab.value);
+      });
+
   return (
     <div className="space-y-6">
       <StudentProfileHeader student={student} />
@@ -198,7 +210,7 @@ export function StudentProfile({ studentId }: Props) {
         <div className="sticky top-0 z-10 -mx-1 bg-background/95 px-1 pb-2 backdrop-blur supports-[backdrop-filter]:bg-background/80">
           <div className="overflow-x-auto rounded-xl border bg-card shadow-sm">
             <TabsList className="flex h-auto min-w-max w-full justify-start gap-1 bg-transparent p-1">
-              {tabs.map((tab) => {
+              {visibleTabs.map((tab) => {
                 const Icon = tab.icon;
                 return (
                   <TabsTrigger
@@ -218,11 +230,11 @@ export function StudentProfile({ studentId }: Props) {
         <TabsContent value="overview" className="mt-5"><StudentOverviewTab student={student} /></TabsContent>
         <TabsContent value="details" className="mt-5"><StudentDetailsTab student={student} /></TabsContent>
         <TabsContent value="enrollment" className="mt-5"><StudentEnrollmentTab student={student} /></TabsContent>
-        <TabsContent value="attendance" className="mt-5"><StudentAttendanceTab studentId={studentId} /></TabsContent>
-        <TabsContent value="fees" className="mt-5"><StudentFeeTab studentId={studentId} /></TabsContent>
-        <TabsContent value="results" className="mt-5"><StudentResultsTab studentId={studentId} /></TabsContent>
-        <TabsContent value="documents" className="mt-5"><StudentDocumentsTab student={student} /></TabsContent>
-        <TabsContent value="activity" className="mt-5"><StudentActivityTab studentId={studentId} /></TabsContent>
+        {visibleTabs.some((tab) => tab.value === "attendance") ? <TabsContent value="attendance" className="mt-5"><StudentAttendanceTab studentId={studentId} /></TabsContent> : null}
+        {visibleTabs.some((tab) => tab.value === "fees") ? <TabsContent value="fees" className="mt-5"><StudentFeeTab studentId={studentId} /></TabsContent> : null}
+        {visibleTabs.some((tab) => tab.value === "results") ? <TabsContent value="results" className="mt-5"><StudentResultsTab studentId={studentId} /></TabsContent> : null}
+        {visibleTabs.some((tab) => tab.value === "documents") ? <TabsContent value="documents" className="mt-5"><StudentDocumentsTab student={student} /></TabsContent> : null}
+        {visibleTabs.some((tab) => tab.value === "activity") ? <TabsContent value="activity" className="mt-5"><StudentActivityTab studentId={studentId} /></TabsContent> : null}
         <TabsContent value="parents" className="mt-5"><StudentParentsTab student={student} /></TabsContent>
       </Tabs>
     </div>

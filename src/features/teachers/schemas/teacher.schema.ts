@@ -49,6 +49,15 @@ export const teacherSchema = z.object({
     .or(z.literal("")),
 
   active: z.boolean().default(true),
+
+  studentDetailsAccess: z.boolean().default(true),
+  feeAccess: z.boolean().default(true),
+  resultAccess: z.boolean().default(true),
+  timetableAccess: z.boolean().default(true),
+  attendanceAccess: z.boolean().default(true),
+  homeworkAccess: z.boolean().default(true),
+  examAccess: z.boolean().default(true),
+  marksEntryAccess: z.boolean().default(true),
 });
 
 export type TeacherFormInput = z.input<
