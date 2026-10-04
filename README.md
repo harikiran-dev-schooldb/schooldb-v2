@@ -295,6 +295,33 @@ npm test
 npm run build
 ```
 
+### Browser end-to-end tests
+
+Install the Chromium and WebKit browser engines once, then run the public and
+mobile smoke suite:
+
+```bash
+npx playwright install chromium webkit
+npm run test:e2e:public
+```
+
+The suite starts or reuses SchoolDB locally when `E2E_BASE_URL` is empty or points
+to localhost. Set `E2E_BASE_URL` only when testing a deployed environment. Set
+`E2E_SCHOOL_SLUG` to include tenant login and authorization boundary checks.
+
+Authenticated workflow tests deliberately use a saved session instead of storing
+credentials in the repository. Sign into a dedicated test account and save its
+browser state:
+
+```bash
+npx playwright codegen --save-storage=playwright/.auth/admin.json https://www.schooldb.co.in/your-school/login
+E2E_BASE_URL=https://www.schooldb.co.in E2E_SCHOOL_SLUG=your-school E2E_AUTH_STATE=playwright/.auth/admin.json npm run test:e2e
+```
+
+Never create the saved state with a real staff or production administrator
+account. Attendance mutations and outbound notifications remain opt-in and must
+only run against a disposable test tenant.
+
 Performance-sensitive pages should keep tenant filters inside database queries, select only required fields, paginate large collections, avoid per-row queries, and preserve the schema indexes used by attendance, fee, enrollment, and messaging workflows.
 
 ## Security principles

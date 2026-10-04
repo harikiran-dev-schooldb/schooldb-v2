@@ -17,6 +17,9 @@ android/app/google-services.json
 
 # testing
 /coverage
+/playwright-report
+/test-results
+/playwright/.auth
 
 # next.js
 /.next/

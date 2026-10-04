@@ -12,6 +12,9 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "test": "node --experimental-strip-types --test tests/*.test.ts",
+    "test:e2e": "playwright test",
+    "test:e2e:public": "playwright test --project=desktop-chromium --project=iphone-16-webkit --project=iphone-17-webkit --project=android-chromium",
+    "test:e2e:ui": "playwright test --ui",
     "validate": "prisma validate",
     "load:test": "node scripts/load-test.mjs",
     "web-push:keys": "web-push generate-vapid-keys"
@@ -55,6 +58,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
