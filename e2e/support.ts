@@ -13,7 +13,10 @@ export async function expectUsablePage(
   heading?: string | RegExp,
 ) {
   const assertNoPageErrors = observePageErrors(page);
-  const response = await page.goto(path, { waitUntil: "domcontentloaded" });
+  // A committed document is enough to start the user-facing assertions below.
+  // Waiting for DOMContentLoaded can be held open by Clerk or another external
+  // dependency even though the SchoolDB page is already rendered and usable.
+  const response = await page.goto(path, { waitUntil: "commit" });
 
   expect(response, `no document response for ${path}`).not.toBeNull();
   expect(response!.status(), `server error while loading ${path}`).toBeLessThan(500);
