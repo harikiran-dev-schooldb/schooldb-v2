@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  bulkStudentUpdatesSchema,
   bulkStudentRowSchema,
-  bulkStudentRteUpdateRowSchema,
 } from "../src/features/students/schemas/bulk-student.schema.ts";
 
 const validStudent = {
@@ -139,26 +139,23 @@ test("rejects invalid extended profile values", () => {
   }
 });
 
-test("accepts admission number and RTE status for a focused bulk update", () => {
-  const enabled = bulkStudentRteUpdateRowSchema.parse({
-    admissionNo: "1001",
-    isRte: "yes",
-  });
-  const disabled = bulkStudentRteUpdateRowSchema.parse({
-    admissionNo: "1002",
-    isRte: "FALSE",
+test("accepts selected fields for a focused bulk student update", () => {
+  const result = bulkStudentUpdatesSchema.parse({
+    fields: ["fullName", "isRte"],
+    students: [{ admissionNo: "1001", fullName: "Updated Name", isRte: "TRUE" }],
   });
 
-  assert.deepEqual(enabled, { admissionNo: "1001", isRte: true });
-  assert.deepEqual(disabled, { admissionNo: "1002", isRte: false });
+  assert.deepEqual(result.fields, ["fullName", "isRte"]);
+  assert.equal(result.students[0].admissionNo, "1001");
 });
 
-test("requires an explicit valid RTE value for a focused bulk update", () => {
-  for (const isRte of ["", "maybe", undefined]) {
-    assert.equal(
-      bulkStudentRteUpdateRowSchema.safeParse({ admissionNo: "1001", isRte })
-        .success,
-      false,
-    );
-  }
+test("rejects unsupported or empty bulk student update field selections", () => {
+  assert.equal(
+    bulkStudentUpdatesSchema.safeParse({ fields: [], students: [{ admissionNo: "1001" }] }).success,
+    false,
+  );
+  assert.equal(
+    bulkStudentUpdatesSchema.safeParse({ fields: ["academicYear"], students: [{ admissionNo: "1001" }] }).success,
+    false,
+  );
 });

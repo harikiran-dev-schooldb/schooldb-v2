@@ -9,7 +9,9 @@ import {
   FileSpreadsheet,
   KeyRound,
   Loader2,
+  RefreshCw,
   UploadCloud,
+  UserPlus,
   XCircle,
 } from "lucide-react";
 
@@ -17,15 +19,19 @@ import { PageHeader } from "@/components/common/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useSchool } from "@/contexts/school-context";
+import { cn } from "@/lib/utils";
 import {
   postImportInBatches,
   type ImportProgress,
 } from "@/lib/batched-import";
 import {
+  BULK_STUDENT_UPDATE_FIELDS,
   bulkStudentRowSchema,
-  bulkStudentRteUpdateRowSchema,
   normalizeBulkStudentDate,
+  type BulkStudentUpdateField,
 } from "@/features/students/schemas/bulk-student.schema";
 
 const HEADERS = [
@@ -90,7 +96,7 @@ const HEADERS = [
 
 type StudentHeader = (typeof HEADERS)[number];
 type StudentRow = Record<StudentHeader, string>;
-type BulkMode = "CREATE" | "UPDATE_RTE";
+type BulkMode = "CREATE" | "UPDATE";
 
 type RowError = {
   row: number;
@@ -104,8 +110,6 @@ const REQUIRED_FIELDS: StudentHeader[] = [
   "dob",
   "status",
 ];
-const RTE_UPDATE_FIELDS = ["admissionNo", "isRte"] as const satisfies readonly StudentHeader[];
-
 const STUDENT_IMPORT_BATCH_SIZE = 25;
 
 function csvValue(value: string) {
@@ -122,11 +126,49 @@ const REQUIRED_TEMPLATE = [
     .join(","),
 ].join("\n");
 
-const RTE_UPDATE_TEMPLATE = [
-  RTE_UPDATE_FIELDS.join(","),
-  ["1001", "TRUE"].map(csvValue).join(","),
-  ["1002", "FALSE"].map(csvValue).join(","),
-].join("\n");
+const BOOLEAN_FIELDS = new Set<BulkStudentUpdateField>([
+  "isRte",
+  "hostelRequired",
+  "transportRequired",
+  "whatsappOptIn",
+]);
+
+const FIELD_LABELS: Partial<Record<BulkStudentUpdateField, string>> = {
+  dob: "Date of Birth",
+  imageUrl: "Image URL",
+  studentAadhar: "Student Aadhaar",
+  apaarId: "APAAR ID",
+  penNo: "PEN Number",
+  emisNo: "EMIS Number",
+  pincode: "PIN Code",
+  fatherAadhar: "Father Aadhaar",
+  motherAadhar: "Mother Aadhaar",
+  isRte: "RTE Status",
+  whatsappOptIn: "WhatsApp Opt-in",
+};
+
+function fieldLabel(field: BulkStudentUpdateField) {
+  return (
+    FIELD_LABELS[field] ??
+    field.replace(/([A-Z])/g, " $1").replace(/^./, (value) => value.toUpperCase())
+  );
+}
+
+function updateTemplate(fields: BulkStudentUpdateField[]) {
+  const sampleValue = (field: BulkStudentUpdateField) => {
+    if (BOOLEAN_FIELDS.has(field)) return "TRUE";
+    if (field === "fullName") return "Updated Student Name";
+    if (field === "dob" || field === "joinedDate") return "2012-06-15";
+    if (field === "gender") return "MALE";
+    if (field === "status") return "ACTIVE";
+    return "";
+  };
+
+  return [
+    ["admissionNo", ...fields].join(","),
+    ["1001", ...fields.map(sampleValue)].map(csvValue).join(","),
+  ].join("\n");
+}
 
 function parseCsvLine(line: string) {
   const values: string[] = [];
@@ -167,9 +209,11 @@ function parseCsv(text: string, mode: BulkMode) {
 
   const headers = parseCsvLine(lines[0]);
   const allowedHeaders: readonly StudentHeader[] =
-    mode === "UPDATE_RTE" ? RTE_UPDATE_FIELDS : HEADERS;
+    mode === "UPDATE"
+      ? (["admissionNo", ...BULK_STUDENT_UPDATE_FIELDS] as StudentHeader[])
+      : HEADERS;
   const requiredHeaders: readonly StudentHeader[] =
-    mode === "UPDATE_RTE" ? RTE_UPDATE_FIELDS : REQUIRED_FIELDS;
+    mode === "UPDATE" ? ["admissionNo"] : REQUIRED_FIELDS;
   const duplicateHeaders = headers.filter(
     (header, index) => headers.indexOf(header) !== index,
   );
@@ -194,6 +238,10 @@ function parseCsv(text: string, mode: BulkMode) {
     throw new Error(`Missing required columns: ${missingHeaders.join(", ")}`);
   }
 
+  if (mode === "UPDATE" && headers.length < 2) {
+    throw new Error("Choose at least one student field to update.");
+  }
+
   const rows: StudentRow[] = [];
   const errors: RowError[] = [];
 
@@ -215,22 +263,7 @@ function parseCsv(text: string, mode: BulkMode) {
       return;
     }
 
-    if (mode === "UPDATE_RTE") {
-      const validated = bulkStudentRteUpdateRowSchema.safeParse({
-        admissionNo: row.admissionNo,
-        isRte: row.isRte,
-      });
-
-      if (!validated.success) {
-        errors.push({
-          row: index + 2,
-          message: validated.error.issues
-            .map((issue) => `${issue.path.join(".")}: ${issue.message}`)
-            .join("; "),
-        });
-        return;
-      }
-
+    if (mode === "UPDATE") {
       rows.push(row);
       return;
     }
@@ -294,15 +327,15 @@ function parseCsv(text: string, mode: BulkMode) {
   };
 }
 
-function downloadTemplate(mode: BulkMode) {
-  const template = mode === "UPDATE_RTE" ? RTE_UPDATE_TEMPLATE : REQUIRED_TEMPLATE;
+function downloadTemplate(mode: BulkMode, fields: BulkStudentUpdateField[]) {
+  const template = mode === "UPDATE" ? updateTemplate(fields) : REQUIRED_TEMPLATE;
   const blob = new Blob([template], { type: "text/csv;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;
   anchor.download =
-    mode === "UPDATE_RTE"
-      ? "schooldb-student-rte-update-template.csv"
+    mode === "UPDATE"
+      ? "schooldb-student-update-template.csv"
       : "schooldb-students-template.csv";
   anchor.click();
   URL.revokeObjectURL(url);
@@ -312,6 +345,9 @@ export default function BulkStudentsPage() {
   const { school } = useSchool();
   const inputRef = useRef<HTMLInputElement>(null);
   const [mode, setMode] = useState<BulkMode>("CREATE");
+  const [updateFields, setUpdateFields] = useState<BulkStudentUpdateField[]>([
+    "isRte",
+  ]);
   const [fileName, setFileName] = useState("");
   const [totalRows, setTotalRows] = useState(0);
   const [rows, setRows] = useState<StudentRow[]>([]);
@@ -325,7 +361,6 @@ export default function BulkStudentsPage() {
     enrolled?: number;
     skipped?: number;
     updated?: number;
-    unchanged?: number;
     failed: number;
     errors: RowError[];
   } | null>(null);
@@ -359,6 +394,17 @@ export default function BulkStudentsPage() {
       setTotalRows(parsed.totalRows);
       setRows(parsed.rows);
       setPreviewHeaders(parsed.headers);
+      if (mode === "UPDATE") {
+        setUpdateFields(
+          parsed.headers.filter(
+            (header): header is BulkStudentUpdateField =>
+              header !== "admissionNo" &&
+              BULK_STUDENT_UPDATE_FIELDS.includes(
+                header as BulkStudentUpdateField,
+              ),
+          ),
+        );
+      }
       setErrors(parsed.errors);
     } catch (error) {
       setFileError(
@@ -381,7 +427,6 @@ export default function BulkStudentsPage() {
           enrolled?: number;
           skipped?: number;
           updated?: number;
-          unchanged?: number;
           failed: number;
           errors: RowError[];
         }
@@ -392,10 +437,13 @@ export default function BulkStudentsPage() {
         batchSize: STUDENT_IMPORT_BATCH_SIZE,
         onProgress: setProgress,
         failureMessage:
-          mode === "UPDATE_RTE"
-            ? "Bulk RTE status update failed."
+          mode === "UPDATE"
+            ? "Bulk student update failed."
             : "Bulk student import failed.",
-        staticBody: { mode },
+        staticBody: {
+          mode,
+          ...(mode === "UPDATE" ? { fields: updateFields } : {}),
+        },
       });
 
       setResult(data);
@@ -433,15 +481,19 @@ export default function BulkStudentsPage() {
         eyebrow="Bulk Operations"
         title="Bulk Students"
         description={
-          mode === "UPDATE_RTE"
-            ? "Update only the RTE status of existing students using admission numbers."
+          mode === "UPDATE"
+            ? "Update selected fields of existing students using admission numbers."
             : "Upload student records, validate them before import, and review the result."
         }
         action={
-          <Button variant="outline" onClick={() => downloadTemplate(mode)}>
+          <Button
+            variant="outline"
+            onClick={() => downloadTemplate(mode, updateFields)}
+            disabled={mode === "UPDATE" && updateFields.length === 0}
+          >
             <Download className="size-4" />
-            {mode === "UPDATE_RTE"
-              ? "Download RTE Update Template"
+            {mode === "UPDATE"
+              ? "Download Update Template"
               : "Download Required Fields Template"}
           </Button>
         }
@@ -460,63 +512,138 @@ export default function BulkStudentsPage() {
 
       <Card className="premium-card overflow-hidden rounded-2xl border-0">
         <CardHeader className="border-b border-border/60 px-6 py-5">
-          <div className="flex items-center gap-3">
-            <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-              <FileSpreadsheet className="size-5" />
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <FileSpreadsheet className="size-5" />
+              </div>
+              <div>
+                <CardTitle>
+                  {mode === "UPDATE" ? "Update existing students" : "Create students"}
+                </CardTitle>
+                <p className="mt-1 max-w-3xl text-xs leading-5 text-muted-foreground">
+                  {mode === "UPDATE" ? (
+                    <>
+                      Choose the profile fields to update. Admission number finds
+                      the student; every unselected field remains unchanged.
+                    </>
+                  ) : (
+                    <>
+                      Create student records from the five required fields, with
+                      optional profile and enrollment columns when needed.
+                    </>
+                  )}
+                </p>
+              </div>
             </div>
-            <div>
-              <CardTitle>
-                {mode === "UPDATE_RTE" ? "Update student RTE status" : "Student import"}
-              </CardTitle>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {mode === "UPDATE_RTE" ? (
-                  <>
-                    Upload only admissionNo and isRte. Matching students are
-                    updated without changing any other profile or enrollment data.
-                  </>
-                ) : (
-                  <>
-                    The template contains only the five required fields. SchoolDB
-                    also accepts supported optional columns for extra profile or
-                    enrollment data. Login accounts are not created during import.
-                  </>
-                )}
-              </p>
-            </div>
+            <Tabs
+              value={mode}
+              onValueChange={(value) => changeMode(value as BulkMode)}
+              className="shrink-0"
+            >
+              <TabsList className="grid w-full grid-cols-2 lg:w-[360px]">
+                <TabsTrigger value="CREATE" disabled={importing}>
+                  <UserPlus className="mr-2 size-4" />
+                  Create
+                </TabsTrigger>
+                <TabsTrigger value="UPDATE" disabled={importing}>
+                  <RefreshCw className="mr-2 size-4" />
+                  Update
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
           </div>
         </CardHeader>
 
         <CardContent className="space-y-6 p-6">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Button
-              type="button"
-              variant={mode === "CREATE" ? "default" : "outline"}
-              className="h-auto justify-start px-4 py-3 text-left"
-              onClick={() => changeMode("CREATE")}
-              disabled={importing}
-            >
-              <span>
-                <span className="block font-semibold">Create students</span>
-                <span className="mt-1 block text-xs opacity-80">
-                  Add new student records from required or extended fields.
-                </span>
-              </span>
-            </Button>
-            <Button
-              type="button"
-              variant={mode === "UPDATE_RTE" ? "default" : "outline"}
-              className="h-auto justify-start px-4 py-3 text-left"
-              onClick={() => changeMode("UPDATE_RTE")}
-              disabled={importing}
-            >
-              <span>
-                <span className="block font-semibold">Update RTE status</span>
-                <span className="mt-1 block text-xs opacity-80">
-                  Change only isRte using each student&apos;s admission number.
-                </span>
-              </span>
-            </Button>
-          </div>
+          {mode === "UPDATE" && !fileName && (
+            <div className="rounded-2xl border border-border/60 bg-muted/15 p-5">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold">Choose fields to update</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Admission number is always included as the lookup key and is never changed.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    onClick={() =>
+                      setUpdateFields([...BULK_STUDENT_UPDATE_FIELDS])
+                    }
+                  >
+                    Select all
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setUpdateFields([])}
+                    disabled={updateFields.length === 0}
+                  >
+                    Clear
+                  </Button>
+                  <Badge variant={updateFields.length ? "success" : "destructive"}>
+                    {updateFields.length} selected
+                  </Badge>
+                </div>
+              </div>
+
+              {updateFields.length > 0 && (
+                <div className="mt-4 flex flex-wrap gap-2 rounded-xl border border-primary/10 bg-primary/[0.03] p-3">
+                  <span className="mr-1 self-center text-xs font-semibold text-muted-foreground">
+                    Template columns:
+                  </span>
+                  {updateFields.map((field) => (
+                    <button
+                      type="button"
+                      key={field}
+                      onClick={() =>
+                        setUpdateFields((current) =>
+                          current.filter((item) => item !== field),
+                        )
+                      }
+                      className="rounded-full border border-primary/15 bg-background px-2.5 py-1 text-xs font-medium text-foreground transition-colors hover:border-destructive/30 hover:text-destructive"
+                      title={`Remove ${fieldLabel(field)}`}
+                    >
+                      {fieldLabel(field)} ×
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              <div className="mt-4 grid max-h-72 gap-2 overflow-y-auto pr-2 sm:grid-cols-2 lg:grid-cols-3">
+                {BULK_STUDENT_UPDATE_FIELDS.map((field) => {
+                  const checked = updateFields.includes(field);
+                  return (
+                    <label
+                      key={field}
+                      className={cn(
+                        "flex cursor-pointer items-center gap-3 rounded-xl border px-3 py-2.5 text-sm transition-colors",
+                        checked
+                          ? "border-primary/25 bg-primary/[0.05] text-foreground"
+                          : "border-border/60 bg-background text-muted-foreground hover:border-primary/20 hover:text-foreground",
+                      )}
+                    >
+                      <Checkbox
+                        checked={checked}
+                        onCheckedChange={(nextChecked) =>
+                          setUpdateFields((current) =>
+                            nextChecked
+                              ? [...current, field]
+                              : current.filter((item) => item !== field),
+                          )
+                        }
+                      />
+                      <span>{fieldLabel(field)}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           <input
             ref={inputRef}
@@ -540,8 +667,8 @@ export default function BulkStudentsPage() {
               </div>
               <p className="mt-4 text-base font-bold">Upload student CSV</p>
               <p className="mt-1 max-w-md text-sm text-muted-foreground">
-                {mode === "UPDATE_RTE"
-                  ? "Use the RTE update template with admissionNo and isRte columns."
+                {mode === "UPDATE"
+                  ? "Choose fields above, download the matching template, and fill one row per admission number."
                   : "Use the required-fields template; optional supported columns may also be added."}
                 {" "}Validation happens before any database changes.
               </p>
@@ -664,13 +791,12 @@ export default function BulkStudentsPage() {
               {result && (
                 <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4">
                   <p className="text-sm font-bold">
-                    {mode === "UPDATE_RTE" ? "RTE update complete" : "Import complete"}
+                    {mode === "UPDATE" ? "Student update complete" : "Import complete"}
                   </p>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {mode === "UPDATE_RTE" ? (
+                    {mode === "UPDATE" ? (
                       <>
-                        {result.updated ?? 0} students updated · {result.unchanged ?? 0}{" "}
-                        already matched · {result.failed} failed
+                        {result.updated ?? 0} students updated · {result.failed} failed
                       </>
                     ) : (
                       <>
@@ -739,10 +865,10 @@ export default function BulkStudentsPage() {
                     <UploadCloud className="size-4" />
                   )}
                   {importing
-                    ? mode === "UPDATE_RTE"
+                    ? mode === "UPDATE"
                       ? "Updating..."
                       : "Importing..."
-                    : mode === "UPDATE_RTE"
+                    : mode === "UPDATE"
                       ? `Update ${rows.length} Students`
                       : `Import ${rows.length} Students`}
                 </Button>

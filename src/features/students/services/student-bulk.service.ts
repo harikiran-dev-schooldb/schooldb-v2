@@ -1,10 +1,13 @@
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@/generated/prisma/client";
 
 import {
-  bulkStudentRteUpdatesSchema,
+  bulkStudentUpdatesSchema,
   bulkStudentsSchema,
   type BulkStudentRow,
+  type BulkStudentUpdateField,
 } from "../schemas/bulk-student.schema";
+import { updateStudentFieldsSchema } from "../schemas/student.schema";
 
 type EnrollmentInput = Pick<
   BulkStudentRow,
@@ -30,9 +33,55 @@ type ImportResult = {
   message?: string;
 };
 
+const BOOLEAN_UPDATE_FIELDS = new Set<BulkStudentUpdateField>([
+  "isRte",
+  "hostelRequired",
+  "transportRequired",
+  "whatsappOptIn",
+]);
+const UPPERCASE_UPDATE_FIELDS = new Set<BulkStudentUpdateField>([
+  "gender",
+  "status",
+  "religion",
+  "category",
+]);
+
+function normalizeUpdateValue(field: BulkStudentUpdateField, value: unknown) {
+  const text = String(value ?? "").trim();
+
+  if (BOOLEAN_UPDATE_FIELDS.has(field)) {
+    const normalized = text.toUpperCase();
+    if (["TRUE", "YES", "1"].includes(normalized)) return true;
+    if (["FALSE", "NO", "0"].includes(normalized)) return false;
+    return value;
+  }
+
+  if (field === "dob" || field === "joinedDate") {
+    if (text === "" && field === "joinedDate") return text;
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(text);
+    if (!match) return value;
+
+    const [, year, month, day] = match;
+    const date = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)));
+    return date.getUTCFullYear() === Number(year) &&
+      date.getUTCMonth() === Number(month) - 1 &&
+      date.getUTCDate() === Number(day)
+      ? text
+      : "INVALID_DATE";
+  }
+
+  if (UPPERCASE_UPDATE_FIELDS.has(field)) {
+    return text === "" && (field === "religion" || field === "category")
+      ? null
+      : text.toUpperCase();
+  }
+
+  return text;
+}
+
 export const studentBulkService = {
-  async updateRte(schoolId: string, input: unknown, performedByUserId?: string) {
-    const { students } = bulkStudentRteUpdatesSchema.parse(input);
+  async updateFields(schoolId: string, input: unknown, performedByUserId?: string) {
+    const { fields, students } = bulkStudentUpdatesSchema.parse(input);
     const errors: Array<{ row: number; message: string }> = [];
     const seen = new Set<string>();
 
@@ -48,7 +97,7 @@ export const studentBulkService = {
     }
 
     if (errors.length > 0) {
-      return { updated: 0, unchanged: 0, failed: errors.length, errors };
+      return { updated: 0, failed: errors.length, errors };
     }
 
     const existing = await prisma.student.findMany({
@@ -56,7 +105,12 @@ export const studentBulkService = {
         schoolId,
         admissionNo: { in: students.map((student) => student.admissionNo) },
       },
-      select: { id: true, admissionNo: true, fullName: true, isRte: true },
+      select: {
+        id: true,
+        admissionNo: true,
+        fullName: true,
+        whatsappOptInAt: true,
+      },
     });
     const existingByAdmissionNo = new Map(
       existing.map((student) => [student.admissionNo, student]),
@@ -65,9 +119,8 @@ export const studentBulkService = {
       id: string;
       admissionNo: string;
       fullName: string | null;
-      isRte: boolean;
+      data: Prisma.StudentUpdateInput;
     }> = [];
-    let unchanged = 0;
 
     for (const [index, requested] of students.entries()) {
       const student = existingByAdmissionNo.get(requested.admissionNo);
@@ -79,34 +132,55 @@ export const studentBulkService = {
         continue;
       }
 
-      if (student.isRte === requested.isRte) {
-        unchanged += 1;
+      const rawPatch = Object.fromEntries(
+        fields.map((field) => [
+          field,
+          normalizeUpdateValue(field, requested[field]),
+        ]),
+      );
+      const parsedPatch = updateStudentFieldsSchema.safeParse(rawPatch);
+
+      if (!parsedPatch.success) {
+        errors.push({
+          row: index + 2,
+          message: parsedPatch.error.issues
+            .map((issue) => `${issue.path.join(".")}: ${issue.message}`)
+            .join("; "),
+        });
         continue;
       }
 
-      changes.push({ ...student, isRte: requested.isRte });
+      const data = Object.fromEntries(
+        fields.map((field) => [field, parsedPatch.data[field]]),
+      ) as Prisma.StudentUpdateInput;
+
+      if (fields.includes("dob") && parsedPatch.data.dob) {
+        data.dob = new Date(`${parsedPatch.data.dob}T00:00:00`);
+      }
+      if (fields.includes("joinedDate")) {
+        data.joinedDate = parsedPatch.data.joinedDate
+          ? new Date(`${parsedPatch.data.joinedDate}T00:00:00`)
+          : null;
+      }
+      if (fields.includes("whatsappOptIn")) {
+        data.whatsappOptInAt = parsedPatch.data.whatsappOptIn
+          ? student.whatsappOptInAt ?? new Date()
+          : null;
+      }
+
+      changes.push({ ...student, data });
+    }
+
+    if (errors.length > 0) {
+      return { updated: 0, failed: errors.length, errors };
     }
 
     if (changes.length > 0) {
       await prisma.$transaction(async (tx) => {
-        const rteStudentIds = changes
-          .filter((student) => student.isRte)
-          .map((student) => student.id);
-        const nonRteStudentIds = changes
-          .filter((student) => !student.isRte)
-          .map((student) => student.id);
-
-        if (rteStudentIds.length > 0) {
-          await tx.student.updateMany({
-            where: { schoolId, id: { in: rteStudentIds } },
-            data: { isRte: true },
-          });
-        }
-
-        if (nonRteStudentIds.length > 0) {
-          await tx.student.updateMany({
-            where: { schoolId, id: { in: nonRteStudentIds } },
-            data: { isRte: false },
+        for (const student of changes) {
+          await tx.student.update({
+            where: { id: student.id, schoolId },
+            data: student.data,
           });
         }
 
@@ -115,10 +189,10 @@ export const studentBulkService = {
             schoolId,
             studentId: student.id,
             type: "PROFILE_UPDATED" as const,
-            title: "RTE status updated",
-            description: `${student.fullName ?? student.admissionNo} was marked as ${student.isRte ? "an RTE" : "a non-RTE"} student through bulk update.`,
+            title: "Student profile updated",
+            description: `${student.fullName ?? student.admissionNo} was updated through bulk import. Fields: ${fields.join(", ")}.`,
             performedByUserId,
-            metadata: { isRte: student.isRte },
+            metadata: { fields },
           })),
         });
       });
@@ -126,8 +200,7 @@ export const studentBulkService = {
 
     return {
       updated: changes.length,
-      unchanged,
-      failed: errors.length,
+      failed: 0,
       errors,
     };
   },

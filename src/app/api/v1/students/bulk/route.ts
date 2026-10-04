@@ -8,14 +8,14 @@ export async function POST(req: Request) {
     const tenant = await requireRole(["SUPER_ADMIN", "SCHOOL_ADMIN"]);
     const body = await req.json();
 
-    if (body.mode === "UPDATE_RTE") {
-      const result = await studentBulkService.updateRte(
+    if (body.mode === "UPDATE") {
+      const result = await studentBulkService.updateFields(
         tenant.schoolId,
         body,
         tenant.userId,
       );
 
-      return ApiResponse.success(result, "Bulk student RTE update processed.");
+      return ApiResponse.success(result, "Bulk student update processed.");
     }
 
     const result = await studentBulkService.import(

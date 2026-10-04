@@ -136,5 +136,9 @@ export const createStudentSchema = z.object({
   remarks: optionalNullableText(2000),
 });
 
+export const updateStudentFieldsSchema = createStudentSchema
+  .omit({ admissionNo: true })
+  .partial();
+
 export type StudentFormInput = z.input<typeof createStudentSchema>;
 export type StudentFormOutput = z.output<typeof createStudentSchema>;
