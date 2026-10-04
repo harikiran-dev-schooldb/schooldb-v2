@@ -63,29 +63,18 @@ export const navigation: NavigationItem[] = [
     roles: ["SUPER_ADMIN"],
   },
   {
-    title: "Reports",
-    href: "reports",
-    icon: FileSpreadsheet,
-    roles: ADMIN_ROLES,
-  },
-  {
-    title: "Analytics",
-    href: "management-analytics",
-    icon: ChartNoAxesCombined,
-    roles: ADMIN_ROLES,
-  },
-  {
     title: "People",
     icon: UsersRound,
     roles: STUDENT_DIRECTORY_ROLES,
     children: [
       { title: "Students", href: "students", roles: STUDENT_DIRECTORY_ROLES },
+      { title: "Teachers", href: "teachers", roles: ADMIN_ROLES },
+      { title: "Enrollments", href: "enrollments", roles: ADMIN_ROLES },
       {
         title: "Online Admissions",
         href: "admissions",
         roles: [...ADMIN_ROLES, "RECEPTIONIST"],
       },
-      { title: "Enrollments", href: "enrollments", roles: ADMIN_ROLES },
       { title: "Student Houses", href: "student-houses", roles: ADMIN_ROLES },
       { title: "Birthdays", href: "birthdays", roles: ADMIN_ROLES },
       {
@@ -98,7 +87,6 @@ export const navigation: NavigationItem[] = [
         href: "certificates",
         roles: ADMIN_ROLES,
       },
-      { title: "Teachers", href: "teachers", roles: ADMIN_ROLES },
       { title: "User Accounts", href: "users", roles: ADMIN_ROLES },
     ],
   },
@@ -213,6 +201,18 @@ export const navigation: NavigationItem[] = [
       { title: "Teacher Allocations", href: "teacher-allocations" },
       { title: "Class Teachers", href: "class-teachers" },
     ],
+  },
+  {
+    title: "Reports",
+    href: "reports",
+    icon: FileSpreadsheet,
+    roles: ADMIN_ROLES,
+  },
+  {
+    title: "Analytics",
+    href: "management-analytics",
+    icon: ChartNoAxesCombined,
+    roles: ADMIN_ROLES,
   },
   {
     title: "School Operations",
