@@ -14,6 +14,7 @@ import {
   markPayrollPaid,
   recordStaffAttendance,
   runPayroll,
+  saveStaffAttendance,
   saveHealthRecord,
   saveSalaryStructure,
   updateMaintenanceTicket,
@@ -26,7 +27,7 @@ import { prisma } from "@/lib/prisma";
 
 const schema = z.object({
   action: z.enum([
-    "RECORD_ATTENDANCE", "IMPORT_ATTENDANCE", "CREATE_STAFF_LEAVE", "DECIDE_STAFF_LEAVE",
+    "RECORD_ATTENDANCE", "SAVE_STAFF_ATTENDANCE", "IMPORT_ATTENDANCE", "CREATE_STAFF_LEAVE", "DECIDE_STAFF_LEAVE",
     "SAVE_SALARY", "RUN_PAYROLL", "MARK_PAYROLL_PAID", "CHECK_IN_VISITOR", "CHECK_OUT_VISITOR",
     "SAVE_HEALTH_RECORD", "LOG_HEALTH_VISIT", "CREATE_INVENTORY_ITEM", "ADJUST_INVENTORY",
     "AUTHORIZE_PICKUP", "UPDATE_PICKUP", "CREATE_MAINTENANCE", "UPDATE_MAINTENANCE",
@@ -39,7 +40,7 @@ export async function POST(request: Request) {
     const membership = await requireRole(["SUPER_ADMIN", "SCHOOL_ADMIN", "ACCOUNTANT", "RECEPTIONIST"]);
     const input = schema.parse(await request.json());
     const financeAndAdmin = new Set([
-      "RECORD_ATTENDANCE", "IMPORT_ATTENDANCE", "CREATE_STAFF_LEAVE", "DECIDE_STAFF_LEAVE",
+      "RECORD_ATTENDANCE", "SAVE_STAFF_ATTENDANCE", "IMPORT_ATTENDANCE", "CREATE_STAFF_LEAVE", "DECIDE_STAFF_LEAVE",
       "SAVE_SALARY", "RUN_PAYROLL", "MARK_PAYROLL_PAID", "CREATE_INVENTORY_ITEM", "ADJUST_INVENTORY",
     ]);
     if (financeAndAdmin.has(input.action) && !["SUPER_ADMIN", "SCHOOL_ADMIN", "ACCOUNTANT"].includes(membership.role)) {
@@ -48,6 +49,7 @@ export async function POST(request: Request) {
 
     const args = [membership.schoolId, membership.userId, input.data] as const;
     const result = input.action === "RECORD_ATTENDANCE" ? await recordStaffAttendance(...args)
+      : input.action === "SAVE_STAFF_ATTENDANCE" ? await saveStaffAttendance(...args)
       : input.action === "IMPORT_ATTENDANCE" ? await importStaffAttendance(...args)
       : input.action === "CREATE_STAFF_LEAVE" ? await createStaffLeave(...args)
       : input.action === "DECIDE_STAFF_LEAVE" ? await decideStaffLeave(...args)
@@ -73,6 +75,17 @@ export async function GET(request: Request) {
   return apiHandler(async () => {
     const membership = await requireRole(["SUPER_ADMIN", "SCHOOL_ADMIN", "ACCOUNTANT"]);
     const url = new URL(request.url);
+    if (url.searchParams.get("kind") === "staff-attendance") {
+      const date = url.searchParams.get("date");
+      if (!date || !z.string().date().safeParse(date).success) return ApiResponse.error("A valid attendance date is required.", 400);
+      const attendanceDate = new Date(`${date}T00:00:00.000Z`);
+      const attendance = await prisma.staffAttendance.findMany({
+        where: { schoolId: membership.schoolId, date: attendanceDate },
+        orderBy: { teacher: { fullName: "asc" } },
+        include: { teacher: { select: { fullName: true, employeeId: true } } },
+      });
+      return ApiResponse.success({ date, attendance }, "Staff attendance loaded.");
+    }
     if (url.searchParams.get("kind") !== "payroll-report") return ApiResponse.error("Unknown report.", 400);
     const year = Number(url.searchParams.get("year") || new Date().getFullYear());
     const month = Number(url.searchParams.get("month") || new Date().getMonth() + 1);

@@ -17,8 +17,16 @@ export async function getOperationsData(schoolId: string, module: OperationsModu
   }) : [];
 
   if (module === "staff") {
+    const today = new Date();
+    const todayKey = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Kolkata",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(today);
+    const todayDate = new Date(`${todayKey}T00:00:00.000Z`);
     const [attendance, leaves, salaries, payrollRuns, payrollEntries] = await Promise.all([
-      prisma.staffAttendance.findMany({ where: { schoolId }, orderBy: [{ date: "desc" }, { createdAt: "desc" }], take: 150, include: { teacher: { select: { fullName: true, employeeId: true } } } }),
+      prisma.staffAttendance.findMany({ where: { schoolId, date: todayDate }, orderBy: { teacher: { fullName: "asc" } }, include: { teacher: { select: { fullName: true, employeeId: true } } } }),
       prisma.staffLeaveRequest.findMany({ where: { schoolId }, orderBy: { createdAt: "desc" }, take: 100, include: { teacher: { select: { fullName: true, employeeId: true } } } }),
       prisma.salaryStructure.findMany({ where: { schoolId, active: true }, orderBy: { effectiveFrom: "desc" }, include: { teacher: { select: { fullName: true, employeeId: true } } } }),
       prisma.payrollRun.findMany({ where: { schoolId }, orderBy: [{ year: "desc" }, { month: "desc" }], take: 24, include: { _count: { select: { entries: true } } } }),

@@ -4,10 +4,10 @@ import { getOperationsData, type OperationsModule } from "./data";
 import { OperationsManager } from "./OperationsManager";
 
 const copy: Record<OperationsModule, { title: string; description: string }> = {
-  staff: { title: "Staff attendance & payroll", description: "Manage attendance, imports, leave approvals, salary structures, payroll, payslips and payment status." },
+  staff: { title: "Staff attendance & payroll", description: "Mark staff cards present first, record absences with notifications, then prepare payroll from approved pay setup." },
   visitors: { title: "Visitor & gate passes", description: "Check visitors in and out with a searchable, time-stamped gate-pass register." },
   health: { title: "Student health & emergency records", description: "Maintain confidential health profiles and record clinic or first-aid visits." },
-  inventory: { title: "Inventory & school assets", description: "Track stock, equipment, condition, location, value and movement history." },
+  inventory: { title: "Inventory & school stock", description: "See what is available, receive or issue stock, and keep a simple movement history." },
   pickup: { title: "Authorized student pickup", description: "Issue secure, time-bound pickup authorizations and record their use." },
   maintenance: { title: "Maintenance & complaints", description: "Assign, track and resolve facility and equipment maintenance tickets." },
   analytics: { title: "Management analytics", description: "Monitor key operational, financial and safety indicators in one place." },

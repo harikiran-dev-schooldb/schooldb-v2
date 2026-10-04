@@ -260,7 +260,8 @@ type AutomatedAlertInput = {
     | "RESULT"
     | "FEE_DUE"
     | "PROMOTION"
-    | "BIRTHDAY";
+    | "BIRTHDAY"
+    | "STAFF_ATTENDANCE";
   sourceId: string;
   title: string;
   message: string;
@@ -278,8 +279,97 @@ function automatedTemplateName(sourceType: AutomatedAlertInput["sourceType"]) {
     FEE_DUE: process.env.META_WA_FEE_REMINDER_TEMPLATE,
     PROMOTION: process.env.META_WA_PROMOTION_TEMPLATE,
     BIRTHDAY: process.env.META_WA_BIRTHDAY_TEMPLATE,
+    STAFF_ATTENDANCE: process.env.META_WA_STAFF_ATTENDANCE_TEMPLATE,
   };
   return templates[sourceType];
+}
+
+/**
+ * Queue an absence message for one staff member. Teachers are not students,
+ * so this intentionally uses the direct-recipient campaign path and does not
+ * infer student WhatsApp consent. Delivery only occurs when the school has
+ * enabled WhatsApp automation and configured the staff-attendance template.
+ */
+export async function queueStaffAttendanceWhatsappAlert(input: {
+  schoolId: string;
+  teacherId: string;
+  teacherName: string;
+  phone: string | null;
+  attendanceDate: Date;
+}) {
+  if (process.env.META_WA_AUTOMATION_ENABLED !== "true" || !input.phone) return null;
+  const phone = normalizeIndianMobile(input.phone);
+  const templateName = process.env.META_WA_STAFF_ATTENDANCE_TEMPLATE;
+  if (!phone || !templateName) return null;
+
+  const dateKey = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kolkata",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(input.attendanceDate);
+  const automationKey = `staff-attendance:${input.teacherId}:${dateKey}`;
+  const existing = await prisma.whatsappCampaign.findFirst({
+    where: { schoolId: input.schoolId, automationKey },
+    select: { id: true, recipientCount: true },
+  });
+  if (existing) return existing;
+
+  const message = `Hello ${input.teacherName}, your attendance for ${new Intl.DateTimeFormat("en-IN", {
+    timeZone: "Asia/Kolkata",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  }).format(input.attendanceDate)} was marked absent. Please contact the school office if this needs correction.`;
+
+  try {
+    const campaign = await prisma.$transaction(async (tx) => {
+      const created = await tx.whatsappCampaign.create({
+        data: {
+          schoolId: input.schoolId,
+          title: "Staff attendance alert",
+          message,
+          templateName,
+          targetType: "TEACHER",
+          targetId: input.teacherId,
+          targetLabel: input.teacherName,
+          status: "QUEUED",
+          recipientCount: 1,
+          createdBy: "SYSTEM",
+          scheduledAt: new Date(),
+          automatic: true,
+          automationKey,
+          sourceType: "STAFF_ATTENDANCE",
+          sourceId: `${input.teacherId}:${dateKey}`,
+        },
+        select: { id: true, recipientCount: true },
+      });
+      await tx.whatsappRecipient.create({
+        data: {
+          schoolId: input.schoolId,
+          campaignId: created.id,
+          recipientName: input.teacherName,
+          phone,
+        },
+      });
+      return created;
+    });
+    await processWhatsappCampaignBatch(input.schoolId, campaign.id, 1);
+    return campaign;
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      return prisma.whatsappCampaign.findFirst({
+        where: { schoolId: input.schoolId, automationKey },
+        select: { id: true, recipientCount: true },
+      });
+    }
+    console.error("[staff-attendance-whatsapp] Unable to queue alert", {
+      teacherId: input.teacherId,
+      attendanceDate: dateKey,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return null;
+  }
 }
 
 export async function queueAutomatedWhatsappAlert(input: AutomatedAlertInput) {

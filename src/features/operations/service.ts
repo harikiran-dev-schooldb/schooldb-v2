@@ -1,6 +1,8 @@
 import { z } from "zod";
 
 import { prisma } from "@/lib/prisma";
+import { notifyStaffAttendanceAbsent } from "@/features/notifications/events";
+import { queueStaffAttendanceWhatsappAlert } from "@/features/whatsapp/service";
 
 const dateValue = z.string().date().transform((value) => new Date(`${value}T00:00:00.000Z`));
 const optionalText = (max = 500) => z.string().trim().max(max).optional().transform((value) => value || null);
@@ -20,6 +22,95 @@ async function teacherInSchool(schoolId: string, teacherId: string) {
   return teacher;
 }
 
+const staffAttendanceStatus = z.enum([
+  "PRESENT",
+  "ABSENT",
+  "HALF_DAY",
+  "ON_LEAVE",
+  "HOLIDAY",
+]);
+
+const staffAttendanceRow = z.object({
+  teacherId: z.string().min(1),
+  status: staffAttendanceStatus,
+});
+
+async function sendStaffAbsenceNotifications(
+  schoolId: string,
+  userId: string,
+  attendanceDate: Date,
+  transitions: Array<{ teacherId: string; fullName: string; phone: string | null }>,
+) {
+  const results = await Promise.allSettled(
+    transitions.flatMap((teacher) => [
+      notifyStaffAttendanceAbsent({
+        schoolId,
+        teacherId: teacher.teacherId,
+        attendanceDate,
+        performedByUserId: userId,
+      }),
+      queueStaffAttendanceWhatsappAlert({
+        schoolId,
+        teacherId: teacher.teacherId,
+        teacherName: teacher.fullName,
+        phone: teacher.phone,
+        attendanceDate,
+      }),
+    ]),
+  );
+  return {
+    appCreated: results.filter((result, index) => index % 2 === 0 && result.status === "fulfilled" && Boolean(result.value)).length,
+    whatsappQueued: results.filter((result, index) => index % 2 === 1 && result.status === "fulfilled" && Boolean(result.value)).length,
+    skipped: results.filter((result) => result.status === "fulfilled" && !result.value).length,
+    warnings: results.flatMap((result) => result.status === "rejected"
+      ? [result.reason instanceof Error ? result.reason.message : "A notification could not be delivered."]
+      : []),
+  };
+}
+
+export async function saveStaffAttendance(schoolId: string, userId: string, value: unknown) {
+  const input = z.object({
+    date: dateValue,
+    records: z.array(staffAttendanceRow).min(1).max(500),
+  }).parse(value);
+  const uniqueTeacherIds = new Set(input.records.map((record) => record.teacherId));
+  if (uniqueTeacherIds.size !== input.records.length) {
+    throw new Error("Each staff member can appear only once in an attendance save.");
+  }
+
+  const teachers = await prisma.teacher.findMany({
+    where: { schoolId, active: true, id: { in: [...uniqueTeacherIds] } },
+    select: { id: true, fullName: true, phone: true },
+  });
+  const teacherById = new Map(teachers.map((teacher) => [teacher.id, teacher]));
+  const missing = [...uniqueTeacherIds].filter((teacherId) => !teacherById.has(teacherId));
+  if (missing.length) throw new Error("One or more selected staff members are no longer active.");
+
+  const existing = await prisma.staffAttendance.findMany({
+    where: { schoolId, date: input.date, teacherId: { in: [...uniqueTeacherIds] } },
+    select: { teacherId: true, status: true },
+  });
+  const existingByTeacher = new Map(existing.map((record) => [record.teacherId, record.status]));
+
+  await prisma.$transaction(input.records.map((record) => prisma.staffAttendance.upsert({
+    where: { schoolId_teacherId_date: { schoolId, teacherId: record.teacherId, date: input.date } },
+    update: { status: record.status, source: "MANUAL", recordedBy: userId },
+    create: { schoolId, teacherId: record.teacherId, date: input.date, status: record.status, source: "MANUAL", recordedBy: userId },
+  })));
+
+  const newlyAbsent = input.records
+    .filter((record) => record.status === "ABSENT" && existingByTeacher.get(record.teacherId) !== "ABSENT")
+    .flatMap((record) => {
+      const teacher = teacherById.get(record.teacherId);
+      return teacher ? [{ teacherId: teacher.id, fullName: teacher.fullName, phone: teacher.phone }] : [];
+    });
+  const notifications = newlyAbsent.length
+    ? await sendStaffAbsenceNotifications(schoolId, userId, input.date, newlyAbsent)
+    : { appCreated: 0, whatsappQueued: 0, skipped: 0, warnings: [] as string[] };
+
+  return { saved: input.records.length, absent: newlyAbsent.length, notifications };
+}
+
 async function studentInSchool(schoolId: string, studentId: string) {
   const student = await prisma.student.findFirst({ where: { id: studentId, schoolId, status: "ACTIVE" }, select: { id: true } });
   if (!student) throw new Error("Select an active student from this school.");
@@ -34,11 +125,20 @@ export async function recordStaffAttendance(schoolId: string, userId: string, va
     source: z.enum(["MANUAL", "BIOMETRIC", "IMPORT"]).default("MANUAL"), deviceRef: optionalText(120),
   }).parse(value);
   await teacherInSchool(schoolId, input.teacherId);
-  return prisma.staffAttendance.upsert({
+  const previous = await prisma.staffAttendance.findUnique({
+    where: { schoolId_teacherId_date: { schoolId, teacherId: input.teacherId, date: input.date } },
+    select: { status: true },
+  });
+  const saved = await prisma.staffAttendance.upsert({
     where: { schoolId_teacherId_date: { schoolId, teacherId: input.teacherId, date: input.date } },
     update: { ...input, recordedBy: userId },
     create: { schoolId, ...input, recordedBy: userId },
   });
+  if (input.status === "ABSENT" && previous?.status !== "ABSENT") {
+    const teacher = await prisma.teacher.findUnique({ where: { id: input.teacherId }, select: { fullName: true, phone: true } });
+    if (teacher) await sendStaffAbsenceNotifications(schoolId, userId, input.date, [{ teacherId: input.teacherId, ...teacher }]);
+  }
+  return saved;
 }
 
 export async function importStaffAttendance(schoolId: string, userId: string, value: unknown) {
@@ -47,19 +147,62 @@ export async function importStaffAttendance(schoolId: string, userId: string, va
     status: z.enum(["PRESENT", "ABSENT", "HALF_DAY", "ON_LEAVE", "HOLIDAY"]),
     checkIn: optionalText(8), checkOut: optionalText(8), deviceRef: optionalText(120),
   })).min(1).max(3000).parse(value);
+  const rowKeys = rows.map((row) => `${row.employeeId}:${row.date}`);
+  if (new Set(rowKeys).size !== rowKeys.length) {
+    throw new Error("The import contains duplicate employee/date rows.");
+  }
   const teachers = await prisma.teacher.findMany({
     where: { schoolId, employeeId: { in: rows.map((row) => row.employeeId) }, active: true },
-    select: { id: true, employeeId: true },
+    select: { id: true, employeeId: true, fullName: true, phone: true },
   });
   const byEmployee = new Map(teachers.map((teacher) => [teacher.employeeId, teacher.id]));
   const missing = [...new Set(rows.filter((row) => !byEmployee.has(row.employeeId)).map((row) => row.employeeId))];
   if (missing.length) throw new Error(`Unknown employee IDs: ${missing.slice(0, 10).join(", ")}`);
+  const teacherIds = teachers.map((teacher) => teacher.id);
+  const dates = [...new Set(rows.map((row) => row.date))];
+  const existing = await prisma.staffAttendance.findMany({
+    where: {
+      schoolId,
+      teacherId: { in: teacherIds },
+      date: { in: dates.map((date) => new Date(`${date}T00:00:00.000Z`)) },
+    },
+    select: { teacherId: true, date: true, status: true },
+  });
+  const existingByKey = new Map(existing.map((record) => [
+    `${record.teacherId}:${record.date.toISOString().slice(0, 10)}`,
+    record.status,
+  ]));
   await prisma.$transaction(rows.map((row) => prisma.staffAttendance.upsert({
     where: { schoolId_teacherId_date: { schoolId, teacherId: byEmployee.get(row.employeeId)!, date: new Date(`${row.date}T00:00:00.000Z`) } },
     update: { status: row.status, checkIn: row.checkIn, checkOut: row.checkOut, deviceRef: row.deviceRef, source: "IMPORT", recordedBy: userId },
     create: { schoolId, teacherId: byEmployee.get(row.employeeId)!, date: new Date(`${row.date}T00:00:00.000Z`), status: row.status, checkIn: row.checkIn, checkOut: row.checkOut, deviceRef: row.deviceRef, source: "IMPORT", recordedBy: userId },
   })));
-  return { imported: rows.length };
+  const teacherById = new Map(teachers.map((teacher) => [teacher.id, teacher]));
+  const newlyAbsentByDate = new Map<string, Array<{ teacherId: string; fullName: string; phone: string | null }>>();
+  for (const row of rows) {
+    const teacherId = byEmployee.get(row.employeeId)!;
+    const key = `${teacherId}:${row.date}`;
+    if (row.status !== "ABSENT" || existingByKey.get(key) === "ABSENT") continue;
+    const teacher = teacherById.get(teacherId);
+    if (!teacher) continue;
+    const list = newlyAbsentByDate.get(row.date) ?? [];
+    list.push({ teacherId, fullName: teacher.fullName, phone: teacher.phone });
+    newlyAbsentByDate.set(row.date, list);
+  }
+  const notificationResults = await Promise.all(
+    [...newlyAbsentByDate].map(([date, transitions]) =>
+      sendStaffAbsenceNotifications(schoolId, userId, new Date(`${date}T00:00:00.000Z`), transitions),
+    ),
+  );
+  return {
+    imported: rows.length,
+    notifications: {
+      appCreated: notificationResults.reduce((sum, item) => sum + item.appCreated, 0),
+      whatsappQueued: notificationResults.reduce((sum, item) => sum + item.whatsappQueued, 0),
+      skipped: notificationResults.reduce((sum, item) => sum + item.skipped, 0),
+      warnings: notificationResults.flatMap((item) => item.warnings),
+    },
+  };
 }
 
 export async function createStaffLeave(schoolId: string, userId: string, value: unknown) {
@@ -100,6 +243,13 @@ export async function runPayroll(schoolId: string, userId: string, value: unknow
       create: { schoolId, ...input, processedBy: userId },
     });
     for (const structure of structures.filter((item) => item.teacher.active)) {
+      const existingEntry = await tx.payrollEntry.findUnique({
+        where: { payrollRunId_teacherId: { payrollRunId: run.id, teacherId: structure.teacherId } },
+        select: { paymentStatus: true },
+      });
+      // A second preparation must never rewrite a payment that has already
+      // been recorded. Attendance is intentionally not consulted here.
+      if (existingEntry?.paymentStatus === "PAID") continue;
       const allowances = structure.allowances as Record<string, number>;
       const deductions = structure.deductions as Record<string, number>;
       const basic = Number(structure.basicSalary);

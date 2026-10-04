@@ -8,6 +8,7 @@ import {
 
 test("limits automated WhatsApp to approved operational alerts", () => {
   assert.equal(isAutomatedWhatsappSourceAllowed("ATTENDANCE"), true);
+  assert.equal(isAutomatedWhatsappSourceAllowed("STAFF_ATTENDANCE"), true);
   assert.equal(isAutomatedWhatsappSourceAllowed("BIRTHDAY"), true);
   assert.equal(isAutomatedWhatsappSourceAllowed("PROMOTION"), true);
   assert.equal(isAutomatedWhatsappSourceAllowed("HOMEWORK"), false);

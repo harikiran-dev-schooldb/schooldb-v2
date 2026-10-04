@@ -15,6 +15,7 @@ async function createEventNotification(input: {
     | "CLASS"
     | "SECTION"
     | "STUDENT"
+    | "TEACHER"
     | "ADMIN";
   targetId: string | null;
   targetLabel: string;
@@ -48,6 +49,39 @@ async function createEventNotification(input: {
     }
     throw error;
   }
+}
+
+/**
+ * Create the in-app alert shown to the affected staff member when they are
+ * marked absent. The TEACHER target is resolved to the teacher's linked app
+ * account by the push delivery layer.
+ */
+export async function notifyStaffAttendanceAbsent(input: {
+  schoolId: string;
+  teacherId: string;
+  attendanceDate: Date;
+  performedByUserId?: string;
+}) {
+  const teacher = await prisma.teacher.findFirst({
+    where: { id: input.teacherId, schoolId: input.schoolId, active: true },
+    select: { id: true, fullName: true, employeeId: true },
+  });
+  if (!teacher) return null;
+
+  const dateKey = indiaDateKey(input.attendanceDate);
+  const name = teacher.fullName.trim() || teacher.employeeId;
+  return createEventNotification({
+    schoolId: input.schoolId,
+    title: "Staff attendance marked absent",
+    body: `Your attendance for ${formatDate(input.attendanceDate)} was marked absent. Contact the school office if this needs correction.`,
+    category: "ATTENDANCE",
+    targetType: "TEACHER",
+    targetId: teacher.id,
+    targetLabel: name,
+    sourceType: "STAFF_ATTENDANCE",
+    sourceId: `${teacher.id}:${dateKey}`,
+    dedupeKey: `staff-attendance:${teacher.id}:${dateKey}`,
+  });
 }
 
 function indiaDateKey(value = new Date()) {

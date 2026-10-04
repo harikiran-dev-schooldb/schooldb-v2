@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, ReactNode, useMemo, useState, useTransition } from "react";
+import { cloneElement, FormEvent, isValidElement, ReactElement, ReactNode, useId, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { toast } from "sonner";
@@ -162,20 +162,30 @@ export function Field({
   required,
   children,
   className,
+  htmlFor,
 }: {
   label: string;
   hint?: string;
   required?: boolean;
   children: ReactNode;
   className?: string;
+  htmlFor?: string;
 }) {
+  const generatedId = `operation-field-${useId().replaceAll(":", "")}`;
+  const controlId = htmlFor ?? generatedId;
+  const child = isValidElement(children)
+    ? (children as ReactElement<{ id?: string }>)
+    : null;
+  const control = child && !child.props.id
+    ? cloneElement(child, { id: controlId })
+    : children;
   return (
     <div className={cn("space-y-2", className)}>
-      <Label>
+      <Label htmlFor={controlId}>
         {label}
         {required ? <span className="ml-1 text-destructive">*</span> : null}
       </Label>
-      {children}
+      {control}
       {hint ? (
         <p className="text-xs leading-5 text-muted-foreground">{hint}</p>
       ) : null}
@@ -185,6 +195,7 @@ export function Field({
 
 export function SelectField({
   name,
+  id,
   placeholder,
   options,
   defaultValue,
@@ -192,6 +203,7 @@ export function SelectField({
   onValueChange,
 }: {
   name: string;
+  id?: string;
   placeholder: string;
   options: Array<{ value: string; label: string }>;
   defaultValue?: string;
@@ -205,7 +217,7 @@ export function SelectField({
       value={value}
       onValueChange={onValueChange}
     >
-      <SelectTrigger className="w-full">
+      <SelectTrigger id={id} className="w-full">
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
       <SelectContent>
@@ -221,6 +233,7 @@ export function SelectField({
 
 export function EntityCombobox({
   value,
+  id,
   onChange,
   options,
   placeholder,
@@ -228,6 +241,7 @@ export function EntityCombobox({
   empty = "No matching record.",
 }: {
   value: string;
+  id?: string;
   onChange: (value: string) => void;
   options: Array<{ value: string; label: string; description?: string }>;
   placeholder: string;
@@ -244,6 +258,7 @@ export function EntityCombobox({
       <PopoverTrigger asChild>
         <Button
           type="button"
+          id={id}
           variant="outline"
           role="combobox"
           aria-expanded={open}

@@ -17,6 +17,15 @@ export async function notificationContext(schoolSlug: string) {
     }
 
     if (membership.role === "TEACHER") {
+      const ownTeacher = await prisma.teacher.findFirst({
+        where: {
+          schoolId: membership.schoolId,
+          active: true,
+          clerkId: membership.user.clerkUserId,
+        },
+        select: { id: true },
+      });
+      if (ownTeacher) audience.push({ targetType: "TEACHER", targetId: ownTeacher.id });
       const allocations = await teacherClassScope(membership.schoolId);
       const classIds = Array.from(
         new Set(allocations.map((allocation) => allocation.classId)),

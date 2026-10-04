@@ -5,19 +5,14 @@ import { useParams, useRouter } from "next/navigation";
 import {
   Banknote,
   CalendarCheck2,
-  CheckCircle2,
   Download,
-  FileSpreadsheet,
   IndianRupee,
   Plus,
-  ReceiptText,
-  Upload,
   UserCheck,
   UsersRound,
 } from "lucide-react";
 import { toast } from "sonner";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -54,14 +49,8 @@ import {
   titleCase,
   useOperationMutation,
 } from "./shared";
+import { StaffAttendanceCards } from "./StaffAttendanceCards";
 
-const attendanceStatuses = [
-  "PRESENT",
-  "ABSENT",
-  "HALF_DAY",
-  "ON_LEAVE",
-  "HOLIDAY",
-].map((value) => ({ value, label: titleCase(value) }));
 const leaveTypes = [
   "CASUAL",
   "SICK",
@@ -86,7 +75,6 @@ export function StaffOperationsManager({ data }: { data: OperationsData }) {
     label: teacher.fullName,
     description: `${teacher.employeeId}${teacher.designation ? ` · ${teacher.designation}` : ""}`,
   }));
-  const [attendanceTeacher, setAttendanceTeacher] = useState("");
   const [leaveTeacher, setLeaveTeacher] = useState("");
   const [salaryTeacher, setSalaryTeacher] = useState("");
   const [csvRows, setCsvRows] = useState<Row[]>([]);
@@ -101,7 +89,12 @@ export function StaffOperationsManager({ data }: { data: OperationsData }) {
     staff: string;
     amount: string;
   } | null>(null);
-  const today = new Date().toISOString().slice(0, 10);
+  const today = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kolkata",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
   const now = new Date();
   const attendance = data.attendance ?? [];
   const leaves = data.leaves ?? [];
@@ -111,9 +104,6 @@ export function StaffOperationsManager({ data }: { data: OperationsData }) {
       String(row.date).slice(0, 10) === today && row.status === "PRESENT",
   ).length;
   const pendingLeaves = leaves.filter((row) => row.status === "PENDING").length;
-  const unpaidPayroll = entries
-    .filter((row) => row.paymentStatus !== "PAID")
-    .reduce((sum, row) => sum + Number(row.netSalary ?? 0), 0);
 
   function parseCsv(file: File) {
     void file.text().then((content) => {
@@ -186,12 +176,12 @@ export function StaffOperationsManager({ data }: { data: OperationsData }) {
               Workforce operations
             </p>
             <h2 className="mt-3 text-2xl font-bold tracking-tight">
-              Attendance, leave and payroll in one controlled workflow.
+              Keep attendance decisions separate from payroll.
             </h2>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-              Record daily presence, import biometric files, approve leave,
-              define earnings and deductions, generate payroll and issue
-              printable payslips.
+              Mark staff cards first, review leave separately, then prepare
+              payroll from the salary structures you have approved. Attendance
+              does not silently change someone’s pay.
             </p>
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -209,7 +199,7 @@ export function StaffOperationsManager({ data }: { data: OperationsData }) {
           </div>
         </div>
       </section>
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2">
         <MetricCard
           label="Pending leave"
           value={pendingLeaves}
@@ -218,20 +208,10 @@ export function StaffOperationsManager({ data }: { data: OperationsData }) {
           tone="amber"
         />
         <MetricCard
-          label="Active salary structures"
+          label="Pay setup ready"
           value={(data.salaries ?? []).length}
+          detail="Used only when you prepare payroll"
           icon={IndianRupee}
-        />
-        <MetricCard
-          label="Payroll runs"
-          value={(data.payrollRuns ?? []).length}
-          icon={ReceiptText}
-        />
-        <MetricCard
-          label="Unpaid payroll"
-          value={formatCurrency(unpaidPayroll)}
-          icon={Banknote}
-          tone="rose"
         />
       </div>
 
@@ -239,164 +219,24 @@ export function StaffOperationsManager({ data }: { data: OperationsData }) {
         <TabsList className="h-auto flex-wrap">
           <TabsTrigger value="attendance">Attendance</TabsTrigger>
           <TabsTrigger value="leave">Leave approvals</TabsTrigger>
-          <TabsTrigger value="salary">Salary structures</TabsTrigger>
-          <TabsTrigger value="payroll">Payroll & payslips</TabsTrigger>
+          <TabsTrigger value="salary">Pay setup</TabsTrigger>
+          <TabsTrigger value="payroll">Monthly payroll</TabsTrigger>
         </TabsList>
         <TabsContent value="attendance" className="space-y-5">
-          <div className="grid gap-5 xl:grid-cols-[1fr_0.8fr]">
-            <Card>
-              <CardHeader>
-                <CardTitle>Record daily attendance</CardTitle>
-                <CardDescription>
-                  Use the school staff directory and capture the source for a
-                  reliable audit trail.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form
-                  className="grid gap-4 sm:grid-cols-2"
-                  onSubmit={(event) =>
-                    submit(
-                      "RECORD_ATTENDANCE",
-                      event,
-                      { teacherId: attendanceTeacher },
-                      "Attendance recorded.",
-                    )
-                  }
-                >
-                  <Field
-                    label="Staff member"
-                    required
-                    className="sm:col-span-2"
-                  >
-                    <EntityCombobox
-                      value={attendanceTeacher}
-                      onChange={setAttendanceTeacher}
-                      options={teacherOptions}
-                      placeholder="Search staff by name or employee ID"
-                      searchPlaceholder="Search staff…"
-                    />
-                  </Field>
-                  <Field label="Attendance date" required>
-                    <Input
-                      name="date"
-                      type="date"
-                      defaultValue={today}
-                      required
-                    />
-                  </Field>
-                  <Field label="Status" required>
-                    <SelectField
-                      name="status"
-                      placeholder="Choose status"
-                      options={attendanceStatuses}
-                      defaultValue="PRESENT"
-                    />
-                  </Field>
-                  <Field label="Check-in time">
-                    <Input name="checkIn" type="time" />
-                  </Field>
-                  <Field label="Check-out time">
-                    <Input name="checkOut" type="time" />
-                  </Field>
-                  <Field label="Entry source">
-                    <SelectField
-                      name="source"
-                      placeholder="Choose source"
-                      defaultValue="MANUAL"
-                      options={[
-                        { value: "MANUAL", label: "Manual entry" },
-                        { value: "BIOMETRIC", label: "Biometric device" },
-                      ]}
-                    />
-                  </Field>
-                  <Field label="Device/reference">
-                    <Input
-                      name="deviceRef"
-                      placeholder="Device ID or register reference"
-                    />
-                  </Field>
-                  <Field label="Remarks" className="sm:col-span-2">
-                    <Textarea
-                      name="remarks"
-                      placeholder="Late arrival, official duty, correction reason…"
-                    />
-                  </Field>
-                  <div className="sm:col-span-2">
-                    <Button disabled={pending || !attendanceTeacher}>
-                      <CheckCircle2 className="size-4" />
-                      Save attendance
-                    </Button>
-                  </div>
-                </form>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle>Biometric or manual CSV import</CardTitle>
-                <CardDescription>
-                  Required columns: employeeId, date, status. Optional: checkIn,
-                  checkOut, deviceRef.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-5">
-                <label className="flex min-h-36 cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed bg-muted/20 p-6 text-center transition hover:border-primary/40 hover:bg-primary/[0.03]">
-                  <Upload className="size-7 text-primary" />
-                  <span className="mt-3 text-sm font-semibold">
-                    Choose attendance CSV
-                  </span>
-                  <span className="mt-1 text-xs text-muted-foreground">
-                    Up to 3,000 rows per import
-                  </span>
-                  <Input
-                    type="file"
-                    accept=".csv,text/csv"
-                    className="sr-only"
-                    onChange={(event) => {
-                      const file = event.target.files?.[0];
-                      if (file) parseCsv(file);
-                    }}
-                  />
-                </label>
-                <div className="flex items-center justify-between rounded-xl border bg-muted/20 px-4 py-3">
-                  <div>
-                    <p className="text-sm font-semibold">
-                      {csvRows.length} rows ready
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      Records update the same employee/date if already present.
-                    </p>
-                  </div>
-                  <FileSpreadsheet className="size-5 text-muted-foreground" />
-                </div>
-                <Button
-                  className="w-full"
-                  disabled={!csvRows.length || importPending}
-                  onClick={() =>
-                    startImport(async () => {
-                      try {
-                        await operationRequest("IMPORT_ATTENDANCE", csvRows);
-                        toast.success(
-                          `${csvRows.length} attendance records imported.`,
-                        );
-                        setCsvRows([]);
-                        router.refresh();
-                      } catch (error) {
-                        toast.error(
-                          error instanceof Error
-                            ? error.message
-                            : "Import failed.",
-                        );
-                      }
-                    })
-                  }
-                >
-                  {importPending ? "Importing…" : "Import attendance"}
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
-          <AttendanceTable rows={attendance} />
+          <StaffAttendanceCards data={data} />
+          <details className="rounded-2xl border bg-card p-4">
+            <summary className="cursor-pointer text-sm font-semibold">Import biometric attendance (optional)</summary>
+            <div className="mt-4 grid gap-4 sm:grid-cols-[1fr_auto] sm:items-end">
+              <div>
+                <p className="text-sm text-muted-foreground">Use a CSV with employeeId, date and status columns. Existing employee/date entries are updated.</p>
+                <Input className="mt-3" type="file" accept=".csv,text/csv" aria-label="Choose attendance CSV" onChange={(event) => { const file = event.target.files?.[0]; if (file) parseCsv(file); }} />
+                <p className="mt-2 text-xs text-muted-foreground">{csvRows.length} rows ready · up to 3,000 rows</p>
+              </div>
+              <Button type="button" disabled={!csvRows.length || importPending} onClick={() => startImport(async () => { try { await operationRequest("IMPORT_ATTENDANCE", csvRows); toast.success(`${csvRows.length} attendance records imported.`); setCsvRows([]); router.refresh(); } catch (error) { toast.error(error instanceof Error ? error.message : "Import failed."); } })}>
+                {importPending ? "Importing…" : "Import CSV"}
+              </Button>
+            </div>
+          </details>
         </TabsContent>
 
         <TabsContent value="leave" className="space-y-5">
@@ -484,10 +324,11 @@ export function StaffOperationsManager({ data }: { data: OperationsData }) {
         <TabsContent value="salary" className="space-y-5">
           <Card>
             <CardHeader>
-              <CardTitle>Salary structure</CardTitle>
+              <CardTitle>Set monthly pay</CardTitle>
               <CardDescription>
-                Define monthly basic pay, recurring allowances and statutory or
-                custom deductions.
+                Store the approved basic salary, allowances and deductions used
+                when a monthly payroll run is prepared. This is not linked to
+                attendance automatically.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -560,11 +401,12 @@ export function StaffOperationsManager({ data }: { data: OperationsData }) {
           <div className="grid gap-5 xl:grid-cols-[0.7fr_1.3fr]">
             <Card>
               <CardHeader>
-                <CardTitle>Generate monthly payroll</CardTitle>
-                <CardDescription>
-                  Creates one payslip from each active salary structure.
-                  Re-running safely refreshes unpaid entries.
-                </CardDescription>
+                  <CardTitle>Prepare monthly payroll</CardTitle>
+                  <CardDescription>
+                  Creates one draft payslip from each active salary structure.
+                  Review it, then record payments individually. Attendance is
+                  not converted into deductions here.
+                  </CardDescription>
               </CardHeader>
               <CardContent>
                 <form
@@ -610,7 +452,7 @@ export function StaffOperationsManager({ data }: { data: OperationsData }) {
                   </Field>
                   <Button className="w-full" disabled={pending}>
                     <Banknote className="size-4" />
-                    Generate payroll
+                    Prepare payroll
                   </Button>
                 </form>
               </CardContent>
@@ -718,77 +560,6 @@ function SalaryGroup({
         ))}
       </div>
     </section>
-  );
-}
-function AttendanceTable({ rows }: { rows: Row[] }) {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Attendance register</CardTitle>
-        <CardDescription>
-          Latest manual, biometric and imported entries.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="p-0">
-        {!rows.length ? (
-          <EmptyPanel
-            title="No attendance recorded"
-            description="Attendance records will appear here after the first entry or import."
-          />
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[780px] text-sm">
-              <thead className="border-y bg-muted/30">
-                <tr>
-                  {[
-                    "Staff",
-                    "Date",
-                    "Status",
-                    "Check in",
-                    "Check out",
-                    "Source",
-                    "Remarks",
-                  ].map((heading) => (
-                    <th
-                      key={heading}
-                      className="px-5 py-3 text-left text-xs uppercase text-muted-foreground"
-                    >
-                      {heading}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row) => (
-                  <tr key={String(row.id)} className="border-b last:border-0">
-                    <td className="px-5 py-4">
-                      <p className="font-semibold">
-                        {nested(row, "teacher", "fullName")}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {nested(row, "teacher", "employeeId")}
-                      </p>
-                    </td>
-                    <td className="px-5 py-4">{formatDate(row.date)}</td>
-                    <td className="px-5 py-4">
-                      <StatusBadge value={row.status} />
-                    </td>
-                    <td className="px-5 py-4">{String(row.checkIn ?? "—")}</td>
-                    <td className="px-5 py-4">{String(row.checkOut ?? "—")}</td>
-                    <td className="px-5 py-4">
-                      <Badge variant="outline">{titleCase(row.source)}</Badge>
-                    </td>
-                    <td className="max-w-56 truncate px-5 py-4 text-muted-foreground">
-                      {String(row.remarks ?? "—")}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </CardContent>
-    </Card>
   );
 }
 function LeaveTable({

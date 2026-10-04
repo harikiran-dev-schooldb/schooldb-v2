@@ -22,7 +22,7 @@ The default fixed window permits five send attempts per mobile number and 20 per
 
 Homework, exam-result, fee and general-announcement notifications are delivered through the SchoolDB Android/web app. Manual WhatsApp announcements are disabled. Fee reminders are started manually by an authorized administrator and are delivered only through the app.
 
-Set `META_WA_AUTOMATION_ENABLED=true` only after Meta credentials and the approved birthday and attendance templates are configured. WhatsApp attendance alerts are queued only for absent students when attendance is locked. Birthday WhatsApp wishes are queued by the daily cron only for active students whose **WhatsApp alerts approved** switch is enabled. Existing students remain opted out until the school records consent. Template-specific alerts do not fall back to a generic announcement template.
+Set `META_WA_AUTOMATION_ENABLED=true` only after Meta credentials and the approved birthday, student-attendance and staff-attendance templates are configured. Staff absence alerts additionally require `META_WA_STAFF_ATTENDANCE_TEMPLATE` and are queued only when an active staff member with a valid mobile number is newly marked absent. WhatsApp attendance alerts are queued only for absent students when attendance is locked. Birthday WhatsApp wishes are queued by the daily cron only for active students whose **WhatsApp alerts approved** switch is enabled. Existing students remain opted out until the school records consent. Template-specific alerts do not fall back to a generic announcement template.
 
 The Vercel cron in `vercel.json` runs at 8:00 AM India time. Configure a strong `CRON_SECRET`; Vercel sends it to the protected cron route as a bearer token.
 
