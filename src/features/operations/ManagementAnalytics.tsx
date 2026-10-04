@@ -1,3 +1,5 @@
+"use client";
+
 import { Activity, Banknote, Boxes, CircleDollarSign, HeartPulse, IndianRupee, ShieldCheck, TrendingUp, UsersRound, Wrench } from "lucide-react";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
