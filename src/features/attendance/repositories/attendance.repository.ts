@@ -940,6 +940,22 @@ lockSession(
   });
 },
 
+unlockSession(
+  sessionId: string,
+  schoolId: string,
+) {
+  return prisma.attendanceSession.updateMany({
+    where: {
+      id: sessionId,
+      schoolId,
+      locked: true,
+    },
+    data: {
+      locked: false,
+    },
+  });
+},
+
 lockAllSessions(
   schoolId: string,
   academicYearId: string,

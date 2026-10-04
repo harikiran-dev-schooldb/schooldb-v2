@@ -54,7 +54,7 @@ function badgeVariant(action: string) {
   if (["CREATE", "ENABLE", "COLLECT"].includes(action))
     return "success" as const;
   if (["PUBLISH", "SEND", "IMPORT"].includes(action)) return "info" as const;
-  if (["ARCHIVE", "LOCK", "CORRECT"].includes(action))
+  if (["ARCHIVE", "LOCK", "UNLOCK", "CORRECT"].includes(action))
     return "warning" as const;
   return "outline" as const;
 }

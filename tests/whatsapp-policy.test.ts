@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  attendanceCorrectionWhatsappTemplateParameters,
   isAutomatedWhatsappSourceAllowed,
   isManualWhatsappAnnouncementAllowed,
   staffAttendanceWhatsappTemplateParameters,
@@ -9,6 +10,7 @@ import {
 
 test("limits automated WhatsApp to approved operational alerts", () => {
   assert.equal(isAutomatedWhatsappSourceAllowed("ATTENDANCE"), true);
+  assert.equal(isAutomatedWhatsappSourceAllowed("ATTENDANCE_CORRECTION"), true);
   assert.equal(isAutomatedWhatsappSourceAllowed("STAFF_ATTENDANCE"), true);
   assert.equal(isAutomatedWhatsappSourceAllowed("BIRTHDAY"), true);
   assert.equal(isAutomatedWhatsappSourceAllowed("PROMOTION"), true);
@@ -30,5 +32,16 @@ test("builds staff attendance template parameters in the approved order", () => 
       schoolName: "Kotak Salesian School",
     }),
     ["Ananya Rao", "4 Oct 2026", "Kotak Salesian School"],
+  );
+});
+
+test("builds attendance correction parameters for students and staff", () => {
+  assert.deepEqual(
+    attendanceCorrectionWhatsappTemplateParameters({
+      personName: "Ananya Rao",
+      attendanceDate: "2026-10-04",
+      schoolName: "Kotak Salesian School",
+    }),
+    ["Ananya Rao", "Kotak Salesian School", "4 Oct 2026"],
   );
 });

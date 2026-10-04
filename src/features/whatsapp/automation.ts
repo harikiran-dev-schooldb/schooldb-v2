@@ -59,6 +59,26 @@ export async function queueAttendanceSessionAlert(
   });
 }
 
+export async function queueStudentAttendanceCorrectionAlert(input: {
+  schoolId: string;
+  sessionId: string;
+  studentId: string;
+  studentName: string;
+  attendanceDate: Date;
+}) {
+  const dateKey = indiaDateKey(input.attendanceDate);
+  return queueAutomatedWhatsappAlert({
+    schoolId: input.schoolId,
+    automationKey: `attendance-correction:${input.sessionId}:${input.studentId}:present`,
+    sourceType: "ATTENDANCE_CORRECTION",
+    sourceId: `${input.sessionId}:${dateKey}`,
+    title: "Attendance corrected to present",
+    message: `Attendance for ${input.studentName} on ${formatDate(input.attendanceDate)} was corrected from absent to present.`,
+    studentIds: [input.studentId],
+    targetLabel: input.studentName,
+  });
+}
+
 export async function queueDailyBirthdayWishes(now = new Date()) {
   const dateKey = indiaDateKey(now);
   const birthdays = await findActiveBirthdayStudents(now);

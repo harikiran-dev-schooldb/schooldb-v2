@@ -1,8 +1,14 @@
 import { z } from "zod";
 
 import { prisma } from "@/lib/prisma";
-import { notifyStaffAttendanceAbsent } from "@/features/notifications/events";
-import { queueStaffAttendanceWhatsappAlert } from "@/features/whatsapp/service";
+import {
+  notifyStaffAttendanceAbsent,
+  notifyStaffAttendancePresentCorrection,
+} from "@/features/notifications/events";
+import {
+  queueStaffAttendanceCorrectionWhatsappAlert,
+  queueStaffAttendanceWhatsappAlert,
+} from "@/features/whatsapp/service";
 
 const dateValue = z.string().date().transform((value) => new Date(`${value}T00:00:00.000Z`));
 const optionalText = (max = 500) => z.string().trim().max(max).optional().transform((value) => value || null);
@@ -67,6 +73,37 @@ async function sendStaffAbsenceNotifications(
   };
 }
 
+async function sendStaffPresentCorrectionNotifications(
+  schoolId: string,
+  attendanceDate: Date,
+  transitions: Array<{ teacherId: string; fullName: string; phone: string | null }>,
+) {
+  const results = await Promise.allSettled(
+    transitions.flatMap((teacher) => [
+      notifyStaffAttendancePresentCorrection({
+        schoolId,
+        teacherId: teacher.teacherId,
+        attendanceDate,
+      }),
+      queueStaffAttendanceCorrectionWhatsappAlert({
+        schoolId,
+        teacherId: teacher.teacherId,
+        teacherName: teacher.fullName,
+        phone: teacher.phone,
+        attendanceDate,
+      }),
+    ]),
+  );
+  return {
+    appCreated: results.filter((result, index) => index % 2 === 0 && result.status === "fulfilled" && Boolean(result.value)).length,
+    whatsappQueued: results.filter((result, index) => index % 2 === 1 && result.status === "fulfilled" && Boolean(result.value)).length,
+    skipped: results.filter((result) => result.status === "fulfilled" && !result.value).length,
+    warnings: results.flatMap((result) => result.status === "rejected"
+      ? [result.reason instanceof Error ? result.reason.message : "A correction notification could not be delivered."]
+      : []),
+  };
+}
+
 export async function saveStaffAttendance(schoolId: string, userId: string, value: unknown) {
   const input = z.object({
     date: dateValue,
@@ -107,7 +144,23 @@ export async function saveStaffAttendance(schoolId: string, userId: string, valu
     ? await sendStaffAbsenceNotifications(schoolId, userId, input.date, newlyAbsent)
     : { appCreated: 0, whatsappQueued: 0, skipped: 0, warnings: [] as string[] };
 
-  return { saved: input.records.length, absent: newlyAbsent.length, notifications };
+  const correctedToPresent = input.records
+    .filter((record) => record.status === "PRESENT" && existingByTeacher.get(record.teacherId) === "ABSENT")
+    .flatMap((record) => {
+      const teacher = teacherById.get(record.teacherId);
+      return teacher ? [{ teacherId: teacher.id, fullName: teacher.fullName, phone: teacher.phone }] : [];
+    });
+  const correctionNotifications = correctedToPresent.length
+    ? await sendStaffPresentCorrectionNotifications(schoolId, input.date, correctedToPresent)
+    : { appCreated: 0, whatsappQueued: 0, skipped: 0, warnings: [] as string[] };
+
+  return {
+    saved: input.records.length,
+    absent: newlyAbsent.length,
+    correctedToPresent: correctedToPresent.length,
+    notifications,
+    correctionNotifications,
+  };
 }
 
 async function studentInSchool(schoolId: string, studentId: string) {
@@ -136,6 +189,10 @@ export async function recordStaffAttendance(schoolId: string, userId: string, va
   if (input.status === "ABSENT" && previous?.status !== "ABSENT") {
     const teacher = await prisma.teacher.findUnique({ where: { id: input.teacherId }, select: { fullName: true, phone: true } });
     if (teacher) await sendStaffAbsenceNotifications(schoolId, userId, input.date, [{ teacherId: input.teacherId, ...teacher }]);
+  }
+  if (input.status === "PRESENT" && previous?.status === "ABSENT") {
+    const teacher = await prisma.teacher.findUnique({ where: { id: input.teacherId }, select: { fullName: true, phone: true } });
+    if (teacher) await sendStaffPresentCorrectionNotifications(schoolId, input.date, [{ teacherId: input.teacherId, ...teacher }]);
   }
   return saved;
 }
@@ -178,19 +235,31 @@ export async function importStaffAttendance(schoolId: string, userId: string, va
   })));
   const teacherById = new Map(teachers.map((teacher) => [teacher.id, teacher]));
   const newlyAbsentByDate = new Map<string, Array<{ teacherId: string; fullName: string; phone: string | null }>>();
+  const correctedToPresentByDate = new Map<string, Array<{ teacherId: string; fullName: string; phone: string | null }>>();
   for (const row of rows) {
     const teacherId = byEmployee.get(row.employeeId)!;
     const key = `${teacherId}:${row.date}`;
-    if (row.status !== "ABSENT" || existingByKey.get(key) === "ABSENT") continue;
     const teacher = teacherById.get(teacherId);
     if (!teacher) continue;
-    const list = newlyAbsentByDate.get(row.date) ?? [];
-    list.push({ teacherId, fullName: teacher.fullName, phone: teacher.phone });
-    newlyAbsentByDate.set(row.date, list);
+    if (row.status === "ABSENT" && existingByKey.get(key) !== "ABSENT") {
+      const list = newlyAbsentByDate.get(row.date) ?? [];
+      list.push({ teacherId, fullName: teacher.fullName, phone: teacher.phone });
+      newlyAbsentByDate.set(row.date, list);
+    }
+    if (row.status === "PRESENT" && existingByKey.get(key) === "ABSENT") {
+      const list = correctedToPresentByDate.get(row.date) ?? [];
+      list.push({ teacherId, fullName: teacher.fullName, phone: teacher.phone });
+      correctedToPresentByDate.set(row.date, list);
+    }
   }
   const notificationResults = await Promise.all(
     [...newlyAbsentByDate].map(([date, transitions]) =>
       sendStaffAbsenceNotifications(schoolId, userId, new Date(`${date}T00:00:00.000Z`), transitions),
+    ),
+  );
+  const correctionNotificationResults = await Promise.all(
+    [...correctedToPresentByDate].map(([date, transitions]) =>
+      sendStaffPresentCorrectionNotifications(schoolId, new Date(`${date}T00:00:00.000Z`), transitions),
     ),
   );
   return {
@@ -200,6 +269,12 @@ export async function importStaffAttendance(schoolId: string, userId: string, va
       whatsappQueued: notificationResults.reduce((sum, item) => sum + item.whatsappQueued, 0),
       skipped: notificationResults.reduce((sum, item) => sum + item.skipped, 0),
       warnings: notificationResults.flatMap((item) => item.warnings),
+    },
+    correctionNotifications: {
+      appCreated: correctionNotificationResults.reduce((sum, item) => sum + item.appCreated, 0),
+      whatsappQueued: correctionNotificationResults.reduce((sum, item) => sum + item.whatsappQueued, 0),
+      skipped: correctionNotificationResults.reduce((sum, item) => sum + item.skipped, 0),
+      warnings: correctionNotificationResults.flatMap((item) => item.warnings),
     },
   };
 }

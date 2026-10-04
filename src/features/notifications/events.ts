@@ -84,6 +84,60 @@ export async function notifyStaffAttendanceAbsent(input: {
   });
 }
 
+export async function notifyStaffAttendancePresentCorrection(input: {
+  schoolId: string;
+  teacherId: string;
+  attendanceDate: Date;
+}) {
+  const teacher = await prisma.teacher.findFirst({
+    where: { id: input.teacherId, schoolId: input.schoolId, active: true },
+    select: { id: true, fullName: true, employeeId: true },
+  });
+  if (!teacher) return null;
+
+  const dateKey = indiaDateKey(input.attendanceDate);
+  const name = teacher.fullName.trim() || teacher.employeeId;
+  return createEventNotification({
+    schoolId: input.schoolId,
+    title: "Staff attendance corrected",
+    body: `Your attendance for ${formatDate(input.attendanceDate)} was corrected from absent to present.`,
+    category: "ATTENDANCE",
+    targetType: "TEACHER",
+    targetId: teacher.id,
+    targetLabel: name,
+    sourceType: "STAFF_ATTENDANCE_CORRECTION",
+    sourceId: `${teacher.id}:${dateKey}`,
+    dedupeKey: `staff-attendance-correction:${teacher.id}:${dateKey}:present`,
+  });
+}
+
+export async function notifyStudentAttendancePresentCorrection(input: {
+  schoolId: string;
+  studentId: string;
+  sessionId: string;
+  attendanceDate: Date;
+  classLabel: string;
+}) {
+  const student = await prisma.student.findFirst({
+    where: { id: input.studentId, schoolId: input.schoolId, status: "ACTIVE" },
+    select: { id: true, fullName: true, admissionNo: true },
+  });
+  if (!student) return null;
+
+  return createEventNotification({
+    schoolId: input.schoolId,
+    title: "Attendance corrected to present",
+    body: `${student.fullName || student.admissionNo}'s attendance for ${formatDate(input.attendanceDate)} in ${input.classLabel} was corrected from absent to present.`,
+    category: "ATTENDANCE",
+    targetType: "STUDENT",
+    targetId: student.id,
+    targetLabel: student.fullName || student.admissionNo,
+    sourceType: "ATTENDANCE_CORRECTION",
+    sourceId: `${input.sessionId}:${student.id}`,
+    dedupeKey: notificationDedupeKey.attendancePresentCorrection(input.sessionId, student.id),
+  });
+}
+
 function indiaDateKey(value = new Date()) {
   return new Intl.DateTimeFormat("en-CA", {
     year: "numeric",

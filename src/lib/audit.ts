@@ -25,6 +25,7 @@ export const AUDIT_ACTIONS = [
   "COLLECT",
   "VOID",
   "LOCK",
+  "UNLOCK",
   "CORRECT",
   "IMPORT",
   "EXPORT",

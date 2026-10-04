@@ -1090,6 +1090,27 @@ async lockAttendanceSession(
   };
 },
 
+async unlockAttendanceSession(
+  schoolId: string,
+  sessionId: string,
+) {
+  const session = await attendanceRepository.findSessionForCorrection(
+    sessionId,
+    schoolId,
+  );
+
+  if (!session) throw new Error("Attendance session not found.");
+  if (!session.locked) throw new Error("Attendance session is already unlocked.");
+
+  const result = await attendanceRepository.unlockSession(sessionId, schoolId);
+  if (result.count === 0) throw new Error("Attendance session could not be unlocked.");
+
+  return {
+    id: sessionId,
+    locked: false,
+  };
+},
+
 async lockAllAttendanceSessions(
   schoolId: string,
   academicYearId: string,

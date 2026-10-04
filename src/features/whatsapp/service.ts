@@ -6,6 +6,7 @@ import type { AudienceType } from "@/features/audiences/types";
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import {
+  attendanceCorrectionWhatsappTemplateParameters,
   isAutomatedWhatsappSourceAllowed,
   staffAttendanceWhatsappTemplateParameters,
 } from "./policy";
@@ -260,6 +261,7 @@ type AutomatedAlertInput = {
   automationKey: string;
   sourceType:
     | "ATTENDANCE"
+    | "ATTENDANCE_CORRECTION"
     | "RESULT"
     | "FEE_DUE"
     | "PROMOTION"
@@ -278,6 +280,9 @@ function automatedTemplateName(sourceType: AutomatedAlertInput["sourceType"]) {
     string | undefined
   > = {
     ATTENDANCE: process.env.META_WA_ATTENDANCE_TEMPLATE,
+    ATTENDANCE_CORRECTION:
+      process.env.META_WA_ATTENDANCE_CORRECTION_TEMPLATE ||
+      "school_attendance_correction",
     RESULT: process.env.META_WA_RESULT_TEMPLATE,
     FEE_DUE: process.env.META_WA_FEE_REMINDER_TEMPLATE,
     PROMOTION: process.env.META_WA_PROMOTION_TEMPLATE,
@@ -367,6 +372,90 @@ export async function queueStaffAttendanceWhatsappAlert(input: {
       });
     }
     console.error("[staff-attendance-whatsapp] Unable to queue alert", {
+      teacherId: input.teacherId,
+      attendanceDate: dateKey,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return null;
+  }
+}
+
+export async function queueStaffAttendanceCorrectionWhatsappAlert(input: {
+  schoolId: string;
+  teacherId: string;
+  teacherName: string;
+  phone: string | null;
+  attendanceDate: Date;
+}) {
+  if (process.env.META_WA_AUTOMATION_ENABLED !== "true" || !input.phone) return null;
+  const phone = normalizeIndianMobile(input.phone);
+  const templateName =
+    process.env.META_WA_ATTENDANCE_CORRECTION_TEMPLATE ||
+    "school_attendance_correction";
+  if (!phone || !templateName) return null;
+
+  const dateKey = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kolkata",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(input.attendanceDate);
+  const automationKey = `staff-attendance-correction:${input.teacherId}:${dateKey}:present`;
+  const existing = await prisma.whatsappCampaign.findFirst({
+    where: { schoolId: input.schoolId, automationKey },
+    select: { id: true, recipientCount: true },
+  });
+  if (existing) return existing;
+
+  const message = `Attendance for ${input.teacherName} on ${new Intl.DateTimeFormat("en-IN", {
+    timeZone: "Asia/Kolkata",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  }).format(input.attendanceDate)} was corrected from absent to present.`;
+
+  try {
+    const campaign = await prisma.$transaction(async (tx) => {
+      const created = await tx.whatsappCampaign.create({
+        data: {
+          schoolId: input.schoolId,
+          title: "Staff attendance correction",
+          message,
+          templateName,
+          targetType: "TEACHER",
+          targetId: input.teacherId,
+          targetLabel: input.teacherName,
+          status: "QUEUED",
+          recipientCount: 1,
+          createdBy: "SYSTEM",
+          scheduledAt: new Date(),
+          automatic: true,
+          automationKey,
+          sourceType: "ATTENDANCE_CORRECTION",
+          sourceId: `${input.teacherId}:${dateKey}`,
+        },
+        select: { id: true, recipientCount: true },
+      });
+      await tx.whatsappRecipient.create({
+        data: {
+          schoolId: input.schoolId,
+          campaignId: created.id,
+          recipientName: input.teacherName,
+          phone,
+        },
+      });
+      return created;
+    });
+    await processWhatsappCampaignBatch(input.schoolId, campaign.id, 1);
+    return campaign;
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      return prisma.whatsappCampaign.findFirst({
+        where: { schoolId: input.schoolId, automationKey },
+        select: { id: true, recipientCount: true },
+      });
+    }
+    console.error("[staff-attendance-correction-whatsapp] Unable to queue alert", {
       teacherId: input.teacherId,
       attendanceDate: dateKey,
       error: error instanceof Error ? error.message : String(error),
@@ -764,6 +853,12 @@ export async function processWhatsappCampaignBatch(
                   attendanceDate: campaign.sourceId?.split(":").at(-1) ?? "",
                   schoolName: campaign.school.name,
                 })
+              : campaign.sourceType === "ATTENDANCE_CORRECTION"
+                ? attendanceCorrectionWhatsappTemplateParameters({
+                    personName: campaign.targetLabel ?? "Student or staff member",
+                    attendanceDate: campaign.sourceId?.split(":").at(-1) ?? "",
+                    schoolName: campaign.school.name,
+                  })
               : [campaign.title, campaign.message];
 
           const providerMessageId = await sendTemplate(

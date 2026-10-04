@@ -1,5 +1,6 @@
 const AUTOMATED_WHATSAPP_SOURCES = new Set([
   "ATTENDANCE",
+  "ATTENDANCE_CORRECTION",
   "STAFF_ATTENDANCE",
   "BIRTHDAY",
   "PROMOTION",
@@ -29,4 +30,22 @@ export function staffAttendanceWhatsappTemplateParameters(input: {
     : input.attendanceDate;
 
   return [input.teacherName, date, input.schoolName];
+}
+
+export function attendanceCorrectionWhatsappTemplateParameters(input: {
+  personName: string;
+  attendanceDate: string;
+  schoolName: string;
+}) {
+  const validDate = /^\d{4}-\d{2}-\d{2}$/.test(input.attendanceDate);
+  const date = validDate
+    ? new Intl.DateTimeFormat("en-IN", {
+        timeZone: "Asia/Kolkata",
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      }).format(new Date(`${input.attendanceDate}T00:00:00.000Z`))
+    : input.attendanceDate;
+
+  return [input.personName, input.schoolName, date];
 }

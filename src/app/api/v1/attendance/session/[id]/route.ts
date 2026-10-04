@@ -1,8 +1,9 @@
 import { apiHandler } from "@/lib/api";
-import { requireTeacherAttendanceSession, requireTenant } from "@/lib/auth";
+import { requireTeacherAttendanceSession } from "@/lib/auth";
 import { ApiResponse } from "@/lib/response";
 
 import { attendanceService } from "@/features/attendance/services/attendance.service";
+import { canUnlockAttendance } from "@/features/attendance/policy";
 
 type Props = {
   params: Promise<{
@@ -15,11 +16,8 @@ export async function GET(
   { params }: Props
 ) {
   return apiHandler(async () => {
-    const tenant =
-      await requireTenant();
-
     const { id } = await params;
-    await requireTeacherAttendanceSession(id);
+    const tenant = await requireTeacherAttendanceSession(id);
 
     const result =
       await attendanceService.getSession(
@@ -27,6 +25,14 @@ export async function GET(
         id
       );
 
-    return ApiResponse.success(result);
+    return ApiResponse.success({
+      ...result,
+      permissions: {
+        canUnlockAttendance: canUnlockAttendance(
+          tenant.role,
+          tenant.designation,
+        ),
+      },
+    });
   });
 }

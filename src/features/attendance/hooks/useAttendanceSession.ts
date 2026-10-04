@@ -46,6 +46,9 @@ type StudentAttendance = {
 type AttendanceSessionResponse = {
   session: AttendanceSessionData;
   students: StudentAttendance[];
+  permissions: {
+    canUnlockAttendance: boolean;
+  };
 };
 
 export function useAttendanceSession(sessionId: string) {

@@ -11,6 +11,7 @@ import {
   Clock3,
   Loader2,
   LockKeyhole,
+  LockOpen,
   Search,
   Save,
   UserCheck,
@@ -23,6 +24,16 @@ import {
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { refreshTable } from "@/lib/table-event";
@@ -78,6 +89,8 @@ export function MarkAttendance({ sessionId }: Props) {
   const [saving, setSaving] = useState(false);
 
   const [editing, setEditing] = useState(false);
+
+  const [lockConfirmOpen, setLockConfirmOpen] = useState(false);
 
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -407,6 +420,7 @@ export function MarkAttendance({ sessionId }: Props) {
       }
 
       toast.success("Attendance session locked successfully.");
+      setLockConfirmOpen(false);
       refreshTable("attendance");
 
       setEditing(false);
@@ -416,6 +430,30 @@ export function MarkAttendance({ sessionId }: Props) {
       await reload();
     } catch {
       toast.error("Failed to lock attendance session.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function unlockAttendance() {
+    if (!data?.session?.id || !data.permissions.canUnlockAttendance) return;
+
+    try {
+      setSaving(true);
+      const response = await fetch(
+        `/api/v1/attendance/session/${data.session.id}/unlock`,
+        { method: "POST" },
+      );
+      const result = await response.json();
+      if (!response.ok || !result.success) {
+        toast.error(result.message || "Unable to unlock attendance.");
+        return;
+      }
+      toast.success("Attendance unlocked for correction.");
+      refreshTable("attendance");
+      await reload();
+    } catch {
+      toast.error("Unable to unlock attendance.");
     } finally {
       setSaving(false);
     }
@@ -892,7 +930,7 @@ export function MarkAttendance({ sessionId }: Props) {
                 <Button
                   type="button"
                   size="lg"
-                  onClick={lockAttendance}
+                  onClick={() => setLockConfirmOpen(true)}
                   disabled={saving || !isComplete}
                   className="gap-2 rounded-xl"
                 >
@@ -949,21 +987,52 @@ export function MarkAttendance({ sessionId }: Props) {
 
       {data.session.locked && (
         <Card className="rounded-2xl border-border/60 bg-card shadow-[0_8px_30px_rgba(15,23,42,0.045)]">
-          <CardContent className="flex items-center gap-3 p-4">
-            <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-slate-500/10 text-slate-600 dark:text-slate-400">
-              <LockKeyhole className="size-5" />
-            </div>
+          <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-slate-500/10 text-slate-600 dark:text-slate-400">
+                <LockKeyhole className="size-5" />
+              </div>
 
-            <div>
-              <p className="text-sm font-semibold">Attendance Locked</p>
+              <div>
+                <p className="text-sm font-semibold">Attendance Locked</p>
 
-              <p className="text-xs text-muted-foreground">
-                This attendance session is locked and cannot be modified.
-              </p>
+                <p className="text-xs text-muted-foreground">
+                  Only a Super Admin or Principal can unlock this session.
+                </p>
+              </div>
             </div>
+            {data.permissions.canUnlockAttendance && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => void unlockAttendance()}
+                disabled={saving}
+                className="gap-2"
+              >
+                {saving ? <Loader2 className="size-4 animate-spin" /> : <LockOpen className="size-4" />}
+                {saving ? "Unlocking..." : "Unlock for correction"}
+              </Button>
+            )}
           </CardContent>
         </Card>
       )}
+
+      <AlertDialog open={lockConfirmOpen} onOpenChange={setLockConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Lock attendance and notify families?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will finalize the register, send SchoolDB app alerts, and queue configured WhatsApp alerts for eligible families of {summary.absent} absent student{summary.absent === 1 ? "" : "s"}. After locking, only a Super Admin or Principal can unlock it for correction.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={saving}>Review attendance</AlertDialogCancel>
+            <AlertDialogAction onClick={() => void lockAttendance()} disabled={saving || !isComplete}>
+              {saving ? "Locking..." : "Lock and send alerts"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

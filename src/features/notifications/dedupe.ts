@@ -7,6 +7,8 @@ export const notificationDedupeKey = {
   feeReminder: (studentId: string, dateKey: string) => `FEE_REMINDER:${studentId}:${dateKey}`,
   attendanceSummary: (sessionId: string) => `ATTENDANCE_SUMMARY:${sessionId}`,
   attendanceAbsent: (sessionId: string, studentId: string) => `ATTENDANCE:${sessionId}:ABSENT:${studentId}`,
+  attendancePresentCorrection: (sessionId: string, studentId: string) =>
+    `ATTENDANCE:${sessionId}:PRESENT_CORRECTION:${studentId}`,
   leaveSubmitted: (requestId: string) => `LEAVE_REQUEST:${requestId}:SUBMITTED`,
   leaveDecided: (requestId: string, status: string) => `LEAVE_REQUEST:${requestId}:${status}`,
   profileImageSubmitted: (studentId: string, storageKey: string) =>
