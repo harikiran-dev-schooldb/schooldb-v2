@@ -201,7 +201,6 @@ export const studentFeeRepository = {
             student: {
               select: {
                 isRte: true,
-                category: true,
               },
             },
           },
@@ -436,7 +435,6 @@ export const studentFeeRepository = {
         student: {
           select: {
             isRte: true,
-            category: true,
           },
         },
       },

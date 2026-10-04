@@ -176,7 +176,6 @@ export const studentService = {
 
     const student = await studentRepository.create({
       ...studentData,
-      isRte: normalized.isRte || normalized.category === "RTE",
       whatsappOptIn,
       whatsappOptInAt: whatsappOptIn ? new Date() : null,
       username: studentUsername(normalized.admissionNo),
@@ -260,7 +259,6 @@ export const studentService = {
 
     const updated = await studentRepository.update(id, schoolId, {
       ...studentData,
-      isRte: input.isRte || input.category === "RTE",
       whatsappOptIn,
       whatsappOptInAt:
         whatsappOptIn

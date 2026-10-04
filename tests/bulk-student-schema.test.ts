@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { bulkStudentRowSchema } from "../src/features/students/schemas/bulk-student.schema.ts";
+import {
+  bulkStudentRowSchema,
+  bulkStudentRteUpdateRowSchema,
+} from "../src/features/students/schemas/bulk-student.schema.ts";
 
 const validStudent = {
   admissionNo: "14570",
@@ -131,6 +134,30 @@ test("rejects invalid extended profile values", () => {
   ]) {
     assert.equal(
       bulkStudentRowSchema.safeParse({ ...validStudent, ...overrides }).success,
+      false,
+    );
+  }
+});
+
+test("accepts admission number and RTE status for a focused bulk update", () => {
+  const enabled = bulkStudentRteUpdateRowSchema.parse({
+    admissionNo: "1001",
+    isRte: "yes",
+  });
+  const disabled = bulkStudentRteUpdateRowSchema.parse({
+    admissionNo: "1002",
+    isRte: "FALSE",
+  });
+
+  assert.deepEqual(enabled, { admissionNo: "1001", isRte: true });
+  assert.deepEqual(disabled, { admissionNo: "1002", isRte: false });
+});
+
+test("requires an explicit valid RTE value for a focused bulk update", () => {
+  for (const isRte of ["", "maybe", undefined]) {
+    assert.equal(
+      bulkStudentRteUpdateRowSchema.safeParse({ admissionNo: "1001", isRte })
+        .success,
       false,
     );
   }

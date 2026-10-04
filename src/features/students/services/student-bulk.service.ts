@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 
 import {
+  bulkStudentRteUpdatesSchema,
   bulkStudentsSchema,
   type BulkStudentRow,
 } from "../schemas/bulk-student.schema";
@@ -30,6 +31,107 @@ type ImportResult = {
 };
 
 export const studentBulkService = {
+  async updateRte(schoolId: string, input: unknown, performedByUserId?: string) {
+    const { students } = bulkStudentRteUpdatesSchema.parse(input);
+    const errors: Array<{ row: number; message: string }> = [];
+    const seen = new Set<string>();
+
+    for (const [index, student] of students.entries()) {
+      const key = student.admissionNo.toLowerCase();
+      if (seen.has(key)) {
+        errors.push({
+          row: index + 2,
+          message: `Duplicate admission number: ${student.admissionNo}.`,
+        });
+      }
+      seen.add(key);
+    }
+
+    if (errors.length > 0) {
+      return { updated: 0, unchanged: 0, failed: errors.length, errors };
+    }
+
+    const existing = await prisma.student.findMany({
+      where: {
+        schoolId,
+        admissionNo: { in: students.map((student) => student.admissionNo) },
+      },
+      select: { id: true, admissionNo: true, fullName: true, isRte: true },
+    });
+    const existingByAdmissionNo = new Map(
+      existing.map((student) => [student.admissionNo, student]),
+    );
+    const changes: Array<{
+      id: string;
+      admissionNo: string;
+      fullName: string | null;
+      isRte: boolean;
+    }> = [];
+    let unchanged = 0;
+
+    for (const [index, requested] of students.entries()) {
+      const student = existingByAdmissionNo.get(requested.admissionNo);
+      if (!student) {
+        errors.push({
+          row: index + 2,
+          message: `Student not found for admission number ${requested.admissionNo}.`,
+        });
+        continue;
+      }
+
+      if (student.isRte === requested.isRte) {
+        unchanged += 1;
+        continue;
+      }
+
+      changes.push({ ...student, isRte: requested.isRte });
+    }
+
+    if (changes.length > 0) {
+      await prisma.$transaction(async (tx) => {
+        const rteStudentIds = changes
+          .filter((student) => student.isRte)
+          .map((student) => student.id);
+        const nonRteStudentIds = changes
+          .filter((student) => !student.isRte)
+          .map((student) => student.id);
+
+        if (rteStudentIds.length > 0) {
+          await tx.student.updateMany({
+            where: { schoolId, id: { in: rteStudentIds } },
+            data: { isRte: true },
+          });
+        }
+
+        if (nonRteStudentIds.length > 0) {
+          await tx.student.updateMany({
+            where: { schoolId, id: { in: nonRteStudentIds } },
+            data: { isRte: false },
+          });
+        }
+
+        await tx.studentActivity.createMany({
+          data: changes.map((student) => ({
+            schoolId,
+            studentId: student.id,
+            type: "PROFILE_UPDATED" as const,
+            title: "RTE status updated",
+            description: `${student.fullName ?? student.admissionNo} was marked as ${student.isRte ? "an RTE" : "a non-RTE"} student through bulk update.`,
+            performedByUserId,
+            metadata: { isRte: student.isRte },
+          })),
+        });
+      });
+    }
+
+    return {
+      updated: changes.length,
+      unchanged,
+      failed: errors.length,
+      errors,
+    };
+  },
+
   async import(schoolId: string, input: unknown, performedByUserId?: string) {
     const parsed = bulkStudentsSchema.parse(input);
     const results: ImportResult[] = [];
@@ -265,7 +367,6 @@ export const studentBulkService = {
         data: importable.map(({ student }) => ({
           schoolId,
           ...student,
-          isRte: student.isRte || student.category === "RTE",
           dob: new Date(`${student.dob}T00:00:00`),
           joinedDate: student.joinedDate
             ? new Date(`${student.joinedDate}T00:00:00`)

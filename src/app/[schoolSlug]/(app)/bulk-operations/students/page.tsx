@@ -24,6 +24,7 @@ import {
 } from "@/lib/batched-import";
 import {
   bulkStudentRowSchema,
+  bulkStudentRteUpdateRowSchema,
   normalizeBulkStudentDate,
 } from "@/features/students/schemas/bulk-student.schema";
 
@@ -89,6 +90,7 @@ const HEADERS = [
 
 type StudentHeader = (typeof HEADERS)[number];
 type StudentRow = Record<StudentHeader, string>;
+type BulkMode = "CREATE" | "UPDATE_RTE";
 
 type RowError = {
   row: number;
@@ -102,6 +104,7 @@ const REQUIRED_FIELDS: StudentHeader[] = [
   "dob",
   "status",
 ];
+const RTE_UPDATE_FIELDS = ["admissionNo", "isRte"] as const satisfies readonly StudentHeader[];
 
 const STUDENT_IMPORT_BATCH_SIZE = 25;
 
@@ -109,53 +112,20 @@ function csvValue(value: string) {
   return /[",\n]/.test(value) ? `"${value.replaceAll('"', '""')}"` : value;
 }
 
-function templateRow(values: Partial<StudentRow>) {
-  return HEADERS.map((header) => csvValue(values[header] ?? "")).join(",");
-}
+const REQUIRED_TEMPLATE = [
+  REQUIRED_FIELDS.join(","),
+  ["1001", "Rahul Kumar", "MALE", "2012-06-15", "ACTIVE"]
+    .map(csvValue)
+    .join(","),
+  ["1002", "Anjali Rao", "FEMALE", "2013-02-20", "ACTIVE"]
+    .map(csvValue)
+    .join(","),
+].join("\n");
 
-const TEMPLATE = [
-  HEADERS.join(","),
-  templateRow({
-    admissionNo: "1001",
-    fullName: "Rahul Kumar",
-    gender: "MALE",
-    dob: "2012-06-15",
-    joinedDate: "2025-06-01",
-    phone: "9876543210",
-    email: "rahul@example.com",
-    status: "ACTIVE",
-    academicYear: "2026-27",
-    className: "Class 1",
-    sectionName: "A",
-    rollNo: "1",
-    bloodGroup: "O+",
-    nationality: "Indian",
-    fatherName: "Suresh Kumar",
-    fatherPhone: "9876543200",
-    isRte: "FALSE",
-    hostelRequired: "FALSE",
-    transportRequired: "TRUE",
-    whatsappOptIn: "TRUE",
-  }),
-  templateRow({
-    admissionNo: "1002",
-    fullName: "Anjali Rao",
-    gender: "FEMALE",
-    dob: "2013-02-20",
-    phone: "9876543211",
-    status: "ACTIVE",
-    academicYear: "2026-27",
-    className: "Class 1",
-    sectionName: "A",
-    rollNo: "2",
-    category: "GENERAL",
-    motherName: "Lakshmi Rao",
-    motherPhone: "9876543201",
-    isRte: "FALSE",
-    hostelRequired: "FALSE",
-    transportRequired: "FALSE",
-    whatsappOptIn: "FALSE",
-  }),
+const RTE_UPDATE_TEMPLATE = [
+  RTE_UPDATE_FIELDS.join(","),
+  ["1001", "TRUE"].map(csvValue).join(","),
+  ["1002", "FALSE"].map(csvValue).join(","),
 ].join("\n");
 
 function parseCsvLine(line: string) {
@@ -185,7 +155,7 @@ function parseCsvLine(line: string) {
   return values;
 }
 
-function parseCsv(text: string) {
+function parseCsv(text: string, mode: BulkMode) {
   const lines = text
     .replace(/^\uFEFF/, "")
     .split(/\r?\n/)
@@ -196,9 +166,32 @@ function parseCsv(text: string) {
   }
 
   const headers = parseCsvLine(lines[0]);
+  const allowedHeaders: readonly StudentHeader[] =
+    mode === "UPDATE_RTE" ? RTE_UPDATE_FIELDS : HEADERS;
+  const requiredHeaders: readonly StudentHeader[] =
+    mode === "UPDATE_RTE" ? RTE_UPDATE_FIELDS : REQUIRED_FIELDS;
+  const duplicateHeaders = headers.filter(
+    (header, index) => headers.indexOf(header) !== index,
+  );
+  const unsupportedHeaders = headers.filter(
+    (header) => !allowedHeaders.includes(header as StudentHeader),
+  );
+  const missingHeaders = requiredHeaders.filter(
+    (header) => !headers.includes(header),
+  );
 
-  if (headers.join("|") !== HEADERS.join("|")) {
-    throw new Error(`Invalid columns. Expected: ${HEADERS.join(", ")}`);
+  if (duplicateHeaders.length) {
+    throw new Error(
+      `Duplicate columns: ${[...new Set(duplicateHeaders)].join(", ")}`,
+    );
+  }
+
+  if (unsupportedHeaders.length) {
+    throw new Error(`Unsupported columns: ${unsupportedHeaders.join(", ")}`);
+  }
+
+  if (missingHeaders.length) {
+    throw new Error(`Missing required columns: ${missingHeaders.join(", ")}`);
   }
 
   const rows: StudentRow[] = [];
@@ -206,17 +199,39 @@ function parseCsv(text: string) {
 
   lines.slice(1).forEach((line, index) => {
     const values = parseCsvLine(line);
-    const row = Object.fromEntries(
-      HEADERS.map((header, columnIndex) => [header, values[columnIndex] ?? ""]),
-    ) as StudentRow;
+    const row = Object.fromEntries(HEADERS.map((header) => [header, ""])) as StudentRow;
 
-    const missing = REQUIRED_FIELDS.filter((header) => !row[header]);
+    headers.forEach((header, columnIndex) => {
+      row[header as StudentHeader] = values[columnIndex] ?? "";
+    });
+
+    const missing = requiredHeaders.filter((header) => !row[header]);
 
     if (missing.length) {
       errors.push({
         row: index + 2,
         message: `Missing: ${missing.join(", ")}`,
       });
+      return;
+    }
+
+    if (mode === "UPDATE_RTE") {
+      const validated = bulkStudentRteUpdateRowSchema.safeParse({
+        admissionNo: row.admissionNo,
+        isRte: row.isRte,
+      });
+
+      if (!validated.success) {
+        errors.push({
+          row: index + 2,
+          message: validated.error.issues
+            .map((issue) => `${issue.path.join(".")}: ${issue.message}`)
+            .join("; "),
+        });
+        return;
+      }
+
+      rows.push(row);
       return;
     }
 
@@ -271,15 +286,24 @@ function parseCsv(text: string) {
     rows.push(row);
   });
 
-  return { rows, errors, totalRows: lines.length - 1 };
+  return {
+    rows,
+    errors,
+    headers: headers as StudentHeader[],
+    totalRows: lines.length - 1,
+  };
 }
 
-function downloadTemplate() {
-  const blob = new Blob([TEMPLATE], { type: "text/csv;charset=utf-8" });
+function downloadTemplate(mode: BulkMode) {
+  const template = mode === "UPDATE_RTE" ? RTE_UPDATE_TEMPLATE : REQUIRED_TEMPLATE;
+  const blob = new Blob([template], { type: "text/csv;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;
-  anchor.download = "schooldb-students-template.csv";
+  anchor.download =
+    mode === "UPDATE_RTE"
+      ? "schooldb-student-rte-update-template.csv"
+      : "schooldb-students-template.csv";
   anchor.click();
   URL.revokeObjectURL(url);
 }
@@ -287,17 +311,21 @@ function downloadTemplate() {
 export default function BulkStudentsPage() {
   const { school } = useSchool();
   const inputRef = useRef<HTMLInputElement>(null);
+  const [mode, setMode] = useState<BulkMode>("CREATE");
   const [fileName, setFileName] = useState("");
   const [totalRows, setTotalRows] = useState(0);
   const [rows, setRows] = useState<StudentRow[]>([]);
+  const [previewHeaders, setPreviewHeaders] = useState<StudentHeader[]>([]);
   const [errors, setErrors] = useState<RowError[]>([]);
   const [fileError, setFileError] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
   const [progress, setProgress] = useState<ImportProgress | null>(null);
   const [result, setResult] = useState<{
-    created: number;
-    enrolled: number;
-    skipped: number;
+    created?: number;
+    enrolled?: number;
+    skipped?: number;
+    updated?: number;
+    unchanged?: number;
     failed: number;
     errors: RowError[];
   } | null>(null);
@@ -316,6 +344,7 @@ export default function BulkStudentsPage() {
     setFileName(file.name);
     setTotalRows(0);
     setRows([]);
+    setPreviewHeaders([]);
     setErrors([]);
 
     if (!file.name.toLowerCase().endsWith(".csv")) {
@@ -326,9 +355,10 @@ export default function BulkStudentsPage() {
     }
 
     try {
-      const parsed = parseCsv(await file.text());
+      const parsed = parseCsv(await file.text(), mode);
       setTotalRows(parsed.totalRows);
       setRows(parsed.rows);
+      setPreviewHeaders(parsed.headers);
       setErrors(parsed.errors);
     } catch (error) {
       setFileError(
@@ -347,9 +377,11 @@ export default function BulkStudentsPage() {
       const data = await postImportInBatches<
         StudentRow,
         {
-          created: number;
-          enrolled: number;
-          skipped: number;
+          created?: number;
+          enrolled?: number;
+          skipped?: number;
+          updated?: number;
+          unchanged?: number;
           failed: number;
           errors: RowError[];
         }
@@ -359,7 +391,11 @@ export default function BulkStudentsPage() {
         rows,
         batchSize: STUDENT_IMPORT_BATCH_SIZE,
         onProgress: setProgress,
-        failureMessage: "Bulk student import failed.",
+        failureMessage:
+          mode === "UPDATE_RTE"
+            ? "Bulk RTE status update failed."
+            : "Bulk student import failed.",
+        staticBody: { mode },
       });
 
       setResult(data);
@@ -376,11 +412,17 @@ export default function BulkStudentsPage() {
     setFileName("");
     setTotalRows(0);
     setRows([]);
+    setPreviewHeaders([]);
     setErrors([]);
     setFileError(null);
     setResult(null);
     setProgress(null);
     if (inputRef.current) inputRef.current.value = "";
+  }
+
+  function changeMode(nextMode: BulkMode) {
+    reset();
+    setMode(nextMode);
   }
 
   const hasFileResult = Boolean(fileName) && !fileError;
@@ -390,11 +432,17 @@ export default function BulkStudentsPage() {
       <PageHeader
         eyebrow="Bulk Operations"
         title="Bulk Students"
-        description="Upload student records, validate them before import, and review the result."
+        description={
+          mode === "UPDATE_RTE"
+            ? "Update only the RTE status of existing students using admission numbers."
+            : "Upload student records, validate them before import, and review the result."
+        }
         action={
-          <Button variant="outline" onClick={downloadTemplate}>
+          <Button variant="outline" onClick={() => downloadTemplate(mode)}>
             <Download className="size-4" />
-            Download Template
+            {mode === "UPDATE_RTE"
+              ? "Download RTE Update Template"
+              : "Download Required Fields Template"}
           </Button>
         }
       />
@@ -417,19 +465,59 @@ export default function BulkStudentsPage() {
               <FileSpreadsheet className="size-5" />
             </div>
             <div>
-              <CardTitle>Student import</CardTitle>
+              <CardTitle>
+                {mode === "UPDATE_RTE" ? "Update student RTE status" : "Student import"}
+              </CardTitle>
               <p className="mt-1 text-xs text-muted-foreground">
-                Upload the complete CSV; SchoolDB processes 25 rows per batch
-                to create student records reliably. Login accounts are not
-                created during import. The template can create the student and enrollment together.
-                Academic year, class, and section must all be filled when a row
-                includes enrollment details; roll number is optional.
+                {mode === "UPDATE_RTE" ? (
+                  <>
+                    Upload only admissionNo and isRte. Matching students are
+                    updated without changing any other profile or enrollment data.
+                  </>
+                ) : (
+                  <>
+                    The template contains only the five required fields. SchoolDB
+                    also accepts supported optional columns for extra profile or
+                    enrollment data. Login accounts are not created during import.
+                  </>
+                )}
               </p>
             </div>
           </div>
         </CardHeader>
 
         <CardContent className="space-y-6 p-6">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Button
+              type="button"
+              variant={mode === "CREATE" ? "default" : "outline"}
+              className="h-auto justify-start px-4 py-3 text-left"
+              onClick={() => changeMode("CREATE")}
+              disabled={importing}
+            >
+              <span>
+                <span className="block font-semibold">Create students</span>
+                <span className="mt-1 block text-xs opacity-80">
+                  Add new student records from required or extended fields.
+                </span>
+              </span>
+            </Button>
+            <Button
+              type="button"
+              variant={mode === "UPDATE_RTE" ? "default" : "outline"}
+              className="h-auto justify-start px-4 py-3 text-left"
+              onClick={() => changeMode("UPDATE_RTE")}
+              disabled={importing}
+            >
+              <span>
+                <span className="block font-semibold">Update RTE status</span>
+                <span className="mt-1 block text-xs opacity-80">
+                  Change only isRte using each student&apos;s admission number.
+                </span>
+              </span>
+            </Button>
+          </div>
+
           <input
             ref={inputRef}
             type="file"
@@ -452,8 +540,10 @@ export default function BulkStudentsPage() {
               </div>
               <p className="mt-4 text-base font-bold">Upload student CSV</p>
               <p className="mt-1 max-w-md text-sm text-muted-foreground">
-                Start with the SchoolDB template. Validation happens before any
-                database changes.
+                {mode === "UPDATE_RTE"
+                  ? "Use the RTE update template with admissionNo and isRte columns."
+                  : "Use the required-fields template; optional supported columns may also be added."}
+                {" "}Validation happens before any database changes.
               </p>
             </button>
           )}
@@ -530,7 +620,7 @@ export default function BulkStudentsPage() {
                           <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                             #
                           </th>
-                          {HEADERS.map((header) => (
+                          {previewHeaders.map((header) => (
                             <th
                               key={header}
                               className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-muted-foreground"
@@ -549,7 +639,7 @@ export default function BulkStudentsPage() {
                             <td className="px-4 py-3 text-xs text-muted-foreground">
                               {index + 1}
                             </td>
-                            {HEADERS.map((header) => (
+                            {previewHeaders.map((header) => (
                               <td
                                 key={header}
                                 className="whitespace-nowrap px-4 py-3"
@@ -573,22 +663,47 @@ export default function BulkStudentsPage() {
 
               {result && (
                 <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4">
-                  <p className="text-sm font-bold">Import complete</p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {result.created} students created · {result.enrolled}{" "}
-                    enrolled · {result.skipped} existing rows skipped · {result.failed} failed
+                  <p className="text-sm font-bold">
+                    {mode === "UPDATE_RTE" ? "RTE update complete" : "Import complete"}
                   </p>
-                  <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/60 bg-background/70 p-3">
-                    <p className="text-xs text-muted-foreground">
-                      No Clerk accounts were created. Create login access separately only for students who need it.
-                    </p>
-                    <Button asChild size="sm" variant="outline">
-                      <Link href={`/${school.slug}/bulk-operations/student-logins`}>
-                        <KeyRound className="size-4" />
-                        Create student logins
-                      </Link>
-                    </Button>
-                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {mode === "UPDATE_RTE" ? (
+                      <>
+                        {result.updated ?? 0} students updated · {result.unchanged ?? 0}{" "}
+                        already matched · {result.failed} failed
+                      </>
+                    ) : (
+                      <>
+                        {result.created ?? 0} students created · {result.enrolled ?? 0}{" "}
+                        enrolled · {result.skipped ?? 0} existing rows skipped · {result.failed} failed
+                      </>
+                    )}
+                  </p>
+                  {result.errors.length > 0 && (
+                    <div className="mt-3 max-h-40 space-y-2 overflow-auto rounded-xl border border-destructive/20 bg-destructive/5 p-3 text-xs text-muted-foreground">
+                      {result.errors.slice(0, 50).map((error) => (
+                        <p key={`${error.row}-${error.message}`}>
+                          <span className="font-semibold text-foreground">
+                            Row {error.row}:
+                          </span>{" "}
+                          {error.message}
+                        </p>
+                      ))}
+                    </div>
+                  )}
+                  {mode === "CREATE" && (
+                    <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/60 bg-background/70 p-3">
+                      <p className="text-xs text-muted-foreground">
+                        No Clerk accounts were created. Create login access separately only for students who need it.
+                      </p>
+                      <Button asChild size="sm" variant="outline">
+                        <Link href={`/${school.slug}/bulk-operations/student-logins`}>
+                          <KeyRound className="size-4" />
+                          Create student logins
+                        </Link>
+                      </Button>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -624,8 +739,12 @@ export default function BulkStudentsPage() {
                     <UploadCloud className="size-4" />
                   )}
                   {importing
-                    ? "Importing..."
-                    : `Import ${rows.length} Students`}
+                    ? mode === "UPDATE_RTE"
+                      ? "Updating..."
+                      : "Importing..."
+                    : mode === "UPDATE_RTE"
+                      ? `Update ${rows.length} Students`
+                      : `Import ${rows.length} Students`}
                 </Button>
               </div>
             </>

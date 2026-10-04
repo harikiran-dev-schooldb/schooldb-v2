@@ -118,6 +118,15 @@ const optionalBoolean = z
   .transform((value) => ["TRUE", "YES", "1"].includes(value))
   .default(false);
 
+const requiredBoolean = z
+  .string()
+  .trim()
+  .transform((value) => value.toUpperCase())
+  .refine((value) => ["TRUE", "FALSE", "YES", "NO", "1", "0"].includes(value), {
+    message: "Use TRUE/FALSE, YES/NO, or 1/0.",
+  })
+  .transform((value) => ["TRUE", "YES", "1"].includes(value));
+
 const optionalEnum = <const T extends readonly [string, ...string[]]>(values: T) =>
   z
     .string()
@@ -249,6 +258,15 @@ export const bulkStudentRowSchema = z
 
 export const bulkStudentsSchema = z.object({
   students: z.array(bulkStudentRowSchema).min(1).max(500),
+});
+
+export const bulkStudentRteUpdateRowSchema = z.object({
+  admissionNo: z.string().trim().min(1, "Admission number is required."),
+  isRte: requiredBoolean,
+});
+
+export const bulkStudentRteUpdatesSchema = z.object({
+  students: z.array(bulkStudentRteUpdateRowSchema).min(1).max(500),
 });
 
 export type BulkStudentRow = z.infer<typeof bulkStudentRowSchema>;
