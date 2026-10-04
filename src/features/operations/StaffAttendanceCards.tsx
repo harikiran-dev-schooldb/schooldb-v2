@@ -20,14 +20,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { EmptyPanel, formatDate, OperationsData, Row, useOperationMutation } from "./shared";
 
-type StaffStatus = "PRESENT" | "ABSENT" | "HALF_DAY" | "ON_LEAVE" | "HOLIDAY";
+type StaffStatus = "PRESENT" | "ABSENT" | "HALF_DAY" | "ON_LEAVE";
 
 const statusOptions: Array<{ value: StaffStatus; label: string; short: string }> = [
   { value: "PRESENT", label: "Present", short: "Present" },
   { value: "ABSENT", label: "Absent", short: "Absent" },
   { value: "HALF_DAY", label: "Half day", short: "Half day" },
   { value: "ON_LEAVE", label: "On leave", short: "Leave" },
-  { value: "HOLIDAY", label: "Holiday", short: "Holiday" },
 ];
 
 function schoolDateKey() {
@@ -89,7 +88,7 @@ export function StaffAttendanceCards({ data }: { data: OperationsData }) {
     return {
       present: values.filter((status) => status === "PRESENT").length,
       absent: values.filter((status) => status === "ABSENT").length,
-      other: values.filter((status) => ["HALF_DAY", "ON_LEAVE", "HOLIDAY"].includes(status)).length,
+      other: values.filter((status) => ["HALF_DAY", "ON_LEAVE"].includes(status)).length,
       unmarked: Math.max(0, teachers.length - values.length),
     };
   }, [statuses, teachers.length]);
@@ -137,6 +136,7 @@ export function StaffAttendanceCards({ data }: { data: OperationsData }) {
             <CardTitle className="mt-2 text-xl">Mark everyone present first</CardTitle>
             <CardDescription className="mt-1 max-w-2xl leading-6">
               Start the register with one tap, then change only the people who are absent, on leave or working a half day.
+              If the school is closed, do not create a register for that date; reports will show it as no register / holiday.
             </CardDescription>
           </div>
           <div className="w-full sm:w-44">

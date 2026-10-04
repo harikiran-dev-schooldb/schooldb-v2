@@ -27,7 +27,6 @@ const staffAttendanceStatus = z.enum([
   "ABSENT",
   "HALF_DAY",
   "ON_LEAVE",
-  "HOLIDAY",
 ]);
 
 const staffAttendanceRow = z.object({
@@ -120,7 +119,7 @@ async function studentInSchool(schoolId: string, studentId: string) {
 export async function recordStaffAttendance(schoolId: string, userId: string, value: unknown) {
   const input = z.object({
     teacherId: z.string().min(1), date: dateValue,
-    status: z.enum(["PRESENT", "ABSENT", "HALF_DAY", "ON_LEAVE", "HOLIDAY"]),
+    status: z.enum(["PRESENT", "ABSENT", "HALF_DAY", "ON_LEAVE"]),
     checkIn: optionalText(8), checkOut: optionalText(8), remarks: optionalText(),
     source: z.enum(["MANUAL", "BIOMETRIC", "IMPORT"]).default("MANUAL"), deviceRef: optionalText(120),
   }).parse(value);
@@ -144,7 +143,7 @@ export async function recordStaffAttendance(schoolId: string, userId: string, va
 export async function importStaffAttendance(schoolId: string, userId: string, value: unknown) {
   const rows = z.array(z.object({
     employeeId: z.string().trim().min(1), date: z.string().date(),
-    status: z.enum(["PRESENT", "ABSENT", "HALF_DAY", "ON_LEAVE", "HOLIDAY"]),
+    status: z.enum(["PRESENT", "ABSENT", "HALF_DAY", "ON_LEAVE"]),
     checkIn: optionalText(8), checkOut: optionalText(8), deviceRef: optionalText(120),
   })).min(1).max(3000).parse(value);
   const rowKeys = rows.map((row) => `${row.employeeId}:${row.date}`);

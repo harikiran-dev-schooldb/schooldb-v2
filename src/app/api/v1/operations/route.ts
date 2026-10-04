@@ -75,12 +75,42 @@ export async function GET(request: Request) {
   return apiHandler(async () => {
     const membership = await requireRole(["SUPER_ADMIN", "SCHOOL_ADMIN", "ACCOUNTANT"]);
     const url = new URL(request.url);
+    if (url.searchParams.get("kind") === "staff-attendance-report") {
+      const from = url.searchParams.get("from");
+      const to = url.searchParams.get("to");
+      if (!from || !to || !z.string().date().safeParse(from).success || !z.string().date().safeParse(to).success) {
+        return ApiResponse.error("Valid from and to dates are required.", 400);
+      }
+      const startDate = new Date(`${from}T00:00:00.000Z`);
+      const endDate = new Date(`${to}T00:00:00.000Z`);
+      const rangeDays = Math.floor((endDate.getTime() - startDate.getTime()) / 86_400_000) + 1;
+      if (rangeDays < 1) return ApiResponse.error("The end date must be on or after the start date.", 400);
+      if (rangeDays > 93) return ApiResponse.error("Staff attendance reports are limited to 93 days at a time.", 400);
+      const attendance = await prisma.staffAttendance.findMany({
+        where: {
+          schoolId: membership.schoolId,
+          date: { gte: startDate, lte: endDate },
+          status: { not: "HOLIDAY" },
+        },
+        orderBy: [{ date: "desc" }, { teacher: { fullName: "asc" } }],
+        select: {
+          id: true,
+          teacherId: true,
+          date: true,
+          status: true,
+          source: true,
+          remarks: true,
+          teacher: { select: { fullName: true, employeeId: true, designation: true } },
+        },
+      });
+      return ApiResponse.success({ from, to, attendance }, "Staff attendance report loaded.");
+    }
     if (url.searchParams.get("kind") === "staff-attendance") {
       const date = url.searchParams.get("date");
       if (!date || !z.string().date().safeParse(date).success) return ApiResponse.error("A valid attendance date is required.", 400);
       const attendanceDate = new Date(`${date}T00:00:00.000Z`);
       const attendance = await prisma.staffAttendance.findMany({
-        where: { schoolId: membership.schoolId, date: attendanceDate },
+        where: { schoolId: membership.schoolId, date: attendanceDate, status: { not: "HOLIDAY" } },
         orderBy: { teacher: { fullName: "asc" } },
         include: { teacher: { select: { fullName: true, employeeId: true } } },
       });

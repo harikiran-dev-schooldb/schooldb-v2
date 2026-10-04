@@ -50,6 +50,7 @@ import {
   useOperationMutation,
 } from "./shared";
 import { StaffAttendanceCards } from "./StaffAttendanceCards";
+import { StaffAttendanceReport } from "./StaffAttendanceReport";
 
 const leaveTypes = [
   "CASUAL",
@@ -218,6 +219,7 @@ export function StaffOperationsManager({ data }: { data: OperationsData }) {
       <Tabs defaultValue="attendance" className="space-y-5">
         <TabsList className="h-auto flex-wrap">
           <TabsTrigger value="attendance">Attendance</TabsTrigger>
+          <TabsTrigger value="attendance-report">Attendance report</TabsTrigger>
           <TabsTrigger value="leave">Leave approvals</TabsTrigger>
           <TabsTrigger value="salary">Pay setup</TabsTrigger>
           <TabsTrigger value="payroll">Monthly payroll</TabsTrigger>
@@ -237,6 +239,10 @@ export function StaffOperationsManager({ data }: { data: OperationsData }) {
               </Button>
             </div>
           </details>
+        </TabsContent>
+
+        <TabsContent value="attendance-report" className="space-y-5">
+          <StaffAttendanceReport />
         </TabsContent>
 
         <TabsContent value="leave" className="space-y-5">
