@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import {
   Select,
@@ -28,6 +28,7 @@ export function SyllabusSelect({
   onChange,
 }: Props) {
   const [options, setOptions] = useState<Option[]>([]);
+  const hasAppliedDefault = useRef(false);
 
   useEffect(() => {
     let active = true;
@@ -40,10 +41,15 @@ export function SyllabusSelect({
   }, []);
 
   useEffect(() => {
-    if (!allowAll && !value && options.length === 1) {
+    if (options.length !== 1 || hasAppliedDefault.current) {
+      return;
+    }
+
+    hasAppliedDefault.current = true;
+    if (!value) {
       onChange(options[0].id);
     }
-  }, [allowAll, onChange, options, value]);
+  }, [onChange, options, value]);
 
   return (
     <Select

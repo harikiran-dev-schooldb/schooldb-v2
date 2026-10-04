@@ -133,6 +133,18 @@ export const studentRepository = {
               select: {
                 id: true,
                 name: true,
+                branch: {
+                  select: {
+                    id: true,
+                    name: true,
+                    syllabus: {
+                      select: {
+                        id: true,
+                        name: true,
+                      },
+                    },
+                  },
+                },
               },
             },
 

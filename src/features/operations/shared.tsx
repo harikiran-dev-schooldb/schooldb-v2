@@ -44,6 +44,7 @@ export type StudentOption = {
 export type Row = Record<string, unknown>;
 
 export type OperationsData = {
+  academicYearId?: string | null;
   teachers?: TeacherOption[];
   students?: StudentOption[];
   attendance?: Row[];

@@ -421,6 +421,10 @@ export const studentService = {
         sectionName: enrollment?.section.name ?? null,
         classId: enrollment?.class.id ?? null,
         sectionId: enrollment?.section.id ?? null,
+        branchId: enrollment?.class.branch.id ?? null,
+        branchName: enrollment?.class.branch.name ?? null,
+        syllabusId: enrollment?.class.branch.syllabus.id ?? null,
+        syllabusName: enrollment?.class.branch.syllabus.name ?? null,
         rollNo: enrollment?.rollNo ?? null,
       };
     });
