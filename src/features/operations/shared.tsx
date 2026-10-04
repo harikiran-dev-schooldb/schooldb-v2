@@ -199,7 +199,12 @@ export function SelectField({
   onValueChange?: (value: string) => void;
 }) {
   return (
-    <Select name={name} defaultValue={defaultValue} value={value} onValueChange={onValueChange}>
+    <Select
+      name={name}
+      defaultValue={defaultValue}
+      value={value}
+      onValueChange={onValueChange}
+    >
       <SelectTrigger className="w-full">
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
