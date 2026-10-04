@@ -328,6 +328,91 @@ export async function queueAutomatedWhatsappAlert(input: AutomatedAlertInput) {
   }
 }
 
+export async function queueStaffAttendanceWhatsappAlert(input: {
+  schoolId: string;
+  teacherId: string;
+  employeeId: string;
+  staffName: string;
+  phone: string | null;
+  date: string;
+}) {
+  if (process.env.META_WA_AUTOMATION_ENABLED !== "true" || !input.phone) {
+    return null;
+  }
+
+  const phone = normalizeIndianMobile(input.phone);
+  const templateName =
+    process.env.META_WA_STAFF_ATTENDANCE_TEMPLATE ||
+    process.env.META_WA_ATTENDANCE_TEMPLATE;
+  if (!phone || !templateName) return null;
+
+  const automationKey = `staff-attendance:${input.date}:${input.teacherId}:absent`;
+  const dateLabel = new Intl.DateTimeFormat("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(`${input.date}T00:00:00.000Z`));
+  const title = "Staff attendance alert";
+  const message = `${input.staffName}, you were marked absent on ${dateLabel}. If this is incorrect, please contact the school office.`;
+
+  try {
+    const existing = await prisma.whatsappCampaign.findUnique({
+      where: {
+        schoolId_automationKey: {
+          schoolId: input.schoolId,
+          automationKey,
+        },
+      },
+      select: { id: true },
+    });
+    if (existing) return existing;
+
+    const campaign = await prisma.$transaction(async (tx) => {
+      const created = await tx.whatsappCampaign.create({
+        data: {
+          schoolId: input.schoolId,
+          title,
+          message,
+          templateName,
+          targetType: "STAFF",
+          targetId: input.teacherId,
+          targetLabel: `${input.staffName} (${input.employeeId})`,
+          status: "QUEUED",
+          recipientCount: 1,
+          createdBy: "SYSTEM",
+          scheduledAt: new Date(),
+          automatic: true,
+          automationKey,
+          sourceType: "STAFF_ATTENDANCE",
+          sourceId: input.date,
+        },
+        select: { id: true },
+      });
+
+      await tx.whatsappRecipient.create({
+        data: {
+          schoolId: input.schoolId,
+          campaignId: created.id,
+          recipientName: input.staffName,
+          phone,
+        },
+      });
+      return created;
+    });
+
+    await processWhatsappCampaignBatch(input.schoolId, campaign.id, 1);
+    return campaign;
+  } catch (error) {
+    console.error("[staff-attendance-whatsapp] Unable to send absence alert", {
+      teacherId: input.teacherId,
+      date: input.date,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return null;
+  }
+}
+
 export async function queueAdmissionWhatsappUpdate(input: {
   schoolId: string;
   applicationId: string;
