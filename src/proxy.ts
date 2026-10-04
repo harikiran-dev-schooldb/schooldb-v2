@@ -40,7 +40,17 @@ export default clerkMiddleware(async (auth, req) => {
    */
   if (!isPublicPath(pathname) && !isSupportApi && !isAndroidBuildWorkerApi) {
     if (pathname.startsWith("/api/")) {
-      await auth.protect();
+      // Return an explicit API response instead of allowing auth.protect() to
+      // throw. Some serverless runtimes surface that 401 exception as a 500,
+      // which is both misleading to clients and noisy in production logs.
+      const { isAuthenticated } = await auth();
+
+      if (!isAuthenticated) {
+        return NextResponse.json(
+          { success: false, message: "Unauthorized" },
+          { status: 401 },
+        );
+      }
     } else {
       const schoolSlug = schoolSlugFromPath(pathname);
 

@@ -24,6 +24,9 @@ export default defineConfig({
     baseURL,
     actionTimeout: 10_000,
     navigationTimeout: 30_000,
+    // UI checks should exercise the current deployment, not a previously
+    // cached immutable chunk. /sw.js is verified independently by the PWA test.
+    serviceWorkers: "block",
     screenshot: "only-on-failure",
     trace: "retain-on-failure",
     video: "retain-on-failure",

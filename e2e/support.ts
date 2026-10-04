@@ -31,9 +31,19 @@ export async function expectUsablePage(
     await expect(page.getByRole("heading", { name: heading }).first()).toBeVisible();
   }
 
-  const horizontalOverflow = await page.evaluate(
-    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
-  );
-  expect(horizontalOverflow, `horizontal overflow on ${path}`).toBeLessThanOrEqual(1);
+  // A remote stylesheet can finish shortly after the document commits. Polling
+  // prevents recording the unstyled desktop layout as mobile overflow while
+  // still failing when the final rendered page genuinely overflows.
+  await expect
+    .poll(
+      () =>
+        page.evaluate(
+          () =>
+            document.documentElement.scrollWidth -
+            document.documentElement.clientWidth,
+        ),
+      { message: `horizontal overflow on ${path}` },
+    )
+    .toBeLessThanOrEqual(1);
   assertNoPageErrors();
 }
