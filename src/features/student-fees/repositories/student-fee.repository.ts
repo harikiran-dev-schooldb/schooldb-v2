@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { isRteFeeExempt } from "../rte-fee-policy";
 
 const FEE_ASSIGNMENT_BATCH_SIZE = 250;
 const BULK_WRITE_BATCH_SIZE = 500;
@@ -193,12 +194,27 @@ export const studentFeeRepository = {
             schoolId,
             active: true,
           },
+          select: {
+            id: true,
+            studentId: true,
+            academicYearId: true,
+            student: {
+              select: {
+                isRte: true,
+                category: true,
+              },
+            },
+          },
         });
 
       if (!enrollment) {
         throw new Error(
           "Student enrollment not found.",
         );
+      }
+
+      if (isRteFeeExempt(enrollment.student)) {
+        throw new Error("Fees cannot be assigned to an RTE student.");
       }
 
       if (
@@ -417,15 +433,27 @@ export const studentFeeRepository = {
       select: {
         id: true,
         studentId: true,
+        student: {
+          select: {
+            isRte: true,
+            category: true,
+          },
+        },
       },
     });
 
-    if (enrollments.length === 0) {
+    const feeEligibleEnrollments = enrollments.filter(
+      (enrollment) => !isRteFeeExempt(enrollment.student),
+    );
+    const rteExcluded = enrollments.length - feeEligibleEnrollments.length;
+
+    if (feeEligibleEnrollments.length === 0) {
       return {
-        totalStudents: 0,
+        totalStudents: enrollments.length,
         created: 0,
         existing: 0,
         failed: 0,
+        rteExcluded,
       };
     }
 
@@ -433,7 +461,7 @@ export const studentFeeRepository = {
       where: {
         feePlanId,
         studentEnrollmentId: {
-          in: enrollments.map((enrollment) => enrollment.id),
+          in: feeEligibleEnrollments.map((enrollment) => enrollment.id),
         },
       },
       select: {
@@ -445,7 +473,7 @@ export const studentFeeRepository = {
       existingAssignments.map((assignment) => assignment.studentEnrollmentId),
     );
 
-    const pendingEnrollments = enrollments.filter(
+    const pendingEnrollments = feeEligibleEnrollments.filter(
       (enrollment) => !existingEnrollmentIds.has(enrollment.id),
     );
 
@@ -600,6 +628,7 @@ export const studentFeeRepository = {
       created,
       existing,
       failed,
+      rteExcluded,
     };
   },
 };

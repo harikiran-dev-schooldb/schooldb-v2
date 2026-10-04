@@ -129,6 +129,7 @@ export const createStudentSchema = z.object({
   doctorPhone: optionalNullableText(30),
   medicalConditions: optionalNullableText(1000),
   allergies: optionalNullableText(1000),
+  isRte: z.boolean().optional().default(false),
   hostelRequired: z.boolean().optional().default(false),
   transportRequired: z.boolean().optional().default(false),
   whatsappOptIn: z.boolean().optional().default(false),

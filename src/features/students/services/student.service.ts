@@ -165,6 +165,7 @@ export const studentService = {
       doctorPhone: null,
       medicalConditions: null,
       allergies: null,
+      isRte: false,
       hostelRequired: false,
       transportRequired: false,
       whatsappOptIn: false,
@@ -175,6 +176,7 @@ export const studentService = {
 
     const student = await studentRepository.create({
       ...studentData,
+      isRte: normalized.isRte || normalized.category === "RTE",
       whatsappOptIn,
       whatsappOptInAt: whatsappOptIn ? new Date() : null,
       username: studentUsername(normalized.admissionNo),
@@ -258,6 +260,7 @@ export const studentService = {
 
     const updated = await studentRepository.update(id, schoolId, {
       ...studentData,
+      isRte: input.isRte || input.category === "RTE",
       whatsappOptIn,
       whatsappOptInAt:
         whatsappOptIn

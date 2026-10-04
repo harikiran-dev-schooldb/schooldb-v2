@@ -265,6 +265,7 @@ export const studentBulkService = {
         data: importable.map(({ student }) => ({
           schoolId,
           ...student,
+          isRte: student.isRte || student.category === "RTE",
           dob: new Date(`${student.dob}T00:00:00`),
           joinedDate: student.joinedDate
             ? new Date(`${student.joinedDate}T00:00:00`)

@@ -4,6 +4,16 @@ import { Check, Eye, Pencil, Play, X, Users } from "lucide-react";
 
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { ActionMenu } from "@/components/common/actions/ActionMenu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 import { toast } from "sonner";
 import { useState } from "react";
@@ -20,6 +30,8 @@ type Props = {
 export function FeePlanActions({ feePlanId, active, feePlanName }: Props) {
   const [installmentsOpen, setInstallmentsOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [applyOpen, setApplyOpen] = useState(false);
+  const [applying, setApplying] = useState(false);
 
   async function changeStatus(nextActive: boolean) {
     const response = await fetch(`/api/v1/fee-plans/${feePlanId}`, {
@@ -81,28 +93,42 @@ export function FeePlanActions({ feePlanId, active, feePlanName }: Props) {
   }
 
   async function applyToStudents() {
-    const response = await fetch(`/api/v1/fee-plans/${feePlanId}/apply`, {
-      method: "POST",
-    });
+    try {
+      setApplying(true);
+      const response = await fetch(`/api/v1/fee-plans/${feePlanId}/apply`, {
+        method: "POST",
+      });
 
-    const result = await response.json();
+      const result = await response.json();
 
-    if (!response.ok || !result.success) {
-      toast.error(result.message || "Failed to apply fee plan.");
-      return;
+      if (!response.ok || !result.success) {
+        toast.error(result.message || "Failed to apply fee plan.");
+        return;
+      }
+
+      const data = result.data as {
+        created: number;
+        existing: number;
+        failed: number;
+        rteExcluded?: number;
+      };
+      const rteExcluded = data.rteExcluded ?? 0;
+
+      toast.success(
+        `Applied successfully. Created: ${data.created}, Existing: ${data.existing}, RTE excluded: ${rteExcluded}.`,
+      );
+
+      if (data.failed > 0) {
+        toast.warning(`${data.failed} student fee assignments failed.`);
+      }
+
+      setApplyOpen(false);
+      refreshTable("fee-plans");
+    } catch {
+      toast.error("Failed to apply fee plan.");
+    } finally {
+      setApplying(false);
     }
-
-    const data = result.data;
-
-    toast.success(
-      `Applied successfully. Created: ${data.created}, Existing: ${data.existing}`,
-    );
-
-    if (data.failed > 0) {
-      toast.warning(`${data.failed} student fee assignments failed.`);
-    }
-
-    refreshTable("fee-plans");
   }
 
   return (
@@ -118,7 +144,7 @@ export function FeePlanActions({ feePlanId, active, feePlanName }: Props) {
           Generate Installments
         </DropdownMenuItem>
 
-        <DropdownMenuItem onClick={applyToStudents}>
+        <DropdownMenuItem onClick={() => setApplyOpen(true)}>
           <Users className="mr-2 h-4 w-4" />
           Apply to Students
         </DropdownMenuItem>
@@ -140,6 +166,31 @@ export function FeePlanActions({ feePlanId, active, feePlanName }: Props) {
           View Installments
         </DropdownMenuItem>
       </ActionMenu>
+
+      <AlertDialog open={applyOpen} onOpenChange={setApplyOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Apply “{feePlanName}” to students?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This assigns the fee plan to eligible active students in its
+              academic year and selected classes. RTE students will be excluded,
+              and existing assignments will not be duplicated.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={applying}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={applying}
+              onClick={(event) => {
+                event.preventDefault();
+                void applyToStudents();
+              }}
+            >
+              {applying ? "Applying…" : "Apply to Eligible Students"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <FeeInstallmentsDialog
         open={installmentsOpen}

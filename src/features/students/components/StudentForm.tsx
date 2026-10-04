@@ -92,6 +92,7 @@ const defaultValues: StudentFormInput = {
   doctorPhone: "",
   medicalConditions: "",
   allergies: "",
+  isRte: false,
   hostelRequired: false,
   transportRequired: false,
   whatsappOptIn: false,
@@ -413,6 +414,16 @@ export function StudentForm({ mode, studentId, onSuccess }: Props) {
       >
         <div className="grid gap-5 md:grid-cols-2">
           {renderFields(identifierFields.slice(0, 7))}
+          <Controller
+            control={form.control}
+            name="isRte"
+            render={({ field }) => (
+              <div className="flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50/60 p-4 md:col-span-2 dark:border-amber-900/60 dark:bg-amber-950/20">
+                <div><p className="text-sm font-semibold text-amber-950 dark:text-amber-100">RTE student</p><p className="mt-1 text-xs text-amber-800/80 dark:text-amber-200/70">Students admitted under RTE are exempt from fee-plan assignment.</p></div>
+                <Switch checked={field.value} onCheckedChange={field.onChange} aria-label="Student belongs to RTE" />
+              </div>
+            )}
+          />
           <Controller
             control={form.control}
             name="religion"

@@ -155,6 +155,7 @@ export function StudentDetailsTab({ student }: Props) {
         <DetailItem label="Mother Tongue" value={student.motherTongue} />
         <DetailItem label="Religion" value={formatEnum(student.religion)} />
         <DetailItem label="Category" value={formatEnum(student.category)} />
+        <DetailItem label="RTE Student" value={student.isRte ? "Yes" : "No"} />
         <DetailItem label="Caste" value={student.caste} />
         <DetailItem label="Sub-caste" value={student.subCaste} />
       </DetailSection>

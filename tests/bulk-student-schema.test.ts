@@ -52,6 +52,7 @@ test("accepts and normalizes the extended student profile fields", () => {
     category: "bc_a",
     fatherIncome: "250000.50",
     motherEmail: "mother@example.com",
+    isRte: "yes",
     hostelRequired: "no",
     transportRequired: "YES",
     whatsappOptIn: "1",
@@ -64,6 +65,7 @@ test("accepts and normalizes the extended student profile fields", () => {
   assert.equal(result.data.religion, "HINDU");
   assert.equal(result.data.category, "BC_A");
   assert.equal(result.data.fatherIncome, 250000.5);
+  assert.equal(result.data.isRte, true);
   assert.equal(result.data.hostelRequired, false);
   assert.equal(result.data.transportRequired, true);
   assert.equal(result.data.whatsappOptIn, true);
@@ -77,6 +79,7 @@ test("keeps extended fields optional for older bulk-import clients", () => {
 
   assert.equal(result.data.joinedDate, null);
   assert.equal(result.data.fatherIncome, null);
+  assert.equal(result.data.isRte, false);
   assert.equal(result.data.transportRequired, false);
 });
 

@@ -441,6 +441,7 @@ model Student {
   guardianPhone         String?
   guardianRelation      String?
   hostelRequired        Boolean                     @default(false)
+  isRte                 Boolean                     @default(false)
   imageUrl              String?
   joinedDate            DateTime?
   medicalConditions     String?

@@ -93,6 +93,7 @@ export type StudentProfileData = {
   doctorPhone: string | null;
   medicalConditions: string | null;
   allergies: string | null;
+  isRte: boolean;
   hostelRequired: boolean;
   transportRequired: boolean;
   remarks: string | null;

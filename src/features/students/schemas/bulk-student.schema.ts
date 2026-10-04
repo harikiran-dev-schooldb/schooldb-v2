@@ -220,6 +220,7 @@ export const bulkStudentRowSchema = z
     doctorPhone: optionalText(30),
     medicalConditions: optionalText(1000),
     allergies: optionalText(1000),
+    isRte: optionalBoolean,
     hostelRequired: optionalBoolean,
     transportRequired: optionalBoolean,
     whatsappOptIn: optionalBoolean,
