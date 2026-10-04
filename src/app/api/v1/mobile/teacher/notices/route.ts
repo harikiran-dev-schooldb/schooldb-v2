@@ -62,6 +62,7 @@ async function noticeContext() {
         {
           OR: [
             { targetType: "SCHOOL", targetId: null },
+            { targetType: "STAFF", targetId: teacher.id },
             { targetType: "SYLLABUS", targetId: { in: allocations.map((item) => item.class.branch.syllabusId) } },
             { targetType: "BRANCH", targetId: { in: allocations.map((item) => item.class.branchId) } },
             { targetType: "CLASS", targetId: { in: allocations.map((item) => item.classId) } },

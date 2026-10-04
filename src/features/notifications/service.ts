@@ -1,7 +1,7 @@
 import type { Prisma } from "@/generated/prisma/client";
 
 import { prisma } from "@/lib/prisma";
-import { requireMembership, teacherClassScope } from "@/lib/auth";
+import { requireCurrentTeacher, requireMembership, teacherClassScope } from "@/lib/auth";
 import { isSelfServiceRole } from "@/lib/access-control";
 import { listAccessibleStudents } from "@/lib/student-access";
 import { notificationVisibility } from "./visibility";
@@ -17,6 +17,8 @@ export async function notificationContext(schoolSlug: string) {
     }
 
     if (membership.role === "TEACHER") {
+      const teacher = await requireCurrentTeacher(membership.schoolId);
+      audience.push({ targetType: "STAFF", targetId: teacher.id });
       const allocations = await teacherClassScope(membership.schoolId);
       const classIds = Array.from(
         new Set(allocations.map((allocation) => allocation.classId)),

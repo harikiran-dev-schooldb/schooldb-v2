@@ -10,6 +10,8 @@ import {
   createStaffLeave,
   decideStaffLeave,
   importStaffAttendance,
+  fullPresentStaffAttendance,
+  finalizeStaffAttendance,
   logHealthVisit,
   markPayrollPaid,
   recordStaffAttendance,
@@ -26,7 +28,7 @@ import { prisma } from "@/lib/prisma";
 
 const schema = z.object({
   action: z.enum([
-    "RECORD_ATTENDANCE", "IMPORT_ATTENDANCE", "CREATE_STAFF_LEAVE", "DECIDE_STAFF_LEAVE",
+    "RECORD_ATTENDANCE", "FULL_PRESENT_STAFF_ATTENDANCE", "FINALIZE_STAFF_ATTENDANCE", "IMPORT_ATTENDANCE", "CREATE_STAFF_LEAVE", "DECIDE_STAFF_LEAVE",
     "SAVE_SALARY", "RUN_PAYROLL", "MARK_PAYROLL_PAID", "CHECK_IN_VISITOR", "CHECK_OUT_VISITOR",
     "SAVE_HEALTH_RECORD", "LOG_HEALTH_VISIT", "CREATE_INVENTORY_ITEM", "ADJUST_INVENTORY",
     "AUTHORIZE_PICKUP", "UPDATE_PICKUP", "CREATE_MAINTENANCE", "UPDATE_MAINTENANCE",
@@ -39,7 +41,7 @@ export async function POST(request: Request) {
     const membership = await requireRole(["SUPER_ADMIN", "SCHOOL_ADMIN", "ACCOUNTANT", "RECEPTIONIST"]);
     const input = schema.parse(await request.json());
     const financeAndAdmin = new Set([
-      "RECORD_ATTENDANCE", "IMPORT_ATTENDANCE", "CREATE_STAFF_LEAVE", "DECIDE_STAFF_LEAVE",
+      "RECORD_ATTENDANCE", "FULL_PRESENT_STAFF_ATTENDANCE", "FINALIZE_STAFF_ATTENDANCE", "IMPORT_ATTENDANCE", "CREATE_STAFF_LEAVE", "DECIDE_STAFF_LEAVE",
       "SAVE_SALARY", "RUN_PAYROLL", "MARK_PAYROLL_PAID", "CREATE_INVENTORY_ITEM", "ADJUST_INVENTORY",
     ]);
     if (financeAndAdmin.has(input.action) && !["SUPER_ADMIN", "SCHOOL_ADMIN", "ACCOUNTANT"].includes(membership.role)) {
@@ -48,6 +50,8 @@ export async function POST(request: Request) {
 
     const args = [membership.schoolId, membership.userId, input.data] as const;
     const result = input.action === "RECORD_ATTENDANCE" ? await recordStaffAttendance(...args)
+      : input.action === "FULL_PRESENT_STAFF_ATTENDANCE" ? await fullPresentStaffAttendance(...args)
+      : input.action === "FINALIZE_STAFF_ATTENDANCE" ? await finalizeStaffAttendance(...args)
       : input.action === "IMPORT_ATTENDANCE" ? await importStaffAttendance(...args)
       : input.action === "CREATE_STAFF_LEAVE" ? await createStaffLeave(...args)
       : input.action === "DECIDE_STAFF_LEAVE" ? await decideStaffLeave(...args)

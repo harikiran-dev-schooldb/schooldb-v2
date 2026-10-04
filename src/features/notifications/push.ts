@@ -82,6 +82,24 @@ async function audienceUserIds(announcement: PushAnnouncement) {
     return memberships.map((membership) => membership.userId);
   }
 
+  if (announcement.targetType === "STAFF" && announcement.targetId) {
+    const teacher = await prisma.teacher.findFirst({
+      where: {
+        id: announcement.targetId,
+        schoolId: announcement.schoolId,
+        active: true,
+      },
+      select: { clerkId: true },
+    });
+    if (!teacher?.clerkId) return [];
+
+    const user = await prisma.user.findUnique({
+      where: { clerkUserId: teacher.clerkId },
+      select: { id: true },
+    });
+    return user ? [user.id] : [];
+  }
+
   if (announcement.targetType === "SCHOOL") {
     const memberships = await prisma.membership.findMany({
       where: { schoolId: announcement.schoolId, isActive: true },

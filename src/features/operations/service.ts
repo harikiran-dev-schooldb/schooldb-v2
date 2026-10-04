@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { notifyStaffAttendanceFinalized } from "@/features/notifications/events";
+import { queueStaffAttendanceWhatsappAlert } from "@/features/whatsapp/service";
 import { prisma } from "@/lib/prisma";
 
 const dateValue = z.string().date().transform((value) => new Date(`${value}T00:00:00.000Z`));
@@ -26,6 +28,14 @@ async function studentInSchool(schoolId: string, studentId: string) {
   return student;
 }
 
+async function ensureStaffAttendanceUnlocked(schoolId: string, date: Date) {
+  const locked = await prisma.staffAttendance.findFirst({
+    where: { schoolId, date, lockedAt: { not: null } },
+    select: { id: true },
+  });
+  if (locked) throw new Error("Staff attendance for this date is locked.");
+}
+
 export async function recordStaffAttendance(schoolId: string, userId: string, value: unknown) {
   const input = z.object({
     teacherId: z.string().min(1), date: dateValue,
@@ -34,11 +44,138 @@ export async function recordStaffAttendance(schoolId: string, userId: string, va
     source: z.enum(["MANUAL", "BIOMETRIC", "IMPORT"]).default("MANUAL"), deviceRef: optionalText(120),
   }).parse(value);
   await teacherInSchool(schoolId, input.teacherId);
+  await ensureStaffAttendanceUnlocked(schoolId, input.date);
   return prisma.staffAttendance.upsert({
     where: { schoolId_teacherId_date: { schoolId, teacherId: input.teacherId, date: input.date } },
     update: { ...input, recordedBy: userId },
     create: { schoolId, ...input, recordedBy: userId },
   });
+}
+
+export async function fullPresentStaffAttendance(schoolId: string, userId: string, value: unknown) {
+  const input = z.object({ date: dateValue }).parse(value);
+  await ensureStaffAttendanceUnlocked(schoolId, input.date);
+
+  const teachers = await prisma.teacher.findMany({
+    where: { schoolId, active: true },
+    orderBy: { fullName: "asc" },
+    select: { id: true },
+  });
+  if (!teachers.length) throw new Error("No active staff members found.");
+
+  await prisma.$transaction(
+    teachers.map((teacher) =>
+      prisma.staffAttendance.upsert({
+        where: {
+          schoolId_teacherId_date: { schoolId, teacherId: teacher.id, date: input.date },
+        },
+        update: {
+          status: "PRESENT",
+          source: "MANUAL",
+          recordedBy: userId,
+          lockedAt: null,
+          lockedBy: null,
+        },
+        create: {
+          schoolId,
+          teacherId: teacher.id,
+          date: input.date,
+          status: "PRESENT",
+          source: "MANUAL",
+          recordedBy: userId,
+        },
+      }),
+    ),
+  );
+
+  return { total: teachers.length, present: teachers.length, absent: 0, locked: false };
+}
+
+export async function finalizeStaffAttendance(schoolId: string, userId: string, value: unknown) {
+  const input = z.object({
+    date: dateValue,
+    absentTeacherIds: z.array(z.string().min(1)).max(1000).default([]),
+  }).parse(value);
+  await ensureStaffAttendanceUnlocked(schoolId, input.date);
+
+  const teachers = await prisma.teacher.findMany({
+    where: { schoolId, active: true },
+    orderBy: { fullName: "asc" },
+    select: { id: true, employeeId: true, fullName: true, phone: true },
+  });
+  if (!teachers.length) throw new Error("No active staff members found.");
+
+  const teacherIds = new Set(teachers.map((teacher) => teacher.id));
+  const absentIds = new Set(input.absentTeacherIds);
+  const invalidIds = [...absentIds].filter((id) => !teacherIds.has(id));
+  if (invalidIds.length) throw new Error("One or more selected staff members are invalid.");
+
+  const lockedAt = new Date();
+  await prisma.$transaction(
+    teachers.map((teacher) =>
+      prisma.staffAttendance.upsert({
+        where: {
+          schoolId_teacherId_date: { schoolId, teacherId: teacher.id, date: input.date },
+        },
+        update: {
+          status: absentIds.has(teacher.id) ? "ABSENT" : "PRESENT",
+          source: "MANUAL",
+          recordedBy: userId,
+          lockedAt,
+          lockedBy: userId,
+        },
+        create: {
+          schoolId,
+          teacherId: teacher.id,
+          date: input.date,
+          status: absentIds.has(teacher.id) ? "ABSENT" : "PRESENT",
+          source: "MANUAL",
+          recordedBy: userId,
+          lockedAt,
+          lockedBy: userId,
+        },
+      }),
+    ),
+  );
+
+  const absentTeachers = teachers.filter((teacher) => absentIds.has(teacher.id));
+  const dateKey = input.date.toISOString().slice(0, 10);
+
+  const appNotification = await notifyStaffAttendanceFinalized({
+    schoolId,
+    date: input.date,
+    total: teachers.length,
+    absentTeachers: absentTeachers.map((teacher) => ({
+      id: teacher.id,
+      employeeId: teacher.employeeId,
+      fullName: teacher.fullName,
+    })),
+  }).catch((error) => {
+    console.error("[staff-attendance] Unable to create app notifications", error);
+    return null;
+  });
+
+  const whatsappResults = await Promise.all(
+    absentTeachers.map((teacher) =>
+      queueStaffAttendanceWhatsappAlert({
+        schoolId,
+        teacherId: teacher.id,
+        employeeId: teacher.employeeId,
+        staffName: teacher.fullName,
+        phone: teacher.phone,
+        date: dateKey,
+      }),
+    ),
+  );
+
+  return {
+    total: teachers.length,
+    present: teachers.length - absentTeachers.length,
+    absent: absentTeachers.length,
+    locked: true,
+    appNotifications: appNotification?.absent ?? 0,
+    whatsappSent: whatsappResults.filter(Boolean).length,
+  };
 }
 
 export async function importStaffAttendance(schoolId: string, userId: string, value: unknown) {
@@ -47,6 +184,20 @@ export async function importStaffAttendance(schoolId: string, userId: string, va
     status: z.enum(["PRESENT", "ABSENT", "HALF_DAY", "ON_LEAVE", "HOLIDAY"]),
     checkIn: optionalText(8), checkOut: optionalText(8), deviceRef: optionalText(120),
   })).min(1).max(3000).parse(value);
+
+  const importDates = [...new Set(rows.map((row) => row.date))].map(
+    (date) => new Date(`${date}T00:00:00.000Z`),
+  );
+  const locked = await prisma.staffAttendance.findFirst({
+    where: { schoolId, date: { in: importDates }, lockedAt: { not: null } },
+    select: { date: true },
+  });
+  if (locked) {
+    throw new Error(
+      `Staff attendance for ${locked.date.toISOString().slice(0, 10)} is locked.`,
+    );
+  }
+
   const teachers = await prisma.teacher.findMany({
     where: { schoolId, employeeId: { in: rows.map((row) => row.employeeId) }, active: true },
     select: { id: true, employeeId: true },
