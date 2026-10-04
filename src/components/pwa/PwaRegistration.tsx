@@ -183,6 +183,7 @@ export function PwaRegistration() {
   }, []);
 
   useEffect(() => {
+    if (!isSchoolDbProductionHost(window.location.hostname)) return;
     if (!isLoaded || !isSignedIn || !userId || !schoolSlug) return;
     if (pathname.includes("/login") || pathname.endsWith("/logout")) return;
 
