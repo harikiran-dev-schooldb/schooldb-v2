@@ -17,6 +17,7 @@ import {
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { FormField } from "@/components/common/forms";
 
 import { AcademicYearSelect } from "@/components/common/select/AcademicYearSelect";
 import { SearchableStudentSelect } from "@/components/common/select/SearchableStudentSelect";
@@ -319,39 +320,55 @@ export function StudentAttendanceReport() {
           )}
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <AcademicYearSelect
-            value={academicYearId}
-            onChange={handleAcademicYearChange}
-          />
+        <div className="grid gap-4 md:grid-cols-3">
+          <FormField label="Academic Year">
+            <AcademicYearSelect
+              value={academicYearId}
+              onChange={handleAcademicYearChange}
+            />
+          </FormField>
+
+          <FormField label="From Date">
+            <div className="relative">
+              <CalendarDays className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+
+              <input
+                type="date"
+                value={fromDate}
+                onChange={(event) => setFromDate(event.target.value)}
+                className="h-10 w-full rounded-md border bg-background pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
+          </FormField>
+
+          <FormField label="To Date">
+            <div className="relative">
+              <CalendarDays className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+
+              <input
+                type="date"
+                value={toDate}
+                onChange={(event) => setToDate(event.target.value)}
+                className="h-10 w-full rounded-md border bg-background pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
+          </FormField>
+        </div>
+
+        <div className="mt-5 border-t pt-5">
+          <div className="mb-3">
+            <h3 className="text-sm font-semibold">Student scope</h3>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Narrow the assigned students by syllabus, branch, class, and
+              section, then choose a student.
+            </p>
+          </div>
 
           <SearchableStudentSelect
             value={studentId}
             onChange={setStudentId}
             academicYearId={academicYearId}
           />
-
-          <div className="relative">
-            <CalendarDays className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-
-            <input
-              type="date"
-              value={fromDate}
-              onChange={(event) => setFromDate(event.target.value)}
-              className="h-10 w-full rounded-md border bg-background pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-primary/20"
-            />
-          </div>
-
-          <div className="relative">
-            <CalendarDays className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-
-            <input
-              type="date"
-              value={toDate}
-              onChange={(event) => setToDate(event.target.value)}
-              className="h-10 w-full rounded-md border bg-background pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-primary/20"
-            />
-          </div>
         </div>
       </div>
 

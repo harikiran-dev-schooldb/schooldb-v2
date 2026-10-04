@@ -78,9 +78,16 @@ function getToday() {
   return days[new Date().getDay()];
 }
 
-export function TeacherTimetableContainer() {
+type Props = {
+  currentTeacher?: {
+    id: string;
+    fullName: string;
+  };
+};
+
+export function TeacherTimetableContainer({ currentTeacher }: Props) {
   const [academicYearId, setAcademicYearId] = useState("");
-  const [teacherId, setTeacherId] = useState("");
+  const [teacherId, setTeacherId] = useState(currentTeacher?.id ?? "");
 
   const [data, setData] = useState<TimetableItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -203,8 +210,9 @@ export function TeacherTimetableContainer() {
               <h2 className="text-sm font-semibold">Teacher Schedule</h2>
 
               <p className="mt-0.5 text-xs text-muted-foreground">
-                Select an academic year and teacher to view the weekly teaching
-                schedule.
+                {currentTeacher
+                  ? "Your assigned classes, subjects, and periods for the selected academic year."
+                  : "Select an academic year and teacher to view the weekly teaching schedule."}
               </p>
             </div>
           </div>
@@ -218,13 +226,21 @@ export function TeacherTimetableContainer() {
             />
           </FormField>
 
-          <FormField label="Teacher">
-            <TeacherSelect
-              value={teacherId}
-              onChange={handleTeacherChange}
-              disabled={!academicYearId}
-            />
-          </FormField>
+          {currentTeacher ? (
+            <FormField label="Teacher">
+              <div className="flex h-10 items-center rounded-md border bg-muted/30 px-3 text-sm font-medium">
+                {currentTeacher.fullName} · My timetable
+              </div>
+            </FormField>
+          ) : (
+            <FormField label="Teacher">
+              <TeacherSelect
+                value={teacherId}
+                onChange={handleTeacherChange}
+                disabled={!academicYearId}
+              />
+            </FormField>
+          )}
         </div>
       </div>
 
@@ -236,12 +252,15 @@ export function TeacherTimetableContainer() {
           </div>
 
           <h3 className="mt-4 text-base font-semibold">
-            Select a teacher to continue
+            {currentTeacher
+              ? "Select an academic year to continue"
+              : "Select a teacher to continue"}
           </h3>
 
           <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
-            Select the academic year and teacher to display the complete weekly
-            teaching schedule.
+            {currentTeacher
+              ? "Select the academic year to display your complete weekly teaching schedule."
+              : "Select the academic year and teacher to display the complete weekly teaching schedule."}
           </p>
         </div>
       )}

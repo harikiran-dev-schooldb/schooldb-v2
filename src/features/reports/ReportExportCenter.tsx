@@ -38,9 +38,19 @@ function ExportLink({ href, label, disabled = false }: { href: string; label: st
   );
 }
 
-function ExportGroup({ title, icon: Icon, children }: { title: string; icon: typeof UsersRound; children: React.ReactNode }) {
+function ExportGroup({
+  title,
+  icon: Icon,
+  children,
+  className = "",
+}: {
+  title: string;
+  icon: typeof UsersRound;
+  children: React.ReactNode;
+  className?: string;
+}) {
   return (
-    <Card className="border-slate-200/80 shadow-sm">
+    <Card className={`border-slate-200/80 shadow-sm ${className}`}>
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-base"><Icon className="size-4 text-indigo-600" />{title}</CardTitle>
       </CardHeader>
@@ -103,7 +113,7 @@ export function ReportExportCenter({ schoolSlug, filters, exams }: Props) {
         <p className="mt-1 text-sm text-muted-foreground">All downloads use the reporting scope selected above. Only super administrators, principals, and school administrators can access these exports.</p>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 lg:grid-cols-3">
         <ExportGroup title="People & academics" icon={GraduationCap}>
           {filters.academicYearId ? (
             <ReportExportButton
@@ -148,24 +158,41 @@ export function ReportExportCenter({ schoolSlug, filters, exams }: Props) {
           <ExportLink href="/api/v1/system/export" label="School data snapshot" />
         </ExportGroup>
 
-        <ExportGroup title="Individual fee ledger" icon={FileSpreadsheet}>
-          <SearchableStudentSelect
-            value={studentId}
-            onChange={(value) => {
-              setStudentId(value);
-              setStudentFees([]);
-              setStudentFeeId("");
-            }}
-            academicYearId={filters.academicYearId}
-          />
-          {studentFees.length > 1 ? (
-            <Select value={studentFeeId} onValueChange={setStudentFeeId}>
-              <SelectTrigger><SelectValue placeholder="Select fee plan" /></SelectTrigger>
-              <SelectContent>{studentFees.map((fee) => <SelectItem key={fee.id} value={fee.id}>{fee.feePlan?.name ?? "Fee ledger"}</SelectItem>)}</SelectContent>
-            </Select>
-          ) : null}
-          <ExportLink href={studentFeeId ? `/api/v1/reports/${schoolSlug}/fees/students/${studentFeeId}/ledger` : "#"} label="Export student ledger" disabled={!studentFeeId} />
-          <p className="text-xs leading-5 text-muted-foreground">Choose a student to download an individual assigned-fee ledger.</p>
+        <ExportGroup
+          title="Individual fee ledger"
+          icon={FileSpreadsheet}
+          className="lg:col-span-3"
+        >
+          <div className="grid gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(260px,0.75fr)]">
+            <SearchableStudentSelect
+              value={studentId}
+              onChange={(value) => {
+                setStudentId(value);
+                setStudentFees([]);
+                setStudentFeeId("");
+              }}
+              academicYearId={filters.academicYearId}
+            />
+
+            <div className="space-y-3 rounded-xl border bg-muted/20 p-4">
+              <div>
+                <p className="text-sm font-semibold">Ledger export</p>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                  Choose a student and assigned fee plan to download the
+                  individual ledger.
+                </p>
+              </div>
+
+              {studentFees.length > 1 ? (
+                <Select value={studentFeeId} onValueChange={setStudentFeeId}>
+                  <SelectTrigger><SelectValue placeholder="Select fee plan" /></SelectTrigger>
+                  <SelectContent>{studentFees.map((fee) => <SelectItem key={fee.id} value={fee.id}>{fee.feePlan?.name ?? "Fee ledger"}</SelectItem>)}</SelectContent>
+                </Select>
+              ) : null}
+
+              <ExportLink href={studentFeeId ? `/api/v1/reports/${schoolSlug}/fees/students/${studentFeeId}/ledger` : "#"} label="Export student ledger" disabled={!studentFeeId} />
+            </div>
+          </div>
         </ExportGroup>
       </div>
     </section>

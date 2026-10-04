@@ -1,5 +1,5 @@
 import { apiHandler } from "@/lib/api";
-import { requireTeacherClassSection, requireTenant } from "@/lib/auth";
+import { requireTenant, teacherClassScope } from "@/lib/auth";
 import { ApiResponse } from "@/lib/response";
 
 import { sectionService } from "@/features/sections/services/section.service";
@@ -16,14 +16,23 @@ export async function GET(request: Request) {
       throw new Error("classId is required.");
     }
 
-    if (tenant.role === "TEACHER") {
-      await requireTeacherClassSection(classId);
-    }
-
     const sections = await sectionService.options(
       tenant.schoolId,
       classId
     );
+
+    if (tenant.role === "TEACHER") {
+      const scope = await teacherClassScope(tenant.schoolId);
+      const allowedSectionIds = new Set(
+        scope
+          .filter((item) => item.classId === classId)
+          .map((item) => item.sectionId),
+      );
+
+      return ApiResponse.success(
+        sections.filter((section) => allowedSectionIds.has(section.id)),
+      );
+    }
 
     return ApiResponse.success(sections);
   });
