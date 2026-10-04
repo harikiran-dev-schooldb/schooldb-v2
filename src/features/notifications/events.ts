@@ -15,6 +15,7 @@ async function createEventNotification(input: {
     | "CLASS"
     | "SECTION"
     | "STUDENT"
+    | "STAFF"
     | "ADMIN";
   targetId: string | null;
   targetLabel: string;
@@ -340,6 +341,52 @@ export async function notifyAttendanceLocked(
   }
 
   return { present, absent, late, leave, total: session.records.length };
+}
+
+export async function notifyStaffAttendanceFinalized(input: {
+  schoolId: string;
+  date: Date;
+  total: number;
+  absentTeachers: Array<{
+    id: string;
+    employeeId: string;
+    fullName: string;
+  }>;
+}) {
+  const dateKey = input.date.toISOString().slice(0, 10);
+  const dateLabel = formatDate(input.date);
+  const absent = input.absentTeachers.length;
+  const present = input.total - absent;
+
+  await createEventNotification({
+    schoolId: input.schoolId,
+    title: "Staff attendance completed",
+    body: `${dateLabel} · ${input.total} staff · ${present} present · ${absent} absent.`,
+    category: "STAFF_ATTENDANCE_SUMMARY",
+    targetType: "ADMIN",
+    targetId: dateKey,
+    targetLabel: "School administrators",
+    sourceType: "STAFF_ATTENDANCE",
+    sourceId: dateKey,
+    dedupeKey: notificationDedupeKey.staffAttendanceSummary(dateKey),
+  });
+
+  for (const teacher of input.absentTeachers) {
+    await createEventNotification({
+      schoolId: input.schoolId,
+      title: "Staff attendance alert",
+      body: `You were marked absent on ${dateLabel}. If this is incorrect, please contact the school office.`,
+      category: "STAFF_ATTENDANCE",
+      targetType: "STAFF",
+      targetId: teacher.id,
+      targetLabel: `${teacher.fullName} (${teacher.employeeId})`,
+      sourceType: "STAFF_ATTENDANCE",
+      sourceId: dateKey,
+      dedupeKey: notificationDedupeKey.staffAttendanceAbsent(dateKey, teacher.id),
+    });
+  }
+
+  return { total: input.total, present, absent };
 }
 
 function leaveDate(value: Date) {
