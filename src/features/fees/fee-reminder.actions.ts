@@ -16,6 +16,7 @@ const filtersSchema = z.object({
   classId: z.string().trim().max(100).optional(),
   sectionId: z.string().trim().max(100).optional(),
   academicYearId: z.string().trim().max(100).optional(),
+  installmentName: z.string().trim().max(120).optional(),
 });
 
 function parseFilters(filters: FeeReminderFilters) {

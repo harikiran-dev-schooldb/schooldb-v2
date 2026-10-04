@@ -8,6 +8,7 @@ export type FeeReminderFilters = {
   classId?: string;
   sectionId?: string;
   academicYearId?: string;
+  installmentName?: string;
 };
 
 export type FeeReminderPreview = {
@@ -37,6 +38,7 @@ async function resolveFeeReminderAudience(
   const today = new Date(`${indiaDateKey(now)}T00:00:00.000Z`);
   const rows = await prisma.studentFeeInstallment.findMany({
     where: {
+      ...(filters.installmentName ? { name: filters.installmentName } : {}),
       dueDate: { lt: today },
       status: { in: ["PENDING", "PARTIAL"] },
       studentFeeItem: {

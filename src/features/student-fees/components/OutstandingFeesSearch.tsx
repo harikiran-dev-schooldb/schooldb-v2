@@ -1,18 +1,35 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { Search, SlidersHorizontal } from "lucide-react";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { ClassSelect, SectionSelect } from "@/components/common/select";
+import {
+  AcademicYearSelect,
+  ClassSelect,
+  SectionSelect,
+} from "@/components/common/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 type Props = {
   value: string;
   loading?: boolean;
   onChange: (value: string) => void;
+  academicYearId: string;
+  installmentName: string;
+  installmentOptions: string[];
   classId: string;
   sectionId: string;
+  onAcademicYearChange: (value: string) => void;
+  onInstallmentChange: (value: string) => void;
   onClassChange: (value: string) => void;
   onSectionChange: (value: string) => void;
   onSearch: () => void;
@@ -22,8 +39,13 @@ export function OutstandingFeesSearch({
   value,
   loading = false,
   onChange,
+  academicYearId,
+  installmentName,
+  installmentOptions,
   classId,
   sectionId,
+  onAcademicYearChange,
+  onInstallmentChange,
   onClassChange,
   onSectionChange,
   onSearch,
@@ -44,7 +66,7 @@ export function OutstandingFeesSearch({
               </h2>
 
               <p className="mt-0.5 text-xs text-muted-foreground">
-                Search students or narrow the list by class and section.
+                Filter dues by academic year, installment, class, or student.
               </p>
             </div>
           </div>
@@ -52,39 +74,77 @@ export function OutstandingFeesSearch({
 
         {/* Search */}
         <div className="p-5 sm:p-6">
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(260px,1fr)_180px_180px_auto]">
-            <div className="relative min-w-0 flex-1">
-              <Search className="absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-
-              <Input
-                value={value}
-                onChange={(event) => onChange(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") {
-                    event.preventDefault();
-                    onSearch();
-                  }
-                }}
-                placeholder="Search student or admission number..."
-                className="h-11 rounded-xl border-border/70 bg-background pl-11 shadow-none transition-all focus-visible:ring-2 focus-visible:ring-primary/20"
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <FilterField label="Academic year">
+              <AcademicYearSelect
+                value={academicYearId}
+                onChange={onAcademicYearChange}
+                disabled={loading}
               />
-            </div>
+            </FilterField>
 
-            <ClassSelect
-              value={classId}
-              onChange={onClassChange}
-              allowAll
-              placeholder="All Classes"
-              triggerClassName="h-11 rounded-xl"
-            />
+            <FilterField label="Installment">
+              <Select
+                value={installmentName || "all"}
+                onValueChange={(value) =>
+                  onInstallmentChange(value === "all" ? "" : value)
+                }
+                disabled={loading || !academicYearId}
+              >
+                <SelectTrigger className="h-11 rounded-xl">
+                  <SelectValue placeholder="All installments" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All installments</SelectItem>
+                  {installmentOptions.map((option) => (
+                    <SelectItem key={option} value={option}>
+                      {option}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </FilterField>
 
-            <SectionSelect
-              classId={classId}
-              value={sectionId}
-              onChange={onSectionChange}
-              placeholder="All Sections"
-              triggerClassName="h-11 rounded-xl"
-            />
+            <FilterField label="Class">
+              <ClassSelect
+                value={classId}
+                onChange={onClassChange}
+                allowAll
+                placeholder="All Classes"
+                triggerClassName="h-11 rounded-xl"
+              />
+            </FilterField>
+
+            <FilterField label="Section">
+              <SectionSelect
+                classId={classId}
+                value={sectionId}
+                onChange={onSectionChange}
+                placeholder="All Sections"
+                triggerClassName="h-11 rounded-xl"
+              />
+            </FilterField>
+          </div>
+
+          <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end">
+            <FilterField label="Student or admission number" className="min-w-0 flex-1">
+              <div className="relative">
+                <Search className="absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+
+                <Input
+                  value={value}
+                  onChange={(event) => onChange(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      onSearch();
+                    }
+                  }}
+                  placeholder="Search student or admission number..."
+                  className="h-11 rounded-xl border-border/70 bg-background pl-11 shadow-none transition-all focus-visible:ring-2 focus-visible:ring-primary/20"
+                />
+              </div>
+            </FilterField>
 
             <Button
               onClick={onSearch}
@@ -93,11 +153,28 @@ export function OutstandingFeesSearch({
             >
               <Search className="mr-2 size-4" />
 
-              {loading ? "Searching..." : "Search"}
+              {loading ? "Applying..." : "Apply filters"}
             </Button>
           </div>
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+function FilterField({
+  label,
+  className,
+  children,
+}: {
+  label: string;
+  className?: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className={className}>
+      <div className="mb-1.5 text-xs font-semibold text-foreground">{label}</div>
+      {children}
+    </div>
   );
 }

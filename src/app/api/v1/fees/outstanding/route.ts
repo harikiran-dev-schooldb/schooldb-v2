@@ -37,6 +37,9 @@ export async function GET(req: Request) {
         "academicYearId",
       ) || undefined;
 
+    const installmentName =
+      searchParams.get("installmentName")?.trim() || undefined;
+
     const summaryOnly =
       searchParams.get("summary") === "1";
 
@@ -73,6 +76,7 @@ export async function GET(req: Request) {
           classId,
           sectionId,
           academicYearId,
+          installmentName,
           allowedClassSections,
         })
       : await outstandingFeesService.list({
@@ -81,6 +85,7 @@ export async function GET(req: Request) {
           classId,
           sectionId,
           academicYearId,
+          installmentName,
           page,
           pageSize,
           allowedClassSections,

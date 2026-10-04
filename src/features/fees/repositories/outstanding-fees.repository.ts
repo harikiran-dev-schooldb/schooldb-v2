@@ -7,6 +7,7 @@ type OutstandingFeesFilters = {
   classId?: string;
   sectionId?: string;
   academicYearId?: string;
+  installmentName?: string;
   allowedClassSections?: Array<{
     academicYearId: string;
     classId: string;
@@ -20,8 +21,10 @@ const whereClause = ({
   classId,
   sectionId,
   academicYearId,
+  installmentName,
   allowedClassSections,
 }: OutstandingFeesFilters): Prisma.StudentFeeInstallmentWhereInput => ({
+  ...(installmentName ? { name: installmentName } : {}),
   status: {
     in: ["PENDING", "PARTIAL"],
   },

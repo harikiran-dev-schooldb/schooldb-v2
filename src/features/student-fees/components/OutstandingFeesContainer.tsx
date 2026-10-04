@@ -19,6 +19,7 @@ import { ManualFeeReminderButton } from "@/features/fees/components/ManualFeeRem
 
 type Props = {
   schoolSlug: string;
+  initialAcademicYearId?: string;
   canSendReminders?: boolean;
   canCollect?: boolean;
 };
@@ -27,6 +28,7 @@ const PAGE_SIZE = 25;
 
 export function OutstandingFeesContainer({
   schoolSlug,
+  initialAcademicYearId = "",
   canSendReminders = false,
   canCollect = true,
 }: Props) {
@@ -37,6 +39,9 @@ export function OutstandingFeesContainer({
   const [error, setError] = useState<string | null>(null);
 
   const [search, setSearch] = useState("");
+  const [academicYearId, setAcademicYearId] = useState(initialAcademicYearId);
+  const [installmentName, setInstallmentName] = useState("");
+  const [installmentOptions, setInstallmentOptions] = useState<string[]>([]);
   const [classId, setClassId] = useState("");
   const [sectionId, setSectionId] = useState("");
 
@@ -49,6 +54,8 @@ export function OutstandingFeesContainer({
   async function loadOutstanding(
     searchValue = "",
     pageValue = 1,
+    academicYearValue = academicYearId,
+    installmentValue = installmentName,
     classValue = classId,
     sectionValue = sectionId,
   ) {
@@ -61,6 +68,8 @@ export function OutstandingFeesContainer({
       if (searchValue.trim()) {
         params.set("search", searchValue.trim());
       }
+      if (academicYearValue) params.set("academicYearId", academicYearValue);
+      if (installmentValue) params.set("installmentName", installmentValue);
       if (classValue) params.set("classId", classValue);
       if (sectionValue) params.set("sectionId", sectionValue);
 
@@ -100,6 +109,9 @@ export function OutstandingFeesContainer({
 
         params.set("page", "1");
         params.set("pageSize", String(PAGE_SIZE));
+        if (initialAcademicYearId) {
+          params.set("academicYearId", initialAcademicYearId);
+        }
 
         const response = await fetch(
           `/api/v1/fees/outstanding?${params.toString()}`,
@@ -135,7 +147,37 @@ export function OutstandingFeesContainer({
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [initialAcademicYearId]);
+
+  useEffect(() => {
+    if (!academicYearId) {
+      return;
+    }
+
+    const controller = new AbortController();
+
+    async function loadInstallmentOptions() {
+      try {
+        const params = new URLSearchParams({ academicYearId });
+        const response = await fetch(
+          `/api/v1/fees/outstanding/installment-options?${params.toString()}`,
+          { cache: "no-store", signal: controller.signal },
+        );
+        const result = await response.json();
+
+        if (response.ok && result.success && Array.isArray(result.data)) {
+          setInstallmentOptions(result.data);
+        }
+      } catch (optionError) {
+        if (!(optionError instanceof DOMException && optionError.name === "AbortError")) {
+          setInstallmentOptions([]);
+        }
+      }
+    }
+
+    void loadInstallmentOptions();
+    return () => controller.abort();
+  }, [academicYearId]);
 
   function handleSearch() {
     void loadOutstanding(search, 1);
@@ -225,8 +267,17 @@ export function OutstandingFeesContainer({
         value={search}
         loading={loading}
         onChange={setSearch}
+        academicYearId={academicYearId}
+        installmentName={installmentName}
+        installmentOptions={installmentOptions}
         classId={classId}
         sectionId={sectionId}
+        onAcademicYearChange={(value) => {
+          setAcademicYearId(value);
+          setInstallmentName("");
+          setInstallmentOptions([]);
+        }}
+        onInstallmentChange={setInstallmentName}
         onClassChange={(value) => {
           setClassId(value);
           setSectionId("");
@@ -250,6 +301,8 @@ export function OutstandingFeesContainer({
             schoolSlug={schoolSlug}
             filters={{
               search: search.trim() || undefined,
+              academicYearId: academicYearId || undefined,
+              installmentName: installmentName || undefined,
               classId: classId || undefined,
               sectionId: sectionId || undefined,
             }}

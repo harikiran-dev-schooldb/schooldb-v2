@@ -7,6 +7,7 @@ type OutstandingFeesInput = {
   classId?: string;
   sectionId?: string;
   academicYearId?: string;
+  installmentName?: string;
   page: number;
   pageSize: number;
   allowedClassSections?: Array<{
@@ -24,6 +25,7 @@ export const outstandingFeesService = {
       classId: input.classId,
       sectionId: input.sectionId,
       academicYearId: input.academicYearId,
+      installmentName: input.installmentName,
       allowedClassSections: input.allowedClassSections,
     };
 
@@ -53,6 +55,7 @@ export const outstandingFeesService = {
       classId,
       sectionId,
       academicYearId,
+      installmentName,
       page,
       pageSize,
       allowedClassSections,
@@ -64,6 +67,7 @@ export const outstandingFeesService = {
       classId,
       sectionId,
       academicYearId,
+      installmentName,
       allowedClassSections,
     };
 
