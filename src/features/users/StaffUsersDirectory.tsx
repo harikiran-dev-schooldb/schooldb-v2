@@ -18,6 +18,7 @@ import {
 
 import {
   CreateStaffAccountButton,
+  EditStaffAccountButton,
   StaffAccountStatusButton,
 } from "./StaffAccountActions";
 
@@ -30,6 +31,7 @@ export type StaffUserRow = {
   designation: string;
   isActive: boolean;
   canManage: boolean;
+  canEdit: boolean;
   isCurrentUser: boolean;
 };
 
@@ -148,10 +150,24 @@ const staffColumns: ColumnDef<StaffUserRow>[] = [
 
       if (account.canManage) {
         return (
-          <StaffAccountStatusButton
-            id={account.id}
-            active={account.isActive}
-          />
+          <div className="flex items-center gap-2">
+            {account.canEdit ? (
+              <EditStaffAccountButton
+                account={{
+                  id: account.id,
+                  name: account.name,
+                  phone: account.phone,
+                  role: account.role,
+                  designation: account.designation,
+                  isActive: account.isActive,
+                }}
+              />
+            ) : null}
+            <StaffAccountStatusButton
+              id={account.id}
+              active={account.isActive}
+            />
+          </div>
         );
       }
 

@@ -149,7 +149,7 @@ export async function provisionStaffLogin(input: {
   schoolSlug: string;
   displayName: string;
   phone: string;
-  role: "SUPER_ADMIN" | "SCHOOL_ADMIN" | "ACCOUNTANT" | "RECEPTIONIST";
+  role: "SUPER_ADMIN" | "SCHOOL_ADMIN" | "TEACHER" | "ACCOUNTANT" | "RECEPTIONIST";
   designation: string;
   existingClerkUserId?: string;
   isActive?: boolean;
