@@ -10,6 +10,10 @@ import {
 import { PageHeader } from "@/components/common/PageHeader";
 import { CreateStaffAccountButton } from "@/features/users/StaffAccountActions";
 import {
+  canManageStaffAccount,
+  STAFF_ACCOUNT_ROLES,
+} from "@/features/users/staff-account-policy";
+import {
   StaffUsersDirectory,
   type StaffUserRow,
 } from "@/features/users/StaffUsersDirectory";
@@ -26,13 +30,7 @@ export default async function StaffUsersPage({ params }: Props) {
     where: {
       schoolId: actor.schoolId,
       role: {
-        in: [
-          "SUPER_ADMIN",
-          "SCHOOL_ADMIN",
-          "TEACHER",
-          "ACCOUNTANT",
-          "RECEPTIONIST",
-        ],
+        in: [...STAFF_ACCOUNT_ROLES],
       },
     },
     orderBy: [{ isActive: "desc" }, { createdAt: "desc" }],
@@ -67,10 +65,7 @@ export default async function StaffUsersPage({ params }: Props) {
         .filter(Boolean)
         .join(" ") || "SchoolDB user";
 
-    const canManage =
-      account.userId !== actor.userId &&
-      account.role !== "SUPER_ADMIN" &&
-      (actor.role === "SUPER_ADMIN" || account.role !== "SCHOOL_ADMIN");
+    const canManage = canManageStaffAccount(actor, account);
 
     return {
       id: account.id,

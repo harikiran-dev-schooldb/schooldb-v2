@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { provisionStaffLogin } from "@/features/auth/account-provisioning";
 import { normalizeIndianMobile } from "@/features/auth/otp";
+import { STAFF_ACCOUNT_ROLES } from "@/features/users/staff-account-policy";
 import { ApiError } from "@/lib/errors";
 import { prisma } from "@/lib/prisma";
 
@@ -54,14 +55,6 @@ const presetAccess = {
   RECEPTIONIST: { role: "RECEPTIONIST", designation: "Receptionist" },
 } as const;
 
-const staffRoles = [
-  "SUPER_ADMIN",
-  "SCHOOL_ADMIN",
-  "TEACHER",
-  "ACCOUNTANT",
-  "RECEPTIONIST",
-] as const;
-
 async function assertPhoneAvailable(
   schoolId: string,
   phone: string,
@@ -74,7 +67,7 @@ async function assertPhoneAvailable(
     where: {
       schoolId,
       ...(excludeMembershipId ? { id: { not: excludeMembershipId } } : {}),
-      role: { in: [...staffRoles] },
+      role: { in: [...STAFF_ACCOUNT_ROLES] },
       user: { phone: { endsWith: digits } },
     },
     select: { id: true },
@@ -132,7 +125,11 @@ export async function updateStaffAccount(
 
   const input = updateStaffAccountSchema.parse(value);
   const account = await prisma.membership.findFirst({
-    where: { id: membershipId, schoolId },
+    where: {
+      id: membershipId,
+      schoolId,
+      role: { in: [...STAFF_ACCOUNT_ROLES] },
+    },
     select: {
       id: true,
       userId: true,
@@ -209,7 +206,11 @@ export async function setStaffAccountActive(
   active: boolean,
 ) {
   const account = await prisma.membership.findFirst({
-    where: { id: membershipId, schoolId },
+    where: {
+      id: membershipId,
+      schoolId,
+      role: { in: [...STAFF_ACCOUNT_ROLES] },
+    },
     select: { id: true, userId: true, role: true },
   });
 

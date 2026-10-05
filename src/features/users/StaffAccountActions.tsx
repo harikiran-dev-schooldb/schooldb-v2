@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import {
   Dialog,
   DialogContent,
@@ -390,6 +391,19 @@ export function StaffAccountStatusButton({
   const router = useRouter();
   const [pending, setPending] = useState(false);
 
+  const button = (
+    <Button
+      type="button"
+      size="sm"
+      variant="outline"
+      disabled={pending}
+      onClick={active ? undefined : toggle}
+    >
+      {pending ? <Loader2 className="size-3.5 animate-spin" /> : <Power className="size-3.5" />}
+      {active ? "Disable" : "Enable"}
+    </Button>
+  );
+
   async function toggle() {
     setPending(true);
 
@@ -417,11 +431,19 @@ export function StaffAccountStatusButton({
     }
   }
 
+  if (!active) return button;
+
   return (
-    <Button size="sm" variant="outline" disabled={pending} onClick={toggle}>
-      <Power className="size-3.5" />
-      {active ? "Disable" : "Enable"}
-    </Button>
+    <ConfirmDialog
+      trigger={button}
+      title="Disable this staff account?"
+      description="This person will no longer be able to sign in to this school workspace."
+      confirmLabel="Disable access"
+      tone="destructive"
+      consequence="You can restore access later from the staff directory."
+      pending={pending}
+      onConfirm={() => void toggle()}
+    />
   );
 }
 
