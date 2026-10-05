@@ -3,6 +3,7 @@ package com.schooldb.support
 import android.os.Build
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
@@ -11,6 +12,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.outlined.Android
 import androidx.compose.material.icons.outlined.Badge
+import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Phone
@@ -27,6 +30,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.schooldb.support.tickets.SupportAccountProfile
+import com.schooldb.support.tickets.AccountSwitchChoice
 
 @Composable
 internal fun SupportProfileScreen(
@@ -35,7 +39,13 @@ internal fun SupportProfileScreen(
     loading: Boolean,
     error: String?,
     alertsEnabled: Boolean,
+    accounts: List<AccountSwitchChoice>,
+    accountsLoading: Boolean,
+    accountsError: String?,
+    switchingAccountId: String?,
     onRetry: () -> Unit,
+    onRefreshAccounts: () -> Unit,
+    onSwitchAccount: (AccountSwitchChoice) -> Unit,
     onNotificationSettings: () -> Unit,
     onSignOut: () -> Unit,
 ) {
@@ -83,11 +93,57 @@ internal fun SupportProfileScreen(
             item {
                 ProfileDetailsCard(
                     listOf(
-                        ProfileRow(Icons.Outlined.Badge, "Role", profile.role.readableRole()),
+                        ProfileRow(Icons.Outlined.Badge, "Role", displayAccountRole(profile.role, profile.designation)),
                         ProfileRow(Icons.Outlined.Phone, "Verified mobile", profile.phone ?: "Not available"),
                         ProfileRow(Icons.Outlined.Email, "Email", profile.email ?: "Not added"),
                     ),
                 )
+            }
+
+            if (accountsLoading || accounts.size > 1 || accountsError != null) {
+                item { ProfileSectionLabel("SWITCH ACCOUNT") }
+                item {
+                    SurfaceCard(Modifier.fillMaxWidth()) {
+                        when {
+                            accountsLoading -> Row(verticalAlignment = Alignment.CenterVertically) {
+                                CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                                Spacer(Modifier.width(10.dp))
+                                Text("Loading linked accounts…", color = Muted)
+                            }
+                            accountsError != null -> {
+                                Text(accountsError, color = MaterialTheme.colorScheme.error)
+                                TextButton(onClick = onRefreshAccounts) { Text("Try again") }
+                            }
+                            else -> accounts.forEachIndexed { index, account ->
+                                Row(
+                                    Modifier.fillMaxWidth()
+                                        .clickable(
+                                            enabled = !account.current && switchingAccountId == null,
+                                            onClick = { onSwitchAccount(account) },
+                                        )
+                                        .padding(vertical = 10.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Column(Modifier.weight(1f)) {
+                                        Text(account.name, color = Ink, fontWeight = FontWeight.SemiBold)
+                                        Text(
+                                            listOf(account.role.readableRole(), account.detail)
+                                                .filter(String::isNotBlank).joinToString(" · "),
+                                            color = Muted,
+                                            style = MaterialTheme.typography.bodySmall,
+                                        )
+                                    }
+                                    when {
+                                        switchingAccountId == account.id -> CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                                        account.current -> Icon(Icons.Outlined.CheckCircle, "Current account", tint = Color(0xFF15976C))
+                                        else -> Icon(Icons.Outlined.ChevronRight, "Switch account", tint = Muted)
+                                    }
+                                }
+                                if (index < accounts.lastIndex) HorizontalDivider(color = Line)
+                            }
+                        }
+                    }
+                }
             }
 
             item { ProfileSectionLabel("SCHOOL") }
@@ -186,7 +242,7 @@ private fun ProfileHero(profile: SupportAccountProfile, schoolIdentity: SchoolId
                 Text(profile.userName, color = Color.White, style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Spacer(Modifier.height(3.dp))
-                Text(profile.role.readableRole(), color = Color.White.copy(alpha = .78f),
+                Text(displayAccountRole(profile.role, profile.designation), color = Color.White.copy(alpha = .78f),
                     style = MaterialTheme.typography.bodyMedium)
                 Text(schoolIdentity?.name ?: profile.schoolName, color = Color.White.copy(alpha = .72f),
                     style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)

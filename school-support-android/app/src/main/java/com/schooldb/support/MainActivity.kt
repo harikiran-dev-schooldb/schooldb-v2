@@ -30,7 +30,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material.icons.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.Dashboard
 import androidx.compose.material.icons.outlined.ConfirmationNumber
@@ -118,6 +118,12 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
     var accountProfile by remember(school) { mutableStateOf<SupportAccountProfile?>(null) }
     var profileLoading by remember(school) { mutableStateOf(false) }
     var profileError by remember(school) { mutableStateOf<String?>(null) }
+    var switchAccounts by remember(school) { mutableStateOf<List<AccountSwitchChoice>>(emptyList()) }
+    var switchAccountsLoading by remember(school) { mutableStateOf(false) }
+    var switchAccountsError by remember(school) { mutableStateOf<String?>(null) }
+    var switchingAccountId by remember(school) { mutableStateOf<String?>(null) }
+    var ticketDraft by remember(school) { mutableStateOf(TicketDraft()) }
+    val replyDrafts = remember(school) { mutableStateMapOf<String, String>() }
     var resendSeconds by remember { mutableIntStateOf(0) }
     var resumeVersion by remember { mutableIntStateOf(0) }
     val identitySchool = school.ifBlank { savedSchool }
@@ -238,6 +244,23 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
         }
     }
 
+    fun loadSwitchAccounts() {
+        if (switchAccountsLoading || school.isBlank()) return
+        switchAccountsLoading = true
+        switchAccountsError = null
+        scope.launch {
+            try {
+                switchAccounts = api.switchAccounts(school)
+            } catch (e: SupportSessionExpiredException) {
+                handleSessionExpired()
+            } catch (e: Exception) {
+                switchAccountsError = e.message ?: "Could not load linked accounts."
+            } finally {
+                switchAccountsLoading = false
+            }
+        }
+    }
+
     fun signOutNow() {
         if (signingOut) return
         signingOut = true
@@ -272,6 +295,9 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
                 adminViewModel.reset()
                 authViewModel.clearAll()
                 accountProfile = null
+                switchAccounts = emptyList()
+                ticketDraft = TicketDraft()
+                replyDrafts.clear()
                 dashboardTab = DashboardTab.OVERVIEW
                 requestedTicketFilter = null
                 com.schooldb.support.notifications.SupportPushSync.enqueue(context, replace = true)
@@ -301,9 +327,10 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
 
     LaunchedEffect(page, dashboardTab, school, sessionReady) {
         if (page == SupportPage.DASHBOARD && dashboardTab == DashboardTab.PROFILE &&
-            sessionReady && accountProfile == null && !profileLoading
+            sessionReady
         ) {
-            loadProfile()
+            if (accountProfile == null && !profileLoading) loadProfile()
+            if (switchAccounts.isEmpty() && !switchAccountsLoading) loadSwitchAccounts()
         }
     }
 
@@ -457,7 +484,7 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
                         if (page == SupportPage.DASHBOARD) SchoolIdentityMark(identity, Modifier.size(42.dp), loading = !identityCacheLoaded)
                         else Surface(shape = CircleShape, color = Canvas, border = BorderStroke(1.dp, Line)) {
                             IconButton(onClick = { page = if (page == SupportPage.ADMIN_FORM) SupportPage.ADMINS else SupportPage.DASHBOARD }, modifier = Modifier.size(42.dp)) {
-                            Icon(Icons.Outlined.ArrowBack, contentDescription = "Back", tint = Ink)
+                            Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Back", tint = Ink)
                             }
                         }
                         Column {
@@ -577,7 +604,37 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
                         loading = profileLoading,
                         error = profileError,
                         alertsEnabled = alertsEnabled,
+                        accounts = switchAccounts,
+                        accountsLoading = switchAccountsLoading,
+                        accountsError = switchAccountsError,
+                        switchingAccountId = switchingAccountId,
                         onRetry = ::loadProfile,
+                        onRefreshAccounts = ::loadSwitchAccounts,
+                        onSwitchAccount = { account ->
+                            if (!account.current && switchingAccountId == null) {
+                                switchingAccountId = account.id
+                                switchAccountsError = null
+                                scope.launch {
+                                    try {
+                                        val token = api.switchAccount(school, account.id)
+                                            ?: error("The server did not return an account session.")
+                                        api.activate(token)
+                                        accountProfile = null
+                                        switchAccounts = emptyList()
+                                        ticketViewModel.reset()
+                                        adminViewModel.reset()
+                                        ticketDraft = TicketDraft()
+                                        replyDrafts.clear()
+                                        dashboardTab = DashboardTab.OVERVIEW
+                                        notice = "Account switched successfully."
+                                    } catch (e: Exception) {
+                                        switchAccountsError = e.message ?: "Account switch failed."
+                                    } finally {
+                                        switchingAccountId = null
+                                    }
+                                }
+                            }
+                        },
                         onNotificationSettings = {
                             context.startActivity(Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS)
                                 .putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName))
@@ -633,7 +690,13 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
                         }
                     },
                     onTicket = { id -> run { loadDetail(id) } })
-                SupportPage.CREATE_TICKET -> CreateTicket(api, school, busy) { subject, description, type, priority, studentId, attachment -> run {
+                SupportPage.CREATE_TICKET -> CreateTicket(
+                    api,
+                    school,
+                    busy,
+                    ticketDraft,
+                    { ticketDraft = it },
+                ) { subject, description, type, priority, studentId, attachment -> run {
                     val createdId = api.create(school, subject, description, type, priority, studentId)
                     notice = if (attachment == null) {
                         "Ticket created successfully."
@@ -645,6 +708,7 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
                             "Ticket created, but the attachment could not be uploaded: ${exception.message ?: "please try again"}"
                         }
                     }
+                    ticketDraft = TicketDraft()
                     try {
                         loadDetail(createdId)
                         ticketViewModel.loadTickets(school, cache = ticketCache)
@@ -655,8 +719,11 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
                     }
                 } }
                 SupportPage.TICKET_DETAIL -> ticketState.detail?.let { ticket -> TicketDetails(ticket, ticketState.isAdmin, busy, ticketState.staff,
+                    reply = replyDrafts[ticket.id].orEmpty(),
+                    onReplyChange = { replyDrafts[ticket.id] = it },
                     onReply = { body, isInternal -> run {
                         api.reply(school, ticket.id, body, isInternal)
+                        replyDrafts.remove(ticket.id)
                         refreshTicketAfterMutation(ticket.id)
                     } },
                     onStatus = { status -> run { api.updateStatus(school, ticket.id, status); refreshTicketAfterMutation(ticket.id) } },
@@ -684,9 +751,9 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
                     onCreate = { adminViewModel.select(null); page = SupportPage.ADMIN_FORM },
                     onEdit = { adminViewModel.select(it); page = SupportPage.ADMIN_FORM },
                     onRefresh = { run { adminViewModel.setAccounts(api.adminAccounts(school)) } }) }
-                SupportPage.ADMIN_FORM -> AdminAccountForm(adminState.selected, busy) { fullName, mobile, role, active -> run {
+                SupportPage.ADMIN_FORM -> AdminAccountForm(adminState.selected, busy) { fullName, mobile, role, designation, active -> run {
                     val creatingAdmin = adminState.selected == null
-                    api.saveAdminAccount(school, adminState.selected?.id, fullName, mobile, role, active)
+                    api.saveAdminAccount(school, adminState.selected?.id, fullName, mobile, role, designation, active)
                     adminViewModel.setAccounts(api.adminAccounts(school))
                     page = SupportPage.ADMINS
                     notice = if (creatingAdmin) "Administrator account created." else "Administrator account updated."

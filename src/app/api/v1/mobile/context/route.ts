@@ -14,6 +14,7 @@ export async function GET() {
       schoolName: membership.school.name,
       schoolSlug: membership.school.slug,
       role: membership.role,
+      designation: membership.designation,
       phone: membership.user.phone,
       email: membership.user.email,
       imageUrl: membership.user.imageUrl,

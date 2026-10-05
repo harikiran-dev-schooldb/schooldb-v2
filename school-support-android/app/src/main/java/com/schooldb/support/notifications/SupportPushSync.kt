@@ -5,6 +5,7 @@ import androidx.work.*
 import com.clerk.api.Clerk
 import com.google.android.gms.tasks.Tasks
 import com.google.firebase.messaging.FirebaseMessaging
+import com.google.firebase.installations.FirebaseInstallations
 import com.schooldb.support.BuildConfig
 import com.schooldb.support.tickets.SupportRepository
 import kotlinx.coroutines.Dispatchers
@@ -23,24 +24,32 @@ class SupportPushSync(context: Context, parameters: WorkerParameters) : Coroutin
         val session = applicationContext.getSharedPreferences("support_session", 0)
         try {
             if (push.getBoolean("delete_token", false)) {
-                Tasks.await(FirebaseMessaging.getInstance().deleteToken(), 20, TimeUnit.SECONDS)
+                Tasks.await(FirebaseMessaging.getInstance().unregister(), 20, TimeUnit.SECONDS)
                 push.edit().remove("delete_token").remove("pending_fcm_token").apply()
+            }
+            withTimeout(15_000) { Clerk.isInitialized.first { it } }
+            if (Clerk.activeSession == null) {
+                return@withContext if (session.getString("school", null).isNullOrBlank()) Result.success() else Result.retry()
+            }
+            val pendingSchool = push.getString("pending_unregister_school", null)?.takeIf(String::isNotBlank)
+            val pendingInstallationId = push.getString("pending_unregister_installation_id", null)?.takeIf(String::isNotBlank)
+            if (pendingSchool != null && pendingInstallationId != null) {
+                SupportRepository().unregisterPushDevice(pendingSchool, pendingInstallationId)
+                push.edit().remove("pending_unregister_school").remove("pending_unregister_installation_id").apply()
             }
             val school = session.getString("school", null)?.takeIf(String::isNotBlank)
                 ?: return@withContext Result.success()
-            withTimeout(15_000) { Clerk.isInitialized.first { it } }
-            if (Clerk.activeSession == null) return@withContext Result.retry()
             val installationId = push.getString("installation_id", null) ?: UUID.randomUUID().toString().also {
                 push.edit().putString("installation_id", it).apply()
             }
-            val token = Tasks.await(FirebaseMessaging.getInstance().token, 20, TimeUnit.SECONDS)
+            Tasks.await(FirebaseMessaging.getInstance().register(), 20, TimeUnit.SECONDS)
+            val token = Tasks.await(FirebaseInstallations.getInstance().id, 20, TimeUnit.SECONDS)
             // Do not register an old account after sign-out or a school change.
             if (session.getString("school", null) != school || push.getBoolean("delete_token", false)) {
                 return@withContext Result.retry()
             }
             SupportRepository().registerPushDevice(school, installationId, token)
-            push.edit().remove("pending_fcm_token")
-                .remove("pending_unregister_school").remove("pending_unregister_installation_id").apply()
+            push.edit().remove("pending_fcm_token").apply()
             Result.success()
         } catch (_: kotlinx.coroutines.TimeoutCancellationException) {
             Result.retry()

@@ -21,6 +21,8 @@ local sign-in state. Tickets remain on the server.
 
 The app signs in staff, lists accessible tickets, creates tickets, searches students by name or admission number, shows details, and adds replies. School admins can assign staff and update status and priority. Staff see tickets they created or were assigned; school admins see all tickets in their school.
 
+Release 0.9.0 adds staff replies with admin-only internal notes, valid status-transition choices with confirmation, Principal and Vice Principal designations, message/activity timestamps, navigation-safe ticket and reply drafts, retryable push-device cleanup, and OTP-free switching between accounts linked to the same verified mobile number.
+
 Super Admins can open **Manage administrators** from the support dashboard to create or update
 Super Admin and School Admin accounts. New administrators sign in with the mobile number entered
 there and a WhatsApp OTP. An administrator cannot edit their own account from this screen.

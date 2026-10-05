@@ -16,6 +16,9 @@ export const adminAccountInput = z.object({
       "Enter a valid Indian mobile number.",
     ),
   role: z.enum(["SUPER_ADMIN", "SCHOOL_ADMIN"]),
+  designation: z
+    .enum(["School Administrator", "Principal", "Vice Principal"])
+    .nullish(),
   isActive: z.boolean(),
 });
 
@@ -36,6 +39,7 @@ export async function listAdminAccounts(schoolId: string) {
       id: true,
       userId: true,
       role: true,
+      designation: true,
       isActive: true,
       user: { select: { firstName: true, lastName: true, phone: true } },
     },
@@ -48,6 +52,7 @@ export async function listAdminAccounts(schoolId: string) {
       .join(" "),
     phone: membership.user.phone ?? "",
     role: membership.role,
+    designation: membership.designation ?? "",
     isActive: membership.isActive,
   }));
 }
@@ -91,7 +96,7 @@ export async function createAdminAccount(
     designation:
       input.role === "SUPER_ADMIN"
         ? "Super Administrator"
-        : "School Administrator",
+        : input.designation ?? "School Administrator",
     isActive: input.isActive,
   });
   return prisma.membership.findUniqueOrThrow({
@@ -128,7 +133,7 @@ export async function updateAdminAccount(
     designation:
       input.role === "SUPER_ADMIN"
         ? "Super Administrator"
-        : "School Administrator",
+        : input.designation ?? "School Administrator",
     existingClerkUserId: current.user.clerkUserId,
     isActive: input.isActive,
   });

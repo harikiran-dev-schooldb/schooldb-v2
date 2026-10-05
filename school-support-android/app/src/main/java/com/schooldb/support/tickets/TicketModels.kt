@@ -42,6 +42,23 @@ data class PendingAttachment(
     val bytes: ByteArray,
 )
 
+data class TicketDraft(
+    val subject: String = "",
+    val description: String = "",
+    val type: TicketType = TicketType.GENERAL,
+    val priority: TicketPriority = TicketPriority.NORMAL,
+    val selectedStudent: StudentOption? = null,
+    val attachment: PendingAttachment? = null,
+)
+
+data class AccountSwitchChoice(
+    val id: String,
+    val name: String,
+    val role: String,
+    val detail: String,
+    val current: Boolean,
+)
+
 data class TicketAttachment(
     val id: String,
     val name: String,
@@ -62,6 +79,7 @@ data class SupportAccountProfile(
     val schoolName: String,
     val schoolSlug: String,
     val role: String,
+    val designation: String?,
     val phone: String?,
     val email: String?,
 )

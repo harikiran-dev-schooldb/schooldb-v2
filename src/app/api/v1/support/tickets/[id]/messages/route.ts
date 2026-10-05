@@ -16,7 +16,6 @@ const inputSchema = z.object({
 export async function POST(request: Request, context: Context) {
   return apiHandler(async () => {
     const actor = await supportActor();
-    if (!actor.isAdmin) throw new ApiError(403, "Only school admins can reply to tickets.");
     const ticket = await visibleTicket((await context.params).id, actor);
     if (ticket.status === "CLOSED") throw new ApiError(400, "Closed tickets cannot receive replies.");
     const input = inputSchema.safeParse(await request.json());

@@ -44,11 +44,11 @@ data class TicketDetail(
     val activities: List<TicketActivity>,
 )
 
-data class TicketMessage(val body: String, val author: String, val isInternal: Boolean)
+data class TicketMessage(val body: String, val author: String, val isInternal: Boolean, val createdAt: String)
 data class TicketActivity(val action: String, val detail: String, val actor: String, val createdAt: String)
 data class StaffOption(val id: String, val name: String, val role: String)
 data class AdminAccount(val id: String, val userId: String, val fullName: String,
-    val phone: String, val role: String, val isActive: Boolean)
+    val phone: String, val role: String, val designation: String, val isActive: Boolean)
 data class AdminAccounts(val accounts: List<AdminAccount>, val actorUserId: String)
 data class TicketList(val tickets: List<TicketSummary>, val isAdmin: Boolean,
     val canManageAdmins: Boolean,
@@ -145,6 +145,7 @@ class SupportRepository {
             schoolName = data.optString("schoolName", "SchoolDB"),
             schoolSlug = data.optString("schoolSlug", school),
             role = data.optString("role", "STAFF"),
+            designation = data.optString("designation").takeUnless { it.isBlank() || it == "null" },
             phone = data.optString("phone").takeUnless { it.isBlank() || it == "null" },
             email = data.optString("email").takeUnless { it.isBlank() || it == "null" },
         )
@@ -243,6 +244,7 @@ class SupportRepository {
                         .joinToString(" ")
                         .ifBlank { "Staff" },
                     isInternal = message.optBoolean("isInternal", false),
+                    createdAt = message.optString("createdAt"),
                 )
             },
             activities = (0 until activities.length()).map { index ->
@@ -379,16 +381,43 @@ class SupportRepository {
         AdminAccounts((0 until items.length()).map { index ->
             val item = items.getJSONObject(index)
             AdminAccount(item.getString("id"), item.getString("userId"), item.getString("fullName"),
-                item.optString("phone"), item.getString("role"), item.getBoolean("isActive"))
+                item.optString("phone"), item.getString("role"), item.optString("designation"),
+                item.getBoolean("isActive"))
         }, data.getString("actorUserId"))
     }
 
     suspend fun saveAdminAccount(school: String, accountId: String?, fullName: String,
-        phone: String, role: String, isActive: Boolean) = withContext(Dispatchers.IO) {
+        phone: String, role: String, designation: String?, isActive: Boolean) = withContext(Dispatchers.IO) {
         val body = JSONObject().put("fullName", fullName).put("phone", phone)
             .put("role", role).put("isActive", isActive)
+        if (designation != null) body.put("designation", designation)
         if (accountId == null) request("POST", "api/v1/support/admin-accounts", school, body)
         else request("POST", "api/v1/support/admin-accounts/$accountId", school, body)
+    }
+
+    suspend fun switchAccounts(school: String): List<AccountSwitchChoice> = withContext(Dispatchers.IO) {
+        val items = request("GET", "api/v1/account-switch", school)
+            .getJSONObject("data").optJSONArray("accounts") ?: JSONArray()
+        (0 until items.length()).map { index ->
+            val item = items.getJSONObject(index)
+            AccountSwitchChoice(
+                id = item.getString("id"),
+                name = item.optString("name", "SchoolDB user"),
+                role = item.optString("role", "Member"),
+                detail = item.optString("detail"),
+                current = item.optBoolean("current"),
+            )
+        }
+    }
+
+    suspend fun switchAccount(school: String, accountId: String): String? = withContext(Dispatchers.IO) {
+        val data = request(
+            "POST",
+            "api/v1/account-switch",
+            school,
+            JSONObject().put("accountId", accountId),
+        ).getJSONObject("data")
+        data.optString("token").takeIf(String::isNotBlank)
     }
 
     private suspend fun token(forceRefresh: Boolean = false): String {

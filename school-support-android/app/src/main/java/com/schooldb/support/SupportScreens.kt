@@ -579,17 +579,12 @@ private fun TicketCard(ticket: TicketSummary, onClick: () -> Unit) {
 
 @Composable
 internal fun CreateTicket(api: SupportRepository, school: String, busy: Boolean,
+    draft: TicketDraft, onDraftChange: (TicketDraft) -> Unit,
     submit: (String, String, TicketType, TicketPriority, String?, PendingAttachment?) -> Unit) {
     val scope = rememberCoroutineScope()
-    var subject by remember { mutableStateOf("") }
-    var description by remember { mutableStateOf("") }
-    var type by remember { mutableStateOf(TicketType.GENERAL) }
-    var priority by remember { mutableStateOf(TicketPriority.NORMAL) }
     var search by remember { mutableStateOf("") }
     var options by remember { mutableStateOf<List<StudentOption>>(emptyList()) }
-    var selected by remember { mutableStateOf<StudentOption?>(null) }
     var searchError by remember { mutableStateOf("") }
-    var attachment by remember { mutableStateOf<PendingAttachment?>(null) }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Spacer(Modifier.height(2.dp))
@@ -598,16 +593,16 @@ internal fun CreateTicket(api: SupportRepository, school: String, busy: Boolean,
             Text("ISSUE DETAILS", style = MaterialTheme.typography.labelSmall, color = Indigo,
                 fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(12.dp))
-            SupportField(subject, { subject = it }, "Subject")
+            SupportField(draft.subject, { onDraftChange(draft.copy(subject = it)) }, "Subject")
             Spacer(Modifier.height(12.dp))
-            SupportField(description, { description = it }, "Describe the issue", minLines = 4)
+            SupportField(draft.description, { onDraftChange(draft.copy(description = it)) }, "Describe the issue", minLines = 4)
             Spacer(Modifier.height(16.dp))
             Text("Category", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.height(7.dp))
-            OptionMenu(type.name.replace('_', ' '), TicketType.entries.map { it.name }, title = "Ticket category") {
-                type = TicketType.valueOf(it)
-                if (type != TicketType.STUDENT) {
-                    selected = null
+            OptionMenu(draft.type.name.replace('_', ' '), TicketType.entries.map { it.name }, title = "Ticket category") {
+                val nextType = TicketType.valueOf(it)
+                onDraftChange(draft.copy(type = nextType, selectedStudent = if (nextType == TicketType.STUDENT) draft.selectedStudent else null))
+                if (nextType != TicketType.STUDENT) {
                     options = emptyList()
                     searchError = ""
                 }
@@ -615,13 +610,15 @@ internal fun CreateTicket(api: SupportRepository, school: String, busy: Boolean,
             Spacer(Modifier.height(14.dp))
             Text("Priority", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.height(7.dp))
-            OptionMenu(priority.name, TicketPriority.entries.map { it.name }, title = "Ticket priority") { priority = TicketPriority.valueOf(it) }
+            OptionMenu(draft.priority.name, TicketPriority.entries.map { it.name }, title = "Ticket priority") {
+                onDraftChange(draft.copy(priority = TicketPriority.valueOf(it)))
+            }
         }
-        if (type == TicketType.STUDENT) {
+        if (draft.type == TicketType.STUDENT) {
             SurfaceCard(Modifier.fillMaxWidth()) {
                 SectionTitle("Link a student", "Search by name or admission number")
                 Spacer(Modifier.height(12.dp))
-                SupportField(search, { search = it; selected = null }, "Student name or admission number")
+                SupportField(search, { search = it; onDraftChange(draft.copy(selectedStudent = null)) }, "Student name or admission number")
                 Spacer(Modifier.height(8.dp))
                 OutlinedButton(onClick = { scope.launch {
                     try { options = api.searchStudents(school, search); searchError = "" }
@@ -634,7 +631,7 @@ internal fun CreateTicket(api: SupportRepository, school: String, busy: Boolean,
                 }
                 if (searchError.isNotBlank()) Text(searchError, color = MaterialTheme.colorScheme.error)
                 options.forEach { option ->
-                    Row(Modifier.fillMaxWidth().clickable { selected = option; options = emptyList() }
+                    Row(Modifier.fillMaxWidth().clickable { onDraftChange(draft.copy(selectedStudent = option)); options = emptyList() }
                         .padding(vertical = 11.dp), verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
                             Text(option.fullName, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
@@ -655,7 +652,7 @@ internal fun CreateTicket(api: SupportRepository, school: String, busy: Boolean,
                         Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = Muted)
                     }
                 }
-                selected?.let {
+                draft.selectedStudent?.let {
                     Spacer(Modifier.height(8.dp))
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Pill(it.fullName + " · " + it.admissionNo, Indigo)
@@ -678,27 +675,27 @@ internal fun CreateTicket(api: SupportRepository, school: String, busy: Boolean,
         SurfaceCard(Modifier.fillMaxWidth()) {
             SectionTitle("Attachment", "Add one screenshot, image, or PDF up to 5 MB.")
             Spacer(Modifier.height(12.dp))
-            attachment?.let { selectedAttachment ->
+            draft.attachment?.let { selectedAttachment ->
                 Text(selectedAttachment.name, color = Ink, fontWeight = FontWeight.SemiBold)
                 Text(attachmentSize(selectedAttachment.bytes.size), color = Muted,
                     style = MaterialTheme.typography.bodySmall)
-                TextButton(onClick = { attachment = null }, enabled = !busy) { Text("Remove") }
+                TextButton(onClick = { onDraftChange(draft.copy(attachment = null)) }, enabled = !busy) { Text("Remove") }
             }
-            if (attachment == null) {
-                AttachmentPicker(enabled = !busy) { attachment = it }
+            if (draft.attachment == null) {
+                AttachmentPicker(enabled = !busy) { onDraftChange(draft.copy(attachment = it)) }
             }
         }
         val missingField = when {
-            subject.trim().length < 3 -> "Enter a subject with at least 3 characters."
-            description.trim().length < 10 -> "Describe the issue in at least 10 characters."
-            type == TicketType.STUDENT && selected == null -> "Find and select a student to continue."
+            draft.subject.trim().length < 3 -> "Enter a subject with at least 3 characters."
+            draft.description.trim().length < 10 -> "Describe the issue in at least 10 characters."
+            draft.type == TicketType.STUDENT && draft.selectedStudent == null -> "Find and select a student to continue."
             else -> null
         }
         if (missingField != null) Text(missingField, color = Muted,
             style = MaterialTheme.typography.bodySmall)
         PrimaryAction("Create ticket", !busy && missingField == null,
-            onClick = { submit(subject.trim(), description.trim(), type, priority,
-                selected?.id?.takeIf { type == TicketType.STUDENT }, attachment) })
+            onClick = { submit(draft.subject.trim(), draft.description.trim(), draft.type, draft.priority,
+                draft.selectedStudent?.id?.takeIf { draft.type == TicketType.STUDENT }, draft.attachment) })
         Text("Your ticket will be visible to the support team at " + school + ".",
             style = MaterialTheme.typography.bodySmall, color = Muted)
         Spacer(Modifier.height(20.dp))
@@ -707,12 +704,13 @@ internal fun CreateTicket(api: SupportRepository, school: String, busy: Boolean,
 
 @Composable
 internal fun TicketDetails(ticket: TicketDetail, admin: Boolean, busy: Boolean, staff: List<StaffOption>,
+    reply: String, onReplyChange: (String) -> Unit,
     onReply: (String, Boolean) -> Unit, onStatus: (TicketStatus) -> Unit,
     onPriority: (TicketPriority) -> Unit, onAssign: (String?) -> Unit,
     onOpenAttachment: (TicketAttachment) -> Unit,
     onAddAttachment: (PendingAttachment) -> Unit) {
-    var reply by remember(ticket.id) { mutableStateOf("") }
-    var replyVisibility by remember(ticket.id) { mutableStateOf("INTERNAL_ONLY") }
+    var replyVisibility by remember(ticket.id, admin) { mutableStateOf(if (admin) "INTERNAL_ONLY" else "SHOW_TO_PARENT") }
+    var pendingStatus by remember(ticket.id) { mutableStateOf<TicketStatus?>(null) }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Spacer(Modifier.height(2.dp))
@@ -801,7 +799,13 @@ internal fun TicketDetails(ticket: TicketDetail, admin: Boolean, busy: Boolean, 
             Spacer(Modifier.height(16.dp))
             Text("STATUS", style = MaterialTheme.typography.labelSmall, color = Muted, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(6.dp))
-            OptionMenu(ticket.status.replace('_', ' '), TicketStatus.entries.map { it.name }) { onStatus(TicketStatus.valueOf(it)) }
+            OptionMenu(
+                ticket.status.replace('_', ' '),
+                listOf(ticket.status) + validNextStatuses(ticketStatusOrDefault(ticket.status)).map { it.name },
+            ) { selected ->
+                val next = TicketStatus.valueOf(selected)
+                if (next.name != ticket.status) pendingStatus = next
+            }
             Spacer(Modifier.height(12.dp))
             Text("PRIORITY", style = MaterialTheme.typography.labelSmall, color = Muted, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(6.dp))
@@ -836,7 +840,12 @@ internal fun TicketDetails(ticket: TicketDetail, admin: Boolean, busy: Boolean, 
                         Column(Modifier.weight(1f)) {
                             Text(activity.detail, style = MaterialTheme.typography.bodyMedium,
                                 color = Ink, fontWeight = FontWeight.Medium)
-                            Text(activity.actor, style = MaterialTheme.typography.bodySmall, color = Muted)
+                            Text(
+                                listOf(activity.actor, formatSupportTimestamp(activity.createdAt))
+                                    .filter(String::isNotBlank).joinToString(" · "),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Muted,
+                            )
                         }
                     }
                 }
@@ -880,6 +889,10 @@ internal fun TicketDetails(ticket: TicketDetail, admin: Boolean, busy: Boolean, 
                         }
                         Spacer(Modifier.height(4.dp))
                         Text(message.body, style = MaterialTheme.typography.bodyMedium, color = Ink)
+                        if (message.createdAt.isNotBlank()) {
+                            Spacer(Modifier.height(4.dp))
+                            Text(formatSupportTimestamp(message.createdAt), style = MaterialTheme.typography.bodySmall, color = Muted)
+                        }
                     }
                 }
             }
@@ -887,11 +900,11 @@ internal fun TicketDetails(ticket: TicketDetail, admin: Boolean, busy: Boolean, 
                 Spacer(Modifier.height(8.dp))
                 SupportField(
                     reply,
-                    { reply = it },
+                    onReplyChange,
                     if (ticket.source == "PARENT_QR") "Write a message" else "Write a reply",
                     minLines = 3,
                 )
-                if (ticket.source == "PARENT_QR") {
+                if (ticket.source == "PARENT_QR" && admin) {
                     Spacer(Modifier.height(12.dp))
                     Text(
                         "MESSAGE VISIBILITY",
@@ -924,14 +937,26 @@ internal fun TicketDetails(ticket: TicketDetail, admin: Boolean, busy: Boolean, 
                     onClick = {
                         onReply(
                             reply.trim(),
-                            ticket.source == "PARENT_QR" && replyVisibility == "INTERNAL_ONLY",
+                            ticket.source == "PARENT_QR" && admin && replyVisibility == "INTERNAL_ONLY",
                         )
-                        reply = ""
                     },
                 )
             }
         }
         Spacer(Modifier.height(20.dp))
+    }
+    pendingStatus?.let { nextStatus ->
+        AlertDialog(
+            onDismissRequest = { pendingStatus = null },
+            title = { Text(if (nextStatus == TicketStatus.CLOSED) "Close this ticket?" else "Change ticket status?") },
+            text = { Text("Change ${ticket.ticketNo} from ${ticket.status.replace('_', ' ')} to ${nextStatus.name.replace('_', ' ')}?") },
+            confirmButton = {
+                Button(onClick = { pendingStatus = null; onStatus(nextStatus) }) {
+                    Text(if (nextStatus == TicketStatus.CLOSED) "Close ticket" else "Change status")
+                }
+            },
+            dismissButton = { TextButton(onClick = { pendingStatus = null }) { Text("Cancel") } },
+        )
     }
 }
 
@@ -963,7 +988,7 @@ internal fun AdminAccountsScreen(result: AdminAccounts, busy: Boolean,
                 }
                 Spacer(Modifier.height(12.dp))
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Pill(if (account.role == "SUPER_ADMIN") "Super Admin" else "School Admin", Indigo)
+                    Pill(displayAccountRole(account.role, account.designation), Indigo)
                     Pill(if (account.isActive) "Active" else "Disabled",
                         if (account.isActive) Color(0xFF15976C) else Muted)
                 }
@@ -979,11 +1004,21 @@ internal fun AdminAccountsScreen(result: AdminAccounts, busy: Boolean,
 
 @Composable
 internal fun AdminAccountForm(account: AdminAccount?, busy: Boolean,
-    onSave: (String, String, String, Boolean) -> Unit) {
+    onSave: (String, String, String, String?, Boolean) -> Unit) {
     var fullName by remember(account?.id) { mutableStateOf(account?.fullName.orEmpty()) }
     var phone by remember(account?.id) { mutableStateOf(account?.phone?.filter(Char::isDigit)?.takeLast(10).orEmpty()) }
-    var role by remember(account?.id) { mutableStateOf(account?.role ?: "SCHOOL_ADMIN") }
+    var position by remember(account?.id) {
+        mutableStateOf(
+            when {
+                account?.role == "SUPER_ADMIN" -> "SUPER_ADMIN"
+                account?.designation == "Principal" -> "PRINCIPAL"
+                account?.designation == "Vice Principal" -> "VICE_PRINCIPAL"
+                else -> "SCHOOL_ADMIN"
+            },
+        )
+    }
     var active by remember(account?.id) { mutableStateOf(account?.isActive ?: true) }
+    var confirmDisable by remember(account?.id) { mutableStateOf(false) }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Spacer(Modifier.height(2.dp))
@@ -999,10 +1034,9 @@ internal fun AdminAccountForm(account: AdminAccount?, busy: Boolean,
             Spacer(Modifier.height(16.dp))
             Text("Access role", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.height(7.dp))
-            OptionMenu(if (role == "SUPER_ADMIN") "Super Admin" else "School Admin",
-                listOf("SUPER_ADMIN", "SCHOOL_ADMIN")) { role = it }
+            OptionMenu(position, listOf("SUPER_ADMIN", "SCHOOL_ADMIN", "PRINCIPAL", "VICE_PRINCIPAL")) { position = it }
             Spacer(Modifier.height(8.dp))
-            Text(if (role == "SUPER_ADMIN") "Full school access, including administrator management."
+            Text(if (position == "SUPER_ADMIN") "Full school access, including administrator management."
                 else "School administration and support ticket access.",
                 style = MaterialTheme.typography.bodySmall, color = Muted)
             if (account != null) {
@@ -1014,7 +1048,9 @@ internal fun AdminAccountForm(account: AdminAccount?, busy: Boolean,
                             fontWeight = FontWeight.SemiBold, color = Ink)
                         Text("Disabled accounts cannot sign in", style = MaterialTheme.typography.bodySmall, color = Muted)
                     }
-                    Switch(checked = active, onCheckedChange = { active = it })
+                    Switch(checked = active, onCheckedChange = { next ->
+                        if (!next) confirmDisable = true else active = true
+                    })
                 }
             }
         }
@@ -1025,9 +1061,30 @@ internal fun AdminAccountForm(account: AdminAccount?, busy: Boolean,
         }
         PrimaryAction(if (account == null) "Create administrator" else "Save changes",
             !busy && fullName.trim().length >= 2 && validPhone) {
-            onSave(fullName.trim(), phone, role, active)
+            val role = if (position == "SUPER_ADMIN") "SUPER_ADMIN" else "SCHOOL_ADMIN"
+            val designation = when (position) {
+                "PRINCIPAL" -> "Principal"
+                "VICE_PRINCIPAL" -> "Vice Principal"
+                "SCHOOL_ADMIN" -> "School Administrator"
+                else -> null
+            }
+            onSave(fullName.trim(), phone, role, designation, active)
         }
         Spacer(Modifier.height(20.dp))
+    }
+    if (confirmDisable) {
+        AlertDialog(
+            onDismissRequest = { confirmDisable = false },
+            title = { Text("Disable this administrator?") },
+            text = { Text("They will no longer be able to sign in until a Super Admin restores access.") },
+            confirmButton = {
+                Button(
+                    onClick = { active = false; confirmDisable = false },
+                    colors = ButtonDefaults.buttonColors(containerColor = SchoolRed),
+                ) { Text("Disable access") }
+            },
+            dismissButton = { TextButton(onClick = { confirmDisable = false }) { Text("Cancel") } },
+        )
     }
 }
 

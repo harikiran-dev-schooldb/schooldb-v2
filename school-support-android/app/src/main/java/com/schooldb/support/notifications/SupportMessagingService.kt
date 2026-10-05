@@ -20,10 +20,16 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 class SupportMessagingService : FirebaseMessagingService() {
-    override fun onNewToken(token: String) {
+    override fun onRegistered(installationId: String) {
         val pushPreferences = getSharedPreferences("support_push", MODE_PRIVATE)
-        pushPreferences.edit().putString("pending_fcm_token", token).apply()
+        pushPreferences.edit().putString("pending_fcm_token", installationId).apply()
         SupportPushSync.enqueue(this)
+    }
+
+    override fun onUnregistered(installationId: String) {
+        getSharedPreferences("support_push", MODE_PRIVATE).edit()
+            .remove("pending_fcm_token")
+            .apply()
     }
 
     override fun onMessageReceived(message: RemoteMessage) {
@@ -52,7 +58,7 @@ class SupportMessagingService : FirebaseMessagingService() {
         }
         val pendingIntent = PendingIntent.getActivity(
             this,
-            ticketId?.hashCode() ?: 0,
+            ticketId.hashCode(),
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
