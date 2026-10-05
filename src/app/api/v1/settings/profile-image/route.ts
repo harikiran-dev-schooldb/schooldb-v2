@@ -62,7 +62,7 @@ export async function POST(request: Request) {
     }
 
     const membership = await requireMembership(schoolSlug);
-    if (!canSubmitOwnProfileImage(membership.role, membership.designation)) {
+    if (!canSubmitOwnProfileImage(membership.role)) {
       throw new ApiError(
         403,
         "Profile image upload is not available for this account.",
@@ -147,7 +147,7 @@ export async function DELETE(request: Request) {
   return apiHandler(async () => {
     const schoolSlug = new URL(request.url).searchParams.get("schoolSlug") ?? "";
     const membership = await requireMembership(schoolSlug);
-    if (!canSubmitOwnProfileImage(membership.role, membership.designation)) {
+    if (!canSubmitOwnProfileImage(membership.role)) {
       throw new ApiError(
         403,
         "Profile image upload is not available for this account.",

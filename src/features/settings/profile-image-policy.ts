@@ -1,9 +1,5 @@
-export function canSubmitOwnProfileImage(
-  role: string,
-  designation: string | null = null,
-) {
-  if (role === "STUDENT" || role === "SUPER_ADMIN") return true;
-  return role === "SCHOOL_ADMIN" && !/principal/i.test(designation ?? "");
+export function canSubmitOwnProfileImage(role: string) {
+  return ["STUDENT", "SUPER_ADMIN", "SCHOOL_ADMIN"].includes(role);
 }
 
 export function canManageRosterProfileImages(role: string) {

@@ -1,7 +1,10 @@
 import { DirectUpiSettingsCard } from "@/features/online-payments/components/DirectUpiSettingsCard";
 import { AccountSettingsPage } from "@/features/settings/AccountSettingsPage";
 import { PendingProfileImageApprovals } from "@/features/settings/PendingProfileImageApprovals";
-import { canReviewStudentProfileImages } from "@/features/settings/profile-image-policy";
+import {
+  canReviewStudentProfileImages,
+  canSubmitOwnProfileImage,
+} from "@/features/settings/profile-image-policy";
 import { requireCurrentTeacher, requireMembership } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
@@ -50,12 +53,7 @@ export default async function SettingsPage({
       .filter(Boolean)
       .join(" ") ||
     "SchoolDB user";
-  const isPrincipal =
-    membership.role === "SCHOOL_ADMIN" &&
-    /principal/i.test(membership.designation ?? "");
-  const canUploadImage =
-    membership.role === "SUPER_ADMIN" ||
-    (membership.role === "SCHOOL_ADMIN" && !isPrincipal);
+  const canUploadImage = canSubmitOwnProfileImage(membership.role);
   return (
     <AccountSettingsPage
       schoolSlug={schoolSlug}

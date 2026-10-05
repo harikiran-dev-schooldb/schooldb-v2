@@ -16,7 +16,7 @@ test("school admins, principals, and super admins manage roster images", () => {
   assert.equal(canManageRosterProfileImages("SUPER_ADMIN"), true);
   assert.equal(canManageRosterProfileImages("SCHOOL_ADMIN"), true);
   assert.equal(canReviewStudentProfileImages("SCHOOL_ADMIN"), true);
-  assert.equal(canSubmitOwnProfileImage("SCHOOL_ADMIN", "Principal"), false);
+  assert.equal(canSubmitOwnProfileImage("SCHOOL_ADMIN"), true);
 });
 
 test("teachers and receptionists cannot manage roster images", () => {
