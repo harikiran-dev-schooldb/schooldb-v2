@@ -1,548 +1,419 @@
+import { WeekDay } from "@/generated/prisma/client";
 import { apiHandler } from "@/lib/api";
 import { requireRole } from "@/lib/auth";
-import { ApiResponse } from "@/lib/response";
 import { prisma } from "@/lib/prisma";
-import { WeekDay } from "@/generated/prisma/client";
+import { ApiResponse } from "@/lib/response";
 
 const MAX_ROWS = 500;
+const VALID_DAYS = new Set<WeekDay>([
+  "MONDAY",
+  "TUESDAY",
+  "WEDNESDAY",
+  "THURSDAY",
+  "FRIDAY",
+  "SATURDAY",
+]);
 
 type ImportRow = {
-  academicYear: string;
-  className: string;
-  sectionName: string;
-  teacherName: string;
-  subjectName: string;
-  periodName: string;
-  day: string;
-  active: string;
+  academicYear?: unknown;
+  employeeId?: unknown;
+  subject?: unknown;
+  className?: unknown;
+  section?: unknown;
+  period?: unknown;
+  day?: unknown;
+  active?: unknown;
 };
 
 type PreparedRow = {
+  rowNumber: number;
   academicYear: string;
+  employeeId: string;
+  subject: string;
   className: string;
-  sectionName: string;
-  teacherName: string;
-  subjectName: string;
-  periodName: string;
+  section: string;
+  period: string;
   day: WeekDay;
   active: boolean;
 };
 
-type ResolvedRow = {
-  rowNumber: number;
-  schoolId: string;
+type ResolvedRow = PreparedRow & {
   academicYearId: string;
   teacherAllocationId: string;
   teacherId: string;
   classId: string;
   sectionId: string;
   periodId: string;
-  day: WeekDay;
-  active: boolean;
 };
 
-function normalize(value: string): string {
+function clean(value: unknown) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function normalize(value: string) {
   return value.trim().toLowerCase();
 }
 
-function parseBoolean(value: string): boolean {
-  const normalized = value.trim().toLowerCase();
-
-  if (
-    normalized === "" ||
-    normalized === "true" ||
-    normalized === "yes" ||
-    normalized === "1"
-  ) {
-    return true;
-  }
-
-  if (normalized === "false" || normalized === "no" || normalized === "0") {
-    return false;
-  }
-
+function parseBoolean(value: unknown) {
+  if (typeof value === "boolean") return value;
+  const normalized = String(value ?? "true").trim().toLowerCase();
+  if (["", "true", "yes", "1"].includes(normalized)) return true;
+  if (["false", "no", "0"].includes(normalized)) return false;
   throw new Error("Active must be TRUE, FALSE, YES, NO, 1 or 0.");
 }
 
-function parseWeekDay(value: string): WeekDay {
-  const normalized = value.trim().toUpperCase();
+function parseRow(row: ImportRow, rowNumber: number): PreparedRow {
+  const academicYear = clean(row.academicYear);
+  const employeeId = clean(row.employeeId);
+  const subject = clean(row.subject);
+  const className = clean(row.className);
+  const section = clean(row.section);
+  const period = clean(row.period);
+  const normalizedDay = clean(row.day).toUpperCase();
 
-  const validDays: WeekDay[] = [
-    "MONDAY",
-    "TUESDAY",
-    "WEDNESDAY",
-    "THURSDAY",
-    "FRIDAY",
-    "SATURDAY",
-  ];
-
-  if (!validDays.includes(normalized as WeekDay)) {
+  if (
+    !academicYear ||
+    !employeeId ||
+    !subject ||
+    !className ||
+    !section ||
+    !period ||
+    !normalizedDay
+  ) {
     throw new Error(
-      "Day must be MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY or SUNDAY.",
+      `Row ${rowNumber}: Academic year, employee ID, subject, class, section, period and day are required.`,
     );
   }
+  if (!VALID_DAYS.has(normalizedDay as WeekDay)) {
+    throw new Error(`Row ${rowNumber}: Day must be MONDAY through SATURDAY.`);
+  }
 
-  return normalized as WeekDay;
+  try {
+    return {
+      rowNumber,
+      academicYear,
+      employeeId,
+      subject,
+      className,
+      section,
+      period,
+      day: normalizedDay as WeekDay,
+      active: parseBoolean(row.active),
+    };
+  } catch (error) {
+    throw new Error(
+      `Row ${rowNumber}: ${error instanceof Error ? error.message : "Invalid active value."}`,
+    );
+  }
+}
+
+function classSlotKey(row: {
+  academicYearId: string;
+  classId: string;
+  sectionId: string;
+  periodId: string;
+  day: WeekDay;
+}) {
+  return [
+    row.academicYearId,
+    row.classId,
+    row.sectionId,
+    row.periodId,
+    row.day,
+  ].join(":");
+}
+
+function teacherSlotKey(row: {
+  academicYearId: string;
+  teacherId: string;
+  periodId: string;
+  day: WeekDay;
+}) {
+  return [row.academicYearId, row.teacherId, row.periodId, row.day].join(":");
 }
 
 export async function POST(request: Request) {
   return apiHandler(async () => {
     const tenant = await requireRole(["SUPER_ADMIN", "SCHOOL_ADMIN"]);
-
-    const body = (await request.json()) as {
-      timetables?: unknown;
-    };
-
+    const body = (await request.json()) as { timetables?: unknown };
     const input = Array.isArray(body.timetables) ? body.timetables : [];
-
-    if (input.length === 0) {
-      throw new Error("No timetable rows were provided.");
-    }
-
-    if (input.length > MAX_ROWS) {
+    if (!input.length) throw new Error("No timetable rows were provided.");
+    if (input.length > MAX_ROWS)
       throw new Error(`Maximum ${MAX_ROWS} timetable rows per import.`);
-    }
 
-    const rows = input as ImportRow[];
-
-    const seen = new Set<string>();
-
-    const prepared: PreparedRow[] = [];
-
-    for (let i = 0; i < rows.length; i += 1) {
-      const row = rows[i];
-      const rowNumber = i + 2;
-
-      if (
-        !row.academicYear?.trim() ||
-        !row.className?.trim() ||
-        !row.sectionName?.trim() ||
-        !row.teacherName?.trim() ||
-        !row.subjectName?.trim() ||
-        !row.periodName?.trim() ||
-        !row.day?.trim()
-      ) {
-        throw new Error(
-          `Row ${rowNumber}: Academic year, class, section, teacher, subject, period and day are required.`,
-        );
-      }
-
-      let day: WeekDay;
-
-      try {
-        day = parseWeekDay(row.day);
-      } catch (error) {
-        throw new Error(
-          `Row ${rowNumber}: ${
-            error instanceof Error ? error.message : "Invalid day."
-          }`,
-        );
-      }
-
-      let active = true;
-
-      try {
-        active = parseBoolean(row.active ?? "");
-      } catch (error) {
-        throw new Error(
-          `Row ${rowNumber}: ${
-            error instanceof Error ? error.message : "Invalid active value."
-          }`,
-        );
-      }
-
-      const duplicateKey = [
+    const prepared = input.map((row, index) =>
+      parseRow((row ?? {}) as ImportRow, index + 2),
+    );
+    const seenSlots = new Set<string>();
+    for (const row of prepared) {
+      const key = [
         row.academicYear,
         row.className,
-        row.sectionName,
-        row.teacherName,
-        row.subjectName,
-        row.periodName,
-        day,
+        row.section,
+        row.period,
+        row.day,
       ]
         .map(normalize)
         .join(":");
-
-      if (seen.has(duplicateKey)) {
+      if (seenSlots.has(key)) {
         throw new Error(
-          `Duplicate timetable entry in import at row ${rowNumber}.`,
+          `Row ${row.rowNumber}: Duplicate class timetable slot in this file.`,
         );
       }
-
-      seen.add(duplicateKey);
-
-      prepared.push({
-        academicYear: row.academicYear.trim(),
-        className: row.className.trim(),
-        sectionName: row.sectionName.trim(),
-        teacherName: row.teacherName.trim(),
-        subjectName: row.subjectName.trim(),
-        periodName: row.periodName.trim(),
-        day,
-        active,
-      });
+      seenSlots.add(key);
     }
 
-    const [
-      academicYears,
-      classes,
-      sections,
-      teachers,
-      subjects,
-      periods,
-      allocations,
-    ] = await Promise.all([
-      prisma.academicYear.findMany({
-        where: {
-          schoolId: tenant.schoolId,
-        },
-        select: {
-          id: true,
-          name: true,
-        },
-      }),
-
-      prisma.class.findMany({
-        where: {
-          schoolId: tenant.schoolId,
-        },
-        select: {
-          id: true,
-          name: true,
-        },
-      }),
-
-      prisma.section.findMany({
-        where: {
-          class: {
-            schoolId: tenant.schoolId,
+    const [academicYears, classes, sections, teachers, subjects, periods, allocations] =
+      await Promise.all([
+        prisma.academicYear.findMany({
+          where: { schoolId: tenant.schoolId },
+          select: { id: true, name: true },
+        }),
+        prisma.class.findMany({
+          where: { schoolId: tenant.schoolId },
+          select: { id: true, name: true },
+        }),
+        prisma.section.findMany({
+          where: { class: { schoolId: tenant.schoolId } },
+          select: { id: true, name: true, classId: true },
+        }),
+        prisma.teacher.findMany({
+          where: { schoolId: tenant.schoolId },
+          select: { id: true, employeeId: true },
+        }),
+        prisma.subject.findMany({
+          where: { schoolId: tenant.schoolId },
+          select: { id: true, name: true },
+        }),
+        prisma.period.findMany({
+          where: { schoolId: tenant.schoolId },
+          select: { id: true, name: true, active: true },
+        }),
+        prisma.teacherAllocation.findMany({
+          where: { schoolId: tenant.schoolId, active: true },
+          select: {
+            id: true,
+            academicYearId: true,
+            teacherId: true,
+            subjectId: true,
+            classId: true,
+            sectionId: true,
           },
-        },
-        select: {
-          id: true,
-          name: true,
-          classId: true,
-        },
-      }),
+        }),
+      ]);
 
-      prisma.teacher.findMany({
-        where: {
-          schoolId: tenant.schoolId,
-        },
-        select: {
-          id: true,
-          fullName: true,
-        },
-      }),
-
-      prisma.subject.findMany({
-        where: {
-          schoolId: tenant.schoolId,
-        },
-        select: {
-          id: true,
-          name: true,
-        },
-      }),
-
-      prisma.period.findMany({
-        where: {
-          schoolId: tenant.schoolId,
-        },
-        select: {
-          id: true,
-          name: true,
-          displayOrder: true,
-        },
-      }),
-
-      prisma.teacherAllocation.findMany({
-        where: {
-          schoolId: tenant.schoolId,
-          active: true,
-        },
-        select: {
-          id: true,
-          academicYearId: true,
-          teacherId: true,
-          subjectId: true,
-          classId: true,
-          sectionId: true,
-        },
-      }),
-    ]);
-
-    const academicYearByName = new Map(
-      academicYears.map((item) => [normalize(item.name), item]),
+    const yearByName = new Map(
+      academicYears.map((value) => [normalize(value.name), value]),
     );
-
     const classByName = new Map(
-      classes.map((item) => [normalize(item.name), item]),
+      classes.map((value) => [normalize(value.name), value]),
     );
-
-    const teacherByName = new Map(
-      teachers.map((item) => [normalize(item.fullName), item]),
+    const teacherByEmployeeId = new Map(
+      teachers.map((value) => [normalize(value.employeeId), value]),
     );
-
     const subjectByName = new Map(
-      subjects.map((item) => [normalize(item.name), item]),
+      subjects.map((value) => [normalize(value.name), value]),
     );
-
     const periodByName = new Map(
-      periods.map((item) => [normalize(item.name), item]),
+      periods.map((value) => [normalize(value.name), value]),
     );
-
     const sectionByClassAndName = new Map(
-      sections.map((item) => [`${item.classId}:${normalize(item.name)}`, item]),
+      sections.map((value) => [
+        `${value.classId}:${normalize(value.name)}`,
+        value,
+      ]),
     );
-
     const allocationByKey = new Map(
-      allocations.map((item) => [
+      allocations.map((value) => [
         [
-          item.academicYearId,
-          item.teacherId,
-          item.subjectId,
-          item.classId,
-          item.sectionId,
+          value.academicYearId,
+          value.teacherId,
+          value.subjectId,
+          value.classId,
+          value.sectionId,
         ].join(":"),
-        item,
+        value,
       ]),
     );
 
-    const resolved: ResolvedRow[] = [];
-    const importedTeacherSlots = new Set<string>();
-    const importedClassSlots = new Set<string>();
-
-    for (let i = 0; i < prepared.length; i += 1) {
-      const row = prepared[i];
-      const rowNumber = i + 2;
-
-      const academicYear = academicYearByName.get(normalize(row.academicYear));
-
-      if (!academicYear) {
+    const resolved: ResolvedRow[] = prepared.map((row) => {
+      const academicYear = yearByName.get(normalize(row.academicYear));
+      if (!academicYear)
         throw new Error(
-          `Row ${rowNumber}: Academic year not found: ${row.academicYear}.`,
+          `Row ${row.rowNumber}: Academic year not found: ${row.academicYear}.`,
         );
-      }
-
-      const classRecord = classByName.get(normalize(row.className));
-
-      if (!classRecord) {
-        throw new Error(`Row ${rowNumber}: Class not found: ${row.className}.`);
-      }
-
+      const schoolClass = classByName.get(normalize(row.className));
+      if (!schoolClass)
+        throw new Error(
+          `Row ${row.rowNumber}: Class not found: ${row.className}.`,
+        );
       const section = sectionByClassAndName.get(
-        `${classRecord.id}:${normalize(row.sectionName)}`,
+        `${schoolClass.id}:${normalize(row.section)}`,
       );
-
-      if (!section) {
+      if (!section)
         throw new Error(
-          `Row ${rowNumber}: Section ${row.sectionName} not found in ${row.className}.`,
+          `Row ${row.rowNumber}: Section ${row.section} not found in ${row.className}.`,
         );
-      }
-
-      const teacher = teacherByName.get(normalize(row.teacherName));
-
-      if (!teacher) {
+      const teacher = teacherByEmployeeId.get(normalize(row.employeeId));
+      if (!teacher)
         throw new Error(
-          `Row ${rowNumber}: Teacher not found: ${row.teacherName}.`,
+          `Row ${row.rowNumber}: Teacher employee ID not found: ${row.employeeId}.`,
         );
-      }
-
-      const subject = subjectByName.get(normalize(row.subjectName));
-
-      if (!subject) {
+      const subject = subjectByName.get(normalize(row.subject));
+      if (!subject)
         throw new Error(
-          `Row ${rowNumber}: Subject not found: ${row.subjectName}.`,
+          `Row ${row.rowNumber}: Subject not found: ${row.subject}.`,
         );
-      }
-
-      const period = periodByName.get(normalize(row.periodName));
-
-      if (!period) {
+      const period = periodByName.get(normalize(row.period));
+      if (!period || !period.active)
         throw new Error(
-          `Row ${rowNumber}: Period not found: ${row.periodName}.`,
+          `Row ${row.rowNumber}: Period not found or inactive: ${row.period}.`,
         );
-      }
-
       const allocation = allocationByKey.get(
         [
           academicYear.id,
           teacher.id,
           subject.id,
-          classRecord.id,
+          schoolClass.id,
           section.id,
         ].join(":"),
       );
-
-      if (!allocation) {
+      if (!allocation)
         throw new Error(
-          `Row ${rowNumber}: Teacher allocation not found for ${row.teacherName}, ${row.subjectName}, ${row.className} - ${row.sectionName}.`,
+          `Row ${row.rowNumber}: Active teacher allocation not found for ${row.employeeId}, ${row.subject}, ${row.className} - ${row.section}.`,
         );
-      }
 
-      const teacherSlot = [
-        academicYear.id,
-        teacher.id,
-        period.id,
-        row.day,
-      ].join(":");
-      const classSlot = [
-        academicYear.id,
-        classRecord.id,
-        section.id,
-        period.id,
-        row.day,
-      ].join(":");
-
-      if (importedTeacherSlots.has(teacherSlot)) {
-        throw new Error(
-          `Row ${rowNumber}: Teacher ${row.teacherName} is assigned to multiple classes during the same period in this import.`,
-        );
-      }
-
-      if (importedClassSlots.has(classSlot)) {
-        throw new Error(
-          `Row ${rowNumber}: ${row.className} - ${row.sectionName} has multiple subjects during the same period in this import.`,
-        );
-      }
-
-      importedTeacherSlots.add(teacherSlot);
-      importedClassSlots.add(classSlot);
-
-      resolved.push({
-        rowNumber,
-        schoolId: tenant.schoolId,
+      return {
+        ...row,
         academicYearId: academicYear.id,
         teacherAllocationId: allocation.id,
         teacherId: teacher.id,
-        classId: classRecord.id,
+        classId: schoolClass.id,
         sectionId: section.id,
         periodId: period.id,
-        day: row.day,
-        active: row.active,
-      });
-    }
-
-    const slotFilters = [
-      ...new Map(
-        resolved.map((row) => [
-          `${row.academicYearId}:${row.periodId}:${row.day}`,
-          {
-            academicYearId: row.academicYearId,
-            periodId: row.periodId,
-            day: row.day,
-          },
-        ]),
-      ).values(),
-    ];
+      };
+    });
 
     const existing = await prisma.timetable.findMany({
-      where: {
-        schoolId: tenant.schoolId,
-        OR: slotFilters,
-      },
+      where: { schoolId: tenant.schoolId },
       select: {
+        id: true,
         academicYearId: true,
-        teacherAllocationId: true,
         periodId: true,
         day: true,
+        teacherAllocationId: true,
         teacherAllocation: {
-          select: {
-            teacherId: true,
-            classId: true,
-            sectionId: true,
-          },
+          select: { teacherId: true, classId: true, sectionId: true },
         },
       },
     });
-
-    const existingExact = new Set(
-      existing.map((item) =>
-        [
-          item.academicYearId,
-          item.teacherAllocationId,
-          item.periodId,
-          item.day,
-        ].join(":"),
-      ),
-    );
-    const existingTeacherSlots = new Set(
-      existing.map((item) =>
-        [
-          item.academicYearId,
-          item.teacherAllocation.teacherId,
-          item.periodId,
-          item.day,
-        ].join(":"),
-      ),
-    );
-    const existingClassSlots = new Set(
-      existing.map((item) =>
-        [
-          item.academicYearId,
-          item.teacherAllocation.classId,
-          item.teacherAllocation.sectionId,
-          item.periodId,
-          item.day,
-        ].join(":"),
-      ),
+    const existingByClassSlot = new Map(
+      existing.map((entry) => [
+        classSlotKey({
+          academicYearId: entry.academicYearId,
+          classId: entry.teacherAllocation.classId,
+          sectionId: entry.teacherAllocation.sectionId,
+          periodId: entry.periodId,
+          day: entry.day,
+        }),
+        entry,
+      ]),
     );
 
+    type FinalEntry = {
+      id?: string;
+      academicYearId: string;
+      teacherId: string;
+      classId: string;
+      sectionId: string;
+      periodId: string;
+      day: WeekDay;
+      importedRowNumber?: number;
+    };
+    const finalByClassSlot = new Map<string, FinalEntry>();
+    for (const entry of existing) {
+      const finalEntry: FinalEntry = {
+        id: entry.id,
+        academicYearId: entry.academicYearId,
+        teacherId: entry.teacherAllocation.teacherId,
+        classId: entry.teacherAllocation.classId,
+        sectionId: entry.teacherAllocation.sectionId,
+        periodId: entry.periodId,
+        day: entry.day,
+      };
+      finalByClassSlot.set(classSlotKey(finalEntry), finalEntry);
+    }
     for (const row of resolved) {
-      const exactKey = [
-        row.academicYearId,
-        row.teacherAllocationId,
-        row.periodId,
-        row.day,
-      ].join(":");
-      const teacherKey = [
-        row.academicYearId,
-        row.teacherId,
-        row.periodId,
-        row.day,
-      ].join(":");
-      const classKey = [
-        row.academicYearId,
-        row.classId,
-        row.sectionId,
-        row.periodId,
-        row.day,
-      ].join(":");
+      const current = existingByClassSlot.get(classSlotKey(row));
+      const finalEntry: FinalEntry = {
+        id: current?.id,
+        academicYearId: row.academicYearId,
+        teacherId: row.teacherId,
+        classId: row.classId,
+        sectionId: row.sectionId,
+        periodId: row.periodId,
+        day: row.day,
+        importedRowNumber: row.rowNumber,
+      };
+      finalByClassSlot.set(classSlotKey(finalEntry), finalEntry);
+    }
 
-      if (existingExact.has(exactKey)) {
-        throw new Error(`Row ${row.rowNumber}: Timetable entry already exists.`);
-      }
-      if (existingTeacherSlots.has(teacherKey)) {
-        throw new Error(
-          `Row ${row.rowNumber}: Teacher already has another class during this period.`,
+    const teacherSlots = new Map<string, FinalEntry[]>();
+    for (const entry of finalByClassSlot.values()) {
+      const key = teacherSlotKey(entry);
+      const entries = teacherSlots.get(key) ?? [];
+      entries.push(entry);
+      teacherSlots.set(key, entries);
+    }
+    for (const entries of teacherSlots.values()) {
+      if (entries.length < 2) continue;
+      const imported = entries.find((entry) => entry.importedRowNumber);
+      if (imported?.importedRowNumber) {
+        const row = resolved.find(
+          (item) => item.rowNumber === imported.importedRowNumber,
         );
-      }
-      if (existingClassSlots.has(classKey)) {
         throw new Error(
-          `Row ${row.rowNumber}: Class and section already have another subject during this period.`,
+          `Row ${imported.importedRowNumber}: Teacher ${row?.employeeId ?? ""} already has another class during this period.`,
         );
       }
     }
 
-    await prisma.timetable.createMany({
-      data: resolved.map((row) => ({
-        schoolId: row.schoolId,
-        academicYearId: row.academicYearId,
-        teacherAllocationId: row.teacherAllocationId,
-        periodId: row.periodId,
-        day: row.day,
-        active: row.active,
-      })),
-    });
+    let created = 0;
+    let updated = 0;
+    await prisma.$transaction(
+      resolved.map((row) => {
+        const current = existingByClassSlot.get(classSlotKey(row));
+        if (current) {
+          updated += 1;
+          return prisma.timetable.update({
+            where: { id: current.id },
+            data: {
+              academicYearId: row.academicYearId,
+              teacherAllocationId: row.teacherAllocationId,
+              periodId: row.periodId,
+              day: row.day,
+              active: row.active,
+            },
+          });
+        }
+
+        created += 1;
+        return prisma.timetable.create({
+          data: {
+            schoolId: tenant.schoolId,
+            academicYearId: row.academicYearId,
+            teacherAllocationId: row.teacherAllocationId,
+            periodId: row.periodId,
+            day: row.day,
+            active: row.active,
+          },
+        });
+      }),
+    );
 
     return ApiResponse.success(
-      {
-        created: resolved.length,
-        failed: 0,
-        errors: [],
-      },
-      "Timetable imported successfully.",
+      { created, updated, failed: 0, errors: [] },
+      "Timetable created and updated successfully.",
     );
   });
 }

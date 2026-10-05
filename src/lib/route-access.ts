@@ -31,6 +31,7 @@ export const BULK_OPERATION_ROUTES = [
   { title: "Fee Plans", href: "bulk-operations/fee-plans" },
   { title: "Fee Assignments", href: "bulk-operations/fee-assignments" },
   { title: "Fee Payments", href: "bulk-operations/fees" },
+  { title: "School Periods", href: "bulk-operations/periods" },
   { title: "Timetable", href: "bulk-operations/timetable" },
   { title: "Library", href: "bulk-operations/library" },
   { title: "Transport", href: "bulk-operations/transport" },
