@@ -81,6 +81,7 @@ export default async function StaffUsersPage({ params }: Props) {
       designation: account.designation || "",
       isActive: account.isActive,
       canManage,
+      canEdit: actor.role === "SUPER_ADMIN" && canManage,
       isCurrentUser: account.userId === actor.userId,
     };
   });
