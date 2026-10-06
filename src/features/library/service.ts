@@ -71,7 +71,7 @@ export async function issueLibraryBook(schoolId: string, value: unknown, perform
   if (dueAt < issuedAt) throw new Error("Due date must be on or after the issue date.");
   const copy = await prisma.libraryBookCopy.findFirst({ where: { schoolId, bookId: input.bookId, status: "AVAILABLE", book: { active: true } }, orderBy: { barcode: "asc" }, select: { id: true, book: { select: { title: true } } } });
   if (!copy) throw new Error("No available copy remains for this book.");
-  const studentEnrollment = input.borrowerType === "STUDENT" ? await prisma.studentEnrollment.findFirst({ where: { schoolId, studentId: input.borrowerId, academicYearId: input.academicYearId, active: true }, select: { id: true } }) : null;
+  const studentEnrollment = input.borrowerType === "STUDENT" ? await prisma.studentEnrollment.findFirst({ where: { schoolId, studentId: input.borrowerId, academicYearId: input.academicYearId, active: true, student: { status: "ACTIVE" } }, select: { id: true } }) : null;
   const teacher = input.borrowerType === "TEACHER" ? await prisma.teacher.findFirst({ where: { schoolId, id: input.borrowerId, active: true }, select: { id: true } }) : null;
   if (input.borrowerType === "STUDENT" && !studentEnrollment) throw new Error("Select an actively enrolled student.");
   if (input.borrowerType === "TEACHER" && !teacher) throw new Error("Select an active teacher.");

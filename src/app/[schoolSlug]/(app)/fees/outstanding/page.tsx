@@ -3,6 +3,7 @@ import { CircleDollarSign } from "lucide-react";
 import { OutstandingFeesContainer } from "@/features/student-fees/components/OutstandingFeesContainer";
 import { requireRole, requireTeacherFeatureAccess } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { hasModuleAccess } from "@/lib/staff-permissions";
 
 type Props = {
   params: Promise<{
@@ -25,11 +26,7 @@ export default async function OutstandingFeesPage({ params }: Props) {
     orderBy: { startDate: "desc" },
     select: { id: true },
   });
-  const canSendReminders = [
-    "SUPER_ADMIN",
-    "SCHOOL_ADMIN",
-    "ACCOUNTANT",
-  ].includes(membership.role);
+  const canManageFees = hasModuleAccess(membership, "FEES", "MANAGE");
 
   return (
     <div className="space-y-6 p-4 sm:p-6">
@@ -48,8 +45,8 @@ export default async function OutstandingFeesPage({ params }: Props) {
       <OutstandingFeesContainer
         schoolSlug={schoolSlug}
         initialAcademicYearId={activeAcademicYear?.id ?? ""}
-        canSendReminders={canSendReminders}
-        canCollect={membership.role !== "TEACHER"}
+        canSendReminders={canManageFees}
+        canCollect={canManageFees}
       />
     </div>
   );

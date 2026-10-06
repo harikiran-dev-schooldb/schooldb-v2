@@ -20,6 +20,7 @@ import { AdmissionNumberSettings } from "@/features/admissions/AdmissionNumberSe
 import { requireRole } from "@/lib/auth";
 import { formatSchoolDateTime } from "@/lib/date-time";
 import { prisma } from "@/lib/prisma";
+import { hasModuleAccess } from "@/lib/staff-permissions";
 
 const statuses = [
   "SUBMITTED",
@@ -49,6 +50,7 @@ export default async function AdmissionsPage({
     ["SUPER_ADMIN", "SCHOOL_ADMIN", "RECEPTIONIST"],
     schoolSlug,
   );
+  const canManageAdmissions = hasModuleAccess(actor, "ADMISSIONS", "MANAGE");
   const status = statuses.includes(query.status as AdmissionStatus)
     ? (query.status as AdmissionStatus)
     : undefined;
@@ -192,7 +194,7 @@ export default async function AdmissionsPage({
           tone="violet"
         />
       </section>
-      {["SUPER_ADMIN", "SCHOOL_ADMIN"].includes(actor.role) && (
+      {canManageAdmissions && (
         <AdmissionNumberSettings
           initial={{
             automaticNumbering: admissionSetting.automaticNumbering,
@@ -352,13 +354,15 @@ export default async function AdmissionsPage({
               </div>
             </div>
             <div className="border-t bg-slate-50/60 p-5">
-              <AdmissionReviewActions
-                id={item.id}
-                status={item.status}
-                sections={item.applyingClass.sections}
-                automaticNumbering={admissionSetting.automaticNumbering}
-                nextAdmissionNo={`${admissionSetting.admissionPrefix}${String(admissionSetting.nextNumber).padStart(admissionSetting.numberPadding, "0")}`}
-              />
+              {canManageAdmissions && (
+                <AdmissionReviewActions
+                  id={item.id}
+                  status={item.status}
+                  sections={item.applyingClass.sections}
+                  automaticNumbering={admissionSetting.automaticNumbering}
+                  nextAdmissionNo={`${admissionSetting.admissionPrefix}${String(admissionSetting.nextNumber).padStart(admissionSetting.numberPadding, "0")}`}
+                />
+              )}
               {item.history.length > 0 && (
                 <div className="mt-4">
                   <p className="text-xs font-bold tracking-wide text-muted-foreground uppercase">

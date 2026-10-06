@@ -3,6 +3,7 @@ import { TransportManager, type TransportDashboardData } from "@/features/transp
 import { listTransportDashboard } from "@/features/transport/service";
 import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { hasModuleAccess } from "@/lib/staff-permissions";
 
 export default async function TransportPage({ params }: { params: Promise<{ schoolSlug: string }> }) {
   const { schoolSlug } = await params;
@@ -38,6 +39,7 @@ export default async function TransportPage({ params }: { params: Promise<{ scho
         key={`${data.vehicles.length}-${data.routes.length}-${data.assignments.length}`}
         data={data}
         academicYearId={academicYear?.id ?? null}
+        canManage={hasModuleAccess(membership, "TRANSPORT", "MANAGE")}
       />
     </PageContainer>
   );

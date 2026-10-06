@@ -7,10 +7,12 @@ import { setAnnouncementArchived } from "@/features/notifications/actions";
 import { Badge } from "@/components/ui/badge";
 import { formatDate } from "@/lib/self-service-format";
 import { BellRing } from "lucide-react";
+import { hasModuleAccess } from "@/lib/staff-permissions";
 
 export default async function NotificationsPage({ params }: { params: Promise<{ schoolSlug: string }> }) {
   const { schoolSlug } = await params;
   const membership = await requireRole(["SUPER_ADMIN", "SCHOOL_ADMIN", "TEACHER"], schoolSlug);
+  const canManage = hasModuleAccess(membership, "COMMUNICATION", "MANAGE");
   const teacher = membership.role === "TEACHER"
     ? await requireCurrentTeacher(membership.schoolId)
     : null;
@@ -53,14 +55,14 @@ export default async function NotificationsPage({ params }: { params: Promise<{ 
   return (
     <PageContainer>
       <PageHeader title="Notifications & announcements" description="Keep students and families informed with targeted school updates." />
-      <AnnouncementForm
+      {canManage && <AnnouncementForm
         schoolSlug={schoolSlug}
         academicYearId={academicYear?.id ?? null}
         teacherSections={teacher ? classAssignments.map((item) => ({
           id: item.sectionId,
           label: `${item.class.name} · ${item.section.name}`,
         })) : undefined}
-      />
+      />}
       <div className="mt-8 space-y-4">
         <div className="flex items-center gap-3">
           <div className="flex size-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 ring-1 ring-indigo-100">
@@ -82,11 +84,11 @@ export default async function NotificationsPage({ params }: { params: Promise<{ 
             <h3 className="font-bold">{item.title}</h3>
             <p className="whitespace-pre-wrap break-words text-sm">{item.body}</p>
             <p className="text-xs text-muted-foreground">{item.targetLabel} · Publishes {formatDate(item.publishedAt)} · {item._count.reads} accounts read{item.expiresAt ? ` · Expires ${formatDate(item.expiresAt)}` : ""}</p>
-            <PublicationStatusControl
+            {canManage && <PublicationStatusControl
               title={item.title}
               archived={item.archived}
               action={setAnnouncementArchived.bind(null, schoolSlug, item.id)}
-            />
+            />}
           </article>
         ))}
       </div>

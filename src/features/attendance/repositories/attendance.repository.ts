@@ -207,6 +207,7 @@ export const attendanceRepository = {
       classId,
       sectionId,
       active: true,
+      student: { status: "ACTIVE" },
     },
 
     include: {
@@ -480,6 +481,7 @@ async classAttendanceReport(
         classId,
         ...(sectionId ? { sectionId } : {}),
         active: true,
+        student: { status: "ACTIVE" },
       },
 
       select: {
@@ -699,6 +701,7 @@ lowAttendanceReport(
       schoolId,
       academicYearId,
       active: true,
+      student: { status: "ACTIVE" },
 
       ...(classId && {
         classId,
@@ -1062,6 +1065,7 @@ dashboardData(
         schoolId,
         academicYearId,
         active: true,
+        student: { status: "ACTIVE" },
       },
     }),
 
@@ -1214,6 +1218,7 @@ async markFullPresent(
         schoolId,
         academicYearId,
         active: true,
+        student: { status: "ACTIVE" },
 
         ...(filters?.classId
           ? {
@@ -1700,6 +1705,7 @@ async markStudentsAbsent(
       schoolId,
       academicYearId,
       active: true,
+      student: { status: "ACTIVE" },
       studentId: { in: uniqueStudentIds },
       ...(filters?.classId ? { classId: filters.classId } : {}),
       ...(filters?.sectionId ? { sectionId: filters.sectionId } : {}),

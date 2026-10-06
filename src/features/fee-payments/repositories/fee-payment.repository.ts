@@ -15,6 +15,7 @@ export async function createFeePaymentInTransaction(
       id: input.studentEnrollmentId,
       schoolId,
       active: true,
+      student: { status: "ACTIVE" },
     },
   });
 

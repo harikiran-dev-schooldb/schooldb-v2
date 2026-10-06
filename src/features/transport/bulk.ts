@@ -213,6 +213,7 @@ export async function importTransportData(schoolId: string, input: unknown, perf
             schoolId,
             active: true,
             student: {
+              status: "ACTIVE",
               admissionNo: {
                 in: [...new Set(assignmentRows.map((row) => row.admissionNo!))],
                 mode: "insensitive",

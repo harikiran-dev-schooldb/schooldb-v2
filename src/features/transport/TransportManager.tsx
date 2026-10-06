@@ -126,13 +126,20 @@ function formObject(form: HTMLFormElement) {
   return Object.fromEntries(new FormData(form));
 }
 
-export function TransportManager({
-  data,
-  academicYearId,
-}: {
+type TransportManagerProps = {
   data: TransportDashboardData;
   academicYearId: string | null;
-}) {
+  canManage?: boolean;
+};
+
+export function TransportManager({ canManage = true, ...props }: TransportManagerProps) {
+  return canManage ? <TransportWorkspace {...props} /> : <TransportReadOnly data={props.data} />;
+}
+
+function TransportWorkspace({
+  data,
+  academicYearId,
+}: Omit<TransportManagerProps, "canManage">) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const activeVehicles = useMemo(() => data.vehicles.filter((vehicle) => vehicle.active), [data.vehicles]);
@@ -726,6 +733,10 @@ export function TransportManager({
       </Tabs>
     </div>
   );
+}
+
+function TransportReadOnly({ data }: { data: TransportDashboardData }) {
+  return <div className="space-y-6 p-4 sm:p-6"><div className="rounded-2xl border border-indigo-100 bg-indigo-50/60 p-4 text-sm text-indigo-950"><p className="font-semibold">View-only transport access</p><p className="mt-1 text-indigo-800">You can review vehicles, routes and assignments. A transport manager is required to make changes.</p></div><div className="grid gap-4 md:grid-cols-3">{data.vehicles.map((vehicle) => <Card key={vehicle.id}><CardHeader><CardTitle>{vehicle.registrationNo}</CardTitle><CardDescription>{vehicle.name || vehicle.type}</CardDescription></CardHeader><CardContent className="text-sm text-muted-foreground">{vehicle.driverName} · {vehicle.capacity} seats</CardContent></Card>)}</div><div className="grid gap-4 lg:grid-cols-2">{data.routes.map((route) => <RouteCard key={route.id} route={route} />)}</div><Card><CardHeader><CardTitle>Student assignments</CardTitle><CardDescription>{data.assignments.length} active transport records</CardDescription></CardHeader><CardContent className="space-y-3">{data.assignments.map((assignment) => <div key={assignment.id} className="rounded-xl border p-3"><p className="font-semibold">{assignment.studentEnrollment.student.fullName || assignment.studentEnrollment.student.admissionNo}</p><p className="mt-1 text-xs text-muted-foreground">{assignment.route.code} · {assignment.studentEnrollment.class.name} {assignment.studentEnrollment.section.name}</p></div>)}</CardContent></Card></div>;
 }
 
 function Metric({

@@ -85,8 +85,8 @@ export async function GET(request: Request) {
           _count: {
             select: {
               students: academicYearId
-                ? { where: { academicYearId } }
-                : true,
+                ? { where: { academicYearId, student: { status: "ACTIVE" } } }
+                : { where: { student: { status: "ACTIVE" } } },
             },
           },
         },

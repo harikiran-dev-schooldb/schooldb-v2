@@ -109,6 +109,7 @@ export async function POST(request: Request) {
         schoolId: tenant.schoolId,
         active: true,
         academicYearId: { in: yearIds },
+        student: { status: "ACTIVE" },
       },
       select: {
         id: true,

@@ -81,11 +81,11 @@ export async function listTransportDashboard(schoolId: string) {
           orderBy: { sequence: "asc" },
           select: { id: true, name: true, sequence: true, pickupTime: true, dropTime: true, monthlyFee: true, active: true },
         },
-        _count: { select: { assignments: { where: { active: true } } } },
+        _count: { select: { assignments: { where: { active: true, studentEnrollment: { student: { status: "ACTIVE" } } } } } },
       },
     }),
     prisma.studentTransportAssignment.findMany({
-      where: { schoolId, active: true },
+      where: { schoolId, active: true, studentEnrollment: { student: { status: "ACTIVE" } } },
       orderBy: { createdAt: "desc" },
       take: 100,
       select: {
@@ -135,7 +135,7 @@ export async function assignStudentTransport(schoolId: string, value: unknown, p
   const input = assignmentSchema.parse(value);
   const [enrollment, route] = await Promise.all([
     prisma.studentEnrollment.findFirst({
-      where: { schoolId, studentId: input.studentId, academicYearId: input.academicYearId, active: true },
+      where: { schoolId, studentId: input.studentId, academicYearId: input.academicYearId, active: true, student: { status: "ACTIVE" } },
       select: { id: true, studentId: true },
     }),
     prisma.transportRoute.findFirst({

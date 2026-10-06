@@ -4,7 +4,7 @@ import { recordAuditLog } from "@/lib/audit";
 import { prisma } from "@/lib/prisma";
 import { ApiResponse } from "@/lib/response";
 import { validateBody } from "@/lib/validation";
-import { publishHomeworkSchema } from "../route";
+import { publishHomeworkSchema } from "@/features/homework/mobile-teacher-homework";
 
 type Props = { params: Promise<{ id: string }> };
 

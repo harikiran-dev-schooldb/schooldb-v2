@@ -20,6 +20,7 @@ export async function GET(req: Request) {
       where: {
         id: studentId,
         schoolId: tenant.schoolId,
+        status: "ACTIVE",
       },
 
       include: {
@@ -38,7 +39,7 @@ export async function GET(req: Request) {
     });
 
     if (!student) {
-      return ApiResponse.error("Student not found.", 404);
+      return ApiResponse.error("Active student not found.", 404);
     }
 
     const enrollment = student.enrollments[0];

@@ -39,32 +39,24 @@ export async function GET(req: Request) {
                 : {}),
 
               studentEnrollment: {
+                active: true,
+                student: {
+                  status: "ACTIVE",
+                  ...(search
+                    ? {
+                        OR: [
+                          { fullName: { contains: search, mode: "insensitive" } },
+                          { admissionNo: { contains: search, mode: "insensitive" } },
+                        ],
+                      }
+                    : {}),
+                },
                 ...(classId
                   ? {
                       classId,
                     }
                   : {}),
 
-                ...(search
-                  ? {
-                      student: {
-                        OR: [
-                          {
-                            fullName: {
-                              contains: search,
-                              mode: "insensitive",
-                            },
-                          },
-                          {
-                            admissionNo: {
-                              contains: search,
-                              mode: "insensitive",
-                            },
-                          },
-                        ],
-                      },
-                    }
-                  : {}),
               },
             },
           },

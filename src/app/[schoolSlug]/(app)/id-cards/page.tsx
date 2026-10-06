@@ -40,6 +40,7 @@ export default async function IdCardsPage({ params, searchParams }: Props) {
             schoolId: tenant.schoolId,
             academicYearId,
             active: true,
+            student: { status: "ACTIVE" },
             ...(filters.studentId ? { studentId: filters.studentId } : { classId: filters.classId, ...(filters.sectionId ? { sectionId: filters.sectionId } : {}) }),
           },
           orderBy: [{ class: { displayOrder: "asc" } }, { section: { displayOrder: "asc" } }, { rollNo: "asc" }, { student: { fullName: "asc" } }],

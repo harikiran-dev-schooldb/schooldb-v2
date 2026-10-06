@@ -35,6 +35,7 @@ export async function GET(request: Request) {
               ? { feePlan: { academicYearId } }
               : {}),
             studentEnrollment: {
+              student: { status: "ACTIVE" },
               ...(allowedClassSections
                 ? allowedClassSections.length > 0
                   ? {

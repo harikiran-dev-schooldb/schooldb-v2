@@ -7,7 +7,15 @@ import { prisma } from "@/lib/prisma";
 export async function GET() {
   const tenant = await requirePermission(PERMISSIONS.FEE_READ);
   const rows = await prisma.studentFeeInstallment.findMany({
-    where: { studentFeeItem: { studentFee: { schoolId: tenant.schoolId, active: true } } },
+    where: {
+      studentFeeItem: {
+        studentFee: {
+          schoolId: tenant.schoolId,
+          active: true,
+          studentEnrollment: { student: { status: "ACTIVE" } },
+        },
+      },
+    },
     select: { name: true, sequence: true },
     distinct: ["name"],
     orderBy: [{ sequence: "asc" }, { name: "asc" }],

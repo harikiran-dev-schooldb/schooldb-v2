@@ -11,10 +11,7 @@ export const studentEnrollmentRepository = {
     },
   ) {
     return prisma.studentEnrollment.findMany({
-      where: {
-        ...where,
-        active: true,
-      },
+      where: { AND: [where, { active: true, student: { status: "ACTIVE" } }] },
       include: {
         student: true,
         academicYear: true,
@@ -35,10 +32,7 @@ export const studentEnrollmentRepository = {
 
   count(where: Prisma.StudentEnrollmentWhereInput) {
     return prisma.studentEnrollment.count({
-      where: {
-        ...where,
-        active: true,
-      },
+      where: { AND: [where, { active: true, student: { status: "ACTIVE" } }] },
     });
   },
 
@@ -103,6 +97,7 @@ export const studentEnrollmentRepository = {
       where: {
         schoolId,
         active: true,
+        student: { status: "ACTIVE" },
         ...(filters?.academicYearId && {
           academicYearId: filters.academicYearId,
         }),
@@ -135,6 +130,7 @@ export const studentEnrollmentRepository = {
         classId,
         sectionId,
         active: true,
+        student: { status: "ACTIVE" },
       },
       include: { student: true },
       orderBy: { rollNo: "asc" },
@@ -154,6 +150,7 @@ export const studentEnrollmentRepository = {
         classId: input.sourceClassId,
         sectionId: input.sourceSectionId,
         active: true,
+        student: { status: "ACTIVE" },
       },
       include: {
         student: true,

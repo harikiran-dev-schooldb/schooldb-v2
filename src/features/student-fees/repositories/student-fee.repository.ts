@@ -111,14 +111,10 @@ export const studentFeeRepository = {
     where: {
       schoolId,
       active: true,
-
-      ...(studentId
-        ? {
-            studentEnrollment: {
-              studentId,
-            },
-          }
-        : {}),
+      studentEnrollment: {
+        student: { status: "ACTIVE" },
+        ...(studentId ? { studentId } : {}),
+      },
     },
 
     include: {
@@ -192,6 +188,7 @@ export const studentFeeRepository = {
             id: studentEnrollmentId,
             schoolId,
             active: true,
+            student: { status: "ACTIVE" },
           },
           select: {
             id: true,
@@ -422,6 +419,7 @@ export const studentFeeRepository = {
         schoolId,
         active: true,
         academicYearId: plan.academicYearId,
+        student: { status: "ACTIVE" },
         ...(!plan.appliesToAllClasses
           ? {
               classId: {

@@ -22,8 +22,12 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       schoolId: tenant.schoolId, active: true,
       ...(academicYearId ? { feePlan: { academicYearId } } : {}),
       studentEnrollment: {
+        active: true,
         ...(classId ? { classId } : {}), ...(sectionId ? { sectionId } : {}),
-        ...(search ? { student: { OR: [{ fullName: { contains: search, mode: "insensitive" } }, { admissionNo: { contains: search, mode: "insensitive" } }] } } : {}),
+        student: {
+          status: "ACTIVE",
+          ...(search ? { OR: [{ fullName: { contains: search, mode: "insensitive" } }, { admissionNo: { contains: search, mode: "insensitive" } }] } : {}),
+        },
       },
     }},
   };

@@ -141,6 +141,7 @@ export const cashfreePaymentService = {
         where: {
           id: input.studentId,
           schoolId,
+          status: "ACTIVE",
           enrollments: { some: { id: enrollmentId, active: true } },
         },
         select: {

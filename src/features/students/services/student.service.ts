@@ -341,36 +341,60 @@ export const studentService = {
       throw new Error("Student already has this status.");
     }
 
-    const updated = await studentRepository.changeStatus(
-      id,
-      schoolId,
-      status,
-      remarks,
-    );
+    const updated = await prisma.$transaction(async (tx) => {
+      const changed = await tx.student.update({
+        where: { id, schoolId },
+        data: {
+          status,
+          statusRemarks: remarks,
+          statusChangedAt: new Date(),
+        },
+      });
 
-    /* -------------------------------------------------------------- */
-    /* Activity                                                        */
-    /* -------------------------------------------------------------- */
+      if (status !== StudentStatus.ACTIVE) {
+        const endedAt = new Date();
 
-    await studentActivityService.create({
-      schoolId,
+        await Promise.all([
+          tx.studentFee.updateMany({
+            where: { schoolId, active: true, studentEnrollment: { studentId: id } },
+            data: { active: false },
+          }),
+          tx.studentTransportAssignment.updateMany({
+            where: { schoolId, active: true, studentEnrollment: { studentId: id } },
+            data: { active: false, endDate: endedAt },
+          }),
+          tx.parentStudentLink.updateMany({
+            where: { schoolId, studentId: id, active: true },
+            data: { active: false },
+          }),
+        ]);
 
-      studentId: id,
-      performedByUserId,
+        await tx.studentEnrollment.updateMany({
+          where: { schoolId, studentId: id, active: true },
+          data: { active: false },
+        });
+      }
 
-      type: "STATUS_CHANGED",
+      await tx.studentActivity.create({
+        data: {
+          schoolId,
+          studentId: id,
+          performedByUserId,
+          type: "STATUS_CHANGED",
+          title: "Student status changed",
+          description: `Student status changed from ${student.status} to ${status}${
+            remarks ? `. Remark: ${remarks}` : "."
+          }`,
+          metadata: {
+            previousStatus: student.status,
+            newStatus: status,
+            remarks: remarks ?? null,
+            operationalAccessClosed: status !== StudentStatus.ACTIVE,
+          },
+        },
+      });
 
-      title: "Student status changed",
-
-      description: `Student status changed from ${student.status} to ${status}${
-        remarks ? `. Remark: ${remarks}` : "."
-      }`,
-
-      metadata: {
-        previousStatus: student.status,
-        newStatus: status,
-        remarks: remarks ?? null,
-      },
+      return changed;
     });
 
     const loginAccess = await safelyProvisionStudentLogin(updated.id, schoolId);

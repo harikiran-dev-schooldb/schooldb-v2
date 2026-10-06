@@ -1,8 +1,11 @@
-import { resolveConfiguredRoute } from "./route-access.ts";
+import { isRouteAllowed, resolveConfiguredRoute, type RouteAccessConfig } from "./route-access.ts";
 
 export const STAFF_PERMISSION_MODULES = [
   { key: "DASHBOARD", label: "Dashboard", description: "School overview and summary metrics" },
-  { key: "STUDENTS", label: "Students", description: "Student records, enrollments, ID cards and certificates" },
+  { key: "STUDENTS", label: "Student Directory", description: "Student profiles and directory access" },
+  { key: "STUDENT_RECORDS", label: "Student Records", description: "Enrollments, houses and birthday records" },
+  { key: "STUDENT_IDS", label: "Student ID Cards", description: "Student identity card generation and settings" },
+  { key: "CERTIFICATES", label: "Certificates", description: "Certificate templates, issues and exports" },
   { key: "ADMISSIONS", label: "Admissions", description: "Online applications and admission processing" },
   { key: "ATTENDANCE", label: "Attendance", description: "Student attendance and attendance reports" },
   { key: "LEARNING", label: "Learning", description: "Homework, exams, results and toppers" },
@@ -36,10 +39,10 @@ const DEFAULT_ROLE_LEVELS: Record<string, Partial<Record<StaffPermissionModule, 
   TEACHER: {
     STUDENTS: "VIEW",
     ATTENDANCE: "MANAGE",
-    LEARNING: "VIEW",
+    LEARNING: "MANAGE",
     TIMETABLE: "VIEW",
     CALENDAR: "VIEW",
-    COMMUNICATION: "VIEW",
+    COMMUNICATION: "MANAGE",
     SUPPORT: "VIEW",
   },
   ACCOUNTANT: {
@@ -53,20 +56,21 @@ const DEFAULT_ROLE_LEVELS: Record<string, Partial<Record<StaffPermissionModule, 
   RECEPTIONIST: {
     DASHBOARD: "VIEW",
     STUDENTS: "MANAGE",
+    STUDENT_IDS: "MANAGE",
     ADMISSIONS: "MANAGE",
     FRONT_OFFICE: "MANAGE",
     SUPPORT: "VIEW",
   },
 };
 
-const ROUTE_MODULES: Partial<Record<string, StaffPermissionModule>> = {
+export const ROUTE_MODULES: Partial<Record<string, StaffPermissionModule>> = {
   dashboard: "DASHBOARD",
   students: "STUDENTS",
-  enrollments: "STUDENTS",
-  "student-houses": "STUDENTS",
-  birthdays: "STUDENTS",
-  "id-cards": "STUDENTS",
-  certificates: "STUDENTS",
+  enrollments: "STUDENT_RECORDS",
+  "student-houses": "STUDENT_RECORDS",
+  birthdays: "STUDENT_RECORDS",
+  "id-cards": "STUDENT_IDS",
+  certificates: "CERTIFICATES",
   admissions: "ADMISSIONS",
   attendance: "ATTENDANCE",
   "attendance/dashboard": "ATTENDANCE",
@@ -119,42 +123,73 @@ const ROUTE_MODULES: Partial<Record<string, StaffPermissionModule>> = {
   "parent-queries": "SUPPORT",
 };
 
-const API_MODULES: Array<[string, readonly StaffPermissionModule[]]> = [
-  ["/api/v1/attendance", ["ATTENDANCE"]],
-  ["/api/v1/fees", ["FEES"]],
-  ["/api/v1/fee-", ["FEES"]],
-  ["/api/v1/student-fees", ["FEES"]],
-  ["/api/v1/student-fee-", ["FEES"]],
-  ["/api/v1/direct-upi", ["FEES"]],
-  ["/api/v1/students/options", ["STUDENTS", "ADMISSIONS", "ACADEMICS"]],
-  ["/api/v1/students", ["STUDENTS"]],
-  ["/api/v1/admissions", ["ADMISSIONS"]],
-  ["/api/v1/student-enrollments", ["STUDENTS"]],
-  ["/api/v1/houses", ["STUDENTS"]],
-  ["/api/v1/birthdays", ["STUDENTS"]],
-  ["/api/v1/id-card", ["STUDENTS"]],
-  ["/api/v1/certificate", ["STUDENTS"]],
-  ["/api/v1/teachers/options", ["ACADEMICS", "TIMETABLE"]],
-  ["/api/v1/teachers", ["ACADEMICS"]],
-  ["/api/v1/teacher-allocations", ["ACADEMICS"]],
-  ["/api/v1/class-teachers", ["ACADEMICS"]],
-  ["/api/v1/classes", ["ACADEMICS"]],
-  ["/api/v1/sections", ["ACADEMICS"]],
-  ["/api/v1/subjects", ["ACADEMICS"]],
-  ["/api/v1/syllabi", ["ACADEMICS"]],
-  ["/api/v1/academic-", ["ACADEMICS"]],
-  ["/api/v1/periods", ["TIMETABLE"]],
-  ["/api/v1/timetables", ["TIMETABLE"]],
-  ["/api/v1/homework", ["LEARNING"]],
-  ["/api/v1/exam", ["LEARNING"]],
-  ["/api/v1/library", ["LIBRARY"]],
-  ["/api/v1/transport", ["TRANSPORT"]],
-  ["/api/v1/notifications", ["COMMUNICATION"]],
-  ["/api/v1/support/tickets", ["SUPPORT"]],
-  ["/api/v1/operations", ["STAFF", "FRONT_OFFICE", "INVENTORY", "REPORTS"]],
-  ["/api/v1/dashboard", ["DASHBOARD"]],
-  ["/api/v1/report", ["REPORTS"]],
-];
+type ApiAccessRule = {
+  prefix: string;
+  read: readonly StaffPermissionModule[];
+  write?: readonly StaffPermissionModule[];
+  writeLevel?: "VIEW" | "MANAGE";
+};
+
+const ACADEMIC_REFERENCE_CONSUMERS = [
+  "ACADEMICS", "ADMISSIONS", "ATTENDANCE", "LEARNING", "FEES",
+  "TIMETABLE", "REPORTS", "STUDENTS", "STUDENT_RECORDS",
+] as const satisfies readonly StaffPermissionModule[];
+
+/** Shared reference data can be consumed without granting write access. */
+export const API_ACCESS_RULES: readonly ApiAccessRule[] = [
+  { prefix: "/api/v1/attendance", read: ["ATTENDANCE"], write: ["ATTENDANCE"] },
+  { prefix: "/api/v1/fees", read: ["FEES"], write: ["FEES"] },
+  { prefix: "/api/v1/fee-", read: ["FEES"], write: ["FEES"] },
+  { prefix: "/api/v1/student-fees", read: ["FEES"], write: ["FEES"] },
+  { prefix: "/api/v1/student-fee-", read: ["FEES"], write: ["FEES"] },
+  { prefix: "/api/v1/direct-upi", read: ["FEES"], write: ["FEES"] },
+  { prefix: "/api/v1/students/options", read: ACADEMIC_REFERENCE_CONSUMERS },
+  { prefix: "/api/v1/students", read: ["STUDENTS"], write: ["STUDENTS"] },
+  { prefix: "/api/v1/admissions", read: ["ADMISSIONS"], write: ["ADMISSIONS"] },
+  { prefix: "/api/v1/student-enrollments", read: ["STUDENT_RECORDS"], write: ["STUDENT_RECORDS"] },
+  { prefix: "/api/v1/houses", read: ["STUDENT_RECORDS"], write: ["STUDENT_RECORDS"] },
+  { prefix: "/api/v1/birthdays", read: ["STUDENT_RECORDS"], write: ["STUDENT_RECORDS"] },
+  { prefix: "/api/v1/id-card", read: ["STUDENT_IDS"], write: ["STUDENT_IDS"] },
+  { prefix: "/api/v1/id-card-", read: ["STUDENT_IDS"], write: ["STUDENT_IDS"] },
+  { prefix: "/api/v1/certificate", read: ["CERTIFICATES"], write: ["CERTIFICATES"] },
+  { prefix: "/api/v1/certificate-", read: ["CERTIFICATES"], write: ["CERTIFICATES"] },
+  { prefix: "/api/v1/teachers/options", read: ["ACADEMICS", "ATTENDANCE", "LEARNING", "TIMETABLE", "STAFF"] },
+  { prefix: "/api/v1/teachers", read: ["ACADEMICS", "ATTENDANCE", "STAFF"], write: ["ACADEMICS"] },
+  { prefix: "/api/v1/teacher-allocations", read: ["ACADEMICS", "ATTENDANCE", "LEARNING", "TIMETABLE"], write: ["ACADEMICS"] },
+  { prefix: "/api/v1/class-teachers", read: ["ACADEMICS", "ATTENDANCE", "TIMETABLE"], write: ["ACADEMICS"] },
+  { prefix: "/api/v1/class-subjects", read: ["ACADEMICS", "ATTENDANCE", "LEARNING", "TIMETABLE"], write: ["ACADEMICS"] },
+  { prefix: "/api/v1/classes", read: ACADEMIC_REFERENCE_CONSUMERS, write: ["ACADEMICS"] },
+  { prefix: "/api/v1/sections", read: ACADEMIC_REFERENCE_CONSUMERS, write: ["ACADEMICS"] },
+  { prefix: "/api/v1/subjects", read: ["ACADEMICS", "ATTENDANCE", "LEARNING", "TIMETABLE", "REPORTS"], write: ["ACADEMICS"] },
+  { prefix: "/api/v1/syllabi", read: ["ACADEMICS", "LEARNING"], write: ["ACADEMICS"] },
+  { prefix: "/api/v1/academic-", read: ACADEMIC_REFERENCE_CONSUMERS, write: ["ACADEMICS"] },
+  { prefix: "/api/v1/periods", read: ["TIMETABLE", "ATTENDANCE"], write: ["TIMETABLE"] },
+  { prefix: "/api/v1/timetables", read: ["TIMETABLE", "ATTENDANCE"], write: ["TIMETABLE"] },
+  { prefix: "/api/v1/homework", read: ["LEARNING"], write: ["LEARNING"] },
+  { prefix: "/api/v1/exam-", read: ["LEARNING"], write: ["LEARNING"] },
+  { prefix: "/api/v1/exams", read: ["LEARNING"], write: ["LEARNING"] },
+  { prefix: "/api/v1/exam", read: ["LEARNING"], write: ["LEARNING"] },
+  { prefix: "/api/v1/library", read: ["LIBRARY"], write: ["LIBRARY"] },
+  { prefix: "/api/v1/transport", read: ["TRANSPORT"], write: ["TRANSPORT"] },
+  { prefix: "/api/v1/notifications", read: ["COMMUNICATION"], write: ["COMMUNICATION"] },
+  { prefix: "/api/v1/support/tickets", read: ["SUPPORT"], write: ["SUPPORT"] },
+  { prefix: "/api/v1/operations", read: ["STAFF", "FRONT_OFFICE", "INVENTORY", "REPORTS"], write: ["STAFF", "FRONT_OFFICE", "INVENTORY"] },
+  { prefix: "/api/v1/dashboard", read: ["DASHBOARD"] },
+  { prefix: "/api/v1/payment-settings/direct-upi", read: ["FEES"], write: ["FEES"] },
+  { prefix: "/api/v1/online-payments/cashfree/staff", read: ["FEES"], write: ["FEES"] },
+  { prefix: "/api/v1/mobile/admin/dashboard", read: ["DASHBOARD"] },
+  { prefix: "/api/v1/mobile/admin/announcements", read: ["COMMUNICATION"], write: ["COMMUNICATION"] },
+  { prefix: "/api/v1/mobile/admin/content-options", read: ["LEARNING", "ACADEMICS"] },
+  { prefix: "/api/v1/mobile/admin/homework", read: ["LEARNING"], write: ["LEARNING"] },
+  { prefix: "/api/v1/mobile/admin/leave", read: ["CALENDAR"], write: ["CALENDAR"] },
+  { prefix: "/api/v1/mobile/admin/notifications", read: ["COMMUNICATION"], write: ["COMMUNICATION"] },
+  { prefix: "/api/v1/mobile/admin/reports", read: ["REPORTS"] },
+  { prefix: "/api/v1/mobile/admin/sections", read: ACADEMIC_REFERENCE_CONSUMERS },
+  { prefix: "/api/v1/mobile/admin/students", read: ["STUDENTS"], write: ["STUDENTS"] },
+  { prefix: "/api/v1/report-exports", read: ["REPORTS"], write: ["REPORTS"], writeLevel: "VIEW" },
+  { prefix: "/api/v1/reports", read: ["REPORTS"], write: ["REPORTS"], writeLevel: "VIEW" },
+  { prefix: "/api/v1/report", read: ["REPORTS"], write: ["REPORTS"], writeLevel: "VIEW" },
+] as const;
 
 export function encodeStaffPermission(module: StaffPermissionModule, level: Exclude<StaffAccessLevel, "NONE">) {
   return `${module}:${level}`;
@@ -201,21 +236,108 @@ export function moduleForRoute(href?: string) {
   return href ? ROUTE_MODULES[href] : undefined;
 }
 
-export function permissionModulesForRequestPath(pathname: string | null, schoolSlug: string) {
-  if (!pathname) return [];
+function matchesApiPrefix(pathname: string, prefix: string) {
+  return prefix.endsWith("-")
+    ? pathname.startsWith(prefix)
+    : pathname === prefix || pathname.startsWith(`${prefix}/`);
+}
+
+export function permissionPolicyForRequest(
+  pathname: string | null,
+  schoolSlug: string,
+  method: string | null,
+) {
+  const required = requiredAccessLevel(method);
+  if (!pathname) return null;
   if (pathname.startsWith(`/${schoolSlug}/`)) {
     const route = resolveConfiguredRoute(pathname.slice(schoolSlug.length + 2));
     const permissionModule = moduleForRoute(route);
-    return permissionModule ? [permissionModule] : [];
+    return permissionModule ? { modules: [permissionModule], required, route } : null;
   }
 
-  return (
-    API_MODULES.find(
-      ([prefix]) => pathname === prefix || pathname.startsWith(prefix.endsWith("-") ? prefix : `${prefix}/`) || pathname.startsWith(prefix),
-    )?.[1] ?? []
-  );
+  const rule = API_ACCESS_RULES.find(({ prefix }) => matchesApiPrefix(pathname, prefix));
+  if (!rule) return null;
+  const readOnly = !method || method === "GET" || method === "HEAD";
+  return {
+    modules: [...(readOnly ? rule.read : rule.write ?? rule.read)],
+    required: readOnly ? "VIEW" as const : rule.writeLevel ?? "MANAGE" as const,
+    route: null,
+  };
 }
 
-export function requiredAccessLevel(method: string | null) {
+export function permissionModulesForRequestPath(
+  pathname: string | null,
+  schoolSlug: string,
+  method: string | null = "GET",
+) {
+  return permissionPolicyForRequest(pathname, schoolSlug, method)?.modules ?? [];
+}
+
+export function requiredAccessLevel(
+  method: string | null,
+): Exclude<StaffAccessLevel, "NONE"> {
   return !method || method === "GET" || method === "HEAD" ? "VIEW" : "MANAGE";
+}
+
+export function routesForModule(module: StaffPermissionModule) {
+  return Object.entries(ROUTE_MODULES)
+    .filter(([, candidate]) => candidate === module)
+    .map(([route]) => route);
+}
+
+export function isModuleEnabledForSchool(
+  school: RouteAccessConfig,
+  module: StaffPermissionModule,
+) {
+  if (!school.routeAccessRestricted) return true;
+  return routesForModule(module).some((route) => isRouteAllowed(school, route));
+}
+
+export type ApiAccessClassification =
+  | "DELEGATED"
+  | "SELF_SERVICE"
+  | "ROLE_ONLY"
+  | "PUBLIC"
+  | "UNCLASSIFIED";
+
+const SELF_SERVICE_API_PREFIXES = [
+  "/api/v1/account-switch",
+  "/api/v1/mobile/context",
+  "/api/v1/mobile/family",
+  "/api/v1/mobile/push/devices",
+  "/api/v1/mobile/teacher",
+  "/api/v1/notification-preferences",
+  "/api/v1/online-payments/cashfree/orders",
+  "/api/v1/pwa",
+  "/api/v1/settings/profile-image",
+  "/api/v1/web-push/devices",
+] as const;
+
+const ROLE_ONLY_API_PREFIXES = [
+  "/api/v1/android-builds",
+  "/api/v1/onboarding",
+  "/api/v1/schools",
+  "/api/v1/settings/managed-profile-image",
+  "/api/v1/settings/profile-image-requests",
+  "/api/v1/staff-accounts",
+  "/api/v1/support/admin-accounts",
+  "/api/v1/support/analytics",
+  "/api/v1/support/devices",
+  "/api/v1/support/staff",
+  "/api/v1/support/students",
+  "/api/v1/system",
+] as const;
+
+export function classifyApiRequestPath(pathname: string): ApiAccessClassification {
+  if (pathname.startsWith("/api/v1/public/")) return "PUBLIC";
+  if (API_ACCESS_RULES.some(({ prefix }) => matchesApiPrefix(pathname, prefix))) {
+    return "DELEGATED";
+  }
+  if (SELF_SERVICE_API_PREFIXES.some((prefix) => matchesApiPrefix(pathname, prefix))) {
+    return "SELF_SERVICE";
+  }
+  if (ROLE_ONLY_API_PREFIXES.some((prefix) => matchesApiPrefix(pathname, prefix))) {
+    return "ROLE_ONLY";
+  }
+  return "UNCLASSIFIED";
 }

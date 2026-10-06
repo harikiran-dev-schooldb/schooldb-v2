@@ -33,7 +33,13 @@ async function save(action: string, data: unknown) { const response = await fetc
 const object = (form: HTMLFormElement) => Object.fromEntries(new FormData(form));
 const date = (value: string) => new Intl.DateTimeFormat("en-IN", { dateStyle: "medium" }).format(new Date(value));
 
-export function LibraryManager({ data, academicYearId, teachers }: { data: LibraryData; academicYearId: string | null; teachers: Array<{ id: string; fullName: string; employeeId: string }> }) {
+type LibraryManagerProps = { data: LibraryData; academicYearId: string | null; teachers: Array<{ id: string; fullName: string; employeeId: string }>; canManage?: boolean };
+
+export function LibraryManager({ canManage = true, ...props }: LibraryManagerProps) {
+  return canManage ? <LibraryWorkspace {...props} /> : <LibraryReadOnly data={props.data} />;
+}
+
+function LibraryWorkspace({ data, academicYearId, teachers }: Omit<LibraryManagerProps, "canManage">) {
   const router = useRouter(); const [pending, startTransition] = useTransition();
   const [studentId, setStudentId] = useState(""); const [borrowerType, setBorrowerType] = useState("STUDENT"); const [teacherId, setTeacherId] = useState(""); const [search, setSearch] = useState("");
   const availableBooks = data.books.filter((book) => book.copies.some((copy) => copy.status === "AVAILABLE"));
@@ -53,6 +59,7 @@ export function LibraryManager({ data, academicYearId, teachers }: { data: Libra
     </Tabs>
   </div>;
 }
+function LibraryReadOnly({ data }: { data: LibraryData }) { const activeLoans = data.loans.filter((loan) => !loan.returnedAt); return <div className="space-y-6 p-4 sm:p-6"><div className="rounded-2xl border border-indigo-100 bg-indigo-50/60 p-4 text-sm text-indigo-950"><p className="font-semibold">View-only library access</p><p className="mt-1 text-indigo-800">You can review the catalog and current loans. A library manager is required to change records.</p></div><div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{data.books.map((book) => <BookCard key={book.id} book={book} />)}</div><Card><CardHeader><CardTitle>Active loans</CardTitle><CardDescription>{activeLoans.length} books currently issued</CardDescription></CardHeader><CardContent className="space-y-3">{activeLoans.map((loan) => <div key={loan.id} className="rounded-xl border p-3"><p className="font-semibold">{loan.copy.book.title}</p><p className="mt-1 text-xs text-muted-foreground">{loan.studentEnrollment?.student.fullName || loan.teacher?.fullName || "Borrower"} · Due {date(loan.dueAt)}</p></div>)}</CardContent></Card></div>; }
 function Metric({ value, label }: { value: number; label: string }) { return <div className="rounded-2xl border border-white/80 bg-white/70 p-4 shadow-sm backdrop-blur-sm"><p className="text-3xl font-black text-slate-950">{value}</p><p className="text-xs font-semibold text-slate-500">{label}</p></div>; }
 function Field({ label, children }: { label: string; children: React.ReactNode }) { return <div className="space-y-2"><Label>{label}</Label>{children}</div>; }
 function Empty({ text }: { text: string }) { return <Card className="min-h-44"><CardContent className="flex flex-1 items-center justify-center p-8 text-center text-sm text-muted-foreground">{text}</CardContent></Card>; }

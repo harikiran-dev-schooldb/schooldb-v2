@@ -30,11 +30,11 @@ function TabsTrigger({
   disabled,
   ...props
 }: React.ComponentProps<typeof TabsPrimitive.Trigger>) {
-  const [hydrated, setHydrated] = React.useState(false);
-
-  React.useEffect(() => {
-    setHydrated(true);
-  }, []);
+  const hydrated = React.useSyncExternalStore(
+    () => () => undefined,
+    () => true,
+    () => false,
+  );
 
   return (
     <TabsPrimitive.Trigger

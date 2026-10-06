@@ -49,6 +49,7 @@ export const attendanceBulkService = {
     const students = await prisma.student.findMany({
       where: {
         schoolId,
+        status: "ACTIVE",
         OR: admissionNos.map((admissionNo) => ({
           admissionNo: { equals: admissionNo, mode: "insensitive" as const },
         })),
@@ -67,7 +68,12 @@ export const attendanceBulkService = {
     const studentIds = students.map((student) => student.id);
     const enrollments = studentIds.length
       ? await prisma.studentEnrollment.findMany({
-          where: { schoolId, studentId: { in: studentIds } },
+          where: {
+            schoolId,
+            active: true,
+            student: { status: "ACTIVE" },
+            studentId: { in: studentIds },
+          },
           select: { studentId: true, academicYearId: true, classId: true, sectionId: true },
         })
       : [];
@@ -167,6 +173,7 @@ export const attendanceBulkService = {
                 classId: first.classId,
                 sectionId: first.sectionId,
                 active: true,
+                student: { status: "ACTIVE" },
               },
               select: { studentId: true },
             });

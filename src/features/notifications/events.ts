@@ -256,6 +256,7 @@ export async function notifyExamResultsPublished(
       schoolId,
       academicYearId: exam.academicYearId,
       active: true,
+      student: { status: "ACTIVE" },
       OR: scopes.map((scope) => ({
         classId: scope.classId,
         ...(scope.sectionId ? { sectionId: scope.sectionId } : {}),
@@ -508,7 +509,7 @@ export async function notifyStudentProfileImageSubmitted(
   storageKey: string,
 ) {
   const student = await prisma.student.findFirst({
-    where: { id: studentId, schoolId },
+    where: { id: studentId, schoolId, status: "ACTIVE" },
     select: { fullName: true, admissionNo: true },
   });
   if (!student) return null;

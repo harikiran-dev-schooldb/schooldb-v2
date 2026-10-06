@@ -148,6 +148,7 @@ export async function importBulkFeePayments(
               student: {
                 admissionNo,
                 schoolId,
+                status: "ACTIVE",
               },
             },
 

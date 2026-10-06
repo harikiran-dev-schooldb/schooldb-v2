@@ -6,8 +6,7 @@ import { requireMembership } from "@/lib/auth";
 import { formatSchoolDateTime } from "@/lib/date-time";
 import { prisma } from "@/lib/prisma";
 import { QueryActions } from "./query-actions";
-
-const ADMIN_ROLES = ["SUPER_ADMIN", "SCHOOL_ADMIN"];
+import { hasModuleAccess } from "@/lib/staff-permissions";
 
 export default async function QueryDetailPage({
   params,
@@ -86,7 +85,7 @@ export default async function QueryDetailPage({
   const enrollment = ticket.student?.enrollments[0];
   const creator = [ticket.createdBy?.firstName, ticket.createdBy?.lastName].filter(Boolean).join(" ") || null;
   const assignee = [ticket.assignedTo?.firstName, ticket.assignedTo?.lastName].filter(Boolean).join(" ") || "Unassigned";
-  const canReply = ADMIN_ROLES.includes(membership.role);
+  const canReply = hasModuleAccess(membership, "SUPPORT", "MANAGE");
 
   return (
     <div className="space-y-6 p-4 sm:p-6">

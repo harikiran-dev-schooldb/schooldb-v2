@@ -46,13 +46,13 @@ export async function getOperationsData(schoolId: string, module: OperationsModu
   if (module === "visitors") return plain({ teachers, students, visitors: await prisma.visitorLog.findMany({ where: { schoolId }, orderBy: { checkInAt: "desc" }, take: 200 }) });
   if (module === "health") {
     const [records, visits] = await Promise.all([
-      prisma.studentHealthRecord.findMany({ where: { schoolId }, orderBy: { updatedAt: "desc" }, take: 200, include: { student: { select: { fullName: true, admissionNo: true } } } }),
-      prisma.studentHealthVisit.findMany({ where: { schoolId }, orderBy: { occurredAt: "desc" }, take: 200, include: { student: { select: { fullName: true, admissionNo: true } } } }),
+      prisma.studentHealthRecord.findMany({ where: { schoolId, student: { status: "ACTIVE" } }, orderBy: { updatedAt: "desc" }, take: 200, include: { student: { select: { fullName: true, admissionNo: true } } } }),
+      prisma.studentHealthVisit.findMany({ where: { schoolId, student: { status: "ACTIVE" } }, orderBy: { occurredAt: "desc" }, take: 200, include: { student: { select: { fullName: true, admissionNo: true } } } }),
     ]);
     return plain({ teachers, students, academicYearId, records, visits });
   }
   if (module === "inventory") return plain({ teachers, students, items: await prisma.inventoryItem.findMany({ where: { schoolId, active: true }, orderBy: [{ category: "asc" }, { name: "asc" }], include: { movements: { orderBy: { createdAt: "desc" }, take: 5 } } }) });
-  if (module === "pickup") return plain({ teachers, students, academicYearId, authorizations: await prisma.pickupAuthorization.findMany({ where: { schoolId }, orderBy: { createdAt: "desc" }, take: 200, include: { student: { select: { fullName: true, admissionNo: true } } } }) });
+  if (module === "pickup") return plain({ teachers, students, academicYearId, authorizations: await prisma.pickupAuthorization.findMany({ where: { schoolId, student: { status: "ACTIVE" } }, orderBy: { createdAt: "desc" }, take: 200, include: { student: { select: { fullName: true, admissionNo: true } } } }) });
   if (module === "maintenance") return plain({ teachers, students, tickets: await prisma.maintenanceTicket.findMany({ where: { schoolId }, orderBy: [{ status: "asc" }, { createdAt: "desc" }], take: 200 }) });
 
   const today = new Date();

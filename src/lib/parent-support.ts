@@ -100,6 +100,7 @@ export async function submitParentSupport(input: {
       schoolId: school.id,
       studentId: input.studentId,
       active: true,
+      student: { status: "ACTIVE" },
       academicYear: { active: true },
       class: { active: true },
       section: { active: true },

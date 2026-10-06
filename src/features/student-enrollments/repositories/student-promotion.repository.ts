@@ -15,6 +15,7 @@ export const studentPromotionRepository = {
         classId,
         sectionId,
         active: true,
+        student: { status: "ACTIVE" },
 
         ...(studentIds?.length
           ? {

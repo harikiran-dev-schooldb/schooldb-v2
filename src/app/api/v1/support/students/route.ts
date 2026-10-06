@@ -17,6 +17,7 @@ export async function GET(request: Request) {
     const students = await prisma.student.findMany({
       where: {
         schoolId: actor.schoolId,
+        status: "ACTIVE",
         OR: [
           { admissionNo: { contains: q, mode: "insensitive" } },
           { fullName: { contains: q, mode: "insensitive" } },

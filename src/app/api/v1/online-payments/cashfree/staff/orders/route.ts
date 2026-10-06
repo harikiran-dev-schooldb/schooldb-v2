@@ -24,6 +24,7 @@ export async function POST(request: Request) {
           ? { id: input.studentEnrollmentId }
           : { studentId: input.studentId }),
         active: true,
+        student: { status: "ACTIVE" },
       },
       orderBy: { updatedAt: "desc" },
       select: { id: true, studentId: true },

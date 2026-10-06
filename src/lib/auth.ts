@@ -8,8 +8,8 @@ import { requireSchoolSlug } from "./tenant-context";
 import { hasPermission, isOperationalRole, PERMISSIONS, type Permission } from "./access-control";
 import {
   hasModuleAccess,
-  permissionModulesForRequestPath,
-  requiredAccessLevel,
+  isModuleEnabledForSchool,
+  permissionPolicyForRequest,
 } from "./staff-permissions";
 import {
   TEACHER_ACCESS_FIELDS,
@@ -79,23 +79,26 @@ export async function requireTenant(schoolSlug?: string) {
     );
   }
 
-  if (
-    membership.customPermissionsEnabled &&
-    !["SUPER_ADMIN", "SCHOOL_ADMIN"].includes(membership.role)
-  ) {
-    const requestHeaders = await headers();
-    const modules = permissionModulesForRequestPath(
-      requestHeaders.get("x-school-pathname"),
-      membership.school.slug,
+  const requestHeaders = await headers();
+  const policy = permissionPolicyForRequest(
+    requestHeaders.get("x-school-pathname"),
+    membership.school.slug,
+    requestHeaders.get("x-school-method"),
+  );
+
+  if (policy) {
+    const enabledModules = policy.modules.filter((module) =>
+      isModuleEnabledForSchool(membership.school, module),
     );
+    if (enabledModules.length === 0) {
+      throw new ApiError(403, "This module is not enabled for this school");
+    }
+
     if (
-      modules.length > 0 &&
-      !modules.some((module) =>
-        hasModuleAccess(
-          membership,
-          module,
-          requiredAccessLevel(requestHeaders.get("x-school-method")),
-        ),
+      membership.customPermissionsEnabled &&
+      !["SUPER_ADMIN", "SCHOOL_ADMIN"].includes(membership.role) &&
+      !enabledModules.some((module) =>
+        hasModuleAccess(membership, module, policy.required),
       )
     ) {
       throw new ApiError(403, "You do not have access to this module");
@@ -108,22 +111,19 @@ export async function requireTenant(schoolSlug?: string) {
 export async function requireRole(allowedRoles: string[], schoolSlug?: string) {
   const membership = await requireTenant(schoolSlug);
 
-  const pathname = (await headers()).get("x-school-pathname");
-  const requestMethod = (await headers()).get("x-school-method");
-  const modules = permissionModulesForRequestPath(
-    pathname,
+  const requestHeaders = await headers();
+  const policy = permissionPolicyForRequest(
+    requestHeaders.get("x-school-pathname"),
     membership.school.slug,
+    requestHeaders.get("x-school-method"),
   );
   if (
     !allowedRoles.includes(membership.role) &&
     !(
       membership.customPermissionsEnabled &&
-      modules.some((module) =>
-        hasModuleAccess(
-          membership,
-          module,
-          requiredAccessLevel(requestMethod),
-        ),
+      policy?.modules.some((module) =>
+        isModuleEnabledForSchool(membership.school, module) &&
+        hasModuleAccess(membership, module, policy.required),
       )
     )
   ) {
@@ -141,22 +141,19 @@ export async function requirePermission(
   schoolSlug?: string,
 ) {
   const membership = await requireTenant(schoolSlug);
-  const pathname = (await headers()).get("x-school-pathname");
-  const requestMethod = (await headers()).get("x-school-method");
-  const modules = permissionModulesForRequestPath(
-    pathname,
+  const requestHeaders = await headers();
+  const policy = permissionPolicyForRequest(
+    requestHeaders.get("x-school-pathname"),
     membership.school.slug,
+    requestHeaders.get("x-school-method"),
   );
   if (
     !hasPermission(membership.role, permission) &&
     !(
       membership.customPermissionsEnabled &&
-      modules.some((module) =>
-        hasModuleAccess(
-          membership,
-          module,
-          requiredAccessLevel(requestMethod),
-        ),
+      policy?.modules.some((module) =>
+        isModuleEnabledForSchool(membership.school, module) &&
+        hasModuleAccess(membership, module, policy.required),
       )
     )
   ) {
@@ -314,6 +311,7 @@ export async function requireTeacherStudent(
       schoolId: membership.schoolId,
       studentId,
       active: true,
+      student: { status: "ACTIVE" },
       ...(academicYearId ? { academicYearId } : {}),
       OR: scope.map((item) => ({
         academicYearId: item.academicYearId,

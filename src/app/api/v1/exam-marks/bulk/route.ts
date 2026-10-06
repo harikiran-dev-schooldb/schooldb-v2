@@ -135,11 +135,15 @@ export async function POST(request: Request) {
           select: { id: true, name: true },
         }),
         prisma.student.findMany({
-          where: { schoolId: tenant.schoolId },
+          where: { schoolId: tenant.schoolId, status: "ACTIVE" },
           select: { id: true, admissionNo: true },
         }),
         prisma.studentEnrollment.findMany({
-          where: { schoolId: tenant.schoolId },
+          where: {
+            schoolId: tenant.schoolId,
+            active: true,
+            student: { status: "ACTIVE" },
+          },
           select: {
             id: true,
             studentId: true,

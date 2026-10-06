@@ -95,6 +95,7 @@ export const examResultService = {
           academicYearId: exam.academicYearId,
           classId,
           active: true,
+          student: { status: "ACTIVE" },
           ...(sectionId ? { sectionId } : {}),
         },
         select: {
@@ -383,6 +384,7 @@ export const examResultService = {
           schoolId,
           academicYearId: exam.academicYearId,
           active: true,
+          student: { status: "ACTIVE" },
 
           classId: {
             in: scheduledClassIds,

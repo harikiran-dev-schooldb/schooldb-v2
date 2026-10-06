@@ -47,6 +47,10 @@ export async function getFeeDashboard(
       studentFee: {
         schoolId,
         active: true,
+        studentEnrollment: {
+          active: true,
+          student: { status: "ACTIVE" as const },
+        },
         ...(academicYearId ? { feePlan: { academicYearId } } : {}),
       },
     },

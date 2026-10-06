@@ -58,7 +58,7 @@ export async function listStaffLeaveRequests(schoolSlug: string, filters: StaffL
 export async function leaveRequestFilterOptions(schoolSlug: string) {
   const membership = await requireRole(["SUPER_ADMIN", "SCHOOL_ADMIN", "TEACHER"], schoolSlug);
   const enrollments = await prisma.studentEnrollment.findMany({
-    where: { schoolId: membership.schoolId, active: true },
+    where: { schoolId: membership.schoolId, active: true, student: { status: "ACTIVE" } },
     select: { classId: true, sectionId: true },
     distinct: ["classId", "sectionId"],
   });

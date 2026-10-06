@@ -4,6 +4,7 @@ import { FeeCollectionContainer } from "@/features/student-fees/components/FeeCo
 import { isCashfreeConfigured } from "@/features/online-payments/cashfree";
 import { PERMISSIONS } from "@/lib/access-control";
 import { requirePermission } from "@/lib/auth";
+import { hasModuleAccess } from "@/lib/staff-permissions";
 
 type Props = {
   params: Promise<{
@@ -16,7 +17,7 @@ export default async function FeeCollectionPage({ params }: Props) {
   const membership = await requirePermission(PERMISSIONS.FEE_READ, schoolSlug);
   const allowCashfreePayments =
     isCashfreeConfigured() &&
-    ["SUPER_ADMIN", "SCHOOL_ADMIN", "ACCOUNTANT"].includes(membership.role);
+    hasModuleAccess(membership, "FEES", "MANAGE");
 
   return (
     <div className="w-full space-y-6 p-4 pb-10 sm:p-6">

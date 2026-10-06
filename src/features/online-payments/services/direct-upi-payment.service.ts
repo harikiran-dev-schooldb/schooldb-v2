@@ -53,7 +53,12 @@ export const directUpiPaymentService = {
       }
 
       const enrollment = await tx.studentEnrollment.findFirst({
-        where: { id: enrollmentId, schoolId, active: true },
+        where: {
+          id: enrollmentId,
+          schoolId,
+          active: true,
+          student: { status: "ACTIVE" },
+        },
         select: { id: true },
       });
       if (!enrollment) {

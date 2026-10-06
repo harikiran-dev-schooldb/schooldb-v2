@@ -19,7 +19,7 @@ export const studentLoginBulkService = {
     const parsed = studentLoginBulkSchema.parse(input);
     const admissionNos = [...new Set(parsed.admissionNos.map((value) => value.trim()))];
     const students = await prisma.student.findMany({
-      where: { schoolId, admissionNo: { in: admissionNos } },
+      where: { schoolId, status: "ACTIVE", admissionNo: { in: admissionNos } },
       select: {
         id: true,
         admissionNo: true,

@@ -43,6 +43,18 @@ const whereClause = ({
         : {}),
 
       studentEnrollment: {
+        active: true,
+        student: {
+          status: "ACTIVE",
+          ...(search
+            ? {
+                OR: [
+                  { fullName: { contains: search, mode: "insensitive" as const } },
+                  { admissionNo: { contains: search, mode: "insensitive" as const } },
+                ],
+              }
+            : {}),
+        },
         ...(allowedClassSections
           ? allowedClassSections.length > 0
             ? {
@@ -66,26 +78,6 @@ const whereClause = ({
             }
           : {}),
 
-        ...(search
-          ? {
-              student: {
-                OR: [
-                  {
-                    fullName: {
-                      contains: search,
-                      mode: "insensitive",
-                    },
-                  },
-                  {
-                    admissionNo: {
-                      contains: search,
-                      mode: "insensitive",
-                    },
-                  },
-                ],
-              },
-            }
-          : {}),
       },
     },
   },

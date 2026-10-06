@@ -50,7 +50,11 @@ async function preparePromotionImport(
 
   const [students, years, classes] = await Promise.all([
     prisma.student.findMany({
-      where: { schoolId, admissionNo: { in: admissionNumbers } },
+      where: {
+        schoolId,
+        status: "ACTIVE",
+        admissionNo: { in: admissionNumbers },
+      },
       select: {
         id: true,
         admissionNo: true,
@@ -891,6 +895,7 @@ export const studentEnrollmentService = {
             classId: input.sourceClassId,
             sectionId: input.sourceSectionId,
             active: true,
+            student: { status: "ACTIVE" },
           },
           select: {
             id: true,

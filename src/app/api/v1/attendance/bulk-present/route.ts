@@ -40,6 +40,7 @@ export async function POST(req: Request) {
         schoolId: tenant.schoolId,
         academicYearId: body.academicYearId,
         active: true,
+        student: { status: "ACTIVE" },
 
         ...(body.scope === "CLASS"
           ? {

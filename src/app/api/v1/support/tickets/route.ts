@@ -89,8 +89,8 @@ export async function POST(request: Request) {
     if (input.data.type !== "STUDENT" && input.data.studentId)
       throw new ApiError(400, "Only student tickets can reference a student.");
     if (input.data.studentId) {
-      const student = await prisma.student.findFirst({ where: { id: input.data.studentId, schoolId: actor.schoolId }, select: { id: true } });
-      if (!student) throw new ApiError(400, "Student not found in this school.");
+      const student = await prisma.student.findFirst({ where: { id: input.data.studentId, schoolId: actor.schoolId, status: "ACTIVE" }, select: { id: true } });
+      if (!student) throw new ApiError(400, "Active student not found in this school.");
     }
     const ticket = await prisma.$transaction(async (tx) => {
       const created = await tx.supportTicket.create({

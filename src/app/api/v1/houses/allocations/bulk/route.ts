@@ -28,7 +28,7 @@ export async function POST(req: Request) {
     const houseCodeMap=new Map(houses.filter(h=>h.code).map(h=>[h.code!,h.id]));
 
     const admissionNos=[...new Set(normalized.map(r=>r.admissionNo))];
-    const students=await prisma.student.findMany({where:{schoolId:tenant.schoolId,admissionNo:{in:admissionNos}},select:{id:true,admissionNo:true}});
+    const students=await prisma.student.findMany({where:{schoolId:tenant.schoolId,status:"ACTIVE",admissionNo:{in:admissionNos}},select:{id:true,admissionNo:true}});
     const studentMap=new Map(students.map(s=>[s.admissionNo,s.id]));
 
     const errors:string[]=[];
@@ -48,7 +48,7 @@ export async function POST(req: Request) {
     if(new Set(duplicateKeys).size!==duplicateKeys.length)return ApiResponse.error("The same student appears more than once for an academic year.",400);
 
     const enrollments=await prisma.studentEnrollment.findMany({
-      where:{schoolId:tenant.schoolId,OR:resolved.map(r=>({academicYearId:r.academicYearId,studentId:r.studentId}))},
+      where:{schoolId:tenant.schoolId,active:true,student:{status:"ACTIVE"},OR:resolved.map(r=>({academicYearId:r.academicYearId,studentId:r.studentId}))},
       select:{id:true,academicYearId:true,studentId:true},
     });
     const enrollmentMap=new Map(enrollments.map(e=>[`${e.academicYearId}:${e.studentId}`,e.id]));

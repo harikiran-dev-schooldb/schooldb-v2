@@ -22,7 +22,12 @@ export async function GET(req: Request) {
         include: {
           _count: {
             select: {
-              students: academicYearId ? { where: { academicYearId } } : true,
+              students: {
+                where: {
+                  student: { status: "ACTIVE" },
+                  ...(academicYearId ? { academicYearId } : {}),
+                },
+              },
             },
           },
         },
@@ -47,6 +52,7 @@ export async function GET(req: Request) {
               schoolId: tenant.schoolId,
               academicYearId,
               active: true,
+              student: { status: "ACTIVE" },
               ...(classId ? { classId } : {}),
               ...(sectionId ? { sectionId } : {}),
               ...(houseId ? { houseAssignment: { houseId } } : {}),
@@ -127,7 +133,7 @@ export async function PUT(req: Request) {
     const [house, enrollments] = await Promise.all([
       prisma.house.findFirst({ where: { id: houseId, schoolId: tenant.schoolId, active: true }, select: { id: true } }),
       prisma.studentEnrollment.findMany({
-        where: { id: { in: enrollmentIds }, schoolId: tenant.schoolId, academicYearId, active: true },
+        where: { id: { in: enrollmentIds }, schoolId: tenant.schoolId, academicYearId, active: true, student: { status: "ACTIVE" } },
         select: { id: true, studentId: true },
       }),
     ]);
