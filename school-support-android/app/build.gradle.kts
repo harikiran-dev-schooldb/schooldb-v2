@@ -77,6 +77,7 @@ android {
         resValue("bool", "uses_cleartext_traffic", "false")
         isMinifyEnabled = true
         isShrinkResources = true
+        ndk.debugSymbolLevel = "SYMBOL_TABLE"
         proguardFiles(
             getDefaultProguardFile("proguard-android-optimize.txt"),
             "proguard-rules.pro",
