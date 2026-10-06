@@ -3,6 +3,12 @@ import { prisma } from "@/lib/prisma";
 
 const SUPPORT_APP = "SCHOOL_SUPPORT";
 
+const INVALID_SUPPORT_REGISTRATION_CODES = new Set([
+  "messaging/installation-id-not-registered",
+  "messaging/registration-token-not-registered",
+  "messaging/invalid-registration-token",
+]);
+
 export async function sendSupportPush(input: {
   schoolId: string;
   userIds: string[];
@@ -39,14 +45,16 @@ export async function sendSupportPush(input: {
     },
     select: { id: true, fcmToken: true },
   });
-  const fids = devices.flatMap((device) => device.fcmToken ? [device.fcmToken] : []);
-  if (!fids.length) {
+  const targets = devices.flatMap((device) =>
+    device.fcmToken ? [{ id: device.id, fid: device.fcmToken }] : [],
+  );
+  if (!targets.length) {
     console.warn("Support push skipped: no registered support devices for recipients.");
     return;
   }
 
   const response = await messaging.sendEachForMulticast({
-    fids,
+    fids: targets.map((target) => target.fid),
     data: {
       type: "SUPPORT_TICKET",
       schoolSlug: school.slug,
@@ -60,20 +68,37 @@ export async function sendSupportPush(input: {
     },
   });
 
-  const invalidIds = response.responses.flatMap((result, index) => {
-    if (result.success) return [];
+  const invalidIds: string[] = [];
+  response.responses.forEach((result, index) => {
+    if (result.success) return;
+
     const code = result.error?.code ?? "";
-    console.error("Support push delivery failed", { code, ticketId: input.ticketId });
-    return code === "messaging/installation-id-not-registered" ||
-      code === "messaging/registration-token-not-registered" ||
-      code === "messaging/invalid-registration-token"
-      ? [devices[index].id]
-      : [];
+    const target = targets[index];
+
+    if (target && INVALID_SUPPORT_REGISTRATION_CODES.has(code)) {
+      invalidIds.push(target.id);
+      console.warn("Support push registration is stale; disabling device.", {
+        code,
+        ticketId: input.ticketId,
+        deviceId: target.id,
+      });
+      return;
+    }
+
+    console.error("Support push delivery failed", {
+      code,
+      ticketId: input.ticketId,
+      deviceId: target?.id,
+    });
   });
+
   if (invalidIds.length) {
     await prisma.pushDevice.updateMany({
       where: { id: { in: invalidIds } },
-      data: { enabled: false },
+      data: {
+        enabled: false,
+        fcmToken: null,
+      },
     });
   }
 }

@@ -5,10 +5,10 @@ import androidx.work.*
 import com.clerk.api.Clerk
 import com.google.android.gms.tasks.Tasks
 import com.google.firebase.messaging.FirebaseMessaging
-import com.google.firebase.installations.FirebaseInstallations
 import com.schooldb.support.BuildConfig
 import com.schooldb.support.tickets.SupportRepository
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withTimeout
@@ -42,13 +42,24 @@ class SupportPushSync(context: Context, parameters: WorkerParameters) : Coroutin
             val installationId = push.getString("installation_id", null) ?: UUID.randomUUID().toString().also {
                 push.edit().putString("installation_id", it).apply()
             }
+            // Only upload an FID delivered by FCM's successful registration callback.
+            // A raw Firebase Installations ID can exist before FCM has registered it for
+            // messaging, which can later fail with installation-id-not-registered.
+            push.edit().remove("pending_fcm_token").apply()
             Tasks.await(FirebaseMessaging.getInstance().register(), 20, TimeUnit.SECONDS)
-            val token = Tasks.await(FirebaseInstallations.getInstance().id, 20, TimeUnit.SECONDS)
+            val registeredFid = withTimeout(10_000) {
+                while (true) {
+                    push.getString("pending_fcm_token", null)
+                        ?.takeIf(String::isNotBlank)
+                        ?.let { return@withTimeout it }
+                    delay(100)
+                }
+            }
             // Do not register an old account after sign-out or a school change.
             if (session.getString("school", null) != school || push.getBoolean("delete_token", false)) {
                 return@withContext Result.retry()
             }
-            SupportRepository().registerPushDevice(school, installationId, token)
+            SupportRepository().registerPushDevice(school, installationId, registeredFid)
             push.edit().remove("pending_fcm_token").apply()
             Result.success()
         } catch (_: kotlinx.coroutines.TimeoutCancellationException) {
