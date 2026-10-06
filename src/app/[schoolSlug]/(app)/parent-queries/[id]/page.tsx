@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { isMemberRouteAllowed } from "@/lib/navigation-access";
 import { ArrowLeft } from "lucide-react";
 import { requireMembership } from "@/lib/auth";
 import { formatSchoolDateTime } from "@/lib/date-time";
@@ -9,7 +10,7 @@ import { ParentQueryActions } from "./parent-query-actions";
 export default async function ParentQueryDetailPage({ params }: { params: Promise<{ schoolSlug: string; id: string }> }) {
   const { schoolSlug, id } = await params;
   const membership = await requireMembership(schoolSlug);
-  if (!["SUPER_ADMIN", "SCHOOL_ADMIN"].includes(membership.role)) notFound();
+  if (!isMemberRouteAllowed(membership, "parent-queries")) notFound();
   const ticket = await prisma.supportTicket.findFirst({
     where: { id, schoolId: membership.schoolId, source: "PARENT_QR" },
     select: {

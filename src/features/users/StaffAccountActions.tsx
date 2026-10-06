@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { Loader2, Pencil, Plus, Power } from "lucide-react";
+import { KeyRound, Loader2, Pencil, Plus, Power } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -26,6 +27,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { refreshTable } from "@/lib/table-event";
+import {
+  encodeStaffPermission,
+  permissionLevelFor,
+  STAFF_PERMISSION_MODULES,
+  type StaffAccessLevel,
+  type StaffPermissionModule,
+} from "@/lib/staff-permissions";
 
 export function CreateStaffAccountButton({
   canCreateAdministrators,
@@ -445,6 +453,166 @@ export function StaffAccountStatusButton({
       onConfirm={() => void toggle()}
     />
   );
+}
+
+export function StaffPermissionsButton({
+  account,
+}: {
+  account: {
+    id: string;
+    name: string;
+    role: string;
+    customPermissionsEnabled: boolean;
+    permissions: string[];
+  };
+}) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [pending, setPending] = useState(false);
+  const [customEnabled, setCustomEnabled] = useState(
+    account.customPermissionsEnabled,
+  );
+  const [levels, setLevels] = useState<
+    Record<StaffPermissionModule, StaffAccessLevel>
+  >(() => levelsFromAccount(account));
+
+  function handleOpenChange(nextOpen: boolean) {
+    setOpen(nextOpen);
+    if (nextOpen) {
+      setCustomEnabled(account.customPermissionsEnabled);
+      setLevels(levelsFromAccount(account));
+    }
+  }
+
+  function useRoleDefaults() {
+    setLevels(levelsFromAccount({ ...account, customPermissionsEnabled: false }));
+  }
+
+  async function save() {
+    const permissions = STAFF_PERMISSION_MODULES.flatMap((module) => {
+      const level = levels[module.key];
+      return level === "NONE"
+        ? []
+        : [encodeStaffPermission(module.key, level)];
+    });
+
+    setPending(true);
+    try {
+      const response = await fetch(`/api/v1/staff-accounts/${account.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          customPermissionsEnabled: customEnabled,
+          permissions: customEnabled ? permissions : [],
+        }),
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) {
+        throw new Error(result.message || "Unable to update permissions.");
+      }
+
+      toast.success("Staff permissions updated");
+      setOpen(false);
+      refreshTable("staff-accounts");
+      router.refresh();
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Unable to update permissions.",
+      );
+    } finally {
+      setPending(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogTrigger asChild>
+        <Button size="sm" variant="outline">
+          <KeyRound className="size-3.5" />
+          Access
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-h-[90vh] overflow-hidden sm:max-w-3xl">
+        <DialogHeader>
+          <DialogTitle>Module access for {account.name}</DialogTitle>
+          <DialogDescription>
+            Assign access by work area instead of managing individual pages. Every page and API inside a module inherits the selected level.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="flex items-center justify-between gap-4 rounded-2xl border border-indigo-100 bg-indigo-50/60 p-4">
+          <div>
+            <p className="text-sm font-semibold">Use custom permissions</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Off uses the standard {roleLabel(account.role).toLowerCase()} preset. On applies the levels below.
+            </p>
+          </div>
+          <Switch checked={customEnabled} onCheckedChange={setCustomEnabled} />
+        </div>
+
+        {customEnabled ? (
+          <div className="max-h-[55vh] space-y-3 overflow-y-auto pr-2">
+            <div className="flex justify-end">
+              <Button type="button" size="sm" variant="outline" onClick={useRoleDefaults}>
+                Load role preset
+              </Button>
+            </div>
+            {STAFF_PERMISSION_MODULES.map((module) => (
+              <div key={module.key} className="grid gap-3 rounded-2xl border p-4 sm:grid-cols-[minmax(0,1fr)_180px] sm:items-center">
+                <div>
+                  <p className="text-sm font-semibold">{module.label}</p>
+                  <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                    {module.description}
+                  </p>
+                </div>
+                <Select
+                  value={levels[module.key]}
+                  onValueChange={(value) =>
+                    setLevels((current) => ({
+                      ...current,
+                      [module.key]: value as StaffAccessLevel,
+                    }))
+                  }
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="NONE">No access</SelectItem>
+                    <SelectItem value="VIEW">View only</SelectItem>
+                    <SelectItem value="MANAGE">Manage</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            ))}
+          </div>
+        ) : null}
+
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={pending}>
+            Cancel
+          </Button>
+          <Button type="button" onClick={() => void save()} disabled={pending}>
+            {pending ? <Loader2 className="size-4 animate-spin" /> : null}
+            Save permissions
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function levelsFromAccount(account: {
+  role: string;
+  customPermissionsEnabled: boolean;
+  permissions: string[];
+}) {
+  return Object.fromEntries(
+    STAFF_PERMISSION_MODULES.map((module) => [
+      module.key,
+      permissionLevelFor(account, module.key),
+    ]),
+  ) as Record<StaffPermissionModule, StaffAccessLevel>;
 }
 
 function roleLabel(role: string) {

@@ -7,7 +7,7 @@ import { getMembership, getSchoolBySlug } from "@/lib/tenant";
 import { SchoolProvider } from "@/contexts/school-context";
 import { AppShell } from "@/components/layout/AppShell";
 import { isOperationalRole, isSelfServiceRole } from "@/lib/access-control";
-import { isSchoolPathAllowed } from "@/lib/route-access";
+import { isMemberSchoolPathAllowed } from "@/lib/navigation-access";
 import { currentTeacherAccess } from "@/lib/auth";
 import { isTeacherRouteAllowed } from "@/lib/teacher-access";
 
@@ -57,7 +57,7 @@ export default async function SchoolAppLayout({
     : null;
   if (
     pathname &&
-    (!isSchoolPathAllowed(school, pathname, schoolSlug, membership.role) ||
+    (!isMemberSchoolPathAllowed(school, membership, pathname, schoolSlug) ||
       (membership.role === "TEACHER" &&
         !isTeacherRouteAllowed(
           teacherAccess,

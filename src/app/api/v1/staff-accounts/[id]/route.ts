@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import {
   setStaffAccountActive,
+  setStaffPermissions,
   updateStaffAccount,
 } from "@/features/users/staff-account.service";
 import { apiHandler } from "@/lib/api";
@@ -23,6 +24,39 @@ export async function PATCH(request: Request, { params }: Context) {
       !Array.isArray(body) &&
       Object.keys(body).length === 1 &&
       Object.prototype.hasOwnProperty.call(body, "active");
+
+    const isPermissionUpdate =
+      body &&
+      typeof body === "object" &&
+      !Array.isArray(body) &&
+      Object.keys(body).every((key) =>
+        ["customPermissionsEnabled", "permissions"].includes(key),
+      ) &&
+      Object.prototype.hasOwnProperty.call(body, "customPermissionsEnabled") &&
+      Object.prototype.hasOwnProperty.call(body, "permissions");
+
+    if (isPermissionUpdate) {
+      const account = await setStaffPermissions(
+        membership.schoolId,
+        targetId,
+        membership.userId,
+        membership.role,
+        body,
+      );
+
+      await recordAuditLog({
+        actor: membership,
+        module: "STAFF",
+        action: "UPDATE",
+        entityType: "MEMBERSHIP",
+        entityId: targetId,
+        summary: account.customPermissionsEnabled
+          ? `Assigned ${account.permissions.length} staff module permissions.`
+          : "Restored role-default staff permissions.",
+      });
+
+      return ApiResponse.success(account, "Staff permissions updated.");
+    }
 
     if (isStatusOnlyUpdate) {
       const { active } = z.object({ active: z.boolean() }).parse(body);

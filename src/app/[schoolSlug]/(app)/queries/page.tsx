@@ -12,6 +12,7 @@ import {
   UserRound,
 } from "lucide-react";
 import { notFound } from "next/navigation";
+import { isMemberRouteAllowed } from "@/lib/navigation-access";
 import { PageContainer, PageHeader } from "@/components/common/layout";
 import { Button } from "@/components/ui/button";
 import type { Prisma } from "@/generated/prisma/client";
@@ -22,7 +23,6 @@ import { prisma } from "@/lib/prisma";
 type Params = Promise<{ schoolSlug: string }>;
 type Query = Promise<{ status?: string; q?: string; page?: string; priority?: string; source?: string; unread?: string }>;
 
-const VIEW_ROLES = ["SUPER_ADMIN", "SCHOOL_ADMIN", "TEACHER", "ACCOUNTANT", "RECEPTIONIST"];
 
 const filters = [
   { value: "ALL", label: "All" },
@@ -54,7 +54,7 @@ function listHref(schoolSlug: string, status: string, q: string, page = 1, prior
 export default async function QueriesPage({ params, searchParams }: { params: Params; searchParams: Query }) {
   const { schoolSlug } = await params;
   const membership = await requireMembership(schoolSlug);
-  if (!VIEW_ROLES.includes(membership.role)) notFound();
+  if (!isMemberRouteAllowed(membership, "queries")) notFound();
 
   const query = await searchParams;
   const status = filters.some((item) => item.value === query.status) ? query.status! : "ALL";

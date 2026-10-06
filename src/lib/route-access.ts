@@ -129,6 +129,15 @@ const knownRoutes = [
   "bulk-operations",
 ].sort((left, right) => right.length - left.length);
 
+export function resolveConfiguredRoute(relativePath: string) {
+  const normalizedPath = relativePath.replace(/^\/+|\/+$/g, "");
+  return knownRoutes.find(
+    (candidate) =>
+      normalizedPath === candidate ||
+      normalizedPath.startsWith(`${candidate}/`),
+  );
+}
+
 export function isSchoolPathAllowed(
   config: RouteAccessConfig,
   pathname: string,
@@ -141,10 +150,7 @@ export function isSchoolPathAllowed(
   if (!pathname.startsWith(prefix)) return false;
 
   const relativePath = pathname.slice(prefix.length).replace(/\/+$/, "");
-  const route = knownRoutes.find(
-    (candidate) =>
-      relativePath === candidate || relativePath.startsWith(`${candidate}/`),
-  );
+  const route = resolveConfiguredRoute(relativePath);
 
   if (!route) return false;
   if (ALWAYS_AVAILABLE_ROUTES.has(route)) return role === "SUPER_ADMIN";

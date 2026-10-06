@@ -2,6 +2,7 @@ import { ApiError } from "@/lib/errors";
 import { requireTenant } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import type { SupportTicketStatus } from "@/generated/prisma/enums";
+import { hasModuleAccess } from "@/lib/staff-permissions";
 
 export async function supportActor() {
   const membership = await requireTenant();
@@ -9,7 +10,9 @@ export async function supportActor() {
     schoolId: membership.schoolId,
     userId: membership.userId,
     role: membership.role,
-    isAdmin: ["SUPER_ADMIN", "SCHOOL_ADMIN"].includes(membership.role),
+    isAdmin:
+      ["SUPER_ADMIN", "SCHOOL_ADMIN"].includes(membership.role) ||
+      hasModuleAccess(membership, "SUPPORT", "MANAGE"),
   };
 }
 

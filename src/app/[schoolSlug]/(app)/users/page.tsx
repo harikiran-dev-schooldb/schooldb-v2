@@ -39,6 +39,8 @@ export default async function StaffUsersPage({ params }: Props) {
       role: true,
       designation: true,
       isActive: true,
+      customPermissionsEnabled: true,
+      permissions: true,
       userId: true,
       user: {
         select: {
@@ -75,6 +77,8 @@ export default async function StaffUsersPage({ params }: Props) {
       role: account.role,
       designation: account.designation || "",
       isActive: account.isActive,
+      customPermissionsEnabled: account.customPermissionsEnabled,
+      permissions: account.permissions,
       canManage,
       canEdit: actor.role === "SUPER_ADMIN" && canManage,
       isCurrentUser: account.userId === actor.userId,

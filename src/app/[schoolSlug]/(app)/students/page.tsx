@@ -5,10 +5,11 @@ import { AddStudentButton } from "@/features/students/components/AddStudentButto
 import { StudentTable } from "@/features/students/components/StudentTable";
 import { GraduationCap, Users, Sparkles } from "lucide-react";
 import { useSchool } from "@/contexts/school-context";
+import { hasModuleAccess } from "@/lib/staff-permissions";
 
 export default function StudentPage() {
-  const { role } = useSchool();
-  const canManageStudents = ["SUPER_ADMIN", "SCHOOL_ADMIN", "RECEPTIONIST"].includes(role);
+  const { membership } = useSchool();
+  const canManageStudents = hasModuleAccess(membership, "STUDENTS", "MANAGE");
 
   return (
     <div className="schooldb-page-enter space-y-6 pb-10">

@@ -7,11 +7,12 @@ import { PageHeader } from "@/components/common/PageHeader";
 import { ExamList } from "@/features/exams/components/ExamList";
 import { CreateExamDialog } from "@/features/exams/components/CreateExamDialog";
 import { useSchool } from "@/contexts/school-context";
+import { hasModuleAccess } from "@/lib/staff-permissions";
 
 export default function ExamsPage() {
   const params = useParams<{ schoolSlug: string }>();
-  const { role } = useSchool();
-  const canManageExams = role === "SUPER_ADMIN" || role === "SCHOOL_ADMIN";
+  const { membership } = useSchool();
+  const canManageExams = hasModuleAccess(membership, "LEARNING", "MANAGE");
 
   const schoolSlug = params.schoolSlug;
 

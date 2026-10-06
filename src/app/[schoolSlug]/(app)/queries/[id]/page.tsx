@@ -1,12 +1,12 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { notFound } from "next/navigation";
+import { isMemberRouteAllowed } from "@/lib/navigation-access";
 import { requireMembership } from "@/lib/auth";
 import { formatSchoolDateTime } from "@/lib/date-time";
 import { prisma } from "@/lib/prisma";
 import { QueryActions } from "./query-actions";
 
-const VIEW_ROLES = ["SUPER_ADMIN", "SCHOOL_ADMIN", "TEACHER", "ACCOUNTANT", "RECEPTIONIST"];
 const ADMIN_ROLES = ["SUPER_ADMIN", "SCHOOL_ADMIN"];
 
 export default async function QueryDetailPage({
@@ -16,7 +16,7 @@ export default async function QueryDetailPage({
 }) {
   const { schoolSlug, id } = await params;
   const membership = await requireMembership(schoolSlug);
-  if (!VIEW_ROLES.includes(membership.role)) notFound();
+  if (!isMemberRouteAllowed(membership, "queries")) notFound();
 
   const ticket = await prisma.supportTicket.findFirst({
     where: { id, schoolId: membership.schoolId },

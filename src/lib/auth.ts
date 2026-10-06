@@ -7,6 +7,11 @@ import { prisma } from "./prisma";
 import { requireSchoolSlug } from "./tenant-context";
 import { hasPermission, isOperationalRole, PERMISSIONS, type Permission } from "./access-control";
 import {
+  hasModuleAccess,
+  permissionModulesForRequestPath,
+  requiredAccessLevel,
+} from "./staff-permissions";
+import {
   TEACHER_ACCESS_FIELDS,
   teacherAccessSelect,
   type TeacherAccessFeature,
@@ -74,13 +79,54 @@ export async function requireTenant(schoolSlug?: string) {
     );
   }
 
+  if (
+    membership.customPermissionsEnabled &&
+    !["SUPER_ADMIN", "SCHOOL_ADMIN"].includes(membership.role)
+  ) {
+    const requestHeaders = await headers();
+    const modules = permissionModulesForRequestPath(
+      requestHeaders.get("x-school-pathname"),
+      membership.school.slug,
+    );
+    if (
+      modules.length > 0 &&
+      !modules.some((module) =>
+        hasModuleAccess(
+          membership,
+          module,
+          requiredAccessLevel(requestHeaders.get("x-school-method")),
+        ),
+      )
+    ) {
+      throw new ApiError(403, "You do not have access to this module");
+    }
+  }
+
   return membership;
 }
 
 export async function requireRole(allowedRoles: string[], schoolSlug?: string) {
   const membership = await requireTenant(schoolSlug);
 
-  if (!allowedRoles.includes(membership.role)) {
+  const pathname = (await headers()).get("x-school-pathname");
+  const requestMethod = (await headers()).get("x-school-method");
+  const modules = permissionModulesForRequestPath(
+    pathname,
+    membership.school.slug,
+  );
+  if (
+    !allowedRoles.includes(membership.role) &&
+    !(
+      membership.customPermissionsEnabled &&
+      modules.some((module) =>
+        hasModuleAccess(
+          membership,
+          module,
+          requiredAccessLevel(requestMethod),
+        ),
+      )
+    )
+  ) {
     throw new ApiError(
       403,
       "You do not have permission to perform this action",
@@ -95,7 +141,25 @@ export async function requirePermission(
   schoolSlug?: string,
 ) {
   const membership = await requireTenant(schoolSlug);
-  if (!hasPermission(membership.role, permission)) {
+  const pathname = (await headers()).get("x-school-pathname");
+  const requestMethod = (await headers()).get("x-school-method");
+  const modules = permissionModulesForRequestPath(
+    pathname,
+    membership.school.slug,
+  );
+  if (
+    !hasPermission(membership.role, permission) &&
+    !(
+      membership.customPermissionsEnabled &&
+      modules.some((module) =>
+        hasModuleAccess(
+          membership,
+          module,
+          requiredAccessLevel(requestMethod),
+        ),
+      )
+    )
+  ) {
     throw new ApiError(403, "You do not have permission to access this resource");
   }
   if (membership.role === "TEACHER") {

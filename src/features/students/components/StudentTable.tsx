@@ -6,10 +6,11 @@ import { useStudentTable } from "../hooks/useStudentTable";
 import { StudentToolbar } from "./StudentToolbar";
 import { AddStudentButton } from "./AddStudentButton";
 import { useSchool } from "@/contexts/school-context";
+import { hasModuleAccess } from "@/lib/staff-permissions";
 
 export function StudentTable() {
-  const { role } = useSchool();
-  const canManageStudents = ["SUPER_ADMIN", "SCHOOL_ADMIN", "RECEPTIONIST"].includes(role);
+  const { membership } = useSchool();
+  const canManageStudents = hasModuleAccess(membership, "STUDENTS", "MANAGE");
   const {
     students,
     loading,

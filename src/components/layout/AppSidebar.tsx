@@ -18,6 +18,7 @@ import { useSchool } from "@/contexts/school-context";
 import { SchoolLogo } from "@/components/branding/SchoolLogo";
 import { navigation } from "@/lib/navigation";
 import { isRouteAllowed } from "@/lib/route-access";
+import { isMemberRouteAllowed } from "@/lib/navigation-access";
 import { cn } from "@/lib/utils";
 import { isTeacherRouteAllowed } from "@/lib/teacher-access";
 
@@ -77,7 +78,7 @@ type Props = {
 
 export function AppSidebar({ mobile = false, onNavigate }: Props) {
   const pathname = usePathname();
-  const { school, role, teacherAccess } = useSchool();
+  const { school, membership, role, teacherAccess } = useSchool();
 
   const storedCollapsed = useSidebarCollapsed();
   const collapsed = mobile ? false : storedCollapsed;
@@ -117,17 +118,22 @@ export function AppSidebar({ mobile = false, onNavigate }: Props) {
       routeAccessRestricted: school.routeAccessRestricted,
       allowedRoutes: school.allowedRoutes,
     };
+    const memberAccess = {
+      role,
+      customPermissionsEnabled: membership.customPermissionsEnabled,
+      permissions: membership.permissions,
+    };
     const roleNavigation = navigation.flatMap((item) => {
-        if (item.roles && !item.roles.includes(role)) return [];
         if (!item.children) {
-          return role !== "TEACHER" || isTeacherRouteAllowed(teacherAccess, item.href)
+          return isMemberRouteAllowed(memberAccess, item.href) &&
+            (role !== "TEACHER" || isTeacherRouteAllowed(teacherAccess, item.href))
             ? [item]
             : [];
         }
 
         const children = item.children.filter(
           (child) =>
-            (!child.roles || child.roles.includes(role)) &&
+            isMemberRouteAllowed(memberAccess, child.href) &&
             (role !== "TEACHER" || isTeacherRouteAllowed(teacherAccess, child.href)),
         );
         return children.length ? [{ ...item, children }] : [];
@@ -143,7 +149,7 @@ export function AppSidebar({ mobile = false, onNavigate }: Props) {
       );
       return children.length ? [{ ...item, children }] : [];
     });
-  }, [role, school.allowedRoutes, school.routeAccessRestricted, teacherAccess]);
+  }, [membership.customPermissionsEnabled, membership.permissions, role, school.allowedRoutes, school.routeAccessRestricted, teacherAccess]);
 
   const workspaceHome =
     visibleNavigation.find((item) => item.href)?.href ??

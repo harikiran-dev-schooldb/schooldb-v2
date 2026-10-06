@@ -19,6 +19,7 @@ import {
 import {
   CreateStaffAccountButton,
   EditStaffAccountButton,
+  StaffPermissionsButton,
   StaffAccountStatusButton,
 } from "./StaffAccountActions";
 
@@ -30,6 +31,8 @@ export type StaffUserRow = {
   role: string;
   designation: string;
   isActive: boolean;
+  customPermissionsEnabled: boolean;
+  permissions: string[];
   canManage: boolean;
   canEdit: boolean;
   isCurrentUser: boolean;
@@ -151,6 +154,17 @@ const staffColumns: ColumnDef<StaffUserRow>[] = [
       if (account.canManage) {
         return (
           <div className="flex items-center gap-2">
+            {!['SUPER_ADMIN', 'SCHOOL_ADMIN'].includes(account.role) ? (
+              <StaffPermissionsButton
+                account={{
+                  id: account.id,
+                  name: account.name,
+                  role: account.role,
+                  customPermissionsEnabled: account.customPermissionsEnabled,
+                  permissions: account.permissions,
+                }}
+              />
+            ) : null}
             {account.canEdit ? (
               <EditStaffAccountButton
                 account={{

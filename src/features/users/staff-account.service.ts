@@ -5,6 +5,7 @@ import { normalizeIndianMobile } from "@/features/auth/otp";
 import { STAFF_ACCOUNT_ROLES } from "@/features/users/staff-account-policy";
 import { ApiError } from "@/lib/errors";
 import { prisma } from "@/lib/prisma";
+import { normalizeStaffPermissions } from "@/lib/staff-permissions";
 
 const presetSchema = z.enum([
   "SCHOOL_ADMIN",
@@ -234,5 +235,53 @@ export async function setStaffAccountActive(
   return prisma.membership.update({
     where: { id: account.id },
     data: { isActive: active },
+  });
+}
+
+export async function setStaffPermissions(
+  schoolId: string,
+  membershipId: string,
+  actorUserId: string,
+  actorRole: string,
+  value: unknown,
+) {
+  const input = z
+    .object({
+      customPermissionsEnabled: z.boolean(),
+      permissions: z.array(z.string()).max(50),
+    })
+    .parse(value);
+
+  const account = await prisma.membership.findFirst({
+    where: { id: membershipId, schoolId, role: { in: [...STAFF_ACCOUNT_ROLES] } },
+    select: { id: true, userId: true, role: true },
+  });
+
+  if (!account) throw new ApiError(404, "Staff account not found.");
+  if (account.userId === actorUserId) {
+    throw new ApiError(400, "You cannot change your own permissions.");
+  }
+  if (["SUPER_ADMIN", "SCHOOL_ADMIN"].includes(account.role)) {
+    throw new ApiError(403, "Administrator permissions are protected.");
+  }
+  if (!["SUPER_ADMIN", "SCHOOL_ADMIN"].includes(actorRole)) {
+    throw new ApiError(403, "Only an administrator can delegate permissions.");
+  }
+
+  const permissions = input.customPermissionsEnabled
+    ? normalizeStaffPermissions(input.permissions)
+    : [];
+
+  return prisma.membership.update({
+    where: { id: account.id },
+    data: {
+      customPermissionsEnabled: input.customPermissionsEnabled,
+      permissions,
+    },
+    select: {
+      id: true,
+      customPermissionsEnabled: true,
+      permissions: true,
+    },
   });
 }

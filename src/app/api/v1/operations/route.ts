@@ -24,6 +24,7 @@ import { apiHandler } from "@/lib/api";
 import { requireRole } from "@/lib/auth";
 import { ApiResponse } from "@/lib/response";
 import { prisma } from "@/lib/prisma";
+import { hasModuleAccess, type StaffPermissionModule } from "@/lib/staff-permissions";
 
 const schema = z.object({
   action: z.enum([
@@ -39,12 +40,19 @@ export async function POST(request: Request) {
   return apiHandler(async () => {
     const membership = await requireRole(["SUPER_ADMIN", "SCHOOL_ADMIN", "ACCOUNTANT", "RECEPTIONIST"]);
     const input = schema.parse(await request.json());
-    const financeAndAdmin = new Set([
-      "RECORD_ATTENDANCE", "SAVE_STAFF_ATTENDANCE", "IMPORT_ATTENDANCE", "CREATE_STAFF_LEAVE", "DECIDE_STAFF_LEAVE",
-      "SAVE_SALARY", "RUN_PAYROLL", "MARK_PAYROLL_PAID", "CREATE_INVENTORY_ITEM", "ADJUST_INVENTORY",
-    ]);
-    if (financeAndAdmin.has(input.action) && !["SUPER_ADMIN", "SCHOOL_ADMIN", "ACCOUNTANT"].includes(membership.role)) {
-      throw new Error("You do not have permission to manage staff, payroll or inventory.");
+    const actionModule: StaffPermissionModule = input.action === "CHECK_IN_VISITOR" || input.action === "CHECK_OUT_VISITOR"
+      ? "FRONT_OFFICE"
+      : input.action === "SAVE_HEALTH_RECORD" || input.action === "LOG_HEALTH_VISIT"
+        ? "FRONT_OFFICE"
+        : input.action === "CREATE_INVENTORY_ITEM" || input.action === "ADJUST_INVENTORY"
+          ? "INVENTORY"
+          : input.action === "AUTHORIZE_PICKUP" || input.action === "UPDATE_PICKUP"
+            ? "FRONT_OFFICE"
+            : input.action === "CREATE_MAINTENANCE" || input.action === "UPDATE_MAINTENANCE"
+              ? "FRONT_OFFICE"
+              : "STAFF";
+    if (!hasModuleAccess(membership, actionModule, "MANAGE")) {
+      throw new Error("You do not have permission to manage this school operation.");
     }
 
     const args = [membership.schoolId, membership.userId, input.data] as const;
@@ -79,6 +87,12 @@ export async function GET(request: Request) {
         ? ["SUPER_ADMIN", "SCHOOL_ADMIN"]
         : ["SUPER_ADMIN", "SCHOOL_ADMIN", "ACCOUNTANT"],
     );
+    const operationModule: StaffPermissionModule = url.searchParams.get("kind") === "payroll-report"
+      ? "REPORTS"
+      : "STAFF";
+    if (!hasModuleAccess(membership, operationModule, "VIEW")) {
+      throw new Error("You do not have permission to access this report.");
+    }
     if (url.searchParams.get("kind") === "staff-attendance-report") {
       const from = url.searchParams.get("from");
       const to = url.searchParams.get("to");

@@ -369,16 +369,18 @@ model SchoolCalendarEvent {
 }
 
 model Membership {
-  id          String   @id @default(cuid())
-  userId      String
-  schoolId    String
-  role        Role
-  createdAt   DateTime @default(now())
-  isActive    Boolean  @default(true)
-  updatedAt   DateTime @default(now()) @updatedAt
-  designation String?
-  school      School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                       String   @id @default(cuid())
+  userId                   String
+  schoolId                 String
+  role                     Role
+  createdAt                DateTime @default(now())
+  isActive                 Boolean  @default(true)
+  updatedAt                DateTime @default(now()) @updatedAt
+  designation              String?
+  customPermissionsEnabled Boolean  @default(false)
+  permissions              String[] @default([])
+  school                   School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  user                     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, schoolId])
   @@index([schoolId, isActive, role])

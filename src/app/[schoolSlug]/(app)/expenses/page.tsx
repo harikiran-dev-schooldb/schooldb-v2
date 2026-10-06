@@ -15,6 +15,7 @@ import { ExpenseForm } from "@/features/expenses/ExpenseForm";
 import { VoidExpenseButton } from "@/features/expenses/VoidExpenseButton";
 import { PERMISSIONS } from "@/lib/access-control";
 import { requirePermission } from "@/lib/auth";
+import { hasModuleAccess } from "@/lib/staff-permissions";
 import { prisma } from "@/lib/prisma";
 import { formatCurrency, formatDate } from "@/lib/self-service-format";
 
@@ -156,7 +157,7 @@ export default async function ExpensesPage({ params }: { params: Promise<{ schoo
     }),
   ]);
 
-  const canManage = ["SUPER_ADMIN", "SCHOOL_ADMIN", "ACCOUNTANT"].includes(membership.role);
+  const canManage = hasModuleAccess(membership, "FEES", "MANAGE");
   const allTimeTotal = Number(allTime._sum.amount ?? 0);
   const categories = categoryTotals.map((item) => ({
     category: item.category,

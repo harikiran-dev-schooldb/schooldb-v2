@@ -64,8 +64,10 @@ export default clerkMiddleware(async (auth, req) => {
   }
 
   const requestHeaders = new Headers(req.headers);
+  requestHeaders.set("x-school-method", req.method);
 
   if (pathname.startsWith("/api/")) {
+    requestHeaders.set("x-school-pathname", pathname);
     if (!requestHeaders.has("x-school-slug")) {
       const schoolSlug = schoolSlugFromSameOriginReferer(
         req.headers.get("referer"),
