@@ -169,8 +169,8 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
     val notificationPermission = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted -> alertsEnabled = granted }
-    LaunchedEffect(page, school, ticketState.ticketsLoaded, resumeVersion) {
-        if (page == SupportPage.DASHBOARD && ticketState.ticketsLoaded && school.isNotBlank() &&
+    LaunchedEffect(page, school, sessionReady, resumeVersion) {
+        if (page == SupportPage.DASHBOARD && school.isNotBlank() && sessionReady &&
             BuildConfig.FIREBASE_CONFIGURED) {
             val pushPreferences = context.getSharedPreferences("support_push", 0)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
@@ -180,7 +180,10 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
                 pushPreferences.edit().putBoolean("permission_requested", true).apply()
                 notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
-            com.schooldb.support.notifications.SupportPushSync.enqueue(context)
+            // A startup worker may have completed before login or may still be backing off
+            // while Clerk restores its session. Replace it once the authenticated school is
+            // known so this account is registered immediately, independent of ticket loading.
+            com.schooldb.support.notifications.SupportPushSync.enqueue(context, replace = true)
         }
     }
 

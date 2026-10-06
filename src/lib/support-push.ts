@@ -39,14 +39,14 @@ export async function sendSupportPush(input: {
     },
     select: { id: true, fcmToken: true },
   });
-  const tokens = devices.flatMap((device) => device.fcmToken ? [device.fcmToken] : []);
-  if (!tokens.length) {
+  const fids = devices.flatMap((device) => device.fcmToken ? [device.fcmToken] : []);
+  if (!fids.length) {
     console.warn("Support push skipped: no registered support devices for recipients.");
     return;
   }
 
   const response = await messaging.sendEachForMulticast({
-    tokens,
+    fids,
     data: {
       type: "SUPPORT_TICKET",
       schoolSlug: school.slug,
@@ -64,7 +64,8 @@ export async function sendSupportPush(input: {
     if (result.success) return [];
     const code = result.error?.code ?? "";
     console.error("Support push delivery failed", { code, ticketId: input.ticketId });
-    return code === "messaging/registration-token-not-registered" ||
+    return code === "messaging/installation-id-not-registered" ||
+      code === "messaging/registration-token-not-registered" ||
       code === "messaging/invalid-registration-token"
       ? [devices[index].id]
       : [];
