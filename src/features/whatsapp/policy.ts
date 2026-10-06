@@ -2,6 +2,7 @@ const AUTOMATED_WHATSAPP_SOURCES = new Set([
   "ATTENDANCE",
   "ATTENDANCE_CORRECTION",
   "STAFF_ATTENDANCE",
+  "SUPPORT_ASSIGNMENT",
   "BIRTHDAY",
   "PROMOTION",
 ]);
@@ -48,4 +49,20 @@ export function attendanceCorrectionWhatsappTemplateParameters(input: {
     : input.attendanceDate;
 
   return [input.personName, input.schoolName, date];
+}
+
+export function supportAssignmentWhatsappTemplateParameters(input: {
+  staffName: string;
+  ticketNo: string;
+  subject: string;
+  description: string;
+  schoolName: string;
+}) {
+  return [
+    input.staffName,
+    input.ticketNo,
+    input.subject,
+    input.description,
+    input.schoolName,
+  ];
 }

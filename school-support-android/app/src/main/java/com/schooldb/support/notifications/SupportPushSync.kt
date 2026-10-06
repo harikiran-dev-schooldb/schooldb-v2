@@ -48,12 +48,13 @@ class SupportPushSync(context: Context, parameters: WorkerParameters) : Coroutin
             push.edit().remove("pending_fcm_token").apply()
             Tasks.await(FirebaseMessaging.getInstance().register(), 20, TimeUnit.SECONDS)
             val registeredFid = withTimeout(10_000) {
-                while (true) {
-                    push.getString("pending_fcm_token", null)
+                var token: String?
+                do {
+                    token = push.getString("pending_fcm_token", null)
                         ?.takeIf(String::isNotBlank)
-                        ?.let { return@withTimeout it }
-                    delay(100)
-                }
+                    if (token == null) delay(100)
+                } while (token == null)
+                token
             }
             // Do not register an old account after sign-out or a school change.
             if (session.getString("school", null) != school || push.getBoolean("delete_token", false)) {

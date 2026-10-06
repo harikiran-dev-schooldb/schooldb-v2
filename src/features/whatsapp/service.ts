@@ -9,6 +9,7 @@ import {
   attendanceCorrectionWhatsappTemplateParameters,
   isAutomatedWhatsappSourceAllowed,
   staffAttendanceWhatsappTemplateParameters,
+  supportAssignmentWhatsappTemplateParameters,
 } from "./policy";
 
 type CreateCampaignInput = {
@@ -464,6 +465,94 @@ export async function queueStaffAttendanceCorrectionWhatsappAlert(input: {
   }
 }
 
+/** Send a newly assigned support ticket directly to the staff member. */
+export async function queueSupportAssignmentWhatsappAlert(input: {
+  schoolId: string;
+  ticketId: string;
+  ticketNo: string;
+  subject: string;
+  description: string;
+  assigneeId: string;
+  assigneeName: string;
+  phone: string | null;
+  eventKey: string;
+}) {
+  if (process.env.META_WA_AUTOMATION_ENABLED !== "true" || !input.phone)
+    return null;
+
+  const phone = normalizeIndianMobile(input.phone);
+  const templateName =
+    process.env.META_WA_SUPPORT_ASSIGNMENT_TEMPLATE ||
+    "school_support_assignment";
+  if (!phone) return null;
+
+  const automationKey = `support-assignment:${input.ticketId}:${input.assigneeId}:${input.eventKey}`;
+  const existing = await prisma.whatsappCampaign.findUnique({
+    where: {
+      schoolId_automationKey: { schoolId: input.schoolId, automationKey },
+    },
+    select: { id: true, recipientCount: true },
+  });
+  if (existing) return existing;
+
+  try {
+    const campaign = await prisma.$transaction(async (tx) => {
+      const created = await tx.whatsappCampaign.create({
+        data: {
+          schoolId: input.schoolId,
+          title: input.subject.trim().slice(0, 200),
+          message: input.description.trim().slice(0, 500),
+          templateName,
+          targetType: "SUPPORT_TICKET",
+          targetId: input.ticketId,
+          targetLabel: input.assigneeName,
+          status: "QUEUED",
+          recipientCount: 1,
+          createdBy: "SYSTEM",
+          scheduledAt: new Date(),
+          automatic: true,
+          automationKey,
+          sourceType: "SUPPORT_ASSIGNMENT",
+          sourceId: input.ticketNo,
+        },
+        select: { id: true, recipientCount: true },
+      });
+      await tx.whatsappRecipient.create({
+        data: {
+          schoolId: input.schoolId,
+          campaignId: created.id,
+          recipientName: input.assigneeName,
+          phone,
+        },
+      });
+      return created;
+    });
+    await processWhatsappCampaignBatch(input.schoolId, campaign.id, 1);
+    return campaign;
+  } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      return prisma.whatsappCampaign.findUnique({
+        where: {
+          schoolId_automationKey: {
+            schoolId: input.schoolId,
+            automationKey,
+          },
+        },
+        select: { id: true, recipientCount: true },
+      });
+    }
+    console.error("[support-assignment-whatsapp] Unable to send assignment", {
+      ticketId: input.ticketId,
+      assigneeId: input.assigneeId,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return null;
+  }
+}
+
 export async function queueAutomatedWhatsappAlert(input: AutomatedAlertInput) {
   if (!isAutomatedWhatsappSourceAllowed(input.sourceType)) {
     return null;
@@ -857,6 +946,14 @@ export async function processWhatsappCampaignBatch(
                 ? attendanceCorrectionWhatsappTemplateParameters({
                     personName: campaign.targetLabel ?? "Student or staff member",
                     attendanceDate: campaign.sourceId?.split(":").at(-1) ?? "",
+                    schoolName: campaign.school.name,
+                  })
+              : campaign.sourceType === "SUPPORT_ASSIGNMENT"
+                ? supportAssignmentWhatsappTemplateParameters({
+                    staffName: campaign.targetLabel ?? "Staff member",
+                    ticketNo: campaign.sourceId ?? "Support task",
+                    subject: campaign.title,
+                    description: campaign.message,
                     schoolName: campaign.school.name,
                   })
               : [campaign.title, campaign.message];

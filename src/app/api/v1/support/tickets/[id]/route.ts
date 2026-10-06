@@ -6,7 +6,10 @@ import { prisma } from "@/lib/prisma";
 import { ApiResponse } from "@/lib/response";
 import { assertSupportStatusTransition, supportActor, visibleTicket } from "@/lib/support-tickets";
 import { sendSupportPush, supportAdminUserIds } from "@/lib/support-push";
-import { queueParentQueryWhatsappUpdate } from "@/features/whatsapp/service";
+import {
+  queueParentQueryWhatsappUpdate,
+  queueSupportAssignmentWhatsappAlert,
+} from "@/features/whatsapp/service";
 
 type Context = { params: Promise<{ id: string }> };
 const updateInput = z.object({
@@ -38,12 +41,35 @@ export async function PATCH(request: Request, context: Context) {
       assertSupportStatusTransition(current.status, requestedStatus);
     }
 
+    let assignmentRecipient: {
+      id: string;
+      name: string;
+      phone: string | null;
+    } | null = null;
     if (input.data.assignedToId) {
       const assignee = await prisma.membership.findFirst({
         where: { schoolId: actor.schoolId, userId: input.data.assignedToId, isActive: true, role: { notIn: ["PARENT", "STUDENT"] } },
-        select: { id: true },
+        select: {
+          user: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+              phone: true,
+            },
+          },
+        },
       });
       if (!assignee) throw new ApiError(400, "Assignee is not active staff in this school.");
+      assignmentRecipient = {
+        id: assignee.user.id,
+        name:
+          [assignee.user.firstName, assignee.user.lastName]
+            .filter(Boolean)
+            .join(" ") || assignee.user.email,
+        phone: assignee.user.phone,
+      };
     }
     const changes: Array<{ action: string; detail: string }> = [];
     if (requestedStatus && requestedStatus !== current.status)
@@ -51,10 +77,7 @@ export async function PATCH(request: Request, context: Context) {
     if (input.data.priority && input.data.priority !== current.priority)
       changes.push({ action: "PRIORITY_CHANGED", detail: `Priority changed from ${current.priority} to ${input.data.priority}` });
     if (input.data.assignedToId !== undefined && input.data.assignedToId !== current.assignedToId) {
-      const assigneeName = input.data.assignedToId
-        ? await prisma.user.findUnique({ where: { id: input.data.assignedToId }, select: { firstName: true, lastName: true } })
-        : null;
-      const name = assigneeName ? [assigneeName.firstName, assigneeName.lastName].filter(Boolean).join(" ") || "staff member" : "Unassigned";
+      const name = assignmentRecipient?.name ?? "Unassigned";
       changes.push({ action: "ASSIGNMENT_CHANGED", detail: input.data.assignedToId ? `Assigned to ${name}` : "Ticket unassigned" });
     }
     const ticket = await prisma.$transaction(async (tx) => {
@@ -111,6 +134,24 @@ export async function PATCH(request: Request, context: Context) {
         status: parentStatus,
         eventKey: `update:${ticket.updatedAt.toISOString()}`,
       }).catch((error) => console.error("Parent query WhatsApp failed", error));
+    }
+    if (
+      assignmentRecipient &&
+      input.data.assignedToId !== current.assignedToId
+    ) {
+      await queueSupportAssignmentWhatsappAlert({
+        schoolId: actor.schoolId,
+        ticketId: current.id,
+        ticketNo: current.ticketNo,
+        subject: current.subject,
+        description: current.description,
+        assigneeId: assignmentRecipient.id,
+        assigneeName: assignmentRecipient.name,
+        phone: assignmentRecipient.phone,
+        eventKey: ticket.updatedAt.toISOString(),
+      }).catch((error) =>
+        console.error("Support assignment WhatsApp failed", error),
+      );
     }
 
     return ApiResponse.success(ticket);
