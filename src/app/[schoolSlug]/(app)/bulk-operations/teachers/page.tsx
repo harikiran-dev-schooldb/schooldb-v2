@@ -13,11 +13,13 @@ import {
 } from "lucide-react";
 
 import { PageHeader } from "@/components/common/PageHeader";
+import { BulkDateFormatSelector } from "@/components/bulk/BulkDateFormatSelector";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useSchool } from "@/contexts/school-context";
 import { postImportInBatches } from "@/lib/batched-import";
+import { bulkDateFormatExample, normalizeBulkDate, type BulkDateFormat } from "@/lib/bulk-date";
 
 type TeacherRow = {
   employeeId: string;
@@ -79,31 +81,7 @@ function parseCsvLine(line: string) {
   return values;
 }
 
-function normalizeDate(value: string) {
-  const trimmed = value.trim();
-  if (!trimmed) return "";
-  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
-
-  const short = /^(\d{2})\/(\d{2})\/(\d{2})$/.exec(trimmed);
-  if (!short) return null;
-
-  const [, day, month, year] = short;
-  const fullYear = Number(year) >= 50 ? `19${year}` : `20${year}`;
-  const date = new Date(`${fullYear}-${month}-${day}T00:00:00`);
-
-  if (
-    Number.isNaN(date.getTime()) ||
-    date.getFullYear() !== Number(fullYear) ||
-    date.getMonth() + 1 !== Number(month) ||
-    date.getDate() !== Number(day)
-  ) {
-    return null;
-  }
-
-  return `${fullYear}-${month}-${day}`;
-}
-
-function parseCsv(text: string) {
+function parseCsv(text: string, dateFormat: BulkDateFormat) {
   const lines = text
     .replace(/^\uFEFF/, "")
     .split(/\r?\n/)
@@ -141,13 +119,13 @@ function parseCsv(text: string) {
       return;
     }
 
-    const dob = normalizeDate(row.dob);
-    const joiningDate = normalizeDate(row.joiningDate);
+    const dob = row.dob ? normalizeBulkDate(row.dob, dateFormat) : "";
+    const joiningDate = row.joiningDate ? normalizeBulkDate(row.joiningDate, dateFormat) : "";
 
     if (row.dob && !dob) {
       errors.push({
         row: index + 2,
-        message: "DOB must use YYYY-MM-DD or DD/MM/YY format.",
+        message: `DOB does not match the selected date format (example: ${bulkDateFormatExample(dateFormat)}).`,
       });
       return;
     }
@@ -155,7 +133,7 @@ function parseCsv(text: string) {
     if (row.joiningDate && !joiningDate) {
       errors.push({
         row: index + 2,
-        message: "Joining date must use YYYY-MM-DD or DD/MM/YY format.",
+        message: `Joining date does not match the selected date format (example: ${bulkDateFormatExample(dateFormat)}).`,
       });
       return;
     }
@@ -206,6 +184,7 @@ export default function BulkTeachersPage() {
     created: number;
     failed: number;
   } | null>(null);
+  const [dateFormat, setDateFormat] = useState<BulkDateFormat | "">("");
 
   const duplicateCount = useMemo(() => {
     const counts = new Map<string, number>();
@@ -228,8 +207,13 @@ export default function BulkTeachersPage() {
       return;
     }
 
+    if (!dateFormat) {
+      setFileError("Choose the date format used for DOB and joiningDate before uploading.");
+      return;
+    }
+
     try {
-      const parsed = parseCsv(await file.text());
+      const parsed = parseCsv(await file.text(), dateFormat);
       setTotalRows(parsed.totalRows);
       setRows(parsed.rows);
       setErrors(parsed.errors);
@@ -278,6 +262,7 @@ export default function BulkTeachersPage() {
     setErrors([]);
     setFileError(null);
     setResult(null);
+    setDateFormat("");
     if (inputRef.current) inputRef.current.value = "";
   }
 
@@ -325,6 +310,14 @@ export default function BulkTeachersPage() {
         </CardHeader>
 
         <CardContent className="space-y-6 p-6">
+          {!fileName && (
+            <BulkDateFormatSelector
+              value={dateFormat}
+              onChange={setDateFormat}
+              fields={["dob", "joiningDate"]}
+              disabled={importing}
+            />
+          )}
           <input
             ref={inputRef}
             type="file"
@@ -339,8 +332,9 @@ export default function BulkTeachersPage() {
           {!hasFile && !fileError && (
             <button
               type="button"
+              disabled={!dateFormat}
               onClick={() => inputRef.current?.click()}
-              className="flex min-h-64 w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed border-border/70 bg-muted/20 px-6 text-center transition-all hover:border-primary/40 hover:bg-primary/[0.03]"
+              className="flex min-h-64 w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed border-border/70 bg-muted/20 px-6 text-center transition-all hover:border-primary/40 hover:bg-primary/[0.03] disabled:cursor-not-allowed disabled:opacity-50"
             >
               <div className="flex size-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
                 <UploadCloud className="size-7" />

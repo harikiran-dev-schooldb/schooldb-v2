@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 
 import { PageHeader } from "@/components/common/PageHeader";
+import { BulkDateFormatSelector } from "@/components/bulk/BulkDateFormatSelector";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -23,6 +24,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useSchool } from "@/contexts/school-context";
 import { cn } from "@/lib/utils";
+import { bulkDateFormatExample, normalizeBulkDate, type BulkDateFormat } from "@/lib/bulk-date";
 import {
   postImportInBatches,
   type ImportProgress,
@@ -30,7 +32,6 @@ import {
 import {
   BULK_STUDENT_UPDATE_FIELDS,
   bulkStudentRowSchema,
-  normalizeBulkStudentDate,
   type BulkStudentUpdateField,
 } from "@/features/students/schemas/bulk-student.schema";
 
@@ -197,7 +198,7 @@ function parseCsvLine(line: string) {
   return values;
 }
 
-function parseCsv(text: string, mode: BulkMode) {
+function parseCsv(text: string, mode: BulkMode, dateFormat: BulkDateFormat) {
   const lines = text
     .replace(/^\uFEFF/, "")
     .split(/\r?\n/)
@@ -263,12 +264,7 @@ function parseCsv(text: string, mode: BulkMode) {
       return;
     }
 
-    if (mode === "UPDATE") {
-      rows.push(row);
-      return;
-    }
-
-    if (!/^(MALE|FEMALE|OTHER)$/i.test(row.gender)) {
+    if (row.gender && !/^(MALE|FEMALE|OTHER)$/i.test(row.gender)) {
       errors.push({
         row: index + 2,
         message: "Gender must be MALE, FEMALE, or OTHER.",
@@ -276,32 +272,35 @@ function parseCsv(text: string, mode: BulkMode) {
       return;
     }
 
-    const normalizedDob = normalizeBulkStudentDate(row.dob);
+    const normalizedDob = row.dob ? normalizeBulkDate(row.dob, dateFormat) : null;
 
-    if (!normalizedDob) {
+    if (row.dob && !normalizedDob) {
       errors.push({
         row: index + 2,
-        message:
-          "DOB must use YYYY-MM-DD, DD-MM-YYYY, or DD/MM/YYYY; 2-digit years are also accepted.",
+        message: `DOB does not match the selected date format (example: ${bulkDateFormatExample(dateFormat)}).`,
       });
       return;
     }
 
-    row.dob = normalizedDob;
+    if (normalizedDob) row.dob = normalizedDob;
 
     if (row.joinedDate) {
-      const normalizedJoinedDate = normalizeBulkStudentDate(row.joinedDate);
+      const normalizedJoinedDate = normalizeBulkDate(row.joinedDate, dateFormat);
 
       if (!normalizedJoinedDate) {
         errors.push({
           row: index + 2,
-          message:
-            "Joined date must use YYYY-MM-DD, DD-MM-YYYY, or DD/MM/YYYY; 2-digit years are also accepted.",
+          message: `Joined date does not match the selected date format (example: ${bulkDateFormatExample(dateFormat)}).`,
         });
         return;
       }
 
       row.joinedDate = normalizedJoinedDate;
+    }
+
+    if (mode === "UPDATE") {
+      rows.push(row);
+      return;
     }
 
     const validated = bulkStudentRowSchema.safeParse(row);
@@ -356,6 +355,7 @@ export default function BulkStudentsPage() {
   const [fileError, setFileError] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
   const [progress, setProgress] = useState<ImportProgress | null>(null);
+  const [dateFormat, setDateFormat] = useState<BulkDateFormat | "">("");
   const [result, setResult] = useState<{
     created?: number;
     enrolled?: number;
@@ -372,6 +372,9 @@ export default function BulkStudentsPage() {
     );
     return [...counts.values()].filter((count) => count > 1).length;
   }, [rows]);
+  const requiresDateFormat =
+    mode === "CREATE" ||
+    updateFields.some((field) => field === "dob" || field === "joinedDate");
 
   async function handleFile(file: File) {
     setFileError(null);
@@ -389,8 +392,13 @@ export default function BulkStudentsPage() {
       return;
     }
 
+    if (requiresDateFormat && !dateFormat) {
+      setFileError("Choose the date format used for DOB and joinedDate before uploading.");
+      return;
+    }
+
     try {
-      const parsed = parseCsv(await file.text(), mode);
+      const parsed = parseCsv(await file.text(), mode, dateFormat || "ISO");
       setTotalRows(parsed.totalRows);
       setRows(parsed.rows);
       setPreviewHeaders(parsed.headers);
@@ -465,6 +473,7 @@ export default function BulkStudentsPage() {
     setFileError(null);
     setResult(null);
     setProgress(null);
+    setDateFormat("");
     if (inputRef.current) inputRef.current.value = "";
   }
 
@@ -556,6 +565,14 @@ export default function BulkStudentsPage() {
         </CardHeader>
 
         <CardContent className="space-y-6 p-6">
+          {!fileName && requiresDateFormat && (
+            <BulkDateFormatSelector
+              value={dateFormat}
+              onChange={setDateFormat}
+              fields={["dob", "joinedDate"]}
+              disabled={importing}
+            />
+          )}
           {mode === "UPDATE" && !fileName && (
             <div className="rounded-2xl border border-border/60 bg-muted/15 p-5">
               <div className="flex flex-wrap items-start justify-between gap-3">
@@ -659,8 +676,9 @@ export default function BulkStudentsPage() {
           {!hasFileResult && !fileError && (
             <button
               type="button"
+              disabled={requiresDateFormat && !dateFormat}
               onClick={() => inputRef.current?.click()}
-              className="flex min-h-64 w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed border-border/70 bg-muted/20 px-6 text-center transition-all hover:border-primary/40 hover:bg-primary/[0.03]"
+              className="flex min-h-64 w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed border-border/70 bg-muted/20 px-6 text-center transition-all hover:border-primary/40 hover:bg-primary/[0.03] disabled:cursor-not-allowed disabled:opacity-50"
             >
               <div className="flex size-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
                 <UploadCloud className="size-7" />

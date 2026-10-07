@@ -12,11 +12,13 @@ import {
 } from "lucide-react";
 
 import { PageHeader } from "@/components/common/PageHeader";
+import { BulkDateFormatSelector } from "@/components/bulk/BulkDateFormatSelector";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useSchool } from "@/contexts/school-context";
 import { postImportInBatches } from "@/lib/batched-import";
+import { bulkDateFormatExample, normalizeBulkDate, type BulkDateFormat } from "@/lib/bulk-date";
 
 type PaymentMode =
   | "CASH"
@@ -109,65 +111,9 @@ function cleanValue(value: string): string {
 }
 
 /**
- * Parse payment date.
- *
- * Accepted:
- * YYYY-MM-DD
- * DD/MM/YYYY
- * DD-MM-YYYY
- * DD/MM/YY
- * DD-MM-YY
- *
- * Always returns YYYY-MM-DD.
- */
-function parsePaymentDate(value: string): string | null {
-  const input = cleanValue(value);
-
-  let year: number;
-  let month: number;
-  let day: number;
-
-  const isoMatch = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(input);
-
-  const dmyMatch = /^(\d{1,2})[/-](\d{1,2})[/-](\d{2}|\d{4})$/.exec(input);
-
-  if (isoMatch) {
-    year = Number(isoMatch[1]);
-    month = Number(isoMatch[2]);
-    day = Number(isoMatch[3]);
-  } else if (dmyMatch) {
-    day = Number(dmyMatch[1]);
-    month = Number(dmyMatch[2]);
-    year = Number(dmyMatch[3]);
-
-    if (dmyMatch[3].length === 2) {
-      year += year >= 70 ? 1900 : 2000;
-    }
-  } else {
-    return null;
-  }
-
-  const date = new Date(Date.UTC(year, month - 1, day));
-
-  if (
-    date.getUTCFullYear() !== year ||
-    date.getUTCMonth() !== month - 1 ||
-    date.getUTCDate() !== day
-  ) {
-    return null;
-  }
-
-  return [
-    year.toString().padStart(4, "0"),
-    month.toString().padStart(2, "0"),
-    day.toString().padStart(2, "0"),
-  ].join("-");
-}
-
-/**
  * Parse CSV.
  */
-function parseCsv(text: string) {
+function parseCsv(text: string, dateFormat: BulkDateFormat) {
   const lines = text
     .replace(/^\uFEFF/, "")
     .split(/\r?\n/)
@@ -193,7 +139,7 @@ function parseCsv(text: string) {
     const admissionNo = cleanValue(values[0] ?? "");
     const installmentName = cleanValue(values[1] ?? "");
     const rawPaymentDate = cleanValue(values[2] ?? "");
-    const paymentDate = parsePaymentDate(rawPaymentDate);
+    const paymentDate = normalizeBulkDate(rawPaymentDate, dateFormat);
     const amount = Number(cleanValue(values[3] ?? ""));
     const paymentMode = cleanValue(values[4] ?? "").toUpperCase();
     const referenceNo = cleanValue(values[5] ?? "");
@@ -219,8 +165,7 @@ function parseCsv(text: string) {
     if (!paymentDate) {
       errors.push({
         row: rowNumber,
-        message:
-          "Payment date must use YYYY-MM-DD, DD/MM/YYYY, or DD-MM-YYYY format.",
+        message: `Payment date does not match the selected date format (example: ${bulkDateFormatExample(dateFormat)}).`,
       });
       return;
     }
@@ -292,6 +237,7 @@ export default function BulkFeesPage() {
   const [totalRows, setTotalRows] = useState(0);
   const [fileError, setFileError] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
+  const [dateFormat, setDateFormat] = useState<BulkDateFormat | "">("");
 
   const [result, setResult] = useState<{
     created: number;
@@ -319,9 +265,14 @@ export default function BulkFeesPage() {
       return;
     }
 
+    if (!dateFormat) {
+      setFileError("Choose the paymentDate format before uploading.");
+      return;
+    }
+
     try {
       const text = await file.text();
-      const parsed = parseCsv(text);
+      const parsed = parseCsv(text, dateFormat);
 
       setTotalRows(parsed.totalRows);
       setRows(parsed.rows);
@@ -384,6 +335,7 @@ export default function BulkFeesPage() {
     setTotalRows(0);
     setFileError(null);
     setResult(null);
+    setDateFormat("");
 
     if (inputRef.current) {
       inputRef.current.value = "";
@@ -435,6 +387,14 @@ export default function BulkFeesPage() {
         </CardHeader>
 
         <CardContent className="space-y-6 p-6">
+          {!fileName && (
+            <BulkDateFormatSelector
+              value={dateFormat}
+              onChange={setDateFormat}
+              fields={["paymentDate"]}
+              disabled={importing}
+            />
+          )}
           <input
             ref={inputRef}
             type="file"
@@ -452,8 +412,9 @@ export default function BulkFeesPage() {
           {!fileName && !fileError && (
             <button
               type="button"
+              disabled={!dateFormat}
               onClick={() => inputRef.current?.click()}
-              className="flex min-h-64 w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed border-border/70 bg-muted/20 px-6 text-center transition-all hover:border-primary/40 hover:bg-primary/[0.03]"
+              className="flex min-h-64 w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed border-border/70 bg-muted/20 px-6 text-center transition-all hover:border-primary/40 hover:bg-primary/[0.03] disabled:cursor-not-allowed disabled:opacity-50"
             >
               <div className="flex size-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
                 <UploadCloud className="size-7" />

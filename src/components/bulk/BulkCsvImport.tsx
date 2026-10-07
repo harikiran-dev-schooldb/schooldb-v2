@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 
 import { PageHeader } from "@/components/common/PageHeader";
+import { BulkDateFormatSelector } from "@/components/bulk/BulkDateFormatSelector";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,6 +22,11 @@ import {
   postImportInBatches,
   type ImportProgress,
 } from "@/lib/batched-import";
+import {
+  bulkDateFormatExample,
+  normalizeBulkDate,
+  type BulkDateFormat,
+} from "@/lib/bulk-date";
 
 export type CsvRow = Record<string, string>;
 
@@ -41,6 +47,7 @@ type Props = {
   normalizeRow?: (row: CsvRow) => CsvRow;
   duplicateKey: (row: CsvRow) => string;
   duplicateLabel: string;
+  dateFields?: readonly string[];
 };
 
 function parseCsvLine(line: string) {
@@ -95,6 +102,7 @@ export function BulkCsvImport({
   normalizeRow = (row) => row,
   duplicateKey,
   duplicateLabel,
+  dateFields = [],
 }: Props) {
   const { school } = useSchool();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -106,6 +114,7 @@ export function BulkCsvImport({
   const [result, setResult] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
   const [progress, setProgress] = useState<ImportProgress | null>(null);
+  const [dateFormat, setDateFormat] = useState<BulkDateFormat | "">("");
 
   const duplicates = useMemo(() => {
     const seen = new Set<string>();
@@ -126,6 +135,7 @@ export function BulkCsvImport({
     setMessage(null);
     setResult(null);
     setProgress(null);
+    setDateFormat("");
     if (inputRef.current) inputRef.current.value = "";
   }
 
@@ -170,6 +180,23 @@ export function BulkCsvImport({
             return;
           }
           const row = Object.fromEntries(headers.map((header, column) => [header, values[column] ?? ""]));
+          for (const field of dateFields) {
+            const value = row[field]?.trim();
+            if (!value) continue;
+            if (!dateFormat) {
+              rowErrors.push({ row: index + 2, message: "Choose the CSV date format before uploading." });
+              return;
+            }
+            const normalized = normalizeBulkDate(value, dateFormat);
+            if (!normalized) {
+              rowErrors.push({
+                row: index + 2,
+                message: `${field} does not match the selected date format (example: ${bulkDateFormatExample(dateFormat)}).`,
+              });
+              return;
+            }
+            row[field] = normalized;
+          }
           const error = validateRow(row);
           if (error) rowErrors.push({ row: index + 2, message: error });
           else validRows.push(normalizeRow(row));
@@ -245,6 +272,14 @@ export function BulkCsvImport({
         </CardHeader>
 
         <CardContent className="space-y-6 p-4 sm:p-6">
+          {dateFields.length > 0 && !fileName ? (
+            <BulkDateFormatSelector
+              value={dateFormat}
+              onChange={setDateFormat}
+              fields={dateFields}
+              disabled={importing}
+            />
+          ) : null}
           <input
             ref={inputRef}
             type="file"
@@ -259,8 +294,9 @@ export function BulkCsvImport({
           {!hasFile && !message ? (
             <button
               type="button"
+              disabled={Boolean(dateFields.length) && !dateFormat}
               onClick={() => inputRef.current?.click()}
-              className="flex min-h-64 w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed border-border/70 bg-muted/20 px-6 text-center transition-all hover:border-primary/40 hover:bg-primary/[0.03]"
+              className="flex min-h-64 w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed border-border/70 bg-muted/20 px-6 text-center transition-all hover:border-primary/40 hover:bg-primary/[0.03] disabled:cursor-not-allowed disabled:opacity-50"
             >
               <div className="flex size-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
                 <UploadCloud className="size-7" />

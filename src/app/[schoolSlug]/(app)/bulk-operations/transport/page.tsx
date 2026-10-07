@@ -95,6 +95,7 @@ export default function BulkTransportPage() {
       normalizeRow={normalizeTransportRow}
       duplicateKey={(row) => `${row.routeCode}:${row.stopName}:${row.admissionNo || "setup"}`}
       duplicateLabel="route, stop and student rows"
+      dateFields={["startDate"]}
     />
   );
 }

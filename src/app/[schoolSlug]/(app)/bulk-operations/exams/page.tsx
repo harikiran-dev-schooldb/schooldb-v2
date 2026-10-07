@@ -9,10 +9,12 @@ import {
   XCircle,
 } from "lucide-react";
 import { PageHeader } from "@/components/common/PageHeader";
+import { BulkDateFormatSelector } from "@/components/bulk/BulkDateFormatSelector";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { postImportInBatches } from "@/lib/batched-import";
+import { bulkDateFormatExample, normalizeBulkDate, type BulkDateFormat } from "@/lib/bulk-date";
 
 type ExamRow = {
   academicYearId: string;
@@ -43,35 +45,7 @@ function parseLine(line: string) {
   return values;
 }
 
-function parseDate(value: string): string | null {
-  const input = value.trim();
-  let day: number;
-  let month: number;
-  let year: number;
-  let match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(input);
-  if (match) {
-    year = Number(match[1]);
-    month = Number(match[2]);
-    day = Number(match[3]);
-  } else {
-    match = /^(\d{2})[\/-](\d{2})[\/-](\d{2}|\d{4})$/.exec(input);
-    if (!match) return null;
-    day = Number(match[1]);
-    month = Number(match[2]);
-    year = Number(match[3]);
-    if (match[3].length === 2) year += year >= 70 ? 1900 : 2000;
-  }
-  const date = new Date(Date.UTC(year, month - 1, day));
-  if (
-    date.getUTCFullYear() !== year ||
-    date.getUTCMonth() !== month - 1 ||
-    date.getUTCDate() !== day
-  )
-    return null;
-  return `${year.toString().padStart(4, "0")}-${month.toString().padStart(2, "0")}-${day.toString().padStart(2, "0")}`;
-}
-
-function parseCsv(text: string) {
+function parseCsv(text: string, dateFormat: BulkDateFormat) {
   const lines = text
     .replace(/^\uFEFF/, "")
     .split(/\r?\n/)
@@ -103,21 +77,19 @@ function parseCsv(text: string) {
       });
       return;
     }
-    const startDate = parseDate(row.startDate);
-    const endDate = parseDate(row.endDate);
+    const startDate = normalizeBulkDate(row.startDate, dateFormat);
+    const endDate = normalizeBulkDate(row.endDate, dateFormat);
     if (!startDate) {
       errors.push({
         row: index + 2,
-        message:
-          "Start date must be YYYY-MM-DD, DD/MM/YYYY, DD/MM/YY, DD-MM-YYYY, or DD-MM-YY.",
+        message: `Start date does not match the selected format (example: ${bulkDateFormatExample(dateFormat)}).`,
       });
       return;
     }
     if (!endDate) {
       errors.push({
         row: index + 2,
-        message:
-          "End date must be YYYY-MM-DD, DD/MM/YYYY, DD/MM/YY, DD-MM-YYYY, or DD-MM-YY.",
+        message: `End date does not match the selected format (example: ${bulkDateFormatExample(dateFormat)}).`,
       });
       return;
     }
@@ -151,6 +123,7 @@ export default function BulkExamsPage() {
   const [totalRows, setTotalRows] = useState(0);
   const [fileError, setFileError] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
+  const [dateFormat, setDateFormat] = useState<BulkDateFormat | "">("");
   const [result, setResult] = useState<{
     created: number;
     failed: number;
@@ -174,8 +147,12 @@ export default function BulkExamsPage() {
       setFileError("Upload a CSV file using the SchoolDB exam template.");
       return;
     }
+    if (!dateFormat) {
+      setFileError("Choose the startDate and endDate format before uploading.");
+      return;
+    }
     try {
-      const parsed = parseCsv(await file.text());
+      const parsed = parseCsv(await file.text(), dateFormat);
       setRows(parsed.rows);
       setErrors(parsed.errors);
       setTotalRows(parsed.totalRows);
@@ -212,6 +189,7 @@ export default function BulkExamsPage() {
     setTotalRows(0);
     setFileError(null);
     setResult(null);
+    setDateFormat("");
     if (inputRef.current) inputRef.current.value = "";
   }
   return (
@@ -246,6 +224,7 @@ export default function BulkExamsPage() {
           </div>
         </CardHeader>
         <CardContent className="space-y-6 p-6">
+          {!fileName && <BulkDateFormatSelector value={dateFormat} onChange={setDateFormat} fields={["startDate", "endDate"]} disabled={importing} />}
           <input
             ref={inputRef}
             type="file"
@@ -259,8 +238,9 @@ export default function BulkExamsPage() {
           {!fileName && !fileError && (
             <button
               type="button"
+              disabled={!dateFormat}
               onClick={() => inputRef.current?.click()}
-              className="flex min-h-64 w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed border-border/70 bg-muted/20 px-6 text-center transition-all hover:border-primary/40 hover:bg-primary/[0.03]"
+              className="flex min-h-64 w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed border-border/70 bg-muted/20 px-6 text-center transition-all hover:border-primary/40 hover:bg-primary/[0.03] disabled:cursor-not-allowed disabled:opacity-50"
             >
               <div className="flex size-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
                 <UploadCloud className="size-7" />
