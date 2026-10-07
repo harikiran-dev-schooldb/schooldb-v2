@@ -3,7 +3,7 @@ import "dotenv/config";
 import { defineConfig, devices } from "@playwright/test";
 
 const externalBaseUrl = process.env.E2E_BASE_URL?.trim();
-const baseURL = externalBaseUrl || "http://127.0.0.1:3000";
+const baseURL = externalBaseUrl || "http://localhost:3000";
 const authState = process.env.E2E_AUTH_STATE?.trim();
 const isLocalBaseUrl = !externalBaseUrl || /^https?:\/\/(?:localhost|127\.0\.0\.1|\[::1\])(?::\d+)?\/?$/i.test(externalBaseUrl);
 
@@ -85,7 +85,7 @@ export default defineConfig({
   ],
   webServer: isLocalBaseUrl
     ? {
-        command: "npm run dev -- --hostname 127.0.0.1 --port 3000",
+        command: "npm run dev -- --hostname localhost --port 3000",
         url: `${baseURL}/api/health`,
         reuseExistingServer: !process.env.CI,
         timeout: 120_000,

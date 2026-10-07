@@ -1,6 +1,8 @@
 import { chromium, type FullConfig } from "@playwright/test";
 
 export default async function refreshAuthenticatedState(config: FullConfig) {
+  if (process.env.E2E_SKIP_AUTH_REFRESH === "true") return;
+
   const authState = process.env.E2E_AUTH_STATE?.trim();
   const schoolSlug = process.env.E2E_SCHOOL_SLUG?.trim();
   const baseURL = config.projects[0]?.use.baseURL;

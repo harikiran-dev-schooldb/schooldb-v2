@@ -16,8 +16,8 @@ const nextConfig: NextConfig = {
             value: "camera=(), geolocation=(), microphone=(), payment=(self)",
           },
           {
-            key: "Content-Security-Policy-Report-Only",
-            value: "default-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; worker-src 'self' blob:; img-src 'self' data: blob: https:; font-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://clerk.schooldb.co.in https://*.clerk.com https://*.clerk.accounts.dev https://sdk.cashfree.com; connect-src 'self' https://clerk.schooldb.co.in https://*.clerk.com https://*.clerk.accounts.dev https://*.googleapis.com https://*.firebaseio.com https://fcmregistrations.googleapis.com https://api.cashfree.com https://sandbox.cashfree.com; frame-src 'self' https://clerk.schooldb.co.in https://*.clerk.com https://*.clerk.accounts.dev https://sdk.cashfree.com",
+            key: "Content-Security-Policy",
+            value: "default-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self' https://*.cashfree.com; worker-src 'self' blob:; img-src 'self' data: blob: https:; font-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://clerk.schooldb.co.in https://*.clerk.com https://*.clerk.accounts.dev https://sdk.cashfree.com; connect-src 'self' https://clerk.schooldb.co.in https://*.clerk.com https://*.clerk.accounts.dev https://*.googleapis.com https://*.firebaseio.com https://fcmregistrations.googleapis.com https://*.cashfree.com; frame-src 'self' https://clerk.schooldb.co.in https://*.clerk.com https://*.clerk.accounts.dev https://*.cashfree.com",
           },
         ],
       },

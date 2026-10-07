@@ -43,6 +43,15 @@ test.describe("public and PWA smoke checks", () => {
     expect(await response.text()).toContain("self.addEventListener");
   });
 
+  test("security policy is enforced", async ({ request }) => {
+    const response = await request.get("/");
+    expect(response.ok()).toBeTruthy();
+    expect(response.headers()["content-security-policy"]).toContain(
+      "default-src 'self'",
+    );
+    expect(response.headers()["content-security-policy-report-only"]).toBeUndefined();
+  });
+
   test("health endpoint confirms the application database", async ({ request }) => {
     const response = await request.get("/api/health");
     expect(response.status()).toBe(200);

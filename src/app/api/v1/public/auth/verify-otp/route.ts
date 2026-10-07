@@ -77,10 +77,6 @@ async function createSessionToken(account: ActiveAccount, schoolSlug: string) {
   let clerkUser;
   try {
     clerkUser = await client.users.getUser(account.clerkUserId);
-    console.log("Clerk lookup", {
-      clerkUserId: account.clerkUserId,
-      schoolSlug,
-    });
   } catch (error) {
     const status =
       error && typeof error === "object" && "status" in error
