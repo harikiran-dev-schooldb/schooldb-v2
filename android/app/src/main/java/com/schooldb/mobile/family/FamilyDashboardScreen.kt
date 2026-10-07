@@ -29,6 +29,7 @@ import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.DirectionsBus
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.LocationOn
+import androidx.compose.material.icons.outlined.LocalLibrary
 import androidx.compose.material.icons.outlined.MoreHoriz
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Payments
@@ -410,6 +411,16 @@ fun FamilyDashboardScreen(
                         onBack = { moreScreen = "MENU" },
                         modifier = Modifier.padding(padding),
                     )
+                } else if (moreScreen == "LIBRARY") {
+                    LibraryTab(
+                        dashboard,
+                        student,
+                        state,
+                        viewModel::selectStudent,
+                        viewModel::refreshDetails,
+                        onBack = { moreScreen = "MENU" },
+                        modifier = Modifier.padding(padding),
+                    )
                 } else if (moreScreen == "NOTIFICATIONS") {
                     NotificationsTab(
                         state = state,
@@ -429,6 +440,7 @@ fun FamilyDashboardScreen(
                         onOpenLeave = { moreScreen = "LEAVE" },
                         onOpenCalendar = { moreScreen = "CALENDAR" },
                         onOpenTransport = { moreScreen = "TRANSPORT" },
+                        onOpenLibrary = { moreScreen = "LIBRARY" },
                         onOpenNotifications = { moreScreen = "NOTIFICATIONS" },
                         onOpenFees = { moreScreen = "FEES" },
                         onSwitchAccount = onSwitchAccount,
@@ -830,6 +842,7 @@ private fun MoreTab(
     onOpenLeave: () -> Unit,
     onOpenCalendar: () -> Unit,
     onOpenTransport: () -> Unit,
+    onOpenLibrary: () -> Unit,
     onOpenNotifications: () -> Unit,
     onOpenFees: () -> Unit,
     onSwitchAccount: () -> Unit,
@@ -839,7 +852,8 @@ private fun MoreTab(
     if (dashboard.role == "STUDENT") {
         StudentMoreTab(
             dashboard, student, state, onSelect, onOpenTimetable, onOpenLeave,
-            onOpenCalendar, onOpenTransport, onOpenNotifications, onOpenFees,
+            onOpenCalendar, onOpenTransport, onOpenLibrary, onOpenNotifications,
+            onOpenFees,
             onSwitchAccount, onSignOut, modifier,
         )
         return
@@ -906,6 +920,21 @@ private fun MoreTab(
     }
     item {
         Card(
+            onClick = onOpenLibrary,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 6.dp),
+            shape = RoundedCornerShape(18.dp),
+        ) {
+            Row(Modifier.fillMaxWidth().padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Outlined.LocalLibrary, contentDescription = null, tint = FamilyIndigo)
+                Column(Modifier.padding(start = 14.dp).weight(1f)) {
+                    Text("My library", fontWeight = FontWeight.Bold)
+                    Text("Borrowed books, due dates and return history", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+                }
+            }
+        }
+    }
+    item {
+        Card(
             onClick = onOpenCalendar,
             modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 6.dp),
             shape = RoundedCornerShape(18.dp),
@@ -963,6 +992,7 @@ private fun StudentMoreTab(
     onOpenLeave: () -> Unit,
     onOpenCalendar: () -> Unit,
     onOpenTransport: () -> Unit,
+    onOpenLibrary: () -> Unit,
     onOpenNotifications: () -> Unit,
     onOpenFees: () -> Unit,
     onSwitchAccount: () -> Unit,
@@ -988,6 +1018,7 @@ private fun StudentMoreTab(
             )
         }
         item { StudentMoreAction(Icons.Outlined.DirectionsBus, "School transport", "Route, stop and pickup time", FamilyIndigo, onOpenTransport) }
+        item { StudentMoreAction(Icons.Outlined.LocalLibrary, "My library", "Loans, due dates and return history", FamilyIndigo, onOpenLibrary) }
         item { StudentMoreAction(Icons.AutoMirrored.Outlined.EventNote, "Leave requests", "Request leave and track decisions", FamilyIndigo, onOpenLeave) }
         item { Spacer(Modifier.height(5.dp)) }
         item { StudentSectionHeading("Account", "Your school account") }
@@ -1511,6 +1542,80 @@ private fun CalendarEventCard(event: FamilyCalendarEvent) {
 }
 
 @Composable
+private fun LibraryTab(
+    dashboard: FamilyDashboard,
+    student: FamilyStudent,
+    state: FamilyUiState,
+    onSelect: (String) -> Unit,
+    onRefresh: () -> Unit,
+    onBack: () -> Unit,
+    modifier: Modifier,
+) = DetailList(modifier, dashboard, student, "My library", state, onSelect, onRefresh, onBack) { details ->
+    val active = details.libraryLoans.filter { it.returnedAt == null }
+    val history = details.libraryLoans.filter { it.returnedAt != null }
+    item {
+        Card(
+            Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 6.dp),
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFFEEF2FF)),
+            border = BorderStroke(1.dp, Color(0xFFC7D2FE)),
+        ) {
+            Column(Modifier.padding(20.dp)) {
+                Icon(Icons.Outlined.LocalLibrary, contentDescription = null, tint = FamilyIndigo,
+                    modifier = Modifier.size(27.dp))
+                Text("Your reading shelf", Modifier.padding(top = 12.dp), color = Color(0xFF0F172A),
+                    fontSize = 24.sp, fontWeight = FontWeight.ExtraBold)
+                Text("${active.size} ${if (active.size == 1) "book" else "books"} currently borrowed",
+                    Modifier.padding(top = 5.dp), color = Color(0xFF64748B), fontSize = 12.sp)
+            }
+        }
+    }
+    if (details.libraryLoans.isEmpty()) {
+        item { EmptyMessage("Books issued by the school library will appear here.") }
+    } else {
+        item { Subheading("Currently borrowed") }
+        if (active.isEmpty()) item { EmptyMessage("No books are currently borrowed.") }
+        else items(active, key = { it.id }) { LibraryLoanCard(it) }
+        if (history.isNotEmpty()) {
+            item { Subheading("Return history") }
+            items(history, key = { it.id }) { LibraryLoanCard(it) }
+        }
+    }
+}
+
+@Composable
+private fun LibraryLoanCard(loan: FamilyLibraryLoan) {
+    ColumnCard {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
+            Surface(shape = RoundedCornerShape(14.dp), color = FamilyIndigo.copy(alpha = .10f)) {
+                Icon(Icons.Outlined.LocalLibrary, contentDescription = null, tint = FamilyIndigo,
+                    modifier = Modifier.padding(11.dp).size(21.dp))
+            }
+            Column(Modifier.weight(1f).padding(start = 12.dp)) {
+                Text(loan.title, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                Text(loan.author, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+            }
+            StatusText(loan.status)
+        }
+        HorizontalDivider(Modifier.padding(vertical = 13.dp), color = MaterialTheme.colorScheme.outlineVariant)
+        Text("Due ${date(loan.dueAt)}", fontWeight = FontWeight.SemiBold, fontSize = 13.sp,
+            color = if (loan.status == "OVERDUE") FamilyRed else MaterialTheme.colorScheme.onSurface)
+        Text(
+            buildList {
+                add("Copy ${loan.barcode}")
+                loan.shelf?.takeIf(String::isNotBlank)?.let { add("Shelf $it") }
+                if (loan.renewedCount > 0) add("Renewed ${loan.renewedCount}×")
+            }.joinToString(" · "),
+            Modifier.padding(top = 5.dp), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp,
+        )
+        if (loan.fineAmount > 0) {
+            Text("Fine ${currency(loan.fineAmount)}", Modifier.padding(top = 8.dp),
+                color = FamilyRed, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+        }
+    }
+}
+
+@Composable
 private fun TransportTab(
     dashboard: FamilyDashboard,
     student: FamilyStudent,
@@ -2018,8 +2123,9 @@ private fun FamilyError(message: String, onRefresh: () -> Unit, modifier: Modifi
 }
 
 private fun statusColor(status: String) = when (status) {
-    "PRESENT", "PASS", "PAID" -> FamilyGreen
+    "PRESENT", "PASS", "PAID", "RETURNED" -> FamilyGreen
     "ABSENT", "FAIL", "OVERDUE" -> FamilyRed
+    "BORROWED" -> FamilyIndigo
     else -> FamilyAmber
 }
 

@@ -186,6 +186,20 @@ data class FamilyTransportAssignment(
     val stops: List<FamilyTransportStop>,
 )
 
+data class FamilyLibraryLoan(
+    val id: String,
+    val title: String,
+    val author: String,
+    val barcode: String,
+    val shelf: String?,
+    val issuedAt: String,
+    val dueAt: String,
+    val returnedAt: String?,
+    val renewedCount: Int,
+    val fineAmount: Double,
+    val status: String,
+)
+
 data class FamilyStudentDetails(
     val attendance: FamilyAttendanceDetails?,
     val homework: List<FamilyHomeworkDetails>,
@@ -195,6 +209,7 @@ data class FamilyStudentDetails(
     val leaveRequests: List<FamilyLeaveRequest>,
     val calendarEvents: List<FamilyCalendarEvent>,
     val transport: FamilyTransportAssignment?,
+    val libraryLoans: List<FamilyLibraryLoan>,
 )
 
 data class FamilyUiState(

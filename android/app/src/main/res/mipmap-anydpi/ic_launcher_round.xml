@@ -1,13 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="108dp"
-    android:height="108dp"
-    android:viewportWidth="108"
-    android:viewportHeight="108">
-    <path android:fillColor="#152A72"
-        android:pathData="M54,4A50,50 0,1 1,54 104A50,50 0,1 1,54 4z" />
-    <path android:fillColor="#FFFFFF"
-        android:pathData="M54,25L22,41.5l32,16.5 25.8,-13.3V65h6V41.5L54,25z" />
-    <path android:fillColor="#FFFFFF"
-        android:pathData="M34,53.5v15.5c0,6 8.6,11.2 20,11.2S74,75 74,69V53.5L54,64 34,53.5z" />
-</vector>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@color/schooldb_icon_background" />
+    <item android:left="8dp" android:top="8dp" android:right="8dp" android:bottom="8dp">
+        <bitmap android:src="@drawable/schooldb_logo_light" android:gravity="fill" />
+    </item>
+</layer-list>

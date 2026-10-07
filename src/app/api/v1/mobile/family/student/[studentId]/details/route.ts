@@ -46,6 +46,7 @@ export async function GET(
       publishedCalendarEvents,
       examSchedule,
       transport,
+      libraryLoans,
     ] = await Promise.all([
       enrollment
         ? attendanceService.studentAttendanceReport(
@@ -143,6 +144,28 @@ export async function GET(
             },
           })
         : null,
+      prisma.libraryLoan.findMany({
+        where: {
+          schoolId: membership.schoolId,
+          studentEnrollment: { studentId },
+        },
+        orderBy: { createdAt: "desc" },
+        take: 50,
+        select: {
+          id: true,
+          issuedAt: true,
+          dueAt: true,
+          returnedAt: true,
+          renewedCount: true,
+          fineAmount: true,
+          copy: {
+            select: {
+              barcode: true,
+              book: { select: { title: true, author: true, shelf: true } },
+            },
+          },
+        },
+      }),
     ]);
 
     const ledgers = (
@@ -308,6 +331,23 @@ export async function GET(
             stops: transport.route.stops,
           }
         : null,
+      libraryLoans: libraryLoans.map((loan) => ({
+        id: loan.id,
+        title: loan.copy.book.title,
+        author: loan.copy.book.author,
+        barcode: loan.copy.barcode,
+        shelf: loan.copy.book.shelf,
+        issuedAt: loan.issuedAt,
+        dueAt: loan.dueAt,
+        returnedAt: loan.returnedAt,
+        renewedCount: loan.renewedCount,
+        fineAmount: Number(loan.fineAmount),
+        status: loan.returnedAt
+          ? "RETURNED"
+          : loan.dueAt < new Date()
+            ? "OVERDUE"
+            : "BORROWED",
+      })),
     });
   });
 }

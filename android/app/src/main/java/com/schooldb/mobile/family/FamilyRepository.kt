@@ -278,6 +278,28 @@ class FamilyRepository(
             )
         }
 
+        val libraryJson = data.optJSONArray("libraryLoans") ?: JSONArray()
+        val libraryLoans = buildList {
+            repeat(libraryJson.length()) { index ->
+                val item = libraryJson.getJSONObject(index)
+                add(
+                    FamilyLibraryLoan(
+                        id = item.getString("id"),
+                        title = item.optString("title", "Library book"),
+                        author = item.optString("author", "Unknown author"),
+                        barcode = item.optString("barcode"),
+                        shelf = item.optionalText("shelf"),
+                        issuedAt = item.optString("issuedAt"),
+                        dueAt = item.optString("dueAt"),
+                        returnedAt = item.optionalText("returnedAt"),
+                        renewedCount = item.optInt("renewedCount"),
+                        fineAmount = item.optDouble("fineAmount"),
+                        status = item.optString("status", "BORROWED"),
+                    ),
+                )
+            }
+        }
+
         return FamilyStudentDetails(
             attendance,
             homework,
@@ -287,6 +309,7 @@ class FamilyRepository(
             leaveRequests,
             calendarEvents,
             transport,
+            libraryLoans,
         )
     }
 

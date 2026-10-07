@@ -6,7 +6,8 @@ import { ApiResponse } from "@/lib/response";
 const PAGE_SIZE = 20;
 const VALID_SECTIONS = new Set([
   "students", "teachers", "classes", "attendance", "fees", "leave", "queries",
-  "timetable", "exams", "calendar", "fee-collection", "admissions",
+  "timetable", "exams", "calendar", "fee-collection", "admissions", "library",
+  "transport", "inventory", "birthdays",
 ]);
 
 export async function GET(request: Request) {
@@ -250,6 +251,109 @@ export async function GET(request: Request) {
           subtitle: `${item.applicationNo} · ${item.submittedAt.toISOString().slice(0, 10)}`,
           detail: `${item.applyingClass.name}${item.preferredSection ? ` · ${item.preferredSection.name}` : ""}`,
           status: item.status })) });
+    }
+
+    if (section === "library") {
+      const where = { schoolId, active: true,
+        ...(text ? { OR: [
+          { title: text }, { author: text }, { accessionNo: text },
+          { category: { name: text } },
+        ] } : {}) };
+      const [total, books] = await Promise.all([
+        prisma.libraryBook.count({ where }),
+        prisma.libraryBook.findMany({ where, orderBy: [{ title: "asc" }, { author: "asc" }],
+          skip, take: PAGE_SIZE,
+          select: { id: true, title: true, author: true, accessionNo: true, shelf: true,
+            category: { select: { name: true } }, _count: { select: { copies: true } } } }),
+      ]);
+      return ApiResponse.success({ section, total, page, pageSize: PAGE_SIZE,
+        rows: books.map((book) => ({ id: book.id, title: book.title,
+          subtitle: `${book.author} · ${book.accessionNo}`,
+          detail: `${book._count.copies} ${book._count.copies === 1 ? "copy" : "copies"}${book.shelf ? ` · Shelf ${book.shelf}` : ""}`,
+          status: book.category?.name || "UNCATEGORIZED" })) });
+    }
+
+    if (section === "transport") {
+      const where = { schoolId, active: true,
+        ...(text ? { OR: [
+          { name: text }, { code: text }, { vehicle: { registrationNo: text } },
+          { vehicle: { driverName: text } },
+        ] } : {}) };
+      const [total, routes] = await Promise.all([
+        prisma.transportRoute.count({ where }),
+        prisma.transportRoute.findMany({ where, orderBy: [{ name: "asc" }, { code: "asc" }],
+          skip, take: PAGE_SIZE,
+          select: { id: true, name: true, code: true, pickupStart: true, dropStart: true,
+            vehicle: { select: { registrationNo: true, capacity: true, driverName: true } },
+            _count: { select: {
+              stops: { where: { active: true } },
+              assignments: { where: { active: true } },
+            } } } }),
+      ]);
+      return ApiResponse.success({ section, total, page, pageSize: PAGE_SIZE,
+        rows: routes.map((route) => ({ id: route.id, title: route.name,
+          subtitle: `${route.code} · ${route._count.stops} stops · ${route._count.assignments} students`,
+          detail: route.vehicle
+            ? `${route.vehicle.registrationNo} · ${route.vehicle.driverName} · ${route.vehicle.capacity} seats`
+            : "No vehicle assigned",
+          status: route.vehicle ? "ACTIVE" : "NEEDS VEHICLE" })) });
+    }
+
+    if (section === "inventory") {
+      const where = { schoolId, active: true,
+        ...(text ? { OR: [
+          { name: text }, { assetCode: text }, { category: text }, { location: text },
+          { custodian: text },
+        ] } : {}) };
+      const [total, items] = await Promise.all([
+        prisma.inventoryItem.count({ where }),
+        prisma.inventoryItem.findMany({ where, orderBy: [{ category: "asc" }, { name: "asc" }],
+          skip, take: PAGE_SIZE,
+          select: { id: true, name: true, assetCode: true, category: true, location: true,
+            quantity: true, reorderLevel: true, condition: true, custodian: true } }),
+      ]);
+      return ApiResponse.success({ section, total, page, pageSize: PAGE_SIZE,
+        rows: items.map((item) => ({ id: item.id, title: item.name,
+          subtitle: `${item.assetCode} · ${item.category}`,
+          detail: `${item.quantity} in stock${item.location ? ` · ${item.location}` : ""}${item.custodian ? ` · ${item.custodian}` : ""}`,
+          status: item.quantity <= item.reorderLevel ? "LOW STOCK" : item.condition })) });
+    }
+
+    if (section === "birthdays") {
+      const students = await prisma.student.findMany({
+        where: { schoolId, status: "ACTIVE",
+          ...(text ? { OR: [{ fullName: text }, { admissionNo: text }] } : {}) },
+        select: { id: true, fullName: true, admissionNo: true, dob: true,
+          enrollments: { where: { active: true, academicYear: { active: true } }, take: 1,
+            select: { class: { select: { name: true } }, section: { select: { name: true } } } } },
+      });
+      const now = new Date();
+      const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+      const upcoming = students.map((student) => {
+        let nextBirthday = new Date(Date.UTC(
+          today.getUTCFullYear(), student.dob.getUTCMonth(), student.dob.getUTCDate(),
+        ));
+        if (nextBirthday < today) {
+          nextBirthday = new Date(Date.UTC(
+            today.getUTCFullYear() + 1, student.dob.getUTCMonth(), student.dob.getUTCDate(),
+          ));
+        }
+        const daysAway = Math.round((nextBirthday.getTime() - today.getTime()) / 86_400_000);
+        return { student, nextBirthday, daysAway };
+      }).filter((item) => item.daysAway <= 60)
+        .sort((left, right) => left.daysAway - right.daysAway ||
+          (left.student.fullName || left.student.admissionNo)
+            .localeCompare(right.student.fullName || right.student.admissionNo));
+      const rows = upcoming.slice(skip, skip + PAGE_SIZE).map(({ student, nextBirthday, daysAway }) => ({
+        id: student.id,
+        title: student.fullName || student.admissionNo,
+        subtitle: student.enrollments[0]
+          ? `${student.enrollments[0].class.name} · ${student.enrollments[0].section.name}`
+          : `Admission ${student.admissionNo}`,
+        detail: nextBirthday.toISOString().slice(0, 10),
+        status: daysAway === 0 ? "TODAY" : daysAway === 1 ? "TOMORROW" : `IN ${daysAway} DAYS`,
+      }));
+      return ApiResponse.success({ section, total: upcoming.length, page, pageSize: PAGE_SIZE, rows });
     }
 
     const where = { schoolId, source: "PARENT_QR", ...(text ? { OR: [

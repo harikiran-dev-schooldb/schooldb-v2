@@ -21,7 +21,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Logout
-import androidx.compose.material.icons.outlined.DarkMode
+import androidx.compose.material.icons.outlined.LightMode
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Notifications
@@ -59,7 +59,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.schooldb.mobile.BuildConfig
 import com.schooldb.mobile.preferences.AppPreferences
 import com.schooldb.mobile.preferences.StartTabPreference
-import com.schooldb.mobile.preferences.ThemePreference
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -107,18 +106,10 @@ fun SettingsScreen(
             item {
                 SettingsCard {
                     SettingsHeader(
-                        icon = Icons.Outlined.DarkMode,
-                        title = "Theme",
-                        subtitle = "Choose how SchoolDB looks on this device",
+                        icon = Icons.Outlined.LightMode,
+                        title = "Light mode",
+                        subtitle = "SchoolDB uses the same bright interface as the web app",
                     )
-                    ThemePreference.entries.forEach { option ->
-                        SettingsDivider()
-                        ChoiceRow(
-                            title = option.label,
-                            selected = preferences.theme == option,
-                            onClick = { AppPreferences.setTheme(option) },
-                        )
-                    }
                 }
             }
 
@@ -191,7 +182,7 @@ fun SettingsScreen(
                         Column(Modifier.weight(1f).padding(horizontal = 13.dp)) {
                             Text("Reset app preferences", fontWeight = FontWeight.Medium)
                             Text(
-                                "Restore theme, badge and start-screen defaults",
+                                "Restore badge and start-screen defaults",
                                 fontSize = 12.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -236,7 +227,7 @@ fun SettingsScreen(
         AlertDialog(
             onDismissRequest = { showResetConfirmation = false },
             title = { Text("Reset preferences?") },
-            text = { Text("The theme, notice badge and start screen will return to their defaults.") },
+            text = { Text("The notice badge and start screen will return to their defaults.") },
             confirmButton = {
                 Button(onClick = {
                     AppPreferences.reset()
@@ -279,7 +270,8 @@ private fun SettingsHeader(icon: ImageVector, title: String, subtitle: String) {
 @Composable
 private fun ChoiceRow(title: String, selected: Boolean, onClick: () -> Unit) {
     Row(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 15.dp, vertical = 8.dp),
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick)
+            .padding(horizontal = 15.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         RadioButton(selected = selected, onClick = onClick)
@@ -327,13 +319,6 @@ private fun SettingsSectionTitle(text: String) {
         modifier = Modifier.padding(top = 4.dp),
     )
 }
-
-private val ThemePreference.label: String
-    get() = when (this) {
-        ThemePreference.SYSTEM -> "Use device setting"
-        ThemePreference.LIGHT -> "Light"
-        ThemePreference.DARK -> "Dark"
-    }
 
 private val StartTabPreference.label: String
     get() = when (this) {

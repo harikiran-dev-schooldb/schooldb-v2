@@ -93,6 +93,10 @@ private val sectionTitles = mapOf(
     "calendar" to "School calendar",
     "fee-collection" to "Fee collection",
     "admissions" to "Online admissions",
+    "library" to "Library",
+    "transport" to "Transport",
+    "inventory" to "Inventory",
+    "birthdays" to "Upcoming birthdays",
 )
 
 private val sectionDescriptions = mapOf(
@@ -108,6 +112,10 @@ private val sectionDescriptions = mapOf(
     "calendar" to "School events, holidays and important dates",
     "fee-collection" to "Pending and partially paid installments",
     "admissions" to "Recent online admission applications",
+    "library" to "Books, copies, categories and shelf locations",
+    "transport" to "Routes, vehicles, stops and student assignments",
+    "inventory" to "School assets, stock levels and condition",
+    "birthdays" to "Student birthdays coming up in the next 60 days",
 )
 
 internal data class AdminListRow(

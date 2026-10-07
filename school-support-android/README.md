@@ -21,6 +21,8 @@ local sign-in state. Tickets remain on the server.
 
 The app signs in staff, lists accessible tickets, creates tickets, searches students by name or admission number, shows details, and adds replies. School admins can assign staff and update status and priority. Staff see tickets they created or were assigned; school admins see all tickets in their school.
 
+The launcher and default in-app brand mark use the same light-mode SchoolDB identity as the main Android and web apps. A school-specific uploaded logo still replaces the default mark after sign-in.
+
 Release 0.9.0 adds staff replies with admin-only internal notes, valid status-transition choices with confirmation, Principal and Vice Principal designations, message/activity timestamps, navigation-safe ticket and reply drafts, retryable push-device cleanup, and OTP-free switching between accounts linked to the same verified mobile number.
 
 Super Admins can open **Manage administrators** from the support dashboard to create or update

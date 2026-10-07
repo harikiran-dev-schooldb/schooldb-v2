@@ -88,7 +88,10 @@ import com.composables.icons.lucide.ArrowRight
 import com.composables.icons.lucide.BadgeIndianRupee
 import com.composables.icons.lucide.Bell
 import com.composables.icons.lucide.BookOpenCheck
+import com.composables.icons.lucide.Boxes
 import com.composables.icons.lucide.BriefcaseBusiness
+import com.composables.icons.lucide.Bus
+import com.composables.icons.lucide.Cake
 import com.composables.icons.lucide.CalendarCheck
 import com.composables.icons.lucide.CalendarClock
 import com.composables.icons.lucide.CalendarDays
@@ -99,6 +102,7 @@ import com.composables.icons.lucide.ClipboardCheck
 import com.composables.icons.lucide.GraduationCap
 import com.composables.icons.lucide.House
 import com.composables.icons.lucide.LayoutGrid
+import com.composables.icons.lucide.Library
 import com.composables.icons.lucide.Megaphone
 import com.composables.icons.lucide.MessageSquareText
 import com.composables.icons.lucide.RefreshCw
@@ -1352,6 +1356,10 @@ private fun MoreTab(
         AdminTool("Announcements", "COMMUNICATION", "Send targeted school updates", Lucide.Megaphone, "announcements", listOf(Color(0xFFC4B5FD), Color(0xFF7C3AED))),
         AdminTool("Fee collection", "COLLECTIONS", "Pending installments and follow-up", Lucide.ReceiptIndianRupee, "fee-collection", listOf(Color(0xFF93C5FD), Color(0xFF2563EB))),
         AdminTool("Admissions", "GROWTH", "New applications and onboarding", Lucide.UserRoundPlus, "admissions", listOf(Color(0xFF818CF8), Color(0xFF4F46E5))),
+        AdminTool("Library", "RESOURCES", "Books, copies and shelf records", Lucide.Library, "library", listOf(Color(0xFF93C5FD), Color(0xFF2563EB))),
+        AdminTool("Transport", "OPERATIONS", "Routes, vehicles and student assignments", Lucide.Bus, "transport", listOf(Color(0xFF86EFAC), Color(0xFF059669))),
+        AdminTool("Inventory", "ASSETS", "Stock, condition and reorder alerts", Lucide.Boxes, "inventory", listOf(Color(0xFFFDE68A), Color(0xFFD97706))),
+        AdminTool("Birthdays", "SCHOOL LIFE", "Upcoming student birthdays", Lucide.Cake, "birthdays", listOf(Color(0xFFF0ABFC), Color(0xFFA21CAF))),
     )
     val byId = tools.associateBy { it.destination }
     LazyColumn(
@@ -1396,6 +1404,19 @@ private fun MoreTab(
         item { PremiumSectionTitle("Office & growth", "Money, admissions and front-office momentum") }
         item { WideAdminTool(byId.getValue("fee-collection"), onSection) }
         item { WideAdminTool(byId.getValue("admissions"), onSection) }
+        item { PremiumSectionTitle("Campus operations", "Keep shared resources and daily services visible") }
+        item {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                PremiumAdminTool(byId.getValue("library"), Modifier.weight(1f), onSection)
+                PremiumAdminTool(byId.getValue("transport"), Modifier.weight(1f), onSection)
+            }
+        }
+        item {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                PremiumAdminTool(byId.getValue("inventory"), Modifier.weight(1f), onSection)
+                PremiumAdminTool(byId.getValue("birthdays"), Modifier.weight(1f), onSection)
+            }
+        }
         item { PremiumSectionTitle("Account", "Manage the administrator signed in on this device") }
         item { AdminAccountActions(school, onSwitchAccount, onSignOut) }
         item { Spacer(Modifier.height(8.dp)) }

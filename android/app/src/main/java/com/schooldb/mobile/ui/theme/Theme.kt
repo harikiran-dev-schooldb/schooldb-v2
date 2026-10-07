@@ -1,11 +1,9 @@
 package com.schooldb.mobile.ui.theme
 
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.Typography
-import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
@@ -17,7 +15,6 @@ import androidx.compose.ui.unit.sp
 
 private val RoyalBlue = Color(0xFF4F46E5)
 private val ElectricViolet = Color(0xFF7C3AED)
-private val Midnight = Color(0xFF1C1C1E)
 private val Ink = Color(0xFF0F172A)
 private val Mist = Color(0xFFF5F7FC)
 private val Ice = Color(0xFFEEF2FF)
@@ -41,26 +38,6 @@ private val LightColors = lightColorScheme(
     outline = Color(0xFFCBD2E1),
     outlineVariant = Color(0xFFE0E7FF),
     error = Color(0xFFCF2D3A),
-)
-
-private val DarkColors = darkColorScheme(
-    primary = Color(0xFF6EA8FF),
-    onPrimary = Color(0xFF071A38),
-    primaryContainer = Color(0xFF163B6D),
-    onPrimaryContainer = Color(0xFFDCE9FF),
-    secondary = Color(0xFFB9A7FF),
-    onSecondary = Color(0xFF2D205F),
-    secondaryContainer = Color(0xFF433677),
-    onSecondaryContainer = Color(0xFFECE7FF),
-    tertiary = Color(0xFF72D8CF),
-    background = Color(0xFF080808),
-    onBackground = Color(0xFFF5F5F7),
-    surface = Midnight,
-    onSurface = Color(0xFFF5F5F7),
-    surfaceVariant = Color(0xFF272729),
-    onSurfaceVariant = Color(0xFFAAAAAF),
-    outline = Color(0xFF5B5B60),
-    outlineVariant = Color(0xFF353538),
 )
 
 private val PremiumTypography = Typography(
@@ -100,11 +77,10 @@ private val PremiumShapes = Shapes(
 
 @Composable
 fun SchoolDbTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit,
 ) {
     MaterialTheme(
-        colorScheme = if (darkTheme) DarkColors else LightColors,
+        colorScheme = LightColors,
         typography = PremiumTypography,
         shapes = PremiumShapes,
         content = content,
