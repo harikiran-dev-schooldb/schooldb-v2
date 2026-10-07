@@ -1,7 +1,10 @@
-const CACHE_NAME = "schooldb-pwa-v8";
+const CACHE_NAME = "schooldb-pwa-v9";
 const OFFLINE_URL = "/offline";
 const HOSTNAME = self.location.hostname.toLowerCase();
-const ALLOWED_HOST = HOSTNAME === "schooldb.co.in" || HOSTNAME.endsWith(".schooldb.co.in");
+const LOCAL_PREVIEW_HOSTS = ["localhost", "127.0.0.1", "[::1]", "::1"];
+const ALLOWED_HOST = HOSTNAME === "schooldb.co.in"
+  || HOSTNAME.endsWith(".schooldb.co.in")
+  || LOCAL_PREVIEW_HOSTS.includes(HOSTNAME);
 const APP_ASSETS = [
   OFFLINE_URL,
   "/pwa-192.png",

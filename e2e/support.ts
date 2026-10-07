@@ -2,9 +2,13 @@ import { expect, type Page } from "@playwright/test";
 
 export function observePageErrors(page: Page) {
   const errors: string[] = [];
-  page.on("pageerror", (error) => errors.push(error.message));
+  const onPageError = (error: Error) => errors.push(error.message);
+  page.on("pageerror", onPageError);
 
-  return () => expect(errors, "unexpected browser page errors").toEqual([]);
+  return () => {
+    page.off("pageerror", onPageError);
+    expect(errors, "unexpected browser page errors").toEqual([]);
+  };
 }
 
 export async function expectUsablePage(
@@ -12,11 +16,13 @@ export async function expectUsablePage(
   path: string,
   heading?: string | RegExp,
 ) {
-  const assertNoPageErrors = observePageErrors(page);
   // A committed document is enough to start the user-facing assertions below.
   // Waiting for DOMContentLoaded can be held open by Clerk or another external
   // dependency even though the SchoolDB page is already rendered and usable.
   const response = await page.goto(path, { waitUntil: "commit" });
+  // Start observing after the new document commits so WebKit does not report
+  // fetches aborted by navigation away from the previous page as page errors.
+  const assertNoPageErrors = observePageErrors(page);
 
   expect(response, `no document response for ${path}`).not.toBeNull();
   expect(response!.status(), `server error while loading ${path}`).toBeLessThan(500);

@@ -68,7 +68,11 @@ export function PwaRegistration() {
   useEffect(() => {
     if (!("serviceWorker" in navigator)) return;
 
-    if (!isSchoolDbProductionHost(window.location.hostname)) {
+    const hostname = window.location.hostname.toLowerCase();
+    const isLocalProductionPreview = process.env.NODE_ENV === "production"
+      && ["localhost", "127.0.0.1", "[::1]", "::1"].includes(hostname);
+
+    if (!isSchoolDbProductionHost(hostname) && !isLocalProductionPreview) {
       void navigator.serviceWorker.getRegistrations().then((registrations) =>
         Promise.all(registrations.map((registration) => registration.unregister())),
       );

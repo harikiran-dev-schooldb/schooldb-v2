@@ -47,14 +47,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <ClerkProvider>
-      <html
-        lang="en"
-        data-scroll-behavior="smooth"
-        suppressHydrationWarning
-        className="font-sans antialiased"
-      >
-        <body className="flex min-h-screen flex-col bg-background text-foreground">
+    <html
+      lang="en"
+      data-scroll-behavior="smooth"
+      suppressHydrationWarning
+      className="font-sans antialiased"
+    >
+      <body className="flex min-h-screen flex-col bg-background text-foreground">
+        <ClerkProvider proxyUrl={process.env.NEXT_PUBLIC_CLERK_PROXY_URL}>
           {children}
 
           <PwaRegistration />
@@ -68,8 +68,8 @@ export default function RootLayout({
             }}
           />
           <Analytics />
-        </body>
-      </html>
-    </ClerkProvider>
+        </ClerkProvider>
+      </body>
+    </html>
   );
 }

@@ -11,6 +11,11 @@ import {
   SCHOOLDB_PRODUCTION_DOMAIN,
 } from "@/lib/production-domain";
 
+const clerkProxyUrl = process.env.NEXT_PUBLIC_CLERK_PROXY_URL?.trim();
+const clerkProxyOptions = clerkProxyUrl
+  ? { frontendApiProxy: { enabled: true, path: "/__clerk" } }
+  : undefined;
+
 export default clerkMiddleware(async (auth, req) => {
   const pathname = req.nextUrl.pathname;
 
@@ -90,8 +95,13 @@ export default clerkMiddleware(async (auth, req) => {
       headers: requestHeaders,
     },
   });
-});
+}, clerkProxyOptions);
 
 export const config = {
-  matcher: ["/((?!_next|.*\\..*).*)", "/", "/(api|trpc)(.*)"],
+  matcher: [
+    "/((?!_next|.*\\..*).*)",
+    "/",
+    "/(api|trpc)(.*)",
+    "/__clerk/(.*)",
+  ],
 };

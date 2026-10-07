@@ -847,6 +847,76 @@
   animation: schooldb-progress 4.5s ease-in-out infinite alternate;
 }
 
+.schooldb-offline-panel {
+  animation: schooldb-offline-enter 720ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.schooldb-offline-grid {
+  background-image:
+    linear-gradient(rgb(129 140 248 / 0.11) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(129 140 248 / 0.11) 1px, transparent 1px);
+  background-size: 32px 32px;
+  mask-image: radial-gradient(circle at center, #000 12%, transparent 72%);
+  animation: schooldb-offline-grid 18s linear infinite;
+}
+
+.schooldb-offline-orb-one {
+  animation: schooldb-offline-orb-one 12s ease-in-out infinite alternate;
+}
+
+.schooldb-offline-orb-two {
+  animation: schooldb-offline-orb-two 15s ease-in-out infinite alternate;
+}
+
+.schooldb-offline-ring {
+  animation: schooldb-offline-ring 3.6s ease-out infinite;
+}
+
+.schooldb-offline-ring-two {
+  animation-delay: -1.2s;
+}
+
+.schooldb-offline-ring-three {
+  animation-delay: -2.4s;
+}
+
+.schooldb-offline-orbit {
+  animation: schooldb-offline-orbit 18s linear infinite;
+}
+
+.schooldb-offline-core {
+  animation: schooldb-offline-core 4s ease-in-out infinite;
+}
+
+.schooldb-offline-status-dot {
+  animation: schooldb-offline-status 1.8s ease-in-out infinite;
+}
+
+.schooldb-offline-float {
+  animation: schooldb-offline-float 5s ease-in-out infinite;
+}
+
+.schooldb-offline-float-delay {
+  animation-delay: -2.5s;
+}
+
+.schooldb-offline-retry {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+
+.schooldb-offline-retry::after {
+  position: absolute;
+  inset: 0 auto 0 -45%;
+  z-index: -1;
+  width: 35%;
+  content: "";
+  background: linear-gradient(90deg, transparent, rgb(199 210 254 / 0.75), transparent);
+  transform: skewX(-18deg);
+  animation: schooldb-offline-retry 4.5s ease-in-out 1.2s infinite;
+}
+
 @keyframes schooldb-aurora-drift {
   0% { transform: translate3d(-4%, -2%, 0) rotate(-8deg) scale(0.9); }
   100% { transform: translate3d(13%, 10%, 0) rotate(14deg) scale(1.15); }
@@ -1123,6 +1193,57 @@
   to { width: 88%; opacity: 1; }
 }
 
+@keyframes schooldb-offline-enter {
+  from { opacity: 0; transform: translateY(22px) scale(0.975); filter: blur(10px); }
+  to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+}
+
+@keyframes schooldb-offline-grid {
+  from { background-position: 0 0, 0 0; }
+  to { background-position: 32px 32px, 32px 32px; }
+}
+
+@keyframes schooldb-offline-orb-one {
+  from { transform: translate3d(-7%, -5%, 0) scale(0.92); opacity: 0.55; }
+  to { transform: translate3d(15%, 12%, 0) scale(1.12); opacity: 0.85; }
+}
+
+@keyframes schooldb-offline-orb-two {
+  from { transform: translate3d(7%, 8%, 0) scale(0.96); opacity: 0.5; }
+  to { transform: translate3d(-13%, -10%, 0) scale(1.08); opacity: 0.8; }
+}
+
+@keyframes schooldb-offline-ring {
+  0% { transform: scale(0.84); opacity: 0; }
+  28% { opacity: 0.85; }
+  100% { transform: scale(1.14); opacity: 0; }
+}
+
+@keyframes schooldb-offline-orbit {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes schooldb-offline-core {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-9px) scale(1.025); }
+}
+
+@keyframes schooldb-offline-status {
+  0%, 100% { opacity: 0.45; box-shadow: 0 0 0 0 rgb(252 211 77 / 0); }
+  50% { opacity: 1; box-shadow: 0 0 0 5px rgb(252 211 77 / 0.1); }
+}
+
+@keyframes schooldb-offline-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+@keyframes schooldb-offline-retry {
+  0%, 60% { transform: translateX(0) skewX(-18deg); opacity: 0; }
+  68% { opacity: 1; }
+  86%, 100% { transform: translateX(520%) skewX(-18deg); opacity: 0; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .schooldb-aurora,
   .schooldb-header-context,
@@ -1170,7 +1291,16 @@
   .schooldb-float-card,
   .schooldb-orbit,
   .schooldb-data-path,
-  .schooldb-card-progress {
+  .schooldb-card-progress,
+  .schooldb-offline-panel,
+  .schooldb-offline-grid,
+  .schooldb-offline-orb,
+  .schooldb-offline-ring,
+  .schooldb-offline-orbit,
+  .schooldb-offline-core,
+  .schooldb-offline-status-dot,
+  .schooldb-offline-float,
+  .schooldb-offline-retry::after {
     animation: none !important;
   }
 }
