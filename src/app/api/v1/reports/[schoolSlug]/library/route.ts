@@ -29,6 +29,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const limitResponse = exportRowLimitResponse(rows.length);
     if (limitResponse) return limitResponse;
     workbook = await createSchoolReportWorkbook({
+      auditActor: tenant,
       schoolName: school.name, reportName: "Library Book Inventory Report", periodLabel: "Current Library Inventory", sheetName: "Book Inventory", rows,
       columns: [
         { header: "S.No", key: "serial", width: 8, value: (_r, i) => i + 1 },
@@ -55,6 +56,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const limitResponse = exportRowLimitResponse(loans.length);
     if (limitResponse) return limitResponse;
     workbook = await createSchoolReportWorkbook({
+      auditActor: tenant,
       schoolName: school.name, reportName: "Library Circulation Report", periodLabel: reportDateRange(from, to), sheetName: "Circulation", rows: loans,
       columns: [
         { header: "S.No", key: "serial", width: 8, value: (_r, i) => i + 1 },

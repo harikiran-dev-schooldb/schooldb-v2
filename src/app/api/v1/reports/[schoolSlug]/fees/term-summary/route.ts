@@ -26,7 +26,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
   const where: Prisma.StudentFeeInstallmentWhereInput = {
     ...(installmentName ? { name: installmentName } : {}),
-    studentFeeItem: { studentFee: { schoolId: tenant.schoolId, active: true, feePlan: { academicYearId: year.id }, studentEnrollment: { ...(classId ? { classId } : {}), ...(sectionId ? { sectionId } : {}) } } },
+    studentFeeItem: { studentFee: { schoolId: tenant.schoolId, active: true, feePlan: { academicYearId: year.id }, studentEnrollment: { active: true, student: { status: "ACTIVE" }, ...(classId ? { classId } : {}), ...(sectionId ? { sectionId } : {}) } } },
   };
   const installments = await prisma.studentFeeInstallment.findMany({
     where, orderBy: [{ sequence: "asc" }, { studentFeeItem: { studentFee: { studentEnrollment: { class: { name: "asc" } } } } }],
@@ -38,7 +38,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   if(limitResponse)return limitResponse;
   const rows=installments.map(i=>{const e=i.studentFeeItem.studentFee.studentEnrollment;const payable=Number(i.payableAmount),paid=Number(i.paidAmount);return {admissionNo:e.student.admissionNo,student:e.student.fullName,className:e.class.name,sectionName:e.section.name,rollNo:e.rollNo,term:i.name,sequence:i.sequence,dueDate:i.dueDate,category:i.studentFeeItem.feeCategory.name,plan:i.studentFeeItem.studentFee.feePlan.name,amount:Number(i.amount),rteWaiver:Number(i.rteWaiver),concession:Number(i.concession),payable,paid,outstanding:Math.max(0,payable-paid),status:i.status};});
   const title=installmentName?`Fee Term Summary - ${installmentName}`:"Fee Term Summary";
-  const workbook=await createSchoolReportWorkbook({schoolName:school.name,reportName:title,periodLabel:`Academic Year: ${year.name}`,sheetName:"Student Allocations",rows,columns:[
+  const workbook=await createSchoolReportWorkbook({auditActor:tenant,schoolName:school.name,reportName:title,periodLabel:`Academic Year: ${year.name}`,sheetName:"Student Allocations",rows,columns:[
     {header:"S.No",key:"serial",width:8,value:(_r,i)=>i+1},{header:"Admission No",key:"admission",width:16,value:r=>r.admissionNo},{header:"Student Name",key:"student",width:30,value:r=>r.student},
     {header:"Class",key:"class",width:12,value:r=>r.className},{header:"Section",key:"section",width:10,value:r=>r.sectionName},{header:"Roll No",key:"roll",width:10,value:r=>r.rollNo},
     {header:"Term / Installment",key:"term",width:20,value:r=>r.term},{header:"Fee Category",key:"category",width:22,value:r=>r.category},{header:"Fee Plan",key:"plan",width:22,value:r=>r.plan},

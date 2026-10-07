@@ -11,6 +11,7 @@ export type FeeDashboardData = {
     paidCount: number;
     waivedCount: number;
     installmentCount: number;
+    collectionEfficiency: number;
   };
 
   collection: {
@@ -18,7 +19,17 @@ export type FeeDashboardData = {
     todayPaymentCount: number;
     thisMonth: number;
     thisMonthPaymentCount: number;
+    previousMonth: number;
+    previousMonthPaymentCount: number;
+    thisMonthExpenses: number;
+    thisMonthExpenseCount: number;
+    netCashFlow: number;
   };
+
+  ageing: Record<
+    "current" | "days31To60" | "days61To90" | "over90",
+    { count: number; amount: number }
+  >;
 
   paymentModes: Record<
     string,

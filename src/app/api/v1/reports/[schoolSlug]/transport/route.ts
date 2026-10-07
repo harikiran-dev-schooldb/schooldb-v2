@@ -19,7 +19,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const rows = await prisma.transportVehicle.findMany({ where: { schoolId: tenant.schoolId }, orderBy: [{ active: "desc" }, { registrationNo: "asc" }], select: { registrationNo: true, name: true, type: true, capacity: true, driverName: true, driverPhone: true, attendantName: true, attendantPhone: true, active: true, _count: { select: { routes: true } } } });
     const limitResponse = exportRowLimitResponse(rows.length);
     if (limitResponse) return limitResponse;
-    workbook = await createSchoolReportWorkbook({ schoolName: school.name, reportName: "Transport Fleet Report", periodLabel: "Current Vehicle Register", sheetName: "Fleet", rows, columns: [
+    workbook = await createSchoolReportWorkbook({ auditActor: tenant, schoolName: school.name, reportName: "Transport Fleet Report", periodLabel: "Current Vehicle Register", sheetName: "Fleet", rows, columns: [
       { header: "S.No", key: "serial", width: 8, value: (_r, i) => i + 1 },
       { header: "Registration No", key: "registration", width: 20, value: r => r.registrationNo },
       { header: "Vehicle Name", key: "name", width: 22, value: r => r.name },
@@ -37,7 +37,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const rows = routes.flatMap(r => r.stops.map(s => ({ ...r, stop: s })));
     const limitResponse = exportRowLimitResponse(rows.length);
     if (limitResponse) return limitResponse;
-    workbook = await createSchoolReportWorkbook({ schoolName: school.name, reportName: "Transport Routes & Stops Report", periodLabel: "Current Route Register", sheetName: "Routes & Stops", rows, columns: [
+    workbook = await createSchoolReportWorkbook({ auditActor: tenant, schoolName: school.name, reportName: "Transport Routes & Stops Report", periodLabel: "Current Route Register", sheetName: "Routes & Stops", rows, columns: [
       { header: "S.No", key: "serial", width: 8, value: (_r, i) => i + 1 },
       { header: "Route Code", key: "code", width: 14, value: r => r.code },
       { header: "Route Name", key: "route", width: 28, value: r => r.name },
@@ -56,10 +56,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const routeId = q.get("routeId") || undefined;
     const classId = q.get("classId") || undefined;
     const sectionId = q.get("sectionId") || undefined;
-    const rows = await prisma.studentTransportAssignment.findMany({ where: { schoolId: tenant.schoolId, active: true, ...(routeId ? { routeId } : {}), studentEnrollment: { ...(classId ? { classId } : {}), ...(sectionId ? { sectionId } : {}) } }, orderBy: [{ route: { code: "asc" } }, { studentEnrollment: { rollNo: "asc" } }], select: { pickupEnabled: true, dropEnabled: true, startDate: true, endDate: true, notes: true, studentEnrollment: { select: { rollNo: true, academicYear: { select: { name: true } }, student: { select: { admissionNo: true, fullName: true } }, class: { select: { name: true } }, section: { select: { name: true } } } }, route: { select: { code: true, name: true, vehicle: { select: { registrationNo: true } } } }, stop: { select: { name: true, pickupTime: true, dropTime: true, monthlyFee: true } } } });
+    const rows = await prisma.studentTransportAssignment.findMany({ where: { schoolId: tenant.schoolId, active: true, ...(routeId ? { routeId } : {}), studentEnrollment: { active: true, student: { status: "ACTIVE" }, ...(classId ? { classId } : {}), ...(sectionId ? { sectionId } : {}) } }, orderBy: [{ route: { code: "asc" } }, { studentEnrollment: { rollNo: "asc" } }], select: { pickupEnabled: true, dropEnabled: true, startDate: true, endDate: true, notes: true, studentEnrollment: { select: { rollNo: true, academicYear: { select: { name: true } }, student: { select: { admissionNo: true, fullName: true } }, class: { select: { name: true } }, section: { select: { name: true } } } }, route: { select: { code: true, name: true, vehicle: { select: { registrationNo: true } } } }, stop: { select: { name: true, pickupTime: true, dropTime: true, monthlyFee: true } } } });
     const limitResponse = exportRowLimitResponse(rows.length);
     if (limitResponse) return limitResponse;
-    workbook = await createSchoolReportWorkbook({ schoolName: school.name, reportName: "Student Transport Assignment Report", periodLabel: "Active Student Transport Assignments", sheetName: "Student Transport", rows, columns: [
+    workbook = await createSchoolReportWorkbook({ auditActor: tenant, schoolName: school.name, reportName: "Student Transport Assignment Report", periodLabel: "Active Student Transport Assignments", sheetName: "Student Transport", rows, columns: [
       { header: "S.No", key: "serial", width: 8, value: (_r, i) => i + 1 },
       { header: "Admission No", key: "admission", width: 16, value: r => r.studentEnrollment.student.admissionNo },
       { header: "Student Name", key: "student", width: 30, value: r => r.studentEnrollment.student.fullName },

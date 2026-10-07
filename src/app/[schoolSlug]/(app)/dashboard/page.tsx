@@ -21,7 +21,7 @@ import { PageHeader } from "@/components/common/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useSchool } from "@/contexts/school-context";
-import { hasPermission, PERMISSIONS } from "@/lib/access-control";
+import { hasModuleAccess } from "@/lib/staff-permissions";
 
 /* ==========================================================================
    TYPES
@@ -85,6 +85,7 @@ type FeeDashboard = {
     paidCount: number;
     waivedCount: number;
     installmentCount: number;
+    collectionEfficiency: number;
   };
 
   collection: {
@@ -92,6 +93,11 @@ type FeeDashboard = {
     todayPaymentCount: number;
     thisMonth: number;
     thisMonthPaymentCount: number;
+    previousMonth: number;
+    previousMonthPaymentCount: number;
+    thisMonthExpenses: number;
+    thisMonthExpenseCount: number;
+    netCashFlow: number;
   };
 
   recentPayments: Array<{
@@ -182,6 +188,17 @@ type DashboardData = {
   outstandingAmount: number;
   houses: HouseSummary[];
   birthdays: BirthdaySummary[];
+  dataAsOf: string | null;
+  actions: {
+    pendingAdmissions: number;
+    pendingStudentLeaves: number;
+    pendingStaffLeaves: number;
+    pendingUpiPayments: number;
+    openSupportTickets: number;
+    overdueLibraryLoans: number;
+    staffAttendanceExceptions: number;
+    overCapacityRoutes: number;
+  };
 };
 
 const EMPTY_DASHBOARD_DATA: DashboardData = {
@@ -198,19 +215,29 @@ const EMPTY_DASHBOARD_DATA: DashboardData = {
   outstandingAmount: 0,
   houses: [],
   birthdays: [],
+  dataAsOf: null,
+  actions: {
+    pendingAdmissions: 0,
+    pendingStudentLeaves: 0,
+    pendingStaffLeaves: 0,
+    pendingUpiPayments: 0,
+    openSupportTickets: 0,
+    overdueLibraryLoans: 0,
+    staffAttendanceExceptions: 0,
+    overCapacityRoutes: 0,
+  },
 };
 
 /* ==========================================================================
    API
    ========================================================================== */
 
-async function getJson<T>(url: string, signal: AbortSignal): Promise<T> {
+async function getJson<T>(url: string): Promise<T> {
   const startedAt = performance.now();
 
   try {
     const response = await fetch(url, {
       cache: "no-store",
-      signal,
     });
 
     const result = (await response.json()) as ApiEnvelope<T>;
@@ -228,8 +255,44 @@ async function getJson<T>(url: string, signal: AbortSignal): Promise<T> {
   }
 }
 
-function fetchDashboard(signal: AbortSignal) {
-  return getJson<DashboardData>("/api/v1/dashboard", signal);
+const DASHBOARD_CACHE_TTL_MS = 15_000;
+const dashboardCache = new Map<
+  string,
+  { data: DashboardData; expiresAt: number }
+>();
+const dashboardRequests = new Map<string, Promise<DashboardData>>();
+
+function readCachedDashboard(cacheKey: string) {
+  const cached = dashboardCache.get(cacheKey);
+  if (!cached) return null;
+  if (cached.expiresAt <= Date.now()) {
+    dashboardCache.delete(cacheKey);
+    return null;
+  }
+  return cached.data;
+}
+
+function fetchDashboard(cacheKey: string, force = false) {
+  if (!force) {
+    const cached = readCachedDashboard(cacheKey);
+    if (cached) return Promise.resolve(cached);
+  }
+
+  const pending = dashboardRequests.get(cacheKey);
+  if (pending) return pending;
+
+  const request = getJson<DashboardData>("/api/v1/dashboard")
+    .then((data) => {
+      dashboardCache.set(cacheKey, {
+        data,
+        expiresAt: Date.now() + DASHBOARD_CACHE_TTL_MS,
+      });
+      return data;
+    })
+    .finally(() => dashboardRequests.delete(cacheKey));
+
+  dashboardRequests.set(cacheKey, request);
+  return request;
 }
 
 /* ==========================================================================
@@ -249,20 +312,36 @@ function formatDate(value: string) {
   }).format(new Date(value));
 }
 
+function formatDateTime(value: string) {
+  return new Intl.DateTimeFormat("en-IN", {
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "Asia/Kolkata",
+  }).format(new Date(value));
+}
+
 /* ==========================================================================
    DASHBOARD
    ========================================================================== */
 
 export default function DashboardPage() {
-  const { school, role } = useSchool();
-  const canReadAttendance = hasPermission(role, PERMISSIONS.ATTENDANCE_READ);
-  const canReadFees = hasPermission(role, PERMISSIONS.FEE_READ);
-  const canReadStaff = hasPermission(role, PERMISSIONS.STAFF_READ);
+  const { school, role, membership } = useSchool();
+  const dashboardCacheKey = `${school.slug}:${membership.id}:${new Date(
+    membership.updatedAt,
+  ).getTime()}`;
+  const initialDashboard = readCachedDashboard(dashboardCacheKey);
+  const canReadAttendance = hasModuleAccess(membership, "ATTENDANCE");
+  const canReadFees = hasModuleAccess(membership, "FEES");
+  const canReadStaff = hasModuleAccess(membership, "STAFF");
   const isAdministrator = ["SUPER_ADMIN", "SCHOOL_ADMIN"].includes(role);
 
-  const [data, setData] = useState<DashboardData>(EMPTY_DASHBOARD_DATA);
+  const [data, setData] = useState<DashboardData>(
+    initialDashboard ?? EMPTY_DASHBOARD_DATA,
+  );
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!initialDashboard);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -271,30 +350,21 @@ export default function DashboardPage() {
      ------------------------------------------------------------------------ */
 
   useEffect(() => {
-    const controller = new AbortController();
+    let active = true;
 
     const loadInitialDashboard = async () => {
       try {
         setError(null);
 
-        const dashboardData = await fetchDashboard(controller.signal);
+        const dashboardData = await fetchDashboard(dashboardCacheKey);
 
-        if (controller.signal.aborted) return;
+        if (!active) return;
 
         setData(dashboardData);
         setLoading(false);
 
       } catch (loadError) {
-        if (
-          loadError instanceof DOMException &&
-          loadError.name === "AbortError"
-        ) {
-          return;
-        }
-
-        if (controller.signal.aborted) {
-          return;
-        }
+        if (!active) return;
 
         setError(
           loadError instanceof Error
@@ -302,43 +372,29 @@ export default function DashboardPage() {
             : "Unable to load dashboard data.",
         );
       } finally {
-        if (!controller.signal.aborted) {
-          setLoading(false);
-        }
+        if (active) setLoading(false);
       }
     };
 
     void loadInitialDashboard();
 
     return () => {
-      controller.abort();
+      active = false;
     };
-  }, []);
+  }, [dashboardCacheKey]);
 
   /* ------------------------------------------------------------------------
      REFRESH
      ------------------------------------------------------------------------ */
 
   const loadDashboard = useCallback(async () => {
-    const controller = new AbortController();
-
     setRefreshing(true);
     setError(null);
 
     try {
-      const dashboardData = await fetchDashboard(controller.signal);
-
-      if (!controller.signal.aborted) {
-        setData(dashboardData);
-      }
+      const dashboardData = await fetchDashboard(dashboardCacheKey, true);
+      setData(dashboardData);
     } catch (loadError) {
-      if (
-        loadError instanceof DOMException &&
-        loadError.name === "AbortError"
-      ) {
-        return;
-      }
-
       setError(
         loadError instanceof Error
           ? loadError.message
@@ -347,7 +403,7 @@ export default function DashboardPage() {
     } finally {
       setRefreshing(false);
     }
-  }, []);
+  }, [dashboardCacheKey]);
 
   const attendance = data.attendance;
   const fees = data.fees;
@@ -366,18 +422,12 @@ export default function DashboardPage() {
 
     const academicYearId = data.academicYear?.id;
 
-    const lowAttendance = data.lowAttendance ?? [];
     /* LOW ATTENDANCE */
 
-    if (lowAttendance.length > 0 && academicYearId) {
-      const first = lowAttendance[0];
-
+    if (data.lowAttendanceCount > 0 && academicYearId) {
       items.push({
-        title: `${lowAttendance.length} students below 75% attendance`,
-
-        description: first
-          ? `${first.fullName} is at ${first.attendancePercentage}%. Open the low-attendance report to review all students.`
-          : "Review students who need attendance intervention.",
+        title: `${data.lowAttendanceCount} students below 75% attendance`,
+        description: "Review the complete intervention list and follow up with families.",
 
         href:
           `/${school.slug}` +
@@ -442,6 +492,27 @@ export default function DashboardPage() {
       });
     }
 
+    const operationalActions = [
+      { count: data.actions.pendingAdmissions, title: "admission applications awaiting review", description: "Review submitted and under-review applications.", href: `/${school.slug}/admissions`, tone: "info" as const },
+      { count: data.actions.pendingStudentLeaves, title: "student leave requests awaiting decision", description: "Approve or reject pending student requests.", href: `/${school.slug}/leave-requests`, tone: "warning" as const },
+      { count: data.actions.pendingStaffLeaves, title: "staff leave requests awaiting decision", description: "Complete pending staff leave decisions.", href: `/${school.slug}/staff-operations`, tone: "warning" as const },
+      { count: data.actions.pendingUpiPayments, title: "UPI payments awaiting verification", description: "Verify submitted payment references before posting receipts.", href: `/${school.slug}/fees/upi-verification`, tone: "danger" as const },
+      { count: data.actions.openSupportTickets, title: "support tickets still open", description: "Review unresolved parent and school support requests.", href: `/${school.slug}/queries`, tone: "warning" as const },
+      { count: data.actions.overdueLibraryLoans, title: "overdue library loans", description: "Follow up on books that have not been returned.", href: `/${school.slug}/library`, tone: "warning" as const },
+      { count: data.actions.staffAttendanceExceptions, title: "staff attendance exceptions today", description: "Review absent, late, leave, and other exceptions.", href: `/${school.slug}/staff-operations`, tone: "info" as const },
+      { count: data.actions.overCapacityRoutes, title: "transport routes above vehicle capacity", description: "Reassign students or increase vehicle capacity.", href: `/${school.slug}/transport`, tone: "danger" as const },
+    ];
+    for (const item of operationalActions) {
+      if (item.count > 0) {
+        items.push({
+          title: `${item.count} ${item.title}`,
+          description: item.description,
+          href: item.href,
+          tone: item.tone,
+        });
+      }
+    }
+
     /* EVERYTHING OK */
 
     if (items.length === 0) {
@@ -458,12 +529,13 @@ export default function DashboardPage() {
       });
     }
 
-    return items.slice(0, 4);
+    return items;
   }, [
     attendance,
     canReadFees,
     data.academicYear?.id,
-    data.lowAttendance,
+    data.lowAttendanceCount,
+    data.actions,
     data.outstandingAmount,
     data.outstandingCount,
     fees,
@@ -495,9 +567,9 @@ export default function DashboardPage() {
     },
     {
       label: "Reports",
-      href: `/${school.slug}` + `/attendance/reports/student`,
+      href: `/${school.slug}/reports`,
       icon: Clock3,
-      visible: canReadAttendance,
+      visible: isAdministrator,
     },
   ].filter((action) => action.visible);
 
@@ -514,7 +586,7 @@ export default function DashboardPage() {
     <div className="space-y-4 pb-8 sm:space-y-5 sm:pb-10">
       <PageHeader
         title="School Command Center"
-        description={`${school.name ?? "School"} · ${data.academicYear?.name ?? "No active academic year"}`}
+        description={`${school.name ?? "School"} · ${data.academicYear?.name ?? "No active academic year"}${data.dataAsOf ? ` · Updated ${formatDateTime(data.dataAsOf)}` : ""}`}
         action={
           <Button
             variant="outline"
@@ -683,7 +755,7 @@ export default function DashboardPage() {
             </div>
           </CardHeader>
           <CardContent className="p-2.5">
-            {actionItems.slice(0, 3).map((item) => (
+            {actionItems.map((item) => (
               <Link key={item.title} href={item.href} className="group flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors hover:bg-slate-50">
                 <div className={`flex size-8 shrink-0 items-center justify-center rounded-lg ${
                   item.tone === "danger" ? "bg-red-50 text-red-600" :

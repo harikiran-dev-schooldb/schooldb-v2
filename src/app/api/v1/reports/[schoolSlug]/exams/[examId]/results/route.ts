@@ -27,6 +27,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
   const scope = sectionInfo ? `${classInfo.name} - ${sectionInfo.name}` : classInfo.name;
   const workbook = await createSchoolReportWorkbook({
+    auditActor: tenant,
     schoolName: school.name,
     reportName: `${data.exam.name} - Results Report`,
     periodLabel: `Class / Section: ${scope} | Academic Year: ${data.exam.academicYear.name}`,

@@ -2,22 +2,30 @@ import { attendanceService } from "@/features/attendance/services/attendance.ser
 import { getFeeDashboard } from "@/features/fees/services/fee-dashboard.service";
 import { outstandingFeesService } from "@/features/fees/services/outstanding-fees.service";
 import { getBirthdaySummary } from "@/features/students/services/birthday-summary.service";
-import { hasPermission, PERMISSIONS } from "@/lib/access-control";
 import { apiHandler } from "@/lib/api";
 import { requireCurrentTeacher, requireTenant } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ApiResponse } from "@/lib/response";
+import { hasModuleAccess } from "@/lib/staff-permissions";
 
 const ADMIN_ROLES = ["SUPER_ADMIN", "SCHOOL_ADMIN"];
 
 export async function GET(request: Request) {
   return apiHandler(async () => {
     const startedAt = Date.now();
+    const now = new Date();
+    const indiaDate = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Kolkata",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(now);
+    const today = new Date(`${indiaDate}T00:00:00.000Z`);
     const membership = await requireTenant();
     const { schoolId, role } = membership;
-    const canReadAttendance = hasPermission(role, PERMISSIONS.ATTENDANCE_READ);
-    const canReadFees = hasPermission(role, PERMISSIONS.FEE_READ);
-    const canReadStaff = hasPermission(role, PERMISSIONS.STAFF_READ);
+    const canReadAttendance = hasModuleAccess(membership, "ATTENDANCE");
+    const canReadFees = hasModuleAccess(membership, "FEES");
+    const canReadStaff = hasModuleAccess(membership, "STAFF");
     const isAdministrator = ADMIN_ROLES.includes(role);
 
     const [academicYear, teacherScope] = await Promise.all([
@@ -47,6 +55,14 @@ export async function GET(request: Request) {
       outstanding,
       houses,
       birthdaySummary,
+      pendingAdmissions,
+      pendingStudentLeaves,
+      pendingStaffLeaves,
+      pendingUpiPayments,
+      openSupportTickets,
+      overdueLibraryLoans,
+      staffAttendanceExceptions,
+      transportRoutes,
     ] = await Promise.all([
       prisma.student.count({
         where: {
@@ -67,7 +83,7 @@ export async function GET(request: Request) {
             : {}),
         },
       }),
-      canReadStaff ? prisma.teacher.count({ where: { schoolId } }) : 0,
+      canReadStaff ? prisma.teacher.count({ where: { schoolId, active: true } }) : 0,
       prisma.class.count({ where: { schoolId, active: true } }),
       canReadAttendance ? attendanceService.dashboard(schoolId) : null,
       canReadFees ? getFeeDashboard(schoolId, academicYearId) : null,
@@ -94,7 +110,75 @@ export async function GET(request: Request) {
       isAdministrator
         ? getBirthdaySummary(schoolId)
         : Promise.resolve({ birthdays: [], total: 0 }),
+      isAdministrator
+        ? prisma.admissionApplication.count({
+            where: { schoolId, status: { in: ["SUBMITTED", "UNDER_REVIEW"] } },
+          })
+        : 0,
+      isAdministrator
+        ? prisma.leaveRequest.count({
+            where: { schoolId, status: "PENDING", student: { status: "ACTIVE" } },
+          })
+        : 0,
+      isAdministrator
+        ? prisma.staffLeaveRequest.count({ where: { schoolId, status: "PENDING" } })
+        : 0,
+      canReadFees
+        ? prisma.directUpiPaymentSubmission.count({
+            where: {
+              schoolId,
+              status: "PENDING",
+              studentEnrollment: { student: { status: "ACTIVE" } },
+            },
+          })
+        : 0,
+      isAdministrator
+        ? prisma.supportTicket.count({
+            where: {
+              schoolId,
+              status: { in: ["OPEN", "ASSIGNED", "IN_PROGRESS", "WAITING", "REOPENED"] },
+            },
+          })
+        : 0,
+      isAdministrator
+        ? prisma.libraryLoan.count({
+            where: { schoolId, returnedAt: null, dueAt: { lt: today } },
+          })
+        : 0,
+      canReadStaff
+        ? prisma.staffAttendance.count({
+            where: {
+              schoolId,
+              date: today,
+              status: { not: "PRESENT" },
+              teacher: { active: true },
+            },
+          })
+        : 0,
+      isAdministrator
+        ? prisma.transportRoute.findMany({
+            where: { schoolId, active: true, vehicle: { is: { active: true } } },
+            select: {
+              id: true,
+              vehicle: { select: { capacity: true } },
+              _count: {
+                select: {
+                  assignments: {
+                    where: {
+                      active: true,
+                      studentEnrollment: { active: true, student: { status: "ACTIVE" } },
+                    },
+                  },
+                },
+              },
+            },
+          })
+        : [],
     ]);
+
+    const overCapacityRoutes = transportRoutes.filter(
+      (route) => route.vehicle && route._count.assignments > route.vehicle.capacity,
+    ).length;
 
     console.info(
       JSON.stringify({
@@ -122,6 +206,17 @@ export async function GET(request: Request) {
       outstandingAmount: outstanding?.outstanding ?? 0,
       houses,
       birthdays: birthdaySummary.birthdays,
+      dataAsOf: now.toISOString(),
+      actions: {
+        pendingAdmissions,
+        pendingStudentLeaves,
+        pendingStaffLeaves,
+        pendingUpiPayments,
+        openSupportTickets,
+        overdueLibraryLoans,
+        staffAttendanceExceptions,
+        overCapacityRoutes,
+      },
     });
   });
 }

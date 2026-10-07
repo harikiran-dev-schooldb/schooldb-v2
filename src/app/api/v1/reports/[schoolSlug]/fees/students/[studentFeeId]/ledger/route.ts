@@ -26,6 +26,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ sch
   if (limitResponse) return limitResponse;
 
   const workbook = await createSchoolReportWorkbook({
+    auditActor: tenant,
     schoolName: school.name,
     reportName: "Student Fee Ledger",
     periodLabel: `Academic Year: ${ledger.academicYear.name}`,

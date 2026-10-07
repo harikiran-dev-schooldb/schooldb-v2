@@ -1,4 +1,6 @@
 import ExcelJS from "exceljs";
+import { randomUUID } from "node:crypto";
+import { recordAuditLog } from "@/lib/audit";
 
 export type ExcelReportColumn<T> = {
   header: string;
@@ -15,6 +17,8 @@ export async function createSchoolReportWorkbook<T>({
   columns,
   rows,
   sheetName = "Report",
+  generatedBy = "SchoolDB authorized user",
+  auditActor,
 }: {
   schoolName: string;
   reportName: string;
@@ -22,14 +26,28 @@ export async function createSchoolReportWorkbook<T>({
   columns: ExcelReportColumn<T>[];
   rows: T[];
   sheetName?: string;
+  generatedBy?: string;
+  auditActor?: Parameters<typeof recordAuditLog>[0]["actor"];
 }) {
+  const reportId = randomUUID();
+  const generatedAt = new Date();
+  const actorName = auditActor
+    ? [auditActor.user.firstName, auditActor.user.lastName].filter(Boolean).join(" ").trim() ||
+      auditActor.designation ||
+      auditActor.user.email ||
+      generatedBy
+    : generatedBy;
   const workbook = new ExcelJS.Workbook();
-  workbook.creator = "SchoolDB";
-  workbook.created = new Date();
+  workbook.creator = actorName;
+  workbook.lastModifiedBy = actorName;
+  workbook.created = generatedAt;
+  workbook.subject = `${reportName} · ${periodLabel}`;
+  workbook.keywords = `SchoolDB, report, ${reportId}`;
   const sheet = workbook.addWorksheet(sheetName.substring(0, 31), {
     views: [{ state: "frozen", ySplit: 5 }],
     pageSetup: { orientation: "landscape", fitToPage: true, fitToWidth: 1, fitToHeight: 0 },
   });
+  sheet.headerFooter.oddFooter = `&L${actorName} · ${generatedAt.toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}&CReport ID ${reportId}&RPage &P of &N`;
   const lastColumn = Math.max(columns.length, 1);
 
   for (let row = 1; row <= 3; row += 1) sheet.mergeCells(row, 1, row, lastColumn);
@@ -79,6 +97,17 @@ export async function createSchoolReportWorkbook<T>({
   });
 
   sheet.autoFilter = { from: { row: 5, column: 1 }, to: { row: Math.max(rows.length + 5, 5), column: lastColumn } };
+  if (auditActor) {
+    await recordAuditLog({
+      actor: auditActor,
+      module: "SYSTEM",
+      action: "EXPORT",
+      entityType: "REPORT_DOWNLOAD",
+      entityId: reportId,
+      summary: `Exported ${reportName}.`,
+      metadata: { reportName, periodLabel, reportId, rowCount: rows.length },
+    });
+  }
   return workbook;
 }
 

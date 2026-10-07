@@ -57,7 +57,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       academicYear: i.studentFeeItem.studentFee.feePlan.academicYear.name, feePlan: i.studentFeeItem.studentFee.feePlan.name, feeCategory: i.studentFeeItem.feeCategory.name,
       installment: i.name, dueDate: i.dueDate, status: i.status, amount: Number(i.amount), concession: Number(i.concession), payable, paid, outstanding: Math.max(0, payable-paid) };
   });
-  const workbook = await createSchoolReportWorkbook({ schoolName: school.name, reportName: "Outstanding Fees / Defaulters Report", periodLabel: "Current Outstanding Fees", sheetName: "Outstanding Fees", rows, columns: [
+  const workbook = await createSchoolReportWorkbook({ auditActor: tenant, schoolName: school.name, reportName: "Outstanding Fees / Defaulters Report", periodLabel: "Current Outstanding Fees", sheetName: "Outstanding Fees", rows, columns: [
     { header: "S.No", key: "serial", width: 8, value: (_r,i)=>i+1 }, { header: "Admission No", key: "admission", width: 16, value:r=>r.admissionNo },
     { header: "Student Name", key: "student", width: 30, value:r=>r.studentName }, { header: "Class", key: "class", width: 12, value:r=>r.className },
     { header: "Section", key: "section", width: 10, value:r=>r.sectionName }, { header: "Roll No", key: "roll", width: 10, value:r=>r.rollNo },

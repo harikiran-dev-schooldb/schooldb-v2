@@ -1506,6 +1506,7 @@ async markFullPresentForPeriods(
         schoolId,
         academicYearId,
         active: true,
+        student: { status: "ACTIVE" },
 
         ...(filters?.classId
           ? {

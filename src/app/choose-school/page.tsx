@@ -17,22 +17,6 @@ import { SchoolLogo } from "@/components/branding/SchoolLogo";
 const SCHOOL_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 type SchoolBrand = { name: string; slug: string; logo: string | null };
 
-function preloadSchoolLogo(source: string | null) {
-  if (!source) return Promise.resolve();
-
-  return new Promise<void>((resolve) => {
-    const image = new window.Image();
-    const finish = () => {
-      window.clearTimeout(timeout);
-      resolve();
-    };
-    const timeout = window.setTimeout(resolve, 600);
-    image.onload = finish;
-    image.onerror = finish;
-    image.src = source;
-  });
-}
-
 function waitForBrandPaint() {
   return new Promise<void>((resolve) => {
     window.requestAnimationFrame(() => {
@@ -83,7 +67,6 @@ export default function ChooseSchoolPage() {
         return;
       }
 
-      await preloadSchoolLogo(payload.data.school.logo);
       setSchoolBrand(payload.data.school);
       const destination = userLoaded && isSignedIn
         ? `/${slug}`
@@ -103,15 +86,15 @@ export default function ChooseSchoolPage() {
 
     if (userLoaded && isSignedIn) {
       window.sessionStorage.removeItem("schooldb-school-transition");
-      window.sessionStorage.setItem("schooldb-workspace-transition", slug);
-      router.push(destination);
+      window.sessionStorage.removeItem("schooldb-workspace-transition");
+      router.replace(destination);
       return;
     }
 
     setIsTransitioning(true);
     window.sessionStorage.setItem("schooldb-school-transition", slug);
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    window.setTimeout(() => router.push(destination), reduceMotion ? 50 : 560);
+    window.setTimeout(() => router.replace(destination), reduceMotion ? 0 : 180);
   };
 
   return (
@@ -139,8 +122,8 @@ export default function ChooseSchoolPage() {
         <div className="schooldb-school-transition-halo absolute size-40 rounded-full" />
         <div className="schooldb-school-transition-identity relative flex flex-col items-center text-center">
           <SchoolLogo
-            src={visibleBrand?.logo || "/pwa-192.png"}
-            schoolName={visibleBrand?.name || "SchoolDB"}
+            src="/pwa-192.png"
+            schoolName="SchoolDB"
             sizes="88px"
             className="schooldb-shared-logo size-[88px] rounded-[24px] shadow-[0_24px_70px_rgba(30,27,75,.18)]"
           />
@@ -156,8 +139,8 @@ export default function ChooseSchoolPage() {
       <div className="relative z-10 mx-auto w-full max-w-lg">
         <header className="schooldb-choose-intro text-center">
           <SchoolLogo
-            src={visibleBrand?.logo || "/pwa-192.png"}
-            schoolName={visibleBrand?.name || "SchoolDB"}
+            src="/pwa-192.png"
+            schoolName="SchoolDB"
             sizes="72px"
             className="schooldb-choose-logo mx-auto size-[72px] rounded-2xl shadow-xl shadow-indigo-950/15"
             priority

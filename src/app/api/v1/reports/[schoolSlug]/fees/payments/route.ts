@@ -74,6 +74,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   if (limitResponse) return limitResponse;
   const total = rows.reduce((sum, row) => sum + row.amount, 0);
   const workbook = await createSchoolReportWorkbook({
+    auditActor: tenant,
     schoolName: school.name,
     reportName: installmentName ? `Fee Collection Report - ${installmentName}` : "Fee Collection Report",
     periodLabel: reportDateRange(fromDate, toDate),

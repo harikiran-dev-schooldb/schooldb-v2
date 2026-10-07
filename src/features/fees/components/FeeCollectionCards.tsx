@@ -2,6 +2,7 @@ import {
   CalendarDays,
   CircleDollarSign,
   ReceiptIndianRupee,
+  TrendingUp,
   WalletCards,
 } from "lucide-react";
 
@@ -12,6 +13,10 @@ type Props = {
   todayPaymentCount: number;
   thisMonth: number;
   thisMonthPaymentCount: number;
+  previousMonth: number;
+  thisMonthExpenses: number;
+  thisMonthExpenseCount: number;
+  netCashFlow: number;
   totalPayable: number;
   outstanding: number;
 };
@@ -25,9 +30,16 @@ export function FeeCollectionCards({
   todayPaymentCount,
   thisMonth,
   thisMonthPaymentCount,
+  previousMonth,
+  thisMonthExpenses,
+  thisMonthExpenseCount,
+  netCashFlow,
   totalPayable,
   outstanding,
 }: Props) {
+  const monthChange = previousMonth > 0
+    ? ((thisMonth - previousMonth) / previousMonth) * 100
+    : null;
   const cards = [
     {
       title: "Today's Collection",
@@ -44,10 +56,26 @@ export function FeeCollectionCards({
       value: money(thisMonth),
       description: `${thisMonthPaymentCount} ${
         thisMonthPaymentCount === 1 ? "payment" : "payments"
-      } received this month`,
+      } · ${monthChange === null ? "No prior-month baseline" : `${monthChange >= 0 ? "+" : ""}${monthChange.toFixed(1)}% vs previous month`}`,
       icon: ReceiptIndianRupee,
       iconClass: "bg-primary/10 text-primary",
       valueClass: "text-foreground",
+    },
+    {
+      title: "This Month Expenses",
+      value: money(thisMonthExpenses),
+      description: `${thisMonthExpenseCount} posted ${thisMonthExpenseCount === 1 ? "expense" : "expenses"}`,
+      icon: WalletCards,
+      iconClass: "bg-rose-500/10 text-rose-600",
+      valueClass: "text-rose-600",
+    },
+    {
+      title: "Net Cash Flow",
+      value: money(netCashFlow),
+      description: "Collections less posted expenses this month",
+      icon: TrendingUp,
+      iconClass: netCashFlow >= 0 ? "bg-emerald-500/10 text-emerald-600" : "bg-rose-500/10 text-rose-600",
+      valueClass: netCashFlow >= 0 ? "text-emerald-700" : "text-rose-600",
     },
     {
       title: "Total Payable",
@@ -68,7 +96,7 @@ export function FeeCollectionCards({
   ];
 
   return (
-    <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
       {cards.map((card) => {
         const Icon = card.icon;
 

@@ -19,7 +19,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   const status = Object.values(StudentStatus).includes(statusValue as StudentStatus) ? statusValue as StudentStatus : StudentStatus.ACTIVE;
 
   const enrollmentFilter = {
-    active: true,
+    ...(status === StudentStatus.ACTIVE ? { active: true } : {}),
     ...(classId ? { classId } : {}),
     ...(sectionId ? { sectionId } : {}),
   };
@@ -56,6 +56,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   if (limitResponse) return limitResponse;
 
   const workbook = await createSchoolReportWorkbook({
+    auditActor: tenant,
     schoolName: school.name,
     reportName: "Student Master Report",
     periodLabel: `Status: ${status.replaceAll("_", " ")}`,

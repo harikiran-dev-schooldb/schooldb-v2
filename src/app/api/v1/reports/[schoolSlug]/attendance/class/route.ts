@@ -33,6 +33,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   if (limitResponse) return limitResponse;
 
   const workbook = await createSchoolReportWorkbook({
+    auditActor: tenant,
     schoolName: school.name,
     reportName: `Class Attendance Report - ${classInfo.name} ${section.name}`,
     periodLabel: reportDateRange(fromDate, toDate),

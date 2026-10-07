@@ -226,7 +226,11 @@ export async function POST(request: Request) {
       // redemption is interrupted instead of forcing the user through OTP again.
       const token = await createSessionToken(account, parsed.data.schoolSlug);
       return token
-        ? Response.json({ success: true, token })
+        ? Response.json({
+            success: true,
+            token,
+            role: account.memberships[0].role,
+          })
         : Response.json(
             {
               error:
@@ -331,7 +335,11 @@ export async function POST(request: Request) {
         true,
       );
       return token
-        ? Response.json({ success: true, token })
+        ? Response.json({
+            success: true,
+            token,
+            role: accounts[0].memberships[0].role,
+          })
         : Response.json(
             { error: "This account is no longer active." },
             { status: 403 },

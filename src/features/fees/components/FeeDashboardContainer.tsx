@@ -14,6 +14,7 @@ import { FeeSummaryCard } from "./FeeSummaryCard";
 import { PaymentModesCard } from "./PaymentModesCard";
 import { InstallmentStatusCard } from "./InstallmentStatusCard";
 import { RecentPaymentsTable } from "./RecentPaymentsTable";
+import { FeeAgingCard } from "./FeeAgingCard";
 
 export function FeeDashboardContainer() {
   const [academicYearId, setAcademicYearId] = useState("");
@@ -201,6 +202,10 @@ export function FeeDashboardContainer() {
         todayPaymentCount={collection.todayPaymentCount}
         thisMonth={collection.thisMonth}
         thisMonthPaymentCount={collection.thisMonthPaymentCount}
+        previousMonth={collection.previousMonth}
+        thisMonthExpenses={collection.thisMonthExpenses}
+        thisMonthExpenseCount={collection.thisMonthExpenseCount}
+        netCashFlow={collection.netCashFlow}
         totalPayable={summary.totalPayable}
         outstanding={summary.outstanding}
       />
@@ -217,6 +222,11 @@ export function FeeDashboardContainer() {
 
         <PaymentModesCard paymentModes={paymentModes} />
       </div>
+
+      <FeeAgingCard
+        ageing={data.ageing}
+        collectionEfficiency={summary.collectionEfficiency}
+      />
 
       <InstallmentStatusCard
         pendingCount={summary.pendingCount}

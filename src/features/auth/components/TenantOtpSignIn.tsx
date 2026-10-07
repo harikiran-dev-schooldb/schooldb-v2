@@ -23,6 +23,7 @@ import {
 import { toast } from "sonner";
 
 import { SchoolLogo } from "@/components/branding/SchoolLogo";
+import { isOperationalRole, isSelfServiceRole } from "@/lib/access-control";
 import { applySchoolLogoBrandColor } from "@/lib/logo-brand-color";
 
 import OTPLogin from "./OTPLogin";
@@ -68,6 +69,13 @@ type Props = {
 };
 type LoginMode = "OTP" | "EMAIL";
 type AccountChoice = { id: string; role: string; name: string };
+
+function destinationForRole(schoolSlug: string, role?: string) {
+  if (role && isSelfServiceRole(role)) return `/${schoolSlug}/my`;
+  if (role === "TEACHER") return `/${schoolSlug}/teacher/dashboard`;
+  if (role && isOperationalRole(role)) return `/${schoolSlug}/dashboard`;
+  return `/${schoolSlug}`;
+}
 
 function errorMessage(error: unknown) {
   if (error instanceof Error) return error.message;
@@ -116,22 +124,17 @@ export function TenantOtpSignIn({ schoolSlug, schoolName, schoolLogo }: Props) {
       if (workspaceTransitionStartedRef.current) return;
 
       workspaceTransitionStartedRef.current = true;
-      window.sessionStorage.setItem(
-        "schooldb-workspace-transition",
-        schoolSlug,
-      );
-
-      const reduceMotion = window.matchMedia(
-        "(prefers-reduced-motion: reduce)",
-      ).matches;
+      // The login page already owns the transition. Do not ask the destination
+      // layout to render a second full-screen transition after navigation.
+      window.sessionStorage.removeItem("schooldb-workspace-transition");
 
       setIsEnteringWorkspace(true);
-      window.setTimeout(
-        () => window.location.replace(destination),
-        reduceMotion ? 50 : 1_200,
-      );
+      // Allow one frame for immediate feedback, then navigate without an
+      // artificial delay. The previous 1.2s timer made a successful login feel
+      // slow even when authentication and the destination were already ready.
+      window.requestAnimationFrame(() => window.location.replace(destination));
     },
-    [schoolSlug],
+    [],
   );
 
   useEffect(() => {
@@ -213,21 +216,22 @@ export function TenantOtpSignIn({ schoolSlug, schoolName, schoolLogo }: Props) {
     }
   };
 
-  const finalizeSignIn = async () => {
+  const finalizeSignIn = async (role?: string) => {
     if (signIn.status !== "complete") {
       throw new Error("Authentication could not be completed.");
     }
+    const destination = destinationForRole(schoolSlug, role);
     const finalizeResult = await signIn.finalize({
       navigate: ({ decorateUrl }) =>
-        enterWorkspace(decorateUrl("/" + schoolSlug)),
+        enterWorkspace(decorateUrl(destination)),
     });
     if (finalizeResult.error) throw finalizeResult.error;
   };
 
-  const completeSignIn = async (token: string) => {
+  const completeSignIn = async (token: string, role?: string) => {
     const ticketResult = await signIn.ticket({ ticket: token });
     if (ticketResult.error) throw ticketResult.error;
-    await finalizeSignIn();
+    await finalizeSignIn(role);
   };
 
   const handleSendEmailCode = async () => {
@@ -295,6 +299,7 @@ export function TenantOtpSignIn({ schoolSlug, schoolName, schoolLogo }: Props) {
       const data = (await response.json()) as {
         error?: string;
         token?: string;
+        role?: string;
         requiresAccountSelection?: boolean;
         challengeId?: string;
         accounts?: AccountChoice[];
@@ -315,7 +320,7 @@ export function TenantOtpSignIn({ schoolSlug, schoolName, schoolLogo }: Props) {
       if (!data.token) {
         throw new Error("Authentication could not be completed.");
       }
-      await completeSignIn(data.token);
+      await completeSignIn(data.token, data.role);
     } catch (error) {
       toast.error(errorMessage(error));
     } finally {
@@ -340,11 +345,12 @@ export function TenantOtpSignIn({ schoolSlug, schoolName, schoolLogo }: Props) {
       const data = (await response.json()) as {
         error?: string;
         token?: string;
+        role?: string;
       };
       if (!response.ok || !data.token) {
         throw new Error(data.error || "Account selection failed.");
       }
-      await completeSignIn(data.token);
+      await completeSignIn(data.token, data.role);
     } catch (error) {
       toast.error(errorMessage(error));
     } finally {

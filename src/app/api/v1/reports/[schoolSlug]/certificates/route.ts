@@ -45,6 +45,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   if (limitResponse) return limitResponse;
 
   const workbook = await createSchoolReportWorkbook({
+    auditActor: tenant,
     schoolName: school.name,
     reportName: "Certificate Issue Register",
     periodLabel: reportDateRange(from, to),

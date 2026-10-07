@@ -49,6 +49,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   if (limitResponse) return limitResponse;
 
   const workbook = await createSchoolReportWorkbook({
+    auditActor: tenant,
     schoolName: school.name,
     reportName: "Teacher Master Report",
     periodLabel: active === undefined ? "Status: All Teachers" : active ? "Status: Active" : "Status: Inactive",

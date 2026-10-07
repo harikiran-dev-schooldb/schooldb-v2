@@ -27,11 +27,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
   const installmentWhere: Prisma.StudentFeeInstallmentWhereInput = {
     ...(installmentName ? { name: installmentName } : {}),
-    studentFeeItem: { studentFee: { schoolId: tenant.schoolId, active: true, feePlan: { academicYearId: year.id }, studentEnrollment: { ...(classId ? { classId } : {}), ...(sectionId ? { sectionId } : {}) } } },
+    studentFeeItem: { studentFee: { schoolId: tenant.schoolId, active: true, feePlan: { academicYearId: year.id }, studentEnrollment: { active: true, student: { status: "ACTIVE" }, ...(classId ? { classId } : {}), ...(sectionId ? { sectionId } : {}) } } },
   };
   const [installments, payments] = await Promise.all([
     prisma.studentFeeInstallment.findMany({ where: installmentWhere, select: { id:true,name:true,amount:true,rteWaiver:true,concession:true,payableAmount:true,paidAmount:true,studentFeeItem:{select:{studentFee:{select:{studentEnrollment:{select:{student:{select:{admissionNo:true}},class:{select:{name:true}},section:{select:{name:true}}}}}}}}} }),
-    prisma.feePaymentAllocation.findMany({ where: { payment: { schoolId: tenant.schoolId, status:"SUCCESS", studentEnrollment:{academicYearId:year.id,...(classId?{classId}:{}),...(sectionId?{sectionId}:{})}, ...(fromDate||toDate?{paymentDate:{...(fromDate?{gte:new Date(`${fromDate}T00:00:00.000Z`)}:{}),...(toDate?{lte:new Date(`${toDate}T23:59:59.999Z`)}:{})}}:{}) }, ...(installmentName?{studentFeeInstallment:{name:installmentName}}:{}) }, select:{amount:true,payment:{select:{paymentMode:true}},studentFeeInstallment:{select:{name:true}}} }),
+    prisma.feePaymentAllocation.findMany({ where: { payment: { schoolId: tenant.schoolId, status:"SUCCESS", studentEnrollment:{academicYearId:year.id,active:true,student:{status:"ACTIVE"},...(classId?{classId}:{}),...(sectionId?{sectionId}:{})}, ...(fromDate||toDate?{paymentDate:{...(fromDate?{gte:new Date(`${fromDate}T00:00:00.000Z`)}:{}),...(toDate?{lte:new Date(`${toDate}T23:59:59.999Z`)}:{})}}:{}) }, ...(installmentName?{studentFeeInstallment:{name:installmentName}}:{}) }, select:{amount:true,payment:{select:{paymentMode:true}},studentFeeInstallment:{select:{name:true}}} }),
   ]);
 
   type Group={className:string;sectionName:string;students:Set<string>;installments:number;gross:number;rteWaiver:number;concession:number;payable:number;paid:number;outstanding:number};
@@ -40,7 +40,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   const rows=[...groups.values()].sort((a,b)=>a.className.localeCompare(b.className)||a.sectionName.localeCompare(b.sectionName));
   const limitResponse=exportRowLimitResponse(installments.length+payments.length);
   if(limitResponse)return limitResponse;
-  const workbook=await createSchoolReportWorkbook({schoolName:school.name,reportName:installmentName?`Fee Collection Summary - ${installmentName}`:"Fee Collection Summary",periodLabel:`Academic Year: ${year.name} | ${reportDateRange(fromDate,toDate)}`,sheetName:"Class Summary",rows,columns:[
+  const workbook=await createSchoolReportWorkbook({auditActor:tenant,schoolName:school.name,reportName:installmentName?`Fee Collection Summary - ${installmentName}`:"Fee Collection Summary",periodLabel:`Academic Year: ${year.name} | ${reportDateRange(fromDate,toDate)}`,sheetName:"Class Summary",rows,columns:[
     {header:"S.No",key:"serial",width:8,value:(_r,i)=>i+1},{header:"Class",key:"class",width:16,value:r=>r.className},{header:"Section",key:"section",width:12,value:r=>r.sectionName},{header:"Students",key:"students",width:12,value:r=>r.students.size},{header:"Installments",key:"installments",width:14,value:r=>r.installments},
     {header:"Gross Amount",key:"gross",width:17,value:r=>r.gross,numFmt:"₹#,##0.00"},{header:"RTE Waiver",key:"rteWaiver",width:16,value:r=>r.rteWaiver,numFmt:"₹#,##0.00"},{header:"Concession",key:"concession",width:16,value:r=>r.concession,numFmt:"₹#,##0.00"},{header:"Payable",key:"payable",width:16,value:r=>r.payable,numFmt:"₹#,##0.00"},{header:"Collected",key:"paid",width:16,value:r=>r.paid,numFmt:"₹#,##0.00"},{header:"Outstanding",key:"outstanding",width:16,value:r=>r.outstanding,numFmt:"₹#,##0.00"},{header:"Collection %",key:"percent",width:14,value:r=>r.payable?r.paid/r.payable:0,numFmt:"0.00%"},
   ]});

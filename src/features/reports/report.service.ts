@@ -246,6 +246,10 @@ export async function getSchoolReport(
     }
   }
 
+  const periodDurationMs = Math.max(86_400_000, to.getTime() - from.getTime() + 1);
+  const previousTo = endOfDay(new Date(from.getTime() - 86_400_000));
+  const previousFrom = startOfDay(new Date(previousTo.getTime() - periodDurationMs + 1));
+
   /*
    * ---------------------------------------------------------
    * Student enrollment scope
@@ -256,6 +260,7 @@ export async function getSchoolReport(
     schoolId,
     academicYearId: academicYear.id,
     active: true,
+    student: { status: "ACTIVE" as const },
 
     ...(classId ? { classId } : {}),
     ...(sectionId ? { sectionId } : {}),
@@ -284,6 +289,7 @@ export async function getSchoolReport(
   const feeEnrollmentWhere = {
     academicYearId: academicYear.id,
     active: true,
+    student: { status: "ACTIVE" as const },
 
     ...(classId ? { classId } : {}),
     ...(sectionId ? { sectionId } : {}),
@@ -322,6 +328,14 @@ export async function getSchoolReport(
     homeworkCount,
     overdueLoans,
     transportAssignments,
+    previousAttendanceGroups,
+    previousFeeCollection,
+    admissionGroups,
+    expenseTotals,
+    feeAgeingRows,
+    studentsMissingContacts,
+    enrollmentsMissingRollNumbers,
+    teachersMissingContacts,
   ] = await Promise.all([
     prisma.studentEnrollment.count({
       where: enrollmentWhere,
@@ -380,8 +394,10 @@ export async function getSchoolReport(
         COUNT(*)::bigint AS count
       FROM "Attendance" a
       JOIN "AttendanceSession" s ON s."id" = a."sessionId"
+      JOIN "Student" student ON student."id" = a."studentId"
       WHERE a."schoolId" = ${schoolId}
         AND s."schoolId" = ${schoolId}
+        AND student."status"::text = 'ACTIVE'
         AND s."academicYearId" = ${academicYear.id}
         AND s."attendanceDate" >= ${from}
         AND s."attendanceDate" <= ${to}
@@ -495,10 +511,12 @@ export async function getSchoolReport(
       JOIN "Exam" exam ON exam."id" = es."examId"
       JOIN "Subject" subject ON subject."id" = es."subjectId"
       JOIN "StudentEnrollment" se ON se."id" = m."studentEnrollmentId"
+      JOIN "Student" student ON student."id" = se."studentId"
       WHERE m."schoolId" = ${schoolId}
         AND se."schoolId" = ${schoolId}
         AND se."academicYearId" = ${academicYear.id}
         AND se."active" = true
+        AND student."status"::text = 'ACTIVE'
         AND exam."academicYearId" = ${academicYear.id}
         AND es."examDate" >= ${from}
         AND es."examDate" <= ${to}
@@ -570,6 +588,85 @@ export async function getSchoolReport(
         active: true,
 
         studentEnrollment: feeEnrollmentWhere,
+      },
+    }),
+    prisma.attendance.groupBy({
+      by: ["status"],
+      where: {
+        schoolId,
+        student: { status: "ACTIVE" },
+        session: {
+          academicYearId: academicYear.id,
+          attendanceDate: { gte: previousFrom, lte: previousTo },
+          ...(classId ? { classId } : {}),
+          ...(sectionId ? { sectionId } : {}),
+        },
+      },
+      _count: { _all: true },
+    }),
+    prisma.feePayment.aggregate({
+      where: {
+        schoolId,
+        status: "SUCCESS",
+        studentEnrollment: feeEnrollmentWhere,
+        paymentDate: { gte: previousFrom, lte: previousTo },
+      },
+      _sum: { amount: true },
+      _count: { _all: true },
+    }),
+    prisma.admissionApplication.groupBy({
+      by: ["status"],
+      where: {
+        schoolId,
+        academicYearId: academicYear.id,
+        submittedAt: { gte: from, lte: to },
+        ...(classId ? { applyingClassId: classId } : {}),
+        ...(sectionId ? { preferredSectionId: sectionId } : {}),
+      },
+      _count: { _all: true },
+    }),
+    prisma.expense.aggregate({
+      where: {
+        schoolId,
+        status: "POSTED",
+        expenseDate: { gte: from, lte: to },
+      },
+      _sum: { amount: true },
+      _count: { _all: true },
+    }),
+    prisma.studentFeeInstallment.findMany({
+      where: {
+        status: { in: ["PENDING", "PARTIAL"] },
+        dueDate: { lt: to },
+        studentFeeItem: {
+          studentFee: {
+            schoolId,
+            active: true,
+            studentEnrollment: feeEnrollmentWhere,
+          },
+        },
+      },
+      select: { dueDate: true, payableAmount: true, paidAmount: true },
+    }),
+    prisma.student.count({
+      where: {
+        schoolId,
+        status: "ACTIVE",
+        phone: null,
+        fatherPhone: null,
+        motherPhone: null,
+        guardianPhone: null,
+        enrollments: { some: enrollmentWhere },
+      },
+    }),
+    prisma.studentEnrollment.count({
+      where: { ...enrollmentWhere, rollNo: null },
+    }),
+    prisma.teacher.count({
+      where: {
+        schoolId,
+        active: true,
+        OR: [{ phone: null }, { email: null }],
       },
     }),
   ]);
@@ -732,6 +829,42 @@ export async function getSchoolReport(
   const scoredCount = Number(examOverall?.scoredCount ?? 0);
   const passed = Number(examOverall?.passed ?? 0);
   const graded = Number(examOverall?.graded ?? 0);
+  const previousAttendanceTotal = previousAttendanceGroups.reduce(
+    (sum, row) => sum + row._count._all,
+    0,
+  );
+  const previousAttendancePresent = previousAttendanceGroups.find(
+    (row) => row.status === "PRESENT",
+  )?._count._all ?? 0;
+  const previousAttendancePercentage = percent(
+    previousAttendancePresent,
+    previousAttendanceTotal,
+  );
+  const collected = Number(feeCollection._sum.amount ?? 0);
+  const previousCollected = Number(previousFeeCollection._sum.amount ?? 0);
+  const expenses = Number(expenseTotals._sum.amount ?? 0);
+  const ageing = {
+    days1To30: { count: 0, amount: 0 },
+    days31To60: { count: 0, amount: 0 },
+    days61To90: { count: 0, amount: 0 },
+    over90: { count: 0, amount: 0 },
+  };
+  for (const row of feeAgeingRows) {
+    const days = Math.max(0, Math.floor((to.getTime() - row.dueDate.getTime()) / 86_400_000));
+    const balance = Math.max(0, Number(row.payableAmount) - Number(row.paidAmount));
+    const bucket = days > 90
+      ? ageing.over90
+      : days > 60
+        ? ageing.days61To90
+        : days > 30
+          ? ageing.days31To60
+          : ageing.days1To30;
+    bucket.count += 1;
+    bucket.amount += balance;
+  }
+  const admissionCounts = Object.fromEntries(
+    admissionGroups.map((row) => [row.status, row._count._all]),
+  );
 
   /*
    * ---------------------------------------------------------
@@ -752,6 +885,8 @@ export async function getSchoolReport(
 
       from: isoDate(from),
       to: isoDate(to),
+      generatedAt: new Date().toISOString(),
+      rosterPolicy: "ACTIVE_STUDENTS",
     },
 
     students: {
@@ -779,6 +914,10 @@ export async function getSchoolReport(
       sessions: attendanceSessionCount,
 
       percentage: percent(attendance.present, attendance.total),
+      previousPercentage: previousAttendancePercentage,
+      percentagePointChange: Number(
+        (percent(attendance.present, attendance.total) - previousAttendancePercentage).toFixed(1),
+      ),
 
       daily: [...daily.values()]
         .sort((a, b) => a.date.localeCompare(b.date))
@@ -812,7 +951,11 @@ export async function getSchoolReport(
     },
 
     fees: {
-      collected: Number(feeCollection._sum.amount ?? 0),
+      collected,
+      previousCollected,
+      collectionChangePercentage: previousCollected > 0
+        ? Number((((collected - previousCollected) / previousCollected) * 100).toFixed(1))
+        : null,
 
       payments: feeCollection._count._all,
 
@@ -824,6 +967,25 @@ export async function getSchoolReport(
       outstanding: Math.max(0, payable - paid),
 
       installments: feeLedger._count._all,
+      collectionEfficiency: percent(paid, payable),
+      ageing,
+    },
+
+    admissions: {
+      submitted: admissionCounts.SUBMITTED ?? 0,
+      underReview: admissionCounts.UNDER_REVIEW ?? 0,
+      approved: admissionCounts.APPROVED ?? 0,
+      waitlisted: admissionCounts.WAITLISTED ?? 0,
+      rejected: admissionCounts.REJECTED ?? 0,
+      converted: admissionCounts.CONVERTED ?? 0,
+      total: admissionGroups.reduce((sum, row) => sum + row._count._all, 0),
+    },
+
+    finance: {
+      income: collected,
+      expenses,
+      expenseCount: expenseTotals._count._all,
+      netCashFlow: collected - expenses,
     },
 
     academics: {
@@ -869,6 +1031,16 @@ export async function getSchoolReport(
     operations: {
       overdueLoans,
       transportAssignments,
+    },
+
+    dataQuality: {
+      studentsMissingContacts,
+      enrollmentsMissingRollNumbers,
+      teachersMissingContacts,
+      totalIssues:
+        studentsMissingContacts +
+        enrollmentsMissingRollNumbers +
+        teachersMissingContacts,
     },
   };
 }

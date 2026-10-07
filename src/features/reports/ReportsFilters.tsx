@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Filter, RotateCcw } from "lucide-react";
+import { BookmarkPlus, Filter, RotateCcw } from "lucide-react";
 
 import { AcademicYearSelect } from "@/components/common/select/AcademicYearSelect";
 import { ClassSelect } from "@/components/common/select/ClassSelect";
@@ -29,6 +29,17 @@ export function ReportsFilters({ schoolSlug, routePath = "reports", initial }: P
   const [sectionId, setSectionId] = useState(initial.sectionId);
   const [from, setFrom] = useState(initial.from);
   const [to, setTo] = useState(initial.to);
+  const [savedView, setSavedView] = useState<Props["initial"] | null>(null);
+  const storageKey = `schooldb:report-view:${schoolSlug}:${routePath}`;
+
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem(storageKey);
+      if (stored) setSavedView(JSON.parse(stored) as Props["initial"]);
+    } catch {
+      setSavedView(null);
+    }
+  }, [storageKey]);
 
   const query = useMemo(() => {
     const params = new URLSearchParams({ academicYearId, from, to });
@@ -45,6 +56,29 @@ export function ReportsFilters({ schoolSlug, routePath = "reports", initial }: P
     router.push(`/${schoolSlug}/${routePath}`);
   }
 
+  function saveView() {
+    const view = { academicYearId, classId, sectionId, from, to };
+    window.localStorage.setItem(storageKey, JSON.stringify(view));
+    setSavedView(view);
+  }
+
+  function loadSavedView() {
+    if (!savedView) return;
+    setAcademicYearId(savedView.academicYearId);
+    setClassId(savedView.classId);
+    setSectionId(savedView.sectionId);
+    setFrom(savedView.from);
+    setTo(savedView.to);
+    const params = new URLSearchParams({
+      academicYearId: savedView.academicYearId,
+      from: savedView.from,
+      to: savedView.to,
+    });
+    if (savedView.classId) params.set("classId", savedView.classId);
+    if (savedView.sectionId) params.set("sectionId", savedView.sectionId);
+    router.push(`/${schoolSlug}/${routePath}?${params.toString()}`);
+  }
+
   return (
     <section className="print:hidden rounded-2xl border bg-card p-5 shadow-sm">
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -58,6 +92,15 @@ export function ReportsFilters({ schoolSlug, routePath = "reports", initial }: P
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
+          {savedView ? (
+            <Button variant="outline" size="sm" onClick={loadSavedView}>
+              Load saved view
+            </Button>
+          ) : null}
+          <Button variant="outline" size="sm" onClick={saveView} disabled={!academicYearId || !from || !to}>
+            <BookmarkPlus className="size-3.5" />
+            Save view
+          </Button>
           <Button variant="outline" size="sm" onClick={resetFilters}>
             <RotateCcw className="size-3.5" />
             Reset

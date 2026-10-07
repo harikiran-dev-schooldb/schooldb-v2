@@ -3,6 +3,7 @@ import { CalendarCheck2 } from "lucide-react";
 import { PageContainer, PageHeader } from "@/components/common/layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { ReportExportCenter } from "@/features/reports/ReportExportCenter";
+import { ReportExportHistory } from "@/features/reports/ReportExportHistory";
 import { ReportsFilters } from "@/features/reports/ReportsFilters";
 import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -125,6 +126,7 @@ export default async function ReportsPage({ params, searchParams }: Props) {
         initial={scope}
       />
       <ReportExportCenter schoolSlug={schoolSlug} filters={scope} exams={exams} />
+      <ReportExportHistory />
     </PageContainer>
   );
 }

@@ -26,13 +26,14 @@ type StudentFeeOption = {
   feePlan?: { name?: string };
 };
 
-function ExportLink({ href, label, disabled = false }: { href: string; label: string; disabled?: boolean }) {
+function ExportLink({ href, label, scope, disabled = false }: { href: string; label: string; scope?: string; disabled?: boolean }) {
+  const content = <span className="min-w-0"><span className="block">{label}</span>{scope ? <span className="mt-0.5 block text-[10px] font-normal text-muted-foreground">{scope}</span> : null}</span>;
   return (
     <Button asChild={!disabled} variant="outline" className="h-auto min-h-11 w-full justify-between whitespace-normal py-2 text-left" disabled={disabled}>
       {disabled ? (
-        <span>{label}<Download className="size-4 shrink-0" /></span>
+        <span>{content}<Download className="size-4 shrink-0" /></span>
       ) : (
-        <a href={href}>{label}<Download className="size-4 shrink-0" /></a>
+        <a href={href}>{content}<Download className="size-4 shrink-0" /></a>
       )}
     </Button>
   );
@@ -62,6 +63,7 @@ function ExportGroup({
 export function ReportExportCenter({ schoolSlug, filters, exams }: Props) {
   const [examId, setExamId] = useState(exams[0]?.id ?? "");
   const [studentId, setStudentId] = useState("");
+  const [studentStatus, setStudentStatus] = useState("ACTIVE");
   const [studentFees, setStudentFees] = useState<StudentFeeOption[]>([]);
   const [studentFeeId, setStudentFeeId] = useState("");
 
@@ -110,7 +112,7 @@ export function ReportExportCenter({ schoolSlug, filters, exams }: Props) {
       <div className="mb-4">
         <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-indigo-600">Centralized downloads</p>
         <h2 className="mt-1 text-xl font-black tracking-tight">Report export center</h2>
-        <p className="mt-1 text-sm text-muted-foreground">All downloads use the reporting scope selected above. Only super administrators, principals, and school administrators can access these exports.</p>
+        <p className="mt-1 text-sm text-muted-foreground">Each download applies the relevant filters for that report. Current-roster reports include active students; clearly historical registers retain past records. Only authorized administrators can access these exports.</p>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
@@ -124,24 +126,37 @@ export function ReportExportCenter({ schoolSlug, filters, exams }: Props) {
           ) : (
             <ExportLink href="#" label="School summary CSV" disabled />
           )}
-          <ExportLink href={reportUrl("students")} label="Student master report" />
-          <ExportLink href={reportUrl("teachers")} label="Teacher master report" />
-          <ExportLink href={reportUrl("attendance/class")} label="Class attendance report" disabled={!attendanceReady} />
+          <div className="grid grid-cols-[minmax(0,1fr)_140px] gap-2">
+            <ExportLink href={reportUrl("students", { status: studentStatus })} label="Student master report" scope="Academic year · class · section" />
+            <Select value={studentStatus} onValueChange={setStudentStatus}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ACTIVE">Active</SelectItem>
+                <SelectItem value="INACTIVE">Inactive</SelectItem>
+                <SelectItem value="TC_ISSUED">TC issued</SelectItem>
+                <SelectItem value="ALUMNI">Alumni</SelectItem>
+                <SelectItem value="DROPPED">Dropped</SelectItem>
+                <SelectItem value="NOT_COMING">Not coming</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <ExportLink href={reportUrl("teachers")} label="Teacher master report" scope="Current staff register" />
+          <ExportLink href={reportUrl("attendance/class")} label="Class attendance report" scope="Academic year · class · section · date range" disabled={!attendanceReady} />
           <div className="pt-1">
             <Select value={examId} onValueChange={setExamId}>
               <SelectTrigger><SelectValue placeholder="Select exam" /></SelectTrigger>
               <SelectContent>{exams.map((exam) => <SelectItem key={exam.id} value={exam.id}>{exam.name}</SelectItem>)}</SelectContent>
             </Select>
           </div>
-          <ExportLink href={examId ? reportUrl(`exams/${examId}/results`) : "#"} label="Exam results report" disabled={!examReady} />
+          <ExportLink href={examId ? reportUrl(`exams/${examId}/results`) : "#"} label="Exam results report" scope="Selected exam · active class roster" disabled={!examReady} />
           {!filters.classId ? <p className="text-xs text-muted-foreground">Select a class above to export exam results.</p> : null}
         </ExportGroup>
 
         <ExportGroup title="Fees & finance" icon={IndianRupee}>
-          <ExportLink href={reportUrl("fees/term-summary")} label="Fee term summary" />
-          <ExportLink href={reportUrl("fees/collection-summary")} label="Fee collection summary" />
-          <ExportLink href={reportUrl("fees/outstanding")} label="Outstanding fees" />
-          <ExportLink href={reportUrl("fees/payments")} label="Payment history" />
+          <ExportLink href={reportUrl("fees/term-summary")} label="Fee term summary" scope="Active students · selected academic scope" />
+          <ExportLink href={reportUrl("fees/collection-summary")} label="Fee collection summary" scope="Active students · selected date range" />
+          <ExportLink href={reportUrl("fees/outstanding")} label="Outstanding fees" scope="Current active-student balances" />
+          <ExportLink href={reportUrl("fees/payments")} label="Payment history" scope="Historical audit register · date range" />
           <ExportLink href={reportUrl("expenses")} label="Expense report" />
           <ExportLink href={`/api/v1/operations?kind=payroll-report&year=${now.getFullYear()}&month=${now.getMonth() + 1}`} label="Current-month payroll CSV" />
         </ExportGroup>
