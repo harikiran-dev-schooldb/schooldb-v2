@@ -1,5 +1,14 @@
+"use client";
+
 import { CalendarDays } from "lucide-react";
 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   BULK_DATE_FORMATS,
   type BulkDateFormat,
@@ -32,20 +41,26 @@ export function BulkDateFormatSelector({
             </p>
           </div>
         </div>
-        <select
-          id="bulk-date-format"
+        <Select
           value={value}
           disabled={disabled}
-          onChange={(event) => onChange(event.target.value as BulkDateFormat)}
-          className="h-11 w-full rounded-xl border border-border bg-background px-3 text-sm font-semibold outline-none focus:border-primary disabled:cursor-not-allowed disabled:opacity-60 sm:w-72"
+          onValueChange={(nextValue) => onChange(nextValue as BulkDateFormat)}
         >
-          <option value="" disabled>Choose date format…</option>
-          {BULK_DATE_FORMATS.map((format) => (
-            <option key={format.value} value={format.value}>
-              {format.label} — e.g. {format.example}
-            </option>
-          ))}
-        </select>
+          <SelectTrigger
+            id="bulk-date-format"
+            aria-label="Date format in your CSV"
+            className="h-11 w-full rounded-xl border-border/80 bg-card px-4 font-semibold text-foreground shadow-sm hover:border-primary/25 hover:bg-primary/[0.04] hover:text-primary sm:h-10 sm:w-80"
+          >
+            <SelectValue placeholder="Choose date format…" />
+          </SelectTrigger>
+          <SelectContent className="rounded-2xl border-border/70 p-1 shadow-[0_24px_60px_rgb(15_23_42_/_0.18)]">
+            {BULK_DATE_FORMATS.map((format) => (
+              <SelectItem key={format.value} value={format.value} className="rounded-xl py-2.5">
+                {format.label} · Example {format.example}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
       {!value ? (
         <p className="mt-3 text-xs font-semibold text-amber-700 dark:text-amber-300">
