@@ -81,6 +81,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.schooldb.mobile.network.AuthenticatedApiClient
 import com.schooldb.mobile.network.ApiException
 import com.schooldb.mobile.teacher.MobileContext
+import com.schooldb.mobile.ui.ConnectionStateScreen
 import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.Activity
 import com.composables.icons.lucide.ArrowRight
@@ -547,12 +548,11 @@ fun AdminDashboardScreen(
             } else if (dashboard == null && state.loading) {
                 AdminDashboardSkeleton(Modifier.padding(padding))
             } else if (dashboard == null) {
-                Column(Modifier.fillMaxSize().padding(padding).padding(24.dp),
-                    verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(state.error ?: "Dashboard is unavailable", style = MaterialTheme.typography.titleMedium)
-                    Spacer(Modifier.height(12.dp))
-                    Button(onClick = viewModel::refresh) { Text("Try again") }
-                }
+                ConnectionStateScreen(
+                    message = state.error ?: "Dashboard is unavailable",
+                    onRetry = viewModel::refresh,
+                    modifier = Modifier.padding(padding),
+                )
             } else if (tab == "Queries") {
                 QueriesTab(dashboard, Modifier.padding(padding),
                     onTicket = { selectedTicket = it }, onAllQueries = { selectedSection = "queries" })

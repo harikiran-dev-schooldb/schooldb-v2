@@ -87,6 +87,7 @@ import com.schooldb.mobile.preferences.AppPreferences
 import com.schooldb.mobile.admin.AdminDashboardScreen
 import com.schooldb.mobile.preferences.StartTabPreference
 import com.schooldb.mobile.family.FamilyDashboardScreen
+import com.schooldb.mobile.ui.ConnectionStateScreen
 
 
 private val SchoolDbIndigo = Color(0xFF4F46E5)
@@ -2243,38 +2244,5 @@ private fun ErrorPage(
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Text(
-            text = "Couldn’t load your dashboard",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-        )
-
-        Spacer(
-            modifier = Modifier.height(8.dp),
-        )
-
-        Text(
-            text = message,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-
-        Spacer(
-            modifier = Modifier.height(18.dp),
-        )
-
-        Button(
-            onClick = onRetry,
-        ) {
-            Text(
-                text = "Try again",
-            )
-        }
-    }
+    ConnectionStateScreen(message = message, onRetry = onRetry, modifier = modifier)
 }

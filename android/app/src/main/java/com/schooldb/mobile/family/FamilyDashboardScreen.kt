@@ -86,6 +86,7 @@ import com.schooldb.mobile.ui.notifications.PremiumNotificationEmpty
 import com.schooldb.mobile.ui.notifications.PremiumNotificationFilters
 import com.schooldb.mobile.ui.notifications.matches
 import com.schooldb.mobile.ui.notifications.notificationDay
+import com.schooldb.mobile.ui.ConnectionStateScreen
 
 private val FamilyIndigo = Color(0xFF4F46E5)
 private val FamilyGreen = Color(0xFF059669)
@@ -2013,12 +2014,7 @@ private fun LoadingPage(modifier: Modifier) = Box(modifier.fillMaxSize(), conten
 
 @Composable
 private fun FamilyError(message: String, onRefresh: () -> Unit, modifier: Modifier) {
-    Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(message, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            TextButton(onClick = onRefresh) { Text("Try again") }
-        }
-    }
+    ConnectionStateScreen(message = message, onRetry = onRefresh, modifier = modifier)
 }
 
 private fun statusColor(status: String) = when (status) {
