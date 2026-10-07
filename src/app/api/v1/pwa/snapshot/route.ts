@@ -1,10 +1,11 @@
 import { isSelfServiceRole } from "@/lib/access-control";
 import { apiHandler } from "@/lib/api";
-import { requireMembership } from "@/lib/auth";
+import { requireMembership, teacherClassScope } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ApiResponse } from "@/lib/response";
 import { listAccessibleStudents } from "@/lib/student-access";
 import { notificationContext } from "@/features/notifications/service";
+import { hasModuleAccess } from "@/lib/staff-permissions";
 
 export async function GET(request: Request) {
   return apiHandler(async () => {
@@ -20,15 +21,147 @@ export async function GET(request: Request) {
     });
 
     if (!isSelfServiceRole(membership.role)) {
+      const teacherScope = membership.role === "TEACHER"
+        ? await teacherClassScope(membership.schoolId)
+        : null;
+      const canReadStudents = hasModuleAccess(membership, "STUDENTS");
+      const canReadAttendance = hasModuleAccess(membership, "ATTENDANCE");
+      const canReadLearning = hasModuleAccess(membership, "LEARNING");
+      const canReadFrontOffice = hasModuleAccess(membership, "FRONT_OFFICE");
+      const scopeFilter = teacherScope
+        ? { OR: teacherScope.map((scope) => ({ classId: scope.classId, sectionId: scope.sectionId })) }
+        : {};
+      const indiaDate = new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Asia/Kolkata",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      }).format(new Date());
+      const today = new Date(`${indiaDate}T00:00:00.000Z`);
+
+      const [students, homework, attendanceSessions, visitors, pickupAuthorizations] = await Promise.all([
+        canReadStudents || canReadAttendance || canReadLearning || canReadFrontOffice
+          ? prisma.student.findMany({
+              where: {
+                schoolId: membership.schoolId,
+                status: "ACTIVE",
+                enrollments: {
+                  some: {
+                    active: true,
+                    ...scopeFilter,
+                  },
+                },
+              },
+              orderBy: [{ fullName: "asc" }, { admissionNo: "asc" }],
+              take: 600,
+              select: {
+                id: true,
+                admissionNo: true,
+                fullName: true,
+                enrollments: {
+                  where: { active: true, ...scopeFilter },
+                  take: 1,
+                  select: {
+                    id: true,
+                    rollNo: true,
+                    class: { select: { id: true, name: true } },
+                    section: { select: { id: true, name: true } },
+                  },
+                },
+              },
+            })
+          : [],
+        canReadLearning
+          ? prisma.homework.findMany({
+              where: {
+                schoolId: membership.schoolId,
+                active: true,
+                ...(teacherScope
+                  ? {
+                      OR: teacherScope.map((scope) => ({
+                        classId: scope.classId,
+                        OR: [{ sectionId: scope.sectionId }, { sectionId: null }],
+                      })),
+                    }
+                  : {}),
+              },
+              orderBy: [{ assignedDate: "desc" }, { createdAt: "desc" }],
+              take: 60,
+              select: {
+                id: true,
+                title: true,
+                description: true,
+                assignedDate: true,
+                dueDate: true,
+                class: { select: { name: true } },
+                section: { select: { name: true } },
+                subject: { select: { name: true } },
+              },
+            })
+          : [],
+        canReadAttendance
+          ? prisma.attendanceSession.findMany({
+              where: {
+                schoolId: membership.schoolId,
+                attendanceDate: today,
+                ...(teacherScope ? scopeFilter : {}),
+              },
+              orderBy: [{ class: { displayOrder: "asc" } }, { section: { name: "asc" } }],
+              take: 40,
+              select: {
+                id: true,
+                attendanceDate: true,
+                sessionType: true,
+                locked: true,
+                class: { select: { name: true } },
+                section: { select: { name: true } },
+                records: {
+                  where: { student: { status: "ACTIVE" } },
+                  orderBy: { student: { fullName: "asc" } },
+                  select: {
+                    id: true,
+                    studentId: true,
+                    status: true,
+                    remarks: true,
+                    student: { select: { admissionNo: true, fullName: true } },
+                  },
+                },
+              },
+            })
+          : [],
+        canReadFrontOffice
+          ? prisma.visitorLog.findMany({
+              where: { schoolId: membership.schoolId },
+              orderBy: { checkInAt: "desc" },
+              take: 80,
+            })
+          : [],
+        canReadFrontOffice
+          ? prisma.pickupAuthorization.findMany({
+              where: { schoolId: membership.schoolId, student: { status: "ACTIVE" } },
+              orderBy: { createdAt: "desc" },
+              take: 100,
+              include: { student: { select: { admissionNo: true, fullName: true } } },
+            })
+          : [],
+      ]);
+
       return ApiResponse.success({
         generatedAt: new Date().toISOString(),
         school: { slug: schoolSlug, name: membership.school.name },
         role: membership.role,
-        students: [],
-        homework: [],
+        capabilities: [
+          ...(canReadAttendance ? ["ATTENDANCE"] : []),
+          ...(canReadLearning ? ["HOMEWORK", "MARKS"] : []),
+          ...(canReadFrontOffice ? ["VISITORS", "PICKUP"] : []),
+        ],
+        students,
+        homework,
         timetable: [],
-        attendance: [],
+        attendance: attendanceSessions,
         notifications,
+        visitors,
+        pickupAuthorizations,
       });
     }
 
@@ -125,6 +258,7 @@ export async function GET(request: Request) {
       generatedAt: new Date().toISOString(),
       school: { slug: schoolSlug, name: membership.school.name },
       role: membership.role,
+      capabilities: ["LEAVE_REQUEST"],
       students,
       homework,
       timetable,

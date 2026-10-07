@@ -14,6 +14,7 @@ import { homeworkService } from "@/features/homework/services/homework.service";
 import { recordAuditLog } from "@/lib/audit";
 import { prisma } from "@/lib/prisma";
 import { notifyHomeworkPublished } from "@/features/notifications/events";
+import { runOfflineMutation } from "@/lib/offline-mutation";
 
 export async function GET(req: Request) {
   return apiHandler(async () => {
@@ -103,22 +104,37 @@ export async function POST(req: Request) {
       };
     }
 
-    const item = await homeworkService.create(
-      tenant.schoolId,
-      body,
-      teacherContext,
+    const mutation = await runOfflineMutation(
+      req,
+      tenant,
+      "homework:create",
+      async (mutationId) => {
+        const item = await homeworkService.create(
+          tenant.schoolId,
+          body,
+          teacherContext,
+          mutationId,
+        );
+        if (item.active) {
+          await notifyHomeworkPublished(item.id, tenant.schoolId);
+        }
+        await recordAuditLog({
+          actor: tenant,
+          module: "HOMEWORK",
+          action: item.active ? "PUBLISH" : "CREATE",
+          entityType: "HOMEWORK",
+          entityId: item.id,
+          summary: `${item.active ? "Published" : "Created draft"} homework: ${item.title}.`,
+        });
+        return item;
+      },
     );
-    if (item.active) {
-      await notifyHomeworkPublished(item.id, tenant.schoolId);
-    }
-    await recordAuditLog({
-      actor: tenant,
-      module: "HOMEWORK",
-      action: item.active ? "PUBLISH" : "CREATE",
-      entityType: "HOMEWORK",
-      entityId: item.id,
-      summary: `${item.active ? "Published" : "Created draft"} homework: ${item.title}.`,
-    });
-    return ApiResponse.success(item, "Homework created successfully.", 201);
+    return ApiResponse.success(
+      mutation.data,
+      mutation.replayed
+        ? "Homework was already synchronized."
+        : "Homework created successfully.",
+      mutation.replayed ? 200 : 201,
+    );
   });
 }

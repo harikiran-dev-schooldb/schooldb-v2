@@ -25,6 +25,7 @@ import { requireRole } from "@/lib/auth";
 import { ApiResponse } from "@/lib/response";
 import { prisma } from "@/lib/prisma";
 import { hasModuleAccess, type StaffPermissionModule } from "@/lib/staff-permissions";
+import { runOfflineMutation } from "@/lib/offline-mutation";
 
 const schema = z.object({
   action: z.enum([
@@ -55,27 +56,38 @@ export async function POST(request: Request) {
       throw new Error("You do not have permission to manage this school operation.");
     }
 
-    const args = [membership.schoolId, membership.userId, input.data] as const;
-    const result = input.action === "RECORD_ATTENDANCE" ? await recordStaffAttendance(...args)
-      : input.action === "SAVE_STAFF_ATTENDANCE" ? await saveStaffAttendance(...args)
-      : input.action === "IMPORT_ATTENDANCE" ? await importStaffAttendance(...args)
-      : input.action === "CREATE_STAFF_LEAVE" ? await createStaffLeave(...args)
-      : input.action === "DECIDE_STAFF_LEAVE" ? await decideStaffLeave(...args)
-      : input.action === "SAVE_SALARY" ? await saveSalaryStructure(...args)
-      : input.action === "RUN_PAYROLL" ? await runPayroll(...args)
-      : input.action === "MARK_PAYROLL_PAID" ? await markPayrollPaid(membership.schoolId, input.data)
-      : input.action === "CHECK_IN_VISITOR" ? await checkInVisitor(...args)
-      : input.action === "CHECK_OUT_VISITOR" ? await checkOutVisitor(membership.schoolId, input.data)
-      : input.action === "SAVE_HEALTH_RECORD" ? await saveHealthRecord(...args)
-      : input.action === "LOG_HEALTH_VISIT" ? await logHealthVisit(...args)
-      : input.action === "CREATE_INVENTORY_ITEM" ? await createInventoryItem(...args)
-      : input.action === "ADJUST_INVENTORY" ? await adjustInventory(...args)
-      : input.action === "AUTHORIZE_PICKUP" ? await authorizePickup(...args)
-      : input.action === "UPDATE_PICKUP" ? await updatePickup(membership.schoolId, input.data)
-      : input.action === "CREATE_MAINTENANCE" ? await createMaintenanceTicket(...args)
-      : await updateMaintenanceTicket(membership.schoolId, input.data);
+    const mutation = await runOfflineMutation(
+      request,
+      membership,
+      `operations:${input.action}`,
+      async (mutationId) => {
+        const args = [membership.schoolId, membership.userId, input.data] as const;
+        return input.action === "RECORD_ATTENDANCE" ? recordStaffAttendance(...args)
+          : input.action === "SAVE_STAFF_ATTENDANCE" ? saveStaffAttendance(...args)
+          : input.action === "IMPORT_ATTENDANCE" ? importStaffAttendance(...args)
+          : input.action === "CREATE_STAFF_LEAVE" ? createStaffLeave(...args)
+          : input.action === "DECIDE_STAFF_LEAVE" ? decideStaffLeave(...args)
+          : input.action === "SAVE_SALARY" ? saveSalaryStructure(...args)
+          : input.action === "RUN_PAYROLL" ? runPayroll(...args)
+          : input.action === "MARK_PAYROLL_PAID" ? markPayrollPaid(membership.schoolId, input.data)
+          : input.action === "CHECK_IN_VISITOR" ? checkInVisitor(...args, mutationId)
+          : input.action === "CHECK_OUT_VISITOR" ? checkOutVisitor(membership.schoolId, input.data)
+          : input.action === "SAVE_HEALTH_RECORD" ? saveHealthRecord(...args)
+          : input.action === "LOG_HEALTH_VISIT" ? logHealthVisit(...args)
+          : input.action === "CREATE_INVENTORY_ITEM" ? createInventoryItem(...args)
+          : input.action === "ADJUST_INVENTORY" ? adjustInventory(...args)
+          : input.action === "AUTHORIZE_PICKUP" ? authorizePickup(...args, mutationId)
+          : input.action === "UPDATE_PICKUP" ? updatePickup(membership.schoolId, input.data)
+          : input.action === "CREATE_MAINTENANCE" ? createMaintenanceTicket(...args)
+          : updateMaintenanceTicket(membership.schoolId, input.data);
+      },
+    );
 
-    return ApiResponse.success(result, "Saved successfully.", 201);
+    return ApiResponse.success(
+      mutation.data,
+      mutation.replayed ? "Offline change was already synchronized." : "Saved successfully.",
+      mutation.replayed ? 200 : 201,
+    );
   });
 }
 

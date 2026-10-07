@@ -1,5 +1,6 @@
 "use client";
 
+import { useAuth } from "@clerk/nextjs";
 import { useEffect, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -25,6 +26,8 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { refreshTable } from "@/lib/table-event";
+import { queuePwaAction } from "@/lib/pwa-storage";
+import { useSchool } from "@/contexts/school-context";
 
 import { homeworkSchema, HomeworkFormInput } from "../schemas/homework.schema";
 
@@ -58,6 +61,8 @@ function createDefaults(): HomeworkFormInput {
 }
 
 export function HomeworkForm({ mode, homeworkId, onSuccess = noop }: Props) {
+  const { userId } = useAuth();
+  const { school } = useSchool();
   const [saving, setSaving] = useState(false);
   const [loadingHomework, setLoadingHomework] = useState(
     mode === "edit" && Boolean(homeworkId),
@@ -128,6 +133,33 @@ export function HomeworkForm({ mode, homeworkId, onSuccess = noop }: Props) {
         mode === "create"
           ? "/api/v1/homework"
           : `/api/v1/homework/${homeworkId}`;
+
+      if (!navigator.onLine) {
+        if (!userId) {
+          toast.error("Reconnect to save homework.");
+          return;
+        }
+        const id = crypto.randomUUID();
+        await queuePwaAction({
+          id,
+          ownerKey: `${userId}:${school.slug}`,
+          url,
+          method: mode === "create" ? "POST" : "PUT",
+          body: payload,
+          createdAt: new Date().toISOString(),
+        });
+        setConfirmationOpen(false);
+        if (mode === "create") {
+          form.reset(createDefaults());
+          setSyllabusId("");
+          setBranchId("");
+        }
+        window.dispatchEvent(new Event("schooldb:offline-queue-changed"));
+        toast.success("Homework saved offline and will sync when you reconnect.");
+        onSuccess();
+        return;
+      }
+
       const response = await fetch(url, {
         method: mode === "create" ? "POST" : "PUT",
         headers: { "Content-Type": "application/json" },

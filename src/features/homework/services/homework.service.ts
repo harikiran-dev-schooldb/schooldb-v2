@@ -174,6 +174,7 @@ export const homeworkService = {
       academicYearId: string;
       subjectId?: string | null;
     },
+    mutationId?: string | null,
   ) {
     await validateHomeworkTarget(schoolId, input.classId, input.sectionId);
 
@@ -221,7 +222,8 @@ export const homeworkService = {
       }
     }
 
-    return homeworkRepository.create({
+    const data: Prisma.HomeworkCreateInput = {
+      ...(mutationId ? { id: mutationId } : {}),
       school: {
         connect: {
           id: schoolId,
@@ -264,7 +266,11 @@ export const homeworkService = {
       dueDate,
 
       active: input.active,
-    });
+    };
+
+    return mutationId
+      ? homeworkRepository.createIdempotent(mutationId, data)
+      : homeworkRepository.create(data);
   },
 
   async update(

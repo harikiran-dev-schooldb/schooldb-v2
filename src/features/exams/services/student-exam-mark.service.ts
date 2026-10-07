@@ -185,6 +185,7 @@ export const studentExamMarkService = {
     sectionId: string,
     marks: MarkInput[],
     performedByUserId?: string,
+    mutationId?: string | null,
   ) {
     const schedule = await prisma.examSchedule.findFirst({
       where: {
@@ -279,7 +280,7 @@ export const studentExamMarkService = {
     const maxMarks = Number(schedule.maxMarks);
 
     const studentByEnrollment = new Map(enrollments.map((item) => [item.id, item.studentId]));
-    const activityBatchId = `${scheduleId}:${Date.now()}`;
+    const activityBatchId = mutationId ?? `${scheduleId}:${Date.now()}`;
     const operations = marks.map((input) => {
       const status =
         input.status ?? StudentExamStatus.PRESENT;
@@ -349,8 +350,8 @@ export const studentExamMarkService = {
       });
     });
 
-    const activityOperations = marks.map((input) => prisma.studentActivity.create({
-      data: {
+    const activityOperation = prisma.studentActivity.createMany({
+      data: marks.map((input) => ({
         schoolId,
         studentId: studentByEnrollment.get(input.studentEnrollmentId)!,
         enrollmentId: input.studentEnrollmentId,
@@ -361,10 +362,11 @@ export const studentExamMarkService = {
         sourceType: "EXAM_MARKS_BATCH",
         sourceId: activityBatchId,
         metadata: { scheduleId, status: input.status ?? StudentExamStatus.PRESENT },
-      },
-    }));
+      })),
+      skipDuplicates: true,
+    });
 
-    await prisma.$transaction([...operations, ...activityOperations]);
+    await prisma.$transaction([...operations, activityOperation]);
 
     return {
       count: marks.length,

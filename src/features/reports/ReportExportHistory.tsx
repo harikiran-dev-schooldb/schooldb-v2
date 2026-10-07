@@ -33,7 +33,8 @@ export function ReportExportHistory() {
   }, []);
 
   useEffect(() => {
-    void load();
+    const timeout = window.setTimeout(() => void load(), 0);
+    return () => window.clearTimeout(timeout);
   }, [load]);
 
   return (

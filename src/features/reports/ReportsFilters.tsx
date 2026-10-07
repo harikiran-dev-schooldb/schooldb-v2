@@ -29,16 +29,19 @@ export function ReportsFilters({ schoolSlug, routePath = "reports", initial }: P
   const [sectionId, setSectionId] = useState(initial.sectionId);
   const [from, setFrom] = useState(initial.from);
   const [to, setTo] = useState(initial.to);
-  const [savedView, setSavedView] = useState<Props["initial"] | null>(null);
   const storageKey = `schooldb:report-view:${schoolSlug}:${routePath}`;
+  const [savedView, setSavedView] = useState<Props["initial"] | null>(null);
 
   useEffect(() => {
-    try {
-      const stored = window.localStorage.getItem(storageKey);
-      if (stored) setSavedView(JSON.parse(stored) as Props["initial"]);
-    } catch {
-      setSavedView(null);
-    }
+    const timeout = window.setTimeout(() => {
+      try {
+        const stored = window.localStorage.getItem(storageKey);
+        setSavedView(stored ? JSON.parse(stored) as Props["initial"] : null);
+      } catch {
+        setSavedView(null);
+      }
+    }, 0);
+    return () => window.clearTimeout(timeout);
   }, [storageKey]);
 
   const query = useMemo(() => {

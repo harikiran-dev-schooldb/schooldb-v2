@@ -1,4 +1,4 @@
-const CACHE_NAME = "schooldb-pwa-v7";
+const CACHE_NAME = "schooldb-pwa-v8";
 const OFFLINE_URL = "/offline";
 const HOSTNAME = self.location.hostname.toLowerCase();
 const ALLOWED_HOST = HOSTNAME === "schooldb.co.in" || HOSTNAME.endsWith(".schooldb.co.in");

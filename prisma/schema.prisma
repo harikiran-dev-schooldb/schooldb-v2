@@ -1627,6 +1627,24 @@ model Homework {
   @@index([schoolId, active, assignedDate])
 }
 
+/// Durable receipt for browser mutations replayed after an offline period.
+/// The client-generated id makes retries safe across tabs, reconnects, and
+/// server restarts without storing authentication material on the device.
+model OfflineMutationReceipt {
+  id          String    @id @db.Uuid
+  schoolId    String
+  userId      String
+  scope       String    @db.VarChar(160)
+  status      String    @default("PROCESSING") @db.VarChar(24)
+  result      Json?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  completedAt DateTime?
+
+  @@index([schoolId, userId, createdAt(sort: Desc)])
+  @@index([status, updatedAt])
+}
+
 model FeeCategory {
   id              String           @id @default(cuid())
   schoolId        String

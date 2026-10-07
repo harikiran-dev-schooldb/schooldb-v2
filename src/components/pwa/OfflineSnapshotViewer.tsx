@@ -1,17 +1,26 @@
 "use client";
 
-import { BookOpen, Bell, CalendarDays, Clock3 } from "lucide-react";
+import { BookOpen, Bell, CalendarDays, Clock3, DoorOpen, ShieldCheck, UserRound } from "lucide-react";
 import { useEffect, useState } from "react";
 
-import { activePwaOwner, readPwaSnapshot, type PwaOfflineSnapshot } from "@/lib/pwa-storage";
+import { activePwaOwner, listPwaActions, readPwaSnapshot, type PwaOfflineSnapshot } from "@/lib/pwa-storage";
+import { OfflineOperationsWorkbench } from "@/components/pwa/OfflineOperationsWorkbench";
 
 export function OfflineSnapshotViewer() {
   const [snapshot, setSnapshot] = useState<PwaOfflineSnapshot | null>(null);
+  const [pendingActions, setPendingActions] = useState(0);
+  const [ownerKey, setOwnerKey] = useState<string | null>(null);
 
   useEffect(() => {
     const ownerKey = activePwaOwner();
     if (!ownerKey) return;
-    void readPwaSnapshot(ownerKey).then(setSnapshot).catch(() => undefined);
+    void Promise.all([readPwaSnapshot(ownerKey), listPwaActions(ownerKey)])
+      .then(([saved, actions]) => {
+        setOwnerKey(ownerKey);
+        setSnapshot(saved);
+        setPendingActions(actions.length);
+      })
+      .catch(() => undefined);
   }, []);
 
   if (!snapshot) return null;
@@ -24,7 +33,30 @@ export function OfflineSnapshotViewer() {
         <p className="font-semibold text-indigo-950">Saved from {snapshot.school.name}</p>
         <p className="mt-1 text-xs text-indigo-700">Last synced {new Date(snapshot.generatedAt).toLocaleString("en-IN")}</p>
       </div>
+      {pendingActions > 0 && (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-950">
+          <p className="font-semibold">{pendingActions} pending change{pendingActions === 1 ? "" : "s"}</p>
+          <p className="mt-1 text-xs text-amber-800">SchoolDB will submit these automatically after the internet reconnects.</p>
+        </div>
+      )}
+      {ownerKey && (
+        <OfflineOperationsWorkbench
+          ownerKey={ownerKey}
+          snapshot={snapshot}
+          onQueued={() => setPendingActions((count) => count + 1)}
+        />
+      )}
       <div className="grid gap-4 md:grid-cols-2">
+        <OfflineGroup icon={UserRound} title="Student directory" empty="No saved students">
+          {snapshot.students.slice(0, 8).map((raw, index) => {
+            const item = raw as { id?: string; admissionNo?: string; fullName?: string; enrollment?: { className?: string; sectionName?: string }; enrollments?: Array<{ class?: { name?: string }; section?: { name?: string } }> };
+            const enrollment = item.enrollment;
+            const staffEnrollment = item.enrollments?.[0];
+            const className = enrollment?.className ?? staffEnrollment?.class?.name;
+            const sectionName = enrollment?.sectionName ?? staffEnrollment?.section?.name;
+            return <OfflineItem key={item.id ?? index} title={item.fullName ?? item.admissionNo ?? "Student"} detail={[item.admissionNo, className, sectionName].filter(Boolean).join(" · ")} />;
+          })}
+        </OfflineGroup>
         <OfflineGroup icon={BookOpen} title="Recent homework" empty="No saved homework">
           {homework.map((item, index) => <OfflineItem key={item.id ?? index} title={item.title ?? "Homework"} detail={`${item.subject?.name ?? "Subject"}${item.dueDate ? ` · Due ${new Date(item.dueDate).toLocaleDateString("en-IN")}` : ""}`} />)}
         </OfflineGroup>
@@ -39,8 +71,24 @@ export function OfflineSnapshotViewer() {
         </OfflineGroup>
         <OfflineGroup icon={CalendarDays} title="Attendance" empty="No saved attendance">
           {snapshot.attendance.slice(0, 6).map((raw, index) => {
-            const item = raw as { id?: string; status?: string; session?: { attendanceDate?: string } };
+            const item = raw as { id?: string; status?: string; session?: { attendanceDate?: string }; attendanceDate?: string; class?: { name?: string }; section?: { name?: string }; records?: Array<{ status?: string }> };
+            if (item.records) {
+              const present = item.records.filter((record) => record.status === "PRESENT").length;
+              return <OfflineItem key={item.id ?? index} title={[item.class?.name, item.section?.name].filter(Boolean).join(" - ") || "Attendance session"} detail={`${present} of ${item.records.length} present${item.attendanceDate ? ` · ${new Date(item.attendanceDate).toLocaleDateString("en-IN")}` : ""}`} />;
+            }
             return <OfflineItem key={item.id ?? index} title={item.status ?? "Attendance"} detail={item.session?.attendanceDate ? new Date(item.session.attendanceDate).toLocaleDateString("en-IN") : ""} />;
+          })}
+        </OfflineGroup>
+        <OfflineGroup icon={DoorOpen} title="Visitor register" empty="No saved visitors">
+          {(snapshot.visitors ?? []).slice(0, 6).map((raw, index) => {
+            const item = raw as { id?: string; visitorName?: string; purpose?: string; status?: string };
+            return <OfflineItem key={item.id ?? index} title={item.visitorName ?? "Visitor"} detail={[item.purpose, item.status?.replaceAll("_", " ")].filter(Boolean).join(" · ")} />;
+          })}
+        </OfflineGroup>
+        <OfflineGroup icon={ShieldCheck} title="Pickup authorizations" empty="No saved pickup authorizations">
+          {(snapshot.pickupAuthorizations ?? []).slice(0, 6).map((raw, index) => {
+            const item = raw as { id?: string; pickupCode?: string; authorizedName?: string; status?: string; student?: { fullName?: string } };
+            return <OfflineItem key={item.id ?? index} title={item.student?.fullName ?? "Student pickup"} detail={[item.authorizedName, item.pickupCode, item.status].filter(Boolean).join(" · ")} />;
           })}
         </OfflineGroup>
       </div>

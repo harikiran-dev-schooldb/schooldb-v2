@@ -1,5 +1,6 @@
 "use client";
 
+import { useAuth } from "@clerk/nextjs";
 import { cloneElement, FormEvent, isValidElement, ReactElement, ReactNode, useId, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Check, ChevronsUpDown } from "lucide-react";
@@ -29,6 +30,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { useSchool } from "@/contexts/school-context";
+import { queuePwaAction } from "@/lib/pwa-storage";
 
 export type TeacherOption = {
   id: string;
@@ -104,6 +107,15 @@ export async function operationRequest(action: string, data: unknown) {
   return result.data;
 }
 
+const OFFLINE_OPERATION_ACTIONS = new Set([
+  "RECORD_ATTENDANCE",
+  "SAVE_STAFF_ATTENDANCE",
+  "CHECK_IN_VISITOR",
+  "CHECK_OUT_VISITOR",
+  "AUTHORIZE_PICKUP",
+  "UPDATE_PICKUP",
+]);
+
 export function formValues(form: HTMLFormElement) {
   const result: Record<string, unknown> = Object.fromEntries(
     new FormData(form),
@@ -121,6 +133,8 @@ export function formValues(form: HTMLFormElement) {
 
 export function useOperationMutation() {
   const router = useRouter();
+  const { userId } = useAuth();
+  const { school } = useSchool();
   const [pending, startTransition] = useTransition();
   function mutate(
     action: string,
@@ -129,6 +143,25 @@ export function useOperationMutation() {
   ) {
     startTransition(async () => {
       try {
+        if (!navigator.onLine) {
+          if (!userId || !OFFLINE_OPERATION_ACTIONS.has(action)) {
+            toast.error("Reconnect to save this change.");
+            return;
+          }
+          const id = crypto.randomUUID();
+          await queuePwaAction({
+            id,
+            ownerKey: `${userId}:${school.slug}`,
+            url: "/api/v1/operations",
+            method: "POST",
+            body: { action, data },
+            createdAt: new Date().toISOString(),
+          });
+          options?.after?.();
+          window.dispatchEvent(new Event("schooldb:offline-queue-changed"));
+          toast.success("Saved offline. It will sync automatically when you reconnect.");
+          return;
+        }
         await operationRequest(action, data);
         toast.success(options?.success ?? "Saved successfully.");
         options?.after?.();

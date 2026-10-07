@@ -8,6 +8,7 @@ import { homeworkSchema } from "@/features/homework/schemas/homework.schema";
 import { homeworkService } from "@/features/homework/services/homework.service";
 import { recordAuditLog } from "@/lib/audit";
 import { notifyHomeworkPublished } from "@/features/notifications/events";
+import { runOfflineMutation } from "@/lib/offline-mutation";
 
 type Props = {
   params: Promise<{
@@ -38,30 +39,35 @@ export async function PUT(
     const { id } = await params;
 
     const body = await validateBody(req, homeworkSchema);
-    const previous = await homeworkService.get(id, tenant.schoolId);
+    const mutation = await runOfflineMutation(
+      req,
+      tenant,
+      `homework:update:${id}`,
+      async () => {
+        const previous = await homeworkService.get(id, tenant.schoolId);
+        const item = await homeworkService.update(id, tenant.schoolId, body);
 
-    const item = await homeworkService.update(
-      id,
-      tenant.schoolId,
-      body,
+        if (!previous.active && item.active) {
+          await notifyHomeworkPublished(item.id, tenant.schoolId);
+        }
+
+        await recordAuditLog({
+          actor: tenant,
+          module: "HOMEWORK",
+          action: "UPDATE",
+          entityType: "HOMEWORK",
+          entityId: item.id,
+          summary: `Updated homework: ${item.title}.`,
+        });
+        return item;
+      },
     );
 
-    if (!previous.active && item.active) {
-      await notifyHomeworkPublished(item.id, tenant.schoolId);
-    }
-
-    await recordAuditLog({
-      actor: tenant,
-      module: "HOMEWORK",
-      action: "UPDATE",
-      entityType: "HOMEWORK",
-      entityId: item.id,
-      summary: `Updated homework: ${item.title}.`,
-    });
-
     return ApiResponse.success(
-      item,
-      "Homework updated successfully.",
+      mutation.data,
+      mutation.replayed
+        ? "Homework changes were already synchronized."
+        : "Homework updated successfully.",
     );
   });
 }

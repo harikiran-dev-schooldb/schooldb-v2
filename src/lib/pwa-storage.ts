@@ -2,18 +2,21 @@ export type PwaOfflineSnapshot = {
   generatedAt: string;
   school: { slug: string; name: string };
   role: string;
+  capabilities?: string[];
   students: Array<Record<string, unknown>>;
   homework: Array<Record<string, unknown>>;
   timetable: Array<Record<string, unknown>>;
   attendance: Array<Record<string, unknown>>;
   notifications: Array<Record<string, unknown>>;
+  visitors?: Array<Record<string, unknown>>;
+  pickupAuthorizations?: Array<Record<string, unknown>>;
 };
 
 export type PwaQueuedAction = {
   id: string;
   ownerKey: string;
   url: string;
-  method: "POST" | "PATCH" | "DELETE";
+  method: "POST" | "PUT" | "PATCH" | "DELETE";
   body: Record<string, unknown>;
   createdAt: string;
 };
@@ -89,23 +92,44 @@ export async function listPwaActions(ownerKey: string) {
     database.transaction(ACTIONS).objectStore(ACTIONS).getAll(),
   ) as PwaQueuedAction[];
   database.close();
-  return actions.filter((action) => action.ownerKey === ownerKey);
+  return actions
+    .filter((action) => action.ownerKey === ownerKey)
+    .sort((left, right) => left.createdAt.localeCompare(right.createdAt));
 }
 
 export async function flushPwaActions(ownerKey: string) {
   const actions = await listPwaActions(ownerKey);
   let completed = 0;
+  const failures: Array<{ id: string; message: string }> = [];
   for (const action of actions) {
-    const response = await fetch(action.url, {
-      method: action.method,
-      headers: { "Content-Type": "application/json", "Idempotency-Key": action.id },
-      body: JSON.stringify(action.body),
-    });
-    if (!response.ok) continue;
-    const database = await openDatabase();
-    await requestResult(database.transaction(ACTIONS, "readwrite").objectStore(ACTIONS).delete(action.id));
-    database.close();
-    completed += 1;
+    try {
+      const response = await fetch(action.url, {
+        method: action.method,
+        headers: { "Content-Type": "application/json", "Idempotency-Key": action.id },
+        body: JSON.stringify(action.body),
+      });
+      if (!response.ok) {
+        if ([401, 408, 425, 429].includes(response.status) || response.status >= 500) {
+          continue;
+        }
+        const result = await response.json().catch(() => null) as { message?: string } | null;
+        failures.push({
+          id: action.id,
+          message: result?.message || "The saved change was rejected during synchronization.",
+        });
+      }
+      const database = await openDatabase();
+      await requestResult(database.transaction(ACTIONS, "readwrite").objectStore(ACTIONS).delete(action.id));
+      database.close();
+      if (response.ok) completed += 1;
+    } catch {
+      break;
+    }
   }
-  return { completed, remaining: actions.length - completed };
+  return {
+    completed,
+    failed: failures.length,
+    failures,
+    remaining: actions.length - completed - failures.length,
+  };
 }

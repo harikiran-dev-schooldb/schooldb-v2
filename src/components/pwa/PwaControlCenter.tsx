@@ -203,12 +203,16 @@ export function PwaControlCenter({
     }
     setBusy(true);
     try {
+      const flushed = await flushPwaActions(ownerKey);
       const response = await fetch(`/api/v1/pwa/snapshot?schoolSlug=${encodeURIComponent(schoolSlug)}`, { cache: "no-store" });
       const result = await response.json();
       if (!response.ok || !result.success) throw new Error(result.message || "Sync failed.");
       await savePwaSnapshot(ownerKey, result.data);
-      const flushed = await flushPwaActions(ownerKey);
-      toast.success(flushed.completed ? "Saved data refreshed and pending requests submitted." : "Offline data refreshed.");
+      if (flushed.failed) {
+        toast.error(`${flushed.failed} saved change${flushed.failed === 1 ? " was" : "s were"} rejected by the server.`);
+      } else {
+        toast.success(flushed.completed ? "Saved data refreshed and pending requests submitted." : "Offline data refreshed.");
+      }
       await loadLocalStatus();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to sync offline data.");

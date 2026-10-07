@@ -13,6 +13,7 @@ import {
 } from "@/features/whatsapp/automation";
 import { recordAuditLog } from "@/lib/audit";
 import { prisma } from "@/lib/prisma";
+import { runOfflineMutation } from "@/lib/offline-mutation";
 
 const correctionSchema = z.object({
   changes: z
@@ -39,6 +40,12 @@ export async function POST(req: Request, { params }: Props) {
 
     const body = await req.json();
     const input = correctionSchema.parse(body);
+
+    const mutation = await runOfflineMutation(
+      req,
+      tenant,
+      `attendance-correction:${id}`,
+      async (mutationId) => {
 
     const sessionBefore = await prisma.attendanceSession.findFirst({
       where: { id, schoolId: tenant.schoolId },
@@ -67,7 +74,7 @@ export async function POST(req: Request, { params }: Props) {
       input.changes,
     );
 
-    const correctionId = `${id}:${Date.now()}`;
+    const correctionId = mutationId ?? `${id}:${Date.now()}`;
     await prisma.studentActivity.createMany({
       data: input.changes.map((change) => ({
         schoolId: tenant.schoolId,
@@ -80,6 +87,7 @@ export async function POST(req: Request, { params }: Props) {
         sourceId: correctionId,
         metadata: { sessionId: id, status: change.status },
       })),
+      skipDuplicates: true,
     });
 
     const correctedToPresent = input.changes.flatMap((change) => {
@@ -123,6 +131,15 @@ export async function POST(req: Request, { params }: Props) {
       },
     });
 
-    return ApiResponse.success(result, "Attendance corrected successfully.");
+        return result;
+      },
+    );
+
+    return ApiResponse.success(
+      mutation.data,
+      mutation.replayed
+        ? "Attendance changes were already synchronized."
+        : "Attendance corrected successfully.",
+    );
   });
 }

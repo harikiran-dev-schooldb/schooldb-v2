@@ -7,6 +7,7 @@ import { ApiResponse } from "@/lib/response";
 import { studentExamMarkService } from "@/features/exams/services/student-exam-mark.service";
 import { recordAuditLog } from "@/lib/audit";
 import { isExamGrade } from "@/features/exams/assessment";
+import { runOfflineMutation } from "@/lib/offline-mutation";
 
 type Params = Promise<{
   scheduleId: string;
@@ -134,11 +135,7 @@ export async function PUT(
       }
     }
 
-    const result = await studentExamMarkService.saveBulk(
-      scheduleId,
-      tenant.schoolId,
-      sectionId,
-      body.marks.map(
+    const normalizedMarks = body.marks.map(
         (mark: {
           studentEnrollmentId: string;
           marksObtained?: number | string | null;
@@ -157,23 +154,40 @@ export async function PUT(
           status: mark.status ?? StudentExamStatus.PRESENT,
           remarks: mark.remarks || null,
         }),
-      ),
-      tenant.userId,
+      );
+
+    const mutation = await runOfflineMutation(
+      req,
+      tenant,
+      `exam-marks:${scheduleId}:${sectionId}`,
+      async (mutationId) => {
+        const result = await studentExamMarkService.saveBulk(
+          scheduleId,
+          tenant.schoolId,
+          sectionId,
+          normalizedMarks,
+          tenant.userId,
+          mutationId,
+        );
+
+        await recordAuditLog({
+          actor: tenant,
+          module: "ACADEMICS",
+          action: "UPDATE",
+          entityType: "EXAM_MARK",
+          entityId: scheduleId,
+          summary: `Saved ${body.marks.length} student exam mark${body.marks.length === 1 ? "" : "s"}.`,
+          metadata: { recordCount: body.marks.length, sectionId },
+        });
+        return result;
+      },
     );
 
-    await recordAuditLog({
-      actor: tenant,
-      module: "ACADEMICS",
-      action: "UPDATE",
-      entityType: "EXAM_MARK",
-      entityId: scheduleId,
-      summary: `Saved ${body.marks.length} student exam mark${body.marks.length === 1 ? "" : "s"}.`,
-      metadata: { recordCount: body.marks.length, sectionId },
-    });
-
     return ApiResponse.success(
-      result,
-      "Student marks saved successfully.",
+      mutation.data,
+      mutation.replayed
+        ? "Student marks were already synchronized."
+        : "Student marks saved successfully.",
     );
   });
 }

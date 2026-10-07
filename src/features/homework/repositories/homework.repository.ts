@@ -83,6 +83,18 @@ export const homeworkRepository = {
     });
   },
 
+  createIdempotent(
+    id: string,
+    data: Prisma.HomeworkCreateInput,
+  ) {
+    return prisma.homework.upsert({
+      where: { id },
+      update: {},
+      create: data,
+      include: homeworkInclude,
+    });
+  },
+
   update(
     id: string,
     schoolId: string,

@@ -131,6 +131,7 @@ export function PwaRegistration() {
     const sync = async () => {
       if (!navigator.onLine) return;
       try {
+        const flushed = await flushPwaActions(ownerKey);
         const response = await fetch(`/api/v1/pwa/snapshot?schoolSlug=${encodeURIComponent(schoolSlug)}`, {
           cache: "no-store",
         });
@@ -138,10 +139,12 @@ export function PwaRegistration() {
         if (response.ok && result.success && !cancelled) {
           await savePwaSnapshot(ownerKey, result.data as PwaOfflineSnapshot);
         }
-        const flushed = await flushPwaActions(ownerKey);
         if (flushed.completed > 0 && !cancelled) {
           toast.success(`${flushed.completed} saved request${flushed.completed === 1 ? "" : "s"} submitted.`);
           router.refresh();
+        }
+        if (flushed.failed > 0 && !cancelled) {
+          toast.error(`${flushed.failed} offline change${flushed.failed === 1 ? " was" : "s were"} rejected. Review the latest online data before trying again.`);
         }
       } catch {
         // The cached copy and pending actions remain available for a later sync.
@@ -150,9 +153,11 @@ export function PwaRegistration() {
     const handleSync = () => void sync();
     void sync();
     window.addEventListener("schooldb:sync-requested", handleSync);
+    window.addEventListener("schooldb:offline-queue-changed", handleSync);
     return () => {
       cancelled = true;
       window.removeEventListener("schooldb:sync-requested", handleSync);
+      window.removeEventListener("schooldb:offline-queue-changed", handleSync);
     };
   }, [isLoaded, isSignedIn, router, schoolSlug, userId]);
 

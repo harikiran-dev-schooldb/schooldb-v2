@@ -351,8 +351,20 @@ export async function markPayrollPaid(schoolId: string, value: unknown) {
   });
 }
 
-export async function checkInVisitor(schoolId: string, userId: string, value: unknown) {
+export async function checkInVisitor(
+  schoolId: string,
+  userId: string,
+  value: unknown,
+  mutationId?: string | null,
+) {
   const input = z.object({ visitorName: z.string().trim().min(2).max(160), phone: z.string().trim().min(7).max(24), purpose: z.string().trim().min(2).max(300), personToMeet: optionalText(160), idProofType: optionalText(60), idProofLastFour: optionalText(4), vehicleNumber: optionalText(30), notes: optionalText() }).parse(value);
+  if (mutationId) {
+    return prisma.visitorLog.upsert({
+      where: { id: mutationId },
+      update: {},
+      create: { id: mutationId, schoolId, ...input, gatePassCode: code("VIS"), recordedBy: userId },
+    });
+  }
   return prisma.visitorLog.create({ data: { schoolId, ...input, gatePassCode: code("VIS"), recordedBy: userId } });
 }
 
@@ -397,10 +409,22 @@ export async function adjustInventory(schoolId: string, userId: string, value: u
   });
 }
 
-export async function authorizePickup(schoolId: string, userId: string, value: unknown) {
+export async function authorizePickup(
+  schoolId: string,
+  userId: string,
+  value: unknown,
+  mutationId?: string | null,
+) {
   const input = z.object({ studentId: z.string().min(1), authorizedName: z.string().trim().min(2).max(160), relationship: z.string().trim().min(2).max(80), phone: z.string().trim().min(7).max(24), validFrom: dateValue, validUntil: z.union([dateValue, z.literal("")]).optional().transform((v) => v || null), recurring: z.coerce.boolean().default(false), notes: optionalText() }).parse(value);
   await studentInSchool(schoolId, input.studentId);
   if (input.validUntil && input.validUntil < input.validFrom) throw new Error("Valid-until date cannot be before valid-from date.");
+  if (mutationId) {
+    return prisma.pickupAuthorization.upsert({
+      where: { id: mutationId },
+      update: {},
+      create: { id: mutationId, schoolId, ...input, pickupCode: code("PICK"), approvedBy: userId },
+    });
+  }
   return prisma.pickupAuthorization.create({ data: { schoolId, ...input, pickupCode: code("PICK"), approvedBy: userId } });
 }
 
