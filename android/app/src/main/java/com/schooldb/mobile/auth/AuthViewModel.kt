@@ -9,6 +9,7 @@ import com.clerk.api.network.serialization.onSuccess
 import com.clerk.api.session.Session
 import com.schooldb.mobile.BuildConfig
 import com.schooldb.mobile.notifications.PushNotificationManager
+import com.schooldb.mobile.network.ApiResponseCache
 import java.io.IOException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -109,6 +110,7 @@ class AuthViewModel(
                 .onSuccess { signedOut = true }
                 .onFailure { failure = it.errorMessage }
             _uiState.value = if (signedOut) {
+                ApiResponseCache.clear()
                 AuthUiState()
             } else {
                 _uiState.value.copy(

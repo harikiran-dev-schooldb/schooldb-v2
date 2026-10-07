@@ -11,7 +11,7 @@ class FamilyRepository(
         if (isNull(key)) null else optString(key).takeIf(String::isNotBlank)
 
     suspend fun dashboard(): FamilyDashboard {
-        val data = api.get("api/v1/mobile/family/dashboard")
+        val data = api.get("api/v1/mobile/family/dashboard", useStaleCacheOnFailure = true)
         val studentsJson = data.optJSONArray("students") ?: JSONArray()
         val students = buildList {
             repeat(studentsJson.length()) { index ->
@@ -65,7 +65,10 @@ class FamilyRepository(
     }
 
     suspend fun details(studentId: String): FamilyStudentDetails {
-        val data = api.get("api/v1/mobile/family/student/$studentId/details")
+        val data = api.get(
+            "api/v1/mobile/family/student/$studentId/details",
+            useStaleCacheOnFailure = true,
+        )
         val attendanceJson = data.optJSONObject("attendance")
         val attendance = attendanceJson?.let {
             val summary = it.getJSONObject("summary")
@@ -305,7 +308,10 @@ class FamilyRepository(
     }
 
     suspend fun notifications(): Pair<Int, List<FamilyNotification>> {
-        val data = api.get("api/v1/mobile/family/notifications")
+        val data = api.get(
+            "api/v1/mobile/family/notifications",
+            useStaleCacheOnFailure = true,
+        )
         val rows = data.optJSONArray("items") ?: JSONArray()
         val items = buildList {
             repeat(rows.length()) { index ->

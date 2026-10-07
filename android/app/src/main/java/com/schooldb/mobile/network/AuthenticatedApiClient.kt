@@ -17,14 +17,20 @@ class AuthenticatedApiClient(
         path: String,
         cacheTtlMillis: Long = 0L,
         forceRefresh: Boolean = false,
+        useStaleCacheOnFailure: Boolean = cacheTtlMillis > 0L,
     ): JSONObject {
-        if (cacheTtlMillis <= 0L) return request("GET", path)
-        val cacheKey = "${SchoolContext.schoolSlug()}|$path"
-        if (!forceRefresh) ApiResponseCache.read(cacheKey, cacheTtlMillis)?.let { return it }
+        if (cacheTtlMillis <= 0L && !useStaleCacheOnFailure) return request("GET", path)
+        val userId = Clerk.activeUser?.id
+            ?: throw ApiException("Your session expired. Please sign in again.")
+        val cacheKey = apiCacheKey(userId, SchoolContext.schoolSlug(), path)
+        if (!forceRefresh && cacheTtlMillis > 0L) {
+            ApiResponseCache.read(cacheKey, cacheTtlMillis)?.let { return it }
+        }
         return try {
             request("GET", path).also { ApiResponseCache.write(cacheKey, it) }
         } catch (error: IOException) {
-            ApiResponseCache.readStale(cacheKey) ?: throw error
+            if (useStaleCacheOnFailure) ApiResponseCache.readStale(cacheKey) ?: throw error
+            else throw error
         }
     }
 
@@ -80,3 +86,6 @@ class AuthenticatedApiClient(
 }
 
 class ApiException(message: String) : Exception(message)
+
+internal fun apiCacheKey(userId: String, schoolSlug: String, path: String): String =
+    "$userId|$schoolSlug|${path.trimStart('/')}"

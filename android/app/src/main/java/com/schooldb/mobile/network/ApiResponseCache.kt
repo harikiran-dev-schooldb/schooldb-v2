@@ -27,6 +27,11 @@ object ApiResponseCache {
         }
     }
 
+    fun clear() {
+        if (!::sharedPreferences.isInitialized) return
+        preferences().edit { clear() }
+    }
+
     private fun readEntry(key: String, maxAgeMillis: Long): JSONObject? {
         if (!::sharedPreferences.isInitialized) return null
         val values = preferences()

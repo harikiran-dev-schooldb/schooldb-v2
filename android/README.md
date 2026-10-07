@@ -35,6 +35,25 @@ Production builds reject cleartext HTTP traffic. Use an HTTPS URL for deployed e
 Release signing uses `android/keystore.properties` when present. It is not needed for debug builds; without it, release builds are unsigned.
 Debug and release use different signing keys. Switching from an installed debug app to release requires uninstalling the debug app, which clears its local sign-in state.
 
+## Offline behavior
+
+The primary teacher, family/student, and administrator dashboards cache their
+latest successful read-only response on the device. If the server or network is
+unreachable, SchoolDB can use a cached response saved within the previous 24
+hours. Cache entries are isolated by Clerk user and school, and all cached API
+responses are removed when the user signs out.
+
+When no cached dashboard is available, the app shows the animated light-mode
+connection screen with a retry action. Live actions such as attendance changes,
+leave requests, account switching, OTP sign-in, and other writes still require
+a working connection.
+
+Run the complete local verification suite with:
+
+```bash
+./gradlew lintDebug testDebugUnitTest assembleDebug assembleRelease
+```
+
 The app redeems the short-lived ticket returned by the SchoolDB OTP endpoint through Clerk's native Android SDK. The SDK then owns session persistence and refresh.
 
 ## Push notifications

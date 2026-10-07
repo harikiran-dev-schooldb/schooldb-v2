@@ -9,7 +9,7 @@ class TeacherRepository(
     private val api: AuthenticatedApiClient = AuthenticatedApiClient(),
 ) {
     suspend fun context(): MobileContext {
-        val data = api.get("api/v1/mobile/context")
+        val data = api.get("api/v1/mobile/context", useStaleCacheOnFailure = true)
         return MobileContext(
             userName = data.optString("userName", "SchoolDB user"),
             schoolName = data.optString("schoolName", "SchoolDB"),
@@ -19,7 +19,7 @@ class TeacherRepository(
     }
 
     suspend fun dashboard(): TeacherDashboard {
-        val data = api.get("api/v1/mobile/teacher/dashboard")
+        val data = api.get("api/v1/mobile/teacher/dashboard", useStaleCacheOnFailure = true)
         val periods = data.getJSONArray("periods").toTeachingPeriods()
         val upcoming = data.optJSONObject("upcoming")?.let { item ->
             UpcomingClasses(

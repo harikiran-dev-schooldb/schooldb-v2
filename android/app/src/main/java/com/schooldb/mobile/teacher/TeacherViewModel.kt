@@ -5,7 +5,9 @@ import androidx.lifecycle.viewModelScope
 import com.clerk.api.Clerk
 import com.clerk.api.network.serialization.errorMessage
 import com.clerk.api.network.serialization.onFailure
+import com.clerk.api.network.serialization.onSuccess
 import com.schooldb.mobile.network.ApiException
+import com.schooldb.mobile.network.ApiResponseCache
 import com.schooldb.mobile.notifications.PushNotificationManager
 import java.io.IOException
 import kotlinx.coroutines.Dispatchers
@@ -132,7 +134,9 @@ class TeacherViewModel(
     fun signOut() {
         viewModelScope.launch {
             withContext(Dispatchers.IO) { PushNotificationManager.unregisterCurrentDevice() }
-            Clerk.auth.signOut().onFailure { showMessage(it.errorMessage) }
+            Clerk.auth.signOut()
+                .onSuccess { ApiResponseCache.clear() }
+                .onFailure { showMessage(it.errorMessage) }
         }
     }
 

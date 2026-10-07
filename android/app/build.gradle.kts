@@ -61,8 +61,8 @@ android {
         applicationId = "com.schooldb.mobile"
         minSdk = 26
         targetSdk = 37
-        versionCode = 18
-        versionName = "0.3.13"
+        versionCode = 19
+        versionName = "0.3.14"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -155,7 +155,7 @@ dependencies {
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.11.0")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.11.0")
-    implementation("com.clerk:clerk-android-api:1.1.9")
+    implementation("com.clerk:clerk-android-api:1.1.11")
     implementation("com.google.firebase:firebase-messaging")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
