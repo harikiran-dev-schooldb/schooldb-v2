@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { Agent } from "undici";
 
 import {
   generateOtp,
@@ -34,14 +33,6 @@ const OTP_RATE_LIMIT_WINDOW_MS = Math.max(
 );
 const OTP_PHONE_LIMIT = Math.max(1, Number(process.env.OTP_PHONE_LIMIT) || 5);
 const OTP_IP_LIMIT = Math.max(1, Number(process.env.OTP_IP_LIMIT) || 20);
-const globalForWhatsapp = globalThis as { whatsappDispatcher?: Agent };
-const whatsappDispatcher =
-  globalForWhatsapp.whatsappDispatcher ??
-  new Agent({ connectTimeout: Math.max(10_000, WHATSAPP_TIMEOUT_MS - 10_000) });
-if (process.env.NODE_ENV !== "production") {
-  globalForWhatsapp.whatsappDispatcher = whatsappDispatcher;
-}
-
 function isConnectionTimeout(error: unknown) {
   if (!(error instanceof Error)) return false;
   if (error.name === "AbortError") return true;
@@ -50,8 +41,60 @@ function isConnectionTimeout(error: unknown) {
     cause &&
     typeof cause === "object" &&
     "code" in cause &&
-    cause.code === "UND_ERR_CONNECT_TIMEOUT",
+    ["UND_ERR_CONNECT_TIMEOUT", "ETIMEDOUT"].includes(String(cause.code)),
   );
+}
+
+function transportErrorDetails(error: unknown) {
+  if (!(error instanceof Error)) return { error: String(error) };
+  const cause = error.cause;
+  const causeCode =
+    cause && typeof cause === "object" && "code" in cause
+      ? String(cause.code)
+      : undefined;
+  return { name: error.name, message: error.message, causeCode };
+}
+
+function providerErrorDetails(payload: string) {
+  try {
+    const data = JSON.parse(payload) as {
+      error?: {
+        code?: number;
+        error_subcode?: number;
+        type?: string;
+        message?: string;
+        fbtrace_id?: string;
+      };
+    };
+    return {
+      code: data.error?.code,
+      subcode: data.error?.error_subcode,
+      type: data.error?.type,
+      message: data.error?.message,
+      traceId: data.error?.fbtrace_id,
+    };
+  } catch {
+    return { responseLength: payload.length };
+  }
+}
+
+async function discardOtpChallenge(input: {
+  schoolId: string;
+  phoneHash: string;
+  codeHash: string;
+}) {
+  try {
+    await prisma.otpChallenge.deleteMany({
+      where: {
+        schoolId: input.schoolId,
+        phoneHash: input.phoneHash,
+        codeHash: input.codeHash,
+      },
+    });
+  } catch (error) {
+    // Cleanup must never replace the provider error that caused it.
+    console.error("OTP CHALLENGE CLEANUP FAILED", transportErrorDetails(error));
+  }
 }
 
 export async function POST(request: Request) {
@@ -175,10 +218,9 @@ export async function POST(request: Request) {
     const timeout = setTimeout(() => controller.abort(), WHATSAPP_TIMEOUT_MS);
     let whatsappResponse: Response;
     try {
-      const requestOptions: RequestInit & { dispatcher: Agent } = {
+      const requestOptions: RequestInit = {
         method: "POST",
         signal: controller.signal,
-        dispatcher: whatsappDispatcher,
         headers: {
           Authorization: `Bearer ${accessToken}`,
           "Content-Type": "application/json",
@@ -189,7 +231,9 @@ export async function POST(request: Request) {
           type: "template",
           template: {
             name: process.env.META_WA_OTP_TEMPLATE || "otp_login",
-            language: { code: "en" },
+            language: {
+              code: process.env.META_WA_OTP_LANGUAGE || "en",
+            },
             components: [
               { type: "body", parameters: [{ type: "text", text: code }] },
               {
@@ -207,8 +251,15 @@ export async function POST(request: Request) {
         requestOptions,
       );
     } catch (error) {
-      await prisma.otpChallenge.deleteMany({
-        where: { schoolId: school.id, phoneHash: hashedPhone, codeHash },
+      await discardOtpChallenge({
+        schoolId: school.id,
+        phoneHash: hashedPhone,
+        codeHash,
+      });
+      console.error("WHATSAPP OTP REQUEST FAILED", {
+        requestId: request.headers.get("x-vercel-id"),
+        phoneEnding: phone.slice(-4),
+        ...transportErrorDetails(error),
       });
       if (isConnectionTimeout(error)) {
         return Response.json(
@@ -219,21 +270,46 @@ export async function POST(request: Request) {
           { status: 504 },
         );
       }
-      throw error;
+      return Response.json(
+        { error: "WhatsApp could not send the code. Please try again." },
+        { status: 502 },
+      );
     } finally {
       clearTimeout(timeout);
     }
 
-    const whatsappPayload = await whatsappResponse.text();
+    let whatsappPayload: string;
+    try {
+      whatsappPayload = await whatsappResponse.text();
+    } catch (error) {
+      await discardOtpChallenge({
+        schoolId: school.id,
+        phoneHash: hashedPhone,
+        codeHash,
+      });
+      console.error("WHATSAPP OTP RESPONSE READ FAILED", {
+        requestId: request.headers.get("x-vercel-id"),
+        phoneEnding: phone.slice(-4),
+        status: whatsappResponse.status,
+        ...transportErrorDetails(error),
+      });
+      return Response.json(
+        { error: "WhatsApp could not send the code. Please try again." },
+        { status: 502 },
+      );
+    }
 
     if (!whatsappResponse.ok) {
       console.error("WHATSAPP OTP DELIVERY FAILED", {
+        requestId: request.headers.get("x-vercel-id"),
         status: whatsappResponse.status,
         phoneEnding: phone.slice(-4),
-        responseLength: whatsappPayload.length,
+        ...providerErrorDetails(whatsappPayload),
       });
-      await prisma.otpChallenge.deleteMany({
-        where: { schoolId: school.id, phoneHash: hashedPhone, codeHash },
+      await discardOtpChallenge({
+        schoolId: school.id,
+        phoneHash: hashedPhone,
+        codeHash,
       });
       return Response.json(
         { error: "WhatsApp could not send the code. Please try again." },
