@@ -159,6 +159,8 @@ Operational messages are queued, processed in batches, retried, and audited usin
 
 Authorization is enforced on the server. Hiding a navigation item is a convenience, not the security boundary.
 
+Role-by-role operating instructions are available in the [SchoolDB User Guides](docs/user-guides/README.md).
+
 ## Technology
 
 | Layer | Stack |

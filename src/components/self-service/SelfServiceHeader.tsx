@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Building2, CalendarDays, GraduationCap, LogOut, Repeat2, Settings, Users } from "lucide-react";
+import { Building2, CalendarDays, CircleHelp, GraduationCap, LogOut, Repeat2, Settings, Users } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -67,6 +67,11 @@ export function SelfServiceHeader({
             notificationsHref={`/${schoolSlug}/my/notifications`}
             initialUnreadCount={unreadCount}
           />
+          <Button asChild variant="ghost" size="icon-sm">
+            <Link href={`/${schoolSlug}/my/guide`} aria-label="User guide">
+              <CircleHelp className="size-4" />
+            </Link>
+          </Button>
           <Button asChild variant="ghost" size="icon-sm">
             <Link href={`/${schoolSlug}/my/settings`} aria-label="Account settings">
               <Settings className="size-4" />

@@ -8,6 +8,8 @@ export const ALWAYS_AVAILABLE_ROUTES = new Set([
   "schools/route-access",
 ]);
 
+export const ALWAYS_MEMBER_ROUTES = new Set(["user-guide"]);
+
 export const BULK_OPERATION_ROUTES = [
   { title: "Copy School Setup", href: "bulk-operations/copy-school-setup" },
   { title: "Students", href: "bulk-operations/students" },
@@ -113,6 +115,7 @@ export const CONFIGURABLE_ROUTES = new Set([
 export function isRouteAllowed(config: RouteAccessConfig, href?: string) {
   if (!href || !config.routeAccessRestricted) return true;
   if (ALWAYS_AVAILABLE_ROUTES.has(href)) return true;
+  if (ALWAYS_MEMBER_ROUTES.has(href)) return true;
 
   if (href === "bulk-operations") {
     return config.allowedRoutes.some((route) =>
@@ -125,6 +128,7 @@ export function isRouteAllowed(config: RouteAccessConfig, href?: string) {
 
 const knownRoutes = [
   ...ALWAYS_AVAILABLE_ROUTES,
+  ...ALWAYS_MEMBER_ROUTES,
   ...CONFIGURABLE_ROUTES,
   "bulk-operations",
 ].sort((left, right) => right.length - left.length);
@@ -154,6 +158,7 @@ export function isSchoolPathAllowed(
 
   if (!route) return false;
   if (ALWAYS_AVAILABLE_ROUTES.has(route)) return role === "SUPER_ADMIN";
+  if (ALWAYS_MEMBER_ROUTES.has(route)) return true;
   return isRouteAllowed(config, route);
 }
 

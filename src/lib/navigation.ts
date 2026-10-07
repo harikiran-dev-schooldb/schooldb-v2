@@ -5,6 +5,7 @@ import {
   CalendarCheck,
   CalendarRange,
   ChartNoAxesCombined,
+  CircleHelp,
   FileSpreadsheet,
   GraduationCap,
   IndianRupee,
@@ -268,6 +269,12 @@ export const navigation: NavigationItem[] = [
       { title: "Parent Queries", href: "parent-queries", roles: ADMIN_ROLES },
       { title: "WhatsApp Messages", href: "whatsapp", roles: ADMIN_ROLES },
     ],
+  },
+  {
+    title: "User Guide",
+    href: "user-guide",
+    icon: CircleHelp,
+    roles: STAFF_ROLES,
   },
   {
     title: "Administration",

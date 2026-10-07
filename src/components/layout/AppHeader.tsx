@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  BookOpen,
   Building2,
   ChevronDown,
   LogOut,
@@ -148,6 +149,14 @@ export function AppHeader({ onMenuClick }: Props) {
               </div>
 
               <DropdownMenuSeparator />
+
+              <DropdownMenuItem
+                className="cursor-pointer rounded-xl py-2.5"
+                onClick={() => router.push(`/${schoolSlug}/user-guide`)}
+              >
+                <BookOpen className="mr-2 size-4" />
+                User guide
+              </DropdownMenuItem>
 
               {/* Profile */}
               {isRouteAllowed(school, "settings") && (

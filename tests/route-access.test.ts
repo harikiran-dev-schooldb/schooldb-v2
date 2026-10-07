@@ -34,6 +34,15 @@ test("super admin school-management routes cannot be hidden", () => {
   assert.equal(isRouteAllowed(config, "schools/route-access"), true);
 });
 
+test("the user guide remains available for every member", () => {
+  const config = { routeAccessRestricted: true, allowedRoutes: [] };
+  assert.equal(isRouteAllowed(config, "user-guide"), true);
+  assert.equal(
+    isSchoolPathAllowed(config, "/demo/user-guide", "demo", "TEACHER"),
+    true,
+  );
+});
+
 test("saved route lists are deduplicated and reject unknown routes", () => {
   assert.deepEqual(
     normalizeAllowedRoutes(["students", "students", "not-a-route", 12]),

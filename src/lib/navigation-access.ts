@@ -12,7 +12,11 @@ import {
 
 export type MemberRouteAccess = StaffPermissionMembership;
 
-const ALWAYS_VISIBLE_MEMBER_ROUTES = new Set(["settings", "notification-inbox"]);
+const ALWAYS_VISIBLE_MEMBER_ROUTES = new Set([
+  "settings",
+  "notification-inbox",
+  "user-guide",
+]);
 
 export function isDefaultRoleRouteAllowed(role: string, href?: string) {
   if (!href) return false;
