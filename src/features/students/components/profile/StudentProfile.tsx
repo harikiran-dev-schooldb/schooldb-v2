@@ -209,15 +209,15 @@ export function StudentProfile({ studentId }: Props) {
       <StudentProfileHeader student={student} />
       <Tabs defaultValue="overview" className="w-full">
         <div className="sticky top-0 z-10 -mx-1 bg-background/95 px-1 pb-2 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-          <div className="overflow-x-auto rounded-xl border bg-card shadow-sm">
-            <TabsList className="flex h-auto min-w-max w-full justify-start gap-1 bg-transparent p-1">
+          <div className="overflow-x-auto">
+            <TabsList className="flex h-auto min-w-max w-full justify-start gap-1">
               {visibleTabs.map((tab) => {
                 const Icon = tab.icon;
                 return (
                   <TabsTrigger
                     key={tab.value}
                     value={tab.value}
-                    className="group relative min-h-10 shrink-0 gap-2 rounded-lg px-3 text-sm font-medium text-muted-foreground transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
+                    className="group relative min-h-10 shrink-0 gap-2 px-3"
                   >
                     <Icon className="size-4" />
                     <span>{tab.label}</span>

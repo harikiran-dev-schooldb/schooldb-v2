@@ -5,6 +5,7 @@ import {
   Clock3,
   DoorOpen,
   IdCard,
+  ListChecks,
   LogOut,
   Search,
   ShieldCheck,
@@ -12,14 +13,9 @@ import {
   UsersRound,
 } from "lucide-react";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -30,11 +26,12 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { SegmentedSwitch } from "@/components/ui/segmented-switch";
+import { cn } from "@/lib/utils";
 import {
   EmptyPanel,
   Field,
   formatDateTime,
-  MetricCard,
   OperationsData,
   Row,
   SelectField,
@@ -43,9 +40,21 @@ import {
   useOperationMutation,
 } from "./shared";
 
+type View = "create" | "update";
+
+const idProofOptions = [
+  "AADHAAR",
+  "DRIVING_LICENCE",
+  "VOTER_ID",
+  "PASSPORT",
+  "EMPLOYEE_ID",
+  "OTHER",
+].map((value) => ({ value, label: titleCase(value) }));
+
 export function VisitorManager({ data }: { data: OperationsData }) {
   const { pending, mutate, submit } = useOperationMutation();
   const rows = useMemo(() => data.visitors ?? [], [data.visitors]);
+  const [view, setView] = useState<View>("create");
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("ALL");
   const [checkout, setCheckout] = useState<Row | null>(null);
@@ -65,48 +74,70 @@ export function VisitorManager({ data }: { data: OperationsData }) {
       }),
     [query, rows, status],
   );
+
   return (
-    <div className="space-y-6 pb-10">
-      <section className="rounded-3xl border border-cyan-100 bg-gradient-to-br from-white via-cyan-50/60 to-sky-50/70 p-6 shadow-sm">
-        <div className="grid gap-5 lg:grid-cols-[1.4fr_1fr] lg:items-end">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-cyan-700">
-              Campus access desk
-            </p>
-            <h2 className="mt-3 text-2xl font-bold">
-              Know who is on campus and why.
-            </h2>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-              Capture identity details, meeting purpose, vehicle information and
-              precise check-in/check-out times with an automatically generated
-              gate pass.
-            </p>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <MetricCard
-              label="On campus"
-              value={active}
-              icon={UsersRound}
-              tone="emerald"
+    <div className="pb-10">
+      <Card className="overflow-hidden rounded-[26px] border-slate-200/90 bg-white shadow-[0_18px_55px_rgba(15,23,42,0.065)]">
+        <header className="border-b border-slate-200/80 bg-gradient-to-r from-white via-white to-cyan-50/35 px-5 py-5 sm:px-6">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex min-w-0 items-start gap-3.5">
+              <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-cyan-50 text-cyan-700 ring-1 ring-cyan-100">
+                {view === "create" ? (
+                  <UserRoundPlus className="size-5" />
+                ) : (
+                  <ListChecks className="size-5" />
+                )}
+              </div>
+              <div>
+                <h2 className="text-base font-bold tracking-tight text-slate-950">
+                  {view === "create" ? "Visitor check-in" : "Update visitor visit"}
+                </h2>
+                <p className="mt-1 text-sm leading-5 text-slate-500">
+                  {view === "create"
+                    ? "Capture visitor details and issue a traceable gate pass."
+                    : "Find a visit, confirm who remains on campus, and record check-out."}
+                </p>
+              </div>
+            </div>
+
+            <SegmentedSwitch
+              value={view}
+              onChange={setView}
+              label="Visitor register view"
+              className="lg:w-[360px]"
+              options={[
+                { value: "create", label: "Create", icon: UserRoundPlus },
+                { value: "update", label: "Update", icon: ListChecks },
+              ]}
             />
-            <MetricCard label="Visits today" value={todayCount} icon={Clock3} />
           </div>
+        </header>
+
+        <div className="grid border-b border-slate-200/80 bg-slate-50/55 sm:grid-cols-3">
+          <SummaryItem
+            icon={UsersRound}
+            label="Currently on campus"
+            value={active}
+            tone="emerald"
+          />
+          <SummaryItem
+            icon={Clock3}
+            label="Visits today"
+            value={todayCount}
+            tone="cyan"
+          />
+          <SummaryItem
+            icon={IdCard}
+            label="Total visits"
+            value={rows.length}
+            tone="indigo"
+          />
         </div>
-      </section>
-      <div className="grid gap-6 xl:grid-cols-[0.8fr_1.2fr]">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <UserRoundPlus className="size-5 text-primary" />
-              Visitor check-in
-            </CardTitle>
-            <CardDescription>
-              Fields marked with an asterisk are required before issuing a pass.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
+
+        {view === "create" ? (
+          <CardContent className="px-5 py-6 sm:px-6 sm:py-7">
             <form
-              className="grid gap-4 sm:grid-cols-2"
+              className="space-y-6"
               onSubmit={(event) =>
                 submit(
                   "CHECK_IN_VISITOR",
@@ -116,114 +147,115 @@ export function VisitorManager({ data }: { data: OperationsData }) {
                 )
               }
             >
-              <Field
-                label="Visitor full name"
-                required
-                className="sm:col-span-2"
+              <FormSection
+                number="1"
+                title="Visitor and host"
+                description="Record who is entering and who they are meeting."
               >
-                <Input
-                  name="visitorName"
-                  minLength={2}
-                  maxLength={160}
-                  required
-                  placeholder="Name as shown on ID"
-                />
-              </Field>
-              <Field label="Mobile number" required>
-                <Input
-                  name="phone"
-                  type="tel"
-                  minLength={7}
-                  maxLength={24}
-                  required
-                  placeholder="Contact number"
-                />
-              </Field>
-              <Field label="Person to meet">
-                <Input
-                  name="personToMeet"
-                  maxLength={160}
-                  placeholder="Staff member or department"
-                />
-              </Field>
-              <Field
-                label="Purpose of visit"
-                required
-                className="sm:col-span-2"
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                  <Field label="Visitor full name" required>
+                    <Input
+                      name="visitorName"
+                      minLength={2}
+                      maxLength={160}
+                      required
+                      placeholder="Name as shown on ID"
+                    />
+                  </Field>
+                  <Field label="Mobile number" required>
+                    <Input
+                      name="phone"
+                      type="tel"
+                      minLength={7}
+                      maxLength={24}
+                      required
+                      placeholder="Contact number"
+                    />
+                  </Field>
+                  <Field label="Person to meet">
+                    <Input
+                      name="personToMeet"
+                      maxLength={160}
+                      placeholder="Staff member or department"
+                    />
+                  </Field>
+                  <Field
+                    label="Purpose of visit"
+                    required
+                    className="md:col-span-2 xl:col-span-3"
+                  >
+                    <Textarea
+                      name="purpose"
+                      minLength={2}
+                      maxLength={300}
+                      required
+                      placeholder="Admission enquiry, parent meeting, delivery…"
+                      className="min-h-24 resize-y"
+                    />
+                  </Field>
+                </div>
+              </FormSection>
+
+              <FormSection
+                number="2"
+                title="Identity and access details"
+                description="Store only the minimum identity information needed at the gate."
               >
-                <Textarea
-                  name="purpose"
-                  minLength={2}
-                  maxLength={300}
-                  required
-                  placeholder="Admission enquiry, parent meeting, delivery…"
-                />
-              </Field>
-              <Field label="ID proof type">
-                <SelectField
-                  name="idProofType"
-                  placeholder="Select ID proof"
-                  options={[
-                    "AADHAAR",
-                    "DRIVING_LICENCE",
-                    "VOTER_ID",
-                    "PASSPORT",
-                    "EMPLOYEE_ID",
-                    "OTHER",
-                  ].map((value) => ({ value, label: titleCase(value) }))}
-                />
-              </Field>
-              <Field
-                label="Last four ID digits"
-                hint="Only the last four digits are stored."
-              >
-                <Input
-                  name="idProofLastFour"
-                  inputMode="numeric"
-                  minLength={4}
-                  maxLength={4}
-                  placeholder="1234"
-                />
-              </Field>
-              <Field label="Vehicle number">
-                <Input
-                  name="vehicleNumber"
-                  maxLength={30}
-                  placeholder="KA 01 AB 1234"
-                />
-              </Field>
-              <Field label="Notes">
-                <Input
-                  name="notes"
-                  maxLength={500}
-                  placeholder="Items carried or special instructions"
-                />
-              </Field>
-              <div className="sm:col-span-2">
-                <Button className="w-full" disabled={pending}>
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                  <Field label="ID proof type">
+                    <SelectField
+                      name="idProofType"
+                      placeholder="Select ID proof"
+                      options={idProofOptions}
+                    />
+                  </Field>
+                  <Field
+                    label="Last four ID digits"
+                    hint="Only the last four digits are stored."
+                  >
+                    <Input
+                      name="idProofLastFour"
+                      inputMode="numeric"
+                      minLength={4}
+                      maxLength={4}
+                      placeholder="1234"
+                    />
+                  </Field>
+                  <Field label="Vehicle number">
+                    <Input
+                      name="vehicleNumber"
+                      maxLength={30}
+                      placeholder="KA 01 AB 1234"
+                    />
+                  </Field>
+                  <Field label="Notes" className="md:col-span-2 xl:col-span-3">
+                    <Input
+                      name="notes"
+                      maxLength={500}
+                      placeholder="Items carried or special instructions"
+                    />
+                  </Field>
+                </div>
+              </FormSection>
+
+              <div className="flex justify-end">
+                <Button className="w-full sm:w-auto sm:min-w-72" disabled={pending}>
                   <ShieldCheck className="size-4" />
                   Check in and issue gate pass
                 </Button>
               </div>
             </form>
           </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Visitor register</CardTitle>
-            <CardDescription>
-              Search by visitor, phone, pass code, host or purpose.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid gap-3 sm:grid-cols-[1fr_190px]">
+        ) : (
+          <CardContent className="px-5 py-6 sm:px-6 sm:py-7">
+            <div className="grid gap-3 sm:grid-cols-[1fr_220px]">
               <div className="relative">
-                <Search className="absolute left-3 top-3 size-4 text-muted-foreground" />
+                <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
                 <Input
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
-                  className="pl-9"
-                  placeholder="Search visitor register"
+                  className="h-11 rounded-2xl border-slate-200 bg-white pl-10"
+                  placeholder="Search visitor, phone, pass, host or purpose"
                 />
               </div>
               <SelectField
@@ -238,61 +270,29 @@ export function VisitorManager({ data }: { data: OperationsData }) {
                 ]}
               />
             </div>
-            {!filtered.length ? (
-              <EmptyPanel
-                title="No matching visitors"
-                description="Change the filters or check in the first visitor."
-              />
-            ) : (
-              <div className="space-y-3">
-                {filtered.map((row) => (
-                  <div key={String(row.id)} className="rounded-2xl border p-4">
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div className="flex gap-3">
-                        <div className="flex size-11 items-center justify-center rounded-xl bg-cyan-50 text-cyan-700">
-                          <IdCard className="size-5" />
-                        </div>
-                        <div>
-                          <p className="font-bold">{String(row.visitorName)}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {String(row.phone)} · {String(row.purpose)}
-                          </p>
-                        </div>
-                      </div>
-                      <StatusBadge value={row.status} />
-                    </div>
-                    <div className="mt-4 grid gap-2 border-t pt-4 text-xs text-muted-foreground sm:grid-cols-3">
-                      <span>
-                        Pass{" "}
-                        <strong className="text-foreground">
-                          {String(row.gatePassCode)}
-                        </strong>
-                      </span>
-                      <span>In {formatDateTime(row.checkInAt)}</span>
-                      <span>Meeting {String(row.personToMeet ?? "—")}</span>
-                    </div>
-                    {row.status === "CHECKED_IN" ? (
-                      <Button
-                        size="sm"
-                        className="mt-4"
-                        variant="outline"
-                        onClick={() => setCheckout(row)}
-                      >
-                        <LogOut className="size-4" />
-                        Check out visitor
-                      </Button>
-                    ) : (
-                      <p className="mt-3 text-xs text-muted-foreground">
-                        Checked out {formatDateTime(row.checkOutAt)}
-                      </p>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
+
+            <div className="mt-5">
+              {!filtered.length ? (
+                <EmptyPanel
+                  title="No matching visitors"
+                  description="Change the filters or create the first visitor check-in."
+                />
+              ) : (
+                <div className="grid gap-4 2xl:grid-cols-2">
+                  {filtered.map((row) => (
+                    <VisitorCard
+                      key={String(row.id)}
+                      row={row}
+                      onCheckout={() => setCheckout(row)}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
           </CardContent>
-        </Card>
-      </div>
+        )}
+      </Card>
+
       <Dialog
         open={Boolean(checkout)}
         onOpenChange={(open) => {
@@ -308,12 +308,12 @@ export function VisitorManager({ data }: { data: OperationsData }) {
               register.
             </DialogDescription>
           </DialogHeader>
-          <div className="rounded-2xl border bg-muted/25 p-4 text-sm">
+          <div className="rounded-2xl border border-cyan-100 bg-cyan-50/50 p-4 text-sm">
             <p className="flex items-center gap-2 font-semibold">
-              <DoorOpen className="size-4" />
+              <DoorOpen className="size-4 text-cyan-700" />
               Gate pass {String(checkout?.gatePassCode ?? "")}
             </p>
-            <p className="mt-2 text-muted-foreground">
+            <p className="mt-2 text-slate-500">
               Checked in {formatDateTime(checkout?.checkInAt)}
             </p>
           </div>
@@ -341,5 +341,120 @@ export function VisitorManager({ data }: { data: OperationsData }) {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+function SummaryItem({
+  icon: Icon,
+  label,
+  value,
+  tone,
+}: {
+  icon: typeof UsersRound;
+  label: string;
+  value: number;
+  tone: "emerald" | "cyan" | "indigo";
+}) {
+  const colors = {
+    emerald: "bg-emerald-50 text-emerald-600 ring-emerald-100",
+    cyan: "bg-cyan-50 text-cyan-700 ring-cyan-100",
+    indigo: "bg-indigo-50 text-indigo-600 ring-indigo-100",
+  }[tone];
+
+  return (
+    <div className="flex items-center gap-3 border-b border-slate-200/70 px-5 py-3.5 last:border-b-0 sm:border-b-0 sm:border-r sm:last:border-r-0 sm:px-6">
+      <span
+        className={cn(
+          "flex size-9 items-center justify-center rounded-xl ring-1",
+          colors,
+        )}
+      >
+        <Icon className="size-4" />
+      </span>
+      <div>
+        <p className="text-lg font-black leading-none text-slate-950">{value}</p>
+        <p className="mt-1 text-xs font-medium text-slate-500">{label}</p>
+      </div>
+    </div>
+  );
+}
+
+function FormSection({
+  number,
+  title,
+  description,
+  children,
+}: {
+  number: string;
+  title: string;
+  description: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-[0_8px_28px_rgba(15,23,42,0.035)] sm:p-6">
+      <div className="mb-5 flex items-start gap-3 border-b border-slate-100 pb-4">
+        <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-cyan-50 text-xs font-black text-cyan-700 ring-1 ring-cyan-100">
+          {number}
+        </span>
+        <div>
+          <h3 className="text-sm font-bold text-slate-950">{title}</h3>
+          <p className="mt-0.5 text-xs leading-5 text-slate-500">{description}</p>
+        </div>
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function VisitorCard({
+  row,
+  onCheckout,
+}: {
+  row: Row;
+  onCheckout: () => void;
+}) {
+  const onCampus = row.status === "CHECKED_IN";
+  return (
+    <article className="relative overflow-hidden rounded-2xl border border-slate-200/90 bg-white p-4 pl-5 shadow-[0_8px_28px_rgba(15,23,42,0.045)] sm:p-5 sm:pl-6">
+      <div
+        className={cn(
+          "absolute inset-y-0 left-0 w-1",
+          onCampus ? "bg-emerald-400" : "bg-slate-300",
+        )}
+      />
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex min-w-0 gap-3">
+          <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-cyan-50 text-cyan-700 ring-1 ring-cyan-100">
+            <IdCard className="size-5" />
+          </div>
+          <div className="min-w-0">
+            <p className="truncate font-bold text-slate-950">
+              {String(row.visitorName)}
+            </p>
+            <p className="mt-0.5 truncate text-sm text-slate-500">
+              {String(row.phone)} · {String(row.purpose)}
+            </p>
+          </div>
+        </div>
+        <StatusBadge value={row.status} />
+      </div>
+      <div className="mt-4 grid gap-2 border-t border-slate-100 pt-4 text-xs text-slate-500 sm:grid-cols-3">
+        <span>
+          Pass <strong className="text-slate-800">{String(row.gatePassCode)}</strong>
+        </span>
+        <span>In {formatDateTime(row.checkInAt)}</span>
+        <span>Meeting {String(row.personToMeet ?? "—")}</span>
+      </div>
+      {onCampus ? (
+        <Button size="sm" className="mt-4" variant="outline" onClick={onCheckout}>
+          <LogOut className="size-4" />
+          Check out visitor
+        </Button>
+      ) : (
+        <Badge className="mt-4" variant="outline">
+          Checked out {formatDateTime(row.checkOutAt)}
+        </Badge>
+      )}
+    </article>
   );
 }

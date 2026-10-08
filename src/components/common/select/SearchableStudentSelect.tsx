@@ -205,7 +205,7 @@ export function SearchableStudentSelect({
 
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <AcademicFilter
           id={`student-syllabus-${generatedId}`}
           label="Syllabus"
@@ -227,7 +227,7 @@ export function SearchableStudentSelect({
           value={branchId}
           options={branches}
           placeholder="All branches"
-          disabled={isDisabled || !syllabusId}
+          disabled={isDisabled}
           onChange={(next) => {
             setBranchId(next);
             setClassId("");
@@ -241,7 +241,7 @@ export function SearchableStudentSelect({
           value={classId}
           options={classes}
           placeholder="All classes"
-          disabled={isDisabled || !branchId}
+          disabled={isDisabled}
           onChange={(next) => {
             setClassId(next);
             setSectionId("");
@@ -254,7 +254,7 @@ export function SearchableStudentSelect({
           value={sectionId}
           options={sections}
           placeholder="All sections"
-          disabled={isDisabled || !classId}
+          disabled={isDisabled}
           onChange={(next) => {
             setSectionId(next);
             clearStudent();
@@ -399,10 +399,17 @@ function AcademicFilter({
         disabled={disabled}
         onValueChange={(next) => onChange(next === "ALL" ? "" : next)}
       >
-        <SelectTrigger id={id} className="h-10 w-full">
+        <SelectTrigger
+          id={id}
+          aria-label={`${label} filter`}
+          className="h-10 w-full bg-background"
+        >
           <SelectValue placeholder={placeholder} />
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent
+          align="start"
+          className="min-w-[var(--radix-select-trigger-width)]"
+        >
           <SelectItem value="ALL">{placeholder}</SelectItem>
           {options.map((option) => (
             <SelectItem key={option.value} value={option.value}>

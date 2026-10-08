@@ -15,18 +15,12 @@ export default function TimetablePage() {
       />
 
       <Tabs defaultValue="grid" className="mt-6 space-y-5">
-        <TabsList className="h-11 rounded-xl border bg-muted/50 p-1">
-          <TabsTrigger
-            value="grid"
-            className="rounded-lg px-5 text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm"
-          >
+        <TabsList className="grid w-full grid-cols-2 sm:w-[420px]">
+          <TabsTrigger value="grid">
             Weekly View
           </TabsTrigger>
 
-          <TabsTrigger
-            value="manage"
-            className="rounded-lg px-5 text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm"
-          >
+          <TabsTrigger value="manage">
             Manage Entries
           </TabsTrigger>
         </TabsList>

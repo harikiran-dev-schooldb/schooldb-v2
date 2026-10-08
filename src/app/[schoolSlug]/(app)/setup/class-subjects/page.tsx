@@ -12,6 +12,7 @@ import {
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/common/PageHeader";
+import { CreateUpdateView } from "@/components/common/CreateUpdateView";
 import { RemoteCombobox } from "@/components/common/combobox/RemoteCombobox";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -197,7 +198,10 @@ export default function ClassSubjectsPage() {
         <span>Class Subjects</span>
       </div>
 
-      {/* Assignment controls */}
+      <CreateUpdateView
+        label="Class subject workspace view"
+        createLabel="Assign"
+        create={
       <Card className="premium-card overflow-hidden rounded-2xl border-0">
         <CardHeader className="border-b border-border/60 px-6 py-5">
           <div className="flex items-center gap-3">
@@ -273,8 +277,9 @@ export default function ClassSubjectsPage() {
           </div>
         </CardContent>
       </Card>
+        }
 
-      {/* Class → Subjects */}
+        update={
       <Card className="premium-card overflow-hidden rounded-2xl border-0">
         <CardHeader className="border-b border-border/60 px-6 py-5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -396,6 +401,8 @@ export default function ClassSubjectsPage() {
           )}
         </CardContent>
       </Card>
+        }
+      />
 
       {/* Information */}
       <div className="flex items-start gap-3 rounded-2xl border border-primary/15 bg-primary/[0.03] p-5">

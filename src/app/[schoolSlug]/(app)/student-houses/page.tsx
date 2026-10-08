@@ -35,6 +35,8 @@ import {
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { SegmentedSwitch } from "@/components/ui/segmented-switch";
+import { cn } from "@/lib/utils";
 
 type House = {
   id: string;
@@ -91,6 +93,7 @@ export default function StudentHousesPage() {
     enrollments: [],
   });
   const [yearId, setYearId] = useState("");
+  const [view, setView] = useState<"houses" | "create" | "allocate">("houses");
   const [houseId, setHouseId] = useState("");
   const [houseFilter, setHouseFilter] = useState(initialHouseId);
   const [classId, setClassId] = useState("ALL");
@@ -257,7 +260,18 @@ export default function StudentHousesPage() {
         title="Student Houses"
         description="Create school houses and allocate students house-wise for each academic year."
       />
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <SegmentedSwitch
+        value={view}
+        onChange={setView}
+        label="Student houses workspace view"
+        className="w-full lg:w-[620px]"
+        options={[
+          { value: "houses", label: "Houses", icon: Shield },
+          { value: "create", label: "Create", icon: Plus },
+          { value: "allocate", label: "Allocate", icon: Users },
+        ]}
+      />
+      <div className={cn("grid gap-4 md:grid-cols-2 xl:grid-cols-4", view !== "houses" && "hidden")}>
         {data.houses.map((h) => (
           <Card
             key={h.id}
@@ -302,7 +316,7 @@ export default function StudentHousesPage() {
           </Card>
         ))}
       </div>
-      <Card>
+      <Card className={cn(view !== "create" && "hidden")}>
         <CardContent className="p-5">
           <div className="mb-4 flex items-center gap-2 font-semibold">
             <Plus className="size-4" />
@@ -330,7 +344,7 @@ export default function StudentHousesPage() {
           </div>
         </CardContent>
       </Card>
-      <Card>
+      <Card className={cn(view !== "allocate" && "hidden")}>
         <CardContent className="p-5">
           <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-end">
             <div className="min-w-48">

@@ -216,7 +216,7 @@ export function StaffOperationsManager({ data }: { data: OperationsData }) {
       </div>
 
       <Tabs defaultValue="attendance" className="space-y-5">
-        <TabsList className="h-auto flex-wrap">
+        <TabsList className="h-auto w-full justify-start overflow-x-auto lg:w-auto">
           <TabsTrigger value="attendance">Attendance</TabsTrigger>
           <TabsTrigger value="attendance-report">Attendance report</TabsTrigger>
           <TabsTrigger value="leave">Leave approvals</TabsTrigger>

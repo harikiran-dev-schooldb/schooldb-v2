@@ -64,6 +64,7 @@ export type OperationsData = {
   metrics?: Row;
 };
 
+
 export const titleCase = (value: unknown) =>
   String(value ?? "—")
     .replaceAll("_", " ")

@@ -229,7 +229,7 @@ function TransportWorkspace({
       </section>
 
       <Tabs defaultValue="fleet">
-        <TabsList className="w-full justify-start overflow-x-auto sm:w-auto">
+        <TabsList className="grid w-full grid-cols-3 overflow-x-auto lg:w-[620px]">
           <TabsTrigger value="fleet">
             <BusFront className="mr-2 size-4" />
             Fleet

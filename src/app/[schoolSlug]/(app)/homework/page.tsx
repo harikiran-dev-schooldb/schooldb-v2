@@ -1,6 +1,7 @@
 "use client";
 
 import { PageContainer, PageHeader } from "@/components/common/layout";
+import { CreateUpdateView } from "@/components/common/CreateUpdateView";
 import { HomeworkForm, HomeworkTable } from "@/features/homework";
 
 export default function HomeworkPage() {
@@ -11,8 +12,11 @@ export default function HomeworkPage() {
         description="Create and publish classwork with the same clear workflow as school notifications."
       />
 
-      <HomeworkForm mode="create" />
-      <HomeworkTable className="mt-8" />
+      <CreateUpdateView
+        label="Homework workspace view"
+        create={<HomeworkForm mode="create" />}
+        update={<HomeworkTable />}
+      />
     </PageContainer>
   );
 }

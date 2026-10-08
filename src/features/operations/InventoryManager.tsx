@@ -17,6 +17,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { SegmentedSwitch } from "@/components/ui/segmented-switch";
+import { cn } from "@/lib/utils";
 import {
   EmptyPanel,
   EntityCombobox,
@@ -54,6 +56,7 @@ export function InventoryManager({ data }: { data: OperationsData }) {
   const { pending, submit } = useOperationMutation();
   const items = useMemo(() => data.items ?? [], [data.items]);
   const [movementItem, setMovementItem] = useState("");
+  const [view, setView] = useState<"items" | "create" | "movement">("items");
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("ALL");
   const itemOptions = items.map((item) => ({
@@ -101,7 +104,19 @@ export function InventoryManager({ data }: { data: OperationsData }) {
         <MetricCard label="Locations" value={new Set(items.map((item) => item.location).filter(Boolean)).size} detail="Locations in use" icon={Warehouse} />
       </div>
 
-      <Card>
+      <SegmentedSwitch
+        value={view}
+        onChange={setView}
+        label="Inventory workspace view"
+        className="w-full lg:w-[620px]"
+        options={[
+          { value: "items", label: "Items", icon: Boxes },
+          { value: "create", label: "Create", icon: PackagePlus },
+          { value: "movement", label: "Stock movement", icon: ArrowDownToLine },
+        ]}
+      />
+
+      <Card className={cn(view !== "items" && "hidden")}>
         <CardHeader className="gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <CardTitle>Items in school</CardTitle>
@@ -130,8 +145,8 @@ export function InventoryManager({ data }: { data: OperationsData }) {
         </CardContent>
       </Card>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
+      <div className={cn("grid gap-4", view === "items" && "hidden")}>
+        <Card className={cn(view !== "create" && "hidden")}>
           <CardHeader>
             <CardTitle>Add an item</CardTitle>
             <CardDescription>Create the item once. You can receive more stock later without editing its identity.</CardDescription>
@@ -154,7 +169,7 @@ export function InventoryManager({ data }: { data: OperationsData }) {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className={cn(view !== "movement" && "hidden")}>
           <CardHeader>
             <CardTitle>Receive or issue stock</CardTitle>
             <CardDescription>Choose the item, then enter the quantity that moved. The balance cannot go below zero.</CardDescription>
@@ -174,7 +189,7 @@ export function InventoryManager({ data }: { data: OperationsData }) {
         </Card>
       </div>
 
-      <Card>
+      <Card className={cn(view !== "movement" && "hidden")}>
         <CardHeader><CardTitle>Recent movements</CardTitle><CardDescription>The latest stock changes are kept for a quick audit trail.</CardDescription></CardHeader>
         <CardContent className="space-y-2">
           {!recentMovements.length ? <EmptyPanel title="No movements yet" description="Receiving or issuing stock will appear here." /> : recentMovements.map((row) => <MovementRow key={String(row.id)} row={row} />)}

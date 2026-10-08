@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
+import { CreateUpdateView } from "@/components/common/CreateUpdateView";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ExpenseForm } from "@/features/expenses/ExpenseForm";
 import { VoidExpenseButton } from "@/features/expenses/VoidExpenseButton";
@@ -196,11 +197,17 @@ export default async function ExpensesPage({ params }: { params: Promise<{ schoo
         <ExpenseMetricCard title="Top Category" value={categories[0] ? displayLabel(categories[0].category) : "—"} description={categories[0] ? formatCurrency(categories[0].amount) : "No expenses recorded"} icon={Tags} tone="orange" />
       </section>
 
-      <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1.55fr)_minmax(320px,0.75fr)]">
-        {canManage ? <ExpenseForm schoolSlug={schoolSlug} defaultDate={now.toISOString().slice(0, 10)} /> : null}
-        <CategoryBreakdown categories={categories} total={allTimeTotal} />
-      </div>
-
+      <CreateUpdateView
+        label="Expense workspace view"
+        createLabel={canManage ? "Create" : "Overview"}
+        updateLabel={canManage ? "Update" : "Ledger"}
+        create={
+          <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1.55fr)_minmax(320px,0.75fr)]">
+            {canManage ? <ExpenseForm schoolSlug={schoolSlug} defaultDate={now.toISOString().slice(0, 10)} /> : null}
+            <CategoryBreakdown categories={categories} total={allTimeTotal} />
+          </div>
+        }
+        update={
       <Card className="overflow-hidden rounded-2xl border-border/60 shadow-sm">
         <CardHeader className="flex flex-row items-center justify-between border-b bg-muted/20 px-5 py-5 sm:px-6">
           <div>
@@ -279,6 +286,8 @@ export default async function ExpensesPage({ params }: { params: Promise<{ schoo
           )}
         </CardContent>
       </Card>
+        }
+      />
     </div>
   );
 }
