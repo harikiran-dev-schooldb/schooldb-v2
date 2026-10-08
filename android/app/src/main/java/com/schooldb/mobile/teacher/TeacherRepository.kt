@@ -7,8 +7,18 @@ import org.json.JSONObject
 class TeacherRepository(
     private val api: AuthenticatedApiClient = AuthenticatedApiClient(),
 ) {
-    suspend fun context(): MobileContext {
-        val data = api.get("api/v1/mobile/context", useStaleCacheOnFailure = true)
+    companion object {
+        private const val DASHBOARD_CACHE_MILLIS = 2 * 60 * 1000L
+        private const val CONTEXT_CACHE_MILLIS = 10 * 60 * 1000L
+    }
+
+    suspend fun context(forceRefresh: Boolean = false): MobileContext {
+        val data = api.get(
+            "api/v1/mobile/context",
+            cacheTtlMillis = CONTEXT_CACHE_MILLIS,
+            forceRefresh = forceRefresh,
+            useStaleCacheOnFailure = true,
+        )
         return MobileContext(
             userName = data.optString("userName", "SchoolDB user"),
             schoolName = data.optString("schoolName", "SchoolDB"),
@@ -17,8 +27,13 @@ class TeacherRepository(
         )
     }
 
-    suspend fun dashboard(): TeacherDashboard {
-        val data = api.get("api/v1/mobile/teacher/dashboard", useStaleCacheOnFailure = true)
+    suspend fun dashboard(forceRefresh: Boolean = false): TeacherDashboard {
+        val data = api.get(
+            "api/v1/mobile/teacher/dashboard",
+            cacheTtlMillis = DASHBOARD_CACHE_MILLIS,
+            forceRefresh = forceRefresh,
+            useStaleCacheOnFailure = true,
+        )
         val periods = data.getJSONArray("periods").toTeachingPeriods()
         val upcoming = data.optJSONObject("upcoming")?.let { item ->
             UpcomingClasses(

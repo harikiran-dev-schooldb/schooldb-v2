@@ -7,11 +7,22 @@ import org.json.JSONObject
 class FamilyRepository(
     private val api: AuthenticatedApiClient = AuthenticatedApiClient(),
 ) {
+    companion object {
+        private const val DASHBOARD_CACHE_MILLIS = 2 * 60 * 1000L
+        private const val DETAILS_CACHE_MILLIS = 2 * 60 * 1000L
+        private const val NOTIFICATIONS_CACHE_MILLIS = 60 * 1000L
+    }
+
     private fun JSONObject.optionalText(key: String): String? =
         if (isNull(key)) null else optString(key).takeIf(String::isNotBlank)
 
-    suspend fun dashboard(): FamilyDashboard {
-        val data = api.get("api/v1/mobile/family/dashboard", useStaleCacheOnFailure = true)
+    suspend fun dashboard(forceRefresh: Boolean = false): FamilyDashboard {
+        val data = api.get(
+            "api/v1/mobile/family/dashboard",
+            cacheTtlMillis = DASHBOARD_CACHE_MILLIS,
+            forceRefresh = forceRefresh,
+            useStaleCacheOnFailure = true,
+        )
         val studentsJson = data.optJSONArray("students") ?: JSONArray()
         val students = buildList {
             repeat(studentsJson.length()) { index ->
@@ -64,11 +75,36 @@ class FamilyRepository(
         )
     }
 
-    suspend fun details(studentId: String): FamilyStudentDetails {
+    suspend fun details(
+        studentId: String,
+        forceRefresh: Boolean = false,
+        attendanceAcademicYearId: String? = null,
+    ): FamilyStudentDetails {
+        val attendanceQuery = attendanceAcademicYearId
+            ?.takeIf(String::isNotBlank)
+            ?.let { "?academicYearId=$it" }
+            .orEmpty()
         val data = api.get(
-            "api/v1/mobile/family/student/$studentId/details",
+            "api/v1/mobile/family/student/$studentId/details$attendanceQuery",
+            cacheTtlMillis = DETAILS_CACHE_MILLIS,
+            forceRefresh = forceRefresh,
             useStaleCacheOnFailure = true,
         )
+        val academicYearsJson = data.optJSONArray("attendanceAcademicYears") ?: JSONArray()
+        val attendanceAcademicYears = buildList {
+            repeat(academicYearsJson.length()) { index ->
+                val item = academicYearsJson.getJSONObject(index)
+                add(
+                    FamilyAcademicYear(
+                        id = item.getString("id"),
+                        name = item.optString("name", "Academic year"),
+                        startDate = item.optString("startDate"),
+                        endDate = item.optString("endDate"),
+                        active = item.optBoolean("active"),
+                    ),
+                )
+            }
+        }
         val attendanceJson = data.optJSONObject("attendance")
         val attendance = attendanceJson?.let {
             val summary = it.getJSONObject("summary")
@@ -301,15 +337,17 @@ class FamilyRepository(
         }
 
         return FamilyStudentDetails(
-            attendance,
-            homework,
-            fees,
-            results,
-            timetable,
-            leaveRequests,
-            calendarEvents,
-            transport,
-            libraryLoans,
+            attendanceAcademicYears = attendanceAcademicYears,
+            selectedAttendanceAcademicYearId = data.optionalText("selectedAttendanceAcademicYearId"),
+            attendance = attendance,
+            homework = homework,
+            fees = fees,
+            results = results,
+            timetable = timetable,
+            leaveRequests = leaveRequests,
+            calendarEvents = calendarEvents,
+            transport = transport,
+            libraryLoans = libraryLoans,
         )
     }
 
@@ -330,9 +368,11 @@ class FamilyRepository(
         )
     }
 
-    suspend fun notifications(): Pair<Int, List<FamilyNotification>> {
+    suspend fun notifications(forceRefresh: Boolean = false): Pair<Int, List<FamilyNotification>> {
         val data = api.get(
             "api/v1/mobile/family/notifications",
+            cacheTtlMillis = NOTIFICATIONS_CACHE_MILLIS,
+            forceRefresh = forceRefresh,
             useStaleCacheOnFailure = true,
         )
         val rows = data.optJSONArray("items") ?: JSONArray()

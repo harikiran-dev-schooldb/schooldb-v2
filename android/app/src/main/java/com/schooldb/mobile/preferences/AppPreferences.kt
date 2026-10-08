@@ -15,12 +15,14 @@ enum class StartTabPreference {
 data class AppPreferenceState(
     val showNoticeBadges: Boolean = true,
     val startTab: StartTabPreference = StartTabPreference.HOME,
+    val secureReentry: Boolean = false,
 )
 
 object AppPreferences {
     private const val FILE_NAME = "schooldb_preferences"
     private const val KEY_NOTICE_BADGES = "show_notice_badges"
     private const val KEY_START_TAB = "start_tab"
+    private const val KEY_SECURE_REENTRY = "secure_reentry"
 
     private lateinit var sharedPreferences: SharedPreferences
     private val mutableState = MutableStateFlow(AppPreferenceState())
@@ -42,6 +44,11 @@ object AppPreferences {
         mutableState.value = mutableState.value.copy(startTab = value)
     }
 
+    fun setSecureReentry(value: Boolean) {
+        preferences().edit { putBoolean(KEY_SECURE_REENTRY, value) }
+        mutableState.value = mutableState.value.copy(secureReentry = value)
+    }
+
     fun reset() {
         preferences().edit { clear() }
         mutableState.value = AppPreferenceState()
@@ -54,6 +61,7 @@ object AppPreferences {
             startTab = values.getString(KEY_START_TAB, null)
                 ?.let { runCatching { StartTabPreference.valueOf(it) }.getOrNull() }
                 ?: StartTabPreference.HOME,
+            secureReentry = values.getBoolean(KEY_SECURE_REENTRY, false),
         )
     }
 

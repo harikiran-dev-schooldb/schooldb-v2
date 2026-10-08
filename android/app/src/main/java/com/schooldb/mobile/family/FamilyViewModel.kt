@@ -17,16 +17,18 @@ class FamilyViewModel(
     private val _uiState = MutableStateFlow(FamilyUiState())
     val uiState: StateFlow<FamilyUiState> = _uiState.asStateFlow()
 
-    fun refresh() = loadDashboard(clearPrevious = false)
+    fun load() = loadDashboard(clearPrevious = false, forceRefresh = false)
 
-    fun refreshForAccountChange() = loadDashboard(clearPrevious = true)
+    fun refresh() = loadDashboard(clearPrevious = false, forceRefresh = true)
 
-    private fun loadDashboard(clearPrevious: Boolean) {
+    fun refreshForAccountChange() = loadDashboard(clearPrevious = true, forceRefresh = true)
+
+    private fun loadDashboard(clearPrevious: Boolean, forceRefresh: Boolean) {
         _uiState.value = if (clearPrevious) FamilyUiState(loading = true)
             else _uiState.value.copy(loading = true, error = null)
         viewModelScope.launch {
             try {
-                val dashboard = withContext(Dispatchers.IO) { repository.dashboard() }
+                val dashboard = withContext(Dispatchers.IO) { repository.dashboard(forceRefresh) }
                 val previousSelection = _uiState.value.selectedStudentId
                 val selectedId = dashboard.students
                     .firstOrNull { it.id == previousSelection }
@@ -39,8 +41,8 @@ class FamilyViewModel(
                     detailsLoading = selectedId != null,
                     notificationsLoading = true,
                 )
-                if (selectedId != null) viewModelScope.launch { loadDetails(selectedId) }
-                viewModelScope.launch { loadNotifications() }
+                if (selectedId != null) viewModelScope.launch { loadDetails(selectedId, forceRefresh) }
+                viewModelScope.launch { loadNotifications(forceRefresh) }
             } catch (error: Exception) {
                 val message = when (error) {
                     is ApiException -> error.message ?: "SchoolDB request failed."
@@ -59,16 +61,30 @@ class FamilyViewModel(
                 details = null,
                 detailsLoading = true,
                 detailsError = null,
+                attendanceAcademicYearId = null,
                 leaveMessage = null,
             )
-            viewModelScope.launch { loadDetails(studentId) }
+            viewModelScope.launch { loadDetails(studentId, forceRefresh = false) }
         }
     }
 
     fun refreshDetails() {
         val studentId = _uiState.value.selectedStudentId ?: return
         _uiState.value = _uiState.value.copy(detailsLoading = true, detailsError = null)
-        viewModelScope.launch { loadDetails(studentId) }
+        viewModelScope.launch { loadDetails(studentId, forceRefresh = true) }
+    }
+
+    fun selectAttendanceAcademicYear(academicYearId: String) {
+        val studentId = _uiState.value.selectedStudentId ?: return
+        if (_uiState.value.attendanceAcademicYearId == academicYearId) return
+        _uiState.value = _uiState.value.copy(
+            attendanceAcademicYearId = academicYearId,
+            detailsLoading = true,
+            detailsError = null,
+        )
+        viewModelScope.launch {
+            loadDetails(studentId, forceRefresh = false, academicYearId = academicYearId)
+        }
     }
 
     fun refreshNotifications() {
@@ -76,7 +92,7 @@ class FamilyViewModel(
             notificationsLoading = true,
             notificationsError = null,
         )
-        viewModelScope.launch { loadNotifications() }
+        viewModelScope.launch { loadNotifications(forceRefresh = true) }
     }
 
     fun markNotificationRead(id: String) {
@@ -103,7 +119,7 @@ class FamilyViewModel(
                         leaveSaving = false,
                         leaveMessage = "Leave request submitted for review.",
                     )
-                    loadDetails(studentId)
+                    loadDetails(studentId, forceRefresh = true)
                 }
             } catch (error: Exception) {
                 if (_uiState.value.selectedStudentId == studentId) {
@@ -127,7 +143,7 @@ class FamilyViewModel(
                         leaveSaving = false,
                         leaveMessage = "Leave request cancelled.",
                     )
-                    loadDetails(studentId)
+                    loadDetails(studentId, forceRefresh = true)
                 }
             } catch (error: Exception) {
                 if (_uiState.value.selectedStudentId == studentId) {
@@ -140,14 +156,21 @@ class FamilyViewModel(
         }
     }
 
-    private suspend fun loadDetails(studentId: String) {
+    private suspend fun loadDetails(
+        studentId: String,
+        forceRefresh: Boolean,
+        academicYearId: String? = _uiState.value.attendanceAcademicYearId,
+    ) {
         try {
-            val details = withContext(Dispatchers.IO) { repository.details(studentId) }
+            val details = withContext(Dispatchers.IO) {
+                repository.details(studentId, forceRefresh, academicYearId)
+            }
             if (_uiState.value.selectedStudentId == studentId) {
                 _uiState.value = _uiState.value.copy(
                     details = details,
                     detailsLoading = false,
                     detailsError = null,
+                    attendanceAcademicYearId = details.selectedAttendanceAcademicYearId,
                 )
             }
         } catch (error: Exception) {
@@ -165,10 +188,10 @@ class FamilyViewModel(
         }
     }
 
-    private suspend fun loadNotifications() {
+    private suspend fun loadNotifications(forceRefresh: Boolean) {
         try {
             val (unreadCount, notifications) = withContext(Dispatchers.IO) {
-                repository.notifications()
+                repository.notifications(forceRefresh)
             }
             _uiState.value = _uiState.value.copy(
                 notifications = notifications,

@@ -1,6 +1,8 @@
 package com.schooldb.mobile.ui
 
 import android.Manifest
+import android.app.Activity
+import android.app.KeyguardManager
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
@@ -49,11 +51,13 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -74,6 +78,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.schooldb.mobile.R
 import com.schooldb.mobile.auth.AuthStep
@@ -82,6 +87,9 @@ import com.schooldb.mobile.auth.AccountSwitchScreen
 import com.schooldb.mobile.auth.SchoolAccount
 import com.schooldb.mobile.teacher.TeacherDashboardScreen
 import com.schooldb.mobile.notifications.PushNotificationManager
+import com.schooldb.mobile.preferences.AppPreferences
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import kotlinx.coroutines.delay
 
 @Composable
@@ -95,7 +103,15 @@ fun SchoolDbApp(
     var showAccountSwitcher by rememberSaveable { mutableStateOf(false) }
     var showNotificationSettings by rememberSaveable { mutableStateOf(false) }
     var portalRefreshKey by rememberSaveable { mutableIntStateOf(0) }
+    var appLocked by rememberSaveable { mutableStateOf(false) }
+    var unlockAttempt by rememberSaveable { mutableIntStateOf(0) }
+    var hasBackgrounded by rememberSaveable { mutableStateOf(false) }
     val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val preferences by AppPreferences.state.collectAsStateWithLifecycle()
+    val unlockLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult(),
+    ) { result -> appLocked = result.resultCode != Activity.RESULT_OK }
     val notificationPermission = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
     ) { granted ->
@@ -125,6 +141,34 @@ fun SchoolDbApp(
         if (state.step == AuthStep.SignedIn && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             showNotificationSettings = PushNotificationManager.permissionWasRequested(context) &&
                 !androidx.core.app.NotificationManagerCompat.from(context).areNotificationsEnabled()
+        }
+    }
+
+    DisposableEffect(lifecycleOwner, state.step, preferences.secureReentry) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_STOP &&
+                state.step == AuthStep.SignedIn && preferences.secureReentry
+            ) {
+                hasBackgrounded = true
+                appLocked = true
+            }
+            if (state.step != AuthStep.SignedIn) {
+                appLocked = false
+                hasBackgrounded = false
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
+    LaunchedEffect(appLocked, unlockAttempt, state.step, preferences.secureReentry) {
+        if (!appLocked || !hasBackgrounded || state.step != AuthStep.SignedIn || !preferences.secureReentry) return@LaunchedEffect
+        val intent = context.schoolDbUnlockIntent()
+        if (intent == null) {
+            AppPreferences.setSecureReentry(false)
+            appLocked = false
+        } else {
+            unlockLauncher.launch(intent)
         }
     }
 
@@ -182,6 +226,25 @@ fun SchoolDbApp(
                     )
                 }
             }
+            if (appLocked && state.step == AuthStep.SignedIn) {
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background,
+                ) {
+                    Column(
+                        Modifier.fillMaxSize().padding(32.dp),
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        Icon(Icons.Default.School, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(54.dp))
+                        Text("SchoolDB is locked", Modifier.padding(top = 18.dp), fontWeight = FontWeight.Bold, fontSize = 24.sp)
+                        Text("Confirm your device lock to continue.", Modifier.padding(top = 7.dp), color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+                        Button(onClick = { unlockAttempt += 1 }, modifier = Modifier.padding(top = 22.dp)) {
+                            Text("Unlock SchoolDB")
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -204,6 +267,13 @@ fun SchoolDbApp(
         )
     }
 }
+
+@Suppress("DEPRECATION")
+private fun android.content.Context.schoolDbUnlockIntent(): Intent? =
+    getSystemService(KeyguardManager::class.java).createConfirmDeviceCredentialIntent(
+        "Unlock SchoolDB",
+        "Confirm your device lock to protect school information.",
+    )
 
 @Composable
 private fun SignInScreen(loading: Boolean, onSendOtp: (String, String) -> Unit) {

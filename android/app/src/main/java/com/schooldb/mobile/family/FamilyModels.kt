@@ -52,6 +52,14 @@ data class FamilyAttendanceRecord(
     val remarks: String?,
 )
 
+data class FamilyAcademicYear(
+    val id: String,
+    val name: String,
+    val startDate: String,
+    val endDate: String,
+    val active: Boolean,
+)
+
 data class FamilyAttendanceDetails(
     val total: Int,
     val present: Int,
@@ -201,6 +209,8 @@ data class FamilyLibraryLoan(
 )
 
 data class FamilyStudentDetails(
+    val attendanceAcademicYears: List<FamilyAcademicYear>,
+    val selectedAttendanceAcademicYearId: String?,
     val attendance: FamilyAttendanceDetails?,
     val homework: List<FamilyHomeworkDetails>,
     val fees: FamilyFeeDetails,
@@ -220,6 +230,7 @@ data class FamilyUiState(
     val details: FamilyStudentDetails? = null,
     val detailsLoading: Boolean = false,
     val detailsError: String? = null,
+    val attendanceAcademicYearId: String? = null,
     val leaveSaving: Boolean = false,
     val leaveMessage: String? = null,
     val notifications: List<FamilyNotification> = emptyList(),

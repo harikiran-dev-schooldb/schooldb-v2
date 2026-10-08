@@ -7,7 +7,7 @@ internal object ApiResponseParser {
     fun parse(payload: String, status: Int, contentType: String?): JSONObject {
         if (payload.isBlank()) {
             if (status in 200..299) return JSONObject()
-            throw ApiException(httpMessage(status))
+            throw ApiException(httpMessage(status), status)
         }
 
         val json = runCatching { JSONObject(payload) }.getOrElse {
@@ -18,18 +18,21 @@ internal object ApiResponseParser {
                 looksLikeHtml -> "SchoolDB is temporarily unavailable. Please try again."
                 else -> "SchoolDB returned an invalid response. Please try again."
             }
-            throw ApiException(message)
+            throw ApiException(message, status)
         }
 
         if (status !in 200..299) {
             val message = json.optString("message")
                 .ifBlank { json.optString("error") }
                 .ifBlank { httpMessage(status) }
-            throw ApiException(message)
+            throw ApiException(message, status)
         }
 
         return json.optJSONObject("data")
-            ?: throw ApiException("SchoolDB returned an incomplete response. Please try again.")
+            ?: throw ApiException(
+                "SchoolDB returned an incomplete response. Please try again.",
+                status,
+            )
     }
 
     private fun httpMessage(status: Int) = when (status) {

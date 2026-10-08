@@ -23,19 +23,21 @@ class TeacherViewModel(
     private val _uiState = MutableStateFlow(TeacherUiState())
     val uiState: StateFlow<TeacherUiState> = _uiState.asStateFlow()
 
-    fun refresh() = loadDashboard(clearPrevious = false)
+    fun load() = loadDashboard(clearPrevious = false, forceRefresh = false)
 
-    fun refreshForAccountChange() = loadDashboard(clearPrevious = true)
+    fun refresh() = loadDashboard(clearPrevious = false, forceRefresh = true)
 
-    private fun loadDashboard(clearPrevious: Boolean) {
+    fun refreshForAccountChange() = loadDashboard(clearPrevious = true, forceRefresh = true)
+
+    private fun loadDashboard(clearPrevious: Boolean, forceRefresh: Boolean) {
         _uiState.value = if (clearPrevious) TeacherUiState(loading = true)
             else _uiState.value.copy(loading = true, message = null, error = null)
         viewModelScope.launch {
             try {
-                val context = withContext(Dispatchers.IO) { repository.context() }
+                val context = withContext(Dispatchers.IO) { repository.context(forceRefresh) }
                 _uiState.value = _uiState.value.copy(context = context)
                 val dashboard = if (context.role == "TEACHER") {
-                    withContext(Dispatchers.IO) { repository.dashboard() }
+                    withContext(Dispatchers.IO) { repository.dashboard(forceRefresh) }
                 } else {
                     null
                 }
@@ -94,7 +96,7 @@ class TeacherViewModel(
         viewModelScope.launch {
             try {
                 withContext(Dispatchers.IO) { repository.saveAttendance(sheet) }
-                val dashboard = withContext(Dispatchers.IO) { repository.dashboard() }
+                val dashboard = withContext(Dispatchers.IO) { repository.dashboard(forceRefresh = true) }
                 _uiState.value = TeacherUiState(
                     context = _uiState.value.context,
                     dashboard = dashboard,
@@ -114,7 +116,7 @@ class TeacherViewModel(
         viewModelScope.launch {
             try {
                 withContext(Dispatchers.IO) { repository.saveAndLockAttendance(sheet) }
-                val dashboard = withContext(Dispatchers.IO) { repository.dashboard() }
+                val dashboard = withContext(Dispatchers.IO) { repository.dashboard(forceRefresh = true) }
                 _uiState.value = TeacherUiState(
                     context = _uiState.value.context,
                     dashboard = dashboard,

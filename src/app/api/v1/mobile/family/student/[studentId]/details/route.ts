@@ -26,7 +26,7 @@ function dateAtUtcMidnight(value: string) {
 }
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ studentId: string }> },
 ) {
   return apiHandler(async () => {
@@ -35,6 +35,31 @@ export async function GET(
       undefined,
       studentId,
     );
+
+    const attendanceAcademicYears = await prisma.studentEnrollment.findMany({
+      where: { schoolId: membership.schoolId, studentId },
+      orderBy: { academicYear: { startDate: "desc" } },
+      distinct: ["academicYearId"],
+      select: {
+        academicYearId: true,
+        academicYear: {
+          select: { name: true, startDate: true, endDate: true, active: true },
+        },
+      },
+    });
+    const requestedAcademicYearId = new URL(request.url).searchParams.get(
+      "academicYearId",
+    );
+    const selectedAttendanceAcademicYear =
+      attendanceAcademicYears.find(
+        (item) => item.academicYearId === requestedAcademicYearId,
+      ) ??
+      attendanceAcademicYears.find((item) => item.academicYear.active) ??
+      attendanceAcademicYears.find(
+        (item) => item.academicYearId === enrollment?.academicYearId,
+      ) ??
+      attendanceAcademicYears[0] ??
+      null;
 
     const [
       attendance,
@@ -48,11 +73,11 @@ export async function GET(
       transport,
       libraryLoans,
     ] = await Promise.all([
-      enrollment
+      selectedAttendanceAcademicYear
         ? attendanceService.studentAttendanceReport(
             membership.schoolId,
             studentId,
-            enrollment.academicYearId,
+            selectedAttendanceAcademicYear.academicYearId,
           )
         : null,
       enrollment
@@ -222,6 +247,15 @@ export async function GET(
     )].sort((a, b) => a.startDate.getTime() - b.startDate.getTime());
 
     return ApiResponse.success({
+      attendanceAcademicYears: attendanceAcademicYears.map((item) => ({
+        id: item.academicYearId,
+        name: item.academicYear.name,
+        startDate: item.academicYear.startDate,
+        endDate: item.academicYear.endDate,
+        active: item.academicYear.active,
+      })),
+      selectedAttendanceAcademicYearId:
+        selectedAttendanceAcademicYear?.academicYearId ?? null,
       attendance: attendance
         ? {
             summary: attendance.summary,

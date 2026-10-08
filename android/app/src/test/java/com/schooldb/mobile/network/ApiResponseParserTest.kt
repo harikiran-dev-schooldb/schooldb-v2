@@ -22,6 +22,20 @@ class ApiResponseParserTest {
             ApiResponseParser.parse("""{"message":"Attendance is locked"}""", 409, "application/json")
         }.exceptionOrNull()
         assertEquals("Attendance is locked", error?.message)
+        assertEquals(409, (error as? ApiException)?.statusCode)
+    }
+
+    @Test
+    fun marksOnlyTransientServerErrorsAsRetryable() {
+        val unavailable = runCatching {
+            ApiResponseParser.parse("""{"message":"Try later"}""", 503, "application/json")
+        }.exceptionOrNull() as ApiException
+        val validation = runCatching {
+            ApiResponseParser.parse("""{"message":"Invalid"}""", 422, "application/json")
+        }.exceptionOrNull() as ApiException
+
+        assertTrue(unavailable.isRetryable)
+        assertTrue(!validation.isRetryable)
     }
 
     @Test

@@ -88,6 +88,8 @@ import com.schooldb.mobile.admin.AdminDashboardScreen
 import com.schooldb.mobile.preferences.StartTabPreference
 import com.schooldb.mobile.family.FamilyDashboardScreen
 import com.schooldb.mobile.ui.ConnectionStateScreen
+import com.schooldb.mobile.ui.OfflineDataBanner
+import com.schooldb.mobile.ui.rememberIsOnline
 
 
 private val SchoolDbIndigo = Color(0xFF4F46E5)
@@ -135,7 +137,7 @@ fun TeacherDashboardScreen(
             withFrameNanos { }
             delay(50)
         }
-        if (refreshKey > 0) viewModel.refreshForAccountChange() else viewModel.refresh()
+        if (refreshKey > 0) viewModel.refreshForAccountChange() else viewModel.load()
     }
 
     if (state.context?.role in setOf("PARENT", "STUDENT")) {
@@ -209,6 +211,7 @@ private fun TeacherShell(
 ) {
     val dashboard = state.dashboard ?: return
     val preferences by AppPreferences.state.collectAsStateWithLifecycle()
+    val isOnline by rememberIsOnline()
     var tab by rememberSaveable {
         mutableStateOf(
             if (preferences.startTab == StartTabPreference.ATTENDANCE) {
@@ -255,11 +258,13 @@ private fun TeacherShell(
         },
     ) { padding ->
 
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding),
         ) {
+            if (!isOnline) OfflineDataBanner()
+            Box(Modifier.fillMaxWidth().weight(1f)) {
             when (tab) {
                 TeacherTab.HOME -> {
                     TeacherHome(
@@ -344,6 +349,7 @@ private fun TeacherShell(
                         }
                     }
                 }
+            }
             }
         }
     }

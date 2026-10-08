@@ -2,7 +2,20 @@ package com.schooldb.mobile.family
 import com.schooldb.mobile.ui.theme.WebTopAppBar as TopAppBar
 
 import android.content.Intent
+import android.content.Context
+import android.graphics.Paint
+import android.graphics.Typeface
+import android.graphics.pdf.PdfDocument
+import android.net.Uri
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -23,6 +36,7 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.outlined.CalendarMonth
@@ -41,12 +55,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalContext
@@ -88,6 +104,9 @@ import com.schooldb.mobile.ui.notifications.PremiumNotificationFilters
 import com.schooldb.mobile.ui.notifications.matches
 import com.schooldb.mobile.ui.notifications.notificationDay
 import com.schooldb.mobile.ui.ConnectionStateScreen
+import com.schooldb.mobile.ui.OfflineDataBanner
+import com.schooldb.mobile.ui.rememberIsOnline
+import com.schooldb.mobile.preferences.AppPreferences
 
 private val FamilyIndigo = Color(0xFF4F46E5)
 private val FamilyGreen = Color(0xFF059669)
@@ -237,6 +256,8 @@ fun FamilyDashboardScreen(
     var tab by rememberSaveable { mutableStateOf(FamilyTab.HOME) }
     var moreScreen by rememberSaveable { mutableStateOf("MENU") }
     var showSignOutConfirmation by rememberSaveable { mutableStateOf(false) }
+    val isOnline by rememberIsOnline()
+    val preferences by AppPreferences.state.collectAsStateWithLifecycle()
 
     BackHandler(enabled = tab != FamilyTab.HOME) {
         if (tab == FamilyTab.MORE && moreScreen != "MENU") {
@@ -257,7 +278,7 @@ fun FamilyDashboardScreen(
             withFrameNanos { }
             delay(50)
         }
-        if (refreshKey > 0) viewModel.refreshForAccountChange() else viewModel.refresh()
+        if (refreshKey > 0) viewModel.refreshForAccountChange() else viewModel.load()
     }
     LaunchedEffect(openNotificationId, dashboard != null) {
         if (!openNotificationId.isNullOrBlank()) {
@@ -273,18 +294,19 @@ fun FamilyDashboardScreen(
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            if (isStudent) {
-                StudentPremiumTopBar(
-                    schoolName = dashboard.schoolName,
-                    studentName = student?.fullName.orEmpty(),
-                    unread = state.unreadNotificationCount,
-                    onNotifications = {
-                        tab = FamilyTab.MORE
-                        moreScreen = "NOTIFICATIONS"
-                    },
-                    onSwitchAccount = onSwitchAccount,
-                )
-            } else TopAppBar(
+            Column {
+                if (isStudent) {
+                    StudentPremiumTopBar(
+                        schoolName = dashboard.schoolName,
+                        studentName = student?.fullName.orEmpty(),
+                        unread = state.unreadNotificationCount,
+                        onNotifications = {
+                            tab = FamilyTab.MORE
+                            moreScreen = "NOTIFICATIONS"
+                        },
+                        onSwitchAccount = onSwitchAccount,
+                    )
+                } else TopAppBar(
                 title = {
                     Column {
                         Text(dashboard?.schoolName ?: "SchoolDB", fontWeight = FontWeight.Bold, maxLines = 1)
@@ -317,6 +339,8 @@ fun FamilyDashboardScreen(
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface),
             )
+                if (!isOnline && dashboard != null) OfflineDataBanner()
+            }
         },
         bottomBar = {
             if (student != null) {
@@ -358,8 +382,29 @@ fun FamilyDashboardScreen(
             state.loading && dashboard == null -> LoadingPage(Modifier.padding(padding))
             state.error != null && dashboard == null -> FamilyError(state.error.orEmpty(), viewModel::refresh, Modifier.padding(padding))
             dashboard != null && student != null -> when (tab) {
-                FamilyTab.HOME -> FamilyHome(dashboard, student, state, viewModel::selectStudent, viewModel::refresh, Modifier.padding(padding))
-                FamilyTab.ATTENDANCE -> AttendanceTab(dashboard, student, state, viewModel::selectStudent, viewModel::refreshDetails, Modifier.padding(padding))
+                FamilyTab.HOME -> FamilyHome(
+                    dashboard,
+                    student,
+                    state,
+                    viewModel::selectStudent,
+                    viewModel::refresh,
+                    onOpenAttendance = { tab = FamilyTab.ATTENDANCE },
+                    onOpenHomework = { tab = FamilyTab.HOMEWORK },
+                    onOpenResults = { tab = FamilyTab.RESULTS },
+                    onOpenFees = { tab = FamilyTab.MORE; moreScreen = "FEES" },
+                    onOpenTimetable = { tab = FamilyTab.MORE; moreScreen = "TIMETABLE" },
+                    onOpenNotifications = { tab = FamilyTab.MORE; moreScreen = "NOTIFICATIONS" },
+                    modifier = Modifier.padding(padding),
+                )
+                FamilyTab.ATTENDANCE -> AttendanceTab(
+                    dashboard,
+                    student,
+                    state,
+                    viewModel::selectStudent,
+                    viewModel::selectAttendanceAcademicYear,
+                    viewModel::refreshDetails,
+                    Modifier.padding(padding),
+                )
                 FamilyTab.HOMEWORK -> HomeworkTab(dashboard, student, state, viewModel::selectStudent, viewModel::refreshDetails, Modifier.padding(padding))
                 FamilyTab.FEES -> FeesTab(dashboard, student, state, viewModel::selectStudent, viewModel::refreshDetails, Modifier.padding(padding))
                 FamilyTab.RESULTS -> ResultsTab(dashboard, student, state, viewModel::selectStudent, viewModel::refreshDetails, Modifier.padding(padding))
@@ -445,6 +490,8 @@ fun FamilyDashboardScreen(
                         onOpenFees = { moreScreen = "FEES" },
                         onSwitchAccount = onSwitchAccount,
                         onSignOut = { showSignOutConfirmation = true },
+                        secureReentry = preferences.secureReentry,
+                        onSecureReentryChange = AppPreferences::setSecureReentry,
                         modifier = Modifier.padding(padding),
                     )
                 }
@@ -481,10 +528,27 @@ private fun FamilyHome(
     state: FamilyUiState,
     onSelect: (String) -> Unit,
     onRefresh: () -> Unit,
+    onOpenAttendance: () -> Unit,
+    onOpenHomework: () -> Unit,
+    onOpenResults: () -> Unit,
+    onOpenFees: () -> Unit,
+    onOpenTimetable: () -> Unit,
+    onOpenNotifications: () -> Unit,
     modifier: Modifier,
 ) {
     if (dashboard.role == "STUDENT") {
-        StudentHome(student, state, onRefresh, modifier)
+        StudentHome(
+            student,
+            state,
+            onRefresh,
+            onOpenAttendance,
+            onOpenHomework,
+            onOpenResults,
+            onOpenFees,
+            onOpenTimetable,
+            onOpenNotifications,
+            modifier,
+        )
         return
     }
     LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 28.dp)) {
@@ -518,6 +582,12 @@ private fun StudentHome(
     student: FamilyStudent,
     state: FamilyUiState,
     onRefresh: () -> Unit,
+    onOpenAttendance: () -> Unit,
+    onOpenHomework: () -> Unit,
+    onOpenResults: () -> Unit,
+    onOpenFees: () -> Unit,
+    onOpenTimetable: () -> Unit,
+    onOpenNotifications: () -> Unit,
     modifier: Modifier,
 ) {
     val today = LocalDate.now()
@@ -525,6 +595,11 @@ private fun StudentHome(
         ?.filter { it.endDate.take(10) >= today.toString() }
         ?.take(3)
         .orEmpty()
+    val todayClasses = state.details?.timetable
+        ?.filter { it.day.equals(today.dayOfWeek.name, ignoreCase = true) }
+        ?.sortedBy { it.displayOrder }
+        .orEmpty()
+    val firstName = student.fullName.trim().substringBefore(' ').ifBlank { "Student" }
 
     LazyColumn(
         modifier = modifier.fillMaxSize().background(MaterialTheme.colorScheme.background),
@@ -534,16 +609,67 @@ private fun StudentHome(
         item {
             Column(Modifier.padding(start = 20.dp, end = 20.dp, top = 18.dp)) {
                 Text("YOUR SCHOOL DAY", color = FamilyIndigo, fontWeight = FontWeight.Bold, fontSize = 11.sp, letterSpacing = 1.4.sp)
-                Text("Welcome back", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold, fontSize = 29.sp, letterSpacing = (-.7).sp)
+                Text("Welcome back, $firstName", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold, fontSize = 29.sp, letterSpacing = (-.7).sp)
                 Text(today.format(DateTimeFormatter.ofPattern("EEEE, d MMMM", Locale.ENGLISH)), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
             }
         }
         item { StudentHero(student) }
+        state.notifications.firstOrNull { !it.read }?.let { notice ->
+            item {
+                Card(
+                    onClick = onOpenNotifications,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(containerColor = FamilyAmber.copy(alpha = .10f)),
+                    border = BorderStroke(1.dp, FamilyAmber.copy(alpha = .24f)),
+                ) {
+                    Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Lucide.Bell, contentDescription = null, tint = FamilyAmber)
+                        Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
+                            Text("IMPORTANT UPDATE", color = FamilyAmber, fontSize = 9.sp, fontWeight = FontWeight.Bold, letterSpacing = .8.sp)
+                            Text(notice.title, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(notice.body, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        }
+                        Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "Open notifications", modifier = Modifier.size(18.dp))
+                    }
+                }
+            }
+        }
+        item {
+            StudentQuickActions(
+                onOpenAttendance,
+                onOpenHomework,
+                onOpenResults,
+                onOpenFees,
+            )
+        }
         item {
             Column {
                 StudentSectionHeading("At a glance", "A quick view of your progress")
                 StudentMetrics(student)
             }
+        }
+        item { StudentSectionHeading("Today’s classes", "Your timetable for ${today.dayOfWeek.name.lowercase().replaceFirstChar(Char::uppercase)}") }
+        if (state.details != null && todayClasses.isEmpty()) {
+            item { StudentEmptyState(Icons.Outlined.Schedule, "No classes today", "Enjoy the open space in your schedule.") }
+        } else {
+            items(todayClasses.take(4), key = { it.id }) { StudentTimetableCard(it) }
+        if (todayClasses.size > 4) {
+                item {
+                    TextButton(onClick = onOpenTimetable, modifier = Modifier.padding(horizontal = 12.dp)) {
+                        Text("View all ${todayClasses.size} classes")
+                        Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, modifier = Modifier.padding(start = 5.dp).size(16.dp))
+                    }
+                }
+            }
+        }
+        state.details?.results?.firstOrNull()?.let { latest ->
+            item { StudentSectionHeading("Latest result", "Your most recently published performance") }
+            item { ResultCard(latest, student.fullName) }
+        }
+        state.details?.fees?.installments?.firstOrNull { it.outstanding > 0 }?.let { due ->
+            item { StudentSectionHeading("Next fee due", "Stay ahead of upcoming payments") }
+            item { InstallmentCard(due) }
         }
         item { StudentSectionHeading("Coming up", "School events and deadlines") }
         if (state.details != null && upcomingEvents.isEmpty()) {
@@ -554,6 +680,42 @@ private fun StudentHome(
         item { SectionHeader("Recent homework", onRefresh) }
         if (student.recentHomework.isEmpty()) item { StudentEmptyState(Icons.AutoMirrored.Outlined.Assignment, "All caught up", "No active homework right now.") }
         else items(student.recentHomework, key = { it.id }) { HomeworkSummaryCard(it) }
+    }
+}
+
+@Composable
+private fun StudentQuickActions(
+    onAttendance: () -> Unit,
+    onHomework: () -> Unit,
+    onResults: () -> Unit,
+    onFees: () -> Unit,
+) {
+    val actions = listOf(
+        Triple("Attendance", Lucide.CalendarCheck, onAttendance),
+        Triple("Homework", Lucide.ClipboardCheck, onHomework),
+        Triple("Results", Lucide.GraduationCap, onResults),
+        Triple("Fees", Icons.Outlined.Payments, onFees),
+    )
+    Column {
+        StudentSectionHeading("Quick actions", "Everything important, one tap away")
+        LazyRow(
+            contentPadding = PaddingValues(horizontal = 20.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            items(actions, key = { it.first }) { action ->
+                Surface(
+                    onClick = action.third,
+                    shape = RoundedCornerShape(17.dp),
+                    color = MaterialTheme.colorScheme.surface,
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                ) {
+                    Row(Modifier.padding(horizontal = 14.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(action.second, contentDescription = null, tint = FamilyIndigo, modifier = Modifier.size(19.dp))
+                        Text(action.first, Modifier.padding(start = 8.dp), fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -661,28 +823,94 @@ private fun AttendanceTab(
     student: FamilyStudent,
     state: FamilyUiState,
     onSelect: (String) -> Unit,
+    onAcademicYearSelect: (String) -> Unit,
     onRefresh: () -> Unit,
     modifier: Modifier,
-) = DetailList(modifier, dashboard, student, "Attendance", state, onSelect, onRefresh) { details ->
-    val attendance = details.attendance
-    if (attendance == null) item { EmptyMessage("Attendance becomes available after enrollment.") }
-    else {
+) {
+    val details = state.details
+    val selectedYear = details?.attendanceAcademicYears
+        ?.firstOrNull { it.id == state.attendanceAcademicYearId }
+    val availableMonths = remember(selectedYear?.id) {
+        academicYearMonths(selectedYear)
+    }
+    var selectedMonth by rememberSaveable(selectedYear?.id) {
+        mutableStateOf(defaultAttendanceMonth(selectedYear).toString())
+    }
+
+    DetailList(modifier, dashboard, student, "Attendance", state, onSelect, onRefresh) { loaded ->
+        val attendance = loaded.attendance
+        if (attendance == null) item { EmptyMessage("Attendance becomes available after enrollment.") }
+        else {
+            if (dashboard.role == "STUDENT") {
+                item {
+                    StudentAttendanceFilters(
+                        years = loaded.attendanceAcademicYears,
+                        selectedYearId = state.attendanceAcademicYearId,
+                        months = availableMonths,
+                        selectedMonth = selectedMonth,
+                        onYearSelect = onAcademicYearSelect,
+                        onMonthSelect = { selectedMonth = it.toString() },
+                    )
+                }
+            }
+            val visibleRecords = attendance.records.filter { record ->
+                calendarDate(record.date)?.let(YearMonth::from)?.toString() == selectedMonth
+            }
+            val present = visibleRecords.count { it.status == "PRESENT" }
+            val late = visibleRecords.count { it.status == "LATE" }
+            val attended = present + late
+            val percentage = if (visibleRecords.isEmpty()) 0.0
+                else attended * 100.0 / visibleRecords.size
         item {
             Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 if (dashboard.role == "STUDENT") {
-                    StudentMetricCard("Attendance", "${number(attendance.percentage)}%", "${attendance.total} sessions", Icons.Outlined.CalendarMonth, FamilyIndigo, Modifier.weight(1f))
-                    StudentMetricCard("Present", attendance.present.toString(), "${attendance.absent} absent", Icons.Default.CheckCircle, FamilyIndigo, Modifier.weight(1f))
+                    StudentMetricCard("Attendance", "${number(percentage)}%", "${visibleRecords.size} sessions", Icons.Outlined.CalendarMonth, if (percentage < 75) FamilyRed else FamilyIndigo, Modifier.weight(1f))
+                    StudentMetricCard("Present", attended.toString(), "${visibleRecords.count { it.status == "ABSENT" }} absent", Icons.Default.CheckCircle, FamilyGreen, Modifier.weight(1f))
                 } else {
                     MetricCard("Attendance", "${number(attendance.percentage)}%", "${attendance.total} sessions", Modifier.weight(1f))
                     MetricCard("Present", attendance.present.toString(), "${attendance.absent} absent", Modifier.weight(1f))
                 }
             }
         }
-        if (attendance.records.isEmpty()) item {
+        if (visibleRecords.isEmpty()) item {
             if (dashboard.role == "STUDENT") StudentEmptyState(Icons.Outlined.CalendarMonth, "No records yet", "Attendance will appear after your classes are recorded.")
             else EmptyMessage("No attendance has been recorded yet.")
         }
-        else items(attendance.records, key = { it.id }) { AttendanceCard(it) }
+        else items(visibleRecords, key = { it.id }) { AttendanceCard(it) }
+        }
+    }
+}
+
+@Composable
+private fun StudentAttendanceFilters(
+    years: List<FamilyAcademicYear>,
+    selectedYearId: String?,
+    months: List<YearMonth>,
+    selectedMonth: String,
+    onYearSelect: (String) -> Unit,
+    onMonthSelect: (YearMonth) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+        Text("Academic year", Modifier.padding(horizontal = 20.dp), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+        LazyRow(contentPadding = PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            items(years, key = { it.id }) { year ->
+                FilterChip(
+                    selected = year.id == selectedYearId,
+                    onClick = { onYearSelect(year.id) },
+                    label = { Text(if (year.active) "${year.name} · Active" else year.name) },
+                )
+            }
+        }
+        Text("Month", Modifier.padding(horizontal = 20.dp), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+        LazyRow(contentPadding = PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            items(months, key = { it.toString() }) { month ->
+                FilterChip(
+                    selected = month.toString() == selectedMonth,
+                    onClick = { onMonthSelect(month) },
+                    label = { Text(month.format(DateTimeFormatter.ofPattern("MMM yyyy", Locale.ENGLISH))) },
+                )
+            }
+        }
     }
 }
 
@@ -694,16 +922,74 @@ private fun HomeworkTab(
     onSelect: (String) -> Unit,
     onRefresh: () -> Unit,
     modifier: Modifier,
-) = DetailList(modifier, dashboard, student, "Homework", state, onSelect, onRefresh) { details ->
-    if (details.homework.isEmpty()) item {
-        if (dashboard.role == "STUDENT") StudentEmptyState(Icons.AutoMirrored.Outlined.Assignment, "No homework posted", "Assignments from your teachers will appear here.")
-        else EmptyMessage("No active homework right now.")
+) {
+    var statusFilter by rememberSaveable(student.id) { mutableStateOf("CURRENT") }
+    var subjectFilter by rememberSaveable(student.id) { mutableStateOf("ALL") }
+    DetailList(modifier, dashboard, student, "Homework", state, onSelect, onRefresh) { details ->
+        val today = LocalDate.now()
+        val subjects = details.homework.map { it.subjectName }.distinct().sorted()
+        val visible = details.homework.filter { item ->
+            val due = item.dueDate?.let(::calendarDate)
+            val matchesStatus = when (statusFilter) {
+                "OVERDUE" -> due?.isBefore(today) == true
+                "CURRENT" -> due == null || !due.isBefore(today)
+                else -> true
+            }
+            matchesStatus && (subjectFilter == "ALL" || item.subjectName == subjectFilter)
+        }
+        if (dashboard.role == "STUDENT" && details.homework.isNotEmpty()) {
+            item {
+                StudentHomeworkFilters(
+                    status = statusFilter,
+                    subject = subjectFilter,
+                    subjects = subjects,
+                    onStatus = { statusFilter = it },
+                    onSubject = { subjectFilter = it },
+                )
+            }
+        }
+        if (visible.isEmpty()) item {
+            if (dashboard.role == "STUDENT") StudentEmptyState(Icons.AutoMirrored.Outlined.Assignment, "Nothing in this view", "Try another homework filter.")
+            else EmptyMessage("No active homework right now.")
+        }
+        else if (dashboard.role == "STUDENT") {
+            item { StudentHomeworkSummary(visible) }
+            items(visible, key = { it.id }) { StudentHomeworkCard(it) }
+        } else {
+            items(visible, key = { it.id }) { HomeworkCard(it) }
+        }
     }
-    else if (dashboard.role == "STUDENT") {
-        item { StudentHomeworkSummary(details.homework) }
-        items(details.homework, key = { it.id }) { StudentHomeworkCard(it) }
-    } else {
-        items(details.homework, key = { it.id }) { HomeworkCard(it) }
+}
+
+@Composable
+private fun StudentHomeworkFilters(
+    status: String,
+    subject: String,
+    subjects: List<String>,
+    onStatus: (String) -> Unit,
+    onSubject: (String) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        LazyRow(contentPadding = PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            items(listOf("CURRENT", "OVERDUE", "ALL")) { value ->
+                FilterChip(
+                    selected = status == value,
+                    onClick = { onStatus(value) },
+                    label = { Text(value.lowercase().replaceFirstChar(Char::uppercase)) },
+                )
+            }
+        }
+        if (subjects.size > 1) {
+            LazyRow(contentPadding = PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(listOf("ALL") + subjects) { value ->
+                    FilterChip(
+                        selected = subject == value,
+                        onClick = { onSubject(value) },
+                        label = { Text(if (value == "ALL") "All subjects" else value) },
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -801,9 +1087,42 @@ private fun ResultsTab(
     onSelect: (String) -> Unit,
     onRefresh: () -> Unit,
     modifier: Modifier,
-) = DetailList(modifier, dashboard, student, "Results", state, onSelect, onRefresh) { details ->
-    if (details.results.isEmpty()) item { StudentEmptyState(Icons.Default.EmojiEvents, "Results are on the way", "Completed examination results will appear here.") }
-    else items(details.results, key = { it.id }) { ResultCard(it) }
+) {
+    var selectedExamId by rememberSaveable(student.id) { mutableStateOf("ALL") }
+    DetailList(modifier, dashboard, student, "Results", state, onSelect, onRefresh) { details ->
+        val visible = if (selectedExamId == "ALL") details.results
+            else details.results.filter { it.id == selectedExamId }
+        if (details.results.isEmpty()) item { StudentEmptyState(Icons.Default.EmojiEvents, "Results are on the way", "Completed examination results will appear here.") }
+        else {
+            if (dashboard.role == "STUDENT") {
+                item {
+                    StudentResultsSummary(details.results)
+                    LazyRow(contentPadding = PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        item {
+                            FilterChip(selected = selectedExamId == "ALL", onClick = { selectedExamId = "ALL" }, label = { Text("All exams") })
+                        }
+                        items(details.results, key = { it.id }) { result ->
+                            FilterChip(selected = selectedExamId == result.id, onClick = { selectedExamId = result.id }, label = { Text(result.name) })
+                        }
+                    }
+                }
+            }
+            items(visible, key = { it.id }) { ResultCard(it, student.fullName) }
+        }
+    }
+}
+
+@Composable
+private fun StudentResultsSummary(results: List<FamilyResult>) {
+    val average = results.map { it.percentage }.average().takeIf { !it.isNaN() } ?: 0.0
+    val best = results.maxByOrNull { it.percentage }
+    Row(
+        Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        StudentMetricCard("Average", "${number(average)}%", "across ${results.size} exams", Icons.Default.EmojiEvents, FamilyIndigo, Modifier.weight(1f))
+        StudentMetricCard("Best", best?.let { "${number(it.percentage)}%" } ?: "—", best?.name ?: "No result", Icons.Default.CheckCircle, FamilyGreen, Modifier.weight(1f))
+    }
 }
 
 @Composable
@@ -827,7 +1146,9 @@ private fun FeesTab(
     else items(details.fees.installments, key = { it.id }) { InstallmentCard(it) }
     if (details.fees.payments.isNotEmpty()) {
         item { Subheading("Recent payments") }
-        items(details.fees.payments.take(10), key = { it.id }) { PaymentCard(it) }
+        items(details.fees.payments, key = { it.id }) {
+            PaymentCard(it, dashboard.schoolName, student.fullName)
+        }
     }
 }
 
@@ -847,6 +1168,8 @@ private fun MoreTab(
     onOpenFees: () -> Unit,
     onSwitchAccount: () -> Unit,
     onSignOut: () -> Unit,
+    secureReentry: Boolean,
+    onSecureReentryChange: (Boolean) -> Unit,
     modifier: Modifier,
 ) {
     if (dashboard.role == "STUDENT") {
@@ -854,7 +1177,7 @@ private fun MoreTab(
             dashboard, student, state, onSelect, onOpenTimetable, onOpenLeave,
             onOpenCalendar, onOpenTransport, onOpenLibrary, onOpenNotifications,
             onOpenFees,
-            onSwitchAccount, onSignOut, modifier,
+            onSwitchAccount, onSignOut, secureReentry, onSecureReentryChange, modifier,
         )
         return
     }
@@ -997,6 +1320,8 @@ private fun StudentMoreTab(
     onOpenFees: () -> Unit,
     onSwitchAccount: () -> Unit,
     onSignOut: () -> Unit,
+    secureReentry: Boolean,
+    onSecureReentryChange: (Boolean) -> Unit,
     modifier: Modifier,
 ) {
     LazyColumn(
@@ -1022,6 +1347,25 @@ private fun StudentMoreTab(
         item { StudentMoreAction(Icons.AutoMirrored.Outlined.EventNote, "Leave requests", "Request leave and track decisions", FamilyIndigo, onOpenLeave) }
         item { Spacer(Modifier.height(5.dp)) }
         item { StudentSectionHeading("Account", "Your school account") }
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+                shape = RoundedCornerShape(18.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+            ) {
+                Row(Modifier.fillMaxWidth().padding(15.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.size(43.dp).background(FamilyGreen.copy(alpha = .1f), RoundedCornerShape(13.dp)), contentAlignment = Alignment.Center) {
+                        Icon(Icons.Default.CheckCircle, contentDescription = null, tint = FamilyGreen, modifier = Modifier.size(22.dp))
+                    }
+                    Column(Modifier.weight(1f).padding(start = 13.dp)) {
+                        Text("Secure app re-entry", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                        Text("Use your device lock after leaving SchoolDB", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+                    }
+                    Switch(checked = secureReentry, onCheckedChange = onSecureReentryChange)
+                }
+            }
+        }
         item { StudentMoreAction(Icons.Outlined.Payments, "Fees", "Installments and payments", FamilyIndigo, onOpenFees) }
         item { StudentMoreAction(Icons.Default.SwapHoriz, "Switch account or role", "Choose another linked profile", FamilyIndigo, onSwitchAccount) }
         item { StudentMoreAction(Icons.AutoMirrored.Filled.Logout, "Sign out", "Sign out completely on this device", FamilyRed, onSignOut) }
@@ -1980,18 +2324,96 @@ private fun InstallmentCard(item: FamilyFeeInstallment) {
 }
 
 @Composable
-private fun PaymentCard(item: FamilyFeePayment) {
-    RowCard {
+private fun PaymentCard(item: FamilyFeePayment, schoolName: String, studentName: String) {
+    val context = LocalContext.current
+    val filename = "${item.receiptNo ?: "SchoolDB-receipt"}.pdf"
+    val saveReceipt = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/pdf"),
+    ) { uri ->
+        if (uri != null) {
+            val saved = writeReceiptPdf(context, uri, schoolName, studentName, item)
+            Toast.makeText(context, if (saved) "Receipt saved" else "Could not save receipt", Toast.LENGTH_SHORT).show()
+        }
+    }
+    Card(
+        Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 5.dp),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = .68f)),
+    ) {
+        Row(Modifier.fillMaxWidth().padding(15.dp), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
             Text(item.receiptNo ?: "Payment", fontWeight = FontWeight.Bold)
             Text("${date(item.paymentDate)} · ${item.paymentMode.replace('_', ' ')}", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
         }
-        Text(currency(item.amount), color = FamilyGreen, fontWeight = FontWeight.Bold)
+            Column(horizontalAlignment = Alignment.End) {
+                Text(currency(item.amount), color = FamilyGreen, fontWeight = FontWeight.Bold)
+                TextButton(onClick = { saveReceipt.launch(filename) }) {
+                    Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(15.dp))
+                    Text("Receipt", Modifier.padding(start = 4.dp), fontSize = 11.sp)
+                }
+            }
+        }
     }
 }
 
+private fun writeReceiptPdf(
+    context: Context,
+    uri: Uri,
+    schoolName: String,
+    studentName: String,
+    payment: FamilyFeePayment,
+): Boolean = runCatching {
+    val document = PdfDocument()
+    val page = document.startPage(PdfDocument.PageInfo.Builder(595, 842, 1).create())
+    val canvas = page.canvas
+    val heading = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = android.graphics.Color.rgb(15, 23, 42)
+        textSize = 24f
+        typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+    }
+    val label = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = android.graphics.Color.rgb(100, 116, 139)
+        textSize = 12f
+    }
+    val value = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = android.graphics.Color.rgb(15, 23, 42)
+        textSize = 15f
+        typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+    }
+    canvas.drawText(schoolName, 48f, 70f, heading)
+    canvas.drawText("PAYMENT RECEIPT", 48f, 103f, label)
+    canvas.drawLine(48f, 124f, 547f, 124f, label)
+    val rows = listOf(
+        "Receipt number" to (payment.receiptNo ?: payment.id),
+        "Student" to studentName,
+        "Payment date" to date(payment.paymentDate),
+        "Payment mode" to payment.paymentMode.replace('_', ' '),
+        "Amount received" to currency(payment.amount),
+    )
+    rows.forEachIndexed { index, row ->
+        val y = 175f + index * 58f
+        canvas.drawText(row.first, 48f, y, label)
+        canvas.drawText(row.second, 48f, y + 23f, value)
+    }
+    canvas.drawText("Computer-generated SchoolDB receipt", 48f, 790f, label)
+    document.finishPage(page)
+    context.contentResolver.openOutputStream(uri)?.use(document::writeTo)
+        ?: error("Unable to open receipt destination")
+    document.close()
+}.isSuccess
+
 @Composable
-private fun ResultCard(item: FamilyResult) {
+private fun ResultCard(item: FamilyResult, studentName: String? = null) {
+    val context = LocalContext.current
+    val saveReport = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/pdf"),
+    ) { uri ->
+        if (uri != null && studentName != null) {
+            val saved = writeResultPdf(context, uri, studentName, item)
+            Toast.makeText(context, if (saved) "Report card saved" else "Could not save report card", Toast.LENGTH_SHORT).show()
+        }
+    }
     Card(
         Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 6.dp),
         shape = RoundedCornerShape(21.dp),
@@ -2038,9 +2460,62 @@ private fun ResultCard(item: FamilyResult) {
                     }
                 }
             }
+            if (studentName != null) {
+                TextButton(
+                    onClick = { saveReport.launch("${item.name.replace(' ', '-')}-report-card.pdf") },
+                    modifier = Modifier.align(Alignment.End).padding(top = 6.dp),
+                ) {
+                    Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Text("Save report card", Modifier.padding(start = 5.dp))
+                }
+            }
         }
     }
 }
+
+private fun writeResultPdf(
+    context: Context,
+    uri: Uri,
+    studentName: String,
+    result: FamilyResult,
+): Boolean = runCatching {
+    val document = PdfDocument()
+    val page = document.startPage(PdfDocument.PageInfo.Builder(595, 842, 1).create())
+    val canvas = page.canvas
+    val heading = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = android.graphics.Color.rgb(15, 23, 42)
+        textSize = 23f
+        typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+    }
+    val label = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = android.graphics.Color.rgb(100, 116, 139)
+        textSize = 11f
+    }
+    val value = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = android.graphics.Color.rgb(15, 23, 42)
+        textSize = 13f
+        typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+    }
+    canvas.drawText("SchoolDB Report Card", 44f, 58f, heading)
+    canvas.drawText(studentName, 44f, 91f, value)
+    canvas.drawText(result.name, 44f, 113f, label)
+    canvas.drawText("Overall ${number(result.percentage)}%  ·  ${number(result.obtained)} / ${number(result.maximum)}", 44f, 146f, value)
+    canvas.drawLine(44f, 166f, 551f, 166f, label)
+    canvas.drawText("SUBJECT", 44f, 193f, label)
+    canvas.drawText("MARKS", 390f, 193f, label)
+    canvas.drawText("STATUS", 480f, 193f, label)
+    result.subjects.take(20).forEachIndexed { index, subject ->
+        val y = 226f + index * 28f
+        canvas.drawText(subject.subjectName.take(42), 44f, y, value)
+        canvas.drawText(subject.marksObtained?.let { "${number(it)} / ${number(subject.maxMarks)}" } ?: "—", 390f, y, value)
+        canvas.drawText(subject.status, 480f, y, label)
+    }
+    canvas.drawText("Generated securely by SchoolDB", 44f, 800f, label)
+    document.finishPage(page)
+    context.contentResolver.openOutputStream(uri)?.use(document::writeTo)
+        ?: error("Unable to open report destination")
+    document.close()
+}.isSuccess
 
 @Composable
 private fun HomeworkSummaryCard(item: FamilyHomework) = ColumnCard {
@@ -2104,7 +2579,15 @@ private fun EmptyMessage(message: String) {
 }
 
 @Composable
-private fun LoadingBlock() = Box(Modifier.fillMaxWidth().height(180.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+private fun LoadingBlock() {
+    Column(
+        Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        SkeletonPulse(Modifier.fillMaxWidth(.48f).height(20.dp))
+        repeat(3) { SkeletonPulse(Modifier.fillMaxWidth().height(82.dp)) }
+    }
+}
 
 @Composable
 private fun InlineError(message: String, onRefresh: () -> Unit) {
@@ -2115,7 +2598,36 @@ private fun InlineError(message: String, onRefresh: () -> Unit) {
 }
 
 @Composable
-private fun LoadingPage(modifier: Modifier) = Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+private fun LoadingPage(modifier: Modifier) = Column(
+    modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 24.dp),
+    verticalArrangement = Arrangement.spacedBy(14.dp),
+) {
+    SkeletonPulse(Modifier.fillMaxWidth(.45f).height(28.dp))
+    SkeletonPulse(Modifier.fillMaxWidth(.7f).height(16.dp))
+    SkeletonPulse(Modifier.fillMaxWidth().height(175.dp))
+    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        SkeletonPulse(Modifier.weight(1f).height(120.dp))
+        SkeletonPulse(Modifier.weight(1f).height(120.dp))
+    }
+    repeat(2) { SkeletonPulse(Modifier.fillMaxWidth().height(76.dp)) }
+}
+
+@Composable
+private fun SkeletonPulse(modifier: Modifier) {
+    val transition = rememberInfiniteTransition(label = "student-loading")
+    val alpha by transition.animateFloat(
+        initialValue = .38f,
+        targetValue = .82f,
+        animationSpec = infiniteRepeatable(tween(750), RepeatMode.Reverse),
+        label = "student-loading-alpha",
+    )
+    Box(
+        modifier
+            .alpha(alpha)
+            .clip(RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant),
+    )
+}
 
 @Composable
 private fun FamilyError(message: String, onRefresh: () -> Unit, modifier: Modifier) {
@@ -2139,6 +2651,21 @@ private fun calendarColor(category: String) = when (category) {
 }
 
 private fun calendarDate(value: String) = runCatching { LocalDate.parse(value.take(10)) }.getOrNull()
+
+private fun academicYearMonths(year: FamilyAcademicYear?): List<YearMonth> {
+    val start = year?.startDate?.let(::calendarDate)?.let(YearMonth::from)
+        ?: return listOf(YearMonth.now())
+    val end = year.endDate.let(::calendarDate)?.let(YearMonth::from) ?: start
+    return generateSequence(start) { current ->
+        current.plusMonths(1).takeIf { !it.isAfter(end) }
+    }.take(24).toList()
+}
+
+private fun defaultAttendanceMonth(year: FamilyAcademicYear?): YearMonth {
+    val months = academicYearMonths(year)
+    val current = YearMonth.now()
+    return current.takeIf { it in months } ?: months.last()
+}
 
 private fun number(value: Double) = if (value % 1.0 == 0.0) value.toInt().toString() else String.format(Locale.US, "%.1f", value)
 private fun currency(value: Double) = NumberFormat.getCurrencyInstance(Locale.forLanguageTag("en-IN")).apply { maximumFractionDigits = 0 }.format(value)

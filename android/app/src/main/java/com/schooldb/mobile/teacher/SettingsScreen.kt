@@ -25,6 +25,7 @@ import androidx.compose.material.icons.outlined.LightMode
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.RestartAlt
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -162,6 +163,19 @@ fun SettingsScreen(
                             }) { Text("Enable") }
                         }
                     }
+                }
+            }
+
+            item { SettingsSectionTitle("SECURITY") }
+            item {
+                SettingsCard {
+                    ToggleRow(
+                        icon = Icons.Outlined.Lock,
+                        title = "Secure app re-entry",
+                        subtitle = "Use your device lock after leaving SchoolDB",
+                        checked = preferences.secureReentry,
+                        onCheckedChange = AppPreferences::setSecureReentry,
+                    )
                 }
             }
 
