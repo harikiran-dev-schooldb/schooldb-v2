@@ -1,7 +1,6 @@
 package com.schooldb.mobile.teacher
 
 import com.schooldb.mobile.network.AuthenticatedApiClient
-import java.time.LocalDate
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -41,6 +40,7 @@ class TeacherRepository(
                         className = item.getString("className"),
                         sectionName = item.getString("sectionName"),
                         date = date,
+                        sessionType = item.optString("attendanceSessionType", "DAILY"),
                         attendanceSessionId = item.optString("attendanceSessionId").takeIf { it.isNotBlank() },
                         attendanceCount = item.optInt("attendanceCount"),
                         attendanceLocked = item.optBoolean("attendanceLocked"),
@@ -148,13 +148,17 @@ class TeacherRepository(
         }
         return AttendanceSheet(
             sessionId = sessionId,
-            title = "Daily attendance",
+            title = when (target.sessionType) {
+                "MORNING" -> "Morning attendance"
+                "AFTERNOON" -> "Afternoon attendance"
+                else -> "Daily attendance"
+            },
             subtitle = "${target.className} · Section ${target.sectionName}",
             students = students,
         )
     }
 
-    suspend fun saveAttendance(sheet: AttendanceSheet) {
+    suspend fun saveAttendance(sheet: AttendanceSheet, finalize: Boolean = false) {
         val rows = JSONArray()
         sheet.students.forEach { student ->
             rows.put(
@@ -167,16 +171,13 @@ class TeacherRepository(
             "api/v1/attendance",
             JSONObject()
                 .put("sessionId", sheet.sessionId)
+                .put("finalize", finalize)
                 .put("attendance", rows),
         )
     }
 
     suspend fun saveAndLockAttendance(sheet: AttendanceSheet) {
-        saveAttendance(sheet)
-        api.post(
-            "api/v1/attendance/session/${sheet.sessionId}/lock",
-            JSONObject(),
-        )
+        saveAttendance(sheet, finalize = true)
     }
 
     private suspend fun createSession(period: TeachingPeriod): String {
@@ -188,7 +189,7 @@ class TeacherRepository(
                 .put("academicYearId", period.academicYearId)
                 .put("classId", period.classId)
                 .put("sectionId", period.sectionId)
-                .put("attendanceDate", LocalDate.now().toString()),
+                .put("attendanceDate", period.date),
         )
         return data.getString("id")
     }
@@ -197,7 +198,7 @@ class TeacherRepository(
         val data = api.post(
             "api/v1/attendance/session",
             JSONObject()
-                .put("sessionType", "DAILY")
+                .put("sessionType", target.sessionType)
                 .put("academicYearId", target.academicYearId)
                 .put("classId", target.classId)
                 .put("sectionId", target.sectionId)
@@ -217,6 +218,7 @@ class TeacherRepository(
         subjectName = getString("subjectName"),
         className = getString("className"),
         sectionName = getString("sectionName"),
+        date = getString("date"),
         attendanceSessionId = optString("attendanceSessionId").takeIf { it.isNotBlank() },
         attendanceCount = optInt("attendanceCount"),
         attendanceLocked = optBoolean("attendanceLocked"),

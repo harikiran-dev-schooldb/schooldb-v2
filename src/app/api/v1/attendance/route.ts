@@ -1,4 +1,5 @@
 import { apiHandler } from "@/lib/api";
+import { after } from "next/server";
 import {
   requireRole,
   requireTeacherAttendanceSession,
@@ -10,6 +11,11 @@ import { validateBody } from "@/lib/validation";
 
 import { attendanceSchema } from "@/features/attendance/schemas/attendance.schema";
 import { attendanceService } from "@/features/attendance/services/attendance.service";
+import { notifyAttendanceLocked } from "@/features/notifications/events";
+import {
+  processAutomatedCampaign,
+  queueAttendanceSessionAlert,
+} from "@/features/whatsapp/automation";
 import { recordAuditLog } from "@/lib/audit";
 
 export async function GET(req: Request) {
@@ -47,17 +53,34 @@ export async function POST(req: Request) {
     const result = await attendanceService.markAttendance(
       tenant.schoolId,
       body,
+      body.finalize === true,
     );
+
+    let campaignQueued = false;
+    if (body.finalize) {
+      await notifyAttendanceLocked(body.sessionId, tenant.schoolId, tenant.userId);
+      const campaign = await queueAttendanceSessionAlert(tenant.schoolId, body.sessionId);
+      campaignQueued = Boolean(campaign);
+      if (campaign) after(() => processAutomatedCampaign(campaign.id));
+    }
 
     await recordAuditLog({
       actor: tenant,
       module: "ATTENDANCE",
-      action: "UPDATE",
+      action: body.finalize ? "LOCK" : "UPDATE",
       entityType: "ATTENDANCE_SESSION",
       entityId: body.sessionId,
-      summary: "Saved student attendance for a session.",
+      summary: body.finalize
+        ? "Saved and finalized student attendance for a session."
+        : "Saved student attendance for a session.",
+      metadata: body.finalize ? { whatsappCampaignQueued: campaignQueued } : undefined,
     });
 
-    return ApiResponse.success(result, "Attendance saved successfully.");
+    return ApiResponse.success(
+      result,
+      body.finalize
+        ? "Attendance saved and locked successfully."
+        : "Attendance saved successfully.",
+    );
   });
 }

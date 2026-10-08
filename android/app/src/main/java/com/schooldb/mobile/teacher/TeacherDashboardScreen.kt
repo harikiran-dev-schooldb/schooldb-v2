@@ -1022,7 +1022,7 @@ private fun AttendanceHub(
                         items(
                             items = dashboard.dailyTargets,
                             key = {
-                                "attendance-${it.classId}-${it.sectionId}"
+                                "attendance-${it.classId}-${it.sectionId}-${it.sessionType}"
                             },
                         ) { target ->
                             DailyAttendanceCard(
@@ -1065,9 +1065,31 @@ private fun AttendanceHub(
 
                 "MORNING_AFTERNOON" -> {
                     item {
-                        AttendanceInfoCard(
-                            "Morning and afternoon attendance will appear here when sessions are assigned.",
+                        Text(
+                            text = "Morning & afternoon attendance",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
                         )
+                    }
+
+                    if (dashboard.dailyTargets.isEmpty()) {
+                        item {
+                            AttendanceInfoCard(
+                                "No class or section is assigned to your teacher account.",
+                            )
+                        }
+                    } else {
+                        items(
+                            items = dashboard.dailyTargets,
+                            key = {
+                                "attendance-${it.classId}-${it.sectionId}-${it.sessionType}"
+                            },
+                        ) { target ->
+                            DailyAttendanceCard(
+                                target = target,
+                                onOpenAttendance = onOpenDailyAttendance,
+                            )
+                        }
                     }
                 }
 
@@ -1354,7 +1376,8 @@ private fun DashboardContent(
     modifier: Modifier = Modifier,
 ) {
     val dailyMode =
-        dashboard.attendanceMode == "ONCE_DAILY"
+        dashboard.attendanceMode == "ONCE_DAILY" ||
+            dashboard.attendanceMode == "MORNING_AFTERNOON"
 
     val itemCount =
         if (dailyMode) {
@@ -1418,7 +1441,11 @@ private fun DashboardContent(
                         SummaryLabel(
                             icon = Icons.Default.Schedule,
                             value = "$itemCount",
-                            label = "Classes",
+                            label = if (dashboard.attendanceMode == "MORNING_AFTERNOON") {
+                                "Registers"
+                            } else {
+                                "Classes"
+                            },
                         )
 
                         SummaryLabel(
@@ -1439,13 +1466,21 @@ private fun DashboardContent(
                     ),
                 ) {
                     Text(
-                        text = "Daily attendance",
+                        text = if (dashboard.attendanceMode == "MORNING_AFTERNOON") {
+                            "Morning & afternoon attendance"
+                        } else {
+                            "Daily attendance"
+                        },
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
                     )
 
                     Text(
-                        text = "Mark attendance once for the whole day",
+                        text = if (dashboard.attendanceMode == "MORNING_AFTERNOON") {
+                            "Complete each register separately"
+                        } else {
+                            "Mark attendance once for the whole day"
+                        },
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
@@ -1461,7 +1496,7 @@ private fun DashboardContent(
                 items(
                     items = dashboard.dailyTargets,
                     key = {
-                        "daily-${it.classId}-${it.sectionId}"
+                        "daily-${it.classId}-${it.sectionId}-${it.sessionType}"
                     },
                 ) { target ->
                     DailyAttendanceCard(
@@ -1601,6 +1636,21 @@ private fun DailyAttendanceCard(
         ) {
 
             Text(
+                text = when (target.sessionType) {
+                    "MORNING" -> "Morning register"
+                    "AFTERNOON" -> "Afternoon register"
+                    else -> "Daily register"
+                },
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.SemiBold,
+            )
+
+            Spacer(
+                modifier = Modifier.height(4.dp),
+            )
+
+            Text(
                 text =
                     "${target.className} · Section ${target.sectionName}",
                 style = MaterialTheme.typography.titleMedium,
@@ -1637,9 +1687,9 @@ private fun DailyAttendanceCard(
                     Text(
                         text =
                             if (target.attendanceCount > 0) {
-                                "Edit daily attendance"
+                                "Edit ${target.sessionType.lowercase()} attendance"
                             } else {
-                                "Take daily attendance"
+                                "Take ${target.sessionType.lowercase()} attendance"
                             },
                     )
                 }

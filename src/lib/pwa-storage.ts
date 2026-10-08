@@ -7,6 +7,7 @@ export type PwaOfflineSnapshot = {
   homework: Array<Record<string, unknown>>;
   timetable: Array<Record<string, unknown>>;
   attendance: Array<Record<string, unknown>>;
+  attendanceTargets?: Array<Record<string, unknown>>;
   notifications: Array<Record<string, unknown>>;
   visitors?: Array<Record<string, unknown>>;
   pickupAuthorizations?: Array<Record<string, unknown>>;

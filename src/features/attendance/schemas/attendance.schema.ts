@@ -22,6 +22,8 @@ export const attendanceSchema =
   z.object({
     sessionId: z.string().min(1),
 
+    finalize: z.boolean().optional(),
+
     attendance: z
       .array(
         attendanceRecordSchema

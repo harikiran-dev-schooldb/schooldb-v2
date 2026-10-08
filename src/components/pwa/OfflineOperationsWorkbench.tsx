@@ -20,7 +20,20 @@ type AttendanceRecord = {
 };
 
 type AttendanceSession = {
-  id: string;
+  id?: string;
+  key?: string;
+  academicYearId?: string;
+  attendanceDate?: string;
+  classId?: string;
+  className?: string;
+  sectionId?: string;
+  sectionName?: string;
+  sessionType?: "DAILY" | "MORNING" | "AFTERNOON" | "PERIOD";
+  timetableId?: string | null;
+  periodId?: string | null;
+  periodName?: string | null;
+  sessionId?: string | null;
+  baseUpdatedAt?: string | null;
   locked?: boolean;
   class?: { name?: string };
   section?: { name?: string };
@@ -65,7 +78,10 @@ export function OfflineOperationsWorkbench({
   onQueued: () => void;
 }) {
   const capabilities = new Set(snapshot.capabilities ?? []);
-  const sessions = (snapshot.attendance as AttendanceSession[]).filter(
+  const savedTargets = (snapshot.attendanceTargets ?? []) as AttendanceSession[];
+  const sessions = (savedTargets.length > 0
+    ? savedTargets
+    : snapshot.attendance as AttendanceSession[]).filter(
     (session) => Array.isArray(session.records),
   );
   const students = snapshot.students as StaffStudent[];
@@ -91,7 +107,7 @@ export function OfflineOperationsWorkbench({
           <h3 className="font-semibold text-slate-900">Today&apos;s attendance</h3>
           {sessions.map((session) => (
             <OfflineAttendanceSession
-              key={session.id}
+              key={session.key ?? session.id}
               ownerKey={ownerKey}
               session={session}
               onQueued={onQueued}
@@ -138,27 +154,57 @@ function OfflineAttendanceSession({
   const [saving, setSaving] = useState(false);
 
   async function save() {
+    const isOfflineTarget = Boolean(
+      session.academicYearId &&
+      session.attendanceDate &&
+      session.classId &&
+      session.sectionId &&
+      session.sessionType,
+    );
     const changes = records
       .filter((record) => {
         const before = savedRecords.find((item) => item.studentId === record.studentId);
         return before?.status !== record.status || before?.remarks !== record.remarks;
       })
       .map(({ studentId, status, remarks }) => ({ studentId, status, remarks: remarks ?? "" }));
-    if (!changes.length) {
+    if (!isOfflineTarget && !changes.length) {
       toast.info("No attendance changes to save.");
       return;
     }
     setSaving(true);
     try {
-      await queue(
-        ownerKey,
-        `/api/v1/attendance/session/${session.id}/correction`,
-        "POST",
-        { changes },
-      );
+      if (isOfflineTarget) {
+        await queue(ownerKey, "/api/v1/attendance/offline-finalize", "POST", {
+          academicYearId: session.academicYearId,
+          attendanceDate: session.attendanceDate,
+          classId: session.classId,
+          sectionId: session.sectionId,
+          sessionType: session.sessionType,
+          timetableId: session.timetableId ?? null,
+          periodId: session.periodId ?? null,
+          sessionId: session.sessionId ?? null,
+          baseUpdatedAt: session.baseUpdatedAt ?? null,
+          attendance: records.map(({ studentId, status, remarks }) => ({
+            studentId,
+            status,
+            remarks: remarks ?? "",
+          })),
+        });
+      } else {
+        await queue(
+          ownerKey,
+          `/api/v1/attendance/session/${session.id}/correction`,
+          "POST",
+          { changes },
+        );
+      }
       setSavedRecords(records);
       onQueued();
-      toast.success("Attendance saved on this device.");
+      toast.success(
+        isOfflineTarget
+          ? "Attendance saved on this device and will finalize when synced."
+          : "Attendance changes saved on this device.",
+      );
     } finally {
       setSaving(false);
     }
@@ -168,7 +214,16 @@ function OfflineAttendanceSession({
     <div className="rounded-2xl border bg-slate-50/70 p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="font-semibold">
-          {[session.class?.name, session.section?.name].filter(Boolean).join(" - ") || "Attendance session"}
+          {[session.className ?? session.class?.name, session.sectionName ?? session.section?.name]
+            .filter(Boolean)
+            .join(" - ") || "Attendance session"}
+          {session.periodName
+            ? ` · ${session.periodName}`
+            : session.sessionType === "MORNING"
+              ? " · Morning"
+              : session.sessionType === "AFTERNOON"
+                ? " · Afternoon"
+                : ""}
         </p>
         <Button
           type="button"
@@ -202,7 +257,7 @@ function OfflineAttendanceSession({
         ))}
       </div>
       <Button type="button" className="mt-3" disabled={session.locked || saving} onClick={() => void save()}>
-        <Save className="size-4" /> {session.locked ? "Session locked" : saving ? "Saving…" : "Save attendance offline"}
+        <Save className="size-4" /> {session.locked ? "Session locked" : saving ? "Saving…" : session.academicYearId ? "Save & finalize offline" : "Save attendance offline"}
       </Button>
     </div>
   );

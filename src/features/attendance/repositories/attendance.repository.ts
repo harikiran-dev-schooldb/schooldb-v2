@@ -242,12 +242,62 @@ bulkMarkAttendance(
       status: AttendanceStatus;
       remarks?: string;
     }[];
-  }
+  },
+  finalize = false,
 ) {
   return prisma.$transaction(async (tx) => {
+    const session = await tx.attendanceSession.findFirst({
+      where: { id: input.sessionId, schoolId },
+      select: {
+        id: true,
+        locked: true,
+        academicYearId: true,
+        classId: true,
+        sectionId: true,
+      },
+    });
+    if (!session) throw new Error("Attendance session not found.");
+    if (session.locked) {
+      throw new Error("Attendance session is locked and cannot be modified.");
+    }
+
+    const uniqueStudentIds = [...new Set(input.attendance.map((item) => item.studentId))];
+    if (uniqueStudentIds.length !== input.attendance.length) {
+      throw new Error("Each student can appear only once in an attendance register.");
+    }
+    const eligibleStudents = await tx.studentEnrollment.count({
+      where: {
+        schoolId,
+        academicYearId: session.academicYearId,
+        classId: session.classId,
+        sectionId: session.sectionId,
+        active: true,
+        student: { status: "ACTIVE", id: { in: uniqueStudentIds } },
+      },
+    });
+    if (eligibleStudents !== uniqueStudentIds.length) {
+      throw new Error("One or more students are outside this attendance register.");
+    }
+    if (finalize) {
+      const rosterSize = await tx.studentEnrollment.count({
+        where: {
+          schoolId,
+          academicYearId: session.academicYearId,
+          classId: session.classId,
+          sectionId: session.sectionId,
+          active: true,
+          student: { status: "ACTIVE" },
+        },
+      });
+      if (rosterSize !== uniqueStudentIds.length) {
+        throw new Error("Every active student must have a status before attendance can be finalized.");
+      }
+    }
+
     await tx.attendance.deleteMany({
       where: {
         sessionId: input.sessionId,
+        schoolId,
       },
     });
 
@@ -265,9 +315,17 @@ bulkMarkAttendance(
       })),
     });
 
+    if (finalize) {
+      await tx.attendanceSession.update({
+        where: { id: session.id },
+        data: { locked: true },
+      });
+    }
+
     return {
       success: true,
       sessionId: input.sessionId,
+      locked: finalize,
     };
   });
 },
@@ -1211,6 +1269,7 @@ async markFullPresent(
     classId?: string;
     sectionId?: string;
   },
+  finalize = false,
 ) {
   const enrollments =
     await prisma.studentEnrollment.findMany({
@@ -1246,6 +1305,7 @@ async markFullPresent(
     return {
       sessionCount: 0,
       attendanceCount: 0,
+      lockedSessionIds: [] as string[],
     };
   }
 
@@ -1273,6 +1333,7 @@ async markFullPresent(
     async (tx) => {
       let sessionCount = 0;
       let attendanceCount = 0;
+      const lockedSessionIds: string[] = [];
 
       for (const group of groups.values()) {
         let session =
@@ -1304,7 +1365,6 @@ async markFullPresent(
               },
             });
 
-          sessionCount++;
         }
 
         /*
@@ -1313,6 +1373,8 @@ async markFullPresent(
         if (session.locked) {
           continue;
         }
+
+        sessionCount++;
 
         const studentIds =
           enrollments
@@ -1329,13 +1391,10 @@ async markFullPresent(
             );
 
         /*
-         * Only create attendance records
-         * that do not already exist.
-         *
-         * This is important:
-         *
-         * Mark Full Present must NOT erase
-         * absentees that were already marked.
+         * Create missing rows, then reset the unlocked
+         * roster to PRESENT. The caller is finalizing a
+         * complete selection, so stale exceptions must not
+         * leak into the new register state.
          */
         const existingRecords =
           await tx.attendance.findMany({
@@ -1369,31 +1428,45 @@ async markFullPresent(
               ),
           );
 
-        if (
-          newStudentIds.length === 0
-        ) {
-          continue;
-        }
-
-        await tx.attendance.createMany({
-          data: newStudentIds.map(
-            (studentId) => ({
-              schoolId,
-              sessionId:
-                session.id,
-              studentId,
-              status: "PRESENT",
-            }),
-          ),
+        await tx.attendance.updateMany({
+          where: {
+            schoolId,
+            sessionId: session.id,
+            studentId: { in: studentIds },
+          },
+          data: { status: "PRESENT", remarks: null },
         });
 
-        attendanceCount +=
-          newStudentIds.length;
+        if (newStudentIds.length > 0) {
+          await tx.attendance.createMany({
+            data: newStudentIds.map(
+              (studentId) => ({
+                schoolId,
+                sessionId:
+                  session.id,
+                studentId,
+                status: "PRESENT",
+              }),
+            ),
+          });
+
+        }
+
+        attendanceCount += studentIds.length;
+
+        if (finalize) {
+          await tx.attendanceSession.update({
+            where: { id: session.id },
+            data: { locked: true },
+          });
+          lockedSessionIds.push(session.id);
+        }
       }
 
       return {
         sessionCount,
         attendanceCount,
+        lockedSessionIds,
       };
     },
   );
@@ -1407,6 +1480,7 @@ async markFullPresentForPeriods(
     classId?: string;
     sectionId?: string;
   },
+  finalize = false,
 ) {
   /*
    * Prisma WeekDay only supports Monday-Saturday.
@@ -1421,7 +1495,7 @@ async markFullPresentForPeriods(
     "SATURDAY",
   ] as const;
 
-  const day = weekDays[attendanceDate.getDay()];
+  const day = weekDays[attendanceDate.getUTCDay()];
 
   /*
    * Sunday is not part of the Prisma WeekDay enum.
@@ -1430,6 +1504,7 @@ async markFullPresentForPeriods(
     return {
       sessionCount: 0,
       attendanceCount: 0,
+      lockedSessionIds: [] as string[],
     };
   }
 
@@ -1494,6 +1569,7 @@ async markFullPresentForPeriods(
     return {
       sessionCount: 0,
       attendanceCount: 0,
+      lockedSessionIds: [] as string[],
     };
   }
 
@@ -1532,6 +1608,7 @@ async markFullPresentForPeriods(
     return {
       sessionCount: 0,
       attendanceCount: 0,
+      lockedSessionIds: [] as string[],
     };
   }
 
@@ -1539,6 +1616,7 @@ async markFullPresentForPeriods(
     async (tx) => {
       let sessionCount = 0;
       let attendanceCount = 0;
+      const lockedSessionIds: string[] = [];
 
       /*
        * Each timetable entry represents one period
@@ -1609,7 +1687,6 @@ async markFullPresentForPeriods(
               },
             });
 
-          sessionCount++;
         }
 
         /*
@@ -1618,6 +1695,8 @@ async markFullPresentForPeriods(
         if (session.locked) {
           continue;
         }
+
+        sessionCount++;
 
         /*
          * Get attendance records that already exist.
@@ -1645,13 +1724,8 @@ async markFullPresentForPeriods(
           );
 
         /*
-         * Only add PRESENT records for students
-         * who don't already have an attendance record.
-         *
-         * IMPORTANT:
-         *
-         * If a student was already marked ABSENT,
-         * LATE or LEAVE, we leave it untouched.
+         * Create missing rows, then reset the unlocked period
+         * roster to PRESENT before applying any bulk exceptions.
          */
         const newStudentIds =
           studentIds.filter(
@@ -1661,28 +1735,44 @@ async markFullPresentForPeriods(
               ),
           );
 
-        if (newStudentIds.length === 0) {
-          continue;
-        }
-
-        await tx.attendance.createMany({
-          data: newStudentIds.map(
-            (studentId) => ({
-              schoolId,
-              sessionId: session.id,
-              studentId,
-              status: "PRESENT",
-            }),
-          ),
+        await tx.attendance.updateMany({
+          where: {
+            schoolId,
+            sessionId: session.id,
+            studentId: { in: studentIds },
+          },
+          data: { status: "PRESENT", remarks: null },
         });
 
-        attendanceCount +=
-          newStudentIds.length;
+        if (newStudentIds.length > 0) {
+          await tx.attendance.createMany({
+            data: newStudentIds.map(
+              (studentId) => ({
+                schoolId,
+                sessionId: session.id,
+                studentId,
+                status: "PRESENT",
+              }),
+            ),
+          });
+
+        }
+
+        attendanceCount += studentIds.length;
+
+        if (finalize) {
+          await tx.attendanceSession.update({
+            where: { id: session.id },
+            data: { locked: true },
+          });
+          lockedSessionIds.push(session.id);
+        }
       }
 
       return {
         sessionCount,
         attendanceCount,
+        lockedSessionIds,
       };
     },
   );
@@ -1698,6 +1788,7 @@ async markStudentsAbsent(
     classId?: string;
     sectionId?: string;
   },
+  finalize = false,
 ) {
   const uniqueStudentIds = [...new Set(studentIds)];
 
@@ -1724,22 +1815,14 @@ async markStudentsAbsent(
     );
   }
 
-  const classSections = [
-    ...new Map(
-      enrollments.map((enrollment) => [
-        `${enrollment.classId}:${enrollment.sectionId}`,
-        { classId: enrollment.classId, sectionId: enrollment.sectionId },
-      ]),
-    ).values(),
-  ];
-
   const sessions = await prisma.attendanceSession.findMany({
     where: {
       schoolId,
       academicYearId,
       attendanceDate,
       sessionType: { in: sessionTypes },
-      OR: classSections,
+      ...(filters?.classId ? { classId: filters.classId } : {}),
+      ...(filters?.sectionId ? { sectionId: filters.sectionId } : {}),
     },
     select: {
       id: true,
@@ -1762,6 +1845,7 @@ async markStudentsAbsent(
   return prisma.$transaction(async (tx) => {
     let attendanceCount = 0;
     const affectedStudents = new Set<string>();
+    const lockedSessionIds: string[] = [];
 
     for (const session of sessions) {
       const studentsInSession = enrollments
@@ -1772,20 +1856,28 @@ async markStudentsAbsent(
         )
         .map((enrollment) => enrollment.studentId);
 
-      if (studentsInSession.length === 0) continue;
+      if (studentsInSession.length > 0) {
+        const updated = await tx.attendance.updateMany({
+          where: {
+            schoolId,
+            sessionId: session.id,
+            studentId: { in: studentsInSession },
+          },
+          data: { status: "ABSENT" },
+        });
 
-      const updated = await tx.attendance.updateMany({
-        where: {
-          schoolId,
-          sessionId: session.id,
-          studentId: { in: studentsInSession },
-        },
-        data: { status: "ABSENT" },
-      });
+        attendanceCount += updated.count;
+        if (updated.count > 0) {
+          studentsInSession.forEach((studentId) => affectedStudents.add(studentId));
+        }
+      }
 
-      attendanceCount += updated.count;
-      if (updated.count > 0) {
-        studentsInSession.forEach((studentId) => affectedStudents.add(studentId));
+      if (finalize) {
+        await tx.attendanceSession.update({
+          where: { id: session.id },
+          data: { locked: true },
+        });
+        lockedSessionIds.push(session.id);
       }
     }
 
@@ -1793,6 +1885,7 @@ async markStudentsAbsent(
       studentCount: affectedStudents.size,
       attendanceCount,
       sessionCount: sessions.length,
+      lockedSessionIds,
     };
   });
 },

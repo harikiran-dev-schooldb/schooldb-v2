@@ -1,6 +1,12 @@
 import { z } from "zod";
+import { after } from "next/server";
 
 import { attendanceService } from "@/features/attendance/services/attendance.service";
+import { notifyAttendanceLocked } from "@/features/notifications/events";
+import {
+  processAutomatedCampaign,
+  queueAttendanceSessionAlert,
+} from "@/features/whatsapp/automation";
 import { apiHandler } from "@/lib/api";
 import { recordAuditLog } from "@/lib/audit";
 import { requireRole } from "@/lib/auth";
@@ -39,6 +45,20 @@ export async function POST(request: Request) {
       parsed.data,
     );
 
+    await Promise.all(
+      (result.lockedSessionIds ?? []).map((sessionId) =>
+        notifyAttendanceLocked(sessionId, tenant.schoolId, tenant.userId),
+      ),
+    );
+    const campaigns = await Promise.all(
+      (result.lockedSessionIds ?? []).map((sessionId) =>
+        queueAttendanceSessionAlert(tenant.schoolId, sessionId),
+      ),
+    );
+    for (const campaign of campaigns) {
+      if (campaign) after(() => processAutomatedCampaign(campaign.id));
+    }
+
     await recordAuditLog({
       actor: tenant,
       module: "ATTENDANCE",
@@ -56,7 +76,7 @@ export async function POST(request: Request) {
 
     return ApiResponse.success(
       result,
-      `${result.studentCount} students marked absent successfully.`,
+      `${result.studentCount} students marked absent and attendance finalized successfully.`,
     );
   });
 }

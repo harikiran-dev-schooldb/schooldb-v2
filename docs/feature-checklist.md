@@ -52,5 +52,5 @@ This checklist reflects features present in the application, not deployment conf
 - [x] System export and health status
 - [ ] Configurable approval workflows
 - [ ] Regulator-specific reports
-- [ ] Offline-friendly attendance and homework
+- [x] Offline-friendly attendance and homework with idempotent sync and attendance conflict detection
 - [ ] Native mobile applications

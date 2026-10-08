@@ -281,11 +281,13 @@ if (
 
   async markAttendance(
   schoolId: string,
-  input: AttendanceFormOutput
+  input: AttendanceFormOutput,
+  finalize = false,
 ) {
   return attendanceRepository.bulkMarkAttendance(
     schoolId,
-    input
+    input,
+    finalize,
   );
 },
 
@@ -1590,6 +1592,7 @@ async markFullPresent(
       attendanceDate,
       "DAILY",
       filters,
+      true,
     );
   }
 
@@ -1612,6 +1615,7 @@ async markFullPresent(
         attendanceDate,
         "MORNING",
         filters,
+        true,
       );
 
     const afternoon =
@@ -1621,6 +1625,7 @@ async markFullPresent(
         attendanceDate,
         "AFTERNOON",
         filters,
+        true,
       );
 
     return {
@@ -1631,6 +1636,11 @@ async markFullPresent(
       attendanceCount:
         morning.attendanceCount +
         afternoon.attendanceCount,
+
+      lockedSessionIds: [
+        ...(morning.lockedSessionIds ?? []),
+        ...(afternoon.lockedSessionIds ?? []),
+      ],
     };
   }
 
@@ -1653,6 +1663,7 @@ async markFullPresent(
       input.academicYearId,
       attendanceDate,
       filters,
+      true,
     );
   }
 
@@ -1746,6 +1757,7 @@ async markBulkAbsentees(
     input.studentIds,
     sessionTypes,
     filters,
+    true,
   );
 }
 };

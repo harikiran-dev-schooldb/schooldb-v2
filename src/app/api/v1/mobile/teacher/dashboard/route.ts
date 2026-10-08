@@ -224,7 +224,11 @@ export async function GET() {
         : Promise.resolve([]),
     ]);
 
-    const toPeriod = (entry: (typeof timetable)[number], includeAttendance: boolean) => {
+    const toPeriod = (
+      entry: (typeof timetable)[number],
+      includeAttendance: boolean,
+      attendanceDate: string,
+    ) => {
       const allocation = entry.teacherAllocation;
       const session = includeAttendance
         ? sessions.find(
@@ -245,6 +249,7 @@ export async function GET() {
         subjectName: allocation.subject.name,
         className: allocation.class.name,
         sectionName: allocation.section.name,
+        date: attendanceDate,
         attendanceSessionId: session?.id ?? null,
         attendanceCount: session?._count.records ?? 0,
         attendanceLocked: session?.locked ?? false,
@@ -287,27 +292,34 @@ export async function GET() {
       day: dayName,
       academicYearName: academicYear.name,
       attendanceMode: academicYear.attendanceMode,
-      periods: timetable.filter((entry) => entry.day === day).map((entry) => toPeriod(entry, true)),
+      periods: timetable
+        .filter((entry) => entry.day === day)
+        .map((entry) => toPeriod(entry, true, date)),
       dailyTargets: academicYear.attendanceMode === "EVERY_PERIOD"
         ? []
-        : classAssignments.map((allocation) => {
-            const session = sessions.find(
-              (item) =>
-                item.classId === allocation.classId &&
-                item.sectionId === allocation.sectionId &&
-                item.periodId === null,
-            );
-            return {
-              academicYearId: academicYear.id,
-              classId: allocation.classId,
-              sectionId: allocation.sectionId,
-              className: allocation.class.name,
-              sectionName: allocation.section.name,
-              attendanceSessionId: session?.id ?? null,
-              attendanceSessionType: session?.sessionType ?? null,
-              attendanceCount: session?._count.records ?? 0,
-              attendanceLocked: session?.locked ?? false,
-            };
+        : classAssignments.flatMap((allocation) => {
+            const sessionTypes = academicYear.attendanceMode === "MORNING_AFTERNOON"
+              ? ([AttendanceSessionType.MORNING, AttendanceSessionType.AFTERNOON] as const)
+              : ([AttendanceSessionType.DAILY] as const);
+            return sessionTypes.map((sessionType) => {
+              const session = sessions.find(
+                (item) =>
+                  item.classId === allocation.classId &&
+                  item.sectionId === allocation.sectionId &&
+                  item.sessionType === sessionType,
+              );
+              return {
+                academicYearId: academicYear.id,
+                classId: allocation.classId,
+                sectionId: allocation.sectionId,
+                className: allocation.class.name,
+                sectionName: allocation.section.name,
+                attendanceSessionType: sessionType,
+                attendanceSessionId: session?.id ?? null,
+                attendanceCount: session?._count.records ?? 0,
+                attendanceLocked: session?.locked ?? false,
+              };
+            });
           }),
       studentGroups,
       upcoming: nextTeachingDate
@@ -316,7 +328,7 @@ export async function GET() {
             day: nextTeachingDate.day,
             periods: timetable
               .filter((entry) => entry.day === nextTeachingDate.day)
-              .map((entry) => toPeriod(entry, false)),
+              .map((entry) => toPeriod(entry, false, nextTeachingDate.date)),
           }
         : null,
     });

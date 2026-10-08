@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 
 import { Card, CardContent } from "@/components/ui/card";
+import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 
 import { Button } from "@/components/ui/button";
 import { refreshTable } from "@/lib/table-event";
@@ -102,6 +103,7 @@ export function AttendancePage() {
   const [academicYears, setAcademicYears] = useState<AcademicYearOption[]>([]);
 
   const [loading, setLoading] = useState(false);
+  const [confirmPresentOpen, setConfirmPresentOpen] = useState(false);
 
   const [presentScope, setPresentScope] = useState<
     "SCHOOL" | "CLASS" | "SECTION"
@@ -257,20 +259,6 @@ export function AttendancePage() {
       return;
     }
 
-    /*
-     * For SCHOOL scope, we can determine the attendance
-     * session type from the academic year's attendance mode.
-     *
-     * For EVERY_PERIOD, school-wide full present cannot safely
-     * create period sessions without knowing the timetable period.
-     */
-    if (attendanceMode === "EVERY_PERIOD") {
-      toast.error(
-        "For Every Period attendance, select a class and section, then mark each period.",
-      );
-      return;
-    }
-
     try {
       setLoading(true);
 
@@ -307,10 +295,11 @@ export function AttendancePage() {
       const attendanceCount = result.data?.attendanceCount ?? 0;
 
       toast.success(
-        `${attendanceCount} students marked present across ${sessionCount} attendance session${
+        `${attendanceCount} students marked present and ${sessionCount} attendance session${
           sessionCount === 1 ? "" : "s"
-        }.`,
+        } finalized.`,
       );
+      setConfirmPresentOpen(false);
       refreshTable("attendance");
     } catch {
       toast.error("Failed to mark full attendance.");
@@ -445,9 +434,9 @@ export function AttendancePage() {
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="rounded-full bg-slate-900 px-2.5 py-1 text-[9px] font-bold tracking-wide text-white">STEP 1</span>
-                    <h2 className="text-base font-bold text-slate-900">Start everyone as present</h2>
+                    <h2 className="text-base font-bold text-slate-900">No absentees — mark everyone present</h2>
                   </div>
-                  <p className="mt-1 text-xs leading-5 text-slate-500">Choose how widely this action should apply. You can record absent students in the next step.</p>
+                  <p className="mt-1 text-xs leading-5 text-slate-500">Use this only when nobody is absent. The selected registers will be finalized immediately.</p>
                 </div>
               </div>
 
@@ -462,11 +451,11 @@ export function AttendancePage() {
               <div>
                 <p className="text-[10px] font-bold tracking-[0.16em] text-slate-400 uppercase">Ready to apply</p>
                 <p className="mt-2 text-lg font-bold text-slate-900">{presentScope === "SCHOOL" ? "Whole school" : presentScope === "CLASS" ? "Selected class" : "Selected section"}</p>
-                <p className="mt-1 text-xs leading-5 text-slate-500">{presentScopeReady ? `Mark the selected scope present for ${selectedDateLabel}.` : "Complete the register scope above to continue."}</p>
+                <p className="mt-1 text-xs leading-5 text-slate-500">{presentScopeReady ? `Mark everyone present and lock the selected registers for ${selectedDateLabel}.` : "Complete the register scope above to continue."}</p>
               </div>
-              <Button type="button" disabled={loading || !presentScopeReady} onClick={() => markFullPresent(presentScope)} className="mt-5 h-11 w-full gap-2 rounded-xl bg-emerald-600 font-semibold text-white shadow-lg shadow-emerald-600/15 hover:bg-emerald-700 disabled:opacity-40 disabled:shadow-none">
+              <Button type="button" disabled={loading || !presentScopeReady} onClick={() => setConfirmPresentOpen(true)} className="mt-5 h-11 w-full gap-2 rounded-xl bg-emerald-600 font-semibold text-white shadow-lg shadow-emerald-600/15 hover:bg-emerald-700 disabled:opacity-40 disabled:shadow-none">
                 {loading ? <Loader2 className="size-4 animate-spin" /> : <CheckCircle2 className="size-4" />}
-                {loading ? "Applying..." : "Mark full present"}
+                {loading ? "Finalizing..." : "Review & finalize"}
               </Button>
             </div>
           </div>
@@ -480,6 +469,27 @@ export function AttendancePage() {
         sectionId={sectionId}
         attendanceMode={attendanceMode}
         attendanceDate={attendanceDate}
+      />
+
+      <ConfirmDialog
+        open={confirmPresentOpen}
+        onOpenChange={(open) => {
+          if (!loading) setConfirmPresentOpen(open);
+        }}
+        eyebrow="Finalize attendance"
+        icon={CheckCircle2}
+        tone="primary"
+        title="Confirm there are no absentees?"
+        description="Everyone in this scope will be marked present and the completed registers will be locked."
+        details={[
+          { label: "Scope", value: presentScope === "SCHOOL" ? "Whole school" : presentScope === "CLASS" ? "Selected class" : "Selected section" },
+          { label: "Attendance", value: getModeLabel(attendanceMode) },
+          { label: "Date", value: selectedDateLabel },
+        ]}
+        consequence="Finalizing sends attendance notifications. Use Attendance History if an authorized correction is needed later."
+        confirmLabel="Mark present & finalize"
+        pending={loading}
+        onConfirm={() => void markFullPresent(presentScope)}
       />
     </div>
   );

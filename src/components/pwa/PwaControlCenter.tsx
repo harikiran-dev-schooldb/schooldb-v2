@@ -209,7 +209,10 @@ export function PwaControlCenter({
       if (!response.ok || !result.success) throw new Error(result.message || "Sync failed.");
       await savePwaSnapshot(ownerKey, result.data);
       if (flushed.failed) {
-        toast.error(`${flushed.failed} saved change${flushed.failed === 1 ? " was" : "s were"} rejected by the server.`);
+        toast.error(
+          flushed.failures[0]?.message ||
+            `${flushed.failed} saved change${flushed.failed === 1 ? " was" : "s were"} rejected by the server.`,
+        );
       } else {
         toast.success(flushed.completed ? "Saved data refreshed and pending requests submitted." : "Offline data refreshed.");
       }

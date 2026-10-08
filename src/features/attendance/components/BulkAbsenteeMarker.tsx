@@ -58,6 +58,7 @@ export function BulkAbsenteeMarker({
   const [loadingStudents, setLoadingStudents] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [finalized, setFinalized] = useState(false);
   const [sessionChoice, setSessionChoice] = useState<SessionChoice>("BOTH");
   const [currentPage, setCurrentPage] = useState(1);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -117,6 +118,7 @@ export function BulkAbsenteeMarker({
         setStudents(result.data ?? []);
         setSelectedIds([]);
         setRecordedAbsentIds([]);
+        setFinalized(false);
         setCurrentPage(1);
       } catch (error) {
         if (error instanceof DOMException && error.name === "AbortError") return;
@@ -164,6 +166,7 @@ export function BulkAbsenteeMarker({
     setStudents([]);
     setSelectedIds([]);
     setRecordedAbsentIds([]);
+    setFinalized(false);
     setSearch("");
     setCurrentPage(1);
   }
@@ -203,7 +206,7 @@ export function BulkAbsenteeMarker({
       }
 
       toast.success(
-        `${result.data.studentCount} students marked absent across ${result.data.sessionCount} session${result.data.sessionCount === 1 ? "" : "s"}.`,
+        `${result.data.studentCount} students marked absent and ${result.data.sessionCount} session${result.data.sessionCount === 1 ? "" : "s"} finalized.`,
       );
       refreshTable("attendance");
       setConfirmOpen(false);
@@ -211,6 +214,7 @@ export function BulkAbsenteeMarker({
         ...new Set([...current, ...submittedStudentIds]),
       ]);
       setSelectedIds([]);
+      setFinalized(true);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to mark absentees.");
     } finally {
@@ -247,10 +251,10 @@ export function BulkAbsenteeMarker({
             <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-rose-50 text-rose-600 ring-1 ring-rose-100"><UserMinus className="size-4" /></div>
             <div>
               <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded-full bg-slate-900 px-2.5 py-1 text-[9px] font-bold tracking-wide text-white">STEP 2</span>
-                <h2 className="text-base font-bold text-slate-900">Record absent students</h2>
+                <span className="rounded-full bg-slate-900 px-2.5 py-1 text-[9px] font-bold tracking-wide text-white">ALTERNATIVE</span>
+                <h2 className="text-base font-bold text-slate-900">Select absentees and finalize</h2>
               </div>
-              <p className="mt-1 text-xs leading-5 text-slate-500">Everyone else in the chosen scope remains present.</p>
+              <p className="mt-1 text-xs leading-5 text-slate-500">Everyone else is marked present automatically; you do not need to run the action above first.</p>
             </div>
           </div>
           <div className="flex w-fit items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-600"><CalendarDays className="size-3.5 text-indigo-500" />{attendanceDateLabel}</div>
@@ -295,15 +299,15 @@ export function BulkAbsenteeMarker({
                   ) : (
                     <>
                       <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
-                        {visibleStudents.map((student) => <AbsenteeStudentCard key={student.id} student={student} selected={selectedIds.includes(student.id)} recordedAbsent={recordedAbsentIds.includes(student.id)} onToggle={() => toggleStudent(student.id)} />)}
+                        {visibleStudents.map((student) => <AbsenteeStudentCard key={student.id} student={student} selected={selectedIds.includes(student.id)} recordedAbsent={recordedAbsentIds.includes(student.id)} disabled={finalized} onToggle={() => toggleStudent(student.id)} />)}
                       </div>
                       {totalPages > 1 && <div className="flex items-center justify-between border-t border-slate-200 pt-4"><p className="text-xs text-slate-500">Showing <span className="font-semibold text-slate-800">{visibleStudents.length}</span> of <span className="font-semibold text-slate-800">{filteredStudents.length}</span></p><div className="flex items-center gap-2"><Button type="button" variant="outline" size="icon" className="size-8 rounded-lg" disabled={safeCurrentPage === 1} onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}><ChevronLeft className="size-4" /></Button><span className="px-2 text-xs font-medium text-slate-500">{safeCurrentPage} / {totalPages}</span><Button type="button" variant="outline" size="icon" className="size-8 rounded-lg" disabled={safeCurrentPage === totalPages} onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}><ChevronRight className="size-4" /></Button></div></div>}
                     </>
                   )}
 
                   <div className="flex flex-col gap-3 rounded-2xl border border-rose-100 bg-gradient-to-r from-rose-50/80 to-white p-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex items-center gap-3"><div className="flex size-10 items-center justify-center rounded-xl bg-white text-rose-600 shadow-sm ring-1 ring-rose-100"><span className="text-sm font-bold">{selectedIds.length}</span></div><div><p className="text-sm font-bold text-slate-900">Absent selected</p><p className="mt-0.5 text-[11px] text-slate-500">{selectedIds.length === 0 ? "Choose students above to continue." : `${selectedIds.length} student${selectedIds.length === 1 ? "" : "s"} will be marked absent.`}</p></div>{recordedAbsentIds.length > 0 && <span className="ml-2 flex items-center gap-1 text-[10px] font-bold text-rose-700"><CheckCircle2 className="size-3" />{recordedAbsentIds.length} recorded</span>}</div>
-                    <Button type="button" disabled={submitting || selectedIds.length === 0} onClick={requestConfirmation} className="h-10 rounded-xl bg-rose-600 px-5 font-semibold text-white shadow-lg shadow-rose-600/15 hover:bg-rose-700 disabled:opacity-40 disabled:shadow-none">{submitting ? "Marking..." : "Review & mark absent"}</Button>
+                    <div className="flex items-center gap-3"><div className="flex size-10 items-center justify-center rounded-xl bg-white text-rose-600 shadow-sm ring-1 ring-rose-100"><span className="text-sm font-bold">{finalized ? recordedAbsentIds.length : selectedIds.length}</span></div><div><p className="text-sm font-bold text-slate-900">{finalized ? "Attendance finalized" : "Absent selected"}</p><p className="mt-0.5 text-[11px] text-slate-500">{finalized ? "This register is locked. Use Attendance History for corrections." : selectedIds.length === 0 ? "Choose students above to continue." : `${selectedIds.length} student${selectedIds.length === 1 ? "" : "s"} will be marked absent.`}</p></div>{recordedAbsentIds.length > 0 && <span className="ml-2 flex items-center gap-1 text-[10px] font-bold text-rose-700"><CheckCircle2 className="size-3" />{recordedAbsentIds.length} recorded</span>}</div>
+                    <Button type="button" disabled={finalized || submitting || selectedIds.length === 0} onClick={requestConfirmation} className="h-10 rounded-xl bg-rose-600 px-5 font-semibold text-white shadow-lg shadow-rose-600/15 hover:bg-rose-700 disabled:opacity-40 disabled:shadow-none">{finalized ? "Finalized" : submitting ? "Finalizing..." : "Review & finalize"}</Button>
                   </div>
                 </div>
               )}
@@ -328,8 +332,8 @@ export function BulkAbsenteeMarker({
           { label: "Attendance", value: attendanceLabel },
           { label: "Date", value: new Date(`${attendanceDate}T00:00:00`).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) },
         ]}
-        consequence="Everyone else in this scope will be marked present. Any locked attendance sessions will remain unchanged."
-        confirmLabel="Mark absent"
+        consequence="Everyone else in this scope will be marked present. The completed registers will be locked and attendance notifications will be queued."
+        confirmLabel="Mark absent & finalize"
         pending={submitting}
         onConfirm={() => void submit()}
       />
@@ -341,11 +345,13 @@ function AbsenteeStudentCard({
   student,
   selected,
   recordedAbsent,
+  disabled,
   onToggle,
 }: {
   student: StudentOption;
   selected: boolean;
   recordedAbsent: boolean;
+  disabled: boolean;
   onToggle: () => void;
 }) {
   const initials =
@@ -359,21 +365,23 @@ function AbsenteeStudentCard({
   return (
     <Card
       role="button"
-      tabIndex={recordedAbsent ? -1 : 0}
+      tabIndex={recordedAbsent || disabled ? -1 : 0}
       aria-pressed={selected}
-      aria-disabled={recordedAbsent}
+      aria-disabled={recordedAbsent || disabled}
       onClick={() => {
-        if (!recordedAbsent) onToggle();
+        if (!recordedAbsent && !disabled) onToggle();
       }}
       onKeyDown={(event) => {
-        if (!recordedAbsent && (event.key === "Enter" || event.key === " ")) {
+        if (!recordedAbsent && !disabled && (event.key === "Enter" || event.key === " ")) {
           event.preventDefault();
           onToggle();
         }
       }}
       className={cn(
         "group overflow-hidden rounded-xl border bg-white transition-all duration-200",
-        recordedAbsent
+        disabled
+          ? "cursor-default border-slate-200 bg-slate-50 opacity-65"
+          : recordedAbsent
           ? "cursor-default border-rose-300 bg-rose-50/60 ring-2 ring-rose-500/10"
           : selected
             ? "cursor-pointer border-rose-300 bg-rose-50/50 shadow-sm ring-2 ring-rose-500/10"

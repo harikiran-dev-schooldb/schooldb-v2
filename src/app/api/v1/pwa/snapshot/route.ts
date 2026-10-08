@@ -6,6 +6,7 @@ import { ApiResponse } from "@/lib/response";
 import { listAccessibleStudents } from "@/lib/student-access";
 import { notificationContext } from "@/features/notifications/service";
 import { hasModuleAccess } from "@/lib/staff-permissions";
+import { WeekDay } from "@/generated/prisma/client";
 
 export async function GET(request: Request) {
   return apiHandler(async () => {
@@ -38,8 +39,24 @@ export async function GET(request: Request) {
         day: "2-digit",
       }).format(new Date());
       const today = new Date(`${indiaDate}T00:00:00.000Z`);
+      const weekDay = [
+        null,
+        WeekDay.MONDAY,
+        WeekDay.TUESDAY,
+        WeekDay.WEDNESDAY,
+        WeekDay.THURSDAY,
+        WeekDay.FRIDAY,
+        WeekDay.SATURDAY,
+      ][today.getUTCDay()];
+      const academicYear = canReadAttendance
+        ? await prisma.academicYear.findFirst({
+            where: { schoolId: membership.schoolId, active: true },
+            orderBy: { startDate: "desc" },
+            select: { id: true, attendanceMode: true },
+          })
+        : null;
 
-      const [students, homework, attendanceSessions, visitors, pickupAuthorizations] = await Promise.all([
+      const [students, homework, attendanceSessions, attendanceEnrollments, attendanceEnrollmentCounts, attendanceTimetable, visitors, pickupAuthorizations] = await Promise.all([
         canReadStudents || canReadAttendance || canReadLearning || canReadFrontOffice
           ? prisma.student.findMany({
               where: {
@@ -48,6 +65,7 @@ export async function GET(request: Request) {
                 enrollments: {
                   some: {
                     active: true,
+                    ...(academicYear ? { academicYearId: academicYear.id } : {}),
                     ...scopeFilter,
                   },
                 },
@@ -59,10 +77,15 @@ export async function GET(request: Request) {
                 admissionNo: true,
                 fullName: true,
                 enrollments: {
-                  where: { active: true, ...scopeFilter },
+                  where: {
+                    active: true,
+                    ...(academicYear ? { academicYearId: academicYear.id } : {}),
+                    ...scopeFilter,
+                  },
                   take: 1,
                   select: {
                     id: true,
+                    academicYearId: true,
                     rollNo: true,
                     class: { select: { id: true, name: true } },
                     section: { select: { id: true, name: true } },
@@ -110,9 +133,14 @@ export async function GET(request: Request) {
               take: 40,
               select: {
                 id: true,
+                academicYearId: true,
+                classId: true,
+                sectionId: true,
+                periodId: true,
                 attendanceDate: true,
                 sessionType: true,
                 locked: true,
+                updatedAt: true,
                 class: { select: { name: true } },
                 section: { select: { name: true } },
                 records: {
@@ -125,6 +153,78 @@ export async function GET(request: Request) {
                     remarks: true,
                     student: { select: { admissionNo: true, fullName: true } },
                   },
+                },
+              },
+            })
+          : [],
+        canReadAttendance && academicYear
+          ? prisma.studentEnrollment.findMany({
+              where: {
+                schoolId: membership.schoolId,
+                academicYearId: academicYear.id,
+                active: true,
+                student: { status: "ACTIVE" },
+                ...(teacherScope ? scopeFilter : {}),
+              },
+              orderBy: [
+                { class: { displayOrder: "asc" } },
+                { section: { displayOrder: "asc" } },
+                { rollNo: "asc" },
+                { student: { fullName: "asc" } },
+              ],
+              take: 3000,
+              select: {
+                academicYearId: true,
+                classId: true,
+                sectionId: true,
+                rollNo: true,
+                class: { select: { name: true } },
+                section: { select: { name: true } },
+                student: {
+                  select: { id: true, admissionNo: true, fullName: true },
+                },
+              },
+            })
+          : [],
+        canReadAttendance && academicYear
+          ? prisma.studentEnrollment.groupBy({
+              by: ["classId", "sectionId"],
+              where: {
+                schoolId: membership.schoolId,
+                academicYearId: academicYear.id,
+                active: true,
+                student: { status: "ACTIVE" },
+                ...(teacherScope ? scopeFilter : {}),
+              },
+              _count: { studentId: true },
+            })
+          : [],
+        canReadAttendance && academicYear?.attendanceMode === "EVERY_PERIOD" && weekDay
+          ? prisma.timetable.findMany({
+              where: {
+                schoolId: membership.schoolId,
+                academicYearId: academicYear.id,
+                day: weekDay,
+                active: true,
+                teacherAllocation: {
+                  active: true,
+                  ...(teacherScope
+                    ? {
+                        OR: teacherScope.map((scope) => ({
+                          classId: scope.classId,
+                          sectionId: scope.sectionId,
+                        })),
+                      }
+                    : {}),
+                },
+              },
+              orderBy: { period: { displayOrder: "asc" } },
+              select: {
+                id: true,
+                periodId: true,
+                period: { select: { name: true } },
+                teacherAllocation: {
+                  select: { classId: true, sectionId: true },
                 },
               },
             })
@@ -146,6 +246,126 @@ export async function GET(request: Request) {
           : [],
       ]);
 
+      const enrollmentGroups = new Map<
+        string,
+        {
+          academicYearId: string;
+          classId: string;
+          className: string;
+          sectionId: string;
+          sectionName: string;
+          students: Array<{
+            studentId: string;
+            admissionNo: string;
+            fullName: string;
+            rollNo: number | null;
+          }>;
+        }
+      >();
+      for (const enrollment of attendanceEnrollments) {
+        const key = `${enrollment.classId}:${enrollment.sectionId}`;
+        const group = enrollmentGroups.get(key) ?? {
+          academicYearId: enrollment.academicYearId,
+          classId: enrollment.classId,
+          className: enrollment.class.name,
+          sectionId: enrollment.sectionId,
+          sectionName: enrollment.section.name,
+          students: [],
+        };
+        group.students.push({
+          studentId: enrollment.student.id,
+          admissionNo: enrollment.student.admissionNo,
+          fullName: enrollment.student.fullName?.trim() || enrollment.student.admissionNo,
+          rollNo: enrollment.rollNo,
+        });
+        enrollmentGroups.set(key, group);
+      }
+
+      const buildAttendanceTarget = (
+        group: (typeof enrollmentGroups extends Map<string, infer T> ? T : never),
+        sessionType: "DAILY" | "MORNING" | "AFTERNOON" | "PERIOD",
+        timetableId?: string,
+        periodId?: string,
+        periodName?: string,
+      ) => {
+        const session = attendanceSessions.find(
+          (item) =>
+            item.classId === group.classId &&
+            item.sectionId === group.sectionId &&
+            item.sessionType === sessionType &&
+            (sessionType !== "PERIOD" || item.periodId === periodId),
+        );
+        const recordsByStudent = new Map(
+          (session?.records ?? []).map((record) => [record.studentId, record]),
+        );
+        return {
+          key: [group.classId, group.sectionId, sessionType, periodId ?? ""].join(":"),
+          academicYearId: group.academicYearId,
+          attendanceDate: indiaDate,
+          classId: group.classId,
+          className: group.className,
+          sectionId: group.sectionId,
+          sectionName: group.sectionName,
+          sessionType,
+          timetableId: timetableId ?? null,
+          periodName: periodName ?? null,
+          sessionId: session?.id ?? null,
+          baseUpdatedAt: session?.updatedAt.toISOString() ?? null,
+          locked: session?.locked ?? false,
+          records: group.students.map((student) => {
+            const record = recordsByStudent.get(student.studentId);
+            return {
+              studentId: student.studentId,
+              status: record?.status ?? "PRESENT",
+              remarks: record?.remarks ?? null,
+              student: {
+                admissionNo: student.admissionNo,
+                fullName: student.fullName,
+                rollNo: student.rollNo,
+              },
+            };
+          }),
+        };
+      };
+
+      const attendanceTargets = academicYear
+        ? [...enrollmentGroups.values()]
+          .filter((group) => {
+            const expected = attendanceEnrollmentCounts.find(
+              (count) =>
+                count.classId === group.classId &&
+                count.sectionId === group.sectionId,
+            )?._count.studentId;
+            return expected === group.students.length && group.students.length <= 600;
+          })
+          .flatMap((group) => {
+            if (academicYear.attendanceMode === "MORNING_AFTERNOON") {
+              return [
+                buildAttendanceTarget(group, "MORNING"),
+                buildAttendanceTarget(group, "AFTERNOON"),
+              ];
+            }
+            if (academicYear.attendanceMode === "EVERY_PERIOD") {
+              return attendanceTimetable
+                .filter(
+                  (entry) =>
+                    entry.teacherAllocation.classId === group.classId &&
+                    entry.teacherAllocation.sectionId === group.sectionId,
+                )
+                .map((entry) =>
+                  buildAttendanceTarget(
+                    group,
+                    "PERIOD",
+                    entry.id,
+                    entry.periodId,
+                    entry.period.name,
+                  ),
+                );
+            }
+            return [buildAttendanceTarget(group, "DAILY")];
+          })
+        : [];
+
       return ApiResponse.success({
         generatedAt: new Date().toISOString(),
         school: { slug: schoolSlug, name: membership.school.name },
@@ -159,6 +379,7 @@ export async function GET(request: Request) {
         homework,
         timetable: [],
         attendance: attendanceSessions,
+        attendanceTargets,
         notifications,
         visitors,
         pickupAuthorizations,
