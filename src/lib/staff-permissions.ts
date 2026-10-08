@@ -249,6 +249,7 @@ export function permissionPolicyForRequest(
 ) {
   const required = requiredAccessLevel(method);
   if (!pathname) return null;
+  if (pathname.startsWith("/api/v1/teachers/me/")) return null;
   if (pathname.startsWith(`/${schoolSlug}/`)) {
     const route = resolveConfiguredRoute(pathname.slice(schoolSlug.length + 2));
     const permissionModule = moduleForRoute(route);

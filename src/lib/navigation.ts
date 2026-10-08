@@ -13,6 +13,7 @@ import {
   Megaphone,
   Settings2,
   School,
+  UserRound,
   UsersRound,
 } from "lucide-react";
 
@@ -55,6 +56,12 @@ export const navigation: NavigationItem[] = [
     title: "My Dashboard",
     href: "teacher/dashboard",
     icon: LayoutDashboard,
+    roles: ["TEACHER"],
+  },
+  {
+    title: "My Profile",
+    href: "teacher/profile",
+    icon: UserRound,
     roles: ["TEACHER"],
   },
   {

@@ -6,6 +6,7 @@ import {
   ClipboardList,
   Clock3,
   GraduationCap,
+  UserRound,
 } from "lucide-react";
 
 import { requireCurrentTeacher, requireRole } from "@/lib/auth";
@@ -69,29 +70,35 @@ export default async function TeacherDashboardPage({
 
   const links = [
     {
+      title: "My Profile",
+      description: "View your details, assignments, attendance, leave and payroll.",
+      href: `/${schoolSlug}/teacher/profile`,
+      icon: UserRound,
+    },
+    ...(teacher.attendanceAccess ? [{
       title: "Mark Attendance",
       description: "Open attendance for your assigned classes and sections.",
       href: `/${schoolSlug}/attendance`,
       icon: CalendarCheck,
-    },
-    {
+    }] : []),
+    ...(teacher.homeworkAccess ? [{
       title: "Homework",
       description: "Create and review homework for your assigned classes.",
       href: `/${schoolSlug}/homework`,
       icon: ClipboardList,
-    },
-    {
+    }] : []),
+    ...(teacher.examAccess ? [{
       title: "Exams & Results",
-      description: "Enter marks for the subjects allocated to you.",
+      description: "View exams and complete permitted result work.",
       href: `/${schoolSlug}/exams`,
       icon: GraduationCap,
-    },
-    {
+    }] : []),
+    ...(teacher.timetableAccess ? [{
       title: "My Timetable",
       description: "View your teaching schedule.",
       href: `/${schoolSlug}/timetable/teacher`,
       icon: Clock3,
-    },
+    }] : []),
     ...(classAssignments.length
       ? [
           {
@@ -100,12 +107,12 @@ export default async function TeacherDashboardPage({
             href: `/${schoolSlug}/notifications`,
             icon: BellRing,
           },
-          {
+          ...(teacher.feeAccess ? [{
             title: "Class Fee View",
             description: "Review outstanding fees for your class (read only).",
             href: `/${schoolSlug}/fees/outstanding`,
             icon: CircleDollarSign,
-          },
+          }] : []),
         ]
       : []),
   ];

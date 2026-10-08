@@ -16,6 +16,7 @@ const ALWAYS_VISIBLE_MEMBER_ROUTES = new Set([
   "settings",
   "notification-inbox",
   "user-guide",
+  "teacher/profile",
 ]);
 
 export function isDefaultRoleRouteAllowed(role: string, href?: string) {

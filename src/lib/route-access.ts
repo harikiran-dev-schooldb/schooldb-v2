@@ -8,7 +8,7 @@ export const ALWAYS_AVAILABLE_ROUTES = new Set([
   "schools/route-access",
 ]);
 
-export const ALWAYS_MEMBER_ROUTES = new Set(["user-guide"]);
+export const ALWAYS_MEMBER_ROUTES = new Set(["user-guide", "teacher/profile"]);
 
 export const BULK_OPERATION_ROUTES = [
   { title: "Copy School Setup", href: "bulk-operations/copy-school-setup" },

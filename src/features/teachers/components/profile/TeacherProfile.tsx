@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useParams } from "next/navigation";
+import { type FormEvent, useEffect, useMemo, useState } from "react";
 import {
   BadgeIndianRupee,
   BookOpenCheck,
@@ -16,16 +18,30 @@ import {
   Mail,
   MapPin,
   Phone,
+  Printer,
+  Send,
   ShieldCheck,
   UserRound,
   VenusAndMars,
   XCircle,
 } from "lucide-react";
+import { toast } from "sonner";
 
+import { AcademicYearSelect } from "@/components/common/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
 import { formatCurrency } from "@/lib/self-service-format";
 
 type Period = {
@@ -68,7 +84,7 @@ type TeacherProfileData = {
   state: string | null;
   pincode: string | null;
   active: boolean;
-  clerkId: string | null;
+  loginProvisioned: boolean;
   createdAt: string;
   updatedAt: string;
   studentDetailsAccess: boolean;
@@ -158,6 +174,43 @@ function initials(name: string) {
   return name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase() || "TC";
 }
 
+function monthKeyNow() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function monthsForYear(
+  academicYear: TeacherProfileData["academicYear"],
+) {
+  if (!academicYear) return [];
+  const start = new Date(`${academicYear.startDate.slice(0, 7)}-01T00:00:00.000Z`);
+  const end = new Date(`${academicYear.endDate.slice(0, 7)}-01T00:00:00.000Z`);
+  const months: string[] = [];
+  while (start <= end) {
+    months.push(start.toISOString().slice(0, 7));
+    start.setUTCMonth(start.getUTCMonth() + 1);
+  }
+  return months.reverse();
+}
+
+function initialMonth(academicYear: TeacherProfileData["academicYear"]) {
+  const months = monthsForYear(academicYear);
+  const current = monthKeyNow();
+  if (months.includes(current)) return current;
+  if (!months.length) return current;
+  return current < (months.at(-1) ?? current)
+    ? (months.at(-1) ?? current)
+    : months[0];
+}
+
+function formatMonth(value: string) {
+  const [year, month] = value.split("-");
+  return new Intl.DateTimeFormat("en-IN", {
+    month: "long",
+    year: "numeric",
+  }).format(new Date(Number(year), Number(month) - 1, 1));
+}
+
 function InfoCard({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value: string }) {
   return (
     <div className="rounded-2xl border bg-card p-4 transition-colors hover:bg-muted/25">
@@ -200,7 +253,7 @@ function ProfileHeader({ teacher }: { teacher: TeacherProfileData }) {
 
 function OverviewTab({ teacher }: { teacher: TeacherProfileData }) {
   const scheduledPeriods = teacher.allocations.reduce((sum, item) => sum + item.timetables.length, 0);
-  return <div className="space-y-5"><div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"><InfoCard icon={BriefcaseBusiness} label="Designation" value={teacher.designation || "Teaching staff"} /><InfoCard icon={GraduationCap} label="Qualification" value={teacher.qualification || "—"} /><InfoCard icon={CalendarDays} label="Joined school" value={formatDate(teacher.joiningDate)} /><InfoCard icon={Clock3} label="Weekly periods" value={String(scheduledPeriods)} /></div><Card><CardHeader className="border-b bg-muted/20"><CardTitle>Contact information</CardTitle></CardHeader><CardContent className="grid gap-3 p-5 sm:grid-cols-2 lg:grid-cols-3"><InfoCard icon={Phone} label="Primary phone" value={teacher.phone || "—"} /><InfoCard icon={Phone} label="Alternate phone" value={teacher.alternatePhone || "—"} /><InfoCard icon={Mail} label="Email address" value={teacher.email || "—"} /><InfoCard icon={MapPin} label="Location" value={[teacher.city, teacher.district, teacher.state].filter(Boolean).join(", ") || "—"} /><InfoCard icon={BookOpenCheck} label="Subject allocations" value={String(teacher.allocations.length)} /><InfoCard icon={ShieldCheck} label="Login account" value={teacher.clerkId ? "Provisioned" : "Not provisioned"} /></CardContent></Card></div>;
+  return <div className="space-y-5"><div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"><InfoCard icon={BriefcaseBusiness} label="Designation" value={teacher.designation || "Teaching staff"} /><InfoCard icon={GraduationCap} label="Qualification" value={teacher.qualification || "—"} /><InfoCard icon={CalendarDays} label="Joined school" value={formatDate(teacher.joiningDate)} /><InfoCard icon={Clock3} label="Weekly periods" value={String(scheduledPeriods)} /></div><Card><CardHeader className="border-b bg-muted/20"><CardTitle>Contact information</CardTitle></CardHeader><CardContent className="grid gap-3 p-5 sm:grid-cols-2 lg:grid-cols-3"><InfoCard icon={Phone} label="Primary phone" value={teacher.phone || "—"} /><InfoCard icon={Phone} label="Alternate phone" value={teacher.alternatePhone || "—"} /><InfoCard icon={Mail} label="Email address" value={teacher.email || "—"} /><InfoCard icon={MapPin} label="Location" value={[teacher.city, teacher.district, teacher.state].filter(Boolean).join(", ") || "—"} /><InfoCard icon={BookOpenCheck} label="Subject allocations" value={String(teacher.allocations.length)} /><InfoCard icon={ShieldCheck} label="Login account" value={teacher.loginProvisioned ? "Provisioned" : "Not provisioned"} /></CardContent></Card></div>;
 }
 
 function DetailsTab({ teacher }: { teacher: TeacherProfileData }) {
@@ -219,20 +272,101 @@ function TimetableTab({ teacher }: { teacher: TeacherProfileData }) {
   return <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">{grouped.map((group) => <Card key={group.day}><CardHeader className="border-b bg-muted/20"><CardTitle>{titleCase(group.day)}</CardTitle></CardHeader><CardContent className="space-y-3 p-4">{group.entries.map((entry) => <div key={entry.id} className="rounded-xl border p-3"><div className="flex items-start justify-between gap-3"><div><p className="font-semibold">{entry.allocation.subject.name}</p><p className="mt-1 text-xs text-muted-foreground">{entry.allocation.class.name} · {entry.allocation.section.name}</p></div><Badge variant="outline">{entry.period.name}</Badge></div><p className="mt-2 text-xs text-muted-foreground">{entry.period.startTime} – {entry.period.endTime}</p></div>)}</CardContent></Card>)}</div>;
 }
 
-function AttendanceTab({ teacher }: { teacher: TeacherProfileData }) {
-  const counts = teacher.staffAttendances.reduce<Record<string, number>>((result, row) => ({ ...result, [row.status]: (result[row.status] ?? 0) + 1 }), {});
-  if (!teacher.staffAttendances.length) return <EmptyState icon={CalendarCheck2} title="No staff attendance recorded" description="Attendance entries for the current academic year will appear here." />;
-  return <div className="space-y-5"><div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"><InfoCard icon={CheckCircle2} label="Present" value={String(counts.PRESENT ?? 0)} /><InfoCard icon={XCircle} label="Absent" value={String(counts.ABSENT ?? 0)} /><InfoCard icon={Clock3} label="Half day" value={String(counts.HALF_DAY ?? 0)} /><InfoCard icon={FileClock} label="On leave" value={String(counts.ON_LEAVE ?? 0)} /></div><Card className="overflow-hidden"><CardHeader className="border-b bg-muted/20"><CardTitle>Attendance history</CardTitle><p className="text-sm text-muted-foreground">Latest entries in {teacher.academicYear?.name || "the current academic year"}.</p></CardHeader><CardContent className="p-0"><div className="overflow-x-auto"><table className="w-full min-w-[680px] text-sm"><thead><tr className="border-b bg-muted/20 text-left"><th className="px-5 py-3">Date</th><th className="px-5 py-3">Status</th><th className="px-5 py-3">Check in</th><th className="px-5 py-3">Check out</th><th className="px-5 py-3">Remarks</th></tr></thead><tbody className="divide-y">{teacher.staffAttendances.map((row) => <tr key={row.id} className="hover:bg-muted/20"><td className="px-5 py-4 font-medium">{formatDate(row.date)}</td><td className="px-5 py-4"><Badge variant={row.status === "PRESENT" ? "success" : row.status === "ABSENT" ? "destructive" : "outline"}>{titleCase(row.status)}</Badge></td><td className="px-5 py-4">{row.checkIn || "—"}</td><td className="px-5 py-4">{row.checkOut || "—"}</td><td className="px-5 py-4 text-muted-foreground">{row.remarks || "—"}</td></tr>)}</tbody></table></div></CardContent></Card></div>;
+function AttendanceTab({ teacher, self }: { teacher: TeacherProfileData; self: boolean }) {
+  const [academicYear, setAcademicYear] = useState(teacher.academicYear);
+  const [academicYearId, setAcademicYearId] = useState(teacher.academicYear?.id ?? "");
+  const [records, setRecords] = useState(teacher.staffAttendances);
+  const [month, setMonth] = useState(initialMonth(teacher.academicYear));
+  const [loading, setLoading] = useState(false);
+  const monthOptions = useMemo(() => monthsForYear(academicYear), [academicYear]);
+  const filteredRecords = useMemo(
+    () => records.filter((record) => record.date.slice(0, 7) === month),
+    [month, records],
+  );
+  const counts = filteredRecords.reduce<Record<string, number>>(
+    (result, row) => ({ ...result, [row.status]: (result[row.status] ?? 0) + 1 }),
+    {},
+  );
+
+  async function changeAcademicYear(value: string) {
+    if (!self || value === academicYearId) return;
+    setAcademicYearId(value);
+    setLoading(true);
+    try {
+      const response = await fetch(
+        `/api/v1/teachers/me/attendance?academicYearId=${encodeURIComponent(value)}`,
+        { cache: "no-store" },
+      );
+      const result = await response.json();
+      if (!response.ok || !result.success) throw new Error(result.message);
+      setAcademicYear(result.data.academicYear);
+      setRecords(result.data.records);
+      setMonth(initialMonth(result.data.academicYear));
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to load attendance.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="space-y-5">
+      <Card>
+        <CardContent className="grid gap-4 p-5 sm:grid-cols-2">
+          <div><p className="mb-1.5 text-xs font-semibold text-muted-foreground">Academic year</p>{self ? <AcademicYearSelect value={academicYearId} onChange={changeAcademicYear} disabled={loading} /> : <div className="flex h-10 items-center rounded-xl border bg-muted/20 px-3 text-sm font-medium">{academicYear?.name || "Not configured"}</div>}</div>
+          <div><p className="mb-1.5 text-xs font-semibold text-muted-foreground">Month</p><Select value={month} onValueChange={setMonth} disabled={loading || !monthOptions.length}><SelectTrigger><SelectValue placeholder="Choose month" /></SelectTrigger><SelectContent>{monthOptions.map((item) => <SelectItem key={item} value={item}>{formatMonth(item)}</SelectItem>)}</SelectContent></Select></div>
+        </CardContent>
+      </Card>
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"><InfoCard icon={CheckCircle2} label="Present" value={String(counts.PRESENT ?? 0)} /><InfoCard icon={XCircle} label="Absent" value={String(counts.ABSENT ?? 0)} /><InfoCard icon={Clock3} label="Half day" value={String(counts.HALF_DAY ?? 0)} /><InfoCard icon={FileClock} label="On leave" value={String(counts.ON_LEAVE ?? 0)} /></div>
+      {filteredRecords.length ? <Card className="overflow-hidden"><CardHeader className="border-b bg-muted/20"><CardTitle>Attendance history</CardTitle><p className="text-sm text-muted-foreground">Entries for {formatMonth(month)}.</p></CardHeader><CardContent className="p-0"><div className="overflow-x-auto"><table className="w-full min-w-[680px] text-sm"><thead><tr className="border-b bg-muted/20 text-left"><th className="px-5 py-3">Date</th><th className="px-5 py-3">Status</th><th className="px-5 py-3">Check in</th><th className="px-5 py-3">Check out</th><th className="px-5 py-3">Remarks</th></tr></thead><tbody className="divide-y">{filteredRecords.map((row) => <tr key={row.id} className="hover:bg-muted/20"><td className="px-5 py-4 font-medium">{formatDate(row.date)}</td><td className="px-5 py-4"><Badge variant={row.status === "PRESENT" ? "success" : row.status === "ABSENT" ? "destructive" : "outline"}>{titleCase(row.status)}</Badge></td><td className="px-5 py-4">{row.checkIn || "—"}</td><td className="px-5 py-4">{row.checkOut || "—"}</td><td className="px-5 py-4 text-muted-foreground">{row.remarks || "—"}</td></tr>)}</tbody></table></div></CardContent></Card> : <EmptyState icon={CalendarCheck2} title="No attendance for this month" description={`No staff attendance entries were recorded in ${formatMonth(month)}.`} />}
+    </div>
+  );
 }
 
-function LeaveTab({ teacher }: { teacher: TeacherProfileData }) {
-  if (!teacher.staffLeaveRequests.length) return <EmptyState icon={FileClock} title="No leave requests" description="The teacher’s submitted leave requests and decisions will appear here." />;
-  return <div className="grid gap-4 lg:grid-cols-2">{teacher.staffLeaveRequests.map((leave) => <Card key={leave.id}><CardContent className="p-5"><div className="flex items-start justify-between gap-3"><div><p className="font-semibold">{titleCase(leave.leaveType)} leave</p><p className="mt-1 text-sm text-muted-foreground">{formatDate(leave.startDate)} – {formatDate(leave.endDate)} · {Number(leave.days)} day{Number(leave.days) === 1 ? "" : "s"}</p></div><Badge variant={leave.status === "APPROVED" ? "success" : leave.status === "REJECTED" ? "destructive" : "outline"}>{titleCase(leave.status)}</Badge></div><p className="mt-4 rounded-xl bg-muted/30 p-3 text-sm">{leave.reason}</p>{leave.decisionNote ? <p className="mt-3 text-xs text-muted-foreground">Decision: {leave.decisionNote}</p> : null}</CardContent></Card>)}</div>;
+function LeaveTab({ teacher, self, onCreated }: { teacher: TeacherProfileData; self: boolean; onCreated: () => void }) {
+  const [leaveType, setLeaveType] = useState("CASUAL");
+  const [submitting, setSubmitting] = useState(false);
+
+  async function submitLeave(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
+    const startDate = String(form.get("startDate") || "");
+    const endDate = String(form.get("endDate") || "");
+    const start = new Date(`${startDate}T00:00:00.000Z`);
+    const end = new Date(`${endDate}T00:00:00.000Z`);
+    const days = Math.floor((end.getTime() - start.getTime()) / 86_400_000) + 1;
+    if (!startDate || !endDate || days < 1) {
+      toast.error("Choose a valid leave date range.");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const response = await fetch("/api/v1/teachers/me/leave-requests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ leaveType, startDate, endDate, days, reason: String(form.get("reason") || "") }),
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) throw new Error(result.message);
+      toast.success("Leave request submitted.");
+      formElement.reset();
+      setLeaveType("CASUAL");
+      onCreated();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to submit leave request.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return <div className="space-y-5">{self ? <Card><CardHeader className="border-b bg-muted/20"><CardTitle>Request leave</CardTitle><p className="text-sm text-muted-foreground">Submit a leave request for school review.</p></CardHeader><CardContent className="p-5"><form className="space-y-4" onSubmit={submitLeave}><div className="grid gap-4 md:grid-cols-3"><label className="space-y-1.5 text-xs font-semibold text-muted-foreground">Leave type<Select value={leaveType} onValueChange={setLeaveType}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{["CASUAL", "SICK", "EARNED", "MATERNITY", "PATERNITY", "COMPENSATORY", "UNPAID", "OTHER"].map((item) => <SelectItem key={item} value={item}>{titleCase(item)}</SelectItem>)}</SelectContent></Select></label><label className="space-y-1.5 text-xs font-semibold text-muted-foreground">From<Input name="startDate" type="date" required /></label><label className="space-y-1.5 text-xs font-semibold text-muted-foreground">Until<Input name="endDate" type="date" required /></label></div><label className="block space-y-1.5 text-xs font-semibold text-muted-foreground">Reason<Textarea name="reason" required minLength={3} maxLength={1000} placeholder="Explain the reason for your leave request" /></label><Button disabled={submitting}><Send className="size-4" />{submitting ? "Submitting..." : "Submit leave request"}</Button></form></CardContent></Card> : null}{teacher.staffLeaveRequests.length ? <div className="grid gap-4 lg:grid-cols-2">{teacher.staffLeaveRequests.map((leave) => <Card key={leave.id}><CardContent className="p-5"><div className="flex items-start justify-between gap-3"><div><p className="font-semibold">{titleCase(leave.leaveType)} leave</p><p className="mt-1 text-sm text-muted-foreground">{formatDate(leave.startDate)} – {formatDate(leave.endDate)} · {Number(leave.days)} day{Number(leave.days) === 1 ? "" : "s"}</p></div><Badge variant={leave.status === "APPROVED" ? "success" : leave.status === "REJECTED" ? "destructive" : "outline"}>{titleCase(leave.status)}</Badge></div><p className="mt-4 rounded-xl bg-muted/30 p-3 text-sm">{leave.reason}</p>{leave.decisionNote ? <p className="mt-3 text-xs text-muted-foreground">Decision: {leave.decisionNote}</p> : null}</CardContent></Card>)}</div> : <EmptyState icon={FileClock} title="No leave requests" description="Submitted leave requests and school decisions will appear here." />}</div>;
 }
 
-function PayrollTab({ teacher }: { teacher: TeacherProfileData }) {
+function PayrollTab({ teacher, self }: { teacher: TeacherProfileData; self: boolean }) {
+  const { schoolSlug } = useParams<{ schoolSlug: string }>();
   const currentSalary = teacher.salaryStructures.find((item) => item.active) ?? teacher.salaryStructures[0];
-  return <div className="space-y-5">{currentSalary ? <div className="grid gap-4 sm:grid-cols-3"><InfoCard icon={BadgeIndianRupee} label="Basic salary" value={formatCurrency(Number(currentSalary.basicSalary))} /><InfoCard icon={CheckCircle2} label="Effective from" value={formatDate(currentSalary.effectiveFrom)} /><InfoCard icon={BriefcaseBusiness} label="Structure status" value={currentSalary.active ? "Active" : "Historical"} /></div> : null}{teacher.payrollEntries.length ? <Card className="overflow-hidden"><CardHeader className="border-b bg-muted/20"><CardTitle>Payroll history</CardTitle></CardHeader><CardContent className="p-0"><div className="overflow-x-auto"><table className="w-full min-w-[720px] text-sm"><thead><tr className="border-b bg-muted/20 text-left"><th className="px-5 py-3">Pay period</th><th className="px-5 py-3 text-right">Gross</th><th className="px-5 py-3 text-right">Deductions</th><th className="px-5 py-3 text-right">Net salary</th><th className="px-5 py-3 text-center">Payment</th></tr></thead><tbody className="divide-y">{teacher.payrollEntries.map((entry) => <tr key={entry.id} className="hover:bg-muted/20"><td className="px-5 py-4 font-medium">{new Intl.DateTimeFormat("en-IN", { month: "long", year: "numeric" }).format(new Date(entry.payrollRun.year, entry.payrollRun.month - 1, 1))}</td><td className="px-5 py-4 text-right">{formatCurrency(Number(entry.grossSalary))}</td><td className="px-5 py-4 text-right">{formatCurrency(Number(entry.deductionTotal))}</td><td className="px-5 py-4 text-right font-bold">{formatCurrency(Number(entry.netSalary))}</td><td className="px-5 py-4 text-center"><Badge variant={entry.paymentStatus === "PAID" ? "success" : "outline"}>{titleCase(entry.paymentStatus)}</Badge></td></tr>)}</tbody></table></div></CardContent></Card> : <EmptyState icon={BadgeIndianRupee} title="No payroll history" description="Generated payroll entries for this teacher will appear here." />}</div>;
+  return <div className="space-y-5">{currentSalary ? <div className="grid gap-4 sm:grid-cols-3"><InfoCard icon={BadgeIndianRupee} label="Basic salary" value={formatCurrency(Number(currentSalary.basicSalary))} /><InfoCard icon={CheckCircle2} label="Effective from" value={formatDate(currentSalary.effectiveFrom)} /><InfoCard icon={BriefcaseBusiness} label="Structure status" value={currentSalary.active ? "Active" : "Historical"} /></div> : null}{teacher.payrollEntries.length ? <Card className="overflow-hidden"><CardHeader className="border-b bg-muted/20"><CardTitle>Payroll history</CardTitle></CardHeader><CardContent className="p-0"><div className="overflow-x-auto"><table className="w-full min-w-[820px] text-sm"><thead><tr className="border-b bg-muted/20 text-left"><th className="px-5 py-3">Pay period</th><th className="px-5 py-3 text-right">Gross</th><th className="px-5 py-3 text-right">Deductions</th><th className="px-5 py-3 text-right">Net salary</th><th className="px-5 py-3 text-center">Payment</th><th className="px-5 py-3 text-right">Payslip</th></tr></thead><tbody className="divide-y">{teacher.payrollEntries.map((entry) => <tr key={entry.id} className="hover:bg-muted/20"><td className="px-5 py-4 font-medium">{new Intl.DateTimeFormat("en-IN", { month: "long", year: "numeric" }).format(new Date(entry.payrollRun.year, entry.payrollRun.month - 1, 1))}</td><td className="px-5 py-4 text-right">{formatCurrency(Number(entry.grossSalary))}</td><td className="px-5 py-4 text-right">{formatCurrency(Number(entry.deductionTotal))}</td><td className="px-5 py-4 text-right font-bold">{formatCurrency(Number(entry.netSalary))}</td><td className="px-5 py-4 text-center"><Badge variant={entry.paymentStatus === "PAID" ? "success" : "outline"}>{titleCase(entry.paymentStatus)}</Badge></td><td className="px-5 py-4 text-right"><Button asChild size="sm" variant="outline"><Link href={self ? `/${schoolSlug}/teacher/profile/payslips/${entry.id}` : `/${schoolSlug}/staff-operations/payslips/${entry.id}`}><Printer className="size-3.5" />Open</Link></Button></td></tr>)}</tbody></table></div></CardContent></Card> : <EmptyState icon={BadgeIndianRupee} title="No payroll history" description="Generated payroll entries for this teacher will appear here." />}</div>;
 }
 
 function AccessTab({ teacher }: { teacher: TeacherProfileData }) {
@@ -244,15 +378,25 @@ function TeacherProfileSkeleton() {
   return <div className="space-y-6"><div className="h-44 animate-pulse rounded-2xl bg-muted" /><div className="h-12 animate-pulse rounded-2xl bg-muted" /><div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{[1, 2, 3, 4].map((item) => <div key={item} className="h-28 animate-pulse rounded-2xl bg-muted" />)}</div></div>;
 }
 
-export function TeacherProfile({ teacherId }: { teacherId: string }) {
+export function TeacherProfile({
+  teacherId,
+  self = false,
+}: {
+  teacherId?: string;
+  self?: boolean;
+}) {
   const [teacher, setTeacher] = useState<TeacherProfileData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
     async function load() {
       try {
-        const response = await fetch(`/api/v1/teachers/${teacherId}/profile`, { cache: "no-store" });
+        const endpoint = self
+          ? "/api/v1/teachers/me/profile"
+          : `/api/v1/teachers/${teacherId}/profile`;
+        const response = await fetch(endpoint, { cache: "no-store" });
         const result = await response.json();
         if (!cancelled) setTeacher(response.ok && result.success ? result.data : null);
       } catch {
@@ -263,11 +407,11 @@ export function TeacherProfile({ teacherId }: { teacherId: string }) {
     }
     void load();
     return () => { cancelled = true; };
-  }, [teacherId]);
+  }, [refreshKey, self, teacherId]);
 
   const visibleTabs = useMemo(() => tabs, []);
   if (loading) return <TeacherProfileSkeleton />;
   if (!teacher) return <EmptyState icon={UserRound} title="Teacher profile not found" description="The teacher record could not be loaded or you do not have permission to view it." />;
 
-  return <div className="space-y-6 pb-10"><ProfileHeader teacher={teacher} /><Tabs defaultValue="overview"><div className="sticky top-0 z-10 -mx-1 bg-background/95 px-1 pb-2 backdrop-blur supports-[backdrop-filter]:bg-background/80"><div className="overflow-x-auto"><TabsList className="flex h-auto min-w-max w-full justify-start gap-1">{visibleTabs.map((tab) => { const Icon = tab.icon; return <TabsTrigger key={tab.value} value={tab.value} className="min-h-10 shrink-0 gap-2 px-3"><Icon className="size-4" />{tab.label}</TabsTrigger>; })}</TabsList></div></div><TabsContent value="overview"><OverviewTab teacher={teacher} /></TabsContent><TabsContent value="details"><DetailsTab teacher={teacher} /></TabsContent><TabsContent value="teaching"><TeachingTab teacher={teacher} /></TabsContent><TabsContent value="timetable"><TimetableTab teacher={teacher} /></TabsContent><TabsContent value="attendance"><AttendanceTab teacher={teacher} /></TabsContent><TabsContent value="leave"><LeaveTab teacher={teacher} /></TabsContent><TabsContent value="payroll"><PayrollTab teacher={teacher} /></TabsContent><TabsContent value="access"><AccessTab teacher={teacher} /></TabsContent></Tabs></div>;
+  return <div className="space-y-6 pb-10"><ProfileHeader teacher={teacher} /><Tabs defaultValue="overview"><div className="sticky top-0 z-10 -mx-1 bg-background/95 px-1 pb-2 backdrop-blur supports-[backdrop-filter]:bg-background/80"><div className="overflow-x-auto"><TabsList className="flex h-auto min-w-max w-full justify-start gap-1">{visibleTabs.map((tab) => { const Icon = tab.icon; return <TabsTrigger key={tab.value} value={tab.value} className="min-h-10 shrink-0 gap-2 px-3"><Icon className="size-4" />{tab.label}</TabsTrigger>; })}</TabsList></div></div><TabsContent value="overview"><OverviewTab teacher={teacher} /></TabsContent><TabsContent value="details"><DetailsTab teacher={teacher} /></TabsContent><TabsContent value="teaching"><TeachingTab teacher={teacher} /></TabsContent><TabsContent value="timetable"><TimetableTab teacher={teacher} /></TabsContent><TabsContent value="attendance"><AttendanceTab teacher={teacher} self={self} /></TabsContent><TabsContent value="leave"><LeaveTab teacher={teacher} self={self} onCreated={() => setRefreshKey((value) => value + 1)} /></TabsContent><TabsContent value="payroll"><PayrollTab teacher={teacher} self={self} /></TabsContent><TabsContent value="access"><AccessTab teacher={teacher} /></TabsContent></Tabs></div>;
 }
