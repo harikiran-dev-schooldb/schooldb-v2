@@ -8,9 +8,9 @@ type Props = {
 };
 
 export default async function AttendanceRoutePage({ params }: Props) {
-  const { schoolSlug } = await params;
+  await params;
 
   await requireTenant();
 
-  return <AttendancePage schoolSlug={schoolSlug} />;
+  return <AttendancePage />;
 }
