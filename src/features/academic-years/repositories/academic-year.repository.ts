@@ -38,6 +38,8 @@ export const academicYearRepository = {
       select: {
         id: true,
         name: true,
+        startDate: true,
+        endDate: true,
         attendanceMode: true,
         active: true,
       },

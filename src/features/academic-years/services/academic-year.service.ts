@@ -47,6 +47,8 @@ export const academicYearService = {
   return years.map((item) => ({
     id: item.id,
     label: item.name,
+    startDate: item.startDate,
+    endDate: item.endDate,
     attendanceMode: item.attendanceMode,
     active: item.active,
   }));
