@@ -29,6 +29,9 @@ export const teacherRepository = {
 
       orderBy: [
         {
+          employeeId: "asc",
+        },
+        {
           fullName: "asc",
         },
       ],
