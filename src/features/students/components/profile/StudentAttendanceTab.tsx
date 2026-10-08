@@ -13,6 +13,7 @@ import {
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { AcademicYearSelect } from "@/components/common/select";
 import {
   Select,
   SelectContent,
@@ -217,6 +218,7 @@ function SummaryCard({
 export function StudentAttendanceTab({ studentId }: Props) {
   const [data, setData] = useState<AttendanceData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [selectedAcademicYearId, setSelectedAcademicYearId] = useState("");
   const [selectedMonth, setSelectedMonth] = useState("");
 
   useEffect(() => {
@@ -226,11 +228,15 @@ export function StudentAttendanceTab({ studentId }: Props) {
       try {
         setLoading(true);
 
+        const params = new URLSearchParams();
+
+        if (selectedAcademicYearId) {
+          params.set("academicYearId", selectedAcademicYearId);
+        }
+
         const response = await fetch(
-          `/api/v1/students/${studentId}/attendance`,
-          {
-            cache: "no-store",
-          },
+          `/api/v1/students/${studentId}/attendance${params.size ? `?${params.toString()}` : ""}`,
+          { cache: "no-store" },
         );
 
         const result = await response.json();
@@ -245,6 +251,7 @@ export function StudentAttendanceTab({ studentId }: Props) {
         }
 
         setData(result.data);
+        setSelectedAcademicYearId(result.data.academicYear?.id ?? "");
         setSelectedMonth(defaultAttendanceMonth(result.data.academicYear));
       } catch (error) {
         if (!cancelled) {
@@ -264,7 +271,14 @@ export function StudentAttendanceTab({ studentId }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [studentId]);
+  }, [selectedAcademicYearId, studentId]);
+
+  function handleAcademicYearChange(value: string) {
+    if (value === selectedAcademicYearId) return;
+
+    setSelectedAcademicYearId(value);
+    setSelectedMonth("");
+  }
 
   const sortedRecords = useMemo(() => {
     if (!data) return [];
@@ -479,7 +493,7 @@ export function StudentAttendanceTab({ studentId }: Props) {
       {/* Attendance Records */}
 
       <Card className="overflow-hidden rounded-2xl border shadow-sm">
-        <CardHeader className="gap-4 border-b bg-muted/20 pb-5 sm:flex-row sm:items-end sm:justify-between">
+        <CardHeader className="gap-4 border-b bg-muted/20 pb-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <CardTitle className="flex items-center gap-2 text-base">
               <CalendarDays className="size-5 text-primary" />
@@ -492,25 +506,44 @@ export function StudentAttendanceTab({ studentId }: Props) {
             </p>
           </div>
 
-          <div className="w-full sm:w-[220px]">
-            <p className="mb-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
-              Attendance month
-            </p>
+          <div className="grid w-full gap-3 sm:grid-cols-2 lg:w-auto">
+            <div className="w-full sm:min-w-[220px]">
+              <p className="mb-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                Academic year
+              </p>
 
-            <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-              <SelectTrigger className="bg-background">
-                <SelectValue placeholder="Choose month" />
-              </SelectTrigger>
+              <AcademicYearSelect
+                value={selectedAcademicYearId}
+                onChange={handleAcademicYearChange}
+                disabled={loading}
+                autoSelectActive={false}
+              />
+            </div>
 
-              <SelectContent>
-                <SelectItem value="all">All months</SelectItem>
-                {monthOptions.map((month) => (
-                  <SelectItem key={month} value={month}>
-                    {formatMonth(month)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="w-full sm:min-w-[220px]">
+              <p className="mb-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                Month
+              </p>
+
+              <Select
+                value={selectedMonth}
+                onValueChange={setSelectedMonth}
+                disabled={loading || !selectedAcademicYearId}
+              >
+                <SelectTrigger className="bg-background">
+                  <SelectValue placeholder="Choose month" />
+                </SelectTrigger>
+
+                <SelectContent>
+                  <SelectItem value="all">All months</SelectItem>
+                  {monthOptions.map((month) => (
+                    <SelectItem key={month} value={month}>
+                      {formatMonth(month)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </CardHeader>
 
