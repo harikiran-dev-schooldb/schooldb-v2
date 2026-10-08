@@ -74,15 +74,6 @@ export const teacherColumns: ColumnDef<TeacherListItem>[] = [
     ),
   },
   {
-    accessorKey: "designation",
-    header: "Designation",
-    cell: ({ row }) => (
-      <span className="text-muted-foreground">
-        {row.original.designation || "-"}
-      </span>
-    ),
-  },
-  {
     accessorKey: "active",
     header: "Status",
     cell: ({ row }) =>
