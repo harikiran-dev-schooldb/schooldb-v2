@@ -22,8 +22,7 @@ export async function GET(req: Request, { params }: Props) {
 
     const { searchParams } = new URL(req.url);
 
-    const academicYearId =
-      searchParams.get("academicYearId") || undefined;
+    const academicYearId = searchParams.get("academicYearId") || undefined;
 
     const from = searchParams.get("from");
     const to = searchParams.get("to");
@@ -54,6 +53,24 @@ export async function GET(req: Request, { params }: Props) {
       );
     }
 
+    const academicYear = await prisma.academicYear.findFirst({
+      where: {
+        schoolId: tenant.schoolId,
+        ...(academicYearId ? { id: academicYearId } : { active: true }),
+      },
+      select: {
+        id: true,
+        name: true,
+        startDate: true,
+        endDate: true,
+      },
+      orderBy: {
+        startDate: "desc",
+      },
+    });
+
+    const resolvedAcademicYearId = academicYearId ?? academicYear?.id;
+
     /* ------------------------------------------------------------------ */
     /* Attendance records                                                 */
     /* ------------------------------------------------------------------ */
@@ -64,9 +81,9 @@ export async function GET(req: Request, { params }: Props) {
     studentId,
 
     session: {
-      ...(academicYearId
+      ...(resolvedAcademicYearId
         ? {
-            academicYearId,
+            academicYearId: resolvedAcademicYearId,
           }
         : {}),
 
@@ -248,6 +265,8 @@ export async function GET(req: Request, { params }: Props) {
 
       data: {
         student,
+
+        academicYear,
 
         summary: {
           workingDays,

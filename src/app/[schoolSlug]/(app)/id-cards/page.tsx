@@ -109,11 +109,10 @@ export default async function IdCardsPage({ params, searchParams }: Props) {
         action={cards.length ? <PrintDocumentButton /> : undefined}
       />
 
-      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-950 via-indigo-950 to-violet-950 px-6 py-7 text-white shadow-2xl shadow-indigo-950/15 print:hidden md:px-8">
-        <div className="absolute -right-16 -top-20 size-64 rounded-full bg-cyan-400/10 blur-3xl" />
+      <section className="premium-hero px-6 py-7 print:hidden md:px-8">
         <div className="relative flex items-center gap-4">
-          <div className="flex size-12 items-center justify-center rounded-2xl bg-white/10 ring-1 ring-white/15"><CreditCard className="size-6 text-cyan-300" /></div>
-          <div><p className="text-[10px] font-bold uppercase tracking-[0.2em] text-cyan-300">Identity Center</p><h2 className="mt-1 text-2xl font-bold tracking-tight">Designed for your school</h2><p className="mt-1 text-sm text-indigo-100/75">Choose portrait or landscape, set the exact millimetre size, then print individually or class-wise.</p></div>
+          <div className="flex size-12 items-center justify-center rounded-2xl bg-primary/10 ring-1 ring-primary/15"><CreditCard className="size-6 text-primary" /></div>
+          <div><p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary">Identity Center</p><h2 className="mt-1 text-2xl font-bold tracking-tight text-foreground">Designed for your school</h2><p className="mt-1 text-sm text-muted-foreground">Choose portrait or landscape, set the exact millimetre size, then print individually or class-wise.</p></div>
         </div>
       </section>
 

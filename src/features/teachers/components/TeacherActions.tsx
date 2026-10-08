@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Pencil } from "lucide-react";
+import Link from "next/link";
+import { Eye, Pencil } from "lucide-react";
 
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { ActionMenu } from "@/components/common/actions/ActionMenu";
@@ -18,6 +19,12 @@ export function TeacherActions({ teacherId }: Props) {
   return (
     <>
       <ActionMenu>
+        <DropdownMenuItem asChild>
+          <Link href={`teachers/${teacherId}`}>
+            <Eye className="mr-2 h-4 w-4" />
+            View profile
+          </Link>
+        </DropdownMenuItem>
         <DropdownMenuItem onClick={() => setEditOpen(true)}>
           <Pencil className="mr-2 h-4 w-4" />
           Edit

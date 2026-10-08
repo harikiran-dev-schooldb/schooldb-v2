@@ -64,14 +64,12 @@ export default async function LeaveRequestsManagementPage({
     <PageContainer>
       <PageHeader title="Leave & permissions" description="Review student leave, late arrival, early departure, half-day and short permission requests. Teachers only see assigned classes and sections." />
 
-      <div className="relative overflow-hidden rounded-[28px] bg-gradient-to-br from-slate-950 via-indigo-950 to-violet-900 p-6 text-white shadow-[0_28px_70px_rgba(30,27,75,0.25)] sm:p-8">
-        <div className="pointer-events-none absolute -right-16 -top-20 size-64 rounded-full bg-violet-500/30 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-24 left-1/3 size-56 rounded-full bg-blue-500/20 blur-3xl" />
+      <div className="premium-hero p-6 sm:p-8">
         <div className="relative grid gap-7 lg:grid-cols-[1.25fr_1fr] lg:items-end">
-          <div><div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.2em] text-indigo-200"><Sparkles className="size-3.5" />Student care desk</div><h2 className="mt-3 max-w-lg text-2xl font-bold tracking-[-0.03em] sm:text-3xl">Every leave and permission request, in one place.</h2><p className="mt-2 max-w-xl text-sm leading-6 text-indigo-100/80">Review the request type, date, applicable time and reason before recording a decision.</p></div>
+          <div><div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.2em] text-primary"><Sparkles className="size-3.5" />Student care desk</div><h2 className="mt-3 max-w-lg text-2xl font-bold tracking-[-0.03em] text-foreground sm:text-3xl">Every leave and permission request, in one place.</h2><p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">Review the request type, date, applicable time and reason before recording a decision.</p></div>
           <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-2xl border border-white/15 bg-white/10 p-4 backdrop-blur-sm"><Clock3 className="size-5 text-amber-300" /><p className="mt-3 text-3xl font-black">{pending.length}</p><p className="text-xs font-medium text-indigo-100">Awaiting decision</p></div>
-            <div className="rounded-2xl border border-white/15 bg-white/10 p-4 backdrop-blur-sm"><CircleCheckBig className="size-5 text-emerald-300" /><p className="mt-3 text-3xl font-black">{completed.length}</p><p className="text-xs font-medium text-indigo-100">Decisions recorded</p></div>
+            <div className="rounded-2xl border border-amber-200/70 bg-white/85 p-4 shadow-sm"><Clock3 className="size-5 text-amber-600" /><p className="mt-3 text-3xl font-black text-foreground">{pending.length}</p><p className="text-xs font-medium text-muted-foreground">Awaiting decision</p></div>
+            <div className="rounded-2xl border border-emerald-200/70 bg-white/85 p-4 shadow-sm"><CircleCheckBig className="size-5 text-emerald-600" /><p className="mt-3 text-3xl font-black text-foreground">{completed.length}</p><p className="text-xs font-medium text-muted-foreground">Decisions recorded</p></div>
           </div>
         </div>
       </div>

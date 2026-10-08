@@ -203,29 +203,27 @@ export function ToppersPage({ schoolSlug }: Props) {
         }
       />
 
-      <section className="relative overflow-hidden rounded-[1.75rem] border border-primary/15 bg-gradient-to-br from-slate-950 via-indigo-950 to-violet-950 px-6 py-7 text-white shadow-[0_28px_70px_-38px_rgb(67_56_202_/_0.7)] sm:px-8">
-        <div className="absolute -right-16 -top-20 size-64 rounded-full bg-violet-500/20 blur-3xl" />
-        <div className="absolute -bottom-24 left-1/3 size-56 rounded-full bg-cyan-400/10 blur-3xl" />
+      <section className="premium-hero px-6 py-7 sm:px-8">
         <div className="relative flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-center gap-4">
-            <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-white/10 ring-1 ring-white/15 backdrop-blur">
-              <Trophy className="size-7 text-amber-300" />
+            <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-amber-50 ring-1 ring-amber-200/70">
+              <Trophy className="size-7 text-amber-600" />
             </div>
             <div>
-              <p className="text-xs font-bold uppercase tracking-[0.24em] text-cyan-300">
+              <p className="text-xs font-bold uppercase tracking-[0.24em] text-primary">
                 Merit board
               </p>
               <h2 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">
                 Recognise academic excellence
               </h2>
-              <p className="mt-1.5 max-w-2xl text-sm leading-6 text-indigo-100/75">
+              <p className="mt-1.5 max-w-2xl text-sm leading-6 text-muted-foreground">
                 Compare the whole class or rank one section independently. Students with incomplete marks stay outside the ranking.
               </p>
             </div>
           </div>
           {data?.scope && (
-            <div className="rounded-2xl border border-white/10 bg-white/[0.07] px-5 py-3 backdrop-blur">
-              <p className="text-xs text-indigo-100/65">Current leaderboard</p>
+            <div className="rounded-2xl border border-primary/10 bg-white/85 px-5 py-3 shadow-sm">
+              <p className="text-xs text-muted-foreground">Current leaderboard</p>
               <p className="mt-1 font-semibold">
                 {data.scope.class.name}
                 {data.scope.section ? ` · Section ${data.scope.section.name}` : " · All sections"}

@@ -145,24 +145,24 @@ export default async function AdmissionsPage({
           </Button>
         }
       />
-      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-950 via-indigo-950 to-indigo-800 p-6 text-white shadow-xl md:p-8">
+      <section className="premium-hero p-6 md:p-8">
         <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <p className="text-xs font-bold tracking-[0.22em] text-indigo-200 uppercase">
+            <p className="text-xs font-bold tracking-[0.22em] text-primary uppercase">
               Admissions command centre
             </p>
             <h2 className="mt-2 text-2xl font-black">
               From application to enrollment
             </h2>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-indigo-100/80">
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
               Every decision has a history. Approved records become students
               without retyping family or contact details.
             </p>
           </div>
-          <div className="flex items-center gap-3 rounded-2xl bg-white/10 p-4 ring-1 ring-white/15">
-            <ShieldCheck className="size-7 text-emerald-300" />
+          <div className="flex items-center gap-3 rounded-2xl border border-emerald-200/70 bg-white/85 p-4 shadow-sm">
+            <ShieldCheck className="size-7 text-emerald-600" />
             <div>
-              <p className="text-xs text-indigo-200">Secure intake</p>
+              <p className="text-xs text-muted-foreground">Secure intake</p>
               <p className="font-bold">Duplicate checks enabled</p>
             </div>
           </div>

@@ -13,6 +13,13 @@ import {
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 type AttendanceRecord = {
   id: string;
@@ -54,6 +61,13 @@ type AttendanceData = {
     fullName: string;
   };
 
+  academicYear: {
+    id: string;
+    name: string;
+    startDate: string;
+    endDate: string;
+  } | null;
+
   summary: {
     workingDays: number;
     presentDays: number;
@@ -86,6 +100,48 @@ function formatMonth(value: string) {
     month: "long",
     year: "numeric",
   }).format(new Date(Number(year), Number(month) - 1, 1));
+}
+
+function currentMonthKey() {
+  const now = new Date();
+
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function academicYearMonths(
+  academicYear: AttendanceData["academicYear"],
+) {
+  if (!academicYear) return [];
+
+  const startMonth = academicYear.startDate.slice(0, 7);
+  const endMonth = academicYear.endDate.slice(0, 7);
+  const cursor = new Date(`${startMonth}-01T00:00:00.000Z`);
+  const end = new Date(`${endMonth}-01T00:00:00.000Z`);
+  const months: string[] = [];
+
+  while (cursor <= end) {
+    months.push(cursor.toISOString().slice(0, 7));
+    cursor.setUTCMonth(cursor.getUTCMonth() + 1);
+  }
+
+  return months.reverse();
+}
+
+function defaultAttendanceMonth(
+  academicYear: AttendanceData["academicYear"],
+) {
+  const months = academicYearMonths(academicYear);
+  const currentMonth = currentMonthKey();
+
+  if (months.includes(currentMonth)) return currentMonth;
+  if (months.length === 0) return currentMonth;
+
+  const oldestMonth = months.at(-1) ?? currentMonth;
+  const newestMonth = months[0] ?? currentMonth;
+
+  if (currentMonth < oldestMonth) return oldestMonth;
+
+  return newestMonth;
 }
 
 function getStatus(status: string) {
@@ -161,6 +217,7 @@ function SummaryCard({
 export function StudentAttendanceTab({ studentId }: Props) {
   const [data, setData] = useState<AttendanceData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [selectedMonth, setSelectedMonth] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -188,6 +245,7 @@ export function StudentAttendanceTab({ studentId }: Props) {
         }
 
         setData(result.data);
+        setSelectedMonth(defaultAttendanceMonth(result.data.academicYear));
       } catch (error) {
         if (!cancelled) {
           console.error("Failed to load student attendance:", error);
@@ -211,10 +269,29 @@ export function StudentAttendanceTab({ studentId }: Props) {
   const sortedRecords = useMemo(() => {
     if (!data) return [];
 
-    return [...data.records].sort(
+    return data.records
+      .filter(
+        (record) =>
+          selectedMonth === "all" ||
+          record.session.attendanceDate.slice(0, 7) === selectedMonth,
+      )
+      .sort(
       (a, b) =>
         new Date(b.session.attendanceDate).getTime() -
         new Date(a.session.attendanceDate).getTime(),
+      );
+  }, [data, selectedMonth]);
+
+  const monthOptions = useMemo(() => {
+    if (!data) return [];
+
+    const yearMonths = academicYearMonths(data.academicYear);
+    const recordedMonths = data.records.map((record) =>
+      record.session.attendanceDate.slice(0, 7),
+    );
+
+    return Array.from(new Set([...yearMonths, ...recordedMonths])).sort((a, b) =>
+      b.localeCompare(a),
     );
   }, [data]);
 
@@ -402,15 +479,39 @@ export function StudentAttendanceTab({ studentId }: Props) {
       {/* Attendance Records */}
 
       <Card className="overflow-hidden rounded-2xl border shadow-sm">
-        <CardHeader className="border-b bg-muted/20">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <CalendarDays className="size-5 text-primary" />
-            Attendance History
-          </CardTitle>
+        <CardHeader className="gap-4 border-b bg-muted/20 pb-5 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <CalendarDays className="size-5 text-primary" />
+              Attendance History
+            </CardTitle>
 
-          <p className="text-sm text-muted-foreground">
-            Detailed attendance sessions for this student.
-          </p>
+            <p className="mt-1.5 text-sm text-muted-foreground">
+              Detailed attendance sessions for this student
+              {data.academicYear ? ` in ${data.academicYear.name}` : ""}.
+            </p>
+          </div>
+
+          <div className="w-full sm:w-[220px]">
+            <p className="mb-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+              Attendance month
+            </p>
+
+            <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+              <SelectTrigger className="bg-background">
+                <SelectValue placeholder="Choose month" />
+              </SelectTrigger>
+
+              <SelectContent>
+                <SelectItem value="all">All months</SelectItem>
+                {monthOptions.map((month) => (
+                  <SelectItem key={month} value={month}>
+                    {formatMonth(month)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </CardHeader>
 
         <CardContent className="p-0">
@@ -421,7 +522,9 @@ export function StudentAttendanceTab({ studentId }: Props) {
               <p className="mt-3 font-medium">No attendance records</p>
 
               <p className="mt-1 text-sm text-muted-foreground">
-                Attendance has not been recorded for this student.
+                {selectedMonth === "all"
+                  ? "Attendance has not been recorded for this student."
+                  : `No sessions were recorded in ${formatMonth(selectedMonth)}.`}
               </p>
             </div>
           ) : (

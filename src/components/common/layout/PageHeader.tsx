@@ -8,16 +8,33 @@ type Props = {
   description?: string;
 
   actions?: ReactNode;
+
+  eyebrow?: string;
 };
 
-export function PageHeader({ title, description, actions }: Props) {
+export function PageHeader({
+  title,
+  description,
+  actions,
+  eyebrow = "School Workspace",
+}: Props) {
   return (
-    <div className="mb-6 flex min-w-0 flex-col items-start gap-4 sm:mb-8 sm:flex-row sm:items-end sm:justify-between md:mb-10">
+    <header className="flex min-w-0 flex-col items-start gap-4 border-b border-border/60 pb-5 sm:flex-row sm:items-end sm:justify-between">
       <div className="min-w-0">
-        <h1 className="break-words text-2xl font-bold tracking-[-0.035em] sm:text-3xl md:text-4xl">{title}</h1>
+        {eyebrow && (
+          <p className="mb-1.5 text-[10px] font-bold uppercase tracking-[0.2em] text-primary">
+            {eyebrow}
+          </p>
+        )}
+
+        <h1 className="break-words text-2xl font-bold tracking-[-0.04em] text-foreground sm:text-3xl md:text-[2rem]">
+          {title}
+        </h1>
 
         {description && (
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">{description}</p>
+          <p className="mt-1.5 max-w-2xl text-sm leading-5 text-muted-foreground">
+            {description}
+          </p>
         )}
       </div>
 
@@ -26,6 +43,6 @@ export function PageHeader({ title, description, actions }: Props) {
           {actions}
         </div>
       )}
-    </div>
+    </header>
   );
 }

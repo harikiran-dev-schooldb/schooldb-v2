@@ -22,6 +22,7 @@ export const teacherRepository = {
         email: true,
         designation: true,
         qualification: true,
+        imageUrl: true,
         joiningDate: true,
         active: true,
       },

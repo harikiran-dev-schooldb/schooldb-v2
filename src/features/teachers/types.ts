@@ -17,6 +17,8 @@ export type TeacherListItem = {
 
   qualification: string | null;
 
+  imageUrl: string | null;
+
   joiningDate: Date | null;
 
   active: boolean;

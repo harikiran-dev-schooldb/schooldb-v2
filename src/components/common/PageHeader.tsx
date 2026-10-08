@@ -11,7 +11,7 @@ export function PageHeader({
   title,
   description,
   action,
-  eyebrow = "School Management",
+  eyebrow = "School Workspace",
 }: Props) {
   return (
     <header className="flex flex-col gap-4 border-b border-border/60 pb-5 sm:flex-row sm:items-end sm:justify-between">

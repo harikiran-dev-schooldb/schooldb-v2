@@ -136,20 +136,19 @@ export function AttendanceRankingPage({ schoolSlug }: Props) {
         }
       />
 
-      <section className="relative overflow-hidden rounded-[1.75rem] border border-emerald-400/15 bg-gradient-to-br from-slate-950 via-emerald-950 to-teal-950 px-6 py-7 text-white shadow-[0_28px_70px_-38px_rgb(5_150_105_/_0.75)] sm:px-8">
-        <div className="absolute -right-20 -top-24 size-72 rounded-full bg-emerald-400/15 blur-3xl" />
+      <section className="premium-hero px-6 py-7 sm:px-8">
         <div className="relative flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-center gap-4">
-            <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-white/10 ring-1 ring-white/15 backdrop-blur">
-              <CalendarCheck2 className="size-7 text-emerald-300" />
+            <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 ring-1 ring-emerald-200/70">
+              <CalendarCheck2 className="size-7 text-emerald-600" />
             </div>
             <div>
-              <p className="text-xs font-bold uppercase tracking-[0.24em] text-emerald-300">Consistency board</p>
+              <p className="text-xs font-bold uppercase tracking-[0.24em] text-emerald-700">Consistency board</p>
               <h2 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">Celebrate excellent attendance</h2>
-              <p className="mt-1.5 max-w-2xl text-sm leading-6 text-emerald-50/70">Present and late entries count as attended, matching the existing attendance reports for every school attendance mode.</p>
+              <p className="mt-1.5 max-w-2xl text-sm leading-6 text-muted-foreground">Present and late entries count as attended, matching the existing attendance reports for every school attendance mode.</p>
             </div>
           </div>
-          {data && <div className="rounded-2xl border border-white/10 bg-white/[0.07] px-5 py-3 backdrop-blur"><p className="text-xs text-emerald-50/60">Current leaderboard</p><p className="mt-1 font-semibold">{data.scope.class.name}{data.scope.section ? ` · Section ${data.scope.section.name}` : " · All sections"}</p></div>}
+          {data && <div className="rounded-2xl border border-emerald-200/70 bg-white/85 px-5 py-3 shadow-sm"><p className="text-xs text-muted-foreground">Current leaderboard</p><p className="mt-1 font-semibold">{data.scope.class.name}{data.scope.section ? ` · Section ${data.scope.section.name}` : " · All sections"}</p></div>}
         </div>
       </section>
 
