@@ -8,6 +8,9 @@ data class TeacherStudent(
     val rollNo: Int?,
     val imageUrl: String?,
     val status: String,
+    val mobileNumber: String?,
+    val dateOfBirth: String?,
+    val parentName: String?,
 )
 
 data class TeacherStudentGroup(

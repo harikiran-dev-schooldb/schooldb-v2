@@ -42,7 +42,9 @@ class TeacherViewModel(
                     null
                 }
                 _uiState.value = TeacherUiState(
-                    context = context,
+                    context = dashboard?.teacherAccess?.let {
+                        context.copy(teacherAccess = it)
+                    } ?: context,
                     dashboard = dashboard,
                     loading = false,
                 )

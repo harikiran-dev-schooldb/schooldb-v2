@@ -49,6 +49,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.schooldb.mobile.ui.StudentAvatar
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 private val StudentsIndigo = Color(0xFF4F46E5)
 private val StudentsIndigoSoft = Color(0xFFEEF2FF)
@@ -100,7 +103,9 @@ fun TeacherStudentsScreen(
             students.filter {
                 it.fullName.contains(value, ignoreCase = true) ||
                     it.admissionNo.contains(value, ignoreCase = true) ||
-                    (it.rollNo?.toString()?.contains(value) == true)
+                    (it.rollNo?.toString()?.contains(value) == true) ||
+                    (it.parentName?.contains(value, ignoreCase = true) == true) ||
+                    (it.mobileNumber?.contains(value, ignoreCase = true) == true)
             }
         }
     }
@@ -299,7 +304,7 @@ fun TeacherStudentsScreen(
                         )
                     },
                     placeholder = {
-                        Text("Search name, admission no. or roll no.")
+                        Text("Search student, parent, admission or mobile")
                     },
                     shape = RoundedCornerShape(16.dp),
                 )
@@ -502,6 +507,12 @@ private fun StudentDetailSheet(
             HorizontalDivider(color = StudentsSlate200.copy(alpha = .7f))
             StudentDetailRow("Roll number", student.rollNo?.toString() ?: "Not assigned")
             HorizontalDivider(color = StudentsSlate200.copy(alpha = .7f))
+            StudentDetailRow("Date of birth", student.dateOfBirth?.let(::formatBirthDate) ?: "Not available")
+            HorizontalDivider(color = StudentsSlate200.copy(alpha = .7f))
+            StudentDetailRow("Mobile number", student.mobileNumber ?: "Not available")
+            HorizontalDivider(color = StudentsSlate200.copy(alpha = .7f))
+            StudentDetailRow("Parent / guardian", student.parentName ?: "Not available")
+            HorizontalDivider(color = StudentsSlate200.copy(alpha = .7f))
             StudentDetailRow(
                 "Class & section",
                 group?.let { "${it.className} · ${it.sectionName}" } ?: "Not available",
@@ -534,6 +545,12 @@ private fun StudentDetailRow(label: String, value: String) {
         Text(value, color = StudentsSlate900, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
     }
 }
+
+private fun formatBirthDate(value: String) = runCatching {
+    LocalDate.parse(value.take(10)).format(
+        DateTimeFormatter.ofPattern("dd MMMM yyyy", Locale.ENGLISH),
+    )
+}.getOrDefault(value.take(10))
 
 @Composable
 private fun EmptyStudentsCard(

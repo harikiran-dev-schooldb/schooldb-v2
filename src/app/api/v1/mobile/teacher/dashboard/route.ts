@@ -59,6 +59,16 @@ export async function GET() {
       : null;
     const upcomingDates = nextSchoolDates(date);
     const canViewSchedule = teacher.timetableAccess || teacher.attendanceAccess;
+    const teacherAccess = {
+      students: teacher.studentDetailsAccess,
+      fees: teacher.feeAccess,
+      results: teacher.resultAccess,
+      timetable: teacher.timetableAccess,
+      attendance: teacher.attendanceAccess,
+      homework: teacher.homeworkAccess,
+      exams: teacher.examAccess,
+      marksEntry: teacher.marksEntryAccess,
+    };
 
     const academicYear = await prisma.academicYear.findFirst({
       where: { schoolId: membership.schoolId, active: true },
@@ -74,6 +84,7 @@ export async function GET() {
         day: dayName,
         academicYearName: null,
         attendanceMode: null,
+        teacherAccess,
         periods: [],
         dailyTargets: [],
         studentGroups: [],
@@ -218,6 +229,11 @@ export async function GET() {
                   fullName: true,
                   imageUrl: true,
                   status: true,
+                  phone: true,
+                  dob: true,
+                  fatherName: true,
+                  motherName: true,
+                  guardianName: true,
                 },
               },
             },
@@ -283,6 +299,13 @@ export async function GET() {
           rollNo: enrollment.rollNo,
           imageUrl: enrollment.student.imageUrl,
           status: enrollment.student.status,
+          mobileNumber: enrollment.student.phone,
+          dateOfBirth: enrollment.student.dob.toISOString().slice(0, 10),
+          parentName:
+            enrollment.student.fatherName?.trim() ||
+            enrollment.student.motherName?.trim() ||
+            enrollment.student.guardianName?.trim() ||
+            null,
         })),
     }));
 
@@ -293,6 +316,7 @@ export async function GET() {
       day: dayName,
       academicYearName: academicYear.name,
       attendanceMode: academicYear.attendanceMode,
+      teacherAccess,
       periods: timetable
         .filter((entry) => entry.day === day)
         .map((entry) => toPeriod(entry, teacher.attendanceAccess, date)),

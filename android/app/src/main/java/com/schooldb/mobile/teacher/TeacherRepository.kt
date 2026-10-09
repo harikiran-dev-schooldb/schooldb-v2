@@ -27,18 +27,7 @@ class TeacherRepository(
             role = data.optString("role", "UNKNOWN"),
             canUnlockAttendance = data.optJSONObject("permissions")
                 ?.optBoolean("canUnlockAttendance") == true,
-            teacherAccess = access?.let {
-                TeacherAccess(
-                    students = it.optBoolean("students"),
-                    fees = it.optBoolean("fees"),
-                    results = it.optBoolean("results"),
-                    timetable = it.optBoolean("timetable"),
-                    attendance = it.optBoolean("attendance"),
-                    homework = it.optBoolean("homework"),
-                    exams = it.optBoolean("exams"),
-                    marksEntry = it.optBoolean("marksEntry"),
-                )
-            } ?: TeacherAccess.legacyEnabled(),
+            teacherAccess = access?.toTeacherAccess() ?: TeacherAccess.legacyEnabled(),
         )
     }
 
@@ -96,6 +85,9 @@ class TeacherRepository(
                                 rollNo = if (item.isNull("rollNo")) null else item.optInt("rollNo"),
                                 imageUrl = item.optString("imageUrl").takeIf { it.isNotBlank() },
                                 status = item.optString("status", "ACTIVE"),
+                                mobileNumber = item.optString("mobileNumber").takeIf { it.isNotBlank() },
+                                dateOfBirth = item.optString("dateOfBirth").takeIf { it.isNotBlank() },
+                                parentName = item.optString("parentName").takeIf { it.isNotBlank() },
                             ),
                         )
                     }
@@ -121,12 +113,24 @@ class TeacherRepository(
             day = data.getString("day"),
             academicYearName = data.optString("academicYearName").takeIf { it.isNotBlank() },
             attendanceMode = data.optString("attendanceMode").takeIf { it.isNotBlank() },
+            teacherAccess = data.optJSONObject("teacherAccess")?.toTeacherAccess(),
             periods = periods,
             dailyTargets = dailyTargets,
             studentGroups = studentGroups,
             upcoming = upcoming,
         )
     }
+
+    private fun JSONObject.toTeacherAccess() = TeacherAccess(
+        students = optBoolean("students"),
+        fees = optBoolean("fees"),
+        results = optBoolean("results"),
+        timetable = optBoolean("timetable"),
+        attendance = optBoolean("attendance"),
+        homework = optBoolean("homework"),
+        exams = optBoolean("exams"),
+        marksEntry = optBoolean("marksEntry"),
+    )
 
     suspend fun openAttendance(period: TeachingPeriod): AttendanceSheet {
         val sessionId = period.attendanceSessionId ?: createSession(period)

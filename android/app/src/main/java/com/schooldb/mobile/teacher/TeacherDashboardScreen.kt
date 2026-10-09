@@ -191,9 +191,11 @@ fun TeacherDashboardScreen(
         TeacherHome(
             state = state,
             snackbar = snackbar,
+            studentsEnabled = false,
             onRefresh = viewModel::refresh,
             onOpenAttendance = viewModel::openAttendance,
             onOpenDailyAttendance = viewModel::openDailyAttendance,
+            onOpenStudents = {},
             onSignOut = viewModel::signOut,
         )
     }
@@ -291,9 +293,14 @@ private fun TeacherShell(
                     TeacherHome(
                         state = state,
                         snackbar = snackbar,
+                        studentsEnabled = access.students,
                         onRefresh = teacherViewModel::refresh,
                         onOpenAttendance = teacherViewModel::openAttendance,
                         onOpenDailyAttendance = teacherViewModel::openDailyAttendance,
+                        onOpenStudents = {
+                            tab = TeacherTab.MORE
+                            moreScreen = "STUDENTS"
+                        },
                         onSignOut = teacherViewModel::signOut,
                     )
                 }
@@ -1178,9 +1185,11 @@ private fun AttendanceInfoCard(
 private fun TeacherHome(
     state: TeacherUiState,
     snackbar: SnackbarHostState,
+    studentsEnabled: Boolean,
     onRefresh: () -> Unit,
     onOpenAttendance: (TeachingPeriod) -> Unit,
     onOpenDailyAttendance: (DailyAttendanceTarget) -> Unit,
+    onOpenStudents: () -> Unit,
     onSignOut: () -> Unit,
 ) {
     Scaffold(
@@ -1280,9 +1289,11 @@ private fun TeacherHome(
                 DashboardContent(
                     dashboard = state.dashboard,
                     attendanceEnabled = state.context?.teacherAccess?.attendance == true,
+                    studentsEnabled = studentsEnabled,
                     loading = state.loading,
                     onOpenAttendance = onOpenAttendance,
                     onOpenDailyAttendance = onOpenDailyAttendance,
+                    onOpenStudents = onOpenStudents,
                     modifier = Modifier.padding(padding),
                 )
             }
@@ -1417,9 +1428,11 @@ private val String.displayRole: String
 private fun DashboardContent(
     dashboard: TeacherDashboard,
     attendanceEnabled: Boolean,
+    studentsEnabled: Boolean,
     loading: Boolean,
     onOpenAttendance: (TeachingPeriod) -> Unit,
     onOpenDailyAttendance: (DailyAttendanceTarget) -> Unit,
+    onOpenStudents: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val dailyMode = attendanceEnabled &&
@@ -1427,11 +1440,14 @@ private fun DashboardContent(
             dashboard.attendanceMode == "MORNING_AFTERNOON"
         )
 
+    val assignedClassCount = dashboard.studentGroups.size
     val itemCount =
         if (dailyMode) {
             dashboard.dailyTargets.size
-        } else {
+        } else if (dashboard.periods.isNotEmpty()) {
             dashboard.periods.size
+        } else {
+            assignedClassCount
         }
 
     val completed =
@@ -1489,10 +1505,10 @@ private fun DashboardContent(
                         SummaryLabel(
                             icon = Icons.Default.Schedule,
                             value = "$itemCount",
-                            label = if (dashboard.attendanceMode == "MORNING_AFTERNOON") {
-                                "Registers"
-                            } else {
-                                "Classes"
+                            label = when {
+                                dashboard.attendanceMode == "MORNING_AFTERNOON" -> "Registers"
+                                dashboard.periods.isEmpty() && assignedClassCount > 0 -> "Assigned classes"
+                                else -> "Classes"
                             },
                         )
 
@@ -1511,6 +1527,16 @@ private fun DashboardContent(
                         }
                     }
                 }
+            }
+        }
+
+        if (studentsEnabled) {
+            item {
+                StudentDirectoryCard(
+                    classCount = assignedClassCount,
+                    studentCount = dashboard.studentGroups.sumOf { it.students.size },
+                    onClick = onOpenStudents,
+                )
             }
         }
 
@@ -1666,6 +1692,54 @@ private fun DashboardContent(
             Spacer(
                 modifier = Modifier.height(12.dp),
             )
+        }
+    }
+}
+
+@Composable
+private fun StudentDirectoryCard(
+    classCount: Int,
+    studentCount: Int,
+    onClick: () -> Unit,
+) {
+    Card(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        border = BorderStroke(1.dp, SchoolDbIndigo.copy(alpha = .18f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                modifier = Modifier.size(46.dp).background(
+                    color = SchoolDbIndigoSoft,
+                    shape = RoundedCornerShape(14.dp),
+                ),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Groups,
+                    contentDescription = null,
+                    tint = SchoolDbIndigo,
+                )
+            }
+            Column(Modifier.weight(1f).padding(start = 13.dp)) {
+                Text(
+                    text = "My Students",
+                    fontWeight = FontWeight.Bold,
+                    color = SchoolDbSlate900,
+                )
+                Text(
+                    text = "$studentCount students across $classCount assigned class${if (classCount == 1) "" else "es"}",
+                    fontSize = 12.sp,
+                    color = SchoolDbSlate500,
+                )
+            }
+            Text(text = "›", fontSize = 26.sp, color = SchoolDbSlate300)
         }
     }
 }
