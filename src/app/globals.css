@@ -1311,6 +1311,11 @@
     margin: 5mm;
   }
 
+  @page student-report {
+    size: A4 landscape;
+    margin: 5mm;
+  }
+
   html,
   body {
     width: 100% !important;
@@ -1350,16 +1355,32 @@
     margin: 0 !important;
     padding: 6mm !important;
     background: #ffffff !important;
+    page: student-report;
   }
 
-  .student-overall-report-print article,
   .student-overall-report-print [data-slot="card"] {
     break-inside: avoid !important;
     page-break-inside: avoid !important;
   }
 
+  .student-overall-report-print .student-report-section {
+    break-before: page;
+    break-inside: auto !important;
+    page-break-before: always;
+    page-break-inside: auto !important;
+  }
+
   .student-overall-report-print table {
     width: 100% !important;
+  }
+
+  .student-overall-report-print thead {
+    display: table-header-group;
+  }
+
+  .student-overall-report-print tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
 
   .parent-query-qr-print {

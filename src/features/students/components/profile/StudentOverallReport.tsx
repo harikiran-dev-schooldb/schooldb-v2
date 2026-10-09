@@ -5,67 +5,38 @@ import {
   Award,
   CalendarCheck,
   CreditCard,
+  Download,
   GraduationCap,
   Loader2,
-  Phone,
   Printer,
-  Users,
 } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 
-type OverallReport = {
-  student: {
-    fullName: string | null;
-    admissionNo: string;
-    status: string;
-  };
-  enrollment: {
-    className: string;
-    sectionName: string;
-    academicYear: string;
-    rollNo: number | null;
-    houseName: string | null;
-  } | null;
-  parents: Array<{
-    name: string;
-    phone?: string | null;
-    email?: string | null;
-    relationship: string;
-  }>;
-  attendance: {
-    total: number;
-    present: number;
-    absent: number;
-    late: number;
-    leave: number;
-    percentage: number;
-  };
-  fees: {
-    payable: number;
-    paid: number;
-    outstanding: number;
-    pendingInstallments: number;
-  };
-  recentResults: Array<{
-    id: string;
-    exam: string;
-    subject: string;
-    obtained: number | null;
-    maximum: number;
-    passMarks: number | null;
-    status: string;
-  }>;
+type ReportValue = string | number | boolean | null;
+type ReportSection = {
+  key: string;
+  title: string;
+  columns: string[];
+  rows: Array<Record<string, ReportValue>>;
+};
+type ComprehensiveReport = {
+  schoolName: string;
+  studentName: string;
+  admissionNo: string;
+  generatedAt: string;
+  sections: ReportSection[];
 };
 
-function money(value: number) {
-  return new Intl.NumberFormat("en-IN", {
-    style: "currency",
-    currency: "INR",
-    maximumFractionDigits: 0,
-  }).format(value);
+function metric(section: ReportSection | undefined, name: string) {
+  return section?.rows.find((row) => row.Metric === name)?.Value ?? null;
+}
+
+function displayValue(value: ReportValue) {
+  if (value === null || value === "") return "—";
+  if (typeof value === "boolean") return value ? "Yes" : "No";
+  return String(value);
 }
 
 function MetricCard({
@@ -84,19 +55,81 @@ function MetricCard({
   return (
     <Card className="overflow-hidden rounded-2xl border-border/70 shadow-sm">
       <CardContent className="p-5">
-        <div className={`flex size-10 items-center justify-center rounded-xl ${tone}`}>
+        <div
+          className={`flex size-10 items-center justify-center rounded-xl ${tone}`}
+        >
           <Icon className="size-5" />
         </div>
-        <p className="mt-4 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">{label}</p>
-        <p className="mt-1 text-2xl font-black tracking-tight text-foreground">{value}</p>
+        <p className="mt-4 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+          {label}
+        </p>
+        <p className="mt-1 text-2xl font-black tracking-tight text-foreground">
+          {value}
+        </p>
         <p className="mt-1 text-xs leading-5 text-muted-foreground">{detail}</p>
       </CardContent>
     </Card>
   );
 }
 
+function ReportTable({ section }: { section: ReportSection }) {
+  return (
+    <article className="student-report-section overflow-hidden rounded-2xl border bg-card shadow-sm print:rounded-none print:shadow-none">
+      <div className="border-b bg-muted/30 px-5 py-4">
+        <div className="flex items-center justify-between gap-3">
+          <h3 className="text-base font-bold text-foreground">
+            {section.title}
+          </h3>
+          <span className="text-xs font-medium text-muted-foreground">
+            {section.rows.length} record{section.rows.length === 1 ? "" : "s"}
+          </span>
+        </div>
+      </div>
+      {section.rows.length ? (
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-max border-collapse text-left text-xs print:min-w-0 print:table-fixed print:text-[8px]">
+            <thead className="bg-indigo-600 text-white print:bg-slate-200 print:text-slate-900">
+              <tr>
+                {section.columns.map((column) => (
+                  <th
+                    key={column}
+                    className="border-r border-white/20 px-3 py-2.5 font-semibold last:border-r-0 print:border-slate-300 print:px-1.5 print:py-1.5"
+                  >
+                    {column}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {section.rows.map((row, rowIndex) => (
+                <tr
+                  key={`${section.key}-${rowIndex}`}
+                  className="even:bg-muted/20"
+                >
+                  {section.columns.map((column) => (
+                    <td
+                      key={column}
+                      className="max-w-72 whitespace-pre-wrap break-words border-r px-3 py-2.5 align-top last:border-r-0 print:px-1.5 print:py-1"
+                    >
+                      {displayValue(row[column])}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <p className="px-5 py-8 text-center text-sm text-muted-foreground">
+          No {section.title.toLowerCase()} records are available.
+        </p>
+      )}
+    </article>
+  );
+}
+
 export function StudentOverallReport({ studentId }: { studentId: string }) {
-  const [report, setReport] = useState<OverallReport | null>(null);
+  const [report, setReport] = useState<ComprehensiveReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -106,100 +139,132 @@ export function StudentOverallReport({ studentId }: { studentId: string }) {
       try {
         setLoading(true);
         setError(null);
-        const response = await fetch(`/api/v1/mobile/admin/students/${studentId}`, { cache: "no-store" });
+        const response = await fetch(
+          `/api/v1/students/${studentId}/comprehensive-report`,
+          { cache: "no-store" },
+        );
         const result = await response.json();
         if (cancelled) return;
-        if (!response.ok || !result.success) throw new Error(result.message || "Could not load the overall report.");
+        if (!response.ok || !result.success)
+          throw new Error(
+            result.message || "Could not load the complete report.",
+          );
         setReport(result.data);
       } catch (cause) {
-        if (!cancelled) setError(cause instanceof Error ? cause.message : "Could not load the overall report.");
+        if (!cancelled)
+          setError(
+            cause instanceof Error
+              ? cause.message
+              : "Could not load the complete report.",
+          );
       } finally {
         if (!cancelled) setLoading(false);
       }
     }
     void load();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [studentId]);
 
-  const resultSummary = useMemo(() => {
-    const graded = report?.recentResults.filter((item) => item.obtained !== null && item.maximum > 0) ?? [];
-    const obtained = graded.reduce((sum, item) => sum + (item.obtained ?? 0), 0);
-    const maximum = graded.reduce((sum, item) => sum + item.maximum, 0);
+  const summary = useMemo(() => {
+    const overview = report?.sections.find(
+      (section) => section.key === "overview",
+    );
     return {
-      percentage: maximum ? Math.round((obtained / maximum) * 1000) / 10 : null,
-      graded: graded.length,
+      enrollment: displayValue(metric(overview, "Current enrollment")),
+      attendance: displayValue(metric(overview, "Attendance")),
+      attendanceRecords: displayValue(metric(overview, "Attendance records")),
+      payable: displayValue(metric(overview, "Fees payable")),
+      paid: displayValue(metric(overview, "Fees paid")),
+      outstanding: displayValue(metric(overview, "Fees outstanding")),
+      performance: displayValue(metric(overview, "Academic performance")),
     };
   }, [report]);
 
-  if (loading) {
-    return <div className="flex min-h-72 items-center justify-center rounded-2xl border bg-card text-sm text-muted-foreground"><Loader2 className="mr-2 size-4 animate-spin" />Preparing the overall report…</div>;
-  }
-  if (error || !report) {
-    return <div className="rounded-2xl border border-destructive/20 bg-destructive/5 p-6 text-sm text-destructive">{error || "Overall report unavailable."}</div>;
-  }
+  if (loading)
+    return (
+      <div className="flex min-h-72 items-center justify-center rounded-2xl border bg-card text-sm text-muted-foreground">
+        <Loader2 className="mr-2 size-4 animate-spin" />
+        Preparing the complete report…
+      </div>
+    );
+  if (error || !report)
+    return (
+      <div className="rounded-2xl border border-destructive/20 bg-destructive/5 p-6 text-sm text-destructive">
+        {error || "Complete report unavailable."}
+      </div>
+    );
 
   return (
     <section className="student-overall-report-print space-y-5 print:space-y-4">
-      <div className="flex flex-col gap-4 rounded-3xl border border-indigo-100 bg-gradient-to-br from-white via-indigo-50/70 to-violet-50/60 p-6 shadow-sm sm:flex-row sm:items-center sm:justify-between print:border-slate-300 print:bg-white print:shadow-none">
+      <header className="flex flex-col gap-4 rounded-3xl border border-indigo-100 bg-gradient-to-br from-white via-indigo-50/70 to-violet-50/60 p-6 shadow-sm sm:flex-row sm:items-center sm:justify-between print:rounded-none print:border-slate-300 print:bg-white print:p-3 print:shadow-none">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-indigo-600">Student 360° report</p>
-          <h2 className="mt-2 text-2xl font-black tracking-tight">{report.student.fullName || report.student.admissionNo}</h2>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-indigo-600">
+            Complete student report
+          </p>
+          <h2 className="mt-2 text-2xl font-black tracking-tight">
+            {report.studentName}
+          </h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Admission {report.student.admissionNo}
-            {report.enrollment ? ` · ${report.enrollment.className} · Section ${report.enrollment.sectionName} · ${report.enrollment.academicYear}` : " · Not currently enrolled"}
+            {report.schoolName} · Admission {report.admissionNo} · Generated{" "}
+            {new Date(report.generatedAt).toLocaleString("en-IN")}
           </p>
         </div>
-        <Button type="button" variant="outline" className="gap-2 print:hidden" onClick={() => window.print()}>
-          <Printer className="size-4" /> Print report
-        </Button>
+        <div className="flex flex-wrap gap-2 print:hidden">
+          <Button asChild type="button" className="gap-2">
+            <a
+              href={`/api/v1/students/${studentId}/comprehensive-report?format=xlsx`}
+            >
+              <Download className="size-4" /> Download Excel
+            </a>
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            className="gap-2"
+            onClick={() => window.print()}
+          >
+            <Printer className="size-4" /> Print / Save PDF
+          </Button>
+        </div>
+      </header>
+
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4 print:grid-cols-4">
+        <MetricCard
+          icon={GraduationCap}
+          label="Enrollment"
+          value={summary.enrollment}
+          detail="Current class, section and academic year"
+          tone="bg-indigo-50 text-indigo-600"
+        />
+        <MetricCard
+          icon={CalendarCheck}
+          label="Attendance"
+          value={summary.attendance}
+          detail={`${summary.attendanceRecords} attendance records`}
+          tone="bg-emerald-50 text-emerald-600"
+        />
+        <MetricCard
+          icon={CreditCard}
+          label="Fee outstanding"
+          value={`₹${summary.outstanding}`}
+          detail={`₹${summary.paid} paid of ₹${summary.payable}`}
+          tone="bg-amber-50 text-amber-700"
+        />
+        <MetricCard
+          icon={Award}
+          label="Performance"
+          value={summary.performance}
+          detail="Across all recorded examination marks"
+          tone="bg-violet-50 text-violet-600"
+        />
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <MetricCard icon={GraduationCap} label="Enrollment" value={report.enrollment ? `${report.enrollment.className} ${report.enrollment.sectionName}` : "Not enrolled"} detail={report.enrollment ? `Roll ${report.enrollment.rollNo ?? "—"} · ${report.enrollment.houseName || "No house"}` : "Assign an active enrollment"} tone="bg-indigo-50 text-indigo-600" />
-        <MetricCard icon={CalendarCheck} label="Attendance" value={report.attendance.total ? `${report.attendance.percentage}%` : "No records"} detail={`${report.attendance.present} present · ${report.attendance.absent} absent · ${report.attendance.late} late`} tone="bg-emerald-50 text-emerald-600" />
-        <MetricCard icon={CreditCard} label="Fee outstanding" value={money(report.fees.outstanding)} detail={`${money(report.fees.paid)} paid of ${money(report.fees.payable)} · ${report.fees.pendingInstallments} pending`} tone="bg-amber-50 text-amber-700" />
-        <MetricCard icon={Award} label="Recent performance" value={resultSummary.percentage === null ? "No marks" : `${resultSummary.percentage}%`} detail={`${resultSummary.graded} recently graded subject${resultSummary.graded === 1 ? "" : "s"}`} tone="bg-violet-50 text-violet-600" />
-      </div>
-
-      <div className="grid gap-5 xl:grid-cols-[1.35fr_0.65fr]">
-        <Card className="overflow-hidden rounded-2xl shadow-sm">
-          <CardHeader className="border-b bg-muted/20">
-            <CardTitle className="flex items-center gap-2 text-base"><Award className="size-5 text-violet-600" />Recent academic results</CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            {report.recentResults.length ? (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="bg-muted/40 text-left text-xs uppercase tracking-wide text-muted-foreground"><tr><th className="px-5 py-3">Exam</th><th className="px-5 py-3">Subject</th><th className="px-5 py-3 text-right">Marks</th><th className="px-5 py-3">Status</th></tr></thead>
-                  <tbody className="divide-y">
-                    {report.recentResults.map((result) => (
-                      <tr key={result.id}>
-                        <td className="px-5 py-3 font-medium">{result.exam}</td>
-                        <td className="px-5 py-3">{result.subject}</td>
-                        <td className="px-5 py-3 text-right font-semibold">{result.obtained ?? "—"} / {result.maximum}</td>
-                        <td className="px-5 py-3"><Badge variant={result.status === "FAIL" || result.status === "ABSENT" ? "destructive" : "secondary"}>{result.status}</Badge></td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : <p className="p-6 text-sm text-muted-foreground">No examination marks have been recorded for the current enrollment.</p>}
-          </CardContent>
-        </Card>
-
-        <Card className="rounded-2xl shadow-sm">
-          <CardHeader className="border-b bg-muted/20">
-            <CardTitle className="flex items-center gap-2 text-base"><Users className="size-5 text-blue-600" />Family contacts</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3 p-5">
-            {report.parents.length ? report.parents.map((parent, index) => (
-              <div key={`${parent.relationship}-${parent.phone || parent.email || index}`} className="rounded-xl border p-4">
-                <div className="flex items-center justify-between gap-3"><p className="font-semibold">{parent.name}</p><Badge variant="outline">{parent.relationship}</Badge></div>
-                <p className="mt-2 flex items-center gap-2 text-sm text-muted-foreground"><Phone className="size-3.5" />{parent.phone || parent.email || "No contact provided"}</p>
-              </div>
-            )) : <p className="text-sm text-muted-foreground">No family contact is linked to this student.</p>}
-          </CardContent>
-        </Card>
+      <div className="space-y-5 print:space-y-4">
+        {report.sections.map((section) => (
+          <ReportTable key={section.key} section={section} />
+        ))}
       </div>
     </section>
   );
