@@ -1,28 +1,26 @@
 "use client";
 
-import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import {
+  AcademicBranchSelect,
   AcademicYearSelect,
   ClassSelect,
   SectionSelect,
+  SyllabusSelect,
 } from "@/components/common/select";
 
 import {
   BookOpenCheck,
-  Building2,
   CalendarDays,
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
   Clock3,
-  GraduationCap,
   Loader2,
   Sparkles,
   UserCheck,
-  Users,
 } from "lucide-react";
 
 import { Card, CardContent } from "@/components/ui/card";
@@ -30,6 +28,7 @@ import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 
 import { Button } from "@/components/ui/button";
 import { refreshTable } from "@/lib/table-event";
+import { useSchool } from "@/contexts/school-context";
 import { BulkAbsenteeMarker } from "./BulkAbsenteeMarker";
 
 type AttendanceMode = "ONCE_DAILY" | "MORNING_AFTERNOON" | "EVERY_PERIOD";
@@ -90,11 +89,19 @@ function getModeLabel(mode: AttendanceMode) {
    ========================================================================== */
 
 export function AttendancePage() {
+  const { role } = useSchool();
+  const isTeacher = role === "TEACHER";
   const today = schoolDateKey();
 
   const [attendanceDate, setAttendanceDate] = useState(today);
 
   const [academicYearId, setAcademicYearId] = useState("");
+
+  const [syllabusId, setSyllabusId] = useState("");
+  const [syllabusName, setSyllabusName] = useState("");
+
+  const [branchId, setBranchId] = useState("");
+  const [branchName, setBranchName] = useState("");
 
   const [classId, setClassId] = useState("");
 
@@ -105,9 +112,7 @@ export function AttendancePage() {
   const [loading, setLoading] = useState(false);
   const [confirmPresentOpen, setConfirmPresentOpen] = useState(false);
 
-  const [presentScope, setPresentScope] = useState<
-    "SCHOOL" | "CLASS" | "SECTION"
-  >("SECTION");
+  const [preparedWorkflowKey, setPreparedWorkflowKey] = useState("");
 
   /* ==========================================================================
      LOAD ACADEMIC YEARS
@@ -203,10 +208,38 @@ export function AttendancePage() {
   const isToday = attendanceDate === today;
   const canGoPrevious = Boolean(minimumDate && attendanceDate > minimumDate);
   const canGoNext = attendanceDate < maximumDate;
+  const attendanceScope = sectionId
+    ? "SECTION"
+    : classId
+      ? "CLASS"
+      : branchId
+        ? "BRANCH"
+        : syllabusId
+          ? "SYLLABUS"
+          : "SCHOOL";
+  const attendanceScopeLabel =
+    attendanceScope === "SECTION"
+      ? "Selected section"
+      : attendanceScope === "CLASS"
+        ? "Selected class"
+        : attendanceScope === "BRANCH"
+          ? branchName || "Selected branch"
+          : attendanceScope === "SYLLABUS"
+            ? syllabusName || "Selected syllabus"
+            : "Whole school";
   const presentScopeReady =
-    Boolean(academicYearId) &&
-    (presentScope === "SCHOOL" || Boolean(classId)) &&
-    (presentScope !== "SECTION" || Boolean(sectionId));
+    Boolean(academicYearId) && (!isTeacher || attendanceScope === "SECTION");
+  const workflowKey = [
+    academicYearId,
+    attendanceDate,
+    attendanceScope,
+    syllabusId,
+    branchId,
+    classId,
+    sectionId,
+  ].join(":");
+  const fullPresentPrepared =
+    presentScopeReady && preparedWorkflowKey === workflowKey;
 
   /* ==========================================================================
      CLASS CHANGE
@@ -217,8 +250,26 @@ export function AttendancePage() {
     setSectionId("");
   }
 
+  function changeSyllabus(value: string, option?: { name: string }) {
+    setSyllabusId(value);
+    setSyllabusName(option?.name ?? "");
+    setBranchId("");
+    setBranchName("");
+    setClassId("");
+    setSectionId("");
+  }
+
+  function changeBranch(value: string, option?: { name: string }) {
+    setBranchId(value);
+    setBranchName(option?.name ?? "");
+    setClassId("");
+    setSectionId("");
+  }
+
   function changeAcademicYear(value: string) {
     setAcademicYearId(value);
+    setClassId("");
+    setSectionId("");
     const year = academicYears.find((option) => option.id === value);
     if (year) {
       setAttendanceDate((current) => clampAttendanceDate(current, year, today));
@@ -243,7 +294,9 @@ export function AttendancePage() {
      MARK FULL PRESENT
      ========================================================================== */
 
-  async function markFullPresent(scope: "SCHOOL" | "CLASS" | "SECTION") {
+  async function markFullPresent(
+    scope: "SCHOOL" | "SYLLABUS" | "BRANCH" | "CLASS" | "SECTION",
+  ) {
     if (!academicYearId) {
       toast.error("Academic year is required.");
       return;
@@ -256,6 +309,16 @@ export function AttendancePage() {
 
     if (scope === "SECTION" && !sectionId) {
       toast.error("Section is required.");
+      return;
+    }
+
+    if (scope === "SYLLABUS" && !syllabusId) {
+      toast.error("Syllabus is required.");
+      return;
+    }
+
+    if (scope === "BRANCH" && (!syllabusId || !branchId)) {
+      toast.error("Syllabus and branch are required.");
       return;
     }
 
@@ -276,7 +339,13 @@ export function AttendancePage() {
 
           scope,
 
-          classId: scope !== "SCHOOL" ? classId : undefined,
+          syllabusId: scope === "SCHOOL" ? undefined : syllabusId,
+
+          branchId: ["BRANCH", "CLASS", "SECTION"].includes(scope)
+            ? branchId
+            : undefined,
+
+          classId: ["CLASS", "SECTION"].includes(scope) ? classId : undefined,
 
           sectionId: scope === "SECTION" ? sectionId : undefined,
         }),
@@ -290,15 +359,12 @@ export function AttendancePage() {
         return;
       }
 
-      const sessionCount = result.data?.sessionCount ?? 0;
-
       const attendanceCount = result.data?.attendanceCount ?? 0;
 
       toast.success(
-        `${attendanceCount} students marked present and ${sessionCount} attendance session${
-          sessionCount === 1 ? "" : "s"
-        } finalized.`,
+        `${attendanceCount} students marked present. Select any absentees, then finalize.`,
       );
+      setPreparedWorkflowKey(workflowKey);
       setConfirmPresentOpen(false);
       refreshTable("attendance");
     } catch {
@@ -399,14 +465,16 @@ export function AttendancePage() {
                 <div className="flex size-9 items-center justify-center rounded-xl bg-slate-50 text-slate-600 ring-1 ring-slate-200"><BookOpenCheck className="size-4" /></div>
                 <div>
                   <p className="text-[10px] font-bold tracking-[0.16em] text-slate-400 uppercase">Register scope</p>
-                  <h2 className="mt-0.5 text-sm font-bold text-slate-900">Select year, class and section</h2>
+                  <h2 className="mt-0.5 text-sm font-bold text-slate-900">Select year, syllabus, branch, class and section</h2>
                 </div>
               </div>
 
-              <div className="mt-5 grid gap-4 md:grid-cols-3">
+              <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
                 <AcademicYearSelect value={academicYearId} onChange={changeAcademicYear} disabled={loading} />
-                <ClassSelect value={classId} onChange={changeClass} />
-                <SectionSelect classId={classId} value={sectionId} onChange={setSectionId} disabled={loading || !classId} />
+                <SyllabusSelect value={syllabusId} onChange={changeSyllabus} disabled={loading} allowAll={!isTeacher} />
+                <AcademicBranchSelect syllabusId={syllabusId} value={branchId} onChange={changeBranch} disabled={loading || !syllabusId} allowAll={!isTeacher} />
+                <ClassSelect syllabusId={syllabusId} branchId={branchId} academicYearId={academicYearId} purpose={isTeacher ? "attendance" : undefined} value={classId} onChange={changeClass} disabled={loading || !branchId} allowAll={!isTeacher} />
+                <SectionSelect classId={classId} academicYearId={academicYearId} purpose={isTeacher ? "attendance" : undefined} value={sectionId} onChange={setSectionId} disabled={loading || !classId} />
               </div>
 
               <div className="mt-5 flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50/80 px-3.5 py-3">
@@ -434,28 +502,28 @@ export function AttendancePage() {
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="rounded-full bg-slate-900 px-2.5 py-1 text-[9px] font-bold tracking-wide text-white">STEP 1</span>
-                    <h2 className="text-base font-bold text-slate-900">No absentees — mark everyone present</h2>
+                    <h2 className="text-base font-bold text-slate-900">Start with everyone present</h2>
                   </div>
-                  <p className="mt-1 text-xs leading-5 text-slate-500">Use this only when nobody is absent. The selected registers will be finalized immediately.</p>
+                  <p className="mt-1 text-xs leading-5 text-slate-500">This prepares an editable attendance draft. You will select absentees and finalize in the next step.</p>
                 </div>
               </div>
 
-              <div className="mt-5 grid gap-2 sm:grid-cols-3">
-                <PresentScopeChoice icon={<Building2 className="size-4" />} label="Whole school" detail="All active sections" selected={presentScope === "SCHOOL"} disabled={!academicYearId} onClick={() => setPresentScope("SCHOOL")} />
-                <PresentScopeChoice icon={<GraduationCap className="size-4" />} label="Selected class" detail={classId ? "All class sections" : "Choose a class first"} selected={presentScope === "CLASS"} disabled={!academicYearId || !classId} onClick={() => setPresentScope("CLASS")} />
-                <PresentScopeChoice icon={<Users className="size-4" />} label="Selected section" detail={sectionId ? "Current section only" : "Choose a section first"} selected={presentScope === "SECTION"} disabled={!academicYearId || !classId || !sectionId} onClick={() => setPresentScope("SECTION")} />
+              <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50/60 px-4 py-3">
+                <p className="text-[9px] font-bold tracking-[0.14em] text-emerald-600 uppercase">Attendance applies to</p>
+                <p className="mt-1 text-sm font-bold text-slate-900">{attendanceScopeLabel}</p>
+                <p className="mt-0.5 text-[11px] text-slate-500">Scope is determined automatically by the deepest academic selection above.</p>
               </div>
             </div>
 
             <div className="flex flex-col justify-between border-t border-slate-200 bg-slate-50/70 p-5 sm:p-6 lg:border-l lg:border-t-0">
               <div>
                 <p className="text-[10px] font-bold tracking-[0.16em] text-slate-400 uppercase">Ready to apply</p>
-                <p className="mt-2 text-lg font-bold text-slate-900">{presentScope === "SCHOOL" ? "Whole school" : presentScope === "CLASS" ? "Selected class" : "Selected section"}</p>
-                <p className="mt-1 text-xs leading-5 text-slate-500">{presentScopeReady ? `Mark everyone present and lock the selected registers for ${selectedDateLabel}.` : "Complete the register scope above to continue."}</p>
+                <p className="mt-2 text-lg font-bold text-slate-900">{attendanceScopeLabel}</p>
+                <p className="mt-1 text-xs leading-5 text-slate-500">{fullPresentPrepared ? "Draft prepared. Continue below to select absentees and finalize." : presentScopeReady ? `Prepare the selected registers for ${selectedDateLabel}.` : "Complete the register scope above to continue."}</p>
               </div>
-              <Button type="button" disabled={loading || !presentScopeReady} onClick={() => setConfirmPresentOpen(true)} className="mt-5 h-11 w-full gap-2 rounded-xl bg-emerald-600 font-semibold text-white shadow-lg shadow-emerald-600/15 hover:bg-emerald-700 disabled:opacity-40 disabled:shadow-none">
+              <Button type="button" disabled={loading || !presentScopeReady || fullPresentPrepared} onClick={() => setConfirmPresentOpen(true)} className="mt-5 h-11 w-full gap-2 rounded-xl bg-emerald-600 font-semibold text-white shadow-lg shadow-emerald-600/15 hover:bg-emerald-700 disabled:opacity-40 disabled:shadow-none">
                 {loading ? <Loader2 className="size-4 animate-spin" /> : <CheckCircle2 className="size-4" />}
-                {loading ? "Finalizing..." : "Review & finalize"}
+                {loading ? "Preparing..." : fullPresentPrepared ? "Draft prepared" : "Mark all present & continue"}
               </Button>
             </div>
           </div>
@@ -463,12 +531,22 @@ export function AttendancePage() {
       </Card>
 
       <BulkAbsenteeMarker
-        key={`${academicYearId}:${classId}:${sectionId}:${attendanceDate}`}
+        key={`${academicYearId}:${syllabusId}:${branchId}:${classId}:${sectionId}:${attendanceDate}`}
         academicYearId={academicYearId}
         classId={classId}
         sectionId={sectionId}
         attendanceMode={attendanceMode}
         attendanceDate={attendanceDate}
+        scope={attendanceScope}
+        prepared={fullPresentPrepared}
+        syllabusId={syllabusId}
+        branchId={branchId}
+        academicPathLabel={
+          attendanceScope === "SCHOOL"
+            ? "All syllabi and branches"
+            : [syllabusName, branchName].filter(Boolean).join(" · ") ||
+              "Academic branch not selected"
+        }
       />
 
       <ConfirmDialog
@@ -476,59 +554,21 @@ export function AttendancePage() {
         onOpenChange={(open) => {
           if (!loading) setConfirmPresentOpen(open);
         }}
-        eyebrow="Finalize attendance"
+        eyebrow="Prepare attendance"
         icon={CheckCircle2}
         tone="primary"
-        title="Confirm there are no absentees?"
-        description="Everyone in this scope will be marked present and the completed registers will be locked."
+        title="Start with everyone present?"
+        description="Everyone in this scope will be marked present in an editable draft. You can select absentees before finalizing."
         details={[
-          { label: "Scope", value: presentScope === "SCHOOL" ? "Whole school" : presentScope === "CLASS" ? "Selected class" : "Selected section" },
+          { label: "Scope", value: attendanceScopeLabel },
           { label: "Attendance", value: getModeLabel(attendanceMode) },
           { label: "Date", value: selectedDateLabel },
         ]}
-        consequence="Finalizing sends attendance notifications. Use Attendance History if an authorized correction is needed later."
-        confirmLabel="Mark present & finalize"
+        consequence="This step does not lock registers or send notifications. Attendance is finalized only in the next step."
+        confirmLabel="Mark all present & continue"
         pending={loading}
-        onConfirm={() => void markFullPresent(presentScope)}
+        onConfirm={() => void markFullPresent(attendanceScope)}
       />
     </div>
-  );
-}
-
-/* ==========================================================================
-   PRESENT SCOPE BUTTON
-   ========================================================================== */
-
-function PresentScopeChoice({
-  icon,
-  label,
-  detail,
-  selected,
-  disabled,
-  onClick,
-}: {
-  icon: ReactNode;
-  label: string;
-  detail: string;
-  selected: boolean;
-  disabled: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      disabled={disabled}
-      onClick={onClick}
-      className={`flex items-center gap-3 rounded-xl border p-3 text-left transition disabled:cursor-not-allowed disabled:opacity-40 ${selected ? "border-emerald-300 bg-emerald-50/70 shadow-sm ring-2 ring-emerald-500/10" : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"}`}
-    >
-      <div className={`flex size-9 shrink-0 items-center justify-center rounded-lg ${selected ? "bg-emerald-600 text-white" : "bg-slate-100 text-slate-500"}`}>
-        {icon}
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-xs font-bold text-slate-800">{label}</p>
-        <p className="mt-0.5 truncate text-[10px] text-slate-500">{detail}</p>
-      </div>
-      <span className={`size-2.5 shrink-0 rounded-full ${selected ? "bg-emerald-500 ring-4 ring-emerald-100" : "bg-slate-200"}`} />
-    </button>
   );
 }

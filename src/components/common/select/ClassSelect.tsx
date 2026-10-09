@@ -23,6 +23,8 @@ type Props = {
   triggerClassName?: string;
   syllabusId?: string;
   branchId?: string;
+  academicYearId?: string;
+  purpose?: "attendance";
   onChange: (value: string) => void;
 };
 
@@ -34,6 +36,8 @@ export function ClassSelect({
   triggerClassName,
   syllabusId,
   branchId,
+  academicYearId,
+  purpose,
   onChange,
 }: Props) {
   const [classes, setClasses] = useState<ClassOption[]>([]);
@@ -43,6 +47,8 @@ export function ClassSelect({
       const params = new URLSearchParams();
       if (syllabusId) params.set("syllabusId", syllabusId);
       if (branchId) params.set("branchId", branchId);
+      if (academicYearId) params.set("academicYearId", academicYearId);
+      if (purpose) params.set("purpose", purpose);
       const query = params.toString();
       const res = await fetch(`/api/v1/classes/options${query ? `?${query}` : ""}`);
 
@@ -54,7 +60,7 @@ export function ClassSelect({
     }
 
     load();
-  }, [syllabusId, branchId]);
+  }, [academicYearId, branchId, purpose, syllabusId]);
 
   return (
     <Select

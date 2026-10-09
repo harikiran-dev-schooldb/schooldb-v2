@@ -17,7 +17,7 @@ type Props = {
   disabled?: boolean;
   allowAll?: boolean;
   triggerClassName?: string;
-  onChange: (value: string) => void;
+  onChange: (value: string, option?: Option) => void;
 };
 
 export function SyllabusSelect({
@@ -47,7 +47,7 @@ export function SyllabusSelect({
 
     hasAppliedDefault.current = true;
     if (!value) {
-      onChange(options[0].id);
+      onChange(options[0].id, options[0]);
     }
   }, [onChange, options, value]);
 
@@ -55,9 +55,15 @@ export function SyllabusSelect({
     <Select
       value={value || (allowAll ? "ALL" : "")}
       disabled={disabled}
-      onValueChange={(nextValue) => onChange(nextValue === "ALL" ? "" : nextValue)}
+      onValueChange={(nextValue) => {
+        const normalizedValue = nextValue === "ALL" ? "" : nextValue;
+        onChange(
+          normalizedValue,
+          options.find((option) => option.id === normalizedValue),
+        );
+      }}
     >
-      <SelectTrigger className={triggerClassName ?? "h-11 bg-background"}>
+      <SelectTrigger className={triggerClassName}>
         <SelectValue placeholder={allowAll ? "All syllabi" : "Select syllabus"} />
       </SelectTrigger>
       <SelectContent>

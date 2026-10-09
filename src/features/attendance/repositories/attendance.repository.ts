@@ -1266,6 +1266,8 @@ async markFullPresent(
   attendanceDate: Date,
   sessionType: "DAILY" | "MORNING" | "AFTERNOON" | "PERIOD",
   filters?: {
+    syllabusId?: string;
+    branchId?: string;
     classId?: string;
     sectionId?: string;
   },
@@ -1278,6 +1280,12 @@ async markFullPresent(
         academicYearId,
         active: true,
         student: { status: "ACTIVE" },
+
+        ...(filters?.branchId
+          ? { class: { branchId: filters.branchId } }
+          : filters?.syllabusId
+            ? { class: { branch: { syllabusId: filters.syllabusId } } }
+            : {}),
 
         ...(filters?.classId
           ? {
@@ -1477,6 +1485,8 @@ async markFullPresentForPeriods(
   academicYearId: string,
   attendanceDate: Date,
   filters?: {
+    syllabusId?: string;
+    branchId?: string;
     classId?: string;
     sectionId?: string;
   },
@@ -1532,6 +1542,12 @@ async markFullPresentForPeriods(
         teacherAllocation: {
           active: true,
 
+          ...(filters?.branchId
+            ? { class: { branchId: filters.branchId } }
+            : filters?.syllabusId
+              ? { class: { branch: { syllabusId: filters.syllabusId } } }
+              : {}),
+
           ...(filters?.classId
             ? {
                 classId: filters.classId,
@@ -1583,6 +1599,12 @@ async markFullPresentForPeriods(
         academicYearId,
         active: true,
         student: { status: "ACTIVE" },
+
+        ...(filters?.branchId
+          ? { class: { branchId: filters.branchId } }
+          : filters?.syllabusId
+            ? { class: { branch: { syllabusId: filters.syllabusId } } }
+            : {}),
 
         ...(filters?.classId
           ? {
@@ -1785,6 +1807,8 @@ async markStudentsAbsent(
   studentIds: string[],
   sessionTypes: ("DAILY" | "MORNING" | "AFTERNOON" | "PERIOD")[],
   filters?: {
+    syllabusId?: string;
+    branchId?: string;
     classId?: string;
     sectionId?: string;
   },
@@ -1799,6 +1823,11 @@ async markStudentsAbsent(
       active: true,
       student: { status: "ACTIVE" },
       studentId: { in: uniqueStudentIds },
+      ...(filters?.branchId
+        ? { class: { branchId: filters.branchId } }
+        : filters?.syllabusId
+          ? { class: { branch: { syllabusId: filters.syllabusId } } }
+          : {}),
       ...(filters?.classId ? { classId: filters.classId } : {}),
       ...(filters?.sectionId ? { sectionId: filters.sectionId } : {}),
     },
@@ -1821,6 +1850,11 @@ async markStudentsAbsent(
       academicYearId,
       attendanceDate,
       sessionType: { in: sessionTypes },
+      ...(filters?.branchId
+        ? { class: { branchId: filters.branchId } }
+        : filters?.syllabusId
+          ? { class: { branch: { syllabusId: filters.syllabusId } } }
+          : {}),
       ...(filters?.classId ? { classId: filters.classId } : {}),
       ...(filters?.sectionId ? { sectionId: filters.sectionId } : {}),
     },

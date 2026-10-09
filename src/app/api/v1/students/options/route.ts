@@ -1,5 +1,10 @@
 import { apiHandler } from "@/lib/api";
-import { requireTeacherFeatureAccess, requireTenant, teacherClassScope } from "@/lib/auth";
+import {
+  classTeacherScope,
+  requireTeacherFeatureAccess,
+  requireTenant,
+  teacherClassScope,
+} from "@/lib/auth";
 import { ApiResponse } from "@/lib/response";
 
 import { studentService } from "@/features/students/services/student.service";
@@ -17,7 +22,10 @@ export async function GET(request: Request) {
 
     const classId = searchParams.get("classId") ?? undefined;
     const sectionId = searchParams.get("sectionId") ?? undefined;
+    const syllabusId = searchParams.get("syllabusId") ?? undefined;
+    const branchId = searchParams.get("branchId") ?? undefined;
 
+    const purpose = searchParams.get("purpose");
     const mode =
       searchParams.get("mode") === "enrolled" ? "ENROLLED" : "AVAILABLE";
 
@@ -26,10 +34,14 @@ export async function GET(request: Request) {
     }
 
     const teacherScope = tenant.role === "TEACHER"
-      ? await teacherClassScope(tenant.schoolId)
+      ? purpose === "attendance"
+        ? await classTeacherScope(tenant.schoolId)
+        : await teacherClassScope(tenant.schoolId)
       : undefined;
     if (tenant.role === "TEACHER") {
-      await requireTeacherFeatureAccess("STUDENTS");
+      await requireTeacherFeatureAccess(
+        purpose === "attendance" ? "ATTENDANCE" : "STUDENTS",
+      );
       if (mode !== "ENROLLED") {
         throw new Error("Teachers can only select students already enrolled in their assigned classes.");
       }
@@ -42,6 +54,8 @@ export async function GET(request: Request) {
       mode,
       classId,
       sectionId,
+      syllabusId,
+      branchId,
       teacherScope,
     );
 

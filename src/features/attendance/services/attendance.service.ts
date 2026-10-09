@@ -1489,8 +1489,12 @@ async markFullPresent(
     attendanceDate: string;
     scope:
       | "SCHOOL"
+      | "SYLLABUS"
+      | "BRANCH"
       | "CLASS"
       | "SECTION";
+    syllabusId?: string;
+    branchId?: string;
     classId?: string;
     sectionId?: string;
   },
@@ -1500,6 +1504,20 @@ async markFullPresent(
    * Validate scope
    * ------------------------------------------------------------------------
    */
+
+  if (
+    input.scope === "SYLLABUS" &&
+    !input.syllabusId
+  ) {
+    throw new Error("Syllabus is required.");
+  }
+
+  if (
+    input.scope === "BRANCH" &&
+    (!input.syllabusId || !input.branchId)
+  ) {
+    throw new Error("Syllabus and branch are required.");
+  }
 
   if (
     input.scope === "CLASS" &&
@@ -1554,6 +1572,12 @@ async markFullPresent(
    */
 
   const filters = {
+    ...(input.scope !== "SCHOOL" && input.syllabusId
+      ? { syllabusId: input.syllabusId }
+      : {}),
+    ...(["BRANCH", "CLASS", "SECTION"].includes(input.scope) && input.branchId
+      ? { branchId: input.branchId }
+      : {}),
     ...(input.scope !== "SCHOOL" &&
     input.classId
       ? {
@@ -1592,7 +1616,7 @@ async markFullPresent(
       attendanceDate,
       "DAILY",
       filters,
-      true,
+      false,
     );
   }
 
@@ -1615,7 +1639,7 @@ async markFullPresent(
         attendanceDate,
         "MORNING",
         filters,
-        true,
+        false,
       );
 
     const afternoon =
@@ -1625,7 +1649,7 @@ async markFullPresent(
         attendanceDate,
         "AFTERNOON",
         filters,
-        true,
+        false,
       );
 
     return {
@@ -1663,7 +1687,7 @@ async markFullPresent(
       input.academicYearId,
       attendanceDate,
       filters,
-      true,
+      false,
     );
   }
 
@@ -1677,7 +1701,9 @@ async markBulkAbsentees(
   input: {
     academicYearId: string;
     attendanceDate: string;
-    scope: "SCHOOL" | "CLASS" | "SECTION";
+    scope: "SCHOOL" | "SYLLABUS" | "BRANCH" | "CLASS" | "SECTION";
+    syllabusId?: string;
+    branchId?: string;
     classId?: string;
     sectionId?: string;
     studentIds: string[];
@@ -1685,7 +1711,15 @@ async markBulkAbsentees(
   },
 ) {
   if (input.scope !== "SCHOOL" && !input.classId) {
-    throw new Error("Class is required.");
+    if (input.scope === "SYLLABUS" && !input.syllabusId) {
+      throw new Error("Syllabus is required.");
+    }
+    if (input.scope === "BRANCH" && (!input.syllabusId || !input.branchId)) {
+      throw new Error("Syllabus and branch are required.");
+    }
+    if (input.scope === "CLASS" || input.scope === "SECTION") {
+      throw new Error("Class is required.");
+    }
   }
 
   if (input.scope === "SECTION" && !input.sectionId) {
@@ -1703,6 +1737,12 @@ async markBulkAbsentees(
 
   const attendanceDate = new Date(input.attendanceDate);
   const filters = {
+    ...(input.scope !== "SCHOOL" && input.syllabusId
+      ? { syllabusId: input.syllabusId }
+      : {}),
+    ...(["BRANCH", "CLASS", "SECTION"].includes(input.scope) && input.branchId
+      ? { branchId: input.branchId }
+      : {}),
     ...(input.scope !== "SCHOOL" && input.classId
       ? { classId: input.classId }
       : {}),

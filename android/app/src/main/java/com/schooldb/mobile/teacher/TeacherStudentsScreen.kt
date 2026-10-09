@@ -414,36 +414,14 @@ private fun StudentRow(
                 )
             }
 
-            Column(
-                horizontalAlignment = Alignment.End,
-            ) {
-                Text(
-                    text = student.rollNo?.let {
-                        "Roll $it"
-                    } ?: "No roll no.",
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = StudentsSlate600,
-                )
-                Spacer(
-                    modifier = Modifier.height(4.dp),
-                )
-                Text(
-                    text = student.status,
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = StudentsIndigo,
-                    modifier = Modifier
-                        .background(
-                            color = StudentsIndigoSoft,
-                            shape = RoundedCornerShape(8.dp),
-                        )
-                        .padding(
-                            horizontal = 7.dp,
-                            vertical = 4.dp,
-                        ),
-                )
-            }
+            Text(
+                text = student.rollNo?.let {
+                    "Roll $it"
+                } ?: "No roll no.",
+                fontSize = 11.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = StudentsSlate600,
+            )
         }
     }
 }

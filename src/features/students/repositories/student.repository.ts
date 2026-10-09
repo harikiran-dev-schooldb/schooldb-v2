@@ -88,6 +88,8 @@ export const studentRepository = {
     mode: "AVAILABLE" | "ENROLLED" = "AVAILABLE",
     classId?: string,
     sectionId?: string,
+    syllabusId?: string,
+    branchId?: string,
     allowedClassSections?: Array<{ classId: string; sectionId: string }>,
   ) {
     return prisma.student.findMany({
@@ -103,6 +105,11 @@ export const studentRepository = {
                   active: true,
                   ...(classId ? { classId } : {}),
                   ...(sectionId ? { sectionId } : {}),
+                  ...(branchId
+                    ? { class: { branchId } }
+                    : syllabusId
+                      ? { class: { branch: { syllabusId } } }
+                      : {}),
                   ...(allowedClassSections
                     ? { OR: allowedClassSections.map((scope) => ({ classId: scope.classId, sectionId: scope.sectionId })) }
                     : {}),
@@ -126,6 +133,11 @@ export const studentRepository = {
             ...(mode === "ENROLLED" ? { academicYearId } : {}),
             ...(classId ? { classId } : {}),
             ...(sectionId ? { sectionId } : {}),
+            ...(branchId
+              ? { class: { branchId } }
+              : syllabusId
+                ? { class: { branch: { syllabusId } } }
+                : {}),
             ...(allowedClassSections
               ? { OR: allowedClassSections.map((scope) => ({ classId: scope.classId, sectionId: scope.sectionId })) }
               : {}),

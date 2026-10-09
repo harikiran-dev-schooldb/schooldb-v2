@@ -22,6 +22,8 @@ type Props = {
   allowAll?: boolean;
   placeholder?: string;
   triggerClassName?: string;
+  academicYearId?: string;
+  purpose?: "attendance";
   onChange: (value: string) => void;
 };
 
@@ -32,18 +34,24 @@ export function SectionSelect({
   allowAll = true,
   placeholder = "Select Section",
   triggerClassName,
+  academicYearId,
+  purpose,
   onChange,
 }: Props) {
   const [sections, setSections] = useState<SectionOption[]>([]);
 
   useEffect(() => {
     if (!classId) return;
+    const selectedClassId = classId;
 
     let cancelled = false;
 
     async function loadSections() {
       try {
-        const res = await fetch(`/api/v1/sections/options?classId=${classId}`);
+        const params = new URLSearchParams({ classId: selectedClassId });
+        if (academicYearId) params.set("academicYearId", academicYearId);
+        if (purpose) params.set("purpose", purpose);
+        const res = await fetch(`/api/v1/sections/options?${params}`);
 
         const result = await res.json();
 
@@ -62,7 +70,7 @@ export function SectionSelect({
     return () => {
       cancelled = true;
     };
-  }, [classId]);
+  }, [academicYearId, classId, purpose]);
 
   const displaySections = classId ? sections : [];
 

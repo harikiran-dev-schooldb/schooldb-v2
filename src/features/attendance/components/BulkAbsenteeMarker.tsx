@@ -19,7 +19,7 @@ import { cn } from "@/lib/utils";
 import { refreshTable } from "@/lib/table-event";
 
 type AttendanceMode = "ONCE_DAILY" | "MORNING_AFTERNOON" | "EVERY_PERIOD";
-type Scope = "SCHOOL" | "CLASS" | "SECTION";
+type Scope = "SCHOOL" | "SYLLABUS" | "BRANCH" | "CLASS" | "SECTION";
 type SessionChoice = "MORNING" | "AFTERNOON" | "BOTH";
 
 type StudentOption = {
@@ -39,18 +39,27 @@ type Props = {
   academicYearId: string;
   classId: string;
   sectionId: string;
+  syllabusId: string;
+  branchId: string;
   attendanceMode: AttendanceMode;
   attendanceDate: string;
+  scope: Scope;
+  prepared: boolean;
+  academicPathLabel: string;
 };
 
 export function BulkAbsenteeMarker({
   academicYearId,
   classId,
   sectionId,
+  syllabusId,
+  branchId,
   attendanceMode,
   attendanceDate,
+  scope,
+  prepared,
+  academicPathLabel,
 }: Props) {
-  const [scope, setScope] = useState<Scope>("SECTION");
   const [students, setStudents] = useState<StudentOption[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [recordedAbsentIds, setRecordedAbsentIds] = useState<string[]>([]);
@@ -64,8 +73,11 @@ export function BulkAbsenteeMarker({
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   const scopeReady = Boolean(
-    academicYearId &&
-      (scope === "SCHOOL" || classId) &&
+    prepared &&
+      academicYearId &&
+      (scope === "SCHOOL" || syllabusId) &&
+      (!["BRANCH", "CLASS", "SECTION"].includes(scope) || branchId) &&
+      (!["CLASS", "SECTION"].includes(scope) || classId) &&
       (scope !== "SECTION" || sectionId),
   );
 
@@ -101,8 +113,13 @@ export function BulkAbsenteeMarker({
         const params = new URLSearchParams({
           academicYearId,
           mode: "enrolled",
+          purpose: "attendance",
         });
-        if (scope !== "SCHOOL") params.set("classId", classId);
+        if (scope !== "SCHOOL") params.set("syllabusId", syllabusId);
+        if (["BRANCH", "CLASS", "SECTION"].includes(scope)) {
+          params.set("branchId", branchId);
+        }
+        if (["CLASS", "SECTION"].includes(scope)) params.set("classId", classId);
         if (scope === "SECTION") params.set("sectionId", sectionId);
 
         const response = await fetch(`/api/v1/students/options?${params}`, {
@@ -131,7 +148,7 @@ export function BulkAbsenteeMarker({
 
     void loadStudents();
     return () => controller.abort();
-  }, [academicYearId, classId, scope, scopeReady, sectionId]);
+  }, [academicYearId, branchId, classId, scope, scopeReady, sectionId, syllabusId]);
 
   const filteredStudents = useMemo(() => {
     if (!scopeReady) return [];
@@ -161,22 +178,7 @@ export function BulkAbsenteeMarker({
     );
   }
 
-  function changeScope(nextScope: Scope) {
-    setScope(nextScope);
-    setStudents([]);
-    setSelectedIds([]);
-    setRecordedAbsentIds([]);
-    setFinalized(false);
-    setSearch("");
-    setCurrentPage(1);
-  }
-
   function requestConfirmation() {
-    if (selectedIds.length === 0) {
-      toast.error("Select at least one absent student.");
-      return;
-    }
-
     setConfirmOpen(true);
   }
 
@@ -192,7 +194,11 @@ export function BulkAbsenteeMarker({
           academicYearId,
           attendanceDate,
           scope,
-          classId: scope === "SCHOOL" ? undefined : classId,
+          syllabusId: scope === "SCHOOL" ? undefined : syllabusId,
+          branchId: ["BRANCH", "CLASS", "SECTION"].includes(scope)
+            ? branchId
+            : undefined,
+          classId: ["CLASS", "SECTION"].includes(scope) ? classId : undefined,
           sectionId: scope === "SECTION" ? sectionId : undefined,
           studentIds: submittedStudentIds,
           sessionChoice:
@@ -206,7 +212,9 @@ export function BulkAbsenteeMarker({
       }
 
       toast.success(
-        `${result.data.studentCount} students marked absent and ${result.data.sessionCount} session${result.data.sessionCount === 1 ? "" : "s"} finalized.`,
+        result.data.studentCount === 0
+          ? `${result.data.sessionCount} attendance session${result.data.sessionCount === 1 ? "" : "s"} finalized with everyone present.`
+          : `${result.data.studentCount} students marked absent and ${result.data.sessionCount} session${result.data.sessionCount === 1 ? "" : "s"} finalized.`,
       );
       refreshTable("attendance");
       setConfirmOpen(false);
@@ -225,6 +233,10 @@ export function BulkAbsenteeMarker({
   const scopeLabel =
     scope === "SCHOOL"
       ? "Whole school"
+      : scope === "SYLLABUS"
+        ? "Selected syllabus"
+        : scope === "BRANCH"
+          ? "Selected branch"
       : scope === "CLASS"
         ? "Selected class"
         : "Selected section";
@@ -251,10 +263,10 @@ export function BulkAbsenteeMarker({
             <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-rose-50 text-rose-600 ring-1 ring-rose-100"><UserMinus className="size-4" /></div>
             <div>
               <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded-full bg-slate-900 px-2.5 py-1 text-[9px] font-bold tracking-wide text-white">ALTERNATIVE</span>
+                <span className="rounded-full bg-slate-900 px-2.5 py-1 text-[9px] font-bold tracking-wide text-white">STEP 2</span>
                 <h2 className="text-base font-bold text-slate-900">Select absentees and finalize</h2>
               </div>
-              <p className="mt-1 text-xs leading-5 text-slate-500">Everyone else is marked present automatically; you do not need to run the action above first.</p>
+              <p className="mt-1 text-xs leading-5 text-slate-500">Choose any absent students from the prepared roster, then review and finalize once.</p>
             </div>
           </div>
           <div className="flex w-fit items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-600"><CalendarDays className="size-3.5 text-indigo-500" />{attendanceDateLabel}</div>
@@ -264,12 +276,15 @@ export function BulkAbsenteeMarker({
           <div className="grid xl:grid-cols-[245px_1fr]">
             <aside className="border-b border-slate-200 bg-slate-50/60 p-5 xl:border-b-0 xl:border-r">
               <p className="text-[10px] font-bold tracking-[0.16em] text-slate-400 uppercase">Student scope</p>
-              <div className="mt-3 grid gap-2 sm:grid-cols-3 xl:grid-cols-1">
-                {(["SCHOOL", "CLASS", "SECTION"] as const).map((item) => {
-                  const label = item === "SCHOOL" ? "Whole school" : item === "CLASS" ? "Selected class" : "Selected section";
-                  const detail = item === "SCHOOL" ? "All enrolled students" : item === "CLASS" ? "Students in this class" : "Students in this section";
-                  return <button key={item} type="button" onClick={() => changeScope(item)} className={cn("flex items-center gap-3 rounded-xl border px-3 py-3 text-left transition", scope === item ? "border-rose-200 bg-white shadow-sm ring-2 ring-rose-500/10" : "border-transparent hover:border-slate-200 hover:bg-white")}><span className={cn("flex size-7 shrink-0 items-center justify-center rounded-lg text-[9px] font-bold", scope === item ? "bg-rose-600 text-white" : "bg-slate-200 text-slate-500")}>{item === "SCHOOL" ? "ALL" : item === "CLASS" ? "CL" : "SEC"}</span><span className="min-w-0"><span className="block truncate text-xs font-bold text-slate-800">{label}</span><span className="mt-0.5 block truncate text-[10px] text-slate-500">{detail}</span></span>{scope === item && <Check className="ml-auto size-3.5 text-rose-600" />}</button>;
-                })}
+              <div className="mt-3 rounded-xl border border-rose-200 bg-white px-3 py-3 shadow-sm ring-2 ring-rose-500/10">
+                <div className="flex items-center gap-3">
+                  <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-rose-600 text-[9px] font-bold text-white">{scope === "SCHOOL" ? "ALL" : scope === "SYLLABUS" ? "SYL" : scope === "BRANCH" ? "BR" : scope === "CLASS" ? "CL" : "SEC"}</span>
+                  <span className="min-w-0">
+                    <span className="block truncate text-xs font-bold text-slate-800">{scopeLabel}</span>
+                    <span className="mt-0.5 block truncate text-[10px] text-slate-500">{academicPathLabel}</span>
+                  </span>
+                  {prepared && <Check className="ml-auto size-3.5 text-emerald-600" />}
+                </div>
               </div>
 
               {attendanceMode === "MORNING_AFTERNOON" && (
@@ -282,8 +297,8 @@ export function BulkAbsenteeMarker({
               {!scopeReady ? (
                 <div className="flex min-h-52 flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-slate-50/50 px-5 text-center">
                   <div className="flex size-11 items-center justify-center rounded-xl bg-white text-slate-400 shadow-sm ring-1 ring-slate-200"><Users className="size-5" /></div>
-                  <p className="mt-3 text-sm font-bold text-slate-700">Complete the register scope</p>
-                  <p className="mt-1 text-xs text-slate-500">{!academicYearId ? "Select an academic year first." : scope === "CLASS" ? "Select a class above." : "Select a class and section above."}</p>
+                  <p className="mt-3 text-sm font-bold text-slate-700">Complete Step 1 first</p>
+                  <p className="mt-1 text-xs text-slate-500">Choose the date and scope, then mark the roster full present to prepare the draft.</p>
                 </div>
               ) : (
                 <div className="space-y-5">
@@ -306,8 +321,8 @@ export function BulkAbsenteeMarker({
                   )}
 
                   <div className="flex flex-col gap-3 rounded-2xl border border-rose-100 bg-gradient-to-r from-rose-50/80 to-white p-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex items-center gap-3"><div className="flex size-10 items-center justify-center rounded-xl bg-white text-rose-600 shadow-sm ring-1 ring-rose-100"><span className="text-sm font-bold">{finalized ? recordedAbsentIds.length : selectedIds.length}</span></div><div><p className="text-sm font-bold text-slate-900">{finalized ? "Attendance finalized" : "Absent selected"}</p><p className="mt-0.5 text-[11px] text-slate-500">{finalized ? "This register is locked. Use Attendance History for corrections." : selectedIds.length === 0 ? "Choose students above to continue." : `${selectedIds.length} student${selectedIds.length === 1 ? "" : "s"} will be marked absent.`}</p></div>{recordedAbsentIds.length > 0 && <span className="ml-2 flex items-center gap-1 text-[10px] font-bold text-rose-700"><CheckCircle2 className="size-3" />{recordedAbsentIds.length} recorded</span>}</div>
-                    <Button type="button" disabled={finalized || submitting || selectedIds.length === 0} onClick={requestConfirmation} className="h-10 rounded-xl bg-rose-600 px-5 font-semibold text-white shadow-lg shadow-rose-600/15 hover:bg-rose-700 disabled:opacity-40 disabled:shadow-none">{finalized ? "Finalized" : submitting ? "Finalizing..." : "Review & finalize"}</Button>
+                    <div className="flex items-center gap-3"><div className="flex size-10 items-center justify-center rounded-xl bg-white text-rose-600 shadow-sm ring-1 ring-rose-100"><span className="text-sm font-bold">{finalized ? recordedAbsentIds.length : selectedIds.length}</span></div><div><p className="text-sm font-bold text-slate-900">{finalized ? "Attendance finalized" : "Absent selected"}</p><p className="mt-0.5 text-[11px] text-slate-500">{finalized ? "This register is locked. Use Attendance History for corrections." : selectedIds.length === 0 ? "No absentees selected; everyone will remain present." : `${selectedIds.length} student${selectedIds.length === 1 ? "" : "s"} will be marked absent.`}</p></div>{recordedAbsentIds.length > 0 && <span className="ml-2 flex items-center gap-1 text-[10px] font-bold text-rose-700"><CheckCircle2 className="size-3" />{recordedAbsentIds.length} recorded</span>}</div>
+                    <Button type="button" disabled={finalized || submitting} onClick={requestConfirmation} className="h-10 rounded-xl bg-rose-600 px-5 font-semibold text-white shadow-lg shadow-rose-600/15 hover:bg-rose-700 disabled:opacity-40 disabled:shadow-none">{finalized ? "Finalized" : submitting ? "Finalizing..." : "Review & finalize"}</Button>
                   </div>
                 </div>
               )}
@@ -324,7 +339,7 @@ export function BulkAbsenteeMarker({
         eyebrow="Attendance confirmation"
         icon={ShieldAlert}
         tone="destructive"
-        title={`Mark ${selectedIds.length} student${selectedIds.length === 1 ? "" : "s"} absent?`}
+        title={selectedIds.length === 0 ? "Finalize with everyone present?" : `Mark ${selectedIds.length} student${selectedIds.length === 1 ? "" : "s"} absent?`}
         description="Review this attendance update before applying it to the selected register."
         details={[
           { label: "Scope", value: scopeLabel },

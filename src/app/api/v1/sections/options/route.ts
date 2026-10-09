@@ -1,5 +1,5 @@
 import { apiHandler } from "@/lib/api";
-import { requireTenant, teacherClassScope } from "@/lib/auth";
+import { classTeacherScope, requireTenant, teacherClassScope } from "@/lib/auth";
 import { ApiResponse } from "@/lib/response";
 
 import { sectionService } from "@/features/sections/services/section.service";
@@ -11,6 +11,8 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
 
     const classId = searchParams.get("classId");
+    const purpose = searchParams.get("purpose");
+    const academicYearId = searchParams.get("academicYearId") ?? undefined;
 
     if (!classId) {
       throw new Error("classId is required.");
@@ -22,10 +24,16 @@ export async function GET(request: Request) {
     );
 
     if (tenant.role === "TEACHER") {
-      const scope = await teacherClassScope(tenant.schoolId);
+      const scope = purpose === "attendance"
+        ? await classTeacherScope(tenant.schoolId)
+        : await teacherClassScope(tenant.schoolId);
       const allowedSectionIds = new Set(
         scope
-          .filter((item) => item.classId === classId)
+          .filter(
+            (item) =>
+              item.classId === classId &&
+              (!academicYearId || item.academicYearId === academicYearId),
+          )
           .map((item) => item.sectionId),
       );
 

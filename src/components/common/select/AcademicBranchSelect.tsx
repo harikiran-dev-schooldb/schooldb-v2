@@ -18,7 +18,7 @@ type Props = {
   disabled?: boolean;
   allowAll?: boolean;
   triggerClassName?: string;
-  onChange: (value: string) => void;
+  onChange: (value: string, option?: Option) => void;
 };
 
 export function AcademicBranchSelect({
@@ -54,9 +54,15 @@ export function AcademicBranchSelect({
     <Select
       value={syllabusId ? (value || (allowAll ? "ALL" : "")) : ""}
       disabled={disabled || !syllabusId}
-      onValueChange={(nextValue) => onChange(nextValue === "ALL" ? "" : nextValue)}
+      onValueChange={(nextValue) => {
+        const normalizedValue = nextValue === "ALL" ? "" : nextValue;
+        onChange(
+          normalizedValue,
+          options.find((option) => option.id === normalizedValue),
+        );
+      }}
     >
-      <SelectTrigger className={triggerClassName ?? "h-11 bg-background"}>
+      <SelectTrigger className={triggerClassName}>
         <SelectValue placeholder={syllabusId ? (allowAll ? "All branches" : "Select branch") : "Select syllabus first"} />
       </SelectTrigger>
       <SelectContent>

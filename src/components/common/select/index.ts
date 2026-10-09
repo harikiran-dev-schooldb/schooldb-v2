@@ -1,4 +1,6 @@
 export * from "./AcademicYearSelect";
+export * from "./SyllabusSelect";
+export * from "./AcademicBranchSelect";
 // export * from "./BloodGroupSelect";
 // export * from "./CategorySelect";
 export * from "./ClassSelect";

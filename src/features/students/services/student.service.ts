@@ -496,6 +496,8 @@ export const studentService = {
     mode: "AVAILABLE" | "ENROLLED" = "AVAILABLE",
     classId?: string,
     sectionId?: string,
+    syllabusId?: string,
+    branchId?: string,
     allowedClassSections?: Array<{ classId: string; sectionId: string }>,
   ) {
     const students = await studentRepository.options(
@@ -505,6 +507,8 @@ export const studentService = {
       mode,
       classId,
       sectionId,
+      syllabusId,
+      branchId,
       allowedClassSections,
     );
 
