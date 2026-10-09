@@ -5,6 +5,7 @@ import {
   Activity,
   Award,
   CalendarDays,
+  ChartNoAxesCombined,
   CreditCard,
   FileText,
   GraduationCap,
@@ -26,6 +27,7 @@ import { StudentDocumentsTab } from "./StudentDocumentsTab";
 import { StudentActivityTab } from "./StudentActivityTab";
 import { StudentParentsTab } from "./StudentParents";
 import { StudentDetailsTab } from "./StudentDetailsTab";
+import { StudentOverallReport } from "./StudentOverallReport";
 import { useSchool } from "@/contexts/school-context";
 import { hasTeacherAccess } from "@/lib/teacher-access";
 
@@ -103,6 +105,7 @@ export type StudentProfileData = {
 type Props = { studentId: string };
 
 const tabs = [
+  { value: "overall", label: "Overall Report", icon: ChartNoAxesCombined },
   { value: "overview", label: "Overview", icon: LayoutDashboard },
   { value: "details", label: "All Details", icon: IdCard },
   { value: "enrollment", label: "Enrollment", icon: GraduationCap },
@@ -161,7 +164,7 @@ function StudentProfileNotFound() {
   );
 }
 
-export function StudentProfile({ studentId }: Props) {
+export function StudentProfile({ studentId, initialTab }: Props & { initialTab?: string }) {
   const { role, teacherAccess } = useSchool();
   const [student, setStudent] = useState<StudentProfileData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -195,8 +198,9 @@ export function StudentProfile({ studentId }: Props) {
   if (loading) return <StudentProfileSkeleton />;
   if (!student) return <StudentProfileNotFound />;
 
+  const canViewOverallReport = role === "SUPER_ADMIN" || role === "SCHOOL_ADMIN";
   const visibleTabs = role !== "TEACHER"
-    ? tabs
+    ? tabs.filter((tab) => tab.value !== "overall" || canViewOverallReport)
     : tabs.filter((tab) => {
         if (tab.value === "attendance") return hasTeacherAccess(teacherAccess, "ATTENDANCE");
         if (tab.value === "fees") return hasTeacherAccess(teacherAccess, "FEES");
@@ -204,10 +208,14 @@ export function StudentProfile({ studentId }: Props) {
         return !["documents", "activity"].includes(tab.value);
       });
 
+  const selectedTab = visibleTabs.some((tab) => tab.value === initialTab)
+    ? initialTab
+    : canViewOverallReport ? "overall" : "overview";
+
   return (
     <div className="space-y-6">
       <StudentProfileHeader student={student} />
-      <Tabs defaultValue="overview" className="w-full">
+      <Tabs defaultValue={selectedTab} className="w-full">
         <div className="sticky top-0 z-10 -mx-1 bg-background/95 px-1 pb-2 backdrop-blur supports-[backdrop-filter]:bg-background/80">
           <div className="overflow-x-auto">
             <TabsList className="flex h-auto min-w-max w-full justify-start gap-1">
@@ -228,6 +236,7 @@ export function StudentProfile({ studentId }: Props) {
           </div>
         </div>
 
+        {canViewOverallReport ? <TabsContent value="overall" className="mt-5"><StudentOverallReport studentId={studentId} /></TabsContent> : null}
         <TabsContent value="overview" className="mt-5"><StudentOverviewTab student={student} /></TabsContent>
         <TabsContent value="details" className="mt-5"><StudentDetailsTab student={student} /></TabsContent>
         <TabsContent value="enrollment" className="mt-5"><StudentEnrollmentTab student={student} /></TabsContent>
