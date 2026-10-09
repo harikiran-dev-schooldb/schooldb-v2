@@ -16,11 +16,21 @@ const ALWAYS_VISIBLE_MEMBER_ROUTES = new Set([
   "settings",
   "notification-inbox",
   "user-guide",
-  "teacher/profile",
 ]);
+
+const ROLE_ONLY_MEMBER_ROUTES = new Map<string, Set<string>>([
+  ["teacher/profile", new Set(["TEACHER"])],
+]);
+
+function isRoleOnlyMemberRouteAllowed(role: string, href: string) {
+  const allowedRoles = ROLE_ONLY_MEMBER_ROUTES.get(href);
+  return allowedRoles ? allowedRoles.has(role) : null;
+}
 
 export function isDefaultRoleRouteAllowed(role: string, href?: string) {
   if (!href) return false;
+  const roleOnlyAccess = isRoleOnlyMemberRouteAllowed(role, href);
+  if (roleOnlyAccess !== null) return roleOnlyAccess;
   if (ALWAYS_VISIBLE_MEMBER_ROUTES.has(href)) return true;
 
   for (const item of navigation) {
@@ -45,6 +55,8 @@ export function isMemberRouteAllowed(
   href?: string,
 ) {
   if (!href) return false;
+  const roleOnlyAccess = isRoleOnlyMemberRouteAllowed(membership.role, href);
+  if (roleOnlyAccess !== null) return roleOnlyAccess;
   if (["SUPER_ADMIN", "SCHOOL_ADMIN"].includes(membership.role)) {
     return isDefaultRoleRouteAllowed(membership.role, href);
   }
