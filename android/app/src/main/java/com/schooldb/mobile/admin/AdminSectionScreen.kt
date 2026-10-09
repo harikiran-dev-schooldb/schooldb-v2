@@ -42,6 +42,7 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -124,6 +125,7 @@ internal data class AdminListRow(
     val subtitle: String,
     val detail: String,
     val status: String,
+    val locked: Boolean = false,
 )
 
 internal data class AdminSectionState(
@@ -166,6 +168,7 @@ internal class AdminSectionViewModel : ViewModel() {
                             subtitle = item.optString("subtitle"),
                             detail = item.optString("detail"),
                             status = item.optString("status"),
+                            locked = item.optBoolean("locked"),
                         )
                     },
                     total = data.optInt("total"),
@@ -231,12 +234,47 @@ internal class AdminSectionViewModel : ViewModel() {
             }
         }
     }
+
+    fun unlockAttendance(
+        sessionId: String,
+        page: Int,
+        query: String,
+    ) {
+        if (mutableState.value.savingId != null) return
+        mutableState.value = mutableState.value.copy(
+            savingId = sessionId,
+            error = null,
+            actionMessage = null,
+        )
+        viewModelScope.launch {
+            try {
+                withContext(Dispatchers.IO) {
+                    api.post("api/v1/attendance/session/$sessionId/unlock", JSONObject())
+                }
+                mutableState.value = mutableState.value.copy(
+                    savingId = null,
+                    actionMessage = "Attendance unlocked for correction.",
+                )
+                load("attendance", page, query, forceRefresh = true)
+            } catch (error: Exception) {
+                mutableState.value = mutableState.value.copy(
+                    savingId = null,
+                    error = when (error) {
+                        is ApiException -> error.message
+                        is IOException -> "Could not reach SchoolDB. Check your connection."
+                        else -> "Could not unlock this attendance session."
+                    },
+                )
+            }
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AdminSectionScreen(
     section: String,
+    canUnlockAttendance: Boolean,
     onBack: () -> Unit,
     onTicket: (String) -> Unit,
     onStudent: (String) -> Unit,
@@ -249,6 +287,8 @@ fun AdminSectionScreen(
     var decisionRequest by rememberSaveable(section) { mutableStateOf<String?>(null) }
     var decisionType by rememberSaveable(section) { mutableStateOf("APPROVED") }
     var decisionNote by rememberSaveable(section) { mutableStateOf("") }
+    var unlockRequestId by rememberSaveable(section) { mutableStateOf<String?>(null) }
+    val unlockRequest = state.rows.firstOrNull { it.id == unlockRequestId }
     val statuses = state.rows.map { it.status }.filter(String::isNotBlank).distinct().sorted()
     val visibleRows = if (statusFilter == "ALL") state.rows else state.rows.filter { it.status == statusFilter }
     BackHandler(onBack = onBack)
@@ -304,6 +344,38 @@ fun AdminSectionScreen(
             dismissButton = {
                 TextButton(
                     onClick = { decisionRequest = null },
+                    enabled = state.savingId == null,
+                ) { Text("Cancel") }
+            },
+            shape = RoundedCornerShape(28.dp),
+        )
+    }
+
+    unlockRequest?.let { session ->
+        AlertDialog(
+            onDismissRequest = {
+                if (state.savingId == null) unlockRequestId = null
+            },
+            title = { Text("Unlock attendance?") },
+            text = {
+                Text(
+                    "${session.title} on ${session.subtitle} will reopen for correction. " +
+                        "This action is recorded in the audit log.",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.unlockAttendance(session.id, state.page, query)
+                        unlockRequestId = null
+                    },
+                    enabled = state.savingId == null,
+                ) { Text("Unlock") }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { unlockRequestId = null },
                     enabled = state.savingId == null,
                 ) { Text("Cancel") }
             },
@@ -453,6 +525,40 @@ fun AdminSectionScreen(
                                 Spacer(Modifier.height(7.dp))
                                 Text(row.detail, style = MaterialTheme.typography.bodyMedium,
                                     maxLines = 3, overflow = TextOverflow.Ellipsis)
+                            }
+                            if (section == "attendance") {
+                                Spacer(Modifier.height(14.dp))
+                                Row(
+                                    Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Column(Modifier.weight(1f)) {
+                                        Text(
+                                            if (row.locked) "Attendance locked" else "Open for correction",
+                                            fontWeight = FontWeight.SemiBold,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                        )
+                                        Text(
+                                            when {
+                                                !row.locked -> "This session can be edited."
+                                                canUnlockAttendance -> "Switch off to reopen this session."
+                                                else -> "Only a Super Admin or Principal can unlock it."
+                                            },
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = AdminWebSlate,
+                                        )
+                                    }
+                                    Switch(
+                                        checked = row.locked,
+                                        onCheckedChange = { checked ->
+                                            if (!checked && row.locked && canUnlockAttendance) {
+                                                unlockRequestId = row.id
+                                            }
+                                        },
+                                        enabled = row.locked && canUnlockAttendance && state.savingId == null,
+                                    )
+                                }
                             }
                             if (section == "leave" && row.status == "PENDING") {
                                 Spacer(Modifier.height(14.dp))

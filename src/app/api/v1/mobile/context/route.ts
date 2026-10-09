@@ -1,6 +1,7 @@
 import { currentTeacherAccess, requireMembership } from "@/lib/auth";
 import { apiHandler } from "@/lib/api";
 import { ApiResponse } from "@/lib/response";
+import { canUnlockAttendance } from "@/features/attendance/policy";
 
 export async function GET() {
   return apiHandler(async () => {
@@ -21,6 +22,12 @@ export async function GET() {
       phone: membership.user.phone,
       email: membership.user.email,
       imageUrl: membership.user.imageUrl,
+      permissions: {
+        canUnlockAttendance: canUnlockAttendance(
+          membership.role,
+          membership.designation,
+        ),
+      },
       teacherAccess: access
         ? {
             students: access.studentDetailsAccess,

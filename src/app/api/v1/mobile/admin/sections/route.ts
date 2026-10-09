@@ -77,7 +77,7 @@ export async function GET(request: Request) {
         prisma.attendanceSession.count({ where }),
         prisma.attendanceSession.findMany({ where,
           orderBy: [{ attendanceDate: "desc" }, { createdAt: "desc" }], skip, take: PAGE_SIZE,
-          select: { id: true, attendanceDate: true, sessionType: true,
+          select: { id: true, attendanceDate: true, sessionType: true, locked: true,
             class: { select: { name: true } }, section: { select: { name: true } },
             _count: { select: { records: true } } } }),
       ]);
@@ -85,8 +85,9 @@ export async function GET(request: Request) {
         rows: sessions.map((session) => ({ id: session.id,
           title: `${session.class.name} · ${session.section.name}`,
           subtitle: session.attendanceDate.toISOString().slice(0, 10),
-          detail: `${session._count.records} attendance records`,
-          status: session.sessionType || "DAILY" })) });
+          detail: `${session.sessionType || "DAILY"} · ${session._count.records} attendance records`,
+          status: session.locked ? "LOCKED" : "OPEN",
+          locked: session.locked })) });
     }
 
     if (section === "fees") {

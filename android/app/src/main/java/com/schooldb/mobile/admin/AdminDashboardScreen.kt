@@ -418,6 +418,7 @@ fun AdminDashboardScreen(
     selectedSection?.let { section ->
         AdminSectionScreen(
             section,
+            canUnlockAttendance = school.canUnlockAttendance,
             onBack = { selectedSection = null },
             onTicket = { selectedTicket = it },
             onStudent = { selectedStudent = it },

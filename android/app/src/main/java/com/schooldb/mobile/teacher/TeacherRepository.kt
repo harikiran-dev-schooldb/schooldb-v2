@@ -25,16 +25,20 @@ class TeacherRepository(
             schoolName = data.optString("schoolName", "SchoolDB"),
             schoolSlug = data.optString("schoolSlug"),
             role = data.optString("role", "UNKNOWN"),
-            teacherAccess = TeacherAccess(
-                students = access?.optBoolean("students") == true,
-                fees = access?.optBoolean("fees") == true,
-                results = access?.optBoolean("results") == true,
-                timetable = access?.optBoolean("timetable") == true,
-                attendance = access?.optBoolean("attendance") == true,
-                homework = access?.optBoolean("homework") == true,
-                exams = access?.optBoolean("exams") == true,
-                marksEntry = access?.optBoolean("marksEntry") == true,
-            ),
+            canUnlockAttendance = data.optJSONObject("permissions")
+                ?.optBoolean("canUnlockAttendance") == true,
+            teacherAccess = access?.let {
+                TeacherAccess(
+                    students = it.optBoolean("students"),
+                    fees = it.optBoolean("fees"),
+                    results = it.optBoolean("results"),
+                    timetable = it.optBoolean("timetable"),
+                    attendance = it.optBoolean("attendance"),
+                    homework = it.optBoolean("homework"),
+                    exams = it.optBoolean("exams"),
+                    marksEntry = it.optBoolean("marksEntry"),
+                )
+            } ?: TeacherAccess.legacyEnabled(),
         )
     }
 

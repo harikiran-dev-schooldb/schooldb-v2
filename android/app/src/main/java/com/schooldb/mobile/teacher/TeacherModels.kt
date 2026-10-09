@@ -5,6 +5,7 @@ data class MobileContext(
     val schoolName: String,
     val schoolSlug: String,
     val role: String,
+    val canUnlockAttendance: Boolean = false,
     val teacherAccess: TeacherAccess = TeacherAccess(),
 )
 
@@ -17,7 +18,21 @@ data class TeacherAccess(
     val homework: Boolean = false,
     val exams: Boolean = false,
     val marksEntry: Boolean = false,
-)
+) {
+    companion object {
+        /** Preserve the pre-permission Android experience during a staged backend rollout. */
+        fun legacyEnabled() = TeacherAccess(
+            students = true,
+            fees = true,
+            results = true,
+            timetable = true,
+            attendance = true,
+            homework = true,
+            exams = true,
+            marksEntry = true,
+        )
+    }
+}
 
 data class TeacherDashboard(
     val teacherName: String,
