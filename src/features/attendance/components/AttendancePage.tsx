@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { DayPicker } from "react-day-picker";
 import { toast } from "sonner";
 
 import {
@@ -27,6 +28,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 
 import { Button } from "@/components/ui/button";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { refreshTable } from "@/lib/table-event";
 import { useSchool } from "@/contexts/school-context";
 import { BulkAbsenteeMarker } from "./BulkAbsenteeMarker";
@@ -57,6 +63,18 @@ function schoolDateKey() {
 
 function dateKey(value: string) {
   return value.slice(0, 10);
+}
+
+function dateFromKey(value: string) {
+  return new Date(`${value}T00:00:00`);
+}
+
+function keyFromDate(value: Date) {
+  return [
+    value.getFullYear(),
+    String(value.getMonth() + 1).padStart(2, "0"),
+    String(value.getDate()).padStart(2, "0"),
+  ].join("-");
 }
 
 function clampAttendanceDate(
@@ -94,6 +112,7 @@ export function AttendancePage() {
   const today = schoolDateKey();
 
   const [attendanceDate, setAttendanceDate] = useState(today);
+  const [calendarOpen, setCalendarOpen] = useState(false);
 
   const [academicYearId, setAcademicYearId] = useState("");
 
@@ -437,18 +456,64 @@ export function AttendancePage() {
                   <ChevronLeft className="size-4" />
                 </button>
 
-                <div className="relative flex min-w-0 flex-1 cursor-pointer items-center gap-3 overflow-hidden rounded-2xl border border-indigo-200 bg-white px-4 py-3 shadow-sm transition hover:border-indigo-300 hover:shadow-md">
-                  <div className="flex size-12 shrink-0 flex-col items-center justify-center rounded-xl bg-indigo-600 text-white shadow-md shadow-indigo-600/20">
-                    <span className="text-[9px] font-bold tracking-wider uppercase">{selectedDate.toLocaleDateString("en-IN", { month: "short" })}</span>
-                    <span className="text-lg font-bold leading-5">{selectedDay}</span>
-                  </div>
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-bold text-slate-900">{selectedWeekday}</p>
-                    <p className="mt-0.5 truncate text-xs font-medium text-slate-500">{selectedDay} {selectedMonthYear}</p>
-                  </div>
-                  <CalendarDays className="ml-auto size-4 shrink-0 text-indigo-500" />
-                  <input id="attendance-date" aria-label="Attendance date" type="date" value={attendanceDate} min={minimumDate} max={maximumDate} onChange={(event) => { if (event.target.value) setAttendanceDate(event.target.value); }} disabled={loading || !academicYearId} required className="absolute inset-0 size-full cursor-pointer opacity-0 disabled:cursor-not-allowed" />
-                </div>
+                <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+                  <PopoverTrigger asChild>
+                    <button
+                      type="button"
+                      aria-label="Choose attendance date"
+                      disabled={loading || !academicYearId}
+                      className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 overflow-hidden rounded-2xl border border-indigo-200 bg-white px-4 py-3 text-left shadow-sm transition hover:border-indigo-300 hover:shadow-md focus:border-indigo-400 focus:outline-none focus:ring-4 focus:ring-indigo-500/10 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <span className="flex size-12 shrink-0 flex-col items-center justify-center rounded-xl bg-indigo-600 text-white shadow-md shadow-indigo-600/20">
+                        <span className="text-[9px] font-bold tracking-wider uppercase">{selectedDate.toLocaleDateString("en-IN", { month: "short" })}</span>
+                        <span className="text-lg font-bold leading-5">{selectedDay}</span>
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block truncate text-sm font-bold text-slate-900">{selectedWeekday}</span>
+                        <span className="mt-0.5 block truncate text-xs font-medium text-slate-500">{selectedDay} {selectedMonthYear}</span>
+                      </span>
+                      <CalendarDays className="ml-auto size-4 shrink-0 text-indigo-500" />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent align="start" className="w-auto p-3">
+                    <DayPicker
+                      mode="single"
+                      selected={selectedDate}
+                      defaultMonth={selectedDate}
+                      startMonth={minimumDate ? dateFromKey(minimumDate) : undefined}
+                      endMonth={dateFromKey(maximumDate)}
+                      disabled={{
+                        before: minimumDate ? dateFromKey(minimumDate) : selectedDate,
+                        after: dateFromKey(maximumDate),
+                      }}
+                      onSelect={(date) => {
+                        if (!date) return;
+                        setAttendanceDate(keyFromDate(date));
+                        setCalendarOpen(false);
+                      }}
+                      showOutsideDays
+                      classNames={{
+                        months: "flex flex-col",
+                        month: "space-y-3",
+                        month_caption: "relative flex h-9 items-center justify-center",
+                        caption_label: "text-sm font-bold text-slate-900",
+                        nav: "absolute inset-x-0 top-0 flex items-center justify-between",
+                        button_previous: "flex size-9 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-600",
+                        button_next: "flex size-9 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-600",
+                        month_grid: "w-full border-collapse",
+                        weekdays: "flex",
+                        weekday: "w-10 py-1 text-center text-[10px] font-bold uppercase text-slate-400",
+                        week: "mt-1 flex w-full",
+                        day: "relative size-10 p-0 text-center text-sm",
+                        day_button: "size-10 rounded-xl font-medium text-slate-700 transition hover:bg-indigo-50 hover:text-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-400/30",
+                        selected: "rounded-xl bg-indigo-600 text-white [&>button]:text-white [&>button]:hover:bg-indigo-600 [&>button]:hover:text-white",
+                        today: "rounded-xl bg-indigo-50 text-indigo-700 [&>button]:font-bold",
+                        outside: "text-slate-300 opacity-50",
+                        disabled: "cursor-not-allowed text-slate-300 opacity-40 [&>button]:cursor-not-allowed [&>button]:hover:bg-transparent",
+                      }}
+                    />
+                  </PopoverContent>
+                </Popover>
 
                 <button type="button" aria-label="Next attendance date" disabled={!canGoNext || loading} onClick={() => moveAttendanceDate(1)} className="flex w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 shadow-sm transition hover:border-indigo-200 hover:text-indigo-600 disabled:cursor-not-allowed disabled:opacity-35">
                   <ChevronRight className="size-4" />
