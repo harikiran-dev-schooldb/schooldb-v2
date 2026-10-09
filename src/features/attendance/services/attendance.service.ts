@@ -1754,13 +1754,6 @@ async markBulkAbsentees(
   let sessionTypes: ("DAILY" | "MORNING" | "AFTERNOON" | "PERIOD")[];
 
   if (academicYear.attendanceMode === "ONCE_DAILY") {
-    await attendanceRepository.markFullPresent(
-      schoolId,
-      input.academicYearId,
-      attendanceDate,
-      "DAILY",
-      filters,
-    );
     sessionTypes = ["DAILY"];
   } else if (academicYear.attendanceMode === "MORNING_AFTERNOON") {
     const choices =
@@ -1770,23 +1763,8 @@ async markBulkAbsentees(
           ? (["AFTERNOON"] as const)
           : (["MORNING", "AFTERNOON"] as const);
 
-    for (const sessionType of choices) {
-      await attendanceRepository.markFullPresent(
-        schoolId,
-        input.academicYearId,
-        attendanceDate,
-        sessionType,
-        filters,
-      );
-    }
     sessionTypes = [...choices];
   } else {
-    await attendanceRepository.markFullPresentForPeriods(
-      schoolId,
-      input.academicYearId,
-      attendanceDate,
-      filters,
-    );
     sessionTypes = ["PERIOD"];
   }
 

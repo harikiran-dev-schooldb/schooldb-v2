@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { DayPicker } from "react-day-picker";
 import { toast } from "sonner";
 
@@ -35,7 +36,6 @@ import {
 } from "@/components/ui/popover";
 import { refreshTable } from "@/lib/table-event";
 import { useSchool } from "@/contexts/school-context";
-import { BulkAbsenteeMarker } from "./BulkAbsenteeMarker";
 
 type AttendanceMode = "ONCE_DAILY" | "MORNING_AFTERNOON" | "EVERY_PERIOD";
 
@@ -107,7 +107,8 @@ function getModeLabel(mode: AttendanceMode) {
    ========================================================================== */
 
 export function AttendancePage() {
-  const { role } = useSchool();
+  const router = useRouter();
+  const { role, school } = useSchool();
   const isTeacher = role === "TEACHER";
   const today = schoolDateKey();
 
@@ -130,8 +131,6 @@ export function AttendancePage() {
 
   const [loading, setLoading] = useState(false);
   const [confirmPresentOpen, setConfirmPresentOpen] = useState(false);
-
-  const [preparedWorkflowKey, setPreparedWorkflowKey] = useState("");
 
   /* ==========================================================================
      LOAD ACADEMIC YEARS
@@ -248,18 +247,6 @@ export function AttendancePage() {
             : "Whole school";
   const presentScopeReady =
     Boolean(academicYearId) && (!isTeacher || attendanceScope === "SECTION");
-  const workflowKey = [
-    academicYearId,
-    attendanceDate,
-    attendanceScope,
-    syllabusId,
-    branchId,
-    classId,
-    sectionId,
-  ].join(":");
-  const fullPresentPrepared =
-    presentScopeReady && preparedWorkflowKey === workflowKey;
-
   /* ==========================================================================
      CLASS CHANGE
      ========================================================================== */
@@ -380,12 +367,35 @@ export function AttendancePage() {
 
       const attendanceCount = result.data?.attendanceCount ?? 0;
 
+      if (attendanceCount === 0) {
+        toast.error(
+          "No editable student registers were found for the selected scope and date.",
+        );
+        return;
+      }
+
       toast.success(
-        `${attendanceCount} students marked present. Select any absentees, then finalize.`,
+        `${attendanceCount} students marked present. Opening the prepared draft.`,
       );
-      setPreparedWorkflowKey(workflowKey);
       setConfirmPresentOpen(false);
       refreshTable("attendance");
+
+      const params = new URLSearchParams({
+        academicYearId,
+        attendanceDate,
+        scope,
+        academicPathLabel:
+          scope === "SCHOOL"
+            ? "All syllabi and branches"
+            : [syllabusName, branchName].filter(Boolean).join(" · ") ||
+              attendanceScopeLabel,
+      });
+      if (syllabusId) params.set("syllabusId", syllabusId);
+      if (branchId) params.set("branchId", branchId);
+      if (classId) params.set("classId", classId);
+      if (sectionId) params.set("sectionId", sectionId);
+
+      router.push(`/${school.slug}/attendance/absentees?${params.toString()}`);
     } catch {
       toast.error("Failed to mark full attendance.");
     } finally {
@@ -584,35 +594,16 @@ export function AttendancePage() {
               <div>
                 <p className="text-[10px] font-bold tracking-[0.16em] text-slate-400 uppercase">Ready to apply</p>
                 <p className="mt-2 text-lg font-bold text-slate-900">{attendanceScopeLabel}</p>
-                <p className="mt-1 text-xs leading-5 text-slate-500">{fullPresentPrepared ? "Draft prepared. Continue below to select absentees and finalize." : presentScopeReady ? `Prepare the selected registers for ${selectedDateLabel}.` : "Complete the register scope above to continue."}</p>
+                <p className="mt-1 text-xs leading-5 text-slate-500">{presentScopeReady ? `Prepare the selected registers for ${selectedDateLabel}. The absentee draft will open on the next page.` : "Complete the register scope above to continue."}</p>
               </div>
-              <Button type="button" disabled={loading || !presentScopeReady || fullPresentPrepared} onClick={() => setConfirmPresentOpen(true)} className="mt-5 h-11 w-full gap-2 rounded-xl bg-emerald-600 font-semibold text-white shadow-lg shadow-emerald-600/15 hover:bg-emerald-700 disabled:opacity-40 disabled:shadow-none">
+              <Button type="button" disabled={loading || !presentScopeReady} onClick={() => setConfirmPresentOpen(true)} className="mt-5 h-11 w-full gap-2 rounded-xl bg-emerald-600 font-semibold text-white shadow-lg shadow-emerald-600/15 hover:bg-emerald-700 disabled:opacity-40 disabled:shadow-none">
                 {loading ? <Loader2 className="size-4 animate-spin" /> : <CheckCircle2 className="size-4" />}
-                {loading ? "Preparing..." : fullPresentPrepared ? "Draft prepared" : "Mark all present & continue"}
+                {loading ? "Preparing..." : "Mark all present & continue"}
               </Button>
             </div>
           </div>
         </CardContent>
       </Card>
-
-      <BulkAbsenteeMarker
-        key={`${academicYearId}:${syllabusId}:${branchId}:${classId}:${sectionId}:${attendanceDate}`}
-        academicYearId={academicYearId}
-        classId={classId}
-        sectionId={sectionId}
-        attendanceMode={attendanceMode}
-        attendanceDate={attendanceDate}
-        scope={attendanceScope}
-        prepared={fullPresentPrepared}
-        syllabusId={syllabusId}
-        branchId={branchId}
-        academicPathLabel={
-          attendanceScope === "SCHOOL"
-            ? "All syllabi and branches"
-            : [syllabusName, branchName].filter(Boolean).join(" · ") ||
-              "Academic branch not selected"
-        }
-      />
 
       <ConfirmDialog
         open={confirmPresentOpen}
