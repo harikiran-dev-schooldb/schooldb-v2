@@ -59,11 +59,10 @@ export async function GET() {
       prisma.reportExportJob.findMany({
         where: {
           schoolId: membership.schoolId,
-          requestedByUserId: membership.userId,
           createdAt: { gte: since },
         },
         orderBy: { createdAt: "desc" },
-        take: 20,
+        take: 100,
         select: {
           id: true,
           status: true,
@@ -74,20 +73,28 @@ export async function GET() {
           completedAt: true,
           expiresAt: true,
           requestedBy: {
-            select: { firstName: true, lastName: true, email: true },
+            select: {
+              firstName: true,
+              lastName: true,
+              email: true,
+              memberships: {
+                where: { schoolId: membership.schoolId },
+                take: 1,
+                select: { role: true },
+              },
+            },
           },
         },
       }),
       prisma.auditLog.findMany({
         where: {
           schoolId: membership.schoolId,
-          actorUserId: membership.userId,
           action: "EXPORT",
           entityType: { in: ["REPORT_DOWNLOAD", "EXPENSE_REPORT", "SCHOOL_SNAPSHOT"] },
           createdAt: { gte: since },
         },
         orderBy: { createdAt: "desc" },
-        take: 20,
+        take: 100,
         select: {
           id: true,
           entityType: true,
@@ -131,6 +138,7 @@ export async function GET() {
         direct: true,
         performedBy: item.actorName,
         performedByRole: item.actorRole,
+        reportType: title,
       };
     });
     const deduplicatedDownloads = directDownloads.filter((item, index, items) => {
@@ -145,11 +153,12 @@ export async function GET() {
       ...job,
       direct: false,
       performedBy: [requestedBy.firstName, requestedBy.lastName].filter(Boolean).join(" ") || requestedBy.email,
-      performedByRole: null,
+      performedByRole: requestedBy.memberships[0]?.role ?? null,
+      reportType: "School summary",
     }));
     const history = [...queuedJobs, ...deduplicatedDownloads]
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
-      .slice(0, 20);
+      .slice(0, 100);
     return ApiResponse.success(history);
   });
 }

@@ -16,6 +16,7 @@ class FamilyViewModel(
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(FamilyUiState())
     val uiState: StateFlow<FamilyUiState> = _uiState.asStateFlow()
+    private val detailsRequests = DetailsRequestTracker()
 
     fun load() = loadDashboard(clearPrevious = false, forceRefresh = false)
 
@@ -161,11 +162,15 @@ class FamilyViewModel(
         forceRefresh: Boolean,
         academicYearId: String? = _uiState.value.attendanceAcademicYearId,
     ) {
+        val requestId = detailsRequests.next()
         try {
             val details = withContext(Dispatchers.IO) {
                 repository.details(studentId, forceRefresh, academicYearId)
             }
-            if (_uiState.value.selectedStudentId == studentId) {
+            if (
+                detailsRequests.isCurrent(requestId) &&
+                _uiState.value.selectedStudentId == studentId
+            ) {
                 _uiState.value = _uiState.value.copy(
                     details = details,
                     detailsLoading = false,
@@ -174,7 +179,10 @@ class FamilyViewModel(
                 )
             }
         } catch (error: Exception) {
-            if (_uiState.value.selectedStudentId == studentId) {
+            if (
+                detailsRequests.isCurrent(requestId) &&
+                _uiState.value.selectedStudentId == studentId
+            ) {
                 val message = when (error) {
                     is ApiException -> error.message ?: "SchoolDB request failed."
                     is IOException -> "Cannot reach SchoolDB. Check the server and your connection."
@@ -213,4 +221,12 @@ class FamilyViewModel(
         else -> fallback
     }
 
+}
+
+internal class DetailsRequestTracker {
+    private var latestRequestId = 0L
+
+    fun next(): Long = ++latestRequestId
+
+    fun isCurrent(requestId: Long): Boolean = requestId == latestRequestId
 }

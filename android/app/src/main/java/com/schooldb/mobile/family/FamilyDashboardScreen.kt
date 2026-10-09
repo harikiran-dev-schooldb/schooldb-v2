@@ -872,9 +872,11 @@ private fun AttendanceTab(
                     )
                 }
             }
-            val visibleRecords = attendance.records.filter { record ->
-                calendarDate(record.date)?.let(YearMonth::from)?.toString() == selectedMonth
-            }
+            val visibleRecords = attendanceRecordsForRole(
+                role = dashboard.role,
+                records = attendance.records,
+                selectedMonth = selectedMonth,
+            )
             val present = visibleRecords.count { it.status == "PRESENT" }
             val late = visibleRecords.count { it.status == "LATE" }
             val attended = present + late
@@ -2674,6 +2676,18 @@ private fun calendarColor(category: String) = when (category) {
 }
 
 private fun calendarDate(value: String) = runCatching { LocalDate.parse(value.take(10)) }.getOrNull()
+
+internal fun attendanceRecordsForRole(
+    role: String,
+    records: List<FamilyAttendanceRecord>,
+    selectedMonth: String,
+): List<FamilyAttendanceRecord> = if (role == "STUDENT") {
+    records.filter { record ->
+        calendarDate(record.date)?.let(YearMonth::from)?.toString() == selectedMonth
+    }
+} else {
+    records
+}
 
 private fun academicYearMonths(year: FamilyAcademicYear?): List<YearMonth> {
     val start = year?.startDate?.let(::calendarDate)?.let(YearMonth::from)

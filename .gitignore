@@ -54,6 +54,7 @@ next-env.d.ts
 
 # Android
 /android/.gradle/
+/android/.kotlin/
 /android/.idea/
 /android/local.properties
 /android/**/build/

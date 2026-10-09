@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { availableForAcademicYear } from "../src/features/student-enrollments/enrollment-rules.ts";
+import {
+  availableForAcademicYear,
+  promotionYearError,
+} from "../src/features/student-enrollments/enrollment-rules.ts";
 import { studentEnrollmentSchema } from "../src/features/student-enrollments/schemas/student-enrollment.schema.ts";
 
 const validEnrollment = {
@@ -53,4 +56,53 @@ test("rejects malformed or impossible admission dates", () => {
       false,
     );
   }
+});
+
+const sourceYear = {
+  name: "2025-26",
+  startDate: new Date("2025-04-01T00:00:00.000Z"),
+  endDate: new Date("2026-03-31T00:00:00.000Z"),
+  active: true,
+};
+
+test("accepts the next active non-overlapping academic year", () => {
+  assert.equal(
+    promotionYearError(
+      sourceYear,
+      {
+        name: "2026-27",
+        startDate: new Date("2026-04-01T00:00:00.000Z"),
+        endDate: new Date("2027-03-31T00:00:00.000Z"),
+        active: true,
+      },
+      true,
+    ),
+    null,
+  );
+});
+
+test("rejects backward or overlapping promotion years", () => {
+  const message = promotionYearError(sourceYear, {
+    name: "2025-26 overlap",
+    startDate: new Date("2026-03-01T00:00:00.000Z"),
+    endDate: new Date("2027-02-28T00:00:00.000Z"),
+    active: true,
+  });
+
+  assert.match(message ?? "", /must start after/);
+});
+
+test("requires activation before executing promotion", () => {
+  const message = promotionYearError(
+    sourceYear,
+    {
+      name: "2026-27",
+      startDate: new Date("2026-04-01T00:00:00.000Z"),
+      endDate: new Date("2027-03-31T00:00:00.000Z"),
+      active: false,
+    },
+    true,
+  );
+
+  assert.match(message ?? "", /Activate 2026-27/);
 });

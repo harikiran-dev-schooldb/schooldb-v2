@@ -13,6 +13,8 @@ import {
 
 import { studentActivityService } from "@/features/students/services/student-activity.service";
 import { prisma } from "@/lib/prisma";
+import { withTransactionRetry } from "@/lib/transaction-retry";
+import { promotionYearError } from "../enrollment-rules";
 
 export type PromotionDecision = "PROMOTE" | "DETAIN";
 
@@ -39,6 +41,104 @@ export type PromotionImportRow = {
   targetSection: string;
   decision: PromotionDecision;
 };
+
+async function targetYearReadiness(
+  schoolId: string,
+  academicYearId: string,
+  classIds?: string[],
+) {
+  const classFilter = classIds?.length ? { classId: { in: classIds } } : {};
+  const [academicPeriods, classSubjects, teacherAllocations, timetableEntries, feePlans] =
+    await Promise.all([
+      prisma.academicPeriod.count({
+        where: { schoolId, academicYearId, active: true },
+      }),
+      prisma.classSubject.count({
+        where: { schoolId, academicYearId, active: true, ...classFilter },
+      }),
+      prisma.teacherAllocation.count({
+        where: { schoolId, academicYearId, active: true, ...classFilter },
+      }),
+      prisma.timetable.count({
+        where: {
+          schoolId,
+          academicYearId,
+          active: true,
+          ...(classIds?.length
+            ? { teacherAllocation: { classId: { in: classIds } } }
+            : {}),
+        },
+      }),
+      prisma.feePlan.count({
+        where: {
+          schoolId,
+          academicYearId,
+          active: true,
+          ...(classIds?.length
+            ? {
+                OR: [
+                  { appliesToAllClasses: true },
+                  { classes: { some: { classId: { in: classIds } } } },
+                ],
+              }
+            : {}),
+        },
+      }),
+    ]);
+
+  return {
+    academicPeriods,
+    classSubjects,
+    teacherAllocations,
+    timetableEntries,
+    feePlans,
+  };
+}
+
+async function promoteGroupInTransaction(
+  schoolId: string,
+  input: PromotionInput,
+  performedByUserId: string | undefined,
+  tx: Prisma.TransactionClient,
+) {
+  const promoted = await studentEnrollmentRepository.promoteMany(
+    schoolId,
+    input,
+    tx,
+  );
+
+  if (promoted.created.length + promoted.skipped.length !== input.studentIds.length) {
+    throw new Error(
+      "One or more source enrollments changed during promotion. No students were promoted; review and try again.",
+    );
+  }
+
+  for (const enrollment of promoted.created) {
+    await studentActivityService.create(
+      {
+        schoolId,
+        studentId: enrollment.studentId,
+        enrollmentId: enrollment.id,
+        type: "STUDENT_PROMOTED",
+        title: input.decision === "DETAIN" ? "Student detained" : "Student promoted",
+        description: `${enrollment.student.fullName ?? enrollment.student.admissionNo} promoted to ${enrollment.class.name} — ${enrollment.section.name} for ${enrollment.academicYear.name}.`,
+        metadata: {
+          promotion: true,
+          decision: input.decision,
+          promotedFromId: enrollment.promotedFromId,
+          targetAcademicYearId: enrollment.academicYearId,
+          targetClassId: enrollment.classId,
+          targetSectionId: enrollment.sectionId,
+          rollNo: enrollment.rollNo,
+        },
+        performedByUserId,
+      },
+      tx,
+    );
+  }
+
+  return promoted;
+}
 
 async function preparePromotionImport(
   schoolId: string,
@@ -225,6 +325,8 @@ async function buildSchoolPromotionPlan(schoolId: string, input: SchoolPromotion
 
   if (!sourceYear) throw new Error("Source academic year not found.");
   if (!targetYear) throw new Error("Target academic year not found.");
+  const yearError = promotionYearError(sourceYear, targetYear);
+  if (yearError) throw new Error(yearError);
 
   const displayOrders = new Set(classes.map((item) => item.displayOrder));
   if (classes.length > 1 && displayOrders.size !== classes.length) {
@@ -909,6 +1011,8 @@ export const studentEnrollmentService = {
 
     if (!sourceAcademicYear) throw new Error("Source academic year not found.");
     if (!targetAcademicYear) throw new Error("Target academic year not found.");
+    const yearError = promotionYearError(sourceAcademicYear, targetAcademicYear);
+    if (yearError) throw new Error(yearError);
     if (!targetClass) throw new Error("Target class not found.");
     if (!targetSection || targetSection.classId !== input.targetClassId) {
       throw new Error("Target section does not belong to the selected target class.");
@@ -1024,6 +1128,12 @@ export const studentEnrollmentService = {
         .map((schedule) => schedule.exam.id),
     );
 
+    const readiness = await targetYearReadiness(
+      schoolId,
+      input.targetAcademicYearId,
+      [input.targetClassId],
+    );
+
     return {
       decision: input.decision,
       selected: sourceEnrollments.length,
@@ -1040,6 +1150,8 @@ export const studentEnrollmentService = {
         studentsBelowPassMark: failedStudentIds.size,
       },
       sourceYearEnded: sourceAcademicYear.endDate < new Date(),
+      targetYearActive: targetAcademicYear.active,
+      readiness,
       sourceAcademicYearName: sourceAcademicYear.name,
       targetAcademicYearName: targetAcademicYear.name,
       targetClassName: targetClass.name,
@@ -1152,6 +1264,12 @@ export const studentEnrollmentService = {
       dueInstallments.map((item) => item.studentFeeItem.studentFee.studentEnrollmentId),
     );
 
+    const readiness = await targetYearReadiness(
+      schoolId,
+      input.targetAcademicYearId,
+      [...new Set(plan.groups.map((group) => group.targetClassId))],
+    );
+
     return {
       selected: plan.enrollments.length,
       eligible: Math.max(0, eligibleStudentIds.length - existingTargets),
@@ -1159,6 +1277,8 @@ export const studentEnrollmentService = {
       graduatingStudents: plan.graduatingStudents,
       unmappedStudents: plan.unmappedStudents,
       sourceYearEnded: plan.sourceYear.endDate < new Date(),
+      targetYearActive: plan.targetYear.active,
+      readiness,
       sourceAcademicYearName: plan.sourceYear.name,
       targetAcademicYearName: plan.targetYear.name,
       feeWarnings: {
@@ -1190,28 +1310,38 @@ export const studentEnrollmentService = {
     performedByUserId?: string,
   ) {
     const plan = await buildSchoolPromotionPlan(schoolId, input);
-    const summary = {
-      created: 0,
-      skipped: 0,
-      graduatingStudents: plan.graduatingStudents,
-      unmappedStudents: plan.unmappedStudents,
-      groups: [] as Array<{
-        source: string;
-        target: string;
-        created: number;
-        skipped: number;
-        studentIds: string[];
-      }>,
-    };
+    const yearError = promotionYearError(plan.sourceYear, plan.targetYear, true);
+    if (yearError) throw new Error(yearError);
 
-    for (let index = 0; index < plan.groups.length; index += 4) {
-      const groupBatch = plan.groups.slice(index, index + 4);
-      const results = await Promise.all(
-        groupBatch.map(async (group) => ({
-          group,
-          result: await studentEnrollmentService.promote(
-            schoolId,
-            {
+    return withTransactionRetry(() =>
+      prisma.$transaction(
+        async (tx) => {
+          const activeTarget = await tx.academicYear.findFirst({
+            where: { id: input.targetAcademicYearId, schoolId, active: true },
+            select: { id: true },
+          });
+          if (!activeTarget) {
+            throw new Error(
+              `Activate ${plan.targetYear.name} before promoting students.`,
+            );
+          }
+
+          const summary = {
+            created: 0,
+            skipped: 0,
+            graduatingStudents: plan.graduatingStudents,
+            unmappedStudents: plan.unmappedStudents,
+            groups: [] as Array<{
+              source: string;
+              target: string;
+              created: number;
+              skipped: number;
+              studentIds: string[];
+            }>,
+          };
+
+          for (const group of plan.groups) {
+            const groupInput: PromotionInput = {
               studentIds: group.studentIds,
               sourceAcademicYearId: input.sourceAcademicYearId,
               sourceClassId: group.sourceClassId,
@@ -1220,25 +1350,33 @@ export const studentEnrollmentService = {
               targetClassId: group.targetClassId,
               targetSectionId: group.targetSectionId,
               decision: "PROMOTE",
-            },
-            performedByUserId,
-          ),
-        })),
-      );
-      for (const { group, result } of results) {
-        summary.created += result.created;
-        summary.skipped += result.skipped;
-        summary.groups.push({
-          source: `${group.sourceClassName} — ${group.sourceSectionName}`,
-          target: `${group.targetClassName} — ${group.targetSectionName}`,
-          created: result.created,
-          skipped: result.skipped,
-          studentIds: result.students.map((student) => student.studentId),
-        });
-      }
-    }
+            };
+            const result = await promoteGroupInTransaction(
+              schoolId,
+              groupInput,
+              performedByUserId,
+              tx,
+            );
+            summary.created += result.created.length;
+            summary.skipped += result.skipped.length;
+            summary.groups.push({
+              source: `${group.sourceClassName} — ${group.sourceSectionName}`,
+              target: `${group.targetClassName} — ${group.targetSectionName}`,
+              created: result.created.length,
+              skipped: result.skipped.length,
+              studentIds: result.created.map((student) => student.studentId),
+            });
+          }
 
-    return summary;
+          return summary;
+        },
+        {
+          isolationLevel: "Serializable",
+          maxWait: 10_000,
+          timeout: 120_000,
+        },
+      ),
+    );
   },
 
   async previewPromotionImport(schoolId: string, rows: PromotionImportRow[]) {
@@ -1357,17 +1495,29 @@ export const studentEnrollmentService = {
      * --------------------------------------------------------------
      */
 
-    const targetAcademicYear =
-      await academicYearRepository.findById(
-        input.targetAcademicYearId,
-        schoolId,
+    const [sourceAcademicYear, targetAcademicYear] = await Promise.all([
+      academicYearRepository.findById(input.sourceAcademicYearId, schoolId),
+      academicYearRepository.findById(input.targetAcademicYearId, schoolId),
+    ]);
+
+    if (!sourceAcademicYear) {
+      throw new Error(
+        "Source academic year not found.",
       );
+    }
 
     if (!targetAcademicYear) {
       throw new Error(
         "Target academic year not found.",
       );
     }
+
+    const yearError = promotionYearError(
+      sourceAcademicYear,
+      targetAcademicYear,
+      true,
+    );
+    if (yearError) throw new Error(yearError);
 
     /*
      * --------------------------------------------------------------
@@ -1460,57 +1610,30 @@ export const studentEnrollmentService = {
      * --------------------------------------------------------------
      */
 
-    const result = await prisma.$transaction(async (tx) => {
-      const promoted = await studentEnrollmentRepository.promoteMany(
-        schoolId,
-        input,
-        tx,
-      );
-
-      /*
-       * --------------------------------------------------------------
-       * Record activity
-       * --------------------------------------------------------------
-       */
-
-      for (const enrollment of promoted.created) {
-        await studentActivityService.create(
-          {
+    const result = await withTransactionRetry(() =>
+      prisma.$transaction(
+        async (tx) => {
+          const activeTarget = await tx.academicYear.findFirst({
+            where: { id: input.targetAcademicYearId, schoolId, active: true },
+            select: { id: true },
+          });
+          if (!activeTarget) {
+            throw new Error(`Activate ${targetAcademicYear.name} before promoting students.`);
+          }
+          return promoteGroupInTransaction(
             schoolId,
-
-            studentId: enrollment.studentId,
-
-            enrollmentId: enrollment.id,
-
-            type: "STUDENT_PROMOTED",
-
-            title: input.decision === "DETAIN" ? "Student detained" : "Student promoted",
-
-            description: `${enrollment.student.fullName ?? enrollment.student.admissionNo} promoted to ${enrollment.class.name} — ${enrollment.section.name} for ${enrollment.academicYear.name}.`,
-
-            metadata: {
-              promotion: true,
-
-              decision: input.decision,
-
-              promotedFromId: enrollment.promotedFromId,
-
-              targetAcademicYearId: enrollment.academicYearId,
-
-              targetClassId: enrollment.classId,
-
-              targetSectionId: enrollment.sectionId,
-
-              rollNo: enrollment.rollNo,
-            },
+            input,
             performedByUserId,
-          },
-          tx,
-        );
-      }
-
-      return promoted;
-    });
+            tx,
+          );
+        },
+        {
+          isolationLevel: "Serializable",
+          maxWait: 10_000,
+          timeout: 30_000,
+        },
+      ),
+    );
 
     return {
       decision: input.decision,

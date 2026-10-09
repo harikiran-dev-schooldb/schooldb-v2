@@ -37,6 +37,7 @@ import { PromotionFileImport } from "@/features/student-enrollments/components/P
 type Option = {
   id: string;
   label: string;
+  active?: boolean;
 };
 
 type Student = {
@@ -86,6 +87,14 @@ type PromotionPreview = {
     studentsBelowPassMark: number;
   };
   sourceYearEnded: boolean;
+  targetYearActive: boolean;
+  readiness: {
+    academicPeriods: number;
+    classSubjects: number;
+    teacherAllocations: number;
+    timetableEntries: number;
+    feePlans: number;
+  };
   sourceAcademicYearName: string;
   targetAcademicYearName: string;
   targetClassName: string;
@@ -100,6 +109,8 @@ type SchoolPromotionPreview = Pick<
   | "feeWarnings"
   | "resultWarnings"
   | "sourceYearEnded"
+  | "targetYearActive"
+  | "readiness"
   | "sourceAcademicYearName"
   | "targetAcademicYearName"
 > & {
@@ -1187,6 +1198,20 @@ export default function StudentPromotionPage() {
                   tone="amber"
                 />
               )}
+              {!preview.targetYearActive && (
+                <WarningRow
+                  icon={AlertTriangle}
+                  title={`${preview.targetAcademicYearName} is not active`}
+                  detail="Finish the new-year setup and activate it before confirming promotion. Students remain in their current enrollment until then."
+                  tone="amber"
+                />
+              )}
+              <WarningRow
+                icon={BookOpenCheck}
+                title="Target-year readiness"
+                detail={`${preview.readiness.academicPeriods} periods · ${preview.readiness.classSubjects} class subjects · ${preview.readiness.teacherAllocations} teacher allocations · ${preview.readiness.timetableEntries} timetable entries · ${preview.readiness.feePlans} fee plans`}
+                tone={preview.readiness.teacherAllocations > 0 && preview.readiness.timetableEntries > 0 ? "green" : "amber"}
+              />
               <WarningRow
                 icon={WalletCards}
                 title={`${preview.feeWarnings.students} students have fee dues`}
@@ -1223,7 +1248,7 @@ export default function StudentPromotionPage() {
           <AlertDialogFooter>
             <AlertDialogCancel disabled={promoting}>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              disabled={promoting || !preview || preview.eligible === 0}
+              disabled={promoting || !preview || preview.eligible === 0 || !preview.targetYearActive}
               onClick={(event) => {
                 event.preventDefault();
                 void promoteStudents();
@@ -1251,6 +1276,20 @@ export default function StudentPromotionPage() {
               {!schoolPreview.sourceYearEnded && (
                 <WarningRow icon={AlertTriangle} title="Source academic year is still running" detail="Confirm that this early school-wide change is intentional." tone="amber" />
               )}
+              {!schoolPreview.targetYearActive && (
+                <WarningRow
+                  icon={AlertTriangle}
+                  title={`${schoolPreview.targetAcademicYearName} is not active`}
+                  detail="Complete the new-year setup and activate it before running the school-wide promotion."
+                  tone="amber"
+                />
+              )}
+              <WarningRow
+                icon={BookOpenCheck}
+                title="Target-year readiness"
+                detail={`${schoolPreview.readiness.academicPeriods} periods · ${schoolPreview.readiness.classSubjects} class subjects · ${schoolPreview.readiness.teacherAllocations} teacher allocations · ${schoolPreview.readiness.timetableEntries} timetable entries · ${schoolPreview.readiness.feePlans} fee plans`}
+                tone={schoolPreview.readiness.teacherAllocations > 0 && schoolPreview.readiness.timetableEntries > 0 ? "green" : "amber"}
+              />
               <WarningRow
                 icon={WalletCards}
                 title={`${schoolPreview.feeWarnings.students} students have fee dues`}
@@ -1287,7 +1326,7 @@ export default function StudentPromotionPage() {
           <AlertDialogFooter>
             <AlertDialogCancel disabled={schoolPromoting}>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              disabled={schoolPromoting || !schoolPreview || schoolPreview.eligible === 0}
+              disabled={schoolPromoting || !schoolPreview || schoolPreview.eligible === 0 || !schoolPreview.targetYearActive}
               onClick={(event) => {
                 event.preventDefault();
                 void promoteSchool();
