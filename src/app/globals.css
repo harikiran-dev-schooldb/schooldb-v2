@@ -1313,7 +1313,7 @@
 
   @page student-report {
     size: A4 landscape;
-    margin: 5mm;
+    margin: 7mm 7mm 11mm;
   }
 
   html,
@@ -1353,9 +1353,167 @@
     width: 100% !important;
     max-width: none !important;
     margin: 0 !important;
-    padding: 6mm !important;
+    padding: 0 !important;
     background: #ffffff !important;
     page: student-report;
+    color: #172033 !important;
+    font-family: Inter, ui-sans-serif, system-ui, sans-serif !important;
+  }
+
+  .student-overall-report-print .student-report-cover {
+    position: relative;
+    min-height: 184mm;
+    overflow: hidden;
+    border: 1px solid #dbe3f0;
+    border-radius: 5mm;
+    background: linear-gradient(145deg, #ffffff 0%, #f8faff 62%, #eef2ff 100%) !important;
+    padding: 9mm;
+  }
+
+  .student-overall-report-print .student-report-cover::after {
+    content: "SCHOOLDB";
+    position: absolute;
+    right: -4mm;
+    bottom: 20mm;
+    color: rgba(79, 70, 229, 0.035) !important;
+    font-size: 29mm;
+    font-weight: 900;
+    letter-spacing: -2mm;
+    transform: rotate(-8deg);
+  }
+
+  .student-overall-report-print .student-report-cover-accent {
+    position: absolute;
+    inset: 0 0 auto;
+    height: 2.2mm;
+    background: linear-gradient(90deg, #4f46e5, #7c3aed, #db2777) !important;
+  }
+
+  .student-overall-report-print .student-report-cover-header {
+    position: relative;
+    z-index: 1;
+    overflow: hidden;
+    border-radius: 4mm;
+    background: linear-gradient(120deg, #172033 0%, #312e81 62%, #4f46e5 100%) !important;
+    padding: 8mm;
+    color: #ffffff !important;
+    box-shadow: 0 5mm 12mm -8mm rgba(49, 46, 129, 0.75);
+  }
+
+  .student-overall-report-print .student-report-brand-row {
+    display: flex;
+    align-items: center;
+    gap: 3mm;
+  }
+
+  .student-overall-report-print .student-report-brand-mark {
+    display: flex;
+    width: 12mm;
+    height: 12mm;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 3mm;
+    background: rgba(255, 255, 255, 0.12) !important;
+    color: #ffffff !important;
+    font-size: 4mm;
+    font-weight: 900;
+  }
+
+  .student-overall-report-print .student-report-school-name {
+    color: #ffffff !important;
+    font-size: 4mm;
+    font-weight: 800;
+    letter-spacing: 0.15mm;
+  }
+
+  .student-overall-report-print .student-report-document-type {
+    margin-top: 0.5mm;
+    color: #c7d2fe !important;
+    font-size: 2.5mm;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.4mm;
+  }
+
+  .student-overall-report-print .student-report-confidential {
+    margin-left: auto;
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.1) !important;
+    color: #ffffff !important;
+    padding: 1.5mm 3mm;
+    font-size: 2.4mm;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.35mm;
+  }
+
+  .student-overall-report-print .student-report-title-block {
+    margin-top: 14mm;
+  }
+
+  .student-overall-report-print .student-report-title-block > p {
+    color: #c7d2fe !important;
+    font-size: 3mm;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.7mm;
+  }
+
+  .student-overall-report-print .student-report-title-block h2 {
+    margin-top: 2mm;
+    color: #ffffff !important;
+    font-size: 10mm;
+    font-weight: 900;
+    letter-spacing: -0.45mm;
+    line-height: 1;
+  }
+
+  .student-overall-report-print .student-report-meta {
+    display: flex;
+    gap: 8mm;
+    margin-top: 5mm;
+    color: #e0e7ff !important;
+    font-size: 2.8mm;
+  }
+
+  .student-overall-report-print .student-report-meta strong {
+    color: #ffffff !important;
+  }
+
+  .student-overall-report-print .student-report-metrics {
+    position: relative;
+    z-index: 1;
+    margin-top: 7mm;
+  }
+
+  .student-overall-report-print .student-report-metrics [data-slot="card"] {
+    border-color: #dbe3f0 !important;
+    border-radius: 3mm !important;
+    background: rgba(255, 255, 255, 0.94) !important;
+    box-shadow: 0 3mm 8mm -6mm rgba(30, 41, 59, 0.4) !important;
+  }
+
+  .student-overall-report-print .student-report-metrics [data-slot="card-content"] {
+    padding: 4mm !important;
+  }
+
+  .student-overall-report-print .student-report-cover-note {
+    position: absolute;
+    z-index: 1;
+    right: 9mm;
+    bottom: 8mm;
+    left: 9mm;
+    display: flex;
+    justify-content: space-between;
+    border-top: 1px solid #dbe3f0;
+    padding-top: 3mm;
+    color: #64748b !important;
+    font-size: 2.5mm;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.25mm;
   }
 
   .student-overall-report-print [data-slot="card"] {
@@ -1368,6 +1526,26 @@
     break-inside: auto !important;
     page-break-before: always;
     page-break-inside: auto !important;
+    overflow: hidden;
+    border: 1px solid #dbe3f0 !important;
+    border-radius: 4mm !important;
+    background: #ffffff !important;
+  }
+
+  .student-overall-report-print .student-report-section-heading {
+    border-bottom: 0 !important;
+    background: linear-gradient(110deg, #172033 0%, #312e81 100%) !important;
+    padding: 5mm 6mm !important;
+    color: #ffffff !important;
+  }
+
+  .student-overall-report-print .student-report-section-heading h3,
+  .student-overall-report-print .student-report-section-heading span {
+    color: #ffffff !important;
+  }
+
+  .student-overall-report-print .student-report-section-kicker {
+    color: #a5b4fc !important;
   }
 
   .student-overall-report-print table {
@@ -1378,9 +1556,45 @@
     display: table-header-group;
   }
 
+  .student-overall-report-print .student-report-table-head {
+    background: #eef2ff !important;
+    color: #312e81 !important;
+  }
+
+  .student-overall-report-print .student-report-table-head th {
+    border-color: #c7d2fe !important;
+    color: #312e81 !important;
+    font-weight: 800 !important;
+    text-transform: uppercase;
+    letter-spacing: 0.08mm;
+  }
+
+  .student-overall-report-print tbody tr:nth-child(even) {
+    background: #f8faff !important;
+  }
+
+  .student-overall-report-print td {
+    border-color: #e2e8f0 !important;
+    color: #334155 !important;
+  }
+
   .student-overall-report-print tr {
     break-inside: avoid;
     page-break-inside: avoid;
+  }
+
+  .student-overall-report-print .student-report-footer {
+    position: fixed;
+    right: 0;
+    bottom: -7mm;
+    left: 0;
+    display: flex;
+    justify-content: space-between;
+    border-top: 1px solid #dbe3f0;
+    padding-top: 1.5mm;
+    color: #64748b !important;
+    font-size: 2.2mm;
+    font-weight: 600;
   }
 
   .parent-query-qr-print {

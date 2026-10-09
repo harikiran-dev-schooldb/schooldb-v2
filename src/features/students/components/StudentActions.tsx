@@ -2,12 +2,10 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { ChartNoAxesCombined, Eye, Pencil, RefreshCw } from "lucide-react";
+import { Eye, Pencil, RefreshCw } from "lucide-react";
 
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { ActionMenu } from "@/components/common/actions/ActionMenu";
-import { useSchool } from "@/contexts/school-context";
-
 import { StudentDialog } from "./StudentDialog";
 import { StudentStatusDialog } from "./StudentStatusDialog";
 
@@ -16,27 +14,12 @@ type Props = {
 };
 
 export function StudentActions({ studentId }: Props) {
-  const { role } = useSchool();
   const [editOpen, setEditOpen] = useState(false);
   const [statusOpen, setStatusOpen] = useState(false);
 
   return (
     <>
       <ActionMenu>
-        {(role === "SUPER_ADMIN" || role === "SCHOOL_ADMIN") && (
-          <DropdownMenuItem
-            asChild
-            className="group cursor-pointer rounded-lg px-3 py-2.5 font-medium focus:bg-violet-50 focus:text-violet-700"
-          >
-            <Link href={`students/${studentId}?tab=overall`}>
-              <div className="mr-3 flex size-7 items-center justify-center rounded-lg bg-violet-50 text-violet-600 transition-transform group-hover:scale-105">
-                <ChartNoAxesCombined className="size-3.5" />
-              </div>
-              <span>Overall Report</span>
-            </Link>
-          </DropdownMenuItem>
-        )}
-
         <DropdownMenuItem
           asChild
           className="group cursor-pointer rounded-lg px-3 py-2.5 font-medium focus:bg-primary/5 focus:text-primary"

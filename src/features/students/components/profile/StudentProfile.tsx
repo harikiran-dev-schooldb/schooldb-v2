@@ -5,7 +5,6 @@ import {
   Activity,
   Award,
   CalendarDays,
-  ChartNoAxesCombined,
   CreditCard,
   FileText,
   GraduationCap,
@@ -105,7 +104,6 @@ export type StudentProfileData = {
 type Props = { studentId: string };
 
 const tabs = [
-  { value: "overall", label: "Overall Report", icon: ChartNoAxesCombined },
   { value: "overview", label: "Overview", icon: LayoutDashboard },
   { value: "details", label: "All Details", icon: IdCard },
   { value: "enrollment", label: "Enrollment", icon: GraduationCap },
@@ -198,9 +196,9 @@ export function StudentProfile({ studentId, initialTab }: Props & { initialTab?:
   if (loading) return <StudentProfileSkeleton />;
   if (!student) return <StudentProfileNotFound />;
 
-  const canViewOverallReport = role === "SUPER_ADMIN" || role === "SCHOOL_ADMIN";
+  const canExportCompleteReport = role === "SUPER_ADMIN" || role === "SCHOOL_ADMIN";
   const visibleTabs = role !== "TEACHER"
-    ? tabs.filter((tab) => tab.value !== "overall" || canViewOverallReport)
+    ? tabs
     : tabs.filter((tab) => {
         if (tab.value === "attendance") return hasTeacherAccess(teacherAccess, "ATTENDANCE");
         if (tab.value === "fees") return hasTeacherAccess(teacherAccess, "FEES");
@@ -210,11 +208,12 @@ export function StudentProfile({ studentId, initialTab }: Props & { initialTab?:
 
   const selectedTab = visibleTabs.some((tab) => tab.value === initialTab)
     ? initialTab
-    : canViewOverallReport ? "overall" : "overview";
+    : "overview";
 
   return (
     <div className="space-y-6">
       <StudentProfileHeader student={student} />
+      {canExportCompleteReport ? <StudentOverallReport studentId={studentId} /> : null}
       <Tabs defaultValue={selectedTab} className="w-full">
         <div className="sticky top-0 z-10 -mx-1 bg-background/95 px-1 pb-2 backdrop-blur supports-[backdrop-filter]:bg-background/80">
           <div className="overflow-x-auto">
@@ -236,7 +235,6 @@ export function StudentProfile({ studentId, initialTab }: Props & { initialTab?:
           </div>
         </div>
 
-        {canViewOverallReport ? <TabsContent value="overall" className="mt-5"><StudentOverallReport studentId={studentId} /></TabsContent> : null}
         <TabsContent value="overview" className="mt-5"><StudentOverviewTab student={student} /></TabsContent>
         <TabsContent value="details" className="mt-5"><StudentDetailsTab student={student} /></TabsContent>
         <TabsContent value="enrollment" className="mt-5"><StudentEnrollmentTab student={student} /></TabsContent>

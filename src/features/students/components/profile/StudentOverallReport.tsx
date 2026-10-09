@@ -5,10 +5,10 @@ import {
   Award,
   CalendarCheck,
   CreditCard,
-  Download,
+  FileSpreadsheet,
+  FileText,
   GraduationCap,
   Loader2,
-  Printer,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -72,14 +72,12 @@ function MetricCard({
   );
 }
 
-function ReportTable({ section }: { section: ReportSection }) {
+function ReportTable({ section, index }: { section: ReportSection; index: number }) {
   return (
     <article className="student-report-section overflow-hidden rounded-2xl border bg-card shadow-sm print:rounded-none print:shadow-none">
-      <div className="border-b bg-muted/30 px-5 py-4">
+      <div className="student-report-section-heading border-b bg-muted/30 px-5 py-4">
         <div className="flex items-center justify-between gap-3">
-          <h3 className="text-base font-bold text-foreground">
-            {section.title}
-          </h3>
+          <div><p className="student-report-section-kicker text-[10px] font-bold uppercase tracking-[0.18em] text-indigo-600">Section {String(index + 1).padStart(2, "0")}</p><h3 className="mt-1 text-base font-bold text-foreground">{section.title}</h3></div>
           <span className="text-xs font-medium text-muted-foreground">
             {section.rows.length} record{section.rows.length === 1 ? "" : "s"}
           </span>
@@ -88,7 +86,7 @@ function ReportTable({ section }: { section: ReportSection }) {
       {section.rows.length ? (
         <div className="overflow-x-auto">
           <table className="w-full min-w-max border-collapse text-left text-xs print:min-w-0 print:table-fixed print:text-[8px]">
-            <thead className="bg-indigo-600 text-white print:bg-slate-200 print:text-slate-900">
+            <thead className="student-report-table-head bg-indigo-600 text-white">
               <tr>
                 {section.columns.map((column) => (
                   <th
@@ -125,6 +123,32 @@ function ReportTable({ section }: { section: ReportSection }) {
         </p>
       )}
     </article>
+  );
+}
+
+function PremiumExportPanel({
+  studentId,
+  pdfReady,
+  status,
+}: {
+  studentId: string;
+  pdfReady: boolean;
+  status?: string | null;
+}) {
+  return (
+    <section className="rounded-2xl border bg-card p-5 shadow-sm print:hidden">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <h2 className="font-bold">Export complete student record</h2>
+          <p className="mt-1 text-sm text-muted-foreground">All profile sections are included in both formats.</p>
+          {status ? <p className="mt-2 flex items-center gap-2 text-xs text-amber-700"><Loader2 className="size-3.5 animate-spin" />{status}</p> : null}
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button asChild><a href={`/api/v1/students/${studentId}/comprehensive-report?format=xlsx`}><FileSpreadsheet className="size-4" />Download Excel</a></Button>
+          <Button type="button" variant="outline" disabled={!pdfReady} onClick={() => window.print()}>{pdfReady ? <FileText className="size-4" /> : <Loader2 className="size-4 animate-spin" />}Save as PDF</Button>
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -182,55 +206,29 @@ export function StudentOverallReport({ studentId }: { studentId: string }) {
     };
   }, [report]);
 
-  if (loading)
-    return (
-      <div className="flex min-h-72 items-center justify-center rounded-2xl border bg-card text-sm text-muted-foreground">
-        <Loader2 className="mr-2 size-4 animate-spin" />
-        Preparing the complete report…
-      </div>
-    );
-  if (error || !report)
-    return (
-      <div className="rounded-2xl border border-destructive/20 bg-destructive/5 p-6 text-sm text-destructive">
-        {error || "Complete report unavailable."}
-      </div>
-    );
+  if (loading) return <PremiumExportPanel studentId={studentId} pdfReady={false} status="Preparing the PDF report…" />;
+  if (error || !report) return <PremiumExportPanel studentId={studentId} pdfReady={false} status={error || "PDF report is unavailable."} />;
 
   return (
-    <section className="student-overall-report-print space-y-5 print:space-y-4">
-      <header className="flex flex-col gap-4 rounded-3xl border border-indigo-100 bg-gradient-to-br from-white via-indigo-50/70 to-violet-50/60 p-6 shadow-sm sm:flex-row sm:items-center sm:justify-between print:rounded-none print:border-slate-300 print:bg-white print:p-3 print:shadow-none">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-indigo-600">
-            Complete student report
-          </p>
-          <h2 className="mt-2 text-2xl font-black tracking-tight">
-            {report.studentName}
-          </h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {report.schoolName} · Admission {report.admissionNo} · Generated{" "}
-            {new Date(report.generatedAt).toLocaleString("en-IN")}
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2 print:hidden">
-          <Button asChild type="button" className="gap-2">
-            <a
-              href={`/api/v1/students/${studentId}/comprehensive-report?format=xlsx`}
-            >
-              <Download className="size-4" /> Download Excel
-            </a>
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            className="gap-2"
-            onClick={() => window.print()}
-          >
-            <Printer className="size-4" /> Print / Save PDF
-          </Button>
-        </div>
-      </header>
+    <>
+      <PremiumExportPanel studentId={studentId} pdfReady />
+      <section className="student-overall-report-print hidden space-y-5 print:block print:space-y-4">
+      <div className="student-report-cover">
+        <div className="student-report-cover-accent" />
+        <header className="student-report-cover-header">
+          <div className="student-report-brand-row">
+            <div className="student-report-brand-mark">SDB</div>
+            <div><p className="student-report-school-name">{report.schoolName}</p><p className="student-report-document-type">Student records portfolio</p></div>
+            <span className="student-report-confidential">Confidential</span>
+          </div>
+          <div className="student-report-title-block">
+            <p>Complete student report</p>
+            <h2>{report.studentName}</h2>
+            <div className="student-report-meta"><span>Admission No. <strong>{report.admissionNo}</strong></span><span>Prepared <strong>{new Date(report.generatedAt).toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" })}</strong></span></div>
+          </div>
+        </header>
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4 print:grid-cols-4">
+      <div className="student-report-metrics grid gap-3 sm:grid-cols-2 xl:grid-cols-4 print:grid-cols-4">
         <MetricCard
           icon={GraduationCap}
           label="Enrollment"
@@ -260,12 +258,16 @@ export function StudentOverallReport({ studentId }: { studentId: string }) {
           tone="bg-violet-50 text-violet-600"
         />
       </div>
+      <div className="student-report-cover-note"><span>Complete profile</span><span>9 structured sections</span><span>Securely generated by SchoolDB</span></div>
+      </div>
 
       <div className="space-y-5 print:space-y-4">
-        {report.sections.map((section) => (
-          <ReportTable key={section.key} section={section} />
+        {report.sections.map((section, index) => (
+          <ReportTable key={section.key} section={section} index={index} />
         ))}
       </div>
-    </section>
+      <footer className="student-report-footer"><span>{report.schoolName}</span><span>{report.studentName} · {report.admissionNo}</span><span>Generated by SchoolDB</span></footer>
+      </section>
+    </>
   );
 }

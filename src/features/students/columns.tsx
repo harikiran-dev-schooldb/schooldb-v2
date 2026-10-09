@@ -43,7 +43,7 @@ export const studentColumns: ColumnDef<StudentListItem>[] = [
 
       return (
         <Link
-          href={`students/${student.id}?tab=overall`}
+          href={`students/${student.id}?tab=overview`}
           className="group flex min-w-[220px] items-center gap-3"
         >
           <Avatar className="size-10 shrink-0 border border-primary/10 bg-primary/5 shadow-sm transition-transform duration-200 group-hover:scale-105">
