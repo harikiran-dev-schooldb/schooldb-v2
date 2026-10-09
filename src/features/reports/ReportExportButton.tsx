@@ -41,6 +41,7 @@ export function ReportExportButton({ query, label = "Download CSV", className }:
         }
         if (statusResult.data.status === "READY") {
           toast.success("Report ready. Your download is starting.");
+          window.dispatchEvent(new Event("schooldb:report-exported"));
           const download = document.createElement("a");
           download.href = `/api/v1/report-exports/${result.data.id}/download`;
           download.click();

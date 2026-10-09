@@ -9,13 +9,20 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 type ExportJob = {
   id: string;
-  status: "QUEUED" | "PROCESSING" | "READY" | "FAILED" | "EXPIRED";
+  status: "QUEUED" | "PROCESSING" | "READY" | "FAILED" | "EXPIRED" | "DOWNLOADED";
   filename: string | null;
   rowCount: number | null;
   error: string | null;
   createdAt: string;
   expiresAt: string | null;
+  direct?: boolean;
+  performedBy: string;
+  performedByRole: string | null;
 };
+
+function formatRole(role: string | null) {
+  return role ? role.toLowerCase().split("_").map((part) => part[0]?.toUpperCase() + part.slice(1)).join(" ") : null;
+}
 
 export function ReportExportHistory() {
   const [jobs, setJobs] = useState<ExportJob[]>([]);
@@ -34,7 +41,12 @@ export function ReportExportHistory() {
 
   useEffect(() => {
     const timeout = window.setTimeout(() => void load(), 0);
-    return () => window.clearTimeout(timeout);
+    const refresh = () => void load();
+    window.addEventListener("schooldb:report-exported", refresh);
+    return () => {
+      window.clearTimeout(timeout);
+      window.removeEventListener("schooldb:report-exported", refresh);
+    };
   }, [load]);
 
   return (
@@ -42,7 +54,7 @@ export function ReportExportHistory() {
       <CardHeader className="flex flex-row items-center justify-between gap-4">
         <div>
           <CardTitle>Private export history</CardTitle>
-          <p className="mt-1 text-xs text-muted-foreground">Queued analytics exports are private, audited, and retained for seven days.</p>
+          <p className="mt-1 text-xs text-muted-foreground">Your queued exports and direct report downloads from the last seven days.</p>
         </div>
         <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
           <RefreshCw className={loading ? "size-4 animate-spin" : "size-4"} />Refresh
@@ -59,11 +71,15 @@ export function ReportExportHistory() {
                     {new Intl.DateTimeFormat("en-IN", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Kolkata" }).format(new Date(job.createdAt))}
                     {job.rowCount !== null ? ` · ${job.rowCount} rows` : ""}
                   </p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    Performed by <span className="font-medium text-foreground">{job.performedBy}</span>
+                    {formatRole(job.performedByRole) ? ` · ${formatRole(job.performedByRole)}` : ""}
+                  </p>
                   {job.error ? <p className="mt-1 text-xs text-destructive">{job.error}</p> : null}
                 </div>
                 <div className="flex items-center gap-2">
-                  <Badge variant={job.status === "READY" ? "success" : job.status === "FAILED" ? "destructive" : "outline"}>{job.status}</Badge>
-                  {job.status === "READY" ? (
+                  <Badge variant={job.status === "READY" || job.status === "DOWNLOADED" ? "success" : job.status === "FAILED" ? "destructive" : "outline"}>{job.status}</Badge>
+                  {job.status === "READY" && !job.direct ? (
                     <Button asChild variant="outline" size="sm">
                       <a href={`/api/v1/report-exports/${job.id}/download`}><Download className="size-4" />Download</a>
                     </Button>

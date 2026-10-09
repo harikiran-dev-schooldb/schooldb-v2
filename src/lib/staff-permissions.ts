@@ -186,6 +186,7 @@ export const API_ACCESS_RULES: readonly ApiAccessRule[] = [
   { prefix: "/api/v1/mobile/admin/reports", read: ["REPORTS"] },
   { prefix: "/api/v1/mobile/admin/sections", read: ACADEMIC_REFERENCE_CONSUMERS },
   { prefix: "/api/v1/mobile/admin/students", read: ["STUDENTS"], write: ["STUDENTS"] },
+  { prefix: "/api/v1/report-downloads", read: ["REPORTS"], write: ["REPORTS"], writeLevel: "VIEW" },
   { prefix: "/api/v1/report-exports", read: ["REPORTS"], write: ["REPORTS"], writeLevel: "VIEW" },
   { prefix: "/api/v1/reports", read: ["REPORTS"], write: ["REPORTS"], writeLevel: "VIEW" },
   { prefix: "/api/v1/report", read: ["REPORTS"], write: ["REPORTS"], writeLevel: "VIEW" },
