@@ -9,6 +9,10 @@ import { Button } from "@/components/ui/button";
 import { SCHOOL_TIME_ZONE } from "@/lib/date-time";
 import { isApplePlatform } from "@/lib/browser-push";
 import {
+  playNotificationSound,
+  prepareNotificationSound,
+} from "@/lib/browser-notification-sound";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -84,6 +88,7 @@ export function NotificationMenu({
   }, [schoolSlug]);
 
   useEffect(() => {
+    prepareNotificationSound();
     void loadFeed();
     const refresh = () => {
       if (document.visibilityState === "visible") void loadFeed();
@@ -119,7 +124,10 @@ export function NotificationMenu({
         void loadFeed();
         const title = payload.notification?.title || payload.data?.title;
         const body = payload.notification?.body || payload.data?.body;
-        if (title) toast.info(title, { description: body });
+        if (title) {
+          void playNotificationSound();
+          toast.info(title, { description: body });
+        }
       });
     }).catch(() => {
       // Foreground refresh is an enhancement; background delivery remains active.
