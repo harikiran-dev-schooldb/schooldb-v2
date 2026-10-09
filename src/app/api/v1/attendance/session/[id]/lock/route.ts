@@ -32,7 +32,7 @@ export async function POST(req: Request, { params }: Props) {
       tenant.schoolId,
       id,
     );
-    await notifyAttendanceLocked(id, tenant.schoolId, tenant.userId);
+    await notifyAttendanceLocked(id, tenant.schoolId);
     const campaign = await queueAttendanceSessionAlert(tenant.schoolId, id);
     if (campaign) after(() => processAutomatedCampaign(campaign.id));
     await recordAuditLog({

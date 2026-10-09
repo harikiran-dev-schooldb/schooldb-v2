@@ -1335,9 +1335,31 @@
   .certificate-print *,
   .id-card-print,
   .id-card-print *,
+  .student-overall-report-print,
+  .student-overall-report-print *,
   .parent-query-qr-print,
   .parent-query-qr-print * {
     visibility: visible !important;
+  }
+
+  .student-overall-report-print {
+    position: absolute !important;
+    inset: 0 auto auto 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 6mm !important;
+    background: #ffffff !important;
+  }
+
+  .student-overall-report-print article,
+  .student-overall-report-print [data-slot="card"] {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  .student-overall-report-print table {
+    width: 100% !important;
   }
 
   .parent-query-qr-print {

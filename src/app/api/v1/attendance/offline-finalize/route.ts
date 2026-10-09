@@ -135,7 +135,7 @@ export async function POST(request: Request) {
     );
 
     if (!mutation.replayed) {
-      await notifyAttendanceLocked(mutation.data.id, tenant.schoolId, tenant.userId);
+      await notifyAttendanceLocked(mutation.data.id, tenant.schoolId);
       const campaign = await queueAttendanceSessionAlert(tenant.schoolId, mutation.data.id);
       if (campaign) after(() => processAutomatedCampaign(campaign.id));
       await recordAuditLog({

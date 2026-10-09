@@ -139,7 +139,7 @@ export function StudentOverallReport({ studentId }: { studentId: string }) {
   }
 
   return (
-    <section className="space-y-5 print:space-y-4">
+    <section className="student-overall-report-print space-y-5 print:space-y-4">
       <div className="flex flex-col gap-4 rounded-3xl border border-indigo-100 bg-gradient-to-br from-white via-indigo-50/70 to-violet-50/60 p-6 shadow-sm sm:flex-row sm:items-center sm:justify-between print:border-slate-300 print:bg-white print:shadow-none">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-indigo-600">Student 360° report</p>

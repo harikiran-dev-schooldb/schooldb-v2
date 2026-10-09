@@ -29,7 +29,7 @@ export async function POST(req: Request) {
 
     await Promise.all(
       (result.lockedSessionIds ?? []).map((sessionId) =>
-        notifyAttendanceLocked(sessionId, tenant.schoolId, tenant.userId),
+        notifyAttendanceLocked(sessionId, tenant.schoolId),
       ),
     );
 

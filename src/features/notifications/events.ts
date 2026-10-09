@@ -362,7 +362,6 @@ export async function notifyFeePayment(paymentId: string, schoolId: string) {
 export async function notifyAttendanceLocked(
   sessionId: string,
   schoolId: string,
-  performedByUserId?: string,
 ) {
   const session = await prisma.attendanceSession.findFirst({
     where: { id: sessionId, schoolId, locked: true },
@@ -375,21 +374,6 @@ export async function notifyAttendanceLocked(
     },
   });
   if (!session) return null;
-
-  await prisma.studentActivity.createMany({
-    data: session.records.map((record) => ({
-      schoolId,
-      studentId: record.studentId,
-      type: "ATTENDANCE_MARKED" as const,
-      title: "Attendance finalized",
-      description: `${session.class.name} - ${session.section.name}: ${record.status.toLowerCase()}.`,
-      performedByUserId,
-      sourceType: "ATTENDANCE_SESSION",
-      sourceId: session.id,
-      metadata: { sessionId: session.id, status: record.status },
-    })),
-    skipDuplicates: true,
-  });
 
   const absentIds = session.records
     .filter((record) => record.status === "ABSENT")

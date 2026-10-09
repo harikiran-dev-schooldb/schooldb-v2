@@ -72,6 +72,30 @@ type Props = {
   studentId: string;
 };
 
+function changedFieldLabels(metadata: unknown) {
+  if (!metadata || typeof metadata !== "object" || !("fields" in metadata)) return [];
+  const fields = (metadata as { fields?: unknown }).fields;
+  if (!Array.isArray(fields)) return [];
+  return fields.flatMap((field) => {
+    if (typeof field === "object" && field && "label" in field) {
+      const label = (field as { label?: unknown }).label;
+      return typeof label === "string" && label.trim() ? [label] : [];
+    }
+    if (typeof field !== "string") return [];
+    return [field.replace(/([a-z])([A-Z])/g, "$1 $2").replace(/^./, (value) => value.toUpperCase())];
+  });
+}
+
+function usefulActivities(items: StudentActivity[]) {
+  return items.filter((activity) => {
+    if (activity.title === "Attendance finalized") return false;
+    const legacyGenericProfileUpdate = activity.type === "PROFILE_UPDATED" &&
+      changedFieldLabels(activity.metadata).length === 0 &&
+      activity.description?.startsWith("Profile information for ");
+    return !legacyGenericProfileUpdate;
+  });
+}
+
 function formatDate(value: string) {
   return formatSchoolDateMedium(value);
 }
@@ -240,7 +264,7 @@ export function StudentActivityTab({ studentId }: Props) {
           return;
         }
 
-        setActivities(result.data?.items ?? []);
+        setActivities(usefulActivities(result.data?.items ?? []));
         setNextCursor(result.data?.nextCursor ?? null);
         setError(false);
       } catch (err) {
@@ -274,7 +298,7 @@ export function StudentActivityTab({ studentId }: Props) {
       );
       const result = await response.json();
       if (!response.ok || !result.success) throw new Error("Unable to load more activity.");
-      setActivities((current) => [...current, ...(result.data?.items ?? [])]);
+      setActivities((current) => [...current, ...usefulActivities(result.data?.items ?? [])]);
       setNextCursor(result.data?.nextCursor ?? null);
     } catch {
       setError(true);
@@ -378,6 +402,7 @@ export function StudentActivityTab({ studentId }: Props) {
             <div className="divide-y">
               {activities.map((activity) => {
                 const config = getActivityConfig(activity.type);
+                const changedFields = changedFieldLabels(activity.metadata);
 
                 const Icon = config.icon;
 
@@ -410,6 +435,15 @@ export function StudentActivityTab({ studentId }: Props) {
                             <p className="mt-1 text-sm leading-6 text-muted-foreground">
                               {activity.description}
                             </p>
+                          )}
+                          {changedFields.length > 0 && (
+                            <div className="mt-3 flex flex-wrap gap-2">
+                              {changedFields.map((field) => (
+                                <span key={field} className="rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">
+                                  {field}
+                                </span>
+                              ))}
+                            </div>
                           )}
                         </div>
 

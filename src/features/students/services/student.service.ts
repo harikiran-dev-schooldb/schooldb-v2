@@ -283,36 +283,106 @@ export const studentService = {
     /* Activity                                                        */
     /* -------------------------------------------------------------- */
 
-    await studentActivityService.create({
-      schoolId,
-
-      studentId: id,
-      performedByUserId,
-
-      type: "PROFILE_UPDATED",
-
-      title: "Student profile updated",
-
-      description: `Profile information for ${
-        updated.fullName ?? updated.admissionNo
-      } was updated.`,
-    });
-
     const parentFields = [
       "fatherName", "fatherPhone", "fatherEmail", "fatherOccupation",
+      "fatherQualification", "fatherIncome", "fatherAadhar",
       "motherName", "motherPhone", "motherEmail", "motherOccupation",
+      "motherQualification", "motherIncome", "motherAadhar",
       "guardianName", "guardianPhone", "guardianRelation",
     ] as const;
-    const parentChanges = parentFields.filter((field) => student[field] !== updated[field]);
+    const fieldLabels = {
+      admissionNo: "Admission number",
+      fullName: "Student name",
+      gender: "Gender",
+      dob: "Date of birth",
+      joinedDate: "Joined date",
+      phone: "Phone",
+      alternatePhone: "Alternate phone",
+      email: "Email",
+      imageUrl: "Profile image",
+      status: "Status",
+      studentAadhar: "Student Aadhaar",
+      apaarId: "APAAR ID",
+      penNo: "PEN number",
+      emisNo: "EMIS number",
+      bloodGroup: "Blood group",
+      nationality: "Nationality",
+      motherTongue: "Mother tongue",
+      religion: "Religion",
+      category: "Category",
+      caste: "Caste",
+      subCaste: "Sub-caste",
+      address: "Address",
+      city: "City",
+      district: "District",
+      state: "State",
+      pincode: "PIN code",
+      country: "Country",
+      fatherName: "Father name",
+      fatherPhone: "Father phone",
+      fatherEmail: "Father email",
+      fatherOccupation: "Father occupation",
+      fatherQualification: "Father qualification",
+      fatherIncome: "Father income",
+      fatherAadhar: "Father Aadhaar",
+      motherName: "Mother name",
+      motherPhone: "Mother phone",
+      motherEmail: "Mother email",
+      motherOccupation: "Mother occupation",
+      motherQualification: "Mother qualification",
+      motherIncome: "Mother income",
+      motherAadhar: "Mother Aadhaar",
+      guardianName: "Guardian name",
+      guardianPhone: "Guardian phone",
+      guardianRelation: "Guardian relationship",
+      doctorName: "Doctor name",
+      doctorPhone: "Doctor phone",
+      medicalConditions: "Medical conditions",
+      allergies: "Allergies",
+      isRte: "RTE status",
+      hostelRequired: "Hostel requirement",
+      transportRequired: "Transport requirement",
+      whatsappOptIn: "WhatsApp consent",
+      remarks: "Remarks",
+    } as const;
+    const before = student as unknown as Record<string, unknown>;
+    const after = updated as unknown as Record<string, unknown>;
+    const normalized = (value: unknown) => {
+      if (value instanceof Date) return value.toISOString();
+      if (value === null || value === undefined) return null;
+      if (typeof value === "object" && "toString" in value) return String(value);
+      return value;
+    };
+    const changedFields = Object.keys(fieldLabels).filter(
+      (field) => normalized(before[field]) !== normalized(after[field]),
+    ) as Array<keyof typeof fieldLabels>;
+    const parentFieldSet = new Set<string>(parentFields);
+    const profileChanges = changedFields.filter((field) => !parentFieldSet.has(field));
+    const parentChanges = changedFields.filter((field) => parentFieldSet.has(field));
+
+    if (profileChanges.length > 0) {
+      const labels = profileChanges.map((field) => fieldLabels[field]);
+      await studentActivityService.create({
+        schoolId,
+        studentId: id,
+        performedByUserId,
+        type: "PROFILE_UPDATED",
+        title: "Student profile updated",
+        description: `Updated: ${labels.join(", ")}.`,
+        metadata: { fields: profileChanges.map((field) => ({ key: field, label: fieldLabels[field] })) },
+      });
+    }
+
     if (parentChanges.length > 0) {
+      const labels = parentChanges.map((field) => fieldLabels[field]);
       await studentActivityService.create({
         schoolId,
         studentId: id,
         performedByUserId,
         type: "PARENT_UPDATED",
         title: "Parent information updated",
-        description: `Updated: ${parentChanges.join(", ")}.`,
-        metadata: { fields: parentChanges },
+        description: `Updated: ${labels.join(", ")}.`,
+        metadata: { fields: parentChanges.map((field) => ({ key: field, label: fieldLabels[field] })) },
       });
     }
 

@@ -63,6 +63,10 @@ export const studentActivityService = {
       where: {
         studentId,
         schoolId,
+        NOT: {
+          type: "ATTENDANCE_MARKED",
+          title: "Attendance finalized",
+        },
       },
 
       include: {

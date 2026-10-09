@@ -58,7 +58,7 @@ export async function POST(req: Request) {
 
     let campaignQueued = false;
     if (body.finalize) {
-      await notifyAttendanceLocked(body.sessionId, tenant.schoolId, tenant.userId);
+      await notifyAttendanceLocked(body.sessionId, tenant.schoolId);
       const campaign = await queueAttendanceSessionAlert(tenant.schoolId, body.sessionId);
       campaignQueued = Boolean(campaign);
       if (campaign) after(() => processAutomatedCampaign(campaign.id));
