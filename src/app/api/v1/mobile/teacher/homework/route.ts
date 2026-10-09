@@ -1,4 +1,4 @@
-import { requireCurrentTeacher, requireRole } from "@/lib/auth";
+import { requireCurrentTeacher, requireRole, requireTeacherFeatureAccess } from "@/lib/auth";
 import { apiHandler } from "@/lib/api";
 import { recordAuditLog } from "@/lib/audit";
 import { notifyHomeworkPublished } from "@/features/notifications/events";
@@ -10,6 +10,7 @@ import { publishHomeworkSchema, schoolDate } from "@/features/homework/mobile-te
 export async function GET() {
   return apiHandler(async () => {
     const membership = await requireRole(["TEACHER"]);
+    await requireTeacherFeatureAccess("HOMEWORK");
     const teacher = await requireCurrentTeacher(membership.schoolId);
 
     const [subjectAllocations, classAssignments, items] = await Promise.all([
@@ -113,6 +114,7 @@ export async function GET() {
 export async function POST(req: Request) {
   return apiHandler(async () => {
     const membership = await requireRole(["TEACHER"]);
+    await requireTeacherFeatureAccess("HOMEWORK");
     const teacher = await requireCurrentTeacher(membership.schoolId);
     const body = await validateBody(req, publishHomeworkSchema);
     const allocation = await prisma.teacherAllocation.findFirst({

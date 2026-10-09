@@ -210,11 +210,13 @@ private fun TeacherShell(
     noticeViewModel: NoticeViewModel = viewModel(),
 ) {
     val dashboard = state.dashboard ?: return
+    val access = state.context?.teacherAccess ?: TeacherAccess()
+    val canUseResults = access.exams && (access.results || access.marksEntry)
     val preferences by AppPreferences.state.collectAsStateWithLifecycle()
     val isOnline by rememberIsOnline()
     var tab by rememberSaveable {
         mutableStateOf(
-            if (preferences.startTab == StartTabPreference.ATTENDANCE) {
+            if (preferences.startTab == StartTabPreference.ATTENDANCE && access.attendance) {
                 TeacherTab.ATTENDANCE
             } else {
                 TeacherTab.HOME
@@ -224,6 +226,24 @@ private fun TeacherShell(
 
     var moreScreen by rememberSaveable {
         mutableStateOf("MENU")
+    }
+
+    LaunchedEffect(access) {
+        if (tab == TeacherTab.ATTENDANCE && !access.attendance) tab = TeacherTab.HOME
+        if (tab == TeacherTab.HOMEWORK && !access.homework) tab = TeacherTab.HOME
+        if (
+            (moreScreen == "TIMETABLE" && !access.timetable) ||
+            (moreScreen == "STUDENTS" && !access.students) ||
+            (moreScreen == "RESULTS" && !canUseResults)
+        ) {
+            moreScreen = "MENU"
+        }
+    }
+    val activeMoreScreen = when {
+        moreScreen == "TIMETABLE" && !access.timetable -> "MENU"
+        moreScreen == "STUDENTS" && !access.students -> "MENU"
+        moreScreen == "RESULTS" && !canUseResults -> "MENU"
+        else -> moreScreen
     }
 
     val noticeState by noticeViewModel.uiState.collectAsStateWithLifecycle()
@@ -249,6 +269,7 @@ private fun TeacherShell(
         bottomBar = {
             SchoolDbBottomBar(
                 selectedTab = tab,
+                access = access,
                 unreadNotices = if (preferences.showNoticeBadges) noticeState.unreadCount else 0,
                 onTabSelected = {
                     tab = it
@@ -278,7 +299,7 @@ private fun TeacherShell(
                 }
 
                 TeacherTab.ATTENDANCE -> {
-                    AttendanceHub(
+                    if (access.attendance) AttendanceHub(
                         dashboard = dashboard,
                         loading = state.loading,
                         onRefresh = teacherViewModel::refresh,
@@ -288,7 +309,7 @@ private fun TeacherShell(
                 }
 
                 TeacherTab.HOMEWORK -> {
-                    HomeworkScreen(
+                    if (access.homework) HomeworkScreen(
                         onBack = {
                             tab = TeacherTab.HOME
                         },
@@ -303,7 +324,7 @@ private fun TeacherShell(
                 }
 
                 TeacherTab.MORE -> {
-                    when (moreScreen) {
+                    when (activeMoreScreen) {
                         "TIMETABLE" -> {
                             TeacherTimetableScreen(
                                 dashboard = dashboard,
@@ -321,6 +342,7 @@ private fun TeacherShell(
                         "RESULTS" -> {
                             ResultsScreen(
                                 onBack = { moreScreen = "MENU" },
+                                canEnterMarks = access.marksEntry,
                             )
                         }
 
@@ -339,6 +361,7 @@ private fun TeacherShell(
 
                         else -> {
                             TeacherMoreScreen(
+                                access = access,
                                 onOpenTimetable = { moreScreen = "TIMETABLE" },
                                 onOpenStudents = { moreScreen = "STUDENTS" },
                                 onOpenResults = { moreScreen = "RESULTS" },
@@ -362,6 +385,7 @@ private fun TeacherShell(
 @Composable
 private fun SchoolDbBottomBar(
     selectedTab: TeacherTab,
+    access: TeacherAccess,
     unreadNotices: Int,
     onTabSelected: (TeacherTab) -> Unit,
 ) {
@@ -410,7 +434,7 @@ private fun SchoolDbBottomBar(
             colors = navigationColors,
         )
 
-        NavigationBarItem(
+        if (access.attendance) NavigationBarItem(
             selected = selectedTab == TeacherTab.ATTENDANCE,
             onClick = {
                 onTabSelected(TeacherTab.ATTENDANCE)
@@ -437,7 +461,7 @@ private fun SchoolDbBottomBar(
             colors = navigationColors,
         )
 
-        NavigationBarItem(
+        if (access.homework) NavigationBarItem(
             selected = selectedTab == TeacherTab.HOMEWORK,
             onClick = {
                 onTabSelected(TeacherTab.HOMEWORK)
@@ -547,6 +571,7 @@ private fun SchoolDbBottomBar(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun TeacherMoreScreen(
+    access: TeacherAccess,
     onOpenTimetable: () -> Unit,
     onOpenStudents: () -> Unit,
     onOpenResults: () -> Unit,
@@ -597,30 +622,43 @@ private fun TeacherMoreScreen(
 
             item {
                 MoreMenuCard {
-                    MoreMenuItem(
-                        icon = Icons.Outlined.Schedule,
-                        title = "My Timetable",
-                        subtitle = "View your teaching schedule",
-                        onClick = onOpenTimetable,
-                    )
+                    if (access.timetable) {
+                        MoreMenuItem(
+                            icon = Icons.Outlined.Schedule,
+                            title = "My Timetable",
+                            subtitle = "View your teaching schedule",
+                            onClick = onOpenTimetable,
+                        )
+                    }
+                    val canUseResults = access.exams && (access.results || access.marksEntry)
+                    if (access.timetable && (access.students || canUseResults)) SchoolDbMenuDivider()
 
-                    SchoolDbMenuDivider()
+                    if (access.students) {
+                        MoreMenuItem(
+                            icon = Icons.Outlined.School,
+                            title = "My Students",
+                            subtitle = "Students from your classes",
+                            onClick = onOpenStudents,
+                        )
+                    }
+                    if (access.students && canUseResults) SchoolDbMenuDivider()
 
-                    MoreMenuItem(
-                        icon = Icons.Outlined.School,
-                        title = "My Students",
-                        subtitle = "Students from your classes",
-                        onClick = onOpenStudents,
-                    )
-
-                    SchoolDbMenuDivider()
-
-                    MoreMenuItem(
-                        icon = Icons.AutoMirrored.Outlined.FactCheck,
-                        title = "Results & Marks",
-                        subtitle = "Enter and review student marks",
-                        onClick = onOpenResults,
-                    )
+                    if (canUseResults) {
+                        MoreMenuItem(
+                            icon = Icons.AutoMirrored.Outlined.FactCheck,
+                            title = if (access.marksEntry) "Results & Marks" else "Results",
+                            subtitle = if (access.marksEntry) "Enter and review student marks" else "Review assigned student results",
+                            onClick = onOpenResults,
+                        )
+                    }
+                    if (!access.timetable && !access.students && !canUseResults) {
+                        Text(
+                            text = "No additional teaching tools are enabled for this account.",
+                            modifier = Modifier.fillMaxWidth().padding(18.dp),
+                            color = SchoolDbSlate500,
+                            fontSize = 12.sp,
+                        )
+                    }
                 }
             }
 
@@ -1063,6 +1101,7 @@ private fun AttendanceHub(
                         ) { period ->
                             PeriodCard(
                                 period = period,
+                                attendanceEnabled = true,
                                 onOpenAttendance = onOpenAttendance,
                             )
                         }
@@ -1240,6 +1279,7 @@ private fun TeacherHome(
             else -> {
                 DashboardContent(
                     dashboard = state.dashboard,
+                    attendanceEnabled = state.context?.teacherAccess?.attendance == true,
                     loading = state.loading,
                     onOpenAttendance = onOpenAttendance,
                     onOpenDailyAttendance = onOpenDailyAttendance,
@@ -1376,14 +1416,16 @@ private val String.displayRole: String
 @Composable
 private fun DashboardContent(
     dashboard: TeacherDashboard,
+    attendanceEnabled: Boolean,
     loading: Boolean,
     onOpenAttendance: (TeachingPeriod) -> Unit,
     onOpenDailyAttendance: (DailyAttendanceTarget) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val dailyMode =
-        dashboard.attendanceMode == "ONCE_DAILY" ||
+    val dailyMode = attendanceEnabled &&
+        (dashboard.attendanceMode == "ONCE_DAILY" ||
             dashboard.attendanceMode == "MORNING_AFTERNOON"
+        )
 
     val itemCount =
         if (dailyMode) {
@@ -1454,11 +1496,19 @@ private fun DashboardContent(
                             },
                         )
 
-                        SummaryLabel(
-                            icon = Icons.Default.CheckCircle,
-                            value = "$completed",
-                            label = "Marked",
-                        )
+                        if (attendanceEnabled) {
+                            SummaryLabel(
+                                icon = Icons.Default.CheckCircle,
+                                value = "$completed",
+                                label = "Marked",
+                            )
+                        } else {
+                            SummaryLabel(
+                                icon = Icons.Default.School,
+                                value = dashboard.academicYearName ?: "—",
+                                label = "Academic year",
+                            )
+                        }
                     }
                 }
             }
@@ -1556,6 +1606,7 @@ private fun DashboardContent(
             ) { period ->
                 PeriodCard(
                     period = period,
+                    attendanceEnabled = attendanceEnabled,
                     onOpenAttendance = onOpenAttendance,
                 )
             }
@@ -1804,6 +1855,7 @@ private fun SummaryLabel(
 @Composable
 private fun PeriodCard(
     period: TeachingPeriod,
+    attendanceEnabled: Boolean,
     onOpenAttendance: (TeachingPeriod) -> Unit,
 ) {
     Card(
@@ -1860,7 +1912,13 @@ private fun PeriodCard(
                 modifier = Modifier.height(14.dp),
             )
 
-            if (period.attendanceLocked) {
+            if (!attendanceEnabled) {
+                Text(
+                    text = "Scheduled class",
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            } else if (period.attendanceLocked) {
                 Text(
                     text = "Attendance locked",
                     color = MaterialTheme.colorScheme.secondary,

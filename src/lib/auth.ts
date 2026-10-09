@@ -245,6 +245,20 @@ export async function requireTeacherFeatureAccess(
   return membership;
 }
 
+export async function requireAnyTeacherFeatureAccess(
+  features: TeacherAccessFeature[],
+  schoolSlug?: string,
+) {
+  const membership = await requireTenant(schoolSlug);
+  if (membership.role !== "TEACHER") return membership;
+
+  const teacher = await requireCurrentTeacher(membership.schoolId);
+  if (!features.some((feature) => teacher[TEACHER_ACCESS_FIELDS[feature]])) {
+    throw new ApiError(403, "This teacher access has been disabled by the school administrator");
+  }
+  return membership;
+}
+
 export async function currentTeacherAccess(schoolId: string) {
   const teacher = await requireCurrentTeacher(schoolId);
   return prisma.teacher.findUniqueOrThrow({

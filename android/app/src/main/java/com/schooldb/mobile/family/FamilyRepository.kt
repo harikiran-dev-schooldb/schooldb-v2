@@ -49,6 +49,7 @@ class FamilyRepository(
                         id = item.getString("id"),
                         fullName = item.optString("fullName", "Student"),
                         admissionNo = item.optString("admissionNo"),
+                        imageUrl = item.optString("imageUrl").takeIf(String::isNotBlank),
                         relationship = item.optString("relationship", "Student"),
                         className = enrollment?.optString("className")?.takeIf(String::isNotBlank),
                         sectionName = enrollment?.optString("sectionName")?.takeIf(String::isNotBlank),

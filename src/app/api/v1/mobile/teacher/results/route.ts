@@ -1,4 +1,4 @@
-import { requireCurrentTeacher, requireRole } from "@/lib/auth";
+import { requireCurrentTeacher, requireRole, requireTeacherFeatureAccess } from "@/lib/auth";
 import { apiHandler } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 import { ApiResponse } from "@/lib/response";
@@ -6,6 +6,7 @@ import { ApiResponse } from "@/lib/response";
 export async function GET() {
   return apiHandler(async () => {
     const membership = await requireRole(["TEACHER"]);
+    await requireTeacherFeatureAccess("EXAMS");
     const teacher = await requireCurrentTeacher(membership.schoolId);
 
     const [allocations, classAssignments] = await Promise.all([

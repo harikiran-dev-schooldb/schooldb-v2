@@ -1,4 +1,4 @@
-import { requireCurrentTeacher, requireRole } from "@/lib/auth";
+import { requireCurrentTeacher, requireRole, requireTeacherFeatureAccess } from "@/lib/auth";
 import { apiHandler } from "@/lib/api";
 import { recordAuditLog } from "@/lib/audit";
 import { prisma } from "@/lib/prisma";
@@ -11,6 +11,7 @@ type Props = { params: Promise<{ id: string }> };
 export async function PUT(req: Request, { params }: Props) {
   return apiHandler(async () => {
     const membership = await requireRole(["TEACHER"]);
+    await requireTeacherFeatureAccess("HOMEWORK");
     const teacher = await requireCurrentTeacher(membership.schoolId);
     const { id } = await params;
     const body = await validateBody(req, publishHomeworkSchema);

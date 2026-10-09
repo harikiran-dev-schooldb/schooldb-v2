@@ -32,7 +32,6 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.automirrored.outlined.Assignment
 import androidx.compose.material.icons.automirrored.outlined.EventNote
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.CheckCircle
@@ -105,6 +104,7 @@ import com.schooldb.mobile.ui.notifications.matches
 import com.schooldb.mobile.ui.notifications.notificationDay
 import com.schooldb.mobile.ui.ConnectionStateScreen
 import com.schooldb.mobile.ui.OfflineDataBanner
+import com.schooldb.mobile.ui.StudentAvatar
 import com.schooldb.mobile.ui.rememberIsOnline
 import com.schooldb.mobile.preferences.AppPreferences
 
@@ -128,6 +128,7 @@ private data class StudentNavItem(val tab: FamilyTab, val icon: ImageVector)
 private fun StudentPremiumTopBar(
     schoolName: String,
     studentName: String,
+    studentImageUrl: String?,
     unread: Int,
     onNotifications: () -> Unit,
     onSwitchAccount: () -> Unit,
@@ -162,12 +163,15 @@ private fun StudentPremiumTopBar(
             onClick = onSwitchAccount,
             modifier = Modifier.size(42.dp),
             shape = CircleShape,
-            color = FamilyIndigo,
+            color = Color.Transparent,
         ) {
-            Box(contentAlignment = Alignment.Center) {
-                Text(studentName.trim().take(1).uppercase().ifBlank { "S" },
-                    color = MaterialTheme.colorScheme.surface, fontWeight = FontWeight.Bold)
-            }
+            StudentAvatar(
+                name = studentName,
+                imageUrl = studentImageUrl,
+                size = 42.dp,
+                backgroundColor = FamilyIndigo,
+                contentColor = Color.White,
+            )
         }
     }
 }
@@ -221,16 +225,26 @@ private fun StudentPremiumNavigation(
                                     haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                     onSelect(item.tab)
                                 }
-                            }.padding(vertical = 11.dp),
+                            }.padding(vertical = 8.dp),
                         contentAlignment = Alignment.Center,
                     ) {
-                        BadgedBox(badge = {
-                            if (item.tab == FamilyTab.MORE && unread > 0) {
-                                Badge { Text(if (unread > 99) "99+" else unread.toString(), fontSize = 8.sp) }
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            BadgedBox(badge = {
+                                if (item.tab == FamilyTab.MORE && unread > 0) {
+                                    Badge { Text(if (unread > 99) "99+" else unread.toString(), fontSize = 8.sp) }
+                                }
+                            }) {
+                                Icon(item.icon, contentDescription = item.tab.label,
+                                    tint = if (active) selectedTint else inactive, modifier = Modifier.size(22.dp))
                             }
-                        }) {
-                            Icon(item.icon, contentDescription = item.tab.label,
-                                tint = if (active) selectedTint else inactive, modifier = Modifier.size(24.dp))
+                            Spacer(Modifier.height(2.dp))
+                            Text(
+                                text = item.tab.label,
+                                color = if (active) selectedTint else inactive,
+                                fontSize = 9.sp,
+                                fontWeight = if (active) FontWeight.Bold else FontWeight.Medium,
+                                maxLines = 1,
+                            )
                         }
                     }
                 }
@@ -299,6 +313,7 @@ fun FamilyDashboardScreen(
                     StudentPremiumTopBar(
                         schoolName = dashboard.schoolName,
                         studentName = student?.fullName.orEmpty(),
+                        studentImageUrl = student?.imageUrl,
                         unread = state.unreadNotificationCount,
                         onNotifications = {
                             tab = FamilyTab.MORE
@@ -730,9 +745,13 @@ private fun StudentHero(student: FamilyStudent) {
         Box(Modifier.align(Alignment.BottomEnd).offset(x = 38.dp, y = 60.dp).size(145.dp).background(Color.White.copy(alpha = .06f), CircleShape))
         Column(Modifier.fillMaxWidth().padding(22.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(42.dp).background(Color.White.copy(alpha = .16f), RoundedCornerShape(14.dp)), contentAlignment = Alignment.Center) {
-                    Icon(Icons.Default.School, contentDescription = null, tint = FamilyIndigo, modifier = Modifier.size(22.dp))
-                }
+                StudentAvatar(
+                    name = student.fullName,
+                    imageUrl = student.imageUrl,
+                    size = 52.dp,
+                    backgroundColor = FamilyIndigo,
+                    contentColor = Color.White,
+                )
                 Spacer(Modifier.width(11.dp))
                 Text("STUDENT PROFILE", color = Color(0xFF64748B), fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
             }
@@ -2211,7 +2230,11 @@ private fun StudentChip(student: FamilyStudent, selected: Boolean, onClick: () -
         colors = CardDefaults.cardColors(containerColor = if (selected) FamilyIndigo.copy(alpha = .1f) else MaterialTheme.colorScheme.surface),
     ) {
         Row(Modifier.padding(horizontal = 14.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Default.Person, null, tint = FamilyIndigo, modifier = Modifier.size(20.dp))
+            StudentAvatar(
+                name = student.fullName,
+                imageUrl = student.imageUrl,
+                size = 32.dp,
+            )
             Column(Modifier.padding(start = 8.dp)) {
                 Text(student.fullName, fontWeight = FontWeight.SemiBold, maxLines = 1)
                 Text(listOfNotNull(student.className, student.sectionName?.let { "Sec $it" }).joinToString(" · "), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)

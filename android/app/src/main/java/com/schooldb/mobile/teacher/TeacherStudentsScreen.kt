@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -25,11 +24,14 @@ import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import com.schooldb.mobile.ui.theme.WebTopAppBar as TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -46,6 +48,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.schooldb.mobile.ui.StudentAvatar
 
 private val StudentsIndigo = Color(0xFF4F46E5)
 private val StudentsIndigoSoft = Color(0xFFEEF2FF)
@@ -86,6 +89,7 @@ fun TeacherStudentsScreen(
     var query by rememberSaveable {
         mutableStateOf("")
     }
+    var selectedStudent by remember { mutableStateOf<TeacherStudent?>(null) }
 
     val students = selected?.students.orEmpty()
     val filteredStudents = remember(students, query) {
@@ -338,19 +342,29 @@ fun TeacherStudentsScreen(
                         items = filteredStudents,
                         key = { it.enrollmentId },
                     ) { student ->
-                        StudentRow(student)
+                        StudentRow(student, onClick = { selectedStudent = student })
                     }
                 }
             }
         }
+    }
+
+    selectedStudent?.let { student ->
+        StudentDetailSheet(
+            student = student,
+            group = selected,
+            onDismiss = { selectedStudent = null },
+        )
     }
 }
 
 @Composable
 private fun StudentRow(
     student: TeacherStudent,
+    onClick: () -> Unit,
 ) {
     Card(
+        onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(
@@ -367,25 +381,11 @@ private fun StudentRow(
                 .padding(15.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Box(
-                modifier = Modifier
-                    .size(44.dp)
-                    .background(
-                        color = StudentsIndigoSoft,
-                        shape = CircleShape,
-                    ),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = student.fullName
-                        .trim()
-                        .firstOrNull()
-                        ?.uppercase()
-                        ?: "S",
-                    fontWeight = FontWeight.Bold,
-                    color = StudentsIndigo,
-                )
-            }
+            StudentAvatar(
+                name = student.fullName,
+                imageUrl = student.imageUrl,
+                size = 46.dp,
+            )
 
             Column(
                 modifier = Modifier
@@ -440,6 +440,98 @@ private fun StudentRow(
                 )
             }
         }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun StudentDetailSheet(
+    student: TeacherStudent,
+    group: TeacherStudentGroup?,
+    onDismiss: () -> Unit,
+) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = Color.White,
+        shape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 22.dp, end = 22.dp, bottom = 32.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                StudentAvatar(
+                    name = student.fullName,
+                    imageUrl = student.imageUrl,
+                    size = 68.dp,
+                )
+                Column(Modifier.weight(1f).padding(start = 16.dp)) {
+                    Text(
+                        text = student.fullName,
+                        color = StudentsSlate900,
+                        fontSize = 22.sp,
+                        lineHeight = 27.sp,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Text(
+                        text = group?.let { "${it.className} · Section ${it.sectionName}" }
+                            ?: "Current class unavailable",
+                        color = StudentsSlate500,
+                        fontSize = 13.sp,
+                    )
+                }
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = StudentsIndigoSoft,
+                ) {
+                    Text(
+                        text = student.status.replace('_', ' '),
+                        modifier = Modifier.padding(horizontal = 9.dp, vertical = 6.dp),
+                        color = StudentsIndigo,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(22.dp))
+            HorizontalDivider(color = StudentsSlate200)
+            Spacer(Modifier.height(8.dp))
+            StudentDetailRow("Admission number", student.admissionNo.ifBlank { "Not available" })
+            HorizontalDivider(color = StudentsSlate200.copy(alpha = .7f))
+            StudentDetailRow("Roll number", student.rollNo?.toString() ?: "Not assigned")
+            HorizontalDivider(color = StudentsSlate200.copy(alpha = .7f))
+            StudentDetailRow(
+                "Class & section",
+                group?.let { "${it.className} · ${it.sectionName}" } ?: "Not available",
+            )
+
+            Spacer(Modifier.height(18.dp))
+            Card(
+                shape = RoundedCornerShape(18.dp),
+                colors = CardDefaults.cardColors(containerColor = StudentsIndigoSoft),
+                border = BorderStroke(1.dp, StudentsIndigo.copy(alpha = .18f)),
+            ) {
+                Text(
+                    text = "Only school-approved student information is shown here.",
+                    modifier = Modifier.fillMaxWidth().padding(15.dp),
+                    color = StudentsSlate600,
+                    fontSize = 12.sp,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun StudentDetailRow(label: String, value: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 13.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(label, Modifier.weight(1f), color = StudentsSlate500, fontSize = 12.sp)
+        Text(value, color = StudentsSlate900, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
     }
 }
 

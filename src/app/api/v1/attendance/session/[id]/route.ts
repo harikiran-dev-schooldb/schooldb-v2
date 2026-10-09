@@ -1,5 +1,5 @@
 import { apiHandler } from "@/lib/api";
-import { requireTeacherAttendanceSession } from "@/lib/auth";
+import { requireTeacherAttendanceSession, requireTeacherFeatureAccess } from "@/lib/auth";
 import { ApiResponse } from "@/lib/response";
 
 import { attendanceService } from "@/features/attendance/services/attendance.service";
@@ -18,6 +18,7 @@ export async function GET(
   return apiHandler(async () => {
     const { id } = await params;
     const tenant = await requireTeacherAttendanceSession(id);
+    if (tenant.role === "TEACHER") await requireTeacherFeatureAccess("ATTENDANCE");
 
     const result =
       await attendanceService.getSession(

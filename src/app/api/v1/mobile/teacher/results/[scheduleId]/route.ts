@@ -2,7 +2,12 @@ import { StudentExamStatus } from "@/generated/prisma/client";
 import { studentExamMarkService } from "@/features/exams/services/student-exam-mark.service";
 import { apiHandler } from "@/lib/api";
 import { recordAuditLog } from "@/lib/audit";
-import { requireTeacherExamSchedule } from "@/lib/auth";
+import {
+  requireAnyTeacherFeatureAccess,
+  requireRole,
+  requireTeacherExamSchedule,
+  requireTeacherFeatureAccess,
+} from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ApiResponse } from "@/lib/response";
 
@@ -14,6 +19,8 @@ function sectionIdFrom(req: Request) {
 
 export async function GET(req: Request, { params }: { params: Params }) {
   return apiHandler(async () => {
+    await requireRole(["TEACHER"]);
+    await requireAnyTeacherFeatureAccess(["RESULTS", "MARKS_ENTRY"]);
     const { scheduleId } = await params;
     const sectionId = sectionIdFrom(req);
     if (!sectionId) return ApiResponse.error("Section is required.", 400);
@@ -30,6 +37,8 @@ export async function GET(req: Request, { params }: { params: Params }) {
 
 export async function PUT(req: Request, { params }: { params: Params }) {
   return apiHandler(async () => {
+    await requireRole(["TEACHER"]);
+    await requireTeacherFeatureAccess("MARKS_ENTRY");
     const { scheduleId } = await params;
     const sectionId = sectionIdFrom(req);
     if (!sectionId) return ApiResponse.error("Section is required.", 400);

@@ -16,6 +16,7 @@ export async function GET(
         id: true,
         fullName: true,
         admissionNo: true,
+        imageUrl: true,
         status: true,
         gender: true,
         dob: true,

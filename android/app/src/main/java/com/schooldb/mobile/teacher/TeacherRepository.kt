@@ -9,21 +9,32 @@ class TeacherRepository(
 ) {
     companion object {
         private const val DASHBOARD_CACHE_MILLIS = 2 * 60 * 1000L
-        private const val CONTEXT_CACHE_MILLIS = 10 * 60 * 1000L
+        private const val CONTEXT_CACHE_MILLIS = 60 * 1000L
     }
 
     suspend fun context(forceRefresh: Boolean = false): MobileContext {
         val data = api.get(
-            "api/v1/mobile/context",
+            "api/v1/mobile/context?access=v1",
             cacheTtlMillis = CONTEXT_CACHE_MILLIS,
             forceRefresh = forceRefresh,
             useStaleCacheOnFailure = true,
         )
+        val access = data.optJSONObject("teacherAccess")
         return MobileContext(
             userName = data.optString("userName", "SchoolDB user"),
             schoolName = data.optString("schoolName", "SchoolDB"),
             schoolSlug = data.optString("schoolSlug"),
             role = data.optString("role", "UNKNOWN"),
+            teacherAccess = TeacherAccess(
+                students = access?.optBoolean("students") == true,
+                fees = access?.optBoolean("fees") == true,
+                results = access?.optBoolean("results") == true,
+                timetable = access?.optBoolean("timetable") == true,
+                attendance = access?.optBoolean("attendance") == true,
+                homework = access?.optBoolean("homework") == true,
+                exams = access?.optBoolean("exams") == true,
+                marksEntry = access?.optBoolean("marksEntry") == true,
+            ),
         )
     }
 

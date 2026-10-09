@@ -53,6 +53,9 @@ class TeacherViewModel(
     }
 
     fun openAttendance(period: TeachingPeriod) {
+        if (_uiState.value.context?.teacherAccess?.attendance != true) {
+            return showMessage("Attendance access is disabled for this teacher account.")
+        }
         if (period.attendanceLocked) return showMessage("This attendance session is locked.")
         _uiState.value = _uiState.value.copy(loading = true, message = null)
         viewModelScope.launch {
@@ -66,6 +69,9 @@ class TeacherViewModel(
     }
 
     fun openDailyAttendance(target: DailyAttendanceTarget) {
+        if (_uiState.value.context?.teacherAccess?.attendance != true) {
+            return showMessage("Attendance access is disabled for this teacher account.")
+        }
         if (target.attendanceLocked) return showMessage("This attendance session is locked.")
         _uiState.value = _uiState.value.copy(loading = true, message = null, error = null)
         viewModelScope.launch {

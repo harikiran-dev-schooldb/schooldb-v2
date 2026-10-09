@@ -71,6 +71,18 @@ export const navigation: NavigationItem[] = [
     roles: ["SUPER_ADMIN"],
   },
   {
+    title: "Reports",
+    href: "reports",
+    icon: FileSpreadsheet,
+    roles: ADMIN_ROLES,
+  },
+  {
+    title: "Analytics",
+    href: "management-analytics",
+    icon: ChartNoAxesCombined,
+    roles: ADMIN_ROLES,
+  },
+  {
     title: "People",
     icon: UsersRound,
     roles: STUDENT_DIRECTORY_ROLES,
@@ -209,18 +221,6 @@ export const navigation: NavigationItem[] = [
       { title: "Teacher Allocations", href: "teacher-allocations" },
       { title: "Class Teachers", href: "class-teachers" },
     ],
-  },
-  {
-    title: "Reports",
-    href: "reports",
-    icon: FileSpreadsheet,
-    roles: ADMIN_ROLES,
-  },
-  {
-    title: "Analytics",
-    href: "management-analytics",
-    icon: ChartNoAxesCombined,
-    roles: ADMIN_ROLES,
   },
   {
     title: "School Operations",

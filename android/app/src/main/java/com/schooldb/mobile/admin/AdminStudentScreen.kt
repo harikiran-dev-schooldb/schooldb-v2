@@ -26,12 +26,17 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -54,6 +59,7 @@ import com.composables.icons.lucide.Users
 import com.composables.icons.lucide.WalletCards
 import com.schooldb.mobile.network.ApiException
 import com.schooldb.mobile.network.AuthenticatedApiClient
+import com.schooldb.mobile.ui.StudentAvatar
 import java.io.IOException
 import java.text.NumberFormat
 import java.util.Locale
@@ -70,6 +76,7 @@ internal data class StudentResult(
 internal data class AdminStudent(
     val name: String,
     val admissionNo: String,
+    val imageUrl: String?,
     val status: String,
     val gender: String,
     val dob: String,
@@ -102,6 +109,13 @@ internal data class AdminStudentState(
     val error: String? = null,
 )
 
+private enum class AdminStudentTab(val label: String) {
+    OVERVIEW("Overview"),
+    DETAILS("Details"),
+    FAMILY("Family"),
+    RESULTS("Results"),
+}
+
 internal class AdminStudentViewModel : ViewModel() {
     private val api = AuthenticatedApiClient()
     private val mutableState = MutableStateFlow(AdminStudentState())
@@ -129,6 +143,7 @@ internal class AdminStudentViewModel : ViewModel() {
                     student = AdminStudent(
                         name = profile.clean("fullName").ifBlank { profile.clean("admissionNo") },
                         admissionNo = profile.clean("admissionNo"),
+                        imageUrl = profile.clean("imageUrl").takeIf(String::isNotBlank),
                         status = profile.clean("status"),
                         gender = profile.clean("gender"),
                         dob = profile.clean("dob"),
@@ -231,6 +246,9 @@ fun AdminStudentScreen(id: String, onBack: () -> Unit) {
 @Composable
 private fun StudentProfileContent(student: AdminStudent) {
     val currency = NumberFormat.getCurrencyInstance(Locale.forLanguageTag("en-IN"))
+    var selectedTab by rememberSaveable(student.admissionNo) {
+        mutableStateOf(AdminStudentTab.OVERVIEW)
+    }
     LazyColumn(
         Modifier.fillMaxSize(), contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 6.dp, bottom = 32.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
@@ -243,13 +261,13 @@ private fun StudentProfileContent(student: AdminStudent) {
                     Color.White, AdminWebTint, Color(0xFFF5F3FF),
                 ))).padding(20.dp)) {
                     Column {
-                        Surface(Modifier.size(62.dp), shape = CircleShape, color = AdminWebIndigo,
-                            shadowElevation = 5.dp) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Text(student.name.split(" ").take(2).mapNotNull { it.firstOrNull() }.joinToString("").uppercase(),
-                                    color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
-                            }
-                        }
+                        StudentAvatar(
+                            name = student.name,
+                            imageUrl = student.imageUrl,
+                            size = 68.dp,
+                            backgroundColor = AdminWebIndigo,
+                            contentColor = Color.White,
+                        )
                         Spacer(Modifier.height(16.dp))
                         Text(student.name, color = AdminWebNavy, fontSize = 26.sp, lineHeight = 30.sp,
                             fontWeight = FontWeight.ExtraBold)
@@ -269,57 +287,90 @@ private fun StudentProfileContent(student: AdminStudent) {
             }
         }
         item {
-            StudentInfoCard("Enrollment", Lucide.GraduationCap, listOf(
-                "Academic year" to student.academicYear,
-                "Class & section" to listOf(student.className, student.sectionName).filter(String::isNotBlank).joinToString(" · "),
-                "Roll number" to student.rollNo,
-                "House" to student.house,
-                "Joined" to student.joinedDate,
-            ))
+            PrimaryScrollableTabRow(
+                selectedTabIndex = selectedTab.ordinal,
+                modifier = Modifier.fillMaxWidth(),
+                edgePadding = 0.dp,
+                containerColor = Color.Transparent,
+                contentColor = AdminWebIndigo,
+                divider = {},
+            ) {
+                AdminStudentTab.entries.forEach { tab ->
+                    Tab(
+                        selected = selectedTab == tab,
+                        onClick = { selectedTab = tab },
+                        text = {
+                            Text(
+                                tab.label,
+                                fontWeight = if (selectedTab == tab) FontWeight.Bold else FontWeight.Medium,
+                            )
+                        },
+                    )
+                }
+            }
         }
-        item {
-            StudentInfoCard("Personal details", Lucide.Users, listOf(
-                "Date of birth" to student.dob,
-                "Gender" to student.gender,
-                "Blood group" to student.bloodGroup,
-                "Phone" to student.phone,
-                "Email" to student.email,
-                "Address" to student.address,
-                "Medical" to student.medical,
-            ))
-        }
-        item {
-            StudentMetricCard("Attendance", Lucide.CalendarCheck,
-                main = if (student.attendanceTotal > 0) "${student.attendancePercentage}%" else "No records",
-                detail = "${student.attendancePresent} present · ${student.attendanceAbsent} absent · ${student.attendanceLate} late")
-        }
-        item {
-            StudentMetricCard("Fees", Lucide.WalletCards,
-                main = currency.format(student.feeOutstanding),
-                detail = "Outstanding · ${currency.format(student.feePaid)} paid of ${currency.format(student.feePayable)}")
-        }
-        item { Text("Parent contacts", color = AdminWebNavy,
-            style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) }
-        if (student.parents.isEmpty()) item { EmptyStudentCard("No parent contact has been added.") }
-        items(student.parents) { parent ->
-            StudentInfoCard(parent.name, Lucide.Users, listOf(
-                "Relationship" to parent.relationship, "Phone" to parent.phone, "Email" to parent.email,
-            ))
-        }
-        item { Text("Recent results", color = AdminWebNavy,
-            style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) }
-        if (student.results.isEmpty()) item { EmptyStudentCard("No exam results have been entered.") }
-        items(student.results, key = { it.id }) { result ->
-            Surface(color = Color.White, shape = RoundedCornerShape(20.dp), shadowElevation = 1.dp,
-                border = BorderStroke(1.dp, AdminWebBorder)) {
-                Row(Modifier.fillMaxWidth().padding(17.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        Text(result.subject, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text(result.exam, style = MaterialTheme.typography.bodySmall, color = AdminWebSlate)
+        when (selectedTab) {
+            AdminStudentTab.OVERVIEW -> {
+                item {
+                    StudentInfoCard("Enrollment", Lucide.GraduationCap, listOf(
+                        "Academic year" to student.academicYear,
+                        "Class & section" to listOf(student.className, student.sectionName).filter(String::isNotBlank).joinToString(" · "),
+                        "Roll number" to student.rollNo,
+                        "House" to student.house,
+                        "Joined" to student.joinedDate,
+                    ))
+                }
+                item {
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Box(Modifier.weight(1f)) {
+                            StudentMetricCard("Attendance", Lucide.CalendarCheck,
+                                main = if (student.attendanceTotal > 0) "${student.attendancePercentage}%" else "No records",
+                                detail = "${student.attendancePresent} present · ${student.attendanceAbsent} absent")
+                        }
+                        Box(Modifier.weight(1f)) {
+                            StudentMetricCard("Fees", Lucide.WalletCards,
+                                main = currency.format(student.feeOutstanding),
+                                detail = "${currency.format(student.feePaid)} paid")
+                        }
                     }
-                    Text(if (result.obtained == null) result.status.replace('_', ' ')
-                        else "${result.obtained.asMarks()} / ${result.maximum.asMarks()}",
-                        color = AdminWebIndigo, fontWeight = FontWeight.Bold)
+                }
+            }
+            AdminStudentTab.DETAILS -> item {
+                StudentInfoCard("Personal details", Lucide.Users, listOf(
+                    "Date of birth" to student.dob,
+                    "Gender" to student.gender,
+                    "Blood group" to student.bloodGroup,
+                    "Phone" to student.phone,
+                    "Email" to student.email,
+                    "Address" to student.address,
+                    "Medical" to student.medical,
+                ))
+            }
+            AdminStudentTab.FAMILY -> {
+                if (student.parents.isEmpty()) item { EmptyStudentCard("No parent contact has been added.") }
+                items(student.parents) { parent ->
+                    StudentInfoCard(parent.name, Lucide.Users, listOf(
+                        "Relationship" to parent.relationship,
+                        "Phone" to parent.phone,
+                        "Email" to parent.email,
+                    ))
+                }
+            }
+            AdminStudentTab.RESULTS -> {
+                if (student.results.isEmpty()) item { EmptyStudentCard("No exam results have been entered.") }
+                items(student.results, key = { it.id }) { result ->
+                    Surface(color = Color.White, shape = RoundedCornerShape(20.dp), shadowElevation = 1.dp,
+                        border = BorderStroke(1.dp, AdminWebBorder)) {
+                        Row(Modifier.fillMaxWidth().padding(17.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f)) {
+                                Text(result.subject, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                Text(result.exam, style = MaterialTheme.typography.bodySmall, color = AdminWebSlate)
+                            }
+                            Text(if (result.obtained == null) result.status.replace('_', ' ')
+                                else "${result.obtained.asMarks()} / ${result.maximum.asMarks()}",
+                                color = AdminWebIndigo, fontWeight = FontWeight.Bold)
+                        }
+                    }
                 }
             }
         }
@@ -365,21 +416,20 @@ private fun StudentInfoCard(title: String, icon: ImageVector, values: List<Pair<
 
 @Composable
 private fun StudentMetricCard(title: String, icon: ImageVector, main: String, detail: String) {
-    Surface(color = Color.White, shape = RoundedCornerShape(20.dp), shadowElevation = 1.dp,
+    Surface(modifier = Modifier.fillMaxWidth(), color = Color.White, shape = RoundedCornerShape(20.dp), shadowElevation = 1.dp,
         border = BorderStroke(1.dp, AdminWebBorder)) {
-        Row(Modifier.fillMaxWidth().padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.fillMaxWidth().padding(16.dp)) {
             Surface(shape = RoundedCornerShape(14.dp), color = Color(0xFFEEF2FF),
                 border = BorderStroke(1.dp, Color(0xFFC7D2FE))) {
                 Icon(icon, contentDescription = null, tint = AdminWebIndigo,
-                    modifier = Modifier.padding(10.dp).size(22.dp))
+                    modifier = Modifier.padding(9.dp).size(20.dp))
             }
-            Spacer(Modifier.size(14.dp))
-            Column {
-                Text(title, style = MaterialTheme.typography.labelLarge, color = AdminWebSlate)
-                Text(main, color = AdminWebNavy, style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.ExtraBold)
-                Text(detail, style = MaterialTheme.typography.bodySmall, color = AdminWebSlate)
-            }
+            Spacer(Modifier.height(12.dp))
+            Text(main, color = AdminWebNavy, style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.ExtraBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(title, style = MaterialTheme.typography.labelLarge, color = AdminWebNavy)
+            Text(detail, style = MaterialTheme.typography.bodySmall, color = AdminWebSlate,
+                maxLines = 2, overflow = TextOverflow.Ellipsis)
         }
     }
 }

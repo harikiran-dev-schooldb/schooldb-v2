@@ -11,6 +11,7 @@ data class FamilyStudent(
     val id: String,
     val fullName: String,
     val admissionNo: String,
+    val imageUrl: String?,
     val relationship: String,
     val className: String?,
     val sectionName: String?,

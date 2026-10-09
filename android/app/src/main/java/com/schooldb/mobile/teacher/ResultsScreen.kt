@@ -70,6 +70,7 @@ private val ResultsSlate200 = Color(0xFFE2E8F0)
 @Composable
 fun ResultsScreen(
     onBack: () -> Unit,
+    canEnterMarks: Boolean,
     viewModel: ResultsViewModel = viewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -100,6 +101,7 @@ fun ResultsScreen(
             onMarksChange = viewModel::setMarks,
             onStatusChange = viewModel::setStatus,
             onSave = viewModel::save,
+            canEnterMarks = canEnterMarks,
         )
     }
 }
@@ -266,6 +268,7 @@ private fun MarksEntryScreen(
     onMarksChange: (String, String) -> Unit,
     onStatusChange: (String, String) -> Unit,
     onSave: () -> Unit,
+    canEnterMarks: Boolean,
 ) {
     Scaffold(
         containerColor = ResultsBackground,
@@ -290,7 +293,7 @@ private fun MarksEntryScreen(
                     }
                 },
                 actions = {
-                    if (sheet.schedule.editable) {
+                    if (sheet.schedule.editable && canEnterMarks) {
                         TextButton(onClick = onSave, enabled = !state.saving) {
                             Text(if (state.saving) "Saving…" else "Save", fontWeight = FontWeight.Bold)
                         }
@@ -313,6 +316,9 @@ private fun MarksEntryScreen(
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             item { MarksSummaryCard(sheet) }
+            if (sheet.schedule.editable && !canEnterMarks) {
+                item { ResultsInfoCard("Marks entry is disabled for your teacher account. Results are read-only.") }
+            }
             if (state.error != null) {
                 item { ResultsInfoCard(state.error) }
             }
@@ -323,12 +329,12 @@ private fun MarksEntryScreen(
                     MarkStudentCard(
                         student = student,
                         maxMarks = sheet.schedule.maxMarks,
-                        editable = sheet.schedule.editable && !state.saving,
+                        editable = sheet.schedule.editable && canEnterMarks && !state.saving,
                         onMarksChange = { onMarksChange(student.enrollmentId, it) },
                         onStatusChange = { onStatusChange(student.enrollmentId, it) },
                     )
                 }
-                if (sheet.schedule.editable) {
+                if (sheet.schedule.editable && canEnterMarks) {
                     item {
                         Button(
                             onClick = onSave,

@@ -5,6 +5,18 @@ data class MobileContext(
     val schoolName: String,
     val schoolSlug: String,
     val role: String,
+    val teacherAccess: TeacherAccess = TeacherAccess(),
+)
+
+data class TeacherAccess(
+    val students: Boolean = false,
+    val fees: Boolean = false,
+    val results: Boolean = false,
+    val timetable: Boolean = false,
+    val attendance: Boolean = false,
+    val homework: Boolean = false,
+    val exams: Boolean = false,
+    val marksEntry: Boolean = false,
 )
 
 data class TeacherDashboard(

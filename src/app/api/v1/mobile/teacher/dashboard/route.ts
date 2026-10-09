@@ -58,6 +58,7 @@ export async function GET() {
       ? (dayName as WeekDay)
       : null;
     const upcomingDates = nextSchoolDates(date);
+    const canViewSchedule = teacher.timetableAccess || teacher.attendanceAccess;
 
     const academicYear = await prisma.academicYear.findFirst({
       where: { schoolId: membership.schoolId, active: true },
@@ -124,7 +125,7 @@ export async function GET() {
     );
 
     const [timetable, sessions, enrollments] = await Promise.all([
-      prisma.timetable.findMany({
+      canViewSchedule ? prisma.timetable.findMany({
         where: {
           schoolId: membership.schoolId,
           academicYearId: academicYear.id,
@@ -152,8 +153,8 @@ export async function GET() {
             },
           },
         },
-      }),
-      prisma.attendanceSession.findMany({
+      }) : Promise.resolve([]),
+      teacher.attendanceAccess ? prisma.attendanceSession.findMany({
         where: {
           schoolId: membership.schoolId,
           academicYearId: academicYear.id,
@@ -186,8 +187,8 @@ export async function GET() {
           sessionType: true,
           _count: { select: { records: true } },
         },
-      }),
-      combinedScopes.length > 0
+      }) : Promise.resolve([]),
+      teacher.studentDetailsAccess && combinedScopes.length > 0
         ? prisma.studentEnrollment.findMany({
             where: {
               schoolId: membership.schoolId,
@@ -294,8 +295,8 @@ export async function GET() {
       attendanceMode: academicYear.attendanceMode,
       periods: timetable
         .filter((entry) => entry.day === day)
-        .map((entry) => toPeriod(entry, true, date)),
-      dailyTargets: academicYear.attendanceMode === "EVERY_PERIOD"
+        .map((entry) => toPeriod(entry, teacher.attendanceAccess, date)),
+      dailyTargets: !teacher.attendanceAccess || academicYear.attendanceMode === "EVERY_PERIOD"
         ? []
         : classAssignments.flatMap((allocation) => {
             const sessionTypes = academicYear.attendanceMode === "MORNING_AFTERNOON"
@@ -321,8 +322,8 @@ export async function GET() {
               };
             });
           }),
-      studentGroups,
-      upcoming: nextTeachingDate
+      studentGroups: teacher.studentDetailsAccess ? studentGroups : [],
+      upcoming: canViewSchedule && nextTeachingDate
         ? {
             date: nextTeachingDate.date,
             day: nextTeachingDate.day,
