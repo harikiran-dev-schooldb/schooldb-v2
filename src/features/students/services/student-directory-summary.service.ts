@@ -50,44 +50,11 @@ export async function studentDirectorySummary(
     ...(filters.isRte !== undefined ? { isRte: filters.isRte } : {}),
   };
 
-  const activeStudentWhere: Prisma.StudentWhereInput = {
-    schoolId,
-    status: "ACTIVE",
-    ...(teacherScopes
-      ? {
-          enrollments: {
-            some: {
-              active: true,
-              academicYearId: academicYear?.id,
-              OR: teacherScopes.map((item) => ({
-                classId: item.classId,
-                sectionId: item.sectionId,
-              })),
-            },
-          },
-        }
-      : {}),
-  };
-
-  const [activeStudents, genderGroups] = await Promise.all([
-    prisma.student.count({ where: activeStudentWhere }),
-    prisma.student.groupBy({
-      by: ["gender"],
-      where: activeStudentWhere,
-      _count: { _all: true },
-    }),
-  ]);
-
-  const genderCounts = { male: 0, female: 0, other: 0 };
-  for (const group of genderGroups) {
-    genderCounts[group.gender.toLowerCase() as keyof typeof genderCounts] = group._count._all;
-  }
-
   if (!academicYear) {
     return {
       academicYearName: null,
-      activeStudents,
-      genderCounts,
+      activeStudents: 0,
+      genderCounts: { male: 0, female: 0, other: 0 },
       attendance: null,
       fees: null,
       classes: [],
@@ -125,6 +92,7 @@ export async function studentDirectorySummary(
       select: {
         id: true,
         classId: true,
+        student: { select: { gender: true } },
         class: {
           select: {
             name: true,
@@ -198,7 +166,11 @@ export async function studentDirectorySummary(
       feesOutstanding: number;
     }
   >();
+  const genderCounts = { male: 0, female: 0, other: 0 };
   for (const enrollment of enrollments) {
+    genderCounts[
+      enrollment.student.gender.toLowerCase() as keyof typeof genderCounts
+    ] += 1;
     const current = classes.get(enrollment.classId) ?? {
       classId: enrollment.classId,
       className: enrollment.class.name,
@@ -243,7 +215,7 @@ export async function studentDirectorySummary(
 
   return {
     academicYearName: academicYear.name,
-    activeStudents,
+    activeStudents: enrollments.length,
     genderCounts,
     attendance: access.attendance
       ? {

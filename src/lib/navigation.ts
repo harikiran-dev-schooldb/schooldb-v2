@@ -88,6 +88,11 @@ export const navigation: NavigationItem[] = [
     roles: STUDENT_DIRECTORY_ROLES,
     children: [
       { title: "Students", href: "students", roles: STUDENT_DIRECTORY_ROLES },
+      {
+        title: "Class-wise Report",
+        href: "students/class-report",
+        roles: STUDENT_DIRECTORY_ROLES,
+      },
       { title: "Teachers", href: "teachers", roles: ADMIN_ROLES },
       { title: "Enrollments", href: "enrollments", roles: ADMIN_ROLES },
       {

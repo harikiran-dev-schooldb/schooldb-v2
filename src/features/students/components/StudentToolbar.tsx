@@ -2,7 +2,8 @@
 
 import { Filter } from "lucide-react";
 
-import { CrudToolbar } from "@/components/common/crud";
+import { DataGridSearch } from "@/components/datagrid/DataGridSearch";
+import { ClearFiltersButton } from "@/components/common/crud";
 import {
   AcademicBranchSelect,
   ClassSelect,
@@ -36,8 +37,8 @@ type Props = {
   onBranchChange: (value: string) => void;
   gender: "ALL" | "MALE" | "FEMALE" | "OTHER";
   onGenderChange: (value: "ALL" | "MALE" | "FEMALE" | "OTHER") => void;
-  rteFilter: "ALL" | "RTE" | "NON_RTE";
-  onRteFilterChange: (value: "ALL" | "RTE" | "NON_RTE") => void;
+  hasActiveFilters: boolean;
+  onClearFilters: () => void;
 };
 
 export function StudentToolbar({
@@ -55,26 +56,28 @@ export function StudentToolbar({
   onBranchChange,
   gender,
   onGenderChange,
-  rteFilter,
-  onRteFilterChange,
+  hasActiveFilters,
+  onClearFilters,
 }: Props) {
   return (
-    <CrudToolbar
-      search={search}
-      onSearch={onSearch}
-      placeholder="Search by name or admission number..."
-    >
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="hidden items-center gap-2 px-1 text-[10px] font-bold tracking-[0.16em] text-muted-foreground uppercase lg:flex">
+    <div className="overflow-x-auto border-b border-border/70 bg-card p-3 sm:p-4 md:px-5">
+      <div className="flex min-w-max items-center gap-2">
+        <DataGridSearch
+          placeholder="Search by name or admission number..."
+          value={search}
+          onSearch={onSearch}
+        />
+
+        <div className="flex shrink-0 items-center gap-2 px-1 text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
           <Filter className="size-3.5 text-primary" />
-          Filter
+          Filters
         </div>
 
         <SyllabusSelect
           value={syllabusId}
           onChange={onSyllabusChange}
           allowAll
-          triggerClassName="h-10 w-full min-w-36 rounded-xl border-border/70 bg-background/80 sm:w-40"
+          triggerClassName="w-36 shrink-0"
         />
 
         <AcademicBranchSelect
@@ -82,7 +85,7 @@ export function StudentToolbar({
           value={branchId}
           onChange={onBranchChange}
           allowAll
-          triggerClassName="h-10 w-full min-w-36 rounded-xl border-border/70 bg-background/80 sm:w-40"
+          triggerClassName="w-36 shrink-0"
         />
 
         <ClassSelect
@@ -92,72 +95,59 @@ export function StudentToolbar({
           onChange={onClassChange}
           allowAll
           placeholder="All Classes"
-          triggerClassName="h-10 w-full min-w-36 rounded-xl border-border/70 bg-background/80 sm:w-40"
+          triggerClassName="w-36 shrink-0"
         />
-
-        <Select
-          value={gender}
-          onValueChange={(value) =>
-            onGenderChange(value as "ALL" | "MALE" | "FEMALE" | "OTHER")
-          }
-        >
-          <SelectTrigger className="h-10 w-full min-w-36 rounded-xl border-border/70 bg-background/80 px-3 font-medium shadow-sm sm:w-40">
-            <SelectValue placeholder="All genders" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="ALL">All genders</SelectItem>
-            <SelectItem value="MALE">Male</SelectItem>
-            <SelectItem value="FEMALE">Female</SelectItem>
-            <SelectItem value="OTHER">Other</SelectItem>
-          </SelectContent>
-        </Select>
 
         <SectionSelect
           classId={classId}
           value={sectionId}
           onChange={onSectionChange}
           placeholder="All Sections"
-          triggerClassName="h-10 w-full min-w-36 rounded-xl border-border/70 bg-background/80 sm:w-40"
+          triggerClassName="w-36 shrink-0"
         />
 
-        <Select
-          value={rteFilter}
-          onValueChange={(value) =>
-            onRteFilterChange(value as "ALL" | "RTE" | "NON_RTE")
-          }
-        >
-          <SelectTrigger className="h-10 w-full min-w-36 rounded-xl border-border/70 bg-background/80 px-3 font-medium shadow-sm transition-all hover:border-primary/30 hover:bg-card focus:ring-primary/20 sm:w-40">
-            <SelectValue placeholder="RTE status" />
-          </SelectTrigger>
+        <div className="w-36 shrink-0">
+          <Select
+            value={gender}
+            onValueChange={(value) =>
+              onGenderChange(value as "ALL" | "MALE" | "FEMALE" | "OTHER")
+            }
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="All genders" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All genders</SelectItem>
+              <SelectItem value="MALE">Male</SelectItem>
+              <SelectItem value="FEMALE">Female</SelectItem>
+              <SelectItem value="OTHER">Other</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
 
-          <SelectContent className="rounded-xl border-border/70 bg-popover/95 p-1.5 shadow-xl backdrop-blur-xl">
-            <SelectItem value="ALL">All Students</SelectItem>
-            <SelectItem value="RTE">RTE Students</SelectItem>
-            <SelectItem value="NON_RTE">Non-RTE Students</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="w-36 shrink-0">
+          <Select
+            value={status}
+            onValueChange={(value) => onStatusChange(value as StudentStatus)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Student status" />
+            </SelectTrigger>
 
-        <Select
-          value={status}
-          onValueChange={(value) => onStatusChange(value as StudentStatus)}
-        >
-          <SelectTrigger className="h-10 w-full min-w-40 rounded-xl border-border/70 bg-background/80 px-3 font-medium shadow-sm transition-all hover:border-primary/30 hover:bg-card focus:ring-primary/20 sm:w-44">
-            <SelectValue placeholder="Student status" />
-          </SelectTrigger>
+            <SelectContent>
+              {STUDENT_STATUS_OPTIONS.map((item) => (
+                <SelectItem key={item.value} value={item.value}>
+                  {item.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
 
-          <SelectContent className="rounded-xl border-border/70 bg-popover/95 p-1.5 shadow-xl backdrop-blur-xl">
-            {STUDENT_STATUS_OPTIONS.map((item) => (
-              <SelectItem
-                key={item.value}
-                value={item.value}
-                className="cursor-pointer rounded-lg py-2.5 font-medium"
-              >
-                {item.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {hasActiveFilters ? (
+          <ClearFiltersButton onClick={onClearFilters} />
+        ) : null}
       </div>
-    </CrudToolbar>
+    </div>
   );
 }

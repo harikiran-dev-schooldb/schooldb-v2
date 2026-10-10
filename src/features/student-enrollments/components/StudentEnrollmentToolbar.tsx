@@ -2,6 +2,7 @@
 
 import { DataGridSearch } from "@/components/datagrid/DataGridSearch";
 import { ClassSelect, SectionSelect } from "@/components/common/select";
+import { ClearFiltersButton } from "@/components/common/crud";
 
 type Props = {
   search: string;
@@ -43,6 +44,15 @@ export function StudentEnrollmentToolbar({
           placeholder="All Sections"
           triggerClassName="h-10 min-w-40 rounded-xl"
         />
+        {search || classId || sectionId ? (
+          <ClearFiltersButton
+            onClick={() => {
+              onSearch("");
+              onClassChange("");
+              onSectionChange("");
+            }}
+          />
+        ) : null}
       </div>
     </div>
   );

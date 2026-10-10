@@ -46,6 +46,7 @@ const navigationRoutes = [
   "reports",
   "management-analytics",
   "students",
+  "students/class-report",
   "admissions",
   "enrollments",
   "student-houses",

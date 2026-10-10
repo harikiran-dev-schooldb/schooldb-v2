@@ -41,7 +41,7 @@ export function SyllabusSelect({
   }, []);
 
   useEffect(() => {
-    if (options.length !== 1 || hasAppliedDefault.current) {
+    if (allowAll || options.length !== 1 || hasAppliedDefault.current) {
       return;
     }
 
@@ -49,7 +49,7 @@ export function SyllabusSelect({
     if (!value) {
       onChange(options[0].id, options[0]);
     }
-  }, [onChange, options, value]);
+  }, [allowAll, onChange, options, value]);
 
   return (
     <Select

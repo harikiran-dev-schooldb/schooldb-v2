@@ -2,7 +2,7 @@
 
 import { CalendarDays, GraduationCap } from "lucide-react";
 
-import { CrudToolbar } from "@/components/common/crud";
+import { ClearFiltersButton, CrudToolbar } from "@/components/common/crud";
 import { Badge } from "@/components/ui/badge";
 import { AcademicBranchSelect } from "@/components/common/select/AcademicBranchSelect";
 import { SyllabusSelect } from "@/components/common/select/SyllabusSelect";
@@ -89,6 +89,15 @@ export function HomeworkTable({ className }: Props) {
               onChange={setBranchId}
               triggerClassName="h-10 w-full bg-background sm:w-44"
             />
+            {search || syllabusId || branchId ? (
+              <ClearFiltersButton
+                onClick={() => {
+                  setSearch("");
+                  setSyllabusId("");
+                  setBranchId("");
+                }}
+              />
+            ) : null}
           </CrudToolbar>
         </div>
       </div>

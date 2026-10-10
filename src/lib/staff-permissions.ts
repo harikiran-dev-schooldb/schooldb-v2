@@ -66,6 +66,7 @@ const DEFAULT_ROLE_LEVELS: Record<string, Partial<Record<StaffPermissionModule, 
 export const ROUTE_MODULES: Partial<Record<string, StaffPermissionModule>> = {
   dashboard: "DASHBOARD",
   students: "STUDENTS",
+  "students/class-report": "STUDENTS",
   enrollments: "STUDENT_RECORDS",
   "student-houses": "STUDENT_RECORDS",
   birthdays: "STUDENT_RECORDS",

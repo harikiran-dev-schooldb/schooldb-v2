@@ -7,8 +7,10 @@ import { StudentToolbar } from "./StudentToolbar";
 import { AddStudentButton } from "./AddStudentButton";
 import { useSchool } from "@/contexts/school-context";
 import { hasModuleAccess } from "@/lib/staff-permissions";
-import { STUDENT_STATUS_OPTIONS } from "../constants/student-status";
-import { StudentDirectorySummary } from "./StudentDirectorySummary";
+import {
+  StudentStatus,
+  STUDENT_STATUS_OPTIONS,
+} from "../constants/student-status";
 
 export function StudentTable() {
   const { membership } = useSchool();
@@ -41,18 +43,24 @@ export function StudentTable() {
   const statusLabel = STUDENT_STATUS_OPTIONS.find(
     (option) => option.value === status,
   )?.label.toLowerCase() ?? "matching";
+  const hasActiveFilters = Boolean(
+    search || syllabusId || branchId || classId || sectionId ||
+    gender !== "ALL" || rteFilter !== "ALL" || status !== StudentStatus.ACTIVE,
+  );
+
+  function clearFilters() {
+    setSearch("");
+    setSyllabusId("");
+    setBranchId("");
+    setClassId("");
+    setSectionId("");
+    setGender("ALL");
+    setRteFilter("ALL");
+    setStatus(StudentStatus.ACTIVE);
+  }
 
   return (
     <div className="space-y-4">
-      <StudentDirectorySummary
-        syllabusId={syllabusId}
-        branchId={branchId}
-        classId={classId}
-        sectionId={sectionId}
-        gender={gender}
-        rteFilter={rteFilter}
-      />
-
       <div className="flex items-center justify-between gap-3 px-1">
         <p className="text-sm font-semibold text-foreground">
           {total.toLocaleString("en-IN")} {statusLabel} students
@@ -97,8 +105,8 @@ export function StudentTable() {
             onSectionChange={setSectionId}
             gender={gender}
             onGenderChange={setGender}
-            rteFilter={rteFilter}
-            onRteFilterChange={setRteFilter}
+            hasActiveFilters={hasActiveFilters}
+            onClearFilters={clearFilters}
           />
         }
       />

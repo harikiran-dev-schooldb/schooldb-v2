@@ -6,9 +6,13 @@ import { StudentTable } from "@/features/students/components/StudentTable";
 import { GraduationCap, Users, Sparkles } from "lucide-react";
 import { useSchool } from "@/contexts/school-context";
 import { hasModuleAccess } from "@/lib/staff-permissions";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
+import { useParams } from "next/navigation";
 
 export default function StudentPage() {
   const { membership } = useSchool();
+  const { schoolSlug } = useParams<{ schoolSlug: string }>();
   const canManageStudents = hasModuleAccess(membership, "STUDENTS", "MANAGE");
 
   return (
@@ -20,7 +24,16 @@ export default function StudentPage() {
       <PageHeader
         title="Students"
         description="Manage student records, admissions, enrollment details, and academic information."
-        action={canManageStudents ? <AddStudentButton /> : undefined}
+        action={
+          <>
+            <Button asChild variant="outline">
+              <Link href={`/${schoolSlug}/students/class-report`}>
+                Class-wise report
+              </Link>
+            </Button>
+            {canManageStudents ? <AddStudentButton /> : null}
+          </>
+        }
       />
 
       {/* ======================================================================

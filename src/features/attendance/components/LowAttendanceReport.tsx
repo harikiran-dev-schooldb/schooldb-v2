@@ -19,6 +19,7 @@ import {
   ClassSelect,
   SectionSelect,
 } from "@/components/common/select";
+import { ClearFiltersButton } from "@/components/common/crud";
 
 type Props = {
   schoolSlug: string;
@@ -68,6 +69,16 @@ export function LowAttendanceReport({ schoolSlug }: Props) {
 
   function changeThreshold(value: string) {
     setThreshold(value);
+    setData(null);
+  }
+
+  function clearFilters() {
+    setAcademicYearId("");
+    setClassId("");
+    setSectionId("");
+    setFromDate("");
+    setToDate("");
+    setThreshold("75");
     setData(null);
   }
 
@@ -166,6 +177,10 @@ export function LowAttendanceReport({ schoolSlug }: Props) {
     (Number.isNaN(Number(threshold)) ||
       Number(threshold) < 0 ||
       Number(threshold) > 100);
+  const hasFilters = Boolean(
+    academicYearId || classId || sectionId || fromDate || toDate ||
+    threshold !== "75",
+  );
 
   return (
     <div className="space-y-6 p-4 pb-10 sm:p-6">
@@ -194,15 +209,20 @@ export function LowAttendanceReport({ schoolSlug }: Props) {
 
       {/* Filters */}
       <div className="rounded-2xl border bg-card p-4 shadow-sm">
-        <div className="mb-4 flex items-center gap-2">
-          <FileText className="h-4 w-4 text-muted-foreground" />
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <FileText className="h-4 w-4 text-muted-foreground" />
 
-          <div>
-            <p className="text-sm font-medium">Report Filters</p>
-            <p className="text-xs text-muted-foreground">
-              Narrow the report by class, section, date, or attendance level.
-            </p>
+            <div>
+              <p className="text-sm font-medium">Report Filters</p>
+              <p className="text-xs text-muted-foreground">
+                Narrow the report by class, section, date, or attendance level.
+              </p>
+            </div>
           </div>
+          {hasFilters ? (
+            <ClearFiltersButton onClick={clearFilters} label="Clear filters" />
+          ) : null}
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">

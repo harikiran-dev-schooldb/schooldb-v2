@@ -147,7 +147,7 @@ export function StudentDirectorySummary({
     {
       title: "Active students",
       value: number(summary.activeStudents),
-      description: "Current student directory",
+      description: "Active enrollments in this report",
       icon: Users,
       iconClass: "bg-indigo-500/10 text-indigo-600",
     },

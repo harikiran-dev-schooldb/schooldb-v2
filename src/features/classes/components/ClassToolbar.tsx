@@ -1,6 +1,6 @@
 "use client";
 
-import { CrudToolbar } from "@/components/common/crud";
+import { ClearFiltersButton, CrudToolbar } from "@/components/common/crud";
 import { AcademicBranchSelect } from "@/components/common/select/AcademicBranchSelect";
 import { SyllabusSelect } from "@/components/common/select/SyllabusSelect";
 
@@ -40,6 +40,15 @@ export function ClassToolbar({
         onChange={onBranchChange}
         triggerClassName="h-10 w-full bg-background sm:w-48"
       />
+      {search || syllabusId || branchId ? (
+        <ClearFiltersButton
+          onClick={() => {
+            onSearch("");
+            onSyllabusChange("");
+            onBranchChange("");
+          }}
+        />
+      ) : null}
     </CrudToolbar>
   );
 }

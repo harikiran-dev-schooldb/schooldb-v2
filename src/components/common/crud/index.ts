@@ -4,3 +4,4 @@ export * from "./CreateButton";
 export * from "./CrudDialog";
 export * from "./CrudActionItem";
 export * from "./DeleteButton";
+export * from "./ClearFiltersButton";
