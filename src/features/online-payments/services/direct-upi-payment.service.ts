@@ -56,13 +56,12 @@ export const directUpiPaymentService = {
         where: {
           id: enrollmentId,
           schoolId,
-          active: true,
-          student: { status: "ACTIVE" },
+          student: { status: { in: ["ACTIVE", "ALUMNI"] } },
         },
         select: { id: true },
       });
       if (!enrollment) {
-        throw new ApiError(404, "Active student enrollment not found.");
+        throw new ApiError(404, "Active or alumni student enrollment not found.");
       }
 
       const duplicateUtr = await tx.directUpiPaymentSubmission.findFirst({

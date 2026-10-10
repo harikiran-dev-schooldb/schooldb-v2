@@ -22,10 +22,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       schoolId: tenant.schoolId, active: true,
       ...(academicYearId ? { feePlan: { academicYearId } } : {}),
       studentEnrollment: {
-        active: true,
         ...(classId ? { classId } : {}), ...(sectionId ? { sectionId } : {}),
         student: {
-          status: "ACTIVE",
+          status: { in: ["ACTIVE", "ALUMNI"] },
           ...(search ? { OR: [{ fullName: { contains: search, mode: "insensitive" } }, { admissionNo: { contains: search, mode: "insensitive" } }] } : {}),
         },
       },

@@ -39,9 +39,8 @@ export async function GET(req: Request) {
                 : {}),
 
               studentEnrollment: {
-                active: true,
                 student: {
-                  status: "ACTIVE",
+                  status: { in: ["ACTIVE", "ALUMNI"] },
                   ...(search
                     ? {
                         OR: [

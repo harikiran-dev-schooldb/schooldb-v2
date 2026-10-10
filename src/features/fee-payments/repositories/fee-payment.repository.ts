@@ -14,13 +14,12 @@ export async function createFeePaymentInTransaction(
     where: {
       id: input.studentEnrollmentId,
       schoolId,
-      active: true,
-      student: { status: "ACTIVE" },
+      student: { status: { in: ["ACTIVE", "ALUMNI"] } },
     },
   });
 
   if (!enrollment) {
-    throw new Error("Student enrollment not found.");
+    throw new Error("Active or alumni student enrollment not found.");
   }
 
   const installmentIds = input.allocations.map(

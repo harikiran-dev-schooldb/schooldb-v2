@@ -1,3 +1,4 @@
+import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 
 function startOfDay(date: Date) {
@@ -48,14 +49,13 @@ export async function getFeeDashboard(
       }
     : {};
 
-  const installmentWhere = {
+  const installmentWhere: Prisma.StudentFeeInstallmentWhereInput = {
     studentFeeItem: {
       studentFee: {
         schoolId,
         active: true,
         studentEnrollment: {
-          active: true,
-          student: { status: "ACTIVE" as const },
+          student: { status: { in: ["ACTIVE", "ALUMNI"] } },
         },
         ...(academicYearId ? { feePlan: { academicYearId } } : {}),
       },

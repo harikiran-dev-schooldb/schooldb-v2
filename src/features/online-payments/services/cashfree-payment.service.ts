@@ -141,8 +141,8 @@ export const cashfreePaymentService = {
         where: {
           id: input.studentId,
           schoolId,
-          status: "ACTIVE",
-          enrollments: { some: { id: enrollmentId, active: true } },
+          status: { in: ["ACTIVE", "ALUMNI"] },
+          enrollments: { some: { id: enrollmentId } },
         },
         select: {
           fullName: true,
@@ -158,7 +158,7 @@ export const cashfreePaymentService = {
         },
       });
 
-      if (!student) throw new ApiError(404, "Active student enrollment not found.");
+      if (!student) throw new ApiError(404, "Active or alumni student enrollment not found.");
 
       const installments = await tx.studentFeeInstallment.findMany({
         where: {

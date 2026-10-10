@@ -43,9 +43,8 @@ const whereClause = ({
         : {}),
 
       studentEnrollment: {
-        active: true,
         student: {
-          status: "ACTIVE",
+          status: { in: ["ACTIVE", "ALUMNI"] },
           ...(search
             ? {
                 OR: [

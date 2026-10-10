@@ -23,13 +23,12 @@ export async function POST(request: Request) {
         ...(input.studentEnrollmentId
           ? { id: input.studentEnrollmentId }
           : { studentId: input.studentId }),
-        active: true,
-        student: { status: "ACTIVE" },
+        student: { status: { in: ["ACTIVE", "ALUMNI"] } },
       },
       orderBy: { updatedAt: "desc" },
       select: { id: true, studentId: true },
     });
-    if (!enrollment) throw new ApiError(404, "Active student enrollment not found.");
+    if (!enrollment) throw new ApiError(404, "Active or alumni student enrollment not found.");
 
     const order = await cashfreePaymentService.createOrder({
       input: {

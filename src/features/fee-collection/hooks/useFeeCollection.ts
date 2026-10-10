@@ -41,27 +41,30 @@ export function useFeeCollection() {
       setSearchLoading(true);
       setHasSearched(true);
 
-      const response = await fetch(
-        `/api/v1/students?page=1&pageSize=25&search=${encodeURIComponent(
-          searchValue,
-        )}`,
-        {
-          cache: "no-store",
-        },
-      );
+      const query = `page=1&pageSize=25&search=${encodeURIComponent(searchValue)}`;
+      const [activeResponse, alumniResponse] = await Promise.all([
+        fetch(`/api/v1/students?${query}&status=ACTIVE`, { cache: "no-store" }),
+        fetch(`/api/v1/students?${query}&status=ALUMNI`, { cache: "no-store" }),
+      ]);
+      const [activeResult, alumniResult] = await Promise.all([
+        activeResponse.json(),
+        alumniResponse.json(),
+      ]);
 
-      const result = await response.json();
-
-      if (!response.ok || !result.success) {
+      if (
+        !activeResponse.ok ||
+        !activeResult.success ||
+        !alumniResponse.ok ||
+        !alumniResult.success
+      ) {
         setStudents([]);
 
         return;
       }
 
-      const studentResponse: StudentResponse =
-        result.data;
-
-      setStudents(studentResponse.data ?? []);
+      const activeStudents = (activeResult.data as StudentResponse).data ?? [];
+      const alumniStudents = (alumniResult.data as StudentResponse).data ?? [];
+      setStudents([...activeStudents, ...alumniStudents].slice(0, 25));
     } catch (error) {
       console.error(
         "Student search error:",

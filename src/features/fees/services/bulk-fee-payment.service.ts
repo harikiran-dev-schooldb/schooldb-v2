@@ -143,12 +143,11 @@ export async function importBulkFeePayments(
           const enrollment = await tx.studentEnrollment.findFirst({
             where: {
               schoolId,
-              active: true,
 
               student: {
                 admissionNo,
                 schoolId,
-                status: "ACTIVE",
+                status: { in: ["ACTIVE", "ALUMNI"] },
               },
             },
 

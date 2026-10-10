@@ -12,7 +12,9 @@ export async function GET() {
         studentFee: {
           schoolId: tenant.schoolId,
           active: true,
-          studentEnrollment: { student: { status: "ACTIVE" } },
+          studentEnrollment: {
+            student: { status: { in: ["ACTIVE", "ALUMNI"] } },
+          },
         },
       },
     },

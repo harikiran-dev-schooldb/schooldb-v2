@@ -49,11 +49,10 @@ async function resolveFeeReminderAudience(
             ? { feePlan: { academicYearId: filters.academicYearId } }
             : {}),
           studentEnrollment: {
-            active: true,
             ...(filters.classId ? { classId: filters.classId } : {}),
             ...(filters.sectionId ? { sectionId: filters.sectionId } : {}),
             student: {
-              status: "ACTIVE",
+              status: { in: ["ACTIVE", "ALUMNI"] },
               ...(filters.search
                 ? {
                     OR: [

@@ -15,9 +15,11 @@ export async function POST(request: Request) {
     const body = (await request.json()) as Record<string, unknown>;
     const sourceAcademicYearId = requiredString(body.sourceAcademicYearId, "Source academic year");
     const targetAcademicYearId = requiredString(body.targetAcademicYearId, "Target academic year");
+    const graduateFinalClass = body.graduateFinalClass === true;
     const result = await studentEnrollmentService.promoteSchool(tenant.schoolId, {
       sourceAcademicYearId,
       targetAcademicYearId,
+      graduateFinalClass,
     }, tenant.userId);
 
     await recordAuditLog({
@@ -25,13 +27,16 @@ export async function POST(request: Request) {
       module: "ACADEMICS",
       action: "UPDATE",
       entityType: "SCHOOL_PROMOTION_BATCH",
-      summary: `Promoted ${result.created} students school-wide; ${result.skipped} existing enrollments skipped.`,
+      summary: `Promoted ${result.created} students and graduated ${result.graduatedStudents} final-class students school-wide; ${result.skipped} existing enrollments skipped.`,
       metadata: {
         sourceAcademicYearId,
         targetAcademicYearId,
+        graduateFinalClass,
         created: result.created,
         skipped: result.skipped,
         graduatingStudents: result.graduatingStudents,
+        graduatedStudents: result.graduatedStudents,
+        graduationSkipped: result.graduationSkipped,
         unmappedStudents: result.unmappedStudents,
       },
     });

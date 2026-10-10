@@ -32,7 +32,79 @@ export type PromotionInput = {
 type SchoolPromotionInput = {
   sourceAcademicYearId: string;
   targetAcademicYearId: string;
+  graduateFinalClass?: boolean;
 };
+
+type EnrollmentUniquenessClient = Pick<
+  Prisma.TransactionClient,
+  "studentEnrollment"
+>;
+
+function isPrismaUniqueConstraintError(error: unknown) {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    error.code === "P2002"
+  );
+}
+
+async function enrollmentConflictMessage(
+  client: EnrollmentUniquenessClient,
+  schoolId: string,
+  input: StudentEnrollmentFormOutput,
+  excludeEnrollmentId?: string,
+) {
+  const exclusion = excludeEnrollmentId ? { NOT: { id: excludeEnrollmentId } } : {};
+  const [studentEnrollment, rollEnrollment] = await Promise.all([
+    client.studentEnrollment.findFirst({
+      where: {
+        schoolId,
+        studentId: input.studentId,
+        academicYearId: input.academicYearId,
+        ...exclusion,
+      },
+      select: { id: true },
+    }),
+    input.rollNo === undefined
+      ? null
+      : client.studentEnrollment.findFirst({
+          where: {
+            schoolId,
+            academicYearId: input.academicYearId,
+            classId: input.classId,
+            sectionId: input.sectionId,
+            rollNo: input.rollNo,
+            ...exclusion,
+          },
+          select: { id: true },
+        }),
+  ]);
+
+  if (studentEnrollment) {
+    return "Student is already enrolled in this academic year.";
+  }
+  if (rollEnrollment) {
+    return `Roll number ${input.rollNo} is already assigned in this class and section for the selected academic year. Choose another roll number.`;
+  }
+  return null;
+}
+
+async function rethrowEnrollmentConstraint(
+  error: unknown,
+  schoolId: string,
+  input: StudentEnrollmentFormOutput,
+  excludeEnrollmentId?: string,
+): Promise<never> {
+  if (!isPrismaUniqueConstraintError(error)) throw error;
+  const message = await enrollmentConflictMessage(
+    prisma,
+    schoolId,
+    input,
+    excludeEnrollmentId,
+  );
+  throw new Error(message ?? "An enrollment with these details already exists.");
+}
 
 export type PromotionImportRow = {
   admissionNo: string;
@@ -351,6 +423,7 @@ async function buildSchoolPromotionPlan(schoolId: string, input: SchoolPromotion
     }
   >();
   let graduatingStudents = 0;
+  const graduatingEnrollments: typeof enrollments = [];
   let unmappedStudents = 0;
 
   for (const enrollment of enrollments) {
@@ -362,6 +435,7 @@ async function buildSchoolPromotionPlan(schoolId: string, input: SchoolPromotion
     const targetClass = classes[index + 1];
     if (!targetClass) {
       graduatingStudents += 1;
+      graduatingEnrollments.push(enrollment);
       continue;
     }
     const normalizedSection = enrollment.section.name.trim().toLowerCase();
@@ -396,6 +470,7 @@ async function buildSchoolPromotionPlan(schoolId: string, input: SchoolPromotion
     enrollments,
     groups: [...grouped.values()],
     graduatingStudents,
+    graduatingEnrollments,
     unmappedStudents,
   };
 }
@@ -688,8 +763,12 @@ export const studentEnrollmentService = {
       input,
     );
 
-    const enrollment = await prisma.$transaction(async (tx) => {
-      const created = await studentEnrollmentRepository.create(
+    try {
+      return await prisma.$transaction(async (tx) => {
+        const conflict = await enrollmentConflictMessage(tx, schoolId, input);
+        if (conflict) throw new Error(conflict);
+
+        const created = await studentEnrollmentRepository.create(
         {
           school: {
             connect: {
@@ -752,10 +831,11 @@ export const studentEnrollmentService = {
         tx,
       );
 
-      return created;
-    });
-
-    return enrollment;
+        return created;
+      });
+    } catch (error) {
+      return rethrowEnrollmentConstraint(error, schoolId, input);
+    }
   },
 
   /* ------------------------------------------------------------------ */
@@ -826,8 +906,12 @@ export const studentEnrollmentService = {
       input,
     );
 
-    const updated = await prisma.$transaction(async (tx) => {
-      const saved = await studentEnrollmentRepository.update(
+    try {
+      return await prisma.$transaction(async (tx) => {
+        const conflict = await enrollmentConflictMessage(tx, schoolId, input, id);
+        if (conflict) throw new Error(conflict);
+
+        const saved = await studentEnrollmentRepository.update(
         id,
         schoolId,
         {
@@ -960,10 +1044,11 @@ export const studentEnrollmentService = {
         );
       }
 
-      return saved;
-    });
-
-    return updated;
+        return saved;
+      });
+    } catch (error) {
+      return rethrowEnrollmentConstraint(error, schoolId, input, id);
+    }
   },
 
   /* ------------------------------------------------------------------ */
@@ -1263,6 +1348,12 @@ export const studentEnrollmentService = {
     const dueEnrollmentIds = new Set(
       dueInstallments.map((item) => item.studentFeeItem.studentFee.studentEnrollmentId),
     );
+    const graduatingEnrollmentIds = new Set(
+      plan.graduatingEnrollments.map((item) => item.id),
+    );
+    const graduatingDueInstallments = dueInstallments.filter((item) =>
+      graduatingEnrollmentIds.has(item.studentFeeItem.studentFee.studentEnrollmentId),
+    );
 
     const readiness = await targetYearReadiness(
       schoolId,
@@ -1285,6 +1376,18 @@ export const studentEnrollmentService = {
         students: dueEnrollmentIds.size,
         installments: dueInstallments.length,
         outstandingAmount: dueInstallments.reduce(
+          (sum, item) => sum + Number(item.payableAmount) - Number(item.paidAmount),
+          0,
+        ),
+      },
+      graduatingFeeWarnings: {
+        students: new Set(
+          graduatingDueInstallments.map(
+            (item) => item.studentFeeItem.studentFee.studentEnrollmentId,
+          ),
+        ).size,
+        installments: graduatingDueInstallments.length,
+        outstandingAmount: graduatingDueInstallments.reduce(
           (sum, item) => sum + Number(item.payableAmount) - Number(item.paidAmount),
           0,
         ),
@@ -1330,6 +1433,8 @@ export const studentEnrollmentService = {
             created: 0,
             skipped: 0,
             graduatingStudents: plan.graduatingStudents,
+            graduatedStudents: 0,
+            graduationSkipped: 0,
             unmappedStudents: plan.unmappedStudents,
             groups: [] as Array<{
               source: string;
@@ -1366,6 +1471,84 @@ export const studentEnrollmentService = {
               skipped: result.skipped.length,
               studentIds: result.created.map((student) => student.studentId),
             });
+          }
+
+          if (input.graduateFinalClass && plan.graduatingEnrollments.length > 0) {
+            const graduatingStudentIds = plan.graduatingEnrollments.map(
+              (enrollment) => enrollment.studentId,
+            );
+            const existingTargetEnrollments = await tx.studentEnrollment.findMany({
+              where: {
+                schoolId,
+                academicYearId: input.targetAcademicYearId,
+                studentId: { in: graduatingStudentIds },
+              },
+              select: { studentId: true },
+            });
+            const alreadyEnrolled = new Set(
+              existingTargetEnrollments.map((enrollment) => enrollment.studentId),
+            );
+            const graduates = plan.graduatingEnrollments.filter(
+              (enrollment) => !alreadyEnrolled.has(enrollment.studentId),
+            );
+
+            if (graduates.length > 0) {
+              const enrollmentUpdate = await tx.studentEnrollment.updateMany({
+                where: {
+                  schoolId,
+                  id: { in: graduates.map((enrollment) => enrollment.id) },
+                  active: true,
+                },
+                data: { active: false },
+              });
+              if (enrollmentUpdate.count !== graduates.length) {
+                throw new Error(
+                  "One or more final-class enrollments changed during graduation. The rollover was not applied.",
+                );
+              }
+
+              const studentUpdate = await tx.student.updateMany({
+                where: {
+                  schoolId,
+                  id: { in: graduates.map((enrollment) => enrollment.studentId) },
+                  status: "ACTIVE",
+                },
+                data: { status: "ALUMNI" },
+              });
+              if (studentUpdate.count !== graduates.length) {
+                throw new Error(
+                  "One or more final-class student statuses changed during graduation. The rollover was not applied.",
+                );
+              }
+
+              for (const graduate of graduates) {
+                await studentActivityService.create(
+                  {
+                    schoolId,
+                    studentId: graduate.studentId,
+                    enrollmentId: graduate.id,
+                    type: "STATUS_CHANGED",
+                    title: "Student graduated",
+                    description: `Final-class enrollment in ${graduate.class.name} — ${graduate.section.name} for ${plan.sourceYear.name} completed. Student marked as alumni.`,
+                    sourceType: "ACADEMIC_YEAR_GRADUATION",
+                    sourceId: graduate.id,
+                    metadata: {
+                      graduation: true,
+                      fromStatus: "ACTIVE",
+                      toStatus: "ALUMNI",
+                      sourceAcademicYearId: input.sourceAcademicYearId,
+                      sourceEnrollmentId: graduate.id,
+                      feeClearanceRequired: false,
+                    },
+                    performedByUserId,
+                  },
+                  tx,
+                );
+              }
+            }
+
+            summary.graduatedStudents = graduates.length;
+            summary.graduationSkipped = alreadyEnrolled.size;
           }
 
           return summary;

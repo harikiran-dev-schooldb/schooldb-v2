@@ -115,6 +115,11 @@ type SchoolPromotionPreview = Pick<
   | "targetAcademicYearName"
 > & {
   graduatingStudents: number;
+  graduatingFeeWarnings: {
+    students: number;
+    installments: number;
+    outstandingAmount: number;
+  };
   unmappedStudents: number;
   mappings: Array<{ source: string; target: string; students: number }>;
 };
@@ -123,6 +128,8 @@ type SchoolPromotionResult = {
   created: number;
   skipped: number;
   graduatingStudents: number;
+  graduatedStudents: number;
+  graduationSkipped: number;
   unmappedStudents: number;
 };
 
@@ -173,6 +180,7 @@ export default function StudentPromotionPage() {
   const [schoolReviewOpen, setSchoolReviewOpen] = useState(false);
   const [schoolPromoting, setSchoolPromoting] = useState(false);
   const [schoolResult, setSchoolResult] = useState<SchoolPromotionResult | null>(null);
+  const [graduateFinalClass, setGraduateFinalClass] = useState(false);
 
   const [error, setError] = useState<string | null>(null);
 
@@ -470,6 +478,7 @@ export default function StudentPromotionPage() {
       setError(null);
       setSchoolPreview(null);
       setSchoolResult(null);
+      setGraduateFinalClass(false);
       const response = await fetch(
         "/api/v1/student-enrollments/promote/school/preview",
         {
@@ -495,7 +504,11 @@ export default function StudentPromotionPage() {
   }
 
   async function promoteSchool() {
-    if (!schoolPreview || schoolPreview.eligible === 0) return;
+    if (
+      !schoolPreview ||
+      (schoolPreview.eligible === 0 &&
+        !(graduateFinalClass && schoolPreview.graduatingStudents > 0))
+    ) return;
     try {
       setSchoolPromoting(true);
       setError(null);
@@ -505,6 +518,7 @@ export default function StudentPromotionPage() {
         body: JSON.stringify({
           sourceAcademicYearId: fromAcademicYearId,
           targetAcademicYearId: toAcademicYearId,
+          graduateFinalClass,
         }),
       });
       const payload = await response.json();
@@ -743,7 +757,7 @@ export default function StudentPromotionPage() {
           <div>
             <p className="text-sm font-semibold">School-wide promotion completed</p>
             <p className="mt-1 text-sm text-muted-foreground">
-              {schoolResult.created} promoted · {schoolResult.skipped} already enrolled · {schoolResult.graduatingStudents} final-class students left unchanged · {schoolResult.unmappedStudents} need section mapping.
+              {schoolResult.created} promoted · {schoolResult.graduatedStudents} graduated · {schoolResult.skipped} promotion skips · {schoolResult.graduationSkipped} graduation skips · {schoolResult.unmappedStudents} need section mapping.
             </p>
           </div>
         </div>
@@ -1296,17 +1310,48 @@ export default function StudentPromotionPage() {
                 detail={`${schoolPreview.feeWarnings.installments} installments · ${inr.format(schoolPreview.feeWarnings.outstandingAmount)} outstanding`}
                 tone={schoolPreview.feeWarnings.students ? "amber" : "green"}
               />
+              {schoolPreview.graduatingStudents > 0 && (
+                <div className="rounded-xl border border-border/60 p-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="space-y-1">
+                      <p className="text-sm font-semibold">Graduate final-class students</p>
+                      <p className="text-sm text-muted-foreground">
+                        Mark {schoolPreview.graduatingStudents} students as Alumni and close their final-class enrollments. Any unpaid fees remain outstanding and collectible; fee clearance does not block graduation.
+                      </p>
+                    </div>
+                    <Switch
+                      checked={graduateFinalClass}
+                      disabled={schoolPromoting}
+                      onCheckedChange={setGraduateFinalClass}
+                      aria-label="Graduate final-class students"
+                    />
+                  </div>
+                  {schoolPreview.graduatingFeeWarnings.students > 0 && (
+                    <p className="mt-3 text-sm text-amber-700 dark:text-amber-300">
+                      {schoolPreview.graduatingFeeWarnings.students} graduating students have {schoolPreview.graduatingFeeWarnings.installments} unpaid installments totaling {inr.format(schoolPreview.graduatingFeeWarnings.outstandingAmount)}. These balances stay in the fee ledger after graduation.
+                    </p>
+                  )}
+                </div>
+              )}
               <WarningRow
                 icon={BookOpenCheck}
                 title={`${schoolPreview.resultWarnings.studentsBelowPassMark} students below pass mark`}
                 detail={`${schoolPreview.resultWarnings.openExams} exams open · ${schoolPreview.resultWarnings.missingCompletedMarks} completed-exam marks missing`}
                 tone={schoolPreview.resultWarnings.openExams || schoolPreview.resultWarnings.missingCompletedMarks || schoolPreview.resultWarnings.studentsBelowPassMark ? "amber" : "green"}
               />
-              {(schoolPreview.graduatingStudents > 0 || schoolPreview.unmappedStudents > 0) && (
+              {!graduateFinalClass && schoolPreview.graduatingStudents > 0 && (
                 <WarningRow
                   icon={Users}
-                  title={`${schoolPreview.graduatingStudents + schoolPreview.unmappedStudents} students require manual action`}
-                  detail={`${schoolPreview.graduatingStudents} are in the final class; ${schoolPreview.unmappedStudents} have no safe target-section match.`}
+                  title={`${schoolPreview.graduatingStudents} final-class students will remain unchanged`}
+                  detail="Enable graduation above to close their enrollments and mark them as Alumni."
+                  tone="amber"
+                />
+              )}
+              {schoolPreview.unmappedStudents > 0 && (
+                <WarningRow
+                  icon={Users}
+                  title={`${schoolPreview.unmappedStudents} students require manual section mapping`}
+                  detail="They have no safe target-section match and will remain unchanged."
                   tone="amber"
                 />
               )}
@@ -1326,14 +1371,22 @@ export default function StudentPromotionPage() {
           <AlertDialogFooter>
             <AlertDialogCancel disabled={schoolPromoting}>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              disabled={schoolPromoting || !schoolPreview || schoolPreview.eligible === 0 || !schoolPreview.targetYearActive}
+              disabled={
+                schoolPromoting ||
+                !schoolPreview ||
+                (schoolPreview.eligible === 0 &&
+                  !(graduateFinalClass && schoolPreview.graduatingStudents > 0)) ||
+                !schoolPreview.targetYearActive
+              }
               onClick={(event) => {
                 event.preventDefault();
                 void promoteSchool();
               }}
             >
               {schoolPromoting && <Loader2 className="size-4 animate-spin" />}
-              {schoolPromoting ? "Promoting school..." : `Promote ${schoolPreview?.eligible ?? 0} students`}
+              {schoolPromoting
+                ? "Applying year-end changes..."
+                : `Promote ${schoolPreview?.eligible ?? 0}${graduateFinalClass ? ` and graduate ${schoolPreview?.graduatingStudents ?? 0}` : ""}`}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
