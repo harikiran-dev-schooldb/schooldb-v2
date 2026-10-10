@@ -14,6 +14,7 @@ export interface ListQuery {
   status?: StudentStatus;
   classId?: string;
   sectionId?: string;
+  gender?: "MALE" | "FEMALE" | "OTHER";
   isRte?: boolean;
   syllabusId?: string;
   branchId?: string;

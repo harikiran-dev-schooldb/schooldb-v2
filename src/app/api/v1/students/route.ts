@@ -6,6 +6,7 @@ import { ApiResponse } from "@/lib/response";
 import { createStudentSchema } from "@/features/students/schemas/student.schema";
 import { studentService } from "@/features/students/services/student.service";
 import { StudentStatus } from "@/features/students/constants/student-status";
+import { Gender } from "@/generated/prisma/enums";
 import { recordAuditLog } from "@/lib/audit";
 
 export async function POST(req: Request) {
@@ -63,6 +64,15 @@ export async function GET(req: Request) {
     const search = searchParams.get("search") ?? undefined;
     const classId = searchParams.get("classId") || undefined;
     const sectionId = searchParams.get("sectionId") || undefined;
+    const syllabusId = searchParams.get("syllabusId") || undefined;
+    const branchId = searchParams.get("branchId") || undefined;
+    const genderParam = searchParams.get("gender");
+    const gender = genderParam && Object.values(Gender).includes(genderParam as Gender)
+      ? genderParam as Gender
+      : undefined;
+    if (genderParam && !gender) {
+      return ApiResponse.error("Invalid gender.", 400);
+    }
     const isRteParam = searchParams.get("isRte");
     const isRte =
       isRteParam === "true" ? true : isRteParam === "false" ? false : undefined;
@@ -96,6 +106,9 @@ export async function GET(req: Request) {
       status,
       classId,
       sectionId,
+      syllabusId,
+      branchId,
+      gender,
       isRte,
       teacherScope,
     });

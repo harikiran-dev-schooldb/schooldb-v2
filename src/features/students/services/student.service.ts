@@ -1,6 +1,7 @@
 import { studentRepository } from "../repositories/student.repository";
 import { StudentFormOutput } from "../schemas/student.schema";
 import { StudentStatus } from "@/generated/prisma/enums";
+import type { Prisma } from "@/generated/prisma/client";
 import { ListQuery } from "@/types/query";
 import { studentActivityService } from "./student-activity.service";
 import { safelyProvisionStudentLogin } from "@/features/auth/account-provisioning";
@@ -27,10 +28,16 @@ export const studentService = {
     const page = query.page ?? 1;
     const pageSize = query.pageSize ?? 10;
 
-    const where = {
+    const classScope = query.branchId
+      ? { branchId: query.branchId }
+      : query.syllabusId
+        ? { branch: { syllabusId: query.syllabusId } }
+        : undefined;
+    const where: Prisma.StudentWhereInput = {
       schoolId,
 
       status: query.status ?? StudentStatus.ACTIVE,
+      ...(query.gender ? { gender: query.gender } : {}),
 
       ...(query.isRte !== undefined ? { isRte: query.isRte } : {}),
 
@@ -45,15 +52,17 @@ export const studentService = {
                 })),
                 ...(query.classId && { classId: query.classId }),
                 ...(query.sectionId && { sectionId: query.sectionId }),
+                ...(classScope ? { class: classScope } : {}),
               },
             },
           }
-        : (query.classId || query.sectionId) && {
+        : (query.classId || query.sectionId || classScope) && {
             enrollments: {
               some: {
                 active: true,
                 ...(query.classId && { classId: query.classId }),
                 ...(query.sectionId && { sectionId: query.sectionId }),
+                ...(classScope ? { class: classScope } : {}),
               },
             },
           }),

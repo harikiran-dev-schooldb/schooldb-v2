@@ -27,6 +27,8 @@ export function DataGrid<TData>({
   data,
   loading = false,
   page = 1,
+  pageSize,
+  totalItems,
   totalPages = 1,
   onPageChange,
   toolbar,
@@ -144,10 +146,12 @@ export function DataGrid<TData>({
       </div>
 
       {/* Pagination */}
-      {!loading && totalPages > 1 && (
+      {!loading && ((totalItems !== undefined && totalItems > 0) || totalPages > 1) && (
         <div className="border-t border-border/60 bg-muted/[0.18] px-3 py-3.5 sm:px-4 md:px-6">
           <DataGridPagination
             page={page}
+            pageSize={pageSize}
+            totalItems={totalItems}
             totalPages={totalPages}
             onPageChange={onPageChange ?? (() => undefined)}
           />

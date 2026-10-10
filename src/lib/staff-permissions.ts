@@ -161,7 +161,7 @@ export const API_ACCESS_RULES: readonly ApiAccessRule[] = [
   { prefix: "/api/v1/classes", read: ACADEMIC_REFERENCE_CONSUMERS, write: ["ACADEMICS"] },
   { prefix: "/api/v1/sections", read: ACADEMIC_REFERENCE_CONSUMERS, write: ["ACADEMICS"] },
   { prefix: "/api/v1/subjects", read: ["ACADEMICS", "ATTENDANCE", "LEARNING", "TIMETABLE", "REPORTS"], write: ["ACADEMICS"] },
-  { prefix: "/api/v1/syllabi", read: ["ACADEMICS", "LEARNING"], write: ["ACADEMICS"] },
+  { prefix: "/api/v1/syllabi", read: ACADEMIC_REFERENCE_CONSUMERS, write: ["ACADEMICS"] },
   { prefix: "/api/v1/academic-", read: ACADEMIC_REFERENCE_CONSUMERS, write: ["ACADEMICS"] },
   { prefix: "/api/v1/periods", read: ["TIMETABLE", "ATTENDANCE"], write: ["TIMETABLE"] },
   { prefix: "/api/v1/timetables", read: ["TIMETABLE", "ATTENDANCE"], write: ["TIMETABLE"] },

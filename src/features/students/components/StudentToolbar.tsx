@@ -3,7 +3,12 @@
 import { Filter } from "lucide-react";
 
 import { CrudToolbar } from "@/components/common/crud";
-import { ClassSelect, SectionSelect } from "@/components/common/select";
+import {
+  AcademicBranchSelect,
+  ClassSelect,
+  SectionSelect,
+  SyllabusSelect,
+} from "@/components/common/select";
 import {
   Select,
   SelectContent,
@@ -25,6 +30,12 @@ type Props = {
   onClassChange: (value: string) => void;
   sectionId: string;
   onSectionChange: (value: string) => void;
+  syllabusId: string;
+  onSyllabusChange: (value: string) => void;
+  branchId: string;
+  onBranchChange: (value: string) => void;
+  gender: "ALL" | "MALE" | "FEMALE" | "OTHER";
+  onGenderChange: (value: "ALL" | "MALE" | "FEMALE" | "OTHER") => void;
   rteFilter: "ALL" | "RTE" | "NON_RTE";
   onRteFilterChange: (value: "ALL" | "RTE" | "NON_RTE") => void;
 };
@@ -38,6 +49,12 @@ export function StudentToolbar({
   onClassChange,
   sectionId,
   onSectionChange,
+  syllabusId,
+  onSyllabusChange,
+  branchId,
+  onBranchChange,
+  gender,
+  onGenderChange,
   rteFilter,
   onRteFilterChange,
 }: Props) {
@@ -53,13 +70,47 @@ export function StudentToolbar({
           Filter
         </div>
 
+        <SyllabusSelect
+          value={syllabusId}
+          onChange={onSyllabusChange}
+          allowAll
+          triggerClassName="h-10 w-full min-w-36 rounded-xl border-border/70 bg-background/80 sm:w-40"
+        />
+
+        <AcademicBranchSelect
+          syllabusId={syllabusId}
+          value={branchId}
+          onChange={onBranchChange}
+          allowAll
+          triggerClassName="h-10 w-full min-w-36 rounded-xl border-border/70 bg-background/80 sm:w-40"
+        />
+
         <ClassSelect
+          syllabusId={syllabusId}
+          branchId={branchId}
           value={classId}
           onChange={onClassChange}
           allowAll
           placeholder="All Classes"
           triggerClassName="h-10 w-full min-w-36 rounded-xl border-border/70 bg-background/80 sm:w-40"
         />
+
+        <Select
+          value={gender}
+          onValueChange={(value) =>
+            onGenderChange(value as "ALL" | "MALE" | "FEMALE" | "OTHER")
+          }
+        >
+          <SelectTrigger className="h-10 w-full min-w-36 rounded-xl border-border/70 bg-background/80 px-3 font-medium shadow-sm sm:w-40">
+            <SelectValue placeholder="All genders" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ALL">All genders</SelectItem>
+            <SelectItem value="MALE">Male</SelectItem>
+            <SelectItem value="FEMALE">Female</SelectItem>
+            <SelectItem value="OTHER">Other</SelectItem>
+          </SelectContent>
+        </Select>
 
         <SectionSelect
           classId={classId}

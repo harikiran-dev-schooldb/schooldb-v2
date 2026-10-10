@@ -25,15 +25,18 @@ export function useStudentTable() {
   const [search, setSearch] = useState("");
   const [classId, setClassId] = useState("");
   const [sectionId, setSectionId] = useState("");
+  const [syllabusId, setSyllabusId] = useState("");
+  const [branchId, setBranchId] = useState("");
+  const [gender, setGender] = useState<
+    "ALL" | "MALE" | "FEMALE" | "OTHER"
+  >("ALL");
   const [rteFilter, setRteFilter] = useState<"ALL" | "RTE" | "NON_RTE">("ALL");
 
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [reloadVersion, setReloadVersion] = useState(0);
   const debouncedSearch = useDebounce(search, 400);
-  const [status, setStatus] = useState<StudentStatus>(
-  StudentStatus.ACTIVE
-);
+  const [status, setStatus] = useState<StudentStatus>(StudentStatus.ACTIVE);
 
   const handleSearch = (value: string) => {
     setLoading(true);
@@ -64,6 +67,29 @@ export function useStudentTable() {
     setPage(1);
   };
 
+  const handleSyllabus = (value: string) => {
+    setLoading(true);
+    setSyllabusId(value);
+    setBranchId("");
+    setClassId("");
+    setSectionId("");
+    setPage(1);
+  };
+
+  const handleBranch = (value: string) => {
+    setLoading(true);
+    setBranchId(value);
+    setClassId("");
+    setSectionId("");
+    setPage(1);
+  };
+
+  const handleGender = (value: "ALL" | "MALE" | "FEMALE" | "OTHER") => {
+    setLoading(true);
+    setGender(value);
+    setPage(1);
+  };
+
   const handleSection = (value: string) => {
     setLoading(true);
     setSectionId(value);
@@ -89,6 +115,9 @@ export function useStudentTable() {
         });
         if (classId) params.set("classId", classId);
         if (sectionId) params.set("sectionId", sectionId);
+        if (syllabusId) params.set("syllabusId", syllabusId);
+        if (branchId) params.set("branchId", branchId);
+        if (gender !== "ALL") params.set("gender", gender);
         if (rteFilter !== "ALL") params.set("isRte", String(rteFilter === "RTE"));
 
         const res = await fetch(`/api/v1/students?${params.toString()}`);
@@ -111,11 +140,23 @@ export function useStudentTable() {
     return () => {
       active = false;
     };
-  }, [page, pageSize, debouncedSearch, status, classId, sectionId, rteFilter, reloadVersion]);
+  }, [
+    page,
+    pageSize,
+    debouncedSearch,
+    status,
+    classId,
+    sectionId,
+    syllabusId,
+    branchId,
+    gender,
+    rteFilter,
+    reloadVersion,
+  ]);
 
   useEffect(() => {
-      return subscribeTableRefresh("students", reload);
-    }, [reload]);
+    return subscribeTableRefresh("students", reload);
+  }, [reload]);
 
   return {
     students,
@@ -141,6 +182,12 @@ export function useStudentTable() {
     setClassId: handleClass,
     sectionId,
     setSectionId: handleSection,
+    syllabusId,
+    setSyllabusId: handleSyllabus,
+    branchId,
+    setBranchId: handleBranch,
+    gender,
+    setGender: handleGender,
     rteFilter,
     setRteFilter: handleRteFilter,
   };

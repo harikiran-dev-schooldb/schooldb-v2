@@ -100,7 +100,7 @@ export default function StudentPage() {
           MAIN DATA WORKSPACE
           ====================================================================== */}
 
-      <section className="premium-card overflow-hidden rounded-3xl bg-white">
+      <section>
         <StudentTable />
       </section>
     </div>
