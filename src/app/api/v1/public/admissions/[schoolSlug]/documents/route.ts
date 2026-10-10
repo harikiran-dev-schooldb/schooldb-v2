@@ -1,5 +1,6 @@
 import { AdmissionDocumentType } from "@/generated/prisma/enums";
 import { trackAdmissionSchema } from "@/features/admissions/admission.schema";
+import { apiErrorResponse } from "@/lib/api";
 import { ApiError } from "@/lib/errors";
 import { prisma } from "@/lib/prisma";
 import { deleteAdmissionDocumentFile, saveAdmissionDocument } from "@/lib/private-storage";
@@ -37,7 +38,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ sch
     return Response.json({ success: true, data: document, message: "Document uploaded securely." }, { status: 201 });
   } catch (error) {
     if (storageKey) await deleteAdmissionDocumentFile(storageKey);
-    const status = error instanceof ApiError ? error.status : 400;
-    return Response.json({ success: false, message: error instanceof Error ? error.message : "Unable to upload document." }, { status });
+    return apiErrorResponse(error, "Unable to upload document.");
   }
 }

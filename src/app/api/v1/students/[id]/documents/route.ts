@@ -1,4 +1,5 @@
 import { StudentDocumentType } from "@/generated/prisma/enums";
+import { apiErrorResponse } from "@/lib/api";
 import { requireRole } from "@/lib/auth";
 import { ApiError } from "@/lib/errors";
 import { prisma } from "@/lib/prisma";
@@ -37,11 +38,7 @@ export async function GET(_request: Request, { params }: Props) {
     });
     return Response.json({ success: true, data: documents });
   } catch (error) {
-    const status = error instanceof ApiError ? error.status : 500;
-    return Response.json(
-      { success: false, message: error instanceof Error ? error.message : "Unable to load documents" },
-      { status },
-    );
+    return apiErrorResponse(error, "Unable to load documents.");
   }
 }
 
@@ -110,10 +107,6 @@ export async function POST(request: Request, { params }: Props) {
     return Response.json({ success: true, data: document }, { status: 201 });
   } catch (error) {
     if (storageKey) await deleteStudentDocumentFile(storageKey);
-    const status = error instanceof ApiError ? error.status : 500;
-    return Response.json(
-      { success: false, message: error instanceof Error ? error.message : "Unable to upload document" },
-      { status },
-    );
+    return apiErrorResponse(error, "Unable to upload document.");
   }
 }

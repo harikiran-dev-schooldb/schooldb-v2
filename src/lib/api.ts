@@ -1,30 +1,46 @@
 import { ApiError } from "./errors";
 import { ApiResponse } from "./response";
+import { hasPrismaErrorCode, safeDatabaseError } from "./database-error";
+
+type SafeApiError = {
+  message: string;
+  status: number;
+};
+
+export function safeApiError(error: unknown): SafeApiError {
+  if (error instanceof ApiError) {
+    return { message: error.message, status: error.status };
+  }
+
+  const databaseError = safeDatabaseError(error);
+  if (databaseError) return databaseError;
+
+  if (error instanceof Error) {
+    const internal =
+      error instanceof TypeError ||
+      hasPrismaErrorCode(error) ||
+      /Prisma|database|ECONN|connection|query engine/i.test(error.name);
+    return internal
+      ? { message: "An unexpected server error occurred", status: 500 }
+      : { message: error.message, status: 400 };
+  }
+
+  return { message: "Internal Server Error", status: 500 };
+}
+
+export function apiErrorResponse(error: unknown, fallbackMessage?: string) {
+  const safe = safeApiError(error);
+  return ApiResponse.error(
+    safe.status === 500 && fallbackMessage ? fallbackMessage : safe.message,
+    safe.status,
+  );
+}
 
 export async function apiHandler(callback: () => Promise<Response>) {
   try {
     return await callback();
   } catch (error) {
     console.error(error);
-
-    if (error instanceof ApiError) {
-      return ApiResponse.error(error.message, error.status);
-    }
-
-    if (error instanceof Error) {
-      const code =
-        typeof error === "object" && error && "code" in error
-          ? String(error.code)
-          : "";
-      const internal =
-        error instanceof TypeError ||
-        /^P\d{4}$/.test(code) ||
-        /Prisma|database|ECONN|connection|query engine/i.test(error.name);
-      return internal
-        ? ApiResponse.error("An unexpected server error occurred", 500)
-        : ApiResponse.error(error.message, 400);
-    }
-
-    return ApiResponse.error();
+    return apiErrorResponse(error);
   }
 }

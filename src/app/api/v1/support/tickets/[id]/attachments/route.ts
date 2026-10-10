@@ -1,3 +1,4 @@
+import { apiErrorResponse } from "@/lib/api";
 import { ApiError } from "@/lib/errors";
 import { prisma } from "@/lib/prisma";
 import {
@@ -74,14 +75,6 @@ export async function POST(request: Request, context: Context) {
     );
   } catch (error) {
     if (storageKey) await deleteSupportTicketAttachment(storageKey);
-    const status = error instanceof ApiError ? error.status : 500;
-    return Response.json(
-      {
-        success: false,
-        message:
-          error instanceof Error ? error.message : "Unable to upload attachment",
-      },
-      { status },
-    );
+    return apiErrorResponse(error, "Unable to upload attachment.");
   }
 }

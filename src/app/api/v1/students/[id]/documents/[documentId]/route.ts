@@ -1,3 +1,4 @@
+import { apiErrorResponse } from "@/lib/api";
 import { requireRole } from "@/lib/auth";
 import { ApiError } from "@/lib/errors";
 import { prisma } from "@/lib/prisma";
@@ -33,11 +34,7 @@ export async function PATCH(request: Request, { params }: Props) {
     ]);
     return Response.json({ success: true });
   } catch (error) {
-    const status = error instanceof ApiError ? error.status : 500;
-    return Response.json(
-      { success: false, message: error instanceof Error ? error.message : "Unable to update document" },
-      { status },
-    );
+    return apiErrorResponse(error, "Unable to update document.");
   }
 }
 
@@ -68,10 +65,6 @@ export async function DELETE(_request: Request, { params }: Props) {
     await deleteStudentDocumentFile(document.storageKey);
     return Response.json({ success: true });
   } catch (error) {
-    const status = error instanceof ApiError ? error.status : 500;
-    return Response.json(
-      { success: false, message: error instanceof Error ? error.message : "Unable to delete document" },
-      { status },
-    );
+    return apiErrorResponse(error, "Unable to delete document.");
   }
 }

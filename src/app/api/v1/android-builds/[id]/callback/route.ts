@@ -1,4 +1,5 @@
 import { Prisma } from "@/generated/prisma/client";
+import { apiErrorResponse } from "@/lib/api";
 import {
   bearerToken,
   createAndroidBuildCallbackToken,
@@ -59,14 +60,6 @@ export async function POST(request: Request, { params }: Props) {
 
     return Response.json({ success: true });
   } catch (error) {
-    const status = error instanceof ApiError ? error.status : 500;
-    return Response.json(
-      {
-        success: false,
-        message:
-          error instanceof Error ? error.message : "Unable to update build status.",
-      },
-      { status },
-    );
+    return apiErrorResponse(error, "Unable to update build status.");
   }
 }
