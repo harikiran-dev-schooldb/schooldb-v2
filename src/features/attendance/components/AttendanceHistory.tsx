@@ -18,6 +18,13 @@ import { toast } from "sonner";
 
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { refreshTable } from "@/lib/table-event";
 
 import {
@@ -39,6 +46,7 @@ export function AttendanceHistory({ schoolSlug }: Props) {
   const [classId, setClassId] = useState("");
   const [sectionId, setSectionId] = useState("");
   const [date, setDate] = useState("");
+  const [status, setStatus] = useState("");
   const [locking, setLocking] = useState(false);
   const [lockConfirmationOpen, setLockConfirmationOpen] = useState(false);
 
@@ -47,6 +55,7 @@ export function AttendanceHistory({ schoolSlug }: Props) {
     classId,
     sectionId,
     date,
+    status,
   });
 
   function changeClass(value: string) {
@@ -63,6 +72,7 @@ export function AttendanceHistory({ schoolSlug }: Props) {
     setClassId("");
     setSectionId("");
     setDate("");
+    setStatus("");
   }
 
   async function lockAllAttendance() {
@@ -151,7 +161,8 @@ export function AttendanceHistory({ schoolSlug }: Props) {
     Boolean(academicYearId) ||
     Boolean(classId) ||
     Boolean(sectionId) ||
-    Boolean(date);
+    Boolean(date) ||
+    Boolean(status);
 
   return (
     <>
@@ -179,7 +190,7 @@ export function AttendanceHistory({ schoolSlug }: Props) {
           </div>
 
           <div className="flex items-center gap-2">
-            {date && academicYearId && !loading && sessions.length > 0 && (
+            {date && academicYearId && !status && !loading && sessions.length > 0 && (
               <Button
                 type="button"
                 onClick={() => setLockConfirmationOpen(true)}
@@ -196,11 +207,11 @@ export function AttendanceHistory({ schoolSlug }: Props) {
               </Button>
             )}
 
-            {!loading && sessions.length > 0 && (
+            {!loading && data && (
               <div className="rounded-xl border bg-muted/40 px-4 py-2 text-sm">
-                <span className="font-semibold">{sessions.length}</span>{" "}
+                <span className="font-semibold">{data.total}</span>{" "}
                 <span className="text-muted-foreground">
-                  {sessions.length === 1 ? "Session" : "Sessions"}
+                  {data.total === 1 ? "Session" : "Sessions"}
                 </span>
               </div>
             )}
@@ -240,7 +251,7 @@ export function AttendanceHistory({ schoolSlug }: Props) {
           )}
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
           <AcademicYearSelect
             value={academicYearId}
             onChange={setAcademicYearId}
@@ -265,6 +276,20 @@ export function AttendanceHistory({ schoolSlug }: Props) {
               aria-label="Filter by attendance date"
             />
           </div>
+
+          <Select
+            value={status || "ALL"}
+            onValueChange={(value) => setStatus(value === "ALL" ? "" : value)}
+          >
+            <SelectTrigger aria-label="Filter by attendance status">
+              <SelectValue placeholder="All Statuses" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All Statuses</SelectItem>
+              <SelectItem value="COMPLETED">Completed</SelectItem>
+              <SelectItem value="PENDING">Pending</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 

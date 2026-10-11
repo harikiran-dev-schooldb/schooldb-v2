@@ -387,6 +387,7 @@ listSessions(
     classId?: string;
     sectionId?: string;
     date?: Date;
+    status?: "COMPLETED" | "PENDING";
   }
 ) {
   return prisma.attendanceSession.findMany({
@@ -407,6 +408,10 @@ listSessions(
 
       ...(options?.date && {
         attendanceDate: options.date,
+      }),
+
+      ...(options?.status && {
+        locked: options.status === "COMPLETED",
       }),
     },
 
@@ -446,6 +451,7 @@ countSessions(
     classId?: string;
     sectionId?: string;
     date?: Date;
+    status?: "COMPLETED" | "PENDING";
   }
 ) {
   return prisma.attendanceSession.count({
@@ -466,6 +472,10 @@ countSessions(
 
       ...(options?.date && {
         attendanceDate: options.date,
+      }),
+
+      ...(options?.status && {
+        locked: options.status === "COMPLETED",
       }),
     },
   });

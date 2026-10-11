@@ -37,6 +37,20 @@ export async function GET(req: Request) {
       searchParams.get("date") ??
       undefined;
 
+    const statusParam = searchParams.get("status");
+    if (
+      statusParam &&
+      statusParam !== "COMPLETED" &&
+      statusParam !== "PENDING"
+    ) {
+      return ApiResponse.error("Invalid attendance status filter.", 400);
+    }
+
+    const status =
+      statusParam === "COMPLETED" || statusParam === "PENDING"
+        ? statusParam
+        : undefined;
+
     const result =
       await attendanceService.listSessions(
         tenant.schoolId,
@@ -47,6 +61,7 @@ export async function GET(req: Request) {
           classId,
           sectionId,
           date,
+          status,
         }
       );
 
