@@ -1,6 +1,7 @@
 import { attendanceService } from "@/features/attendance/services/attendance.service";
 import { getFeeDashboard } from "@/features/fees/services/fee-dashboard.service";
 import { outstandingFeesService } from "@/features/fees/services/outstanding-fees.service";
+import { getAnalyticsSettings } from "@/features/reports/analytics-settings";
 import { getBirthdaySummary } from "@/features/students/services/birthday-summary.service";
 import { apiHandler } from "@/lib/api";
 import { requireCurrentTeacher, requireTenant } from "@/lib/auth";
@@ -28,7 +29,7 @@ export async function GET(request: Request) {
     const canReadStaff = hasModuleAccess(membership, "STAFF");
     const isAdministrator = ADMIN_ROLES.includes(role);
 
-    const [academicYear, teacherScope] = await Promise.all([
+    const [academicYear, teacherScope, analyticsSettings] = await Promise.all([
       prisma.academicYear.findFirst({
         where: { schoolId, active: true },
         orderBy: { startDate: "desc" },
@@ -43,6 +44,7 @@ export async function GET(request: Request) {
             }),
           )
         : Promise.resolve(null),
+      getAnalyticsSettings(schoolId),
     ]);
 
     const academicYearId = academicYear?.id;
@@ -85,7 +87,12 @@ export async function GET(request: Request) {
       }),
       canReadStaff ? prisma.teacher.count({ where: { schoolId, active: true } }) : 0,
       prisma.class.count({ where: { schoolId, active: true } }),
-      canReadAttendance ? attendanceService.dashboard(schoolId) : null,
+      canReadAttendance
+        ? attendanceService.dashboard(schoolId, {
+            threshold: analyticsSettings.lowAttendanceThreshold,
+            lateCountsAsPresent: analyticsSettings.lateCountsAsPresent,
+          })
+        : null,
       canReadFees ? getFeeDashboard(schoolId, academicYearId) : null,
       canReadFees
         ? outstandingFeesService.summary({ schoolId, academicYearId })
@@ -177,7 +184,11 @@ export async function GET(request: Request) {
     ]);
 
     const overCapacityRoutes = transportRoutes.filter(
-      (route) => route.vehicle && route._count.assignments > route.vehicle.capacity,
+      (route) =>
+        route.vehicle &&
+        route.vehicle.capacity > 0 &&
+        (route._count.assignments / route.vehicle.capacity) * 100 >=
+          analyticsSettings.routeCapacityWarningPercent,
     ).length;
 
     console.info(
@@ -207,6 +218,7 @@ export async function GET(request: Request) {
       houses,
       birthdays: birthdaySummary.birthdays,
       dataAsOf: now.toISOString(),
+      analyticsSettings,
       actions: {
         pendingAdmissions,
         pendingStudentLeaves,

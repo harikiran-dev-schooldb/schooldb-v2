@@ -1,5 +1,6 @@
 import { Prisma } from "@/generated/prisma/client";
 
+import { getAnalyticsSettings } from "@/features/reports/analytics-settings";
 import { prisma } from "@/lib/prisma";
 
 export type ReportFilterInput = {
@@ -76,7 +77,7 @@ export async function getSchoolReport(
    * selects the active academic year.
    */
 
-  const [academicYear, selectedClass, sectionCandidate] = await Promise.all([
+  const [academicYear, selectedClass, sectionCandidate, analyticsSettings] = await Promise.all([
     prisma.academicYear.findFirst({
       where: {
         schoolId,
@@ -134,6 +135,8 @@ export async function getSchoolReport(
           },
         })
       : null,
+
+    getAnalyticsSettings(schoolId),
   ]);
 
   if (!academicYear) {
@@ -691,6 +694,7 @@ export async function getSchoolReport(
       date: string;
       present: number;
       absent: number;
+      late: number;
       total: number;
     }
   >();
@@ -699,6 +703,7 @@ export async function getSchoolReport(
     string,
     {
       present: number;
+      late: number;
       total: number;
     }
   >();
@@ -723,12 +728,14 @@ export async function getSchoolReport(
         date: key,
         present: 0,
         absent: 0,
+        late: 0,
         total: 0,
       };
 
       day.total += count;
       if (row.status === "PRESENT") day.present += count;
       else if (row.status === "ABSENT") day.absent += count;
+      else if (row.status === "LATE") day.late += count;
       daily.set(key, day);
 
       continue;
@@ -737,11 +744,13 @@ export async function getSchoolReport(
     if (row.scope === "student" && row.studentId) {
       const student = perStudent.get(row.studentId) ?? {
         present: 0,
+        late: 0,
         total: 0,
       };
 
       student.total += count;
       if (row.status === "PRESENT") student.present += count;
+      else if (row.status === "LATE") student.late += count;
       perStudent.set(row.studentId, student);
     }
   }
@@ -752,16 +761,20 @@ export async function getSchoolReport(
    * ---------------------------------------------------------
    */
 
-  const lowestAttendanceIds = [...perStudent.entries()]
+  const lowAttendanceRows = [...perStudent.entries()]
     .map(([studentId, value]) => ({
       studentId,
       ...value,
 
-      percentage: percent(value.present, value.total),
+      percentage: percent(
+        value.present + (analyticsSettings.lateCountsAsPresent ? value.late : 0),
+        value.total,
+      ),
     }))
-    .filter((row) => row.percentage < 75)
-    .sort((a, b) => a.percentage - b.percentage || b.total - a.total)
-    .slice(0, 8);
+    .filter((row) => row.percentage < analyticsSettings.lowAttendanceThreshold)
+    .sort((a, b) => a.percentage - b.percentage || b.total - a.total);
+
+  const lowestAttendanceIds = lowAttendanceRows.slice(0, 8);
 
   const lowStudentRecords = lowestAttendanceIds.length
     ? await prisma.student.findMany({
@@ -836,10 +849,15 @@ export async function getSchoolReport(
   const previousAttendancePresent = previousAttendanceGroups.find(
     (row) => row.status === "PRESENT",
   )?._count._all ?? 0;
+  const previousAttendanceLate = previousAttendanceGroups.find(
+    (row) => row.status === "LATE",
+  )?._count._all ?? 0;
   const previousAttendancePercentage = percent(
-    previousAttendancePresent,
+    previousAttendancePresent + (analyticsSettings.lateCountsAsPresent ? previousAttendanceLate : 0),
     previousAttendanceTotal,
   );
+  const attendancePresentEquivalent =
+    attendance.present + (analyticsSettings.lateCountsAsPresent ? attendance.late : 0);
   const collected = Number(feeCollection._sum.amount ?? 0);
   const previousCollected = Number(previousFeeCollection._sum.amount ?? 0);
   const expenses = Number(expenseTotals._sum.amount ?? 0);
@@ -849,6 +867,7 @@ export async function getSchoolReport(
     days61To90: { count: 0, amount: 0 },
     over90: { count: 0, amount: 0 },
   };
+  const overdueAlert = { count: 0, amount: 0 };
   for (const row of feeAgeingRows) {
     const days = Math.max(0, Math.floor((to.getTime() - row.dueDate.getTime()) / 86_400_000));
     const balance = Math.max(0, Number(row.payableAmount) - Number(row.paidAmount));
@@ -861,6 +880,10 @@ export async function getSchoolReport(
           : ageing.days1To30;
     bucket.count += 1;
     bucket.amount += balance;
+    if (days >= analyticsSettings.feeOverdueAlertDays) {
+      overdueAlert.count += 1;
+      overdueAlert.amount += balance;
+    }
   }
   const admissionCounts = Object.fromEntries(
     admissionGroups.map((row) => [row.status, row._count._all]),
@@ -889,6 +912,8 @@ export async function getSchoolReport(
       rosterPolicy: "ACTIVE_STUDENTS",
     },
 
+    settings: analyticsSettings,
+
     students: {
       total: studentCount,
 
@@ -913,18 +938,25 @@ export async function getSchoolReport(
 
       sessions: attendanceSessionCount,
 
-      percentage: percent(attendance.present, attendance.total),
+      percentage: percent(attendancePresentEquivalent, attendance.total),
       previousPercentage: previousAttendancePercentage,
       percentagePointChange: Number(
-        (percent(attendance.present, attendance.total) - previousAttendancePercentage).toFixed(1),
+        (percent(attendancePresentEquivalent, attendance.total) - previousAttendancePercentage).toFixed(1),
       ),
+      countingRule: analyticsSettings.lateCountsAsPresent
+        ? "Present and late records count as attended"
+        : "Only present records count as attended",
+      lowCount: lowAttendanceRows.length,
 
       daily: [...daily.values()]
         .sort((a, b) => a.date.localeCompare(b.date))
         .map((day) => ({
           ...day,
 
-          percentage: percent(day.present, day.total),
+          percentage: percent(
+            day.present + (analyticsSettings.lateCountsAsPresent ? day.late : 0),
+            day.total,
+          ),
         })),
 
       low: lowestAttendanceIds.map((row) => {
@@ -969,6 +1001,7 @@ export async function getSchoolReport(
       installments: feeLedger._count._all,
       collectionEfficiency: percent(paid, payable),
       ageing,
+      overdueAlert,
     },
 
     admissions: {

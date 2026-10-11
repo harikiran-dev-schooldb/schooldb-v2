@@ -667,6 +667,7 @@ async lowAttendanceSummary(
   sectionId?: string,
   fromDate?: Date,
   toDate?: Date,
+  lateCountsAsPresent = true,
 ) {
   const classFilter = classId
     ? Prisma.sql`AND e."classId" = ${classId}`
@@ -694,6 +695,9 @@ async lowAttendanceSummary(
       : attendanceMode === "MORNING_AFTERNOON"
         ? Prisma.sql`s."attendanceDate"::text || ':' || s."sessionType"::text`
         : Prisma.sql`s."attendanceDate"::text || ':PERIOD:' || s."periodId"`;
+  const attendedStatusFilter = lateCountsAsPresent
+    ? Prisma.sql`r.status IN ('PRESENT', 'LATE')`
+    : Prisma.sql`r.status = 'PRESENT'`;
 
   const rows = await prisma.$queryRaw<
     Array<{
@@ -733,7 +737,7 @@ async lowAttendanceSummary(
         e."studentId",
         COUNT(r.status) FILTER (WHERE r.rn = 1) AS total,
         COUNT(r.status) FILTER (
-          WHERE r.rn = 1 AND r.status IN ('PRESENT', 'LATE')
+          WHERE r.rn = 1 AND ${attendedStatusFilter}
         ) AS attended
       FROM active_students e
       LEFT JOIN ranked r ON r."studentId" = e."studentId"

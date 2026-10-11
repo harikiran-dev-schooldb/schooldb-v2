@@ -1,8 +1,11 @@
 import {
   AlertTriangle,
   BookOpenCheck,
+  Building2,
   BusFront,
   CalendarCheck2,
+  CircleDollarSign,
+  Goal,
   IndianRupee,
   LibraryBig,
   TrendingUp,
@@ -15,8 +18,10 @@ import { randomUUID } from "node:crypto";
 import { PageContainer, PageHeader } from "@/components/common/layout";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { AnalyticsSettingsPanel } from "@/features/reports/AnalyticsSettingsPanel";
 import { ReportsFilters } from "@/features/reports/ReportsFilters";
 import { ReportPageActions } from "@/features/reports/ReportPageActions";
+import { getSchoolPortfolio } from "@/features/reports/portfolio.service";
 import { getSchoolReport } from "@/features/reports/report.service";
 import { requireRole } from "@/lib/auth";
 
@@ -83,6 +88,11 @@ export default async function ManagementAnalyticsPage({ params, searchParams }: 
     );
   }
 
+  const portfolio = await getSchoolPortfolio(membership.userId, {
+    from: report.scope.from,
+    to: report.scope.to,
+  });
+
   const hasCustomAttendanceRange = Boolean(filters.from || filters.to);
   const attendanceTrendStart = new Date(`${report.scope.to}T00:00:00`);
   attendanceTrendStart.setDate(attendanceTrendStart.getDate() - 29);
@@ -102,13 +112,22 @@ export default async function ManagementAnalyticsPage({ params, searchParams }: 
     (sum, day) => sum + day.absent,
     0,
   );
-  const attendanceTrendAverage = attendanceTrend.length
-    ? Math.round(attendanceTrendAbsences / attendanceTrend.length)
-    : 0;
   const attendanceTrendHighest = Math.max(
     0,
     ...attendanceTrend.map((day) => day.absent),
   );
+  const periodDays = Math.max(
+    1,
+    Math.round(
+      (new Date(`${report.scope.to}T00:00:00`).getTime() -
+        new Date(`${report.scope.from}T00:00:00`).getTime()) /
+        86_400_000,
+    ) + 1,
+  );
+  const periodTargetFactor = periodDays / 30;
+  const collectionTarget = report.settings.monthlyCollectionTarget * periodTargetFactor;
+  const expenseBudget = report.settings.monthlyExpenseBudget * periodTargetFactor;
+  const admissionsTarget = report.settings.monthlyAdmissionsTarget * periodTargetFactor;
 
   return (
     <PageContainer>
@@ -147,6 +166,10 @@ export default async function ManagementAnalyticsPage({ params, searchParams }: 
           to: report.scope.to,
         }}
       />
+
+      <div className="mt-4">
+        <AnalyticsSettingsPanel initial={report.settings} />
+      </div>
 
       <section className="relative mt-6 overflow-hidden rounded-3xl border border-indigo-100 bg-gradient-to-br from-white via-indigo-50/70 to-violet-50/70 p-6 shadow-[0_18px_50px_rgba(15,23,42,0.07)] print:bg-white print:shadow-none sm:p-8">
         <div className="pointer-events-none absolute -right-16 -top-24 size-72 rounded-full bg-violet-400/10 blur-3xl" />
@@ -206,7 +229,7 @@ export default async function ManagementAnalyticsPage({ params, searchParams }: 
           icon={IndianRupee}
           label="Fees collected"
           value={currency(report.fees.collected)}
-          detail={report.fees.collectionChangePercentage === null ? `${report.fees.payments} payments · no prior baseline` : `${report.fees.collectionChangePercentage >= 0 ? "+" : ""}${report.fees.collectionChangePercentage}% vs previous period`}
+          detail={report.fees.collectionChangePercentage === null ? `${report.fees.payments} payments · selected period` : `${report.fees.collectionChangePercentage >= 0 ? "+" : ""}${report.fees.collectionChangePercentage}% vs previous period`}
           tone="blue"
           href={`/${schoolSlug}/fees/payments`}
         />
@@ -214,36 +237,140 @@ export default async function ManagementAnalyticsPage({ params, searchParams }: 
           icon={WalletCards}
           label="Outstanding fees"
           value={currency(report.fees.outstanding)}
-          detail={`${report.fees.collectionEfficiency}% collection efficiency`}
+          detail={`${report.fees.collectionEfficiency}% · academic-year ledger`}
           tone={report.fees.outstanding > 0 ? "amber" : "emerald"}
           href={`/${schoolSlug}/fees/outstanding?academicYearId=${encodeURIComponent(report.scope.academicYearId)}`}
         />
       </section>
 
+      <section className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        <TargetCard
+          icon={CalendarCheck2}
+          label="Attendance goal"
+          value={report.attendance.percentage}
+          target={report.settings.attendanceTarget}
+          suffix="%"
+          higherIsBetter
+        />
+        <TargetCard
+          icon={CircleDollarSign}
+          label="Collection goal"
+          value={report.fees.collected}
+          target={collectionTarget}
+          formatter={currency}
+          higherIsBetter
+          disabled={report.settings.monthlyCollectionTarget === 0}
+        />
+        <TargetCard
+          icon={WalletCards}
+          label="Expense budget"
+          value={report.finance.expenses}
+          target={expenseBudget}
+          formatter={currency}
+          higherIsBetter={false}
+          disabled={report.settings.monthlyExpenseBudget === 0}
+        />
+        <TargetCard
+          icon={UsersRound}
+          label="Admissions goal"
+          value={report.admissions.converted}
+          target={admissionsTarget}
+          higherIsBetter
+          disabled={report.settings.monthlyAdmissionsTarget === 0}
+        />
+        <TargetCard
+          icon={Goal}
+          label="Academic goal"
+          value={report.academics.passPercentage}
+          target={report.settings.academicPassTarget}
+          suffix="%"
+          higherIsBetter
+        />
+      </section>
+      <p className="mt-2 text-right text-[11px] text-muted-foreground">
+        Monthly financial and admissions goals are prorated to this {periodDays}-day reporting period.
+      </p>
+
+      {portfolio.length > 1 && (
+        <section className="mt-6 overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-[0_12px_35px_rgba(15,23,42,0.045)] print:break-inside-avoid print:shadow-none">
+          <div className="flex flex-col gap-3 border-b bg-gradient-to-r from-white via-indigo-50/40 to-violet-50/40 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex size-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-700">
+                <Building2 className="size-5" />
+              </div>
+              <div>
+                <h2 className="font-bold">Multi-school portfolio</h2>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  Compare your authorized schools over the same reporting dates.
+                </p>
+              </div>
+            </div>
+            <Badge variant="outline">{portfolio.length} schools</Badge>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[760px] text-left text-sm">
+              <thead className="bg-slate-50/80 text-[10px] uppercase tracking-[0.12em] text-slate-400">
+                <tr>
+                  <th className="px-5 py-3">School</th>
+                  <th className="px-5 py-3 text-right">Students</th>
+                  <th className="px-5 py-3 text-right">Attendance</th>
+                  <th className="px-5 py-3 text-right">Collected</th>
+                  <th className="px-5 py-3 text-right">Outstanding</th>
+                  <th className="px-5 py-3 text-right">Efficiency</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {portfolio.map((item) => (
+                  <tr key={item.id} className={item.slug === schoolSlug ? "bg-indigo-50/35" : "hover:bg-slate-50/70"}>
+                    <td className="px-5 py-4">
+                      <Link
+                        href={`/${item.slug}/management-analytics?from=${encodeURIComponent(report.scope.from)}&to=${encodeURIComponent(report.scope.to)}`}
+                        className="font-bold text-slate-900 hover:text-indigo-700"
+                      >
+                        {item.name}
+                      </Link>
+                      {item.slug === schoolSlug && <Badge className="ml-2" variant="secondary">Current</Badge>}
+                    </td>
+                    <td className="px-5 py-4 text-right font-semibold">{item.students.toLocaleString("en-IN")}</td>
+                    <td className="px-5 py-4 text-right font-semibold">{item.attendancePercentage}%</td>
+                    <td className="px-5 py-4 text-right font-semibold">{currency(item.collected)}</td>
+                    <td className="px-5 py-4 text-right font-semibold text-amber-700">{currency(item.outstanding)}</td>
+                    <td className="px-5 py-4 text-right font-semibold">{item.collectionEfficiency}%</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+
       <section className="mt-6 grid gap-6 xl:grid-cols-[1.5fr_1fr]">
         <ReportCard
           accent
-          title="Absentees trend"
+          title="Attendance trend"
           description={
             hasCustomAttendanceRange
-              ? "Daily absent student count for the selected period"
-              : "Daily absent student count for the last 30 days"
+              ? `Daily attendance rate for the selected period · ${report.attendance.countingRule}`
+              : `Daily attendance rate for the last 30 days · ${report.attendance.countingRule}`
           }
-          badge={`${attendanceTrendAbsences.toLocaleString("en-IN")} absences`}
+          badge={`${report.attendance.percentage}% overall`}
         >
-          <AbsenteesChart data={attendanceTrend} />
+          <AttendanceTrendChart
+            data={attendanceTrend}
+            target={report.settings.attendanceTarget}
+          />
           <div className="mt-5 grid grid-cols-3 gap-3">
             <MiniMetric
-              label="Latest"
-              value={attendanceTrend.at(-1)?.absent ?? 0}
-              className="text-rose-700"
+              label="Latest attendance"
+              value={`${attendanceTrend.at(-1)?.percentage ?? 0}%`}
+              className="text-emerald-700"
             />
             <MiniMetric
-              label="Daily average"
-              value={attendanceTrendAverage}
+              label="Total absences"
+              value={attendanceTrendAbsences}
             />
             <MiniMetric
-              label="Highest"
+              label="Highest absences"
               value={attendanceTrendHighest}
               className="text-amber-700"
             />
@@ -307,7 +434,7 @@ export default async function ManagementAnalyticsPage({ params, searchParams }: 
 
         <ReportCard
           title="Fee position"
-          description="Assigned ledger compared with successful payments"
+          description="Academic-year assigned ledger compared with all successful payments"
           badge={`${report.fees.payments} payments`}
         >
           <div className="grid gap-4 sm:grid-cols-2">
@@ -358,7 +485,7 @@ export default async function ManagementAnalyticsPage({ params, searchParams }: 
 
         <ReportCard
           title="Income versus expenses"
-          description="Successful fee collections compared with posted expenses"
+          description="Selected-period fee collections compared with selected-period posted expenses"
           badge={`${report.finance.expenseCount} expenses`}
         >
           <div className="grid gap-4 sm:grid-cols-3">
@@ -380,6 +507,14 @@ export default async function ManagementAnalyticsPage({ params, searchParams }: 
             <MoneyBlock label={`31–60 days · ${report.fees.ageing.days31To60.count}`} value={report.fees.ageing.days31To60.amount} />
             <MoneyBlock label={`61–90 days · ${report.fees.ageing.days61To90.count}`} value={report.fees.ageing.days61To90.amount} alert={report.fees.ageing.days61To90.amount > 0} />
             <MoneyBlock label={`Over 90 days · ${report.fees.ageing.over90.count}`} value={report.fees.ageing.over90.amount} alert={report.fees.ageing.over90.amount > 0} />
+          </div>
+          <div className={`mt-4 rounded-2xl border px-4 py-3 text-sm ${report.fees.overdueAlert.count ? "border-amber-200 bg-amber-50/70 text-amber-900" : "border-emerald-200 bg-emerald-50/70 text-emerald-900"}`}>
+            <span className="font-bold">
+              {report.fees.overdueAlert.count
+                ? `${report.fees.overdueAlert.count} installments · ${currency(report.fees.overdueAlert.amount)}`
+                : "No balances"}
+            </span>{" "}
+            {report.fees.overdueAlert.count ? "have" : "have not"} crossed the configured {report.settings.feeOverdueAlertDays}-day alert threshold.
           </div>
         </ReportCard>
       </div>
@@ -422,11 +557,11 @@ export default async function ManagementAnalyticsPage({ params, searchParams }: 
           <div>
             <h2 className="font-bold">Low attendance attention list</h2>
             <p className="mt-1 text-xs text-muted-foreground">
-              Students below 75% during the selected reporting period.
+              Students below {report.settings.lowAttendanceThreshold}% during the selected reporting period. Showing the 8 lowest records.
             </p>
           </div>
-          <Badge variant={report.attendance.low.length ? "warning" : "success"}>
-            {report.attendance.low.length} students
+          <Badge variant={report.attendance.lowCount ? "warning" : "success"}>
+            {report.attendance.lowCount} students
           </Badge>
         </div>
         {report.attendance.low.length ? (
@@ -490,6 +625,57 @@ function HeroMetric({ label, value }: { label: string; value: string }) {
         {label}
       </p>
       <p className="mt-1 text-lg font-black tracking-tight text-slate-950">{value}</p>
+    </div>
+  );
+}
+
+function TargetCard({
+  icon: Icon,
+  label,
+  value,
+  target,
+  suffix = "",
+  formatter,
+  higherIsBetter,
+  disabled = false,
+}: {
+  icon: typeof Goal;
+  label: string;
+  value: number;
+  target: number;
+  suffix?: string;
+  formatter?: (value: number) => string;
+  higherIsBetter: boolean;
+  disabled?: boolean;
+}) {
+  const achieved = !disabled && (higherIsBetter ? value >= target : value <= target);
+  const progress = disabled || target <= 0
+    ? 0
+    : Math.min(100, Math.max(0, (value / target) * 100));
+  const display = (amount: number) => formatter
+    ? formatter(amount)
+    : `${Number(amount.toFixed(1)).toLocaleString("en-IN")}${suffix}`;
+
+  return (
+    <div className={`rounded-3xl border bg-white p-4 shadow-[0_10px_28px_rgba(15,23,42,0.04)] ${disabled ? "border-dashed" : achieved ? "border-emerald-200" : "border-amber-200"}`}>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{label}</p>
+          <p className="mt-1 text-xl font-black">{display(value)}</p>
+        </div>
+        <div className={`flex size-9 items-center justify-center rounded-xl ${disabled ? "bg-slate-100 text-slate-500" : achieved ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
+          <Icon className="size-4" />
+        </div>
+      </div>
+      <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-100">
+        <div
+          className={`h-full rounded-full ${achieved ? "bg-emerald-500" : "bg-amber-500"}`}
+          style={{ width: `${progress}%` }}
+        />
+      </div>
+      <p className="mt-2 text-[11px] font-semibold text-muted-foreground">
+        {disabled ? "Set a target above" : `${higherIsBetter ? "Target" : "Budget"}: ${display(target)}`}
+      </p>
     </div>
   );
 }
@@ -690,10 +876,12 @@ function BarList({
   );
 }
 
-function AbsenteesChart({
+function AttendanceTrendChart({
   data,
+  target,
 }: {
-  data: Array<{ date: string; absent: number }>;
+  data: Array<{ date: string; absent: number; percentage: number }>;
+  target: number;
 }) {
   if (!data.length)
     return (
@@ -709,9 +897,8 @@ function AbsenteesChart({
   const paddingBottom = 24;
   const usableWidth = width - paddingX * 2;
   const usableHeight = height - paddingTop - paddingBottom;
-  const highest = Math.max(1, ...data.map((item) => item.absent));
-  const axisMax = Math.max(4, Math.ceil(highest / 4) * 4);
-  const ticks = [0, axisMax / 4, axisMax / 2, (axisMax * 3) / 4, axisMax];
+  const axisMax = 100;
+  const ticks = [0, 25, 50, 75, 100];
 
   const coordinates = data.map((item, index) => {
     const x =
@@ -722,7 +909,7 @@ function AbsenteesChart({
     const y =
       paddingTop +
       usableHeight -
-      (item.absent / axisMax) * usableHeight;
+      (item.percentage / axisMax) * usableHeight;
 
     return { ...item, x, y };
   });
@@ -734,7 +921,7 @@ function AbsenteesChart({
     <div>
       <svg
         role="img"
-        aria-label="Daily absentee count trend"
+        aria-label="Daily attendance percentage trend"
         viewBox={`0 0 ${width} ${height}`}
         className="h-60 w-full overflow-visible"
       >
@@ -772,11 +959,21 @@ function AbsenteesChart({
                 fill="currentColor"
                 opacity="0.45"
               >
-                {Math.round(tick)}
+                {Math.round(tick)}%
               </text>
             </g>
           );
         })}
+
+        <line
+          x1={paddingX}
+          x2={width - paddingX}
+          y1={paddingTop + usableHeight - (target / axisMax) * usableHeight}
+          y2={paddingTop + usableHeight - (target / axisMax) * usableHeight}
+          stroke="#059669"
+          strokeDasharray="7 7"
+          strokeWidth="2"
+        />
 
         <polygon points={area} fill="url(#absenteesArea)" />
         <polyline
@@ -798,7 +995,7 @@ function AbsenteesChart({
               stroke="#e11d48"
               strokeWidth="3"
             >
-              <title>{`${shortDate(item.date)}: ${item.absent} absent`}</title>
+              <title>{`${shortDate(item.date)}: ${item.percentage}% attendance, ${item.absent} absent`}</title>
             </circle>
           </g>
         ))}

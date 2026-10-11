@@ -1298,6 +1298,10 @@ async lockAllAttendanceSessions(
 
 async dashboard(
   schoolId: string,
+  options: {
+    threshold?: number;
+    lateCountsAsPresent?: boolean;
+  } = {},
 ) {
   const academicYear =
     await academicYearRepository.getCurrent(
@@ -1332,7 +1336,8 @@ async dashboard(
    * We use the session relation because
    * attendanceDate belongs to the session.
    */
-  const threshold = 75;
+  const threshold = options.threshold ?? 75;
+  const lateCountsAsPresent = options.lateCountsAsPresent ?? true;
 
   const [todayClassSessions, lowAttendance] = await Promise.all([
     attendanceRepository.todayClassAttendance(
@@ -1346,6 +1351,11 @@ async dashboard(
       academicYear.id,
       academicYear.attendanceMode,
       threshold,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      lateCountsAsPresent,
     ),
   ]);
 
@@ -1371,7 +1381,7 @@ async dashboard(
     for (const record of session.records) {
       current.total++;
       todayStatusCounts[record.status]++;
-      if (record.status === "PRESENT" || record.status === "LATE") {
+      if (record.status === "PRESENT" || (lateCountsAsPresent && record.status === "LATE")) {
         current.attended++;
       }
     }
@@ -1408,7 +1418,7 @@ async dashboard(
     totalMarked > 0
       ? Number(
           (
-            ((present + late) /
+            ((present + (lateCountsAsPresent ? late : 0)) /
               totalMarked) *
             100
           ).toFixed(2),
@@ -1480,6 +1490,9 @@ async dashboard(
     alerts: {
       lowAttendanceCount: lowAttendance.lowAttendanceCount,
       threshold,
+      countingRule: lateCountsAsPresent
+        ? "Present and late records count as attended"
+        : "Only present records count as attended",
     },
   };
 },

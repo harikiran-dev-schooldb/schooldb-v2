@@ -72,6 +72,7 @@ type AttendanceDashboard = {
   alerts: {
     lowAttendanceCount: number;
     threshold: number;
+    countingRule: string;
   };
 };
 
@@ -189,6 +190,17 @@ type DashboardData = {
   houses: HouseSummary[];
   birthdays: BirthdaySummary[];
   dataAsOf: string | null;
+  analyticsSettings: {
+    lowAttendanceThreshold: number;
+    attendanceTarget: number;
+    academicPassTarget: number;
+    monthlyCollectionTarget: number;
+    monthlyExpenseBudget: number;
+    monthlyAdmissionsTarget: number;
+    lateCountsAsPresent: boolean;
+    feeOverdueAlertDays: number;
+    routeCapacityWarningPercent: number;
+  };
   actions: {
     pendingAdmissions: number;
     pendingStudentLeaves: number;
@@ -216,6 +228,17 @@ const EMPTY_DASHBOARD_DATA: DashboardData = {
   houses: [],
   birthdays: [],
   dataAsOf: null,
+  analyticsSettings: {
+    lowAttendanceThreshold: 75,
+    attendanceTarget: 90,
+    academicPassTarget: 75,
+    monthlyCollectionTarget: 0,
+    monthlyExpenseBudget: 0,
+    monthlyAdmissionsTarget: 0,
+    lateCountsAsPresent: false,
+    feeOverdueAlertDays: 30,
+    routeCapacityWarningPercent: 100,
+  },
   actions: {
     pendingAdmissions: 0,
     pendingStudentLeaves: 0,
@@ -426,14 +449,14 @@ export default function DashboardPage() {
 
     if (data.lowAttendanceCount > 0 && academicYearId) {
       items.push({
-        title: `${data.lowAttendanceCount} students below 75% attendance`,
+        title: `${data.lowAttendanceCount} students below ${attendance?.alerts.threshold ?? 75}% attendance`,
         description: "Review the complete intervention list and follow up with families.",
 
         href:
           `/${school.slug}` +
           `/attendance/reports/low` +
           `?academicYearId=${encodeURIComponent(academicYearId)}` +
-          `&threshold=75`,
+          `&threshold=${encodeURIComponent(attendance?.alerts.threshold ?? 75)}`,
 
         tone: "warning",
       });
@@ -500,7 +523,7 @@ export default function DashboardPage() {
       { count: data.actions.openSupportTickets, title: "support tickets still open", description: "Review unresolved parent and school support requests.", href: `/${school.slug}/queries`, tone: "warning" as const },
       { count: data.actions.overdueLibraryLoans, title: "overdue library loans", description: "Follow up on books that have not been returned.", href: `/${school.slug}/library`, tone: "warning" as const },
       { count: data.actions.staffAttendanceExceptions, title: "staff attendance exceptions today", description: "Review absent, late, leave, and other exceptions.", href: `/${school.slug}/staff-operations`, tone: "info" as const },
-      { count: data.actions.overCapacityRoutes, title: "transport routes above vehicle capacity", description: "Reassign students or increase vehicle capacity.", href: `/${school.slug}/transport`, tone: "danger" as const },
+      { count: data.actions.overCapacityRoutes, title: "transport routes at the capacity warning level", description: "Review assignments before the route becomes overloaded.", href: `/${school.slug}/transport`, tone: "danger" as const },
     ];
     for (const item of operationalActions) {
       if (item.count > 0) {
@@ -668,7 +691,7 @@ export default function DashboardPage() {
                 icon={CalendarCheck}
                 label="Attendance"
                 value={loading ? "—" : `${attendance?.summary.attendancePercentage ?? 0}%`}
-                detail={`${attendance?.summary.absent ?? 0} absent today`}
+                detail={`${data.analyticsSettings.attendanceTarget}% target · ${attendance?.summary.absent ?? 0} absent`}
               />
             )}
             {canReadFees && (
@@ -676,7 +699,11 @@ export default function DashboardPage() {
                 icon={IndianRupee}
                 label="This Month"
                 value={fees ? formatCurrency(fees.collection.thisMonth) : "—"}
-                detail={fees ? `${fees.collection.thisMonthPaymentCount} payments` : "Fee collection"}
+                detail={fees
+                  ? data.analyticsSettings.monthlyCollectionTarget > 0
+                    ? `${Math.round((fees.collection.thisMonth / data.analyticsSettings.monthlyCollectionTarget) * 100)}% of target`
+                    : `${fees.collection.thisMonthPaymentCount} payments`
+                  : "Fee collection"}
               />
             )}
           </div>
@@ -706,6 +733,9 @@ export default function DashboardPage() {
                     {loading ? "—" : `${attendance?.summary.attendancePercentage ?? 0}%`}
                   </p>
                   <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400">Overall</p>
+                  <p className="mt-1 text-[9px] leading-3 text-slate-400">
+                    {attendance?.alerts.countingRule ?? "Present and late records count as attended"}
+                  </p>
                   <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-indigo-100">
                     <div className="h-full rounded-full bg-indigo-600" style={{ width: `${Math.min(100, attendance?.summary.attendancePercentage ?? 0)}%` }} />
                   </div>
@@ -795,7 +825,7 @@ export default function DashboardPage() {
         </div>
         <div className={`grid border-t border-slate-100 divide-y divide-slate-100 sm:grid-cols-2 sm:divide-x sm:divide-y-0 ${canReadFees ? "lg:grid-cols-4" : "lg:grid-cols-3"}`}>
           <OperationMetric label="Attendance sessions" value={attendance ? attendance.recentSessions.length.toString() : "—"} hint={`${incompleteSessions} need marking`} />
-          <OperationMetric label="Low attendance" value={data.lowAttendanceCount.toLocaleString("en-IN")} hint="Below 75%" />
+          <OperationMetric label="Low attendance" value={data.lowAttendanceCount.toLocaleString("en-IN")} hint={`Below ${attendance?.alerts.threshold ?? 75}%`} />
           {canReadFees && <OperationMetric label="Outstanding items" value={data.outstandingCount.toLocaleString("en-IN")} hint={formatCurrency(totalOutstanding)} />}
           <OperationMetric label="Classes" value={data.classes.toLocaleString("en-IN")} hint="Active structure" />
         </div>
@@ -825,7 +855,9 @@ export default function DashboardPage() {
                 value={fees ? formatCurrency(fees.collection.thisMonth) : "—"}
                 hint={
                   fees
-                    ? `${fees.collection.thisMonthPaymentCount} payments`
+                    ? data.analyticsSettings.monthlyCollectionTarget > 0
+                      ? `${Math.round((fees.collection.thisMonth / data.analyticsSettings.monthlyCollectionTarget) * 100)}% of ${formatCurrency(data.analyticsSettings.monthlyCollectionTarget)} target`
+                      : `${fees.collection.thisMonthPaymentCount} payments`
                     : "—"
                 }
               />
