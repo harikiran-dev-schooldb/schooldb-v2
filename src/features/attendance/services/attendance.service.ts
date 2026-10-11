@@ -384,6 +384,7 @@ async listSessions(
     classId?: string;
     sectionId?: string;
     date?: string;
+    status?: "COMPLETED" | "PENDING";
   }
 ) {
   const page = query.page ?? 1;
@@ -404,6 +405,7 @@ async listSessions(
       query.sectionId || undefined,
 
     date,
+    status: query.status,
   };
 
   const [sessions, total] =
