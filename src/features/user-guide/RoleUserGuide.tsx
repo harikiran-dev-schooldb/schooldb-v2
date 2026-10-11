@@ -467,6 +467,44 @@ const accessSteps: Record<GuideRole, string[]> = {
   ],
 };
 
+const securityResponsibilities: Record<GuideRole, string[]> = {
+  SUPER_ADMIN: [
+    "Review administrator access, school memberships, audit activity and system health regularly.",
+    "Keep every school isolated; never copy or export one school's data into another workspace without documented authority.",
+    "Coordinate backups, restore tests, incident response and the immediate removal of departed administrators.",
+  ],
+  SCHOOL_ADMIN: [
+    "Approve staff access by job need and review active accounts whenever responsibilities change.",
+    "Remove access promptly for departing staff and investigate unexpected exports, changes or sign-ins.",
+    "Use approved school processes for retention, corrections, parent requests and security incident escalation.",
+  ],
+  TEACHER: [
+    "Open only the student information needed for assigned teaching work and avoid unnecessary exports or screenshots.",
+    "Do not share OTPs, devices, student documents, marks or attendance information through personal channels.",
+    "Report a lost device, suspicious login or incorrect class access to the school immediately.",
+  ],
+  ACCOUNTANT: [
+    "Verify the student, amount, payment method and reference before recording or communicating financial information.",
+    "Never request or store UPI PINs, banking passwords or OTPs, and do not export fee data without approval.",
+    "Report duplicate, altered or suspicious transactions through the school's incident channel.",
+  ],
+  RECEPTIONIST: [
+    "Confirm identity before sharing student information, documents, visitor details or pickup status.",
+    "Keep health, guardian contact and admission records out of public view and personal messaging accounts.",
+    "Escalate unexpected access, identity mismatches and lost documents immediately.",
+  ],
+  PARENT: [
+    "Use only your own account, protect OTPs and sign out after using a shared device.",
+    "Confirm the selected child before viewing documents, paying fees or submitting requests.",
+    "Tell the school immediately if the wrong child appears or you suspect account misuse.",
+  ],
+  STUDENT: [
+    "Keep OTPs and account access private; never use another student's account.",
+    "Do not share report cards, identity documents or classmates' information publicly.",
+    "Tell a parent, teacher or school administrator if you see information that should not be available to you.",
+  ],
+};
+
 function isGuideRole(role: string): role is GuideRole {
   return guideRoles.includes(role as GuideRole);
 }
@@ -768,6 +806,38 @@ export function RoleUserGuide({
           </div>
         </section>
       )}
+
+      <section className="overflow-hidden rounded-[30px] border border-indigo-200/70 bg-gradient-to-br from-indigo-50/80 via-background to-violet-50/70 shadow-sm dark:border-indigo-900/50 dark:from-indigo-950/20 dark:to-violet-950/20">
+        <div className="grid gap-0 lg:grid-cols-[280px_1fr]">
+          <div className="border-b border-indigo-200/60 p-6 lg:border-b-0 lg:border-r lg:p-8 dark:border-indigo-900/50">
+            <span className="flex size-11 items-center justify-center rounded-2xl bg-indigo-600 text-white shadow-lg shadow-indigo-600/20">
+              <ShieldCheck className="size-5" />
+            </span>
+            <p className="mt-5 text-xs font-bold uppercase tracking-[0.16em] text-indigo-700 dark:text-indigo-300">
+              Role-aware security
+            </p>
+            <h2 className="mt-2 text-2xl font-black tracking-tight">
+              Protect data in your role
+            </h2>
+            <p className="mt-3 text-sm leading-6 text-muted-foreground">
+              Security is shared between SchoolDB, the school and every signed-in user.
+            </p>
+            <Link href="/security" className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-indigo-700 hover:text-indigo-800 dark:text-indigo-300">
+              Read the Trust Center <ExternalLink className="size-4" />
+            </Link>
+          </div>
+          <ul className="grid gap-px bg-indigo-200/60 sm:grid-cols-3 dark:bg-indigo-900/50">
+            {securityResponsibilities[selectedRole].map((item, index) => (
+              <li key={item} className="bg-background/95 p-5 sm:p-6">
+                <span className="flex size-8 items-center justify-center rounded-xl bg-indigo-100 text-xs font-black text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300">
+                  0{index + 1}
+                </span>
+                <p className="mt-4 text-sm leading-6 text-muted-foreground">{item}</p>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
 
       <section className="grid gap-4 md:grid-cols-3">
         <SupportCard icon={CloudOff} title="Offline work" text="Sync while online first. Saved information and supported pending work remain available on this trusted device. Reconnect and confirm pending requests reach zero." />

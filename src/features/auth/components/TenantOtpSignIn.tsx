@@ -837,11 +837,17 @@ export function TenantOtpSignIn({ schoolSlug, schoolName, schoolLogo }: Props) {
                 </Link>
               </div>
 
-              <div className="mt-5 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 px-4 text-[11px] font-medium text-slate-400">
+              <div className="mt-5 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 px-4 text-[11px] font-medium text-slate-400">
                 <span className="flex items-center gap-1.5">
                   <ShieldCheck className="size-3.5 text-emerald-500" />
                   Secure connection
                 </span>
+                <Link href="/security" className="transition hover:text-indigo-600">
+                  Security
+                </Link>
+                <Link href="/privacy-policy" className="transition hover:text-indigo-600">
+                  Privacy
+                </Link>
                 <span>Powered by SchoolDB</span>
               </div>
             </div>

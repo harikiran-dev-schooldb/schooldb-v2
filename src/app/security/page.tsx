@@ -9,6 +9,7 @@ import {
   LockKeyhole,
   ServerCog,
   ShieldCheck,
+  Siren,
   UsersRound,
 } from "lucide-react";
 
@@ -55,6 +56,15 @@ const controls = [
     "Application safeguards",
     "Input validation, file type and size checks, security headers and server-side data scoping reduce common risks.",
   ],
+] as const;
+
+const roleBoundaries = [
+  ["Super Admin", "Creates school workspaces and controls administrator-level access across authorised schools."],
+  ["School Admin / Principal", "Runs one school workspace and manages its academic, operational and delegated staff access."],
+  ["Teacher", "Works with assigned teaching areas and only the additional modules explicitly enabled by the school."],
+  ["Accountant", "Uses approved finance and operational modules without receiving general administrator authority."],
+  ["Receptionist", "Uses approved admissions and front-office workflows without finance or academic administration by default."],
+  ["Parent / Student", "Uses a personal self-service space limited to linked student information and permitted actions."],
 ] as const;
 
 export default function SecurityPage() {
@@ -166,6 +176,55 @@ export default function SecurityPage() {
         </ContentCard>
       </div>
 
+      <ContentCard title="Role boundaries inside each school">
+        <p>
+          A successful sign-in does not grant access to every module. SchoolDB
+          resolves the selected school, active membership, assigned role and
+          any individual permissions before protected data is returned.
+        </p>
+        <div className="grid gap-3 pt-2 sm:grid-cols-2">
+          {roleBoundaries.map(([role, boundary]) => (
+            <div
+              key={role}
+              className="rounded-xl border border-slate-200/80 bg-slate-50/70 p-4"
+            >
+              <h3 className="text-sm font-bold text-slate-900">{role}</h3>
+              <p className="mt-1 text-xs leading-5 text-slate-500">{boundary}</p>
+            </div>
+          ))}
+        </div>
+      </ContentCard>
+
+      <section className="overflow-hidden rounded-2xl border border-amber-200/80 bg-gradient-to-br from-amber-50 via-white to-orange-50/70 p-6 shadow-[0_10px_34px_rgba(120,53,15,0.06)] sm:p-8">
+        <div className="flex items-start gap-4">
+          <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-700 ring-1 ring-amber-200">
+            <Siren className="size-5" />
+          </span>
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-amber-700">
+              Incident readiness
+            </p>
+            <h2 className="mt-2 text-xl font-bold tracking-tight text-slate-950">
+              Security concerns need a clear response path.
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              Reports are assessed for scope and impact, affected access can be
+              contained, relevant evidence can be preserved, and the school can
+              be contacted using the agreed support and incident channels. Any
+              contractual or legal notification is handled according to the
+              facts and applicable requirements.
+            </p>
+          </div>
+        </div>
+        <ol className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {["Assess and contain", "Preserve evidence", "Inform affected schools", "Recover and prevent recurrence"].map((step, index) => (
+            <li key={step} className="rounded-xl border border-amber-200/70 bg-white/80 p-4 text-xs font-semibold text-slate-700">
+              <span className="mr-2 text-amber-700">0{index + 1}</span>{step}
+            </li>
+          ))}
+        </ol>
+      </section>
+
       <section className="rounded-2xl bg-slate-950 p-6 text-white shadow-[0_18px_45px_rgba(15,23,42,0.15)] sm:p-8">
         <LockKeyhole className="size-6 text-indigo-300" />
         <h2 className="mt-4 text-2xl font-bold tracking-tight">
@@ -195,7 +254,9 @@ export default function SecurityPage() {
       <p className="px-2 text-xs leading-5 text-slate-500">
         No internet service can guarantee absolute security. This page describes
         SchoolDB&apos;s application approach and does not claim a third-party
-        certification or an unconditional guarantee.
+        certification, independent audit result, regulatory approval or an
+        unconditional guarantee unless SchoolDB provides that evidence separately
+        in writing.
       </p>
     </PublicPage>
   );

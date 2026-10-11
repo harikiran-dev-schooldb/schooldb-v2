@@ -175,9 +175,16 @@ const assurances = [
   ],
   [
     Headphones,
-    "Human onboarding",
-    "Your quotation, setup scope and rollout plan are agreed before launch.",
+    "Incident support path",
+    "Schools receive a direct route for reporting privacy, access and security concerns.",
   ],
+] as const;
+
+const trustProof = [
+  "Every protected request is evaluated against a signed-in identity, active school membership and role.",
+  "Sensitive files use authenticated delivery instead of being presented as public links.",
+  "Important operational actions can retain actor, school, role and affected-record context.",
+  "Security claims remain specific: SchoolDB does not promise that any internet service is breach-proof.",
 ] as const;
 
 const studentMobileScreens = [
@@ -540,7 +547,7 @@ export default function MarketingPage() {
       >
         <div className="relative mx-auto max-w-7xl overflow-hidden rounded-[1.8rem] border border-indigo-100 bg-gradient-to-br from-white via-indigo-50/55 to-violet-50/70 px-6 py-10 shadow-[0_18px_55px_rgba(79,70,229,0.09)] sm:px-10 lg:px-14 lg:py-14">
           <div className="pointer-events-none absolute -right-24 -top-28 size-72 rounded-full bg-indigo-200/35 blur-3xl" />
-          <div className="grid gap-10 lg:grid-cols-[.8fr_1.2fr] lg:items-center">
+          <div className="grid gap-10 lg:grid-cols-[.78fr_1.22fr] lg:items-center">
             <div className="relative">
               <div className="flex size-11 items-center justify-center rounded-xl bg-white text-indigo-600 shadow-sm ring-1 ring-indigo-100">
                 <ShieldCheck className="size-5" />
@@ -552,9 +559,17 @@ export default function MarketingPage() {
                 A school workspace with clear boundaries.
               </h2>
               <p className="mt-4 text-sm leading-6 text-slate-600 sm:text-base">
-                SchoolDB combines role-aware access, school-specific context and
-                operational visibility with a direct onboarding relationship.
+                SchoolDB combines authenticated identities, school-specific
+                membership, role-aware access and operational visibility. Trust
+                is explained through concrete controls rather than absolute
+                security promises.
               </p>
+              <Link
+                href="/security"
+                className="mt-6 inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-3 text-sm font-bold text-white shadow-[0_10px_24px_rgba(79,70,229,0.20)] transition hover:bg-indigo-700"
+              >
+                Visit the Trust Center <ArrowRight className="size-4" />
+              </Link>
             </div>
             <div className="relative grid gap-3 sm:grid-cols-2">
               {assurances.map(([Icon, title, text]) => (
@@ -574,6 +589,17 @@ export default function MarketingPage() {
                 </article>
               ))}
             </div>
+          </div>
+          <div className="relative mt-8 grid gap-3 border-t border-indigo-100 pt-8 md:grid-cols-2">
+            {trustProof.map((item) => (
+              <div
+                key={item}
+                className="flex gap-3 rounded-xl border border-white/90 bg-white/75 p-4 text-xs leading-5 text-slate-600 shadow-sm"
+              >
+                <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600" />
+                {item}
+              </div>
+            ))}
           </div>
         </div>
       </section>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useUser } from "@clerk/nextjs";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
 import {
@@ -238,9 +239,24 @@ export default function ChooseSchoolPage() {
 
           <p className="mt-5 flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
             <ShieldCheck className="size-3.5 text-emerald-600" />
-            You&apos;ll sign in securely on your school&apos;s page.
+            Your school and assigned role determine what you can access.
           </p>
         </form>
+
+        <nav
+          aria-label="Privacy and security"
+          className="mt-5 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs font-semibold text-slate-500"
+        >
+          <Link href="/security" className="transition hover:text-indigo-600">
+            Data security
+          </Link>
+          <Link href="/privacy-policy" className="transition hover:text-indigo-600">
+            Privacy
+          </Link>
+          <Link href="/contact" className="transition hover:text-indigo-600">
+            Access help
+          </Link>
+        </nav>
       </div>
     </main>
   );

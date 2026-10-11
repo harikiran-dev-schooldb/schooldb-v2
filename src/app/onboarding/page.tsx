@@ -16,6 +16,10 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  AuthPolicyLinks,
+  SchoolDbIdentity,
+} from "@/components/branding/SchoolDbIdentity";
 
 type Step = "choice" | "admin" | "school";
 
@@ -38,8 +42,13 @@ export default function OnboardingPage() {
 
   if (!isSignedIn || !user) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-muted/20 px-6 py-12">
-        <div className="w-full max-w-md space-y-6 text-center">
+      <main className="relative flex min-h-screen flex-col overflow-hidden bg-[#f5f7ff] px-6 py-8">
+        <div className="pointer-events-none absolute -left-40 -top-48 size-[34rem] rounded-full bg-indigo-200/45 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-48 -right-36 size-[34rem] rounded-full bg-violet-200/40 blur-3xl" />
+        <header className="relative z-10 mx-auto w-full max-w-6xl">
+          <SchoolDbIdentity />
+        </header>
+        <div className="relative z-10 mx-auto flex w-full max-w-md flex-1 flex-col justify-center space-y-6 py-8 text-center">
           <div>
             <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
               <ShieldCheck className="size-6" />
@@ -59,6 +68,11 @@ export default function OnboardingPage() {
               signUpFallbackRedirectUrl="/onboarding"
             />
           </div>
+          <p className="text-xs leading-5 text-muted-foreground">
+            This setup access is for the initial system owner. Existing school
+            users should return to their school&apos;s login page.
+          </p>
+          <AuthPolicyLinks message="Protected setup access" />
         </div>
       </main>
     );
@@ -198,8 +212,11 @@ function AuthenticatedOnboardingPage({
   }
 
   return (
-    <div className="min-h-screen bg-muted/20">
-      <div className="mx-auto flex min-h-screen max-w-6xl items-center justify-center px-6 py-12">
+    <div className="min-h-screen bg-muted/20 px-6 py-8">
+      <header className="mx-auto w-full max-w-6xl">
+        <SchoolDbIdentity />
+      </header>
+      <div className="mx-auto flex min-h-[calc(100vh-10rem)] max-w-6xl items-center justify-center py-8">
         <div className="grid w-full max-w-5xl gap-8 lg:grid-cols-[0.9fr_1.1fr]">
           <div className="hidden rounded-3xl bg-primary p-10 text-primary-foreground lg:flex lg:flex-col lg:justify-between">
             <div>
@@ -356,6 +373,7 @@ function AuthenticatedOnboardingPage({
           </Card>
         </div>
       </div>
+      <AuthPolicyLinks message="One-time protected setup" className="pb-2" />
     </div>
   );
 }
