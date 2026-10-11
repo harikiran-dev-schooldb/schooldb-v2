@@ -88,10 +88,12 @@ export default async function ManagementAnalyticsPage({ params, searchParams }: 
     );
   }
 
-  const portfolio = await getSchoolPortfolio(membership.userId, {
-    from: report.scope.from,
-    to: report.scope.to,
-  });
+  const portfolio = membership.role === "SUPER_ADMIN"
+    ? await getSchoolPortfolio(membership.userId, {
+        from: report.scope.from,
+        to: report.scope.to,
+      })
+    : [];
 
   const hasCustomAttendanceRange = Boolean(filters.from || filters.to);
   const attendanceTrendStart = new Date(`${report.scope.to}T00:00:00`);
@@ -112,6 +114,9 @@ export default async function ManagementAnalyticsPage({ params, searchParams }: 
     (sum, day) => sum + day.absent,
     0,
   );
+  const attendanceTrendAverage = attendanceTrend.length
+    ? Math.round(attendanceTrendAbsences / attendanceTrend.length)
+    : 0;
   const attendanceTrendHighest = Math.max(
     0,
     ...attendanceTrend.map((day) => day.absent),
@@ -347,27 +352,24 @@ export default async function ManagementAnalyticsPage({ params, searchParams }: 
       <section className="mt-6 grid gap-6 xl:grid-cols-[1.5fr_1fr]">
         <ReportCard
           accent
-          title="Attendance trend"
+          title="Absentees trend"
           description={
             hasCustomAttendanceRange
-              ? `Daily attendance rate for the selected period · ${report.attendance.countingRule}`
-              : `Daily attendance rate for the last 30 days · ${report.attendance.countingRule}`
+              ? "Daily absent student count for the selected period"
+              : "Daily absent student count for the last 30 days"
           }
-          badge={`${report.attendance.percentage}% overall`}
+          badge={`${attendanceTrendAbsences.toLocaleString("en-IN")} absences`}
         >
-          <AttendanceTrendChart
-            data={attendanceTrend}
-            target={report.settings.attendanceTarget}
-          />
+          <AbsenteesChart data={attendanceTrend} />
           <div className="mt-5 grid grid-cols-3 gap-3">
             <MiniMetric
-              label="Latest attendance"
-              value={`${attendanceTrend.at(-1)?.percentage ?? 0}%`}
-              className="text-emerald-700"
+              label="Latest absentees"
+              value={attendanceTrend.at(-1)?.absent ?? 0}
+              className="text-rose-700"
             />
             <MiniMetric
-              label="Total absences"
-              value={attendanceTrendAbsences}
+              label="Daily average"
+              value={attendanceTrendAverage}
             />
             <MiniMetric
               label="Highest absences"
@@ -876,12 +878,10 @@ function BarList({
   );
 }
 
-function AttendanceTrendChart({
+function AbsenteesChart({
   data,
-  target,
 }: {
   data: Array<{ date: string; absent: number; percentage: number }>;
-  target: number;
 }) {
   if (!data.length)
     return (
@@ -897,8 +897,9 @@ function AttendanceTrendChart({
   const paddingBottom = 24;
   const usableWidth = width - paddingX * 2;
   const usableHeight = height - paddingTop - paddingBottom;
-  const axisMax = 100;
-  const ticks = [0, 25, 50, 75, 100];
+  const highest = Math.max(1, ...data.map((item) => item.absent));
+  const axisMax = Math.max(4, Math.ceil(highest / 4) * 4);
+  const ticks = [0, axisMax / 4, axisMax / 2, (axisMax * 3) / 4, axisMax];
 
   const coordinates = data.map((item, index) => {
     const x =
@@ -909,7 +910,7 @@ function AttendanceTrendChart({
     const y =
       paddingTop +
       usableHeight -
-      (item.percentage / axisMax) * usableHeight;
+      (item.absent / axisMax) * usableHeight;
 
     return { ...item, x, y };
   });
@@ -921,7 +922,7 @@ function AttendanceTrendChart({
     <div>
       <svg
         role="img"
-        aria-label="Daily attendance percentage trend"
+        aria-label="Daily absentee count trend"
         viewBox={`0 0 ${width} ${height}`}
         className="h-60 w-full overflow-visible"
       >
@@ -959,21 +960,11 @@ function AttendanceTrendChart({
                 fill="currentColor"
                 opacity="0.45"
               >
-                {Math.round(tick)}%
+                {Math.round(tick)}
               </text>
             </g>
           );
         })}
-
-        <line
-          x1={paddingX}
-          x2={width - paddingX}
-          y1={paddingTop + usableHeight - (target / axisMax) * usableHeight}
-          y2={paddingTop + usableHeight - (target / axisMax) * usableHeight}
-          stroke="#059669"
-          strokeDasharray="7 7"
-          strokeWidth="2"
-        />
 
         <polygon points={area} fill="url(#absenteesArea)" />
         <polyline

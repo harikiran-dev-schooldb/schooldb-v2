@@ -17,7 +17,7 @@ export async function getSchoolPortfolio(
     where: {
       userId,
       isActive: true,
-      role: { in: ["SUPER_ADMIN", "SCHOOL_ADMIN"] },
+      role: "SUPER_ADMIN",
     },
     select: {
       school: { select: { id: true, name: true, slug: true } },
