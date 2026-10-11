@@ -59,6 +59,7 @@ export function useAttendanceHistory(
     classId?: string;
     sectionId?: string;
     date?: string;
+    status?: string;
   }
 ) {
   const [data, setData] =
@@ -106,6 +107,10 @@ export function useAttendanceHistory(
           );
         }
 
+        if (filters.status) {
+          params.set("status", filters.status);
+        }
+
         const response = await fetch(
           `/api/v1/attendance/history?${params}`
         );
@@ -132,6 +137,7 @@ export function useAttendanceHistory(
       filters.classId,
       filters.sectionId,
       filters.date,
+      filters.status,
     ]
   );
 
