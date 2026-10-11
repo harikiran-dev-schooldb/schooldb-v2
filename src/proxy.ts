@@ -34,16 +34,14 @@ export default clerkMiddleware(async (auth, req) => {
   }
 
   const isSupportApi = pathname.startsWith("/api/v1/support/");
-  const isAndroidBuildWorkerApi =
-    /^\/api\/v1\/android-builds\/[^/]+\/(?:source|callback)$/.test(pathname);
 
   /*
-   * Native support APIs and Android build worker callbacks authenticate inside
-   * their handlers. Clerk can turn a protected non-browser request into its
-   * navigation/handshake flow before Next.js reaches the API route. Middleware
-   * still runs, so each route can verify its Clerk or one-time Bearer token.
+   * Native support APIs authenticate inside their handlers. Clerk can turn a
+   * protected non-browser request into its navigation/handshake flow before
+   * Next.js reaches the API route. Middleware still runs, so each route can
+   * verify its Clerk token.
    */
-  if (!isPublicPath(pathname) && !isSupportApi && !isAndroidBuildWorkerApi) {
+  if (!isPublicPath(pathname) && !isSupportApi) {
     if (pathname.startsWith("/api/")) {
       // Return an explicit API response instead of allowing auth.protect() to
       // throw. Some serverless runtimes surface that 401 exception as a 500,

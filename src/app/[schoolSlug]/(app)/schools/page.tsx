@@ -9,7 +9,6 @@ import {
   Loader2,
   ListChecks,
   Plus,
-  Smartphone,
   Trash2,
   X,
 } from "lucide-react";
@@ -176,12 +175,6 @@ export default function SchoolsPage() {
             <Link href={"/" + schoolSlug + "/schools/route-access"}>
               <ListChecks className="size-4" />
               Route Access
-            </Link>
-          </Button>
-          <Button asChild variant="outline" className="rounded-xl">
-            <Link href={"/" + schoolSlug + "/schools/android-app"}>
-              <Smartphone className="size-4" />
-              Android App Builder
             </Link>
           </Button>
           <Button className="rounded-xl" onClick={() => setShowCreate(true)}>

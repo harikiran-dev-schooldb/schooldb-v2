@@ -26,7 +26,9 @@ import {
 } from "@/lib/browser-push";
 import { isSchoolDbProductionHost } from "@/lib/production-domain";
 import {
+  activePwaOwner,
   clearActivePwaOwner,
+  clearPwaOwnerData,
   flushPwaActions,
   rememberPwaOwner,
   savePwaSnapshot,
@@ -124,12 +126,18 @@ export function PwaRegistration() {
   useEffect(() => {
     if (!isLoaded) return;
     if (!isSignedIn || !userId) {
+      const previousOwner = activePwaOwner();
       clearActivePwaOwner();
+      if (previousOwner) void clearPwaOwnerData(previousOwner).catch(() => undefined);
       return;
     }
     if (!schoolSlug) return;
 
     const ownerKey = `${userId}:${schoolSlug}`;
+    const previousOwner = activePwaOwner();
+    if (previousOwner && previousOwner !== ownerKey) {
+      void clearPwaOwnerData(previousOwner).catch(() => undefined);
+    }
     rememberPwaOwner(ownerKey);
     let cancelled = false;
     const sync = async () => {

@@ -574,7 +574,7 @@ export function RoleUserGuide({
                 "shrink-0 rounded-2xl border px-4 py-3 text-sm font-semibold transition-all duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2",
                 selectedRole === role
                   ? "border-primary bg-primary text-primary-foreground shadow-lg shadow-primary/15 hover:shadow-xl hover:shadow-primary/20"
-                  : "border-border/70 bg-card hover:-translate-y-0.5 hover:border-primary/40 hover:bg-primary/[0.04] hover:shadow-md hover:shadow-primary/10",
+                  : "border-border/70 bg-card hover:border-primary/40 hover:bg-primary/[0.04] hover:shadow-md hover:shadow-primary/10",
               )}
             >
               {guides[role].shortLabel}

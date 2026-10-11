@@ -38,6 +38,14 @@ test.describe("authenticated school workflows", () => {
     await expect(page.getByText(/Automatic alert history/i)).toBeVisible();
   });
 
+  test("support queue and PWA controls load", async ({ page }) => {
+    await expectUsablePage(page, `/${schoolSlug}/queries`, "Queries");
+    await expect(page).not.toHaveURL(/\/login/);
+
+    await expectUsablePage(page, `/${schoolSlug}/pwa`, "PWA & device settings");
+    await expect(page).not.toHaveURL(/\/login/);
+  });
+
   for (const workflow of [
     { path: "student-health", heading: "Student health & emergency records" },
     { path: "student-pickup", heading: "Authorized student pickup" },

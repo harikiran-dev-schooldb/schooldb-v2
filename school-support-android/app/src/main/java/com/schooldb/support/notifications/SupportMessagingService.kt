@@ -20,6 +20,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 class SupportMessagingService : FirebaseMessagingService() {
+    @Suppress("OVERRIDE_DEPRECATION", "DEPRECATION")
+    override fun onNewToken(token: String) {
+        super.onNewToken(token)
+        SupportPushSync.enqueue(this, replace = true)
+    }
+
     override fun onRegistered(installationId: String) {
         val pushPreferences = getSharedPreferences("support_push", MODE_PRIVATE)
         pushPreferences.edit().putString("pending_fcm_token", installationId).apply()

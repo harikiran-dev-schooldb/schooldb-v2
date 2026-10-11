@@ -1,6 +1,7 @@
 package com.schooldb.support
 
 import com.schooldb.support.tickets.TicketStatus
+import com.schooldb.support.tickets.supportTicketCacheKey
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -29,5 +30,13 @@ class SupportPoliciesTest {
     fun timestampsAreRenderedInIndiaTime() {
         assertEquals("05 Oct 2026, 5:30 AM", formatSupportTimestamp("2026-10-05T00:00:00Z"))
         assertEquals("not-a-date", formatSupportTimestamp("not-a-date"))
+    }
+
+    @Test
+    fun ticketCacheIsIsolatedByUserAndSchool() {
+        val firstUser = supportTicketCacheKey("user-1", "school-a")
+        assertFalse(firstUser == supportTicketCacheKey("user-2", "school-a"))
+        assertFalse(firstUser == supportTicketCacheKey("user-1", "school-b"))
+        assertEquals(firstUser, supportTicketCacheKey(" USER-1 ", " SCHOOL-A "))
     }
 }

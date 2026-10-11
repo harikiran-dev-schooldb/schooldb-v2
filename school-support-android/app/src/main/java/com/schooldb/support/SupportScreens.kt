@@ -48,6 +48,7 @@ import com.schooldb.support.tickets.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.util.Locale
 
 private const val MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024
 private val attachmentMimeTypes = setOf("application/pdf", "image/jpeg", "image/png", "image/webp")
@@ -533,15 +534,15 @@ private fun AnalyticsRow(label: String, value: String) {
 }
 
 private fun formatPercent(value: Double): String =
-    if (value % 1.0 == 0.0) value.toInt().toString() + "%" else String.format("%.1f%%", value)
+    if (value % 1.0 == 0.0) value.toInt().toString() + "%" else String.format(Locale.getDefault(), "%.1f%%", value)
 
 private fun formatResolutionTime(hours: Double?): String {
     if (hours == null) return "—"
     return if (hours >= 24) {
         val days = hours / 24.0
-        if (days % 1.0 == 0.0) days.toInt().toString() + " days" else String.format("%.1f days", days)
+        if (days % 1.0 == 0.0) days.toInt().toString() + " days" else String.format(Locale.getDefault(), "%.1f days", days)
     } else {
-        if (hours % 1.0 == 0.0) hours.toInt().toString() + " hrs" else String.format("%.1f hrs", hours)
+        if (hours % 1.0 == 0.0) hours.toInt().toString() + " hrs" else String.format(Locale.getDefault(), "%.1f hrs", hours)
     }
 }
 

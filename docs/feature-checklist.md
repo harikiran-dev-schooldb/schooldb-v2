@@ -53,4 +53,5 @@ This checklist reflects features present in the application, not deployment conf
 - [ ] Configurable approval workflows
 - [ ] Regulator-specific reports
 - [x] Offline-friendly attendance and homework with idempotent sync and attendance conflict detection
-- [ ] Native mobile applications
+- [x] Native Android applications for SchoolDB and the internal support workspace
+- [ ] Native iOS application (the installable PWA is the supported iPhone/iPad experience)

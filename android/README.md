@@ -56,8 +56,12 @@ a working connection.
 Run the complete local verification suite with:
 
 ```bash
-./gradlew lintDebug testDebugUnitTest assembleDebug assembleRelease
+./gradlew lintDebug lintRelease testDebugUnitTest assembleDebug assembleDebugAndroidTest assembleRelease
 ```
+
+Signed APK and Play Store AAB artifacts are produced by the repository's
+**Android Release Artifacts** GitHub Actions workflow. Release binaries are not
+committed to Git.
 
 The app redeems the short-lived ticket returned by the SchoolDB OTP endpoint through Clerk's native Android SDK. The SDK then owns session persistence and refresh.
 

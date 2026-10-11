@@ -40,6 +40,24 @@ export function clearActivePwaOwner() {
   localStorage.removeItem(ACTIVE_OWNER);
 }
 
+export async function clearPwaOwnerData(ownerKey: string) {
+  const database = await openDatabase();
+  const transaction = database.transaction([SNAPSHOTS, ACTIONS], "readwrite");
+  transaction.objectStore(SNAPSHOTS).delete(ownerKey);
+  const actions = transaction.objectStore(ACTIONS);
+  const queued = await requestResult(actions.getAll()) as PwaQueuedAction[];
+  for (const action of queued) {
+    if (action.ownerKey === ownerKey) actions.delete(action.id);
+  }
+  await new Promise<void>((resolve, reject) => {
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () => reject(transaction.error);
+    transaction.onabort = () => reject(transaction.error);
+  });
+  database.close();
+  if (activePwaOwner() === ownerKey) clearActivePwaOwner();
+}
+
 function openDatabase() {
   return new Promise<IDBDatabase>((resolve, reject) => {
     const request = indexedDB.open(DATABASE_NAME, DATABASE_VERSION);

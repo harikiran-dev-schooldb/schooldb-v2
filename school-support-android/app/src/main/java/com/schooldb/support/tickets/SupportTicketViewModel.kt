@@ -47,9 +47,9 @@ class SupportTicketViewModel(
         _state.update { it.copy(page = value) }
     }
 
-    suspend fun restoreCachedTickets(cache: SupportTicketCache, school: String) {
+    suspend fun restoreCachedTickets(cache: SupportTicketCache, userId: String, school: String) {
         if (state.value.ticketsLoaded) return
-        val cached = withContext(Dispatchers.IO) { cache.read(school) } ?: return
+        val cached = withContext(Dispatchers.IO) { cache.read(userId, school) } ?: return
         if (state.value.ticketsLoaded) return
         applyTicketList(cached.result, showingCachedData = true, cachedAt = cached.savedAt)
     }
@@ -60,13 +60,16 @@ class SupportTicketViewModel(
         query: String = state.value.query,
         targetPage: Int = state.value.page,
         cache: SupportTicketCache? = null,
+        cacheUserId: String? = null,
     ) {
         _state.update { it.copy(ticketsLoading = true) }
         try {
             val result = repository.tickets(school, filter, query, targetPage)
             applyTicketList(result, showingCachedData = false, cachedAt = System.currentTimeMillis())
             if ((filter.isBlank() || filter == "ALL") && query.isBlank() && targetPage == 1) {
-                withContext(Dispatchers.IO) { cache?.write(school, result) }
+                if (!cacheUserId.isNullOrBlank()) {
+                    withContext(Dispatchers.IO) { cache?.write(cacheUserId, school, result) }
+                }
             }
         } catch (error: Throwable) {
             _state.update { it.copy(ticketsLoading = false) }

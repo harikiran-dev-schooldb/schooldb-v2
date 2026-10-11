@@ -55,9 +55,10 @@ android {
     defaultConfig {
         applicationId = "com.schooldb.support"
         minSdk = 26
-        targetSdk = 36
+        targetSdk = 37
         versionCode = versionCodeOverride ?: 13
         versionName = "0.9.0"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "CLERK_PUBLISHABLE_KEY", "\"$clerkKey\"")
         buildConfigField("boolean", "FIREBASE_CONFIGURED", firebaseConfig.exists().toString())
         resValue("string", "brand_app_name", "School Support")
@@ -110,20 +111,24 @@ dependencies {
     val firebaseBom = platform("com.google.firebase:firebase-bom:34.19.0")
     implementation(composeBom)
     implementation(firebaseBom)
-    implementation("androidx.activity:activity-compose:1.12.4")
-    implementation("androidx.core:core-ktx:1.18.0")
+    implementation("androidx.activity:activity-compose:1.13.0")
+    implementation("androidx.core:core-ktx:1.19.1")
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-tooling-preview")
-    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.10.0")
-    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.10.0")
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.11.0")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.11.0")
     implementation("androidx.profileinstaller:profileinstaller:1.4.1")
-    implementation("androidx.work:work-runtime-ktx:2.10.1")
-    implementation("com.clerk:clerk-android-api:1.1.3")
+    implementation("androidx.work:work-runtime-ktx:2.12.0")
+    implementation("com.clerk:clerk-android-api:1.1.11")
     implementation("com.google.firebase:firebase-messaging")
     implementation("com.google.firebase:firebase-installations")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
     testImplementation("junit:junit:4.13.2")
+    androidTestImplementation(composeBom)
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
+    androidTestImplementation("androidx.test.ext:junit:1.3.0")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
     debugImplementation("androidx.compose.ui:ui-tooling")
 }

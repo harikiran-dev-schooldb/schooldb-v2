@@ -14,12 +14,13 @@ class SupportTicketCache(context: Context) {
     private val preferences = context.applicationContext
         .getSharedPreferences("support_ticket_cache", Context.MODE_PRIVATE)
 
-    fun read(school: String): CachedTicketList? = runCatching {
-        val payload = preferences.getString(key(school), null) ?: return null
+    fun read(userId: String, school: String): CachedTicketList? = runCatching {
+        removeLegacySchoolEntry(school)
+        val payload = preferences.getString(key(userId, school), null) ?: return null
         val root = JSONObject(payload)
         val savedAt = root.getLong("savedAt")
         if (System.currentTimeMillis() - savedAt > MAX_CACHE_AGE_MS) {
-            clear(school)
+            clear(userId, school)
             return null
         }
         val items = root.getJSONArray("tickets")
@@ -54,7 +55,8 @@ class SupportTicketCache(context: Context) {
         )
     }.getOrNull()
 
-    fun write(school: String, result: TicketList) {
+    fun write(userId: String, school: String, result: TicketList) {
+        removeLegacySchoolEntry(school)
         val tickets = JSONArray().apply {
             result.tickets.forEach { ticket ->
                 put(JSONObject().apply {
@@ -81,16 +83,28 @@ class SupportTicketCache(context: Context) {
             put("total", result.total)
             put("totalPages", result.totalPages)
         }
-        preferences.edit().putString(key(school), payload.toString()).apply()
+        preferences.edit().putString(key(userId, school), payload.toString()).apply()
     }
 
-    fun clear(school: String) {
-        preferences.edit().remove(key(school)).apply()
+    fun clear(userId: String, school: String) {
+        preferences.edit()
+            .remove(key(userId, school))
+            .remove(legacyKey(school))
+            .apply()
     }
 
-    private fun key(school: String) = "tickets_${school.lowercase()}"
+    private fun removeLegacySchoolEntry(school: String) {
+        preferences.edit().remove(legacyKey(school)).apply()
+    }
+
+    private fun key(userId: String, school: String) = supportTicketCacheKey(userId, school)
+
+    private fun legacyKey(school: String) = "tickets_${school.lowercase()}"
 
     private companion object {
         const val MAX_CACHE_AGE_MS = 24L * 60L * 60L * 1_000L
     }
 }
+
+internal fun supportTicketCacheKey(userId: String, school: String) =
+    "tickets_v2_${userId.trim().lowercase()}_${school.trim().lowercase()}"

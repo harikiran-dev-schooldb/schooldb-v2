@@ -37,6 +37,16 @@ After deploying the `20260920140000_parent_support_qr` migration and the web app
 
 The debug build allows cleartext traffic for the local server. The release build disallows cleartext traffic and reads the production Clerk publishable key and signing key from `android/keystore.properties` (or the publishable key from `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`).
 
+Run the complete local verification suite with:
+
+```bash
+./gradlew lintDebug lintRelease testDebugUnitTest assembleDebug assembleDebugAndroidTest assembleRelease
+```
+
+Signed APK and Play Store AAB artifacts are produced by the repository's
+**Android Release Artifacts** GitHub Actions workflow. Release binaries are not
+committed to Git.
+
 ## Push notification setup
 
 Keep the shared Firebase file at `app/google-services.json`. It must contain an Android client for `com.schooldb.support`. The API key must be allowed to call the Firebase Installations API; otherwise token retrieval fails with `FIS_AUTH_ERROR`. One Firebase registration and one installed app serve all schools; push payloads continue to be checked against the signed-in school code.

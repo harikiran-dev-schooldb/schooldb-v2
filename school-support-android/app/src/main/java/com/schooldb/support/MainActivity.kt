@@ -103,6 +103,7 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
     val clerkUser by Clerk.userFlow.collectAsStateWithLifecycle()
     val clerkSession by Clerk.sessionFlow.collectAsStateWithLifecycle()
     val sessionReady = clerkInitialized && clerkSession?.status == com.clerk.api.session.Session.SessionStatus.ACTIVE
+    val cacheUserId = clerkUser?.id.orEmpty()
     var startupLoadFinished by remember(authState.school, clerkSession?.id) { mutableStateOf(false) }
     val school = authState.school
     val phone = authState.phone
@@ -169,7 +170,7 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
     val notificationPermission = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted -> alertsEnabled = granted }
-    LaunchedEffect(page, school, sessionReady, resumeVersion) {
+    LaunchedEffect(page, school, clerkSession?.id, sessionReady, resumeVersion) {
         if (page == SupportPage.DASHBOARD && school.isNotBlank() && sessionReady &&
             BuildConfig.FIREBASE_CONFIGURED) {
             val pushPreferences = context.getSharedPreferences("support_push", 0)
@@ -201,7 +202,7 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
 }
 
     fun handleSessionExpired() {
-        ticketCache.clear(school)
+        if (cacheUserId.isNotBlank()) ticketCache.clear(cacheUserId, school)
         preferences.edit().remove("school").apply()
         ticketViewModel.reset()
         adminViewModel.reset()
@@ -293,7 +294,7 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
                 Log.w("SupportAuth", "Remote sign out cleanup failed", exception)
             } finally {
                 preferences.edit().remove("school").apply()
-                ticketCache.clear(school)
+                if (cacheUserId.isNotBlank()) ticketCache.clear(cacheUserId, school)
                 ticketViewModel.reset()
                 adminViewModel.reset()
                 authViewModel.clearAll()
@@ -314,7 +315,14 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
         query: String = ticketState.query,
         targetPage: Int = ticketState.page,
     ) {
-        ticketViewModel.loadTickets(school, filter, query, targetPage, ticketCache)
+        ticketViewModel.loadTickets(
+            school,
+            filter,
+            query,
+            targetPage,
+            ticketCache,
+            cacheUserId.takeIf(String::isNotBlank),
+        )
     }
 
     suspend fun loadDetail(id: String) {
@@ -324,7 +332,11 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
 
     suspend fun refreshTicketAfterMutation(id: String) {
         ticketViewModel.loadDetail(school, id)
-        ticketViewModel.loadTickets(school, cache = ticketCache)
+        ticketViewModel.loadTickets(
+            school,
+            cache = ticketCache,
+            cacheUserId = cacheUserId.takeIf(String::isNotBlank),
+        )
         ticketViewModel.invalidateAnalytics()
     }
 
@@ -438,7 +450,9 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
     }
     LaunchedEffect(page, school, sessionReady) {
         if (page == SupportPage.DASHBOARD && school.isNotBlank() && !startupLoadFinished && sessionReady) {
-            ticketViewModel.restoreCachedTickets(ticketCache, school)
+            if (cacheUserId.isNotBlank()) {
+                ticketViewModel.restoreCachedTickets(ticketCache, cacheUserId, school)
+            }
             // Draw the dashboard before starting its first network request.
             withFrameNanos { }
             try {
@@ -619,9 +633,17 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
                                 switchAccountsError = null
                                 scope.launch {
                                     try {
+                                        val previousUserId = clerkUser?.id
                                         val token = api.switchAccount(school, account.id)
                                             ?: error("The server did not return an account session.")
+                                        if (!previousUserId.isNullOrBlank()) {
+                                            ticketCache.clear(previousUserId, school)
+                                        }
                                         api.activate(token)
+                                        com.schooldb.support.notifications.SupportPushSync.enqueue(
+                                            context,
+                                            replace = true,
+                                        )
                                         accountProfile = null
                                         switchAccounts = emptyList()
                                         ticketViewModel.reset()
@@ -714,7 +736,11 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
                     ticketDraft = TicketDraft()
                     try {
                         loadDetail(createdId)
-                        ticketViewModel.loadTickets(school, cache = ticketCache)
+                        ticketViewModel.loadTickets(
+                            school,
+                            cache = ticketCache,
+                            cacheUserId = cacheUserId.takeIf(String::isNotBlank),
+                        )
                         ticketViewModel.invalidateAnalytics()
                     } catch (_: Exception) {
                         page = SupportPage.DASHBOARD

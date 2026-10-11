@@ -317,7 +317,6 @@ const SELF_SERVICE_API_PREFIXES = [
 ] as const;
 
 const ROLE_ONLY_API_PREFIXES = [
-  "/api/v1/android-builds",
   "/api/v1/onboarding",
   "/api/v1/schools",
   "/api/v1/settings/managed-profile-image",

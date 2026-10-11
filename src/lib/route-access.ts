@@ -42,7 +42,6 @@ export const BULK_OPERATION_ROUTES = [
 const navigationRoutes = [
   "dashboard",
   "teacher/dashboard",
-  "schools/android-app",
   "reports",
   "management-analytics",
   "students",

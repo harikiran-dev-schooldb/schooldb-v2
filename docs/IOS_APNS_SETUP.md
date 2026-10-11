@@ -1,6 +1,13 @@
-# SchoolDB iOS APNs Production Setup
+# Native iOS APNs Backend Setup (Future Client)
 
-The backend can deliver native iOS SchoolDB notifications directly through Apple Push Notification service (APNs). Android/web delivery continues through Firebase.
+> [!IMPORTANT]
+> This repository does not currently ship a native iOS application. iPhone and
+> iPad users use the installable PWA and Web Push. Keep this backend capability
+> disabled unless a separately reviewed native iOS client is introduced.
+
+The backend can deliver notifications for a future native iOS client directly
+through Apple Push Notification service (APNs). Android/web delivery continues
+through Firebase.
 
 ## Required Apple setup
 
@@ -28,7 +35,7 @@ APNS_ENVIRONMENT=production
 
 `APNS_PRIVATE_KEY` may contain real newlines or escaped `\n`; SchoolDB normalizes both forms.
 
-For a locally signed development build using an APNs development entitlement, use `APNS_ENVIRONMENT=sandbox` on the backend environment serving that test. TestFlight and App Store builds use `production`.
+For a future locally signed development build using an APNs development entitlement, use `APNS_ENVIRONMENT=sandbox` on the backend environment serving that test. TestFlight and App Store builds use `production`.
 
 ## Delivery behavior
 
@@ -39,10 +46,10 @@ For a locally signed development build using an APNs development entitlement, us
 - Notification payloads include `announcementId`, `schoolId`, `category`, `priority` and `link` for in-app routing.
 - APNs provider JWTs are ES256 signed and cached for less than one hour.
 
-## Production verification
+## Future native-client verification
 
 1. Deploy `main` with all five APNs environment variables.
-2. Install a Release/TestFlight SchoolDB build.
+2. Install a separately reviewed Release/TestFlight native iOS build.
 3. Sign in and allow notifications.
 4. Verify an enabled IOS row is created in `PushDevice`.
 5. Publish an announcement targeted to that user.

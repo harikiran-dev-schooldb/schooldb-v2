@@ -59,6 +59,9 @@ next-env.d.ts
 /android/local.properties
 /android/**/build/
 *.iml
+*.aab
+*.apk
+*.apks
 
 # Firebase configuration
 school-support-android/app/google-services.json

@@ -6,6 +6,10 @@ const externalBaseUrl = process.env.E2E_BASE_URL?.trim();
 const baseURL = externalBaseUrl || "http://localhost:3000";
 const authState = process.env.E2E_AUTH_STATE?.trim();
 const isLocalBaseUrl = !externalBaseUrl || /^https?:\/\/(?:localhost|127\.0\.0\.1|\[::1\])(?::\d+)?\/?$/i.test(externalBaseUrl);
+const useProductionServer = process.env.E2E_PRODUCTION_SERVER === "true";
+const localServerUrl = isLocalBaseUrl ? new URL(baseURL) : null;
+const localServerHostname = localServerUrl?.hostname === "[::1]" ? "::1" : localServerUrl?.hostname || "localhost";
+const localServerPort = localServerUrl?.port || "3000";
 
 export default defineConfig({
   testDir: "./e2e",
@@ -38,7 +42,10 @@ export default defineConfig({
     {
       name: "desktop-chromium",
       testMatch: /public-smoke\.spec\.ts/,
-      use: { ...devices["Desktop Chrome"] },
+      use: {
+        ...devices["Desktop Chrome"],
+        serviceWorkers: useProductionServer ? "allow" : "block",
+      },
     },
     {
       name: "iphone-16-webkit",
@@ -85,7 +92,9 @@ export default defineConfig({
   ],
   webServer: isLocalBaseUrl
     ? {
-        command: "npm run dev -- --hostname localhost --port 3000",
+        command: useProductionServer
+          ? `npm run build && npm run start -- --hostname ${localServerHostname} --port ${localServerPort}`
+          : `npm run dev -- --hostname ${localServerHostname} --port ${localServerPort}`,
         url: `${baseURL}/api/health`,
         reuseExistingServer: !process.env.CI,
         timeout: 120_000,

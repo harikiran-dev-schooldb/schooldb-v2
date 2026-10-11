@@ -129,7 +129,6 @@ model School {
   supportTicketActivities     SupportTicketActivity[]
   supportTicketReads          SupportTicketRead[]
   supportTicketAttachments    SupportTicketAttachment[]
-  androidAppBuilds            AndroidAppBuild[]
   studentProfileImageRequests StudentProfileImageRequest[]
   reportExportJobs            ReportExportJob[]
   staffAttendances            StaffAttendance[]
@@ -202,7 +201,6 @@ model User {
   supportTicketActivities     SupportTicketActivity[]
   supportTicketReads          SupportTicketRead[]
   supportTicketAttachments    SupportTicketAttachment[]
-  androidAppBuilds            AndroidAppBuild[]
   performedStudentActivities  StudentActivity[]            @relation("StudentActivityPerformer")
   studentProfileImageRequests StudentProfileImageRequest[]
   reportExportJobs            ReportExportJob[]
@@ -2316,28 +2314,6 @@ enum Category {
   ST
   EWS
   RTE
-}
-
-model AndroidAppBuild {
-  id                String    @id @default(cuid())
-  schoolId          String
-  requestedById     String
-  status            String    @default("QUEUED")
-  configuration     Json
-  logoBytes         Bytes?
-  firebaseConfig    Json?
-  callbackTokenHash String
-  githubRunId       String?
-  message           String?
-  createdAt         DateTime  @default(now())
-  startedAt         DateTime?
-  completedAt       DateTime?
-  school            School    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  requestedBy       User      @relation(fields: [requestedById], references: [id], onDelete: Cascade)
-
-  @@index([schoolId, createdAt(sort: Desc)])
-  @@index([status, createdAt])
-  @@index([requestedById])
 }
 
 enum ReportExportStatus {

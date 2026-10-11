@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { useClerk } from "@clerk/nextjs";
 import { useParams } from "next/navigation";
 import { GraduationCap, LogOut, ShieldCheck } from "lucide-react";
+import { activePwaOwner, clearPwaOwnerData } from "@/lib/pwa-storage";
 
 export default function LogoutPage() {
   const { signOut } = useClerk();
@@ -15,9 +16,14 @@ export default function LogoutPage() {
     if (!schoolSlug) return;
 
     const logout = async () => {
-      await signOut({
-        redirectUrl: `/${schoolSlug}/login`,
-      });
+      const ownerKey = activePwaOwner();
+      try {
+        if (ownerKey) await clearPwaOwnerData(ownerKey);
+      } finally {
+        await signOut({
+          redirectUrl: `/${schoolSlug}/login`,
+        });
+      }
     };
 
     void logout();

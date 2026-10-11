@@ -43,6 +43,27 @@ test.describe("public and PWA smoke checks", () => {
     expect(await response.text()).toContain("self.addEventListener");
   });
 
+  test("installed service worker serves the offline fallback", async ({ page, context }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop-chromium", "One Chromium run covers the shared service worker.");
+    test.skip(process.env.E2E_PRODUCTION_SERVER !== "true", "Service workers are disabled during local dev runs.");
+
+    await page.goto("/");
+    const needsControlledReload = await page.evaluate(async () => {
+      await navigator.serviceWorker.ready;
+      return !navigator.serviceWorker.controller;
+    });
+    if (needsControlledReload) await page.reload({ waitUntil: "domcontentloaded" });
+    await expect.poll(() => page.evaluate(() => Boolean(navigator.serviceWorker.controller))).toBe(true);
+
+    try {
+      await context.setOffline(true);
+      await page.goto("/choose-school?offline-check=1", { waitUntil: "domcontentloaded" });
+      await expect(page.getByText("You are offline")).toBeVisible();
+    } finally {
+      await context.setOffline(false);
+    }
+  });
+
   test("security policy is enforced", async ({ request }) => {
     const response = await request.get("/");
     expect(response.ok()).toBeTruthy();

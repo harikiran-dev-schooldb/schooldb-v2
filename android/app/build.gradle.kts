@@ -52,6 +52,10 @@ val debugClerkPublishableKey = if (debugApiBaseUrl == productionApiBaseUrl) {
 } else {
     clerkDevelopmentPublishableKey
 }
+val versionCodeOverride = providers.gradleProperty("VERSION_CODE")
+    .orElse(providers.environmentVariable("VERSION_CODE"))
+    .orNull
+    ?.toIntOrNull()
 
 android {
     namespace = "com.schooldb.mobile"
@@ -61,7 +65,7 @@ android {
         applicationId = "com.schooldb.mobile"
         minSdk = 26
         targetSdk = 37
-        versionCode = 19
+        versionCode = versionCodeOverride ?: 19
         versionName = "0.3.14"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"

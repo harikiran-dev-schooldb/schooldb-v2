@@ -102,7 +102,6 @@ test("school entitlements are applied to delegated API modules", () => {
 test("every configurable page is delegated or explicitly protected", () => {
   const protectedRoutes = new Set([
     "teacher/dashboard",
-    "schools/android-app",
     "users",
     "audit-logs",
     "system",
