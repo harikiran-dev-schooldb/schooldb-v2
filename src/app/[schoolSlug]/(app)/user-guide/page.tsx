@@ -16,6 +16,7 @@ export default async function StaffUserGuidePage({
     <RoleUserGuide
       currentRole={membership.role}
       backHref={backHref}
+      schoolSlug={schoolSlug}
     />
   );
 }

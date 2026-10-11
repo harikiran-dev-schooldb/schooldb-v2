@@ -2,6 +2,8 @@
 
 These guides explain SchoolDB by role. Start with the shared guide, then open the guide for the account you use.
 
+The signed-in application also includes a visual **User Guide**. It provides role tabs, a first-access walkthrough, live workspace shortcuts, searchable procedures, clickable progress steps, end-of-day checks, and real Student Space screenshots. Staff can open **User Guide** from the sidebar; parents and students can use the help icon in Student Space.
+
 ## Start here
 
 - [Getting started, sign-in, offline use, and support](getting-started.md)
@@ -36,4 +38,12 @@ The menus shown to a user are the result of all three layers. A user may therefo
 | Student | View personal academic and school information | Student space |
 
 > Keep each login personal. Never share OTPs, passkeys, exported student data, or printed documents with an unauthorized person.
+
+## Product screenshots
+
+The Parent and Student guides include these real mobile views:
+
+- [Student overview](../../public/product-screenshots/student-overview.png)
+- [Attendance](../../public/product-screenshots/student-attendance.png)
+- [Homework](../../public/product-screenshots/student-homework.png)
 

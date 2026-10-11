@@ -2,6 +2,19 @@
 
 The Super Admin controls SchoolDB workspaces and also has full management access inside an assigned school.
 
+## First installation
+
+Use this only when SchoolDB has no active Super Admin:
+
+1. Configure the database, Clerk keys, and `SCHOOLDB_BOOTSTRAP_SECRET` in the local environment.
+2. Open `/onboarding`.
+3. Sign in with Clerk, or create a Clerk account from the onboarding screen.
+4. Enter the private bootstrap secret, official school name, and unique school URL.
+5. Create the workspace. The signed-in Clerk account becomes the first `SUPER_ADMIN`.
+6. Open the new school URL and confirm the school name and role shown in the header.
+
+Onboarding is intentionally one-time. When an active Super Admin already exists, create additional schools from **Schools → Add School**.
+
 ## Main responsibilities
 
 - Create and manage school workspaces.

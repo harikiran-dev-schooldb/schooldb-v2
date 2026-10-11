@@ -13,6 +13,7 @@ export default async function SelfServiceUserGuidePage({
     <RoleUserGuide
       currentRole={membership.role}
       backHref={`/${schoolSlug}/my`}
+      schoolSlug={schoolSlug}
     />
   );
 }
