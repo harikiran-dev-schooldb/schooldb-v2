@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { SignIn, useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import {
   ArrowRight,
@@ -19,15 +20,82 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 type Step = "choice" | "admin" | "school";
 
 export default function OnboardingPage() {
+  const {
+    isLoaded: clerkLoaded,
+    isSignedIn,
+    user,
+  } = useUser();
+
+  if (!clerkLoaded) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-muted/20">
+        <div className="flex items-center gap-3 text-sm text-muted-foreground">
+          <Loader2 className="size-4 animate-spin" /> Checking your account...
+        </div>
+      </div>
+    );
+  }
+
+  if (!isSignedIn || !user) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-muted/20 px-6 py-12">
+        <div className="w-full max-w-md space-y-6 text-center">
+          <div>
+            <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+              <ShieldCheck className="size-6" />
+            </div>
+            <h1 className="mt-5 text-3xl font-bold tracking-tight">Start SchoolDB setup</h1>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+              Sign in first, or create a Clerk account if you do not have one.
+            </p>
+          </div>
+          <div className="flex justify-center">
+            <SignIn
+              routing="hash"
+              withSignUp
+              forceRedirectUrl="/onboarding"
+              fallbackRedirectUrl="/onboarding"
+              signUpForceRedirectUrl="/onboarding"
+              signUpFallbackRedirectUrl="/onboarding"
+            />
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  return (
+    <AuthenticatedOnboardingPage
+      clerkUserId={user.id}
+      email={user.primaryEmailAddress?.emailAddress ?? user.emailAddresses[0]?.emailAddress ?? ""}
+      firstName={user.firstName?.trim() ?? ""}
+      lastName={user.lastName?.trim() ?? ""}
+    />
+  );
+}
+
+function AuthenticatedOnboardingPage({
+  clerkUserId: initialClerkUserId,
+  email: initialEmail,
+  firstName: initialFirstName,
+  lastName: initialLastName,
+}: {
+  clerkUserId: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+}) {
   const router = useRouter();
-  const [step, setStep] = useState<Step>("choice");
+  const [step, setStep] = useState<Step>(
+    initialEmail && initialFirstName ? "school" : "admin",
+  );
   const [checking, setChecking] = useState(true);
   const [superAdminExists, setSuperAdminExists] = useState(false);
 
-  const [clerkUserId, setClerkUserId] = useState("");
-  const [email, setEmail] = useState("");
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
+  const [clerkUserId, setClerkUserId] = useState(initialClerkUserId);
+  const [email, setEmail] = useState(initialEmail);
+  const [firstName, setFirstName] = useState(initialFirstName);
+  const [lastName, setLastName] = useState(initialLastName);
   const [bootstrapSecret, setBootstrapSecret] = useState("");
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
