@@ -11,10 +11,21 @@ type RouteParams = {
   }>;
 };
 
-export async function GET(_request: Request, { params }: RouteParams) {
+export async function GET(request: Request, { params }: RouteParams) {
   return apiHandler(async () => {
     const tenant = await requireTenant();
     const { id } = await params;
+    const targetClassId = new URL(request.url).searchParams.get("targetClassId");
+
+    if (targetClassId) {
+      const preview = await studentEnrollmentService.previewClassChange(
+        id,
+        tenant.schoolId,
+        targetClassId,
+      );
+
+      return ApiResponse.success(preview);
+    }
 
     const enrollment = await studentEnrollmentService.get(id, tenant.schoolId);
 

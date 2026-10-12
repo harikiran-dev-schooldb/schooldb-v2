@@ -107,6 +107,70 @@ async function rethrowEnrollmentConstraint(
   throw new Error(message ?? "An enrollment with these details already exists.");
 }
 
+type ClassChangePaymentClient = Pick<
+  Prisma.TransactionClient,
+  "cashfreePaymentOrder" | "directUpiPaymentSubmission" | "feePayment"
+>;
+
+async function classChangePaymentBlockers(
+  client: ClassChangePaymentClient,
+  schoolId: string,
+  enrollmentId: string,
+) {
+  const [successfulPayments, pendingCashfreeOrders, pendingDirectUpiSubmissions] =
+    await Promise.all([
+      client.feePayment.count({
+        where: {
+          schoolId,
+          studentEnrollmentId: enrollmentId,
+          status: "SUCCESS",
+        },
+      }),
+      client.cashfreePaymentOrder.count({
+        where: {
+          schoolId,
+          studentEnrollmentId: enrollmentId,
+          feePaymentId: null,
+          status: { in: ["CREATED", "ACTIVE", "REVIEW_REQUIRED"] },
+        },
+      }),
+      client.directUpiPaymentSubmission.count({
+        where: {
+          schoolId,
+          studentEnrollmentId: enrollmentId,
+          status: "PENDING",
+        },
+      }),
+    ]);
+
+  const messages: string[] = [];
+
+  if (successfulPayments > 0) {
+    messages.push(
+      `Void ${successfulPayments} successful fee payment${successfulPayments === 1 ? "" : "s"} before changing the class.`,
+    );
+  }
+
+  if (pendingCashfreeOrders > 0) {
+    messages.push(
+      `Resolve ${pendingCashfreeOrders} pending Cashfree order${pendingCashfreeOrders === 1 ? "" : "s"} before changing the class.`,
+    );
+  }
+
+  if (pendingDirectUpiSubmissions > 0) {
+    messages.push(
+      `Approve or reject ${pendingDirectUpiSubmissions} pending direct-UPI submission${pendingDirectUpiSubmissions === 1 ? "" : "s"} before changing the class.`,
+    );
+  }
+
+  return {
+    successfulPayments,
+    pendingCashfreeOrders,
+    pendingDirectUpiSubmissions,
+    messages,
+  };
+}
+
 async function reconcileFeesForClassChange(
   tx: Prisma.TransactionClient,
   {
@@ -127,18 +191,10 @@ async function reconcileFeesForClassChange(
     performedByUserId?: string;
   },
 ) {
-  const successfulPayments = await tx.feePayment.count({
-    where: {
-      schoolId,
-      studentEnrollmentId: enrollmentId,
-      status: "SUCCESS",
-    },
-  });
+  const blockers = await classChangePaymentBlockers(tx, schoolId, enrollmentId);
 
-  if (successfulPayments > 0) {
-    throw new Error(
-      "Void all successful fee payments for this student before changing the class.",
-    );
+  if (blockers.messages.length > 0) {
+    throw new Error(blockers.messages.join(" "));
   }
 
   const applicablePlans = await tx.feePlan.findMany({
@@ -1026,6 +1082,157 @@ export const studentEnrollmentService = {
     }
 
     return enrollment;
+  },
+
+  async previewClassChange(
+    id: string,
+    schoolId: string,
+    targetClassId: string,
+  ) {
+    const enrollment = await studentEnrollmentRepository.findById(id, schoolId);
+
+    if (!enrollment) {
+      throw new Error("Enrollment not found.");
+    }
+
+    const [targetClass, applicablePlans, activeAssignments, paymentBlockers] =
+      await Promise.all([
+        prisma.class.findFirst({
+          where: { id: targetClassId, schoolId, active: true },
+          select: { id: true, name: true },
+        }),
+        prisma.feePlan.findMany({
+          where: {
+            schoolId,
+            academicYearId: enrollment.academicYearId,
+            active: true,
+            OR: [
+              { appliesToAllClasses: true },
+              { classes: { some: { classId: targetClassId } } },
+            ],
+          },
+          select: {
+            id: true,
+            name: true,
+            items: {
+              select: {
+                amount: true,
+                installments: { select: { id: true } },
+              },
+            },
+          },
+          orderBy: { name: "asc" },
+        }),
+        prisma.studentFee.findMany({
+          where: {
+            schoolId,
+            studentEnrollmentId: enrollment.id,
+            active: true,
+          },
+          select: {
+            id: true,
+            feePlanId: true,
+            feePlan: { select: { name: true } },
+            items: { select: { finalAmount: true } },
+          },
+        }),
+        classChangePaymentBlockers(prisma, schoolId, enrollment.id),
+      ]);
+
+    if (!targetClass) {
+      throw new Error("Target class not found.");
+    }
+
+    const applicablePlanIds = new Set(applicablePlans.map((plan) => plan.id));
+    const activeAssignmentsByPlanId = new Map(
+      activeAssignments.map((assignment) => [assignment.feePlanId, assignment]),
+    );
+    const existingApplicableAssignments =
+      applicablePlans.length > 0
+        ? await prisma.studentFee.findMany({
+            where: {
+              schoolId,
+              studentEnrollmentId: enrollment.id,
+              feePlanId: { in: applicablePlans.map((plan) => plan.id) },
+            },
+            select: {
+              feePlanId: true,
+              items: { select: { finalAmount: true } },
+            },
+          })
+        : [];
+    const existingAssignmentsByPlanId = new Map(
+      existingApplicableAssignments.map((assignment) => [
+        assignment.feePlanId,
+        assignment,
+      ]),
+    );
+    const amountFromItems = (items: Array<{ finalAmount: Prisma.Decimal }>) =>
+      items.reduce((total, item) => total + Number(item.finalAmount), 0);
+
+    const deactivatePlans = activeAssignments
+      .filter((assignment) => !applicablePlanIds.has(assignment.feePlanId))
+      .map((assignment) => ({
+        id: assignment.feePlanId,
+        name: assignment.feePlan.name,
+        amount: amountFromItems(assignment.items),
+      }));
+    const retainPlans = activeAssignments
+      .filter((assignment) => applicablePlanIds.has(assignment.feePlanId))
+      .map((assignment) => ({
+        id: assignment.feePlanId,
+        name: assignment.feePlan.name,
+        amount: amountFromItems(assignment.items),
+      }));
+    const assignPlans = applicablePlans
+      .filter((plan) => !activeAssignmentsByPlanId.has(plan.id))
+      .map((plan) => {
+        const existing = existingAssignmentsByPlanId.get(plan.id);
+
+        return {
+          id: plan.id,
+          name: plan.name,
+          amount: existing
+            ? amountFromItems(existing.items)
+            : enrollment.student.isRte
+              ? 0
+              : plan.items.reduce(
+                  (total, item) => total + Number(item.amount),
+                  0,
+                ),
+        };
+      });
+    const configurationMessages = applicablePlans.flatMap((plan) => {
+      if (plan.items.length === 0) {
+        return [`Fee plan "${plan.name}" has no fee items.`];
+      }
+
+      if (plan.items.some((item) => item.installments.length === 0)) {
+        return [`Fee plan "${plan.name}" is missing installments.`];
+      }
+
+      return [];
+    });
+    const blockerMessages = [
+      ...paymentBlockers.messages,
+      ...configurationMessages,
+    ];
+
+    return {
+      fromClass: { id: enrollment.class.id, name: enrollment.class.name },
+      toClass: targetClass,
+      deactivatePlans,
+      retainPlans,
+      assignPlans,
+      blockers: {
+        successfulPayments: paymentBlockers.successfulPayments,
+        pendingCashfreeOrders: paymentBlockers.pendingCashfreeOrders,
+        pendingDirectUpiSubmissions:
+          paymentBlockers.pendingDirectUpiSubmissions,
+        messages: blockerMessages,
+      },
+      canChange: blockerMessages.length === 0,
+    };
   },
 
   /* ------------------------------------------------------------------ */
