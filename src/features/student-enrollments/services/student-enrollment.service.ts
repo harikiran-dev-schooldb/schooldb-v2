@@ -13,6 +13,7 @@ import {
 
 import { studentActivityService } from "@/features/students/services/student-activity.service";
 import { prisma } from "@/lib/prisma";
+import { runSerializableTransaction } from "@/lib/prisma-transaction";
 import { withTransactionRetry } from "@/lib/transaction-retry";
 import { promotionYearError } from "../enrollment-rules";
 
@@ -104,6 +105,172 @@ async function rethrowEnrollmentConstraint(
     excludeEnrollmentId,
   );
   throw new Error(message ?? "An enrollment with these details already exists.");
+}
+
+async function reconcileFeesForClassChange(
+  tx: Prisma.TransactionClient,
+  {
+    schoolId,
+    enrollmentId,
+    academicYearId,
+    targetClassId,
+    studentId,
+    isRte,
+    performedByUserId,
+  }: {
+    schoolId: string;
+    enrollmentId: string;
+    academicYearId: string;
+    targetClassId: string;
+    studentId: string;
+    isRte: boolean;
+    performedByUserId?: string;
+  },
+) {
+  const successfulPayments = await tx.feePayment.count({
+    where: {
+      schoolId,
+      studentEnrollmentId: enrollmentId,
+      status: "SUCCESS",
+    },
+  });
+
+  if (successfulPayments > 0) {
+    throw new Error(
+      "Void all successful fee payments for this student before changing the class.",
+    );
+  }
+
+  const applicablePlans = await tx.feePlan.findMany({
+    where: {
+      schoolId,
+      academicYearId,
+      active: true,
+      OR: [
+        { appliesToAllClasses: true },
+        { classes: { some: { classId: targetClassId } } },
+      ],
+    },
+    include: {
+      items: {
+        include: {
+          installments: {
+            orderBy: { sequence: "asc" },
+          },
+        },
+      },
+    },
+  });
+
+  for (const plan of applicablePlans) {
+    if (plan.items.length === 0) {
+      throw new Error(
+        `Fee plan "${plan.name}" has no fee items. Configure it before changing the class.`,
+      );
+    }
+
+    if (plan.items.some((item) => item.installments.length === 0)) {
+      throw new Error(
+        `Generate installments for every item in fee plan "${plan.name}" before changing the class.`,
+      );
+    }
+  }
+
+  const applicablePlanIds = applicablePlans.map((plan) => plan.id);
+
+  await tx.studentFee.updateMany({
+    where: {
+      schoolId,
+      studentEnrollmentId: enrollmentId,
+      active: true,
+      ...(applicablePlanIds.length > 0
+        ? { feePlanId: { notIn: applicablePlanIds } }
+        : {}),
+    },
+    data: { active: false },
+  });
+
+  if (applicablePlans.length === 0) return;
+
+  const existingAssignments = await tx.studentFee.findMany({
+    where: {
+      schoolId,
+      studentEnrollmentId: enrollmentId,
+      feePlanId: { in: applicablePlanIds },
+    },
+    select: {
+      id: true,
+      feePlanId: true,
+      active: true,
+    },
+  });
+  const assignmentsByPlanId = new Map(
+    existingAssignments.map((assignment) => [assignment.feePlanId, assignment]),
+  );
+
+  for (const plan of applicablePlans) {
+    const existing = assignmentsByPlanId.get(plan.id);
+
+    if (existing) {
+      if (!existing.active) {
+        await tx.studentFee.update({
+          where: { id: existing.id },
+          data: { active: true },
+        });
+      }
+      continue;
+    }
+
+    const studentFee = await tx.studentFee.create({
+      data: {
+        schoolId,
+        studentEnrollmentId: enrollmentId,
+        feePlanId: plan.id,
+        items: {
+          create: plan.items.map((planItem) => ({
+            feePlanItemId: planItem.id,
+            feeCategoryId: planItem.feeCategoryId,
+            amount: planItem.amount,
+            rteWaiver: isRte ? planItem.amount : 0,
+            concession: 0,
+            finalAmount: isRte ? 0 : planItem.amount,
+            installments: {
+              create: planItem.installments.map((installment) => ({
+                feeInstallmentId: installment.id,
+                name: installment.name,
+                amount: installment.amount,
+                rteWaiver: isRte ? installment.amount : 0,
+                concession: 0,
+                payableAmount: isRte ? 0 : installment.amount,
+                paidAmount: 0,
+                dueDate: installment.dueDate,
+                status: isRte ? "WAIVED" : "PENDING",
+                sequence: installment.sequence,
+                periodStart: installment.periodStart,
+                periodEnd: installment.periodEnd,
+              })),
+            },
+          })),
+        },
+      },
+      select: { id: true },
+    });
+
+    await tx.studentActivity.create({
+      data: {
+        schoolId,
+        studentId,
+        enrollmentId,
+        type: "FEE_ASSIGNED",
+        title: "Fee plan assigned",
+        description: `${plan.name} was assigned after the student's class changed.`,
+        sourceType: "STUDENT_FEE",
+        sourceId: studentFee.id,
+        performedByUserId,
+        metadata: { studentFeeId: studentFee.id, feePlanId: plan.id },
+      },
+    });
+  }
 }
 
 export type PromotionImportRow = {
@@ -907,9 +1074,21 @@ export const studentEnrollmentService = {
     );
 
     try {
-      return await prisma.$transaction(async (tx) => {
+      return await runSerializableTransaction(async (tx) => {
         const conflict = await enrollmentConflictMessage(tx, schoolId, input, id);
         if (conflict) throw new Error(conflict);
+
+        if (enrollment.classId !== input.classId) {
+          await reconcileFeesForClassChange(tx, {
+            schoolId,
+            enrollmentId: enrollment.id,
+            academicYearId: input.academicYearId,
+            targetClassId: input.classId,
+            studentId: enrollment.studentId,
+            isRte: enrollment.student.isRte,
+            performedByUserId,
+          });
+        }
 
         const saved = await studentEnrollmentRepository.update(
         id,
