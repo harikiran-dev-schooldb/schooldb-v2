@@ -25,6 +25,12 @@ export type PaymentRow = {
   };
 
   allocationCount: number;
+  cashfree: {
+    orderId: string;
+    refundStatus: string | null;
+    refundArn: string | null;
+    statusDescription: string | null;
+  } | null;
 };
 
 type Props = {
@@ -59,6 +65,9 @@ function getStatusClasses(status: string) {
 
     case "VOID":
       return "border-red-200 bg-red-50 text-red-700";
+
+    case "REFUNDED":
+      return "border-violet-200 bg-violet-50 text-violet-700";
 
     case "PENDING":
       return "border-amber-200 bg-amber-50 text-amber-700";
@@ -271,16 +280,21 @@ export function PaymentHistoryTable({ rows, schoolSlug, onVoid }: Props) {
                           Receipt
                         </Button>
 
-                        {payment.status === "SUCCESS" && (
+                        {payment.status === "SUCCESS" && payment.cashfree?.refundStatus !== "PENDING" && (
                           <Button
                             variant="ghost"
                             size="sm"
                             className="h-8 rounded-lg text-destructive hover:bg-red-50 hover:text-destructive"
                             onClick={() => onVoid(payment)}
                           >
-                            Void
+                            {payment.cashfree ? "Refund" : "Void"}
                           </Button>
                         )}
+                        {payment.cashfree?.refundStatus === "PENDING" ? (
+                          <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-700">
+                            Refund pending
+                          </Badge>
+                        ) : null}
                       </div>
                     </td>
                   </tr>

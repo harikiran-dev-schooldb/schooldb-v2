@@ -6,6 +6,7 @@ import { useParams } from "next/navigation";
 import { toast } from "sonner";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -139,16 +140,16 @@ export function ManagedProfileImageUploader({
             Choose image
           </Button>
           {preview ? (
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              disabled={busy}
-              onClick={() => void remove()}
-            >
-              <Trash2 className="size-4" />
-              Remove
-            </Button>
+            <ConfirmDialog
+              eyebrow={`${targetType === "STUDENT" ? "Student" : "Teacher"} profile`}
+              title={`Remove ${name}'s profile image?`}
+              description="Their initials will replace the image throughout SchoolDB."
+              confirmLabel="Remove image"
+              destructive
+              pending={busy}
+              onConfirm={() => void remove()}
+              trigger={<Button type="button" size="sm" variant="outline" disabled={busy}><Trash2 className="size-4" />Remove</Button>}
+            />
           ) : null}
         </div>
       </div>

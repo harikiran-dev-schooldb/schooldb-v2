@@ -7,6 +7,7 @@ import { toast } from "sonner";
 
 import { AcademicYearSelect, ClassSelect, SectionSelect } from "@/components/common/select";
 import { SearchableStudentSelect } from "@/components/common/select/SearchableStudentSelect";
+import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -179,17 +180,28 @@ export function IdCardFilters({ initialAcademicYearId, initialClassId = "", init
                     />
                   </label>
                   {backImageUrl && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      className="size-10 rounded-xl text-destructive hover:text-destructive"
-                      disabled={imageBusy}
-                      onClick={() => void removeBackImage()}
-                      aria-label="Remove ID card back image"
-                    >
-                      <Trash2 className="size-4" />
-                    </Button>
+                    <ConfirmDialog
+                      eyebrow="ID card design"
+                      title="Remove the ID card back image?"
+                      description="Future ID cards will stop using the uploaded back image."
+                      consequence="The school logo will be used instead. You can upload another image later."
+                      confirmLabel="Remove image"
+                      destructive
+                      pending={imageBusy}
+                      onConfirm={() => void removeBackImage()}
+                      trigger={
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          className="size-10 rounded-xl text-destructive hover:text-destructive"
+                          disabled={imageBusy}
+                          aria-label="Remove ID card back image"
+                        >
+                          <Trash2 className="size-4" />
+                        </Button>
+                      }
+                    />
                   )}
                 </div>
               </div>

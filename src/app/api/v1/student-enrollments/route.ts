@@ -1,6 +1,7 @@
 import { apiHandler } from "@/lib/api";
 import { requireRole } from "@/lib/auth";
 import { ApiResponse } from "@/lib/response";
+import { recordAuditLog } from "@/lib/audit";
 
 import { studentEnrollmentService } from "@/features/student-enrollments/services/student-enrollment.service";
 import { studentEnrollmentSchema } from "@/features/student-enrollments/schemas/student-enrollment.schema";
@@ -47,6 +48,21 @@ export async function POST(request: Request) {
       input,
       tenant.userId,
     );
+
+    await recordAuditLog({
+      actor: tenant,
+      module: "STUDENT_RECORDS",
+      action: "CREATE",
+      entityType: "STUDENT_ENROLLMENT",
+      entityId: enrollment.id,
+      summary: "Created a student enrollment.",
+      metadata: {
+        studentId: input.studentId,
+        academicYearId: input.academicYearId,
+        classId: input.classId,
+        sectionId: input.sectionId,
+      },
+    });
 
     return ApiResponse.success(enrollment);
   });

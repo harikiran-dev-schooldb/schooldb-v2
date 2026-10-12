@@ -7,6 +7,7 @@ import { feePaymentService } from "@/features/fee-payments/services/fee-payment.
 import { recordAuditLog } from "@/lib/audit";
 import { prisma } from "@/lib/prisma";
 import { studentActivityService } from "@/features/students/services/student-activity.service";
+import { cashfreePaymentService } from "@/features/online-payments/services/cashfree-payment.service";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -28,6 +29,35 @@ export async function POST(req: Request, { params }: Params) {
     const { id } = await params;
     const body = await req.json();
     const { reason } = voidPaymentSchema.parse(body);
+    const cashfreeOrder = await prisma.cashfreePaymentOrder.findFirst({
+      where: { schoolId: tenant.schoolId, feePaymentId: id },
+      select: { id: true, providerOrderId: true },
+    });
+
+    if (cashfreeOrder) {
+      const refund = await cashfreePaymentService.initiateRefund({
+        schoolId: tenant.schoolId,
+        feePaymentId: id,
+        reason,
+        initiatedByUserId: tenant.userId,
+      });
+      await recordAuditLog({
+        actor: tenant,
+        module: "FEES",
+        action: "REFUND_REQUESTED",
+        entityType: "CASHFREE_REFUND",
+        entityId: refund.id,
+        summary: `Requested Cashfree refund for order ${cashfreeOrder.providerOrderId}.`,
+        metadata: { reason, providerOrderId: cashfreeOrder.providerOrderId, status: refund.status },
+      });
+      return ApiResponse.success(
+        { refundStatus: refund.status },
+        refund.status === "SUCCESS"
+          ? "Payment refunded successfully."
+          : "Cashfree refund initiated. Fee balances will reverse after confirmation.",
+      );
+    }
+
     const payment = await feePaymentService.void(
       tenant.schoolId,
       id,

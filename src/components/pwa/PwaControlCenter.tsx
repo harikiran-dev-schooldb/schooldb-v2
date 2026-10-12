@@ -21,6 +21,7 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { Switch } from "@/components/ui/switch";
 import {
   browserPushState,
@@ -308,7 +309,19 @@ export function PwaControlCenter({
             <StatusRow icon={HardDrive} label="Browser storage" value={storageLabel} good={Boolean(storage)} />
             <div className="flex flex-wrap gap-2 pt-2">
               <Button type="button" disabled={busy} onClick={() => void syncOfflineData()}><RefreshCw className="size-4" /> Sync now</Button>
-              {snapshot && <Button type="button" variant="outline" onClick={() => void clearOfflineData()}>Clear saved data</Button>}
+              {snapshot && (
+                <ConfirmDialog
+                  eyebrow="Device storage"
+                  title="Clear saved offline data?"
+                  description="This removes the saved school snapshot from this device. Server data is not affected."
+                  consequence="You will need to reconnect and sync before SchoolDB can be used offline again."
+                  confirmLabel="Clear saved data"
+                  destructive
+                  pending={busy}
+                  onConfirm={() => void clearOfflineData()}
+                  trigger={<Button type="button" variant="outline" disabled={busy}>Clear saved data</Button>}
+                />
+              )}
             </div>
           </CardContent>
         </Card>

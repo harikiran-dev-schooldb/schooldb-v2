@@ -124,11 +124,12 @@ export function ConfirmDialog({
         )}
 
         <AlertDialogFooter className="border-t border-border/60 bg-muted/[0.3] px-6 py-4">
-          <AlertDialogCancel className="min-w-24" disabled={pending}>
+          <AlertDialogCancel type="button" className="min-w-24" disabled={pending}>
             {cancelLabel}
           </AlertDialogCancel>
 
           <AlertDialogAction
+            type="button"
             onClick={onConfirm}
             disabled={pending}
             className={cn("min-w-28", toneStyles.action)}

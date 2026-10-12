@@ -67,7 +67,7 @@ export async function GET(req: Request) {
 
     const where: Prisma.FeePaymentWhereInput = {
       schoolId: tenant.schoolId,
-      status: "SUCCESS",
+      status: { in: ["SUCCESS", "REFUNDED", "VOID"] },
       ...(paymentMode
         ? {
             paymentMode: paymentMode as
@@ -112,7 +112,7 @@ export async function GET(req: Request) {
         : {}),
     };
 
-    const [payments, aggregate] = await Promise.all([
+    const [payments, aggregate, total] = await Promise.all([
       prisma.feePayment.findMany({
         where,
         orderBy: [{ paymentDate: "desc" }, { id: "desc" }],
@@ -139,13 +139,24 @@ export async function GET(req: Request) {
         _count: {
           select: { allocations: true },
         },
+        cashfreeOrder: {
+          select: {
+            providerOrderId: true,
+            refunds: {
+              orderBy: { createdAt: "desc" },
+              take: 1,
+              select: { status: true, refundArn: true, statusDescription: true },
+            },
+          },
+        },
         },
       }),
       prisma.feePayment.aggregate({
-        where,
+        where: { ...where, status: "SUCCESS" },
         _count: { _all: true },
         _sum: { amount: true },
       }),
+      prisma.feePayment.count({ where }),
     ]);
 
     const rows = payments.map((payment) => ({
@@ -165,6 +176,14 @@ export async function GET(req: Request) {
         section: payment.studentEnrollment.section.name,
       },
       allocationCount: payment._count.allocations,
+      cashfree: payment.cashfreeOrder
+        ? {
+            orderId: payment.cashfreeOrder.providerOrderId,
+            refundStatus: payment.cashfreeOrder.refunds[0]?.status ?? null,
+            refundArn: payment.cashfreeOrder.refunds[0]?.refundArn ?? null,
+            statusDescription: payment.cashfreeOrder.refunds[0]?.statusDescription ?? null,
+          }
+        : null,
     }));
 
     return ApiResponse.success({
@@ -176,8 +195,8 @@ export async function GET(req: Request) {
       pagination: {
         page,
         pageSize,
-        total: aggregate._count._all,
-        totalPages: Math.max(1, Math.ceil(aggregate._count._all / pageSize)),
+        total,
+        totalPages: Math.max(1, Math.ceil(total / pageSize)),
       },
     });
   });

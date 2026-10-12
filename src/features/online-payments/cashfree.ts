@@ -1,4 +1,9 @@
 import { ApiError } from "@/lib/errors";
+import {
+  cashfreeRefundPath,
+  cashfreeRefundPayload,
+  type CashfreeRefund,
+} from "./cashfree-refund-contract";
 
 const CASHFREE_API_VERSION = "2025-01-01";
 
@@ -125,5 +130,27 @@ export function getCashfreeProviderOrder(orderId: string) {
 export function getCashfreeOrderPayments(orderId: string) {
   return cashfreeRequest<CashfreePayment[]>(
     `/orders/${encodeURIComponent(orderId)}/payments`,
+  );
+}
+
+export function createCashfreeRefund(input: {
+  orderId: string;
+  refundId: string;
+  amount: number;
+  note: string;
+}) {
+  return cashfreeRequest<CashfreeRefund>(
+    cashfreeRefundPath(input.orderId),
+    {
+      method: "POST",
+      headers: { "x-idempotency-key": input.refundId },
+      body: JSON.stringify(cashfreeRefundPayload(input)),
+    },
+  );
+}
+
+export function getCashfreeOrderRefunds(orderId: string) {
+  return cashfreeRequest<CashfreeRefund[]>(
+    cashfreeRefundPath(orderId),
   );
 }

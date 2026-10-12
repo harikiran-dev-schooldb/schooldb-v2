@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 
 import { PageHeader } from "@/components/common/PageHeader";
+import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { SchoolLogo } from "@/components/branding/SchoolLogo";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -297,17 +298,28 @@ export default function SchoolsPage() {
                     />
                   </label>
                   {item.logo && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      className="size-10 shrink-0 rounded-xl text-destructive hover:text-destructive"
-                      disabled={logoActionId === item.id}
-                      onClick={() => void removeLogo(item.id)}
-                      aria-label={`Remove ${item.name} logo`}
-                    >
-                      <Trash2 className="size-4" />
-                    </Button>
+                    <ConfirmDialog
+                      eyebrow="School branding"
+                      title={`Remove ${item.name}'s logo?`}
+                      description="The current school logo will be removed from navigation, documents, and other branded screens."
+                      consequence="You can upload a replacement later, but the current image will no longer be available."
+                      confirmLabel="Remove logo"
+                      destructive
+                      pending={logoActionId === item.id}
+                      onConfirm={() => void removeLogo(item.id)}
+                      trigger={
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          className="size-10 shrink-0 rounded-xl text-destructive hover:text-destructive"
+                          disabled={logoActionId === item.id}
+                          aria-label={`Remove ${item.name} logo`}
+                        >
+                          <Trash2 className="size-4" />
+                        </Button>
+                      }
+                    />
                   )}
                 </div>
                 <p className="mt-2 text-[11px] text-muted-foreground">

@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import {
   Dialog,
   DialogContent,
@@ -270,18 +271,36 @@ export function DirectUpiVerificationTable({
                       <XCircle className="size-4" />
                       Reject
                     </Button>
-                    <Button
-                      onClick={() => void review(row, "APPROVE")}
-                      disabled={workingId === row.id}
-                      className="bg-emerald-700 hover:bg-emerald-800"
-                    >
-                      {workingId === row.id ? (
-                        <LoaderCircle className="size-4 animate-spin" />
-                      ) : (
-                        <CheckCircle2 className="size-4" />
-                      )}
-                      Verify & create receipt
-                    </Button>
+                    <ConfirmDialog
+                      eyebrow="Payment verification"
+                      title="Verify this UPI payment?"
+                      description="Confirm that this credit appears in the school's bank statement."
+                      details={[
+                        { label: "Student", value: row.student.fullName || row.student.admissionNo },
+                        { label: "Amount", value: formatCurrency(row.amount) },
+                        { label: "UTR", value: row.utr },
+                        { label: "Installments", value: row.installments.length },
+                      ]}
+                      consequence="Approval records the fee payment and creates an official receipt. Void the payment later if this approval was incorrect."
+                      confirmLabel="Verify & create receipt"
+                      tone="warning"
+                      pending={workingId === row.id}
+                      onConfirm={() => void review(row, "APPROVE")}
+                      trigger={
+                        <Button
+                          type="button"
+                          disabled={workingId === row.id}
+                          className="bg-emerald-700 hover:bg-emerald-800"
+                        >
+                          {workingId === row.id ? (
+                            <LoaderCircle className="size-4 animate-spin" />
+                          ) : (
+                            <CheckCircle2 className="size-4" />
+                          )}
+                          Verify & create receipt
+                        </Button>
+                      }
+                    />
                   </div>
                 ) : null}
               </CardContent>

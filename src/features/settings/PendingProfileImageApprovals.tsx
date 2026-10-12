@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 
 type PendingRequest = {
   id: string;
@@ -100,25 +101,37 @@ export function PendingProfileImageApprovals({
                       Submitted {request.submittedAt}
                     </p>
                     <div className="mt-4 flex flex-wrap gap-2">
-                      <Button
-                        type="button"
-                        size="sm"
-                        disabled={busyId !== null}
-                        onClick={() => void decide(request.id, "approve")}
-                      >
-                        {busy ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
-                        Approve
-                      </Button>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        disabled={busyId !== null}
-                        onClick={() => void decide(request.id, "reject")}
-                      >
-                        <X className="size-4" />
-                        Reject
-                      </Button>
+                      <ConfirmDialog
+                        eyebrow="Profile approval"
+                        title={`Approve ${request.studentName}'s image?`}
+                        description="The submitted image will become the student's visible profile image."
+                        details={[{ label: "Admission no.", value: request.admissionNo }]}
+                        confirmLabel="Approve image"
+                        pending={busy}
+                        onConfirm={() => void decide(request.id, "approve")}
+                        trigger={
+                          <Button type="button" size="sm" disabled={busyId !== null}>
+                            {busy ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
+                            Approve
+                          </Button>
+                        }
+                      />
+                      <ConfirmDialog
+                        eyebrow="Profile approval"
+                        title={`Reject ${request.studentName}'s image?`}
+                        description="The submitted image will be removed and will not appear on the student's profile."
+                        details={[{ label: "Admission no.", value: request.admissionNo }]}
+                        confirmLabel="Reject image"
+                        destructive
+                        pending={busy}
+                        onConfirm={() => void decide(request.id, "reject")}
+                        trigger={
+                          <Button type="button" size="sm" variant="outline" disabled={busyId !== null}>
+                            <X className="size-4" />
+                            Reject
+                          </Button>
+                        }
+                      />
                     </div>
                   </div>
                 </article>

@@ -25,4 +25,18 @@ export const feePaymentService = {
       voidedBy,
     );
   },
+
+  refund(
+    schoolId: string,
+    paymentId: string,
+    reason: string,
+    refundedBy: string,
+  ) {
+    return feePaymentRepository.refund(
+      schoolId,
+      paymentId,
+      reason,
+      refundedBy,
+    );
+  },
 };

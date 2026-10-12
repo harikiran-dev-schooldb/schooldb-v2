@@ -21,6 +21,7 @@ type VoidPaymentDialogProps = {
 
   paymentId: string;
   receiptNo: string;
+  cashfree?: boolean;
 
   onSuccess: () => void;
 };
@@ -30,6 +31,7 @@ export function VoidPaymentDialog({
   onOpenChange,
   paymentId,
   receiptNo,
+  cashfree = false,
   onSuccess,
 }: VoidPaymentDialogProps) {
   const [reason, setReason] = useState("");
@@ -59,7 +61,7 @@ export function VoidPaymentDialog({
       const result = await response.json();
 
       if (!response.ok || !result.success) {
-        throw new Error(result.message || "Failed to void payment.");
+        throw new Error(result.message || `Failed to ${cashfree ? "refund" : "void"} payment.`);
       }
 
       setReason("");
@@ -70,7 +72,9 @@ export function VoidPaymentDialog({
       onSuccess();
     } catch (error) {
       setError(
-        error instanceof Error ? error.message : "Failed to void payment.",
+        error instanceof Error
+          ? error.message
+          : `Failed to ${cashfree ? "refund" : "void"} payment.`,
       );
     } finally {
       setLoading(false);
@@ -92,17 +96,17 @@ export function VoidPaymentDialog({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Void Payment</DialogTitle>
+          <DialogTitle>{cashfree ? "Refund Cashfree Payment" : "Void Payment"}</DialogTitle>
 
           <DialogDescription>
-            Void payment receipt{" "}
-            <span className="font-medium">{receiptNo}</span>. The payment amount
-            will be reversed from the related fee installments.
+            {cashfree ? "Request a Cashfree refund for" : "Void payment receipt"}{" "}
+            <span className="font-medium">{receiptNo}</span>. Fee balances will
+            be reversed only after the {cashfree ? "gateway confirms the refund" : "void is recorded"}.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-2">
-          <label className="text-sm font-medium">Void Reason</label>
+          <label className="text-sm font-medium">{cashfree ? "Refund" : "Void"} Reason</label>
 
           <Textarea
             value={reason}
@@ -113,7 +117,7 @@ export function VoidPaymentDialog({
                 setError(null);
               }
             }}
-            placeholder="Enter reason for voiding this payment..."
+            placeholder={`Enter reason for ${cashfree ? "refunding" : "voiding"} this payment...`}
             disabled={loading}
             rows={4}
           />
@@ -137,7 +141,9 @@ export function VoidPaymentDialog({
             onClick={handleVoid}
             disabled={loading || reason.trim().length < 3}
           >
-            {loading ? "Voiding..." : "Void Payment"}
+            {loading
+              ? cashfree ? "Requesting refund..." : "Voiding..."
+              : cashfree ? "Request Refund" : "Void Payment"}
           </Button>
         </DialogFooter>
       </DialogContent>

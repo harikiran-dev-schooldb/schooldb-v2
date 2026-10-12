@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -164,28 +165,28 @@ export function ProfileImageUploader({
             Choose image
           </Button>
           {!approvalRequired && preview ? (
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              disabled={busy}
-              onClick={() => void remove()}
-            >
-              <Trash2 className="size-4" />
-              Remove
-            </Button>
+            <ConfirmDialog
+              eyebrow="Profile image"
+              title="Remove your profile image?"
+              description="Your initials will be shown anywhere your profile image currently appears."
+              confirmLabel="Remove image"
+              destructive
+              pending={busy}
+              onConfirm={() => void remove()}
+              trigger={<Button type="button" size="sm" variant="outline" disabled={busy}><Trash2 className="size-4" />Remove</Button>}
+            />
           ) : null}
           {approvalRequired && pendingApproval ? (
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              disabled={busy}
-              onClick={() => void remove()}
-            >
-              <X className="size-4" />
-              Cancel request
-            </Button>
+            <ConfirmDialog
+              eyebrow="Pending approval"
+              title="Cancel this image request?"
+              description="The submitted image will be removed from the administrator's approval queue."
+              confirmLabel="Cancel request"
+              destructive
+              pending={busy}
+              onConfirm={() => void remove()}
+              trigger={<Button type="button" size="sm" variant="outline" disabled={busy}><X className="size-4" />Cancel request</Button>}
+            />
           ) : null}
         </div>
       </div>

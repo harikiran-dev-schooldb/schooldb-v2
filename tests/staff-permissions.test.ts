@@ -59,6 +59,14 @@ test("maps pages and APIs to modules and access levels", () => {
   );
   assert.equal(requiredAccessLevel("GET"), "VIEW");
   assert.equal(requiredAccessLevel("POST"), "MANAGE");
+  assert.deepEqual(
+    permissionPolicyForRequest("/api/v1/student-enrollments/value", "demo", "GET"),
+    { modules: ["STUDENT_RECORDS"], required: "VIEW", route: null },
+  );
+  assert.deepEqual(
+    permissionPolicyForRequest("/api/v1/student-enrollments/value", "demo", "PUT"),
+    { modules: ["STUDENT_RECORDS"], required: "MANAGE", route: null },
+  );
 });
 
 test("shared academic lookups are readable without granting academic writes", () => {

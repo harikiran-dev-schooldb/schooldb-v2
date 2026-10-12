@@ -72,7 +72,7 @@ export default defineConfig({
       ? [
           {
             name: "authenticated-admin",
-            testMatch: /authenticated-workflows\.spec\.ts/,
+            testMatch: /(authenticated-workflows|financial-workflows)\.spec\.ts/,
             use: {
               ...devices["Desktop Chrome"],
               storageState: authState,
@@ -80,7 +80,7 @@ export default defineConfig({
           },
           {
             name: "authenticated-iphone-16",
-            testMatch: /authenticated-workflows\.spec\.ts/,
+            testMatch: /(authenticated-workflows|financial-workflows)\.spec\.ts/,
             use: {
               ...devices["iPhone 15 Pro"],
               viewport: { width: 393, height: 852 },

@@ -13,11 +13,19 @@ type WebhookPayload = {
   data?: {
     order?: { order_id?: string };
     payment?: { cf_payment_id?: number | string; payment_status?: string };
+    refund?: { refund_id?: string; refund_status?: string };
   };
 };
 
 export async function POST(request: Request) {
+  const contentLength = Number(request.headers.get("content-length") || 0);
+  if (contentLength > 1_000_000) {
+    return NextResponse.json({ success: false }, { status: 413 });
+  }
   const rawBody = await request.text();
+  if (rawBody.length > 1_000_000) {
+    return NextResponse.json({ success: false }, { status: 413 });
+  }
   const timestamp = request.headers.get("x-webhook-timestamp") ?? "";
   const signature = request.headers.get("x-webhook-signature") ?? "";
 
@@ -65,6 +73,15 @@ export async function POST(request: Request) {
       where: { providerOrderId: orderId, feePaymentId: null, status: { not: "PAID" } },
       data: { failureReason: "The latest payment attempt was not completed" },
     });
+  } else if (
+    payload.type?.includes("REFUND") || payload.data?.refund?.refund_status
+  ) {
+    try {
+      await cashfreePaymentService.reconcileOrder(orderId);
+    } catch (error) {
+      console.error("Cashfree refund reconciliation failed", error);
+      return NextResponse.json({ success: false }, { status: 500 });
+    }
   }
 
   return NextResponse.json({ success: true });

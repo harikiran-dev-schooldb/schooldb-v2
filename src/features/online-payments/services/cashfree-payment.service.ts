@@ -5,11 +5,14 @@ import { ApiError } from "@/lib/errors";
 import { prisma } from "@/lib/prisma";
 import { runSerializableTransaction } from "@/lib/prisma-transaction";
 import { findInstallmentSequenceViolation } from "@/features/fee-payments/installment-sequence";
+import { feePaymentService } from "@/features/fee-payments/services/fee-payment.service";
 import { notifyFeePayment } from "@/features/notifications/events";
 import {
   createCashfreeProviderOrder,
+  createCashfreeRefund,
   getCashfreeMode,
   getCashfreeOrderPayments,
+  getCashfreeOrderRefunds,
   getCashfreeProviderOrder,
   getCashfreeSecretKey,
 } from "../cashfree";
@@ -59,6 +62,90 @@ function cashfreePublicToken(orderId: string) {
   return createHmac("sha256", getCashfreeSecretKey())
     .update(`schooldb-staff-qr:${orderId}`)
     .digest("base64url");
+}
+
+function providerRefundId() {
+  return `SDB-REF-${Date.now()}-${randomBytes(5).toString("hex")}`;
+}
+
+function refundStatus(value: string) {
+  if (value === "SUCCESS") return "SUCCESS" as const;
+  if (value === "CANCELLED") return "CANCELLED" as const;
+  if (value === "FAILED") return "FAILED" as const;
+  return "PENDING" as const;
+}
+
+async function applyProviderRefund(
+  order: {
+    id: string;
+    schoolId: string;
+    feePaymentId: string | null;
+  },
+  provider: {
+    refund_id: string;
+    cf_refund_id?: string;
+    refund_status: string;
+    status_description?: string;
+    refund_arn?: string;
+    processed_at?: string;
+  },
+) {
+  const status = refundStatus(provider.refund_status);
+  const refund = await prisma.cashfreeRefund.update({
+    where: { providerRefundId: provider.refund_id },
+    data: {
+      status,
+      cashfreeRefundId: provider.cf_refund_id || undefined,
+      statusDescription: provider.status_description?.slice(0, 500) || null,
+      refundArn: provider.refund_arn || null,
+      processedAt: provider.processed_at ? new Date(provider.processed_at) : status === "SUCCESS" ? new Date() : null,
+      lastReconciledAt: new Date(),
+    },
+  });
+
+  if (status === "SUCCESS" && order.feePaymentId) {
+    const payment = await prisma.feePayment.findUnique({
+      where: { id: order.feePaymentId },
+      select: {
+        status: true,
+        receiptNo: true,
+        studentEnrollment: { select: { id: true, studentId: true } },
+      },
+    });
+    if (payment?.status === "SUCCESS") {
+      await feePaymentService.refund(
+        order.schoolId,
+        order.feePaymentId,
+        refund.reason,
+        refund.initiatedByUserId,
+      );
+      try {
+        await prisma.studentActivity.create({
+          data: {
+            schoolId: order.schoolId,
+            studentId: payment.studentEnrollment.studentId,
+            enrollmentId: payment.studentEnrollment.id,
+            performedByUserId: refund.initiatedByUserId,
+            type: "FEE_PAYMENT_REFUNDED",
+            title: "Online fee payment refunded",
+            description: `${payment.receiptNo}: ${refund.reason}`,
+            sourceType: "CASHFREE_REFUND",
+            sourceId: refund.id,
+            metadata: {
+              receiptNo: payment.receiptNo,
+              refundId: refund.providerRefundId,
+              refundArn: refund.refundArn,
+              amount: Number(refund.amount),
+            },
+          },
+        });
+      } catch (error) {
+        console.error("Cashfree refund activity write failed", error);
+      }
+    }
+  }
+
+  return refund;
 }
 
 export const cashfreePaymentService = {
@@ -480,5 +567,127 @@ export const cashfreePaymentService = {
     }
 
     return settledOrder;
+  },
+
+  async initiateRefund({
+    schoolId,
+    feePaymentId,
+    reason,
+    initiatedByUserId,
+  }: {
+    schoolId: string;
+    feePaymentId: string;
+    reason: string;
+    initiatedByUserId: string;
+  }) {
+    const order = await prisma.cashfreePaymentOrder.findFirst({
+      where: { schoolId, feePaymentId, status: "PAID" },
+      include: { refunds: { orderBy: { createdAt: "desc" } } },
+    });
+    if (!order) throw new ApiError(404, "Cashfree payment order not found.");
+
+    const completed = order.refunds.find((refund) => refund.status === "SUCCESS");
+    if (completed) return completed;
+
+    let refund = order.refunds.find((item) => item.status === "PENDING");
+    if (!refund) {
+      refund = await prisma.cashfreeRefund.create({
+        data: {
+          schoolId,
+          orderId: order.id,
+          feePaymentId,
+          providerRefundId: providerRefundId(),
+          amount: order.amount,
+          reason,
+          initiatedByUserId,
+        },
+      });
+    }
+
+    try {
+      const provider = await createCashfreeRefund({
+        orderId: order.providerOrderId,
+        refundId: refund.providerRefundId,
+        amount: Number(refund.amount),
+        note: refund.reason,
+      });
+      return applyProviderRefund(order, provider);
+    } catch (error) {
+      await prisma.cashfreeRefund.update({
+        where: { id: refund.id },
+        data: {
+          statusDescription: error instanceof Error ? error.message.slice(0, 500) : "Refund request failed",
+          lastReconciledAt: new Date(),
+        },
+      });
+      throw error;
+    }
+  },
+
+  async reconcileOrder(providerOrderIdValue: string) {
+    const order = await this.verifyAndSettle(providerOrderIdValue);
+    const providerRefunds = await getCashfreeOrderRefunds(providerOrderIdValue);
+    const matchedRefundIds = new Set<string>();
+    for (const provider of providerRefunds) {
+      matchedRefundIds.add(provider.refund_id);
+      const local = await prisma.cashfreeRefund.findUnique({
+        where: { providerRefundId: provider.refund_id },
+        select: { id: true },
+      });
+      if (local) await applyProviderRefund(order, provider);
+    }
+
+    const pendingLocalRefunds = await prisma.cashfreeRefund.findMany({
+      where: { orderId: order.id, status: "PENDING" },
+    });
+    for (const refund of pendingLocalRefunds) {
+      if (matchedRefundIds.has(refund.providerRefundId)) continue;
+      const provider = await createCashfreeRefund({
+        orderId: order.providerOrderId,
+        refundId: refund.providerRefundId,
+        amount: Number(refund.amount),
+        note: refund.reason,
+      });
+      await applyProviderRefund(order, provider);
+    }
+    return prisma.cashfreePaymentOrder.findUniqueOrThrow({
+      where: { id: order.id },
+      include: { refunds: { orderBy: { createdAt: "desc" } } },
+    });
+  },
+
+  async reconcileStale({
+    schoolId,
+    limit = 50,
+    includeFailed = false,
+  }: { schoolId?: string; limit?: number; includeFailed?: boolean } = {}) {
+    const cutoff = new Date(Date.now() - 5 * 60 * 1_000);
+    const orders = await prisma.cashfreePaymentOrder.findMany({
+      where: {
+        ...(schoolId ? { schoolId } : {}),
+        OR: [
+          { status: { in: includeFailed ? ["ACTIVE", "FAILED", "REVIEW_REQUIRED"] : ["ACTIVE", "REVIEW_REQUIRED"] }, updatedAt: { lte: cutoff } },
+          { refunds: { some: { status: "PENDING", updatedAt: { lte: cutoff } } } },
+        ],
+      },
+      orderBy: { updatedAt: "asc" },
+      take: Math.min(Math.max(limit, 1), 100),
+      select: { providerOrderId: true },
+    });
+
+    const results = [];
+    for (const order of orders) {
+      try {
+        await this.reconcileOrder(order.providerOrderId);
+        results.push({ orderId: order.providerOrderId, success: true });
+      } catch (error) {
+        results.push({
+          orderId: order.providerOrderId,
+          success: false,
+          message: error instanceof Error ? error.message : "Reconciliation failed",
+        });
+      }
+    }
+    return results;
   },
 };

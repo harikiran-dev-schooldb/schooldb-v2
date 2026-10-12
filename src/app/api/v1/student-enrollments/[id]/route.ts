@@ -1,6 +1,7 @@
 import { apiHandler } from "@/lib/api";
-import { requireRole, requireTenant } from "@/lib/auth";
+import { requireRole } from "@/lib/auth";
 import { ApiResponse } from "@/lib/response";
+import { recordAuditLog } from "@/lib/audit";
 
 import { studentEnrollmentService } from "@/features/student-enrollments/services/student-enrollment.service";
 import { studentEnrollmentSchema } from "@/features/student-enrollments/schemas/student-enrollment.schema";
@@ -13,7 +14,7 @@ type RouteParams = {
 
 export async function GET(request: Request, { params }: RouteParams) {
   return apiHandler(async () => {
-    const tenant = await requireTenant();
+    const tenant = await requireRole(["SUPER_ADMIN", "SCHOOL_ADMIN"]);
     const { id } = await params;
     const targetClassId = new URL(request.url).searchParams.get("targetClassId");
 
@@ -49,6 +50,21 @@ export async function PUT(request: Request, { params }: RouteParams) {
       input,
       tenant.userId,
     );
+
+    await recordAuditLog({
+      actor: tenant,
+      module: "STUDENT_RECORDS",
+      action: "UPDATE",
+      entityType: "STUDENT_ENROLLMENT",
+      entityId: id,
+      summary: "Updated a student enrollment.",
+      metadata: {
+        academicYearId: input.academicYearId,
+        classId: input.classId,
+        sectionId: input.sectionId,
+        active: input.active,
+      },
+    });
 
     return ApiResponse.success(enrollment);
   });

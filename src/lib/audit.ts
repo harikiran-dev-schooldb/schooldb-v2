@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 
 export const AUDIT_MODULES = [
   "STUDENTS",
+  "STUDENT_RECORDS",
   "ADMISSIONS",
   "STAFF",
   "ATTENDANCE",
@@ -24,6 +25,7 @@ export const AUDIT_ACTIONS = [
   "DISABLE",
   "COLLECT",
   "VOID",
+  "REFUND_REQUESTED",
   "LOCK",
   "UNLOCK",
   "CORRECT",

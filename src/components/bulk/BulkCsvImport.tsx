@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 
 import { PageHeader } from "@/components/common/PageHeader";
+import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { BulkDateFormatSelector } from "@/components/bulk/BulkDateFormatSelector";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -389,10 +390,26 @@ export function BulkCsvImport({
                 <Button variant="outline" onClick={reset} disabled={importing}>
                   <ArrowLeft className="size-4" /> Start Over
                 </Button>
-                <Button onClick={() => void runImport()} disabled={importing || Boolean(errors.length) || Boolean(duplicates) || !rows.length}>
-                  {importing ? <Loader2 className="size-4 animate-spin" /> : <UploadCloud className="size-4" />}
-                  {importing ? "Importing..." : `Import ${rows.length} Rows`}
-                </Button>
+                <ConfirmDialog
+                  eyebrow="Bulk operation"
+                  title={`Import ${rows.length.toLocaleString()} ${entityLabel.toLowerCase()} row${rows.length === 1 ? "" : "s"}?`}
+                  description="SchoolDB will process every validated row in this CSV file."
+                  details={[
+                    { label: "File", value: fileName },
+                    { label: "Valid rows", value: rows.length.toLocaleString() },
+                  ]}
+                  consequence="Bulk changes may affect many records. Review the preview before continuing."
+                  confirmLabel={`Import ${rows.length.toLocaleString()} rows`}
+                  tone="warning"
+                  pending={importing}
+                  onConfirm={() => void runImport()}
+                  trigger={
+                    <Button type="button" disabled={importing || Boolean(errors.length) || Boolean(duplicates) || !rows.length}>
+                      {importing ? <Loader2 className="size-4 animate-spin" /> : <UploadCloud className="size-4" />}
+                      {importing ? "Importing..." : `Import ${rows.length} Rows`}
+                    </Button>
+                  }
+                />
               </div>
             </>
           ) : null}

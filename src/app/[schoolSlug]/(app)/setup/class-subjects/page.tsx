@@ -13,6 +13,7 @@ import { toast } from "sonner";
 
 import { PageHeader } from "@/components/common/PageHeader";
 import { CreateUpdateView } from "@/components/common/CreateUpdateView";
+import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { RemoteCombobox } from "@/components/common/combobox/RemoteCombobox";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -382,16 +383,26 @@ export default function ClassSubjectsPage() {
                           </div>
                         </div>
 
-                        <Button
-                          type="button"
-                          size="icon"
-                          variant="ghost"
-                          onClick={() => void removeSubject(row.id)}
-                          className="size-8 shrink-0 text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
-                          title="Remove subject"
-                        >
-                          <Trash2 className="size-4" />
-                        </Button>
+                        <ConfirmDialog
+                          eyebrow="Class subject"
+                          title={`Remove ${row.subjectName} from ${row.className}?`}
+                          description="This subject will no longer be assigned to this class for the selected academic year."
+                          consequence="Existing marks, schedules, or teacher allocations may still refer to this subject and should be reviewed."
+                          confirmLabel="Remove subject"
+                          destructive
+                          onConfirm={() => void removeSubject(row.id)}
+                          trigger={
+                            <Button
+                              type="button"
+                              size="icon"
+                              variant="ghost"
+                              className="size-8 shrink-0 text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
+                              title="Remove subject"
+                            >
+                              <Trash2 className="size-4" />
+                            </Button>
+                          }
+                        />
                       </div>
                     ))}
                   </div>

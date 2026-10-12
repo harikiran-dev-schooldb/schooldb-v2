@@ -34,6 +34,7 @@ const PUBLIC_PATH_PATTERNS = [
   /^\/[^/]+\/parent-query(?:\/qr)?\/?$/,
   /^\/api\/health$/,
   /^\/api\/cron\/whatsapp$/,
+  /^\/api\/cron\/cashfree-reconciliation$/,
   /^\/api\/v1\/public\/whatsapp\/webhook$/,
   /^\/api\/v1\/public\/payments\/cashfree\/webhook$/,
   /^\/api\/v1\/public\/payments\/cashfree\/orders\/[^/]+\/verify$/,

@@ -16,6 +16,7 @@ import {
 } from "@/features/fee-payments/components/PaymentHistoryTable";
 
 import { VoidPaymentDialog } from "@/features/fee-payments/components/VoidPaymentDialog";
+import { CashfreeReconciliationPanel } from "@/features/online-payments/components/CashfreeReconciliationPanel";
 
 /* -------------------------------------------------------------------------- */
 /* Types                                                                      */
@@ -358,6 +359,8 @@ export function PaymentHistoryContainer({ params }: Props) {
         totalAmount={data?.summary.totalAmount ?? 0}
       />
 
+      <CashfreeReconciliationPanel schoolSlug={schoolSlug} />
+
       {/* Filters */}
 
       <PaymentHistoryFilters
@@ -432,6 +435,7 @@ export function PaymentHistoryContainer({ params }: Props) {
           onOpenChange={handleDialogChange}
           paymentId={selectedPayment.id}
           receiptNo={selectedPayment.receiptNo}
+          cashfree={Boolean(selectedPayment.cashfree)}
           onSuccess={() => {
             setSelectedPayment(null);
             void loadPayments();

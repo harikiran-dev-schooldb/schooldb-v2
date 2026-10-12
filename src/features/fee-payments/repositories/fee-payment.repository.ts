@@ -219,6 +219,26 @@ export const feePaymentRepository = {
     reason: string,
     voidedBy: string,
   ) {
+    return reversePayment(schoolId, paymentId, reason, voidedBy, "VOID");
+  },
+
+  async refund(
+    schoolId: string,
+    paymentId: string,
+    reason: string,
+    refundedBy: string,
+  ) {
+    return reversePayment(schoolId, paymentId, reason, refundedBy, "REFUNDED");
+  },
+};
+
+async function reversePayment(
+  schoolId: string,
+  paymentId: string,
+  reason: string,
+  actorUserId: string,
+  targetStatus: "VOID" | "REFUNDED",
+) {
     return runSerializableTransaction(async (tx) => {
       const payment = await tx.feePayment.findFirst({
         where: {
@@ -238,8 +258,8 @@ export const feePaymentRepository = {
         throw new Error("Payment not found.");
       }
 
-      if (payment.status === "VOID") {
-        throw new Error("This payment has already been voided.");
+      if (payment.status === "VOID" || payment.status === "REFUNDED") {
+        throw new Error("This payment has already been reversed.");
       }
 
       if (payment.status !== "SUCCESS") {
@@ -272,12 +292,11 @@ export const feePaymentRepository = {
       return tx.feePayment.update({
         where: { id: payment.id },
         data: {
-          status: "VOID",
+          status: targetStatus,
           voidReason: reason,
           voidedAt: new Date(),
-          voidedBy,
+          voidedBy: actorUserId,
         },
       });
     });
-  },
-};
+}
