@@ -36,6 +36,7 @@ export async function POST(request: Request) {
         studentId: enrollment.studentId,
         installmentIds: input.installmentIds,
         idempotencyKey: input.idempotencyKey,
+        amount: input.amount,
         ...(input.customerPhone ? { customerPhone: input.customerPhone } : {}),
       },
       schoolId: membership.schoolId,

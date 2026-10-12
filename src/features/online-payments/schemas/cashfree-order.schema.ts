@@ -17,6 +17,14 @@ export const cashfreeStaffOrderSchema = cashfreeOrderSchema
   .extend({
     studentId: z.string().trim().min(1).optional(),
     studentEnrollmentId: z.string().trim().min(1).optional(),
+    amount: z
+      .number()
+      .finite()
+      .min(1, "Cashfree payments must be at least ₹1.")
+      .refine(
+        (amount) => Math.abs(amount * 100 - Math.round(amount * 100)) < 0.000001,
+        "Enter an amount with no more than two decimal places.",
+      ),
   })
   .refine((input) => input.studentId || input.studentEnrollmentId, {
     message: "A student or enrollment is required.",

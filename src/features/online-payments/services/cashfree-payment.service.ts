@@ -8,6 +8,10 @@ import { findInstallmentSequenceViolation } from "@/features/fee-payments/instal
 import { feePaymentService } from "@/features/fee-payments/services/fee-payment.service";
 import { notifyFeePayment } from "@/features/notifications/events";
 import {
+  allocateCashfreeAmount,
+  CashfreeAmountError,
+} from "../cashfree-allocation";
+import {
   createCashfreeProviderOrder,
   createCashfreeRefund,
   getCashfreeMode,
@@ -159,7 +163,7 @@ export const cashfreePaymentService = {
     userPhone,
     initiator = "SELF_SERVICE",
   }: {
-    input: CashfreeOrderInput;
+    input: CashfreeOrderInput & { amount?: number };
     schoolId: string;
     enrollmentId: string;
     requestedByUserId: string;
@@ -181,6 +185,9 @@ export const cashfreePaymentService = {
           existing.initiatedBy !== initiator
         ) {
           throw new ApiError(409, "This payment request cannot be reused.");
+        }
+        if (input.amount !== undefined && !money(input.amount).equals(existing.amount)) {
+          throw new ApiError(409, "This payment request was already created for a different amount.");
         }
         return { order: existing, customer: null };
       }
@@ -210,6 +217,7 @@ export const cashfreePaymentService = {
         const exactMatch = activeOrders.find(
           (order) =>
             order.allocations.length === requested.size &&
+            (input.amount === undefined || money(input.amount).equals(order.amount)) &&
             order.allocations.every((item) =>
               requested.has(item.studentFeeInstallmentId),
             ),
@@ -269,13 +277,40 @@ export const cashfreePaymentService = {
         throw new ApiError(400, "One or more selected installments are unavailable.");
       }
 
-      const allocations = installments.map((installment) => ({
-        studentFeeInstallmentId: installment.id,
-        amount: money(installment.payableAmount).minus(installment.paidAmount),
+      const installmentsById = new Map(
+        installments.map((installment) => [installment.id, installment]),
+      );
+      const orderedInstallments = uniqueIds.map((id) => installmentsById.get(id)!);
+      const outstanding = orderedInstallments.map((installment) => ({
+        id: installment.id,
+        outstanding: Number(
+          money(installment.payableAmount).minus(installment.paidAmount),
+        ),
       }));
-      if (allocations.some((item) => item.amount.lessThanOrEqualTo(0))) {
+      if (outstanding.some((item) => item.outstanding <= 0)) {
         throw new ApiError(409, "A selected installment has already been paid.");
       }
+
+      let allocationResult;
+      try {
+        const maximumAmount = outstanding.reduce(
+          (total, installment) => total + installment.outstanding,
+          0,
+        );
+        allocationResult = allocateCashfreeAmount(
+          outstanding,
+          input.amount ?? maximumAmount,
+        );
+      } catch (error) {
+        if (error instanceof CashfreeAmountError) {
+          throw new ApiError(400, error.message);
+        }
+        throw error;
+      }
+      const allocations = allocationResult.allocations.map((allocation) => ({
+        studentFeeInstallmentId: allocation.studentFeeInstallmentId,
+        amount: money(allocation.amount),
+      }));
 
       const studentFeeIds = [
         ...new Set(
@@ -320,10 +355,7 @@ export const cashfreePaymentService = {
         );
       }
 
-      const amount = allocations.reduce(
-        (total, item) => total.plus(item.amount),
-        money(0),
-      );
+      const amount = money(allocationResult.amount);
       if (amount.lessThan(1)) {
         throw new ApiError(400, "The online payment total must be at least ₹1.");
       }

@@ -90,6 +90,7 @@ function StaffQrFlow({
 
   const selected = installments.filter((item) => selectedIds.includes(item.id));
   const total = selected.reduce((sum, item) => sum + item.outstanding, 0);
+  const [paymentAmount, setPaymentAmount] = useState(() => String(total));
 
   function blockingInstallment(installment: Installment) {
     return installments
@@ -111,10 +112,9 @@ function StaffQrFlow({
       return;
     }
 
-    setSelectedIds((current) => {
-      if (checked) return current.includes(id) ? current : [...current, id];
-
-      return current.filter((selectedId) => {
+    const nextSelectedIds = checked
+      ? selectedIds.includes(id) ? selectedIds : [...selectedIds, id]
+      : selectedIds.filter((selectedId) => {
         const selectedInstallment = installments.find(
           (item) => item.id === selectedId,
         );
@@ -123,7 +123,14 @@ function StaffQrFlow({
           selectedInstallment.sequence >= installment.sequence
         );
       });
-    });
+    setSelectedIds(nextSelectedIds);
+
+    const nextMaximum = installments
+      .filter((item) => nextSelectedIds.includes(item.id))
+      .reduce((sum, item) => sum + item.outstanding, 0);
+    if (Number(paymentAmount) > nextMaximum) {
+      setPaymentAmount(String(nextMaximum));
+    }
   }
 
   async function generateQr() {
@@ -133,6 +140,19 @@ function StaffQrFlow({
     }
     if (customerPhone && !/^[6-9]\d{9}$/.test(customerPhone)) {
       toast.error("Enter a valid 10-digit Indian mobile number.");
+      return;
+    }
+    const amount = Number(paymentAmount);
+    if (!Number.isFinite(amount) || amount < 1) {
+      toast.error("Enter an amount of at least ₹1.");
+      return;
+    }
+    if (amount > total) {
+      toast.error("Amount cannot exceed the selected outstanding balance.");
+      return;
+    }
+    if (Math.abs(amount * 100 - Math.round(amount * 100)) > 0.000001) {
+      toast.error("Enter an amount with no more than two decimal places.");
       return;
     }
 
@@ -145,6 +165,7 @@ function StaffQrFlow({
           schoolSlug,
           studentId,
           installmentIds: selectedIds,
+          amount,
           idempotencyKey: crypto.randomUUID(),
           ...(customerPhone ? { customerPhone } : {}),
         }),
@@ -371,6 +392,24 @@ function StaffQrFlow({
       </div>
 
       <div>
+        <label htmlFor="cashfree-payment-amount" className="text-sm font-semibold">Payment amount</label>
+        <Input
+          id="cashfree-payment-amount"
+          className="mt-2 text-lg font-semibold tabular-nums"
+          type="number"
+          inputMode="decimal"
+          min="1"
+          max={total}
+          step="0.01"
+          value={paymentAmount}
+          onChange={(event) => setPaymentAmount(event.target.value)}
+        />
+        <p className="mt-1 text-xs text-muted-foreground">
+          Maximum for the selected installments: {formatCurrency(total)}. Partial payments are applied to the earliest selected balance first.
+        </p>
+      </div>
+
+      <div>
         <label htmlFor="cashfree-customer-phone" className="text-sm font-semibold">Student/parent mobile</label>
         <div className="relative mt-2">
           <Smartphone className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -389,7 +428,9 @@ function StaffQrFlow({
       <div className="flex items-center justify-between rounded-2xl bg-slate-50 p-4">
         <div>
           <p className="text-xs font-semibold text-muted-foreground">Cashfree payment total</p>
-          <p className="mt-1 text-2xl font-bold tracking-tight">{formatCurrency(total)}</p>
+          <p className="mt-1 text-2xl font-bold tracking-tight">
+            {formatCurrency(Number(paymentAmount) || 0)}
+          </p>
         </div>
         <Button size="lg" onClick={() => void generateQr()} disabled={creating || !selectedIds.length}>
           {creating ? <LoaderCircle className="size-4 animate-spin" /> : <CreditCard className="size-4" />}
