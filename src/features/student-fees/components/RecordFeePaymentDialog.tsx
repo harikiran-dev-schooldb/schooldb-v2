@@ -4,6 +4,7 @@ import Script from "next/script";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
+  AlertTriangle,
   CalendarDays,
   CheckCircle2,
   Copy,
@@ -800,9 +801,23 @@ function PaymentForm({
                 <QrCode className="size-5" />
               </div>
               <div>
-                <h3 className="font-semibold">Cashfree payment ready</h3>
+                <h3 className="font-semibold">
+                  {cashfreeOrder.status === "PAID"
+                    ? "Cashfree payment received"
+                    : cashfreeOrder.status === "REVIEW_REQUIRED"
+                      ? "Cashfree payment needs reconciliation"
+                      : cashfreeOrder.status === "ACTIVE"
+                        ? "Cashfree payment ready"
+                        : "Cashfree payment not completed"}
+                </h3>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Scan this QR code or open secure checkout on this device. The receipt is created only after Cashfree confirms payment.
+                  {cashfreeOrder.status === "ACTIVE"
+                    ? "Scan this QR code or open secure checkout on this device. The receipt is created only after Cashfree confirms payment."
+                    : cashfreeOrder.status === "PAID"
+                      ? "Cashfree confirmed the payment and SchoolDB created the receipt."
+                      : cashfreeOrder.status === "REVIEW_REQUIRED"
+                        ? "Cashfree reported the payment, but the fee ledger still needs to be reconciled."
+                        : "This payment order can no longer be completed."}
                 </p>
               </div>
             </div>
@@ -811,6 +826,10 @@ function PaymentForm({
               {cashfreeOrder.status === "PAID" ? (
                 <div className="flex size-48 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
                   <CheckCircle2 className="size-16" />
+                </div>
+              ) : cashfreeOrder.status !== "ACTIVE" ? (
+                <div className="flex size-48 items-center justify-center rounded-2xl bg-amber-50 text-amber-600">
+                  <AlertTriangle className="size-16" />
                 </div>
               ) : (
                 <div className="rounded-xl bg-white p-3 shadow-sm ring-1 ring-slate-200">
@@ -829,7 +848,7 @@ function PaymentForm({
                 </div>
                 {cashfreeOrder.status === "PAID" ? (
                   <p className="text-sm font-medium text-emerald-700">Payment received and receipt created.</p>
-                ) : (
+                ) : cashfreeOrder.status === "ACTIVE" ? (
                   <>
                     <Button type="button" className="w-full rounded-xl" onClick={openCashfreeCheckout} disabled={openingCashfree}>
                       {openingCashfree ? <LoaderCircle className="size-4 animate-spin" /> : <Smartphone className="size-4" />}
@@ -845,6 +864,20 @@ function PaymentForm({
                       </Button>
                     </div>
                   </>
+                ) : cashfreeOrder.status === "REVIEW_REQUIRED" ? (
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-amber-700">
+                      Do not collect this payment again. Recheck it after reconciliation.
+                    </p>
+                    <Button type="button" variant="outline" className="w-full rounded-xl" onClick={() => void checkCashfreePayment()} disabled={checkingCashfree}>
+                      {checkingCashfree && <LoaderCircle className="size-4 animate-spin" />}
+                      Recheck payment
+                    </Button>
+                  </div>
+                ) : (
+                  <p className="text-sm font-medium text-destructive">
+                    Create a new Cashfree order if payment is still required.
+                  </p>
                 )}
               </div>
             </div>

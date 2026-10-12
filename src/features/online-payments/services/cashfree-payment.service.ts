@@ -9,6 +9,7 @@ import { feePaymentService } from "@/features/fee-payments/services/fee-payment.
 import { notifyFeePayment } from "@/features/notifications/events";
 import {
   allocateCashfreeAmount,
+  cashfreeAllocationExceedsBalance,
   CashfreeAmountError,
 } from "../cashfree-allocation";
 import {
@@ -554,7 +555,10 @@ export const cashfreePaymentService = {
       const changedBalance = order.allocations.some((allocation) => {
         const installment = allocation.studentFeeInstallment;
         const balance = money(installment.payableAmount).minus(installment.paidAmount);
-        return !balance.equals(allocation.amount);
+        return cashfreeAllocationExceedsBalance(
+          Number(balance),
+          Number(allocation.amount),
+        );
       });
       if (changedBalance) {
         return tx.cashfreePaymentOrder.update({

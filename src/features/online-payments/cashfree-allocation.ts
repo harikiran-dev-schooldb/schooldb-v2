@@ -17,6 +17,16 @@ function toPaise(value: number, label: string) {
   return paise;
 }
 
+export function cashfreeAllocationExceedsBalance(
+  currentBalance: number,
+  allocationAmount: number,
+) {
+  return (
+    toPaise(allocationAmount, "Allocation amount") >
+    toPaise(currentBalance, "Installment balance")
+  );
+}
+
 export function allocateCashfreeAmount(
   installments: CashfreeInstallmentBalance[],
   requestedAmount: number,

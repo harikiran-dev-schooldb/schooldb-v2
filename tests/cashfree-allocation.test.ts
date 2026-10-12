@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   allocateCashfreeAmount,
+  cashfreeAllocationExceedsBalance,
   CashfreeAmountError,
 } from "../src/features/online-payments/cashfree-allocation.ts";
 import { cashfreeStaffOrderSchema } from "../src/features/online-payments/schemas/cashfree-order.schema.ts";
@@ -41,6 +42,15 @@ test("rejects an amount above the selected balance", () => {
 test("rejects sub-rupee and over-precision amounts", () => {
   assert.throws(() => allocateCashfreeAmount(installments, 0.5), CashfreeAmountError);
   assert.throws(() => allocateCashfreeAmount(installments, 10.001), CashfreeAmountError);
+});
+
+test("accepts a partial allocation during settlement", () => {
+  assert.equal(cashfreeAllocationExceedsBalance(12300, 1), false);
+  assert.equal(cashfreeAllocationExceedsBalance(1, 1), false);
+});
+
+test("requires review only when an allocation exceeds the current balance", () => {
+  assert.equal(cashfreeAllocationExceedsBalance(0.5, 1), true);
 });
 
 const staffOrder = {
