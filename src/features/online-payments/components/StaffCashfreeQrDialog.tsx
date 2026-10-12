@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import Script from "next/script";
 import { useEffect, useRef, useState } from "react";
 import { CheckCircle2, Copy, CreditCard, ExternalLink, LoaderCircle, ShieldCheck, Smartphone } from "lucide-react";
@@ -66,6 +67,7 @@ function StaffQrFlow({
   initialInstallmentId: string;
   onSuccess: () => void;
 }) {
+  const router = useRouter();
   const [selectedIds, setSelectedIds] = useState(() => {
     const initialInstallment = installments.find(
       (item) => item.id === initialInstallmentId,
@@ -210,6 +212,9 @@ function StaffQrFlow({
         toast.success("Payment verified and receipt created.");
         refreshTable("student-fees", "fee-payments", "fee-receipts");
         onSuccess();
+        if (next.feePaymentId) {
+          router.push(`/${schoolSlug}/fees/receipts/${next.feePaymentId}`);
+        }
       }
     } catch (error) {
       if (showLoading) {

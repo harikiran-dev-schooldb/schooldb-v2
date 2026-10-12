@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import Script from "next/script";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -219,6 +220,8 @@ function PaymentForm({
   onOpenChange,
   onSuccess,
 }: PaymentFormProps) {
+  const router = useRouter();
+
   /* ------------------------------------------------------------------------ */
   /* Sort installments                                                        */
   /* ------------------------------------------------------------------------ */
@@ -541,10 +544,7 @@ function PaymentForm({
         await onSuccess();
 
         if (next.feePaymentId) {
-          window.open(
-            `/${schoolSlug}/fees/receipts/${next.feePaymentId}`,
-            "_blank",
-          );
+          router.push(`/${schoolSlug}/fees/receipts/${next.feePaymentId}`);
         }
       }
     } catch (error) {
@@ -771,7 +771,7 @@ function PaymentForm({
       await onSuccess();
 
       if (newPaymentId && schoolSlug) {
-        window.open(`/${schoolSlug}/fees/receipts/${newPaymentId}`, "_blank");
+        router.push(`/${schoolSlug}/fees/receipts/${newPaymentId}`);
       }
     } catch (error) {
       console.error("Fee payment error:", error);
