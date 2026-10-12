@@ -37,6 +37,7 @@ export async function POST(request: Request) {
         installmentIds: input.installmentIds,
         idempotencyKey: input.idempotencyKey,
         amount: input.amount,
+        allocations: input.allocations,
         ...(input.customerPhone ? { customerPhone: input.customerPhone } : {}),
       },
       schoolId: membership.schoolId,

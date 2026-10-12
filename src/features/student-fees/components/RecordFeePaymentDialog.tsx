@@ -446,8 +446,6 @@ function PaymentForm({
   /* ------------------------------------------------------------------------ */
 
   function updatePaymentAmount(installment: Installment, value: string) {
-    if (paymentMode === "ONLINE") return;
-
     let amount = value === "" ? 0 : Number(value);
 
     if (!Number.isFinite(amount)) {
@@ -520,14 +518,6 @@ function PaymentForm({
     setPaymentMode(value);
 
     if (value === "ONLINE") {
-      setPaymentAmounts(
-        Object.fromEntries(
-          selectedInstallments.map((installment) => [
-            installment.id,
-            installment.outstanding,
-          ]),
-        ),
-      );
       setReferenceNo("");
     }
   }
@@ -673,15 +663,6 @@ function PaymentForm({
         return;
       }
 
-      if (
-        paymentMode === "ONLINE" &&
-        Math.abs(amount - installment.outstanding) > 0.005
-      ) {
-        toast.error(
-          `Cashfree must collect the full balance for ${installment.name}.`,
-        );
-        return;
-      }
     }
 
     if (totalPayment <= 0) {
@@ -712,6 +693,11 @@ function PaymentForm({
               schoolSlug,
               studentEnrollmentId,
               installmentIds: selectedInstallmentIds,
+              amount: totalPayment,
+              allocations: selectedInstallments.map((installment) => ({
+                installmentId: installment.id,
+                amount: paymentAmounts[installment.id] ?? 0,
+              })),
               idempotencyKey: crypto.randomUUID(),
               ...(customerPhone ? { customerPhone } : {}),
             }),
@@ -1009,7 +995,6 @@ function PaymentForm({
                               max={installment.outstanding}
                               step="0.01"
                               value={enteredAmount}
-                              disabled={paymentMode === "ONLINE"}
                               onChange={(event) =>
                                 updatePaymentAmount(
                                   installment,
@@ -1020,7 +1005,7 @@ function PaymentForm({
                             />
                           </div>
 
-                          {paymentMode !== "ONLINE" && <button
+                          <button
                             type="button"
                             onClick={() =>
                               setPaymentAmounts((current) => ({
@@ -1031,7 +1016,7 @@ function PaymentForm({
                             className="mt-1.5 text-xs font-medium text-primary hover:underline"
                           >
                             Pay full balance
-                          </button>}
+                          </button>
                         </div>
                       )}
                     </div>
@@ -1205,7 +1190,7 @@ function PaymentForm({
               />
             </div>
             <p className="text-xs text-muted-foreground">
-              Cashfree collects the full outstanding balance for the selected installments.
+              Cashfree can collect a full or partial amount. Each amount must stay within its installment balance.
             </p>
           </div>
         )}

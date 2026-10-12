@@ -60,3 +60,33 @@ test("accepts a custom staff Cashfree amount", () => {
     true,
   );
 });
+
+test("accepts explicit staff installment allocations", () => {
+  assert.equal(
+    cashfreeStaffOrderSchema.safeParse({
+      ...staffOrder,
+      amount: 750,
+      allocations: [{ installmentId: "term-1", amount: 750 }],
+    }).success,
+    true,
+  );
+});
+
+test("rejects allocations that do not match the selected installments or total", () => {
+  assert.equal(
+    cashfreeStaffOrderSchema.safeParse({
+      ...staffOrder,
+      amount: 750,
+      allocations: [{ installmentId: "term-2", amount: 750 }],
+    }).success,
+    false,
+  );
+  assert.equal(
+    cashfreeStaffOrderSchema.safeParse({
+      ...staffOrder,
+      amount: 750,
+      allocations: [{ installmentId: "term-1", amount: 500 }],
+    }).success,
+    false,
+  );
+});

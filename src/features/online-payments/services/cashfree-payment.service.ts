@@ -163,7 +163,10 @@ export const cashfreePaymentService = {
     userPhone,
     initiator = "SELF_SERVICE",
   }: {
-    input: CashfreeOrderInput & { amount?: number };
+    input: CashfreeOrderInput & {
+      amount?: number;
+      allocations?: Array<{ installmentId: string; amount: number }>;
+    };
     schoolId: string;
     enrollmentId: string;
     requestedByUserId: string;
@@ -291,26 +294,67 @@ export const cashfreePaymentService = {
         throw new ApiError(409, "A selected installment has already been paid.");
       }
 
-      let allocationResult;
-      try {
-        const maximumAmount = outstanding.reduce(
-          (total, installment) => total + installment.outstanding,
-          0,
+      let allocations: Array<{
+        studentFeeInstallmentId: string;
+        amount: Prisma.Decimal;
+      }>;
+      let amount: Prisma.Decimal;
+
+      if (input.allocations) {
+        const requestedAllocations = new Map(
+          input.allocations.map((allocation) => [
+            allocation.installmentId,
+            money(allocation.amount),
+          ]),
         );
-        allocationResult = allocateCashfreeAmount(
-          outstanding,
-          input.amount ?? maximumAmount,
-        );
-      } catch (error) {
-        if (error instanceof CashfreeAmountError) {
-          throw new ApiError(400, error.message);
+        allocations = orderedInstallments.map((installment) => ({
+          studentFeeInstallmentId: installment.id,
+          amount: requestedAllocations.get(installment.id)!,
+        }));
+        for (const allocation of allocations) {
+          const balance = outstanding.find(
+            (item) => item.id === allocation.studentFeeInstallmentId,
+          )!.outstanding;
+          if (
+            allocation.amount.lessThanOrEqualTo(0) ||
+            allocation.amount.greaterThan(money(balance))
+          ) {
+            throw new ApiError(
+              400,
+              "Each Cashfree allocation must be positive and within its installment balance.",
+            );
+          }
         }
-        throw error;
+        amount = allocations.reduce(
+          (total, allocation) => total.plus(allocation.amount),
+          money(0),
+        );
+        if (input.amount !== undefined && !amount.equals(money(input.amount))) {
+          throw new ApiError(400, "Payment amount must equal the installment allocations.");
+        }
+      } else {
+        let allocationResult;
+        try {
+          const maximumAmount = outstanding.reduce(
+            (total, installment) => total + installment.outstanding,
+            0,
+          );
+          allocationResult = allocateCashfreeAmount(
+            outstanding,
+            input.amount ?? maximumAmount,
+          );
+        } catch (error) {
+          if (error instanceof CashfreeAmountError) {
+            throw new ApiError(400, error.message);
+          }
+          throw error;
+        }
+        allocations = allocationResult.allocations.map((allocation) => ({
+          studentFeeInstallmentId: allocation.studentFeeInstallmentId,
+          amount: money(allocation.amount),
+        }));
+        amount = money(allocationResult.amount);
       }
-      const allocations = allocationResult.allocations.map((allocation) => ({
-        studentFeeInstallmentId: allocation.studentFeeInstallmentId,
-        amount: money(allocation.amount),
-      }));
 
       const studentFeeIds = [
         ...new Set(
@@ -355,7 +399,6 @@ export const cashfreePaymentService = {
         );
       }
 
-      const amount = money(allocationResult.amount);
       if (amount.lessThan(1)) {
         throw new ApiError(400, "The online payment total must be at least ₹1.");
       }
