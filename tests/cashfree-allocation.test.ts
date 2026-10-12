@@ -5,6 +5,7 @@ import {
   allocateCashfreeAmount,
   CashfreeAmountError,
 } from "../src/features/online-payments/cashfree-allocation.ts";
+import { cashfreeStaffOrderSchema } from "../src/features/online-payments/schemas/cashfree-order.schema.ts";
 
 const installments = [
   { id: "term-1", outstanding: 5000 },
@@ -40,4 +41,22 @@ test("rejects an amount above the selected balance", () => {
 test("rejects sub-rupee and over-precision amounts", () => {
   assert.throws(() => allocateCashfreeAmount(installments, 0.5), CashfreeAmountError);
   assert.throws(() => allocateCashfreeAmount(installments, 10.001), CashfreeAmountError);
+});
+
+const staffOrder = {
+  schoolSlug: "kotak",
+  studentId: "student-1",
+  installmentIds: ["term-1"],
+  idempotencyKey: "e924a78f-1b97-47ce-a9cc-02a3a1856487",
+};
+
+test("keeps the staff order API compatible with clients that omit amount", () => {
+  assert.equal(cashfreeStaffOrderSchema.safeParse(staffOrder).success, true);
+});
+
+test("accepts a custom staff Cashfree amount", () => {
+  assert.equal(
+    cashfreeStaffOrderSchema.safeParse({ ...staffOrder, amount: 1250 }).success,
+    true,
+  );
 });

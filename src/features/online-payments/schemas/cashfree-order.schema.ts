@@ -24,7 +24,8 @@ export const cashfreeStaffOrderSchema = cashfreeOrderSchema
       .refine(
         (amount) => Math.abs(amount * 100 - Math.round(amount * 100)) < 0.000001,
         "Enter an amount with no more than two decimal places.",
-      ),
+      )
+      .optional(),
   })
   .refine((input) => input.studentId || input.studentEnrollmentId, {
     message: "A student or enrollment is required.",
