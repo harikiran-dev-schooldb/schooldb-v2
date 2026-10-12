@@ -14,13 +14,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { AcademicYearSelect } from "@/components/common/select";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { RemoteCombobox } from "@/components/common/combobox/RemoteCombobox";
 
 type AttendanceRecord = {
   id: string;
@@ -309,6 +303,17 @@ export function StudentAttendanceTab({ studentId }: Props) {
     );
   }, [data]);
 
+  const monthSelectOptions = useMemo(
+    () => [
+      { id: "all", label: "All months" },
+      ...monthOptions.map((month) => ({
+        id: month,
+        label: formatMonth(month),
+      })),
+    ],
+    [monthOptions],
+  );
+
   if (loading) {
     return (
       <div className="space-y-5">
@@ -525,24 +530,15 @@ export function StudentAttendanceTab({ studentId }: Props) {
                 Month
               </p>
 
-              <Select
+              <RemoteCombobox
+                options={monthSelectOptions}
                 value={selectedMonth}
-                onValueChange={setSelectedMonth}
+                onChange={setSelectedMonth}
                 disabled={loading || !selectedAcademicYearId}
-              >
-                <SelectTrigger className="bg-background">
-                  <SelectValue placeholder="Choose month" />
-                </SelectTrigger>
-
-                <SelectContent>
-                  <SelectItem value="all">All months</SelectItem>
-                  {monthOptions.map((month) => (
-                    <SelectItem key={month} value={month}>
-                      {formatMonth(month)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                placeholder="Choose month"
+                searchPlaceholder="Search months..."
+                emptyMessage="No months found."
+              />
             </div>
           </div>
         </CardHeader>

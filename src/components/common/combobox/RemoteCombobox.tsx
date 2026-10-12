@@ -28,9 +28,11 @@ export type RemoteComboboxOption = {
   label: string;
 };
 
-type Props = {
-  url: string;
+type OptionSource =
+  | { url: string; options?: never }
+  | { url?: never; options: RemoteComboboxOption[] };
 
+type Props = OptionSource & {
   value?: string;
 
   disabled?: boolean;
@@ -46,6 +48,7 @@ type Props = {
 
 export function RemoteCombobox({
   url,
+  options: suppliedOptions,
   value,
   disabled,
   placeholder = "Select...",
@@ -60,13 +63,16 @@ export function RemoteCombobox({
   const [options, setOptions] = useState<RemoteComboboxOption[]>([]);
 
   useEffect(() => {
+    if (!url) return;
+
+    const requestUrl = url;
     let active = true;
 
     async function load() {
       try {
         setLoading(true);
 
-        const res = await fetch(url);
+        const res = await fetch(requestUrl);
 
         const result = await res.json();
 
@@ -89,9 +95,12 @@ export function RemoteCombobox({
     };
   }, [url]);
 
+  const visibleOptions = suppliedOptions ?? options;
+  const isLoading = !suppliedOptions && loading;
+
   const selected = useMemo(
-    () => options.find((x) => x.id === value),
-    [options, value],
+    () => visibleOptions.find((x) => x.id === value),
+    [visibleOptions, value],
   );
 
   return (
@@ -115,7 +124,7 @@ export function RemoteCombobox({
           <CommandInput placeholder={searchPlaceholder} />
 
           <CommandList>
-            {loading ? (
+            {isLoading ? (
               <div className="flex h-24 items-center justify-center">
                 <Loader2 className="h-5 w-5 animate-spin" />
               </div>
@@ -124,7 +133,7 @@ export function RemoteCombobox({
                 <CommandEmpty>{emptyMessage}</CommandEmpty>
 
                 <CommandGroup>
-                  {options.map((option) => (
+                  {visibleOptions.map((option) => (
                     <CommandItem
                       key={option.id}
                       value={option.label}
