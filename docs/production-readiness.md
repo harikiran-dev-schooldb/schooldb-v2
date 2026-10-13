@@ -28,7 +28,7 @@ The Vercel cron in `vercel.json` runs at 8:00 AM India time. Configure a strong 
 
 For accurate delivery tracking, configure the Meta App webhook callback as `https://YOUR_DOMAIN/api/v1/public/whatsapp/webhook`, copy `META_WA_WEBHOOK_VERIFY_TOKEN` into Meta's verify-token field, and add the Meta App Secret as `META_APP_SECRET`. Subscribe the WhatsApp Business Account to the `messages` webhook field. The endpoint validates Meta's SHA-256 signature before accepting status events.
 
-WhatsApp recipients, push deliveries, and large report exports are stored as durable database jobs. Interrupted WhatsApp recipients and push workers are recovered automatically, and provider failures are retried up to three times. Vercel invokes the push worker every five minutes and the daily automation worker at 8:00 AM India time. Keep `CRON_SECRET` configured so neither worker can be invoked anonymously.
+WhatsApp recipients, push deliveries, and large report exports are stored as durable database jobs. Interrupted WhatsApp recipients and push workers are recovered automatically, and provider failures are retried up to three times. Push delivery is attempted immediately when an announcement is published; Vercel's Hobby-compatible daily worker at 8:15 AM India time recovers interrupted or failed jobs. The daily automation worker runs at 8:00 AM India time. Keep `CRON_SECRET` configured so neither worker can be invoked anonymously.
 
 ## Load test
 
