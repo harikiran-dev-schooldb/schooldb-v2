@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { expectUsablePage } from "./support";
+import { dismissOptionalPwaPrompts, expectUsablePage } from "./support";
 
 const schoolSlug = process.env.E2E_SCHOOL_SLUG?.trim();
 
@@ -58,6 +58,7 @@ test.describe("critical financial workflows", () => {
     });
 
     await page.goto(`/${schoolSlug}/fees/payments`);
+    await dismissOptionalPwaPrompts(page);
     await expect(page.getByText("FEE-E2E-001")).toBeVisible();
     await page.getByRole("button", { name: "Refund" }).click();
     await expect(page.getByRole("heading", { name: "Refund Cashfree Payment" })).toBeVisible();

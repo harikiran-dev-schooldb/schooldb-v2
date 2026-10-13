@@ -324,6 +324,12 @@ Then run:
 npm run test:e2e
 ```
 
+Regenerate an expired saved session with an email OTP:
+
+```bash
+E2E_LOGIN_EMAIL="your-test-account@example.com" npm run test:e2e:auth
+```
+
 Use a dedicated non-production test account and rotate it regularly.
 
 ## Security and tenancy

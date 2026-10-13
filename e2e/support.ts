@@ -1,5 +1,17 @@
 import { expect, type Page } from "@playwright/test";
 
+export async function dismissOptionalPwaPrompts(page: Page) {
+  const dismiss = page.getByRole("button", { name: "Dismiss" });
+  if (await dismiss.isVisible().catch(() => false)) {
+    await dismiss.click();
+  }
+
+  const notNow = page.getByRole("button", { name: "Not now" });
+  if (await notNow.isVisible().catch(() => false)) {
+    await notNow.click();
+  }
+}
+
 export function observePageErrors(page: Page) {
   const errors: string[] = [];
   const onPageError = (error: Error) => errors.push(error.message);
