@@ -1,0 +1,3 @@
+ALTER TABLE "Membership"
+ADD COLUMN "routeAccessRestricted" BOOLEAN NOT NULL DEFAULT false,
+ADD COLUMN "allowedRoutes" TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[];
