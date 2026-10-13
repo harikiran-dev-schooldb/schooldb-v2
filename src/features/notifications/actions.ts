@@ -7,7 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { notificationContext } from "./service";
 import { resolveAudience } from "@/features/audiences/resolve";
 import { recordAuditLog } from "@/lib/audit";
-import { sendAnnouncementPush } from "./push";
+import { deliverAnnouncementPushDurably } from "./push-queue";
 
 const schema = z.object({
   title: z.string().trim().min(3).max(160),
@@ -125,9 +125,7 @@ export async function publishAnnouncement(
     entityId: announcement.id,
     summary: `Published announcement “${announcement.title}” to ${announcement.targetLabel}.`,
   });
-  if (publishedAt <= new Date()) {
-    await sendAnnouncementPush(announcement);
-  }
+  await deliverAnnouncementPushDurably(announcement);
   revalidatePath(`/${schoolSlug}`, "layout");
   return { error: "", success: true };
 }

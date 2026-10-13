@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { findActiveBirthdayStudents } from "@/features/students/services/birthday-summary.service";
-import { sendAnnouncementPush } from "./push";
+import { deliverAnnouncementPushDurably } from "./push-queue";
 import { notificationDedupeKey } from "./dedupe";
 
 async function createEventNotification(input: {
@@ -32,7 +32,7 @@ async function createEventNotification(input: {
         publishedAt: new Date(),
       },
     });
-    await sendAnnouncementPush(announcement);
+    await deliverAnnouncementPushDurably(announcement);
     return announcement;
   } catch (error) {
     if (

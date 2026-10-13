@@ -17,6 +17,7 @@
     "test:e2e:ui": "playwright test --ui",
     "validate": "prisma validate",
     "load:test": "node scripts/load-test.mjs",
+    "db:restore:verify": "node scripts/verify-backup-restore.mjs",
     "web-push:keys": "web-push generate-vapid-keys"
   },
   "dependencies": {

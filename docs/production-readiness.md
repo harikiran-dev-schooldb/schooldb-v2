@@ -28,7 +28,7 @@ The Vercel cron in `vercel.json` runs at 8:00 AM India time. Configure a strong 
 
 For accurate delivery tracking, configure the Meta App webhook callback as `https://YOUR_DOMAIN/api/v1/public/whatsapp/webhook`, copy `META_WA_WEBHOOK_VERIFY_TOKEN` into Meta's verify-token field, and add the Meta App Secret as `META_APP_SECRET`. Subscribe the WhatsApp Business Account to the `messages` webhook field. The endpoint validates Meta's SHA-256 signature before accepting status events.
 
-The scheduled route also retries queued automatic campaigns in small batches. Before enabling automatic messages for a large school, move delivery to a durable queue so work survives function time limits and provider outages.
+WhatsApp recipients, push deliveries, and large report exports are stored as durable database jobs. Interrupted WhatsApp recipients and push workers are recovered automatically, and provider failures are retried up to three times. Vercel invokes the push worker every five minutes and the daily automation worker at 8:00 AM India time. Keep `CRON_SECRET` configured so neither worker can be invoked anonymously.
 
 ## Load test
 
@@ -42,6 +42,38 @@ LOAD_TEST_CONCURRENCY=250 LOAD_TEST_DURATION_SECONDS=30 npm run load:test
 
 The default pass criteria are no more than 1% failed requests and p95 latency no higher than 1,000 ms. The health test measures web-server and database connectivity capacity; key authenticated workflows should also be tested with synthetic staging accounts before launch.
 
+For a mixed authenticated staging run, provide comma-separated endpoints and a
+dedicated test account's cookie through the environment (never commit it):
+
+```sh
+LOAD_TEST_URLS="https://staging.example.com/api/health,https://staging.example.com/api/v1/dashboard" \
+LOAD_TEST_SCHOOL_SLUG="demo-school" \
+LOAD_TEST_COOKIE="__session=..." \
+LOAD_TEST_CONCURRENCY=250 \
+LOAD_TEST_DURATION_SECONDS=30 \
+npm run load:test
+```
+
+The test distributes requests across the supplied endpoints and reports both the
+combined latency/error threshold and per-target request/error counts.
+
+## Backup restore drill
+
+Provider backup status is configuration, not proof that a restore works. At least
+once before launch, restore a recent backup into a separate temporary database
+whose name contains `restore` or `verify`, then run the read-only comparison:
+
+```sh
+DATABASE_URL="postgresql://.../schooldb" \
+RESTORE_VERIFY_DATABASE_URL="postgresql://.../schooldb_restore_verify" \
+npm run db:restore:verify
+```
+
+The verifier refuses to target the source database. It compares the latest Prisma
+migration, public table count, and critical record counts for schools,
+memberships, students, attendance, payments, and audit logs. Delete the temporary
+restore through the database provider only after the check passes.
+
 ## Before launch
 
 - Deploy to production hosting and a managed PostgreSQL service in the same region.
@@ -51,6 +83,6 @@ The default pass criteria are no more than 1% failed requests and p95 latency no
   `DATABASE_URL` pointed at the pooled connection for application traffic.
 - Configure production environment secrets; never copy the local `.env` file.
 - Add an uptime alert for `/api/health` and alerts for HTTP 5xx rates and slow responses.
-- Move bulk messages, reports, and large imports to a durable background queue before enabling them at high volume.
-- Replace local `SCHOOLDB_PRIVATE_STORAGE_DIR` document storage with private object storage such as S3 or Vercel Blob before using multiple app instances.
-- Test backups and a database restore before onboarding schools.
+- Confirm the durable push, WhatsApp, and report-export workers are running and their backlogs remain near zero on **System Health**.
+- Connect private Vercel Blob storage before using multiple app instances; production uploads intentionally fail instead of falling back to local disk.
+- Test a provider backup restore with `npm run db:restore:verify` before onboarding schools.

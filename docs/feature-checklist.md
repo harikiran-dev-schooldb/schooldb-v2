@@ -33,8 +33,8 @@ This checklist reflects features present in the application, not deployment conf
 - [x] Cashfree self-service checkout, staff QR collection, verified webhooks, and automatic receipts
 - [x] Outstanding-fee reporting and reminders
 - [x] Expense ledger, categories, summaries, and audited voids
-- [ ] Budgets and budget-versus-actual reporting
-- [ ] Payroll processing and payslips
+- [x] Monthly budgets, targets, and budget-versus-actual reporting
+- [x] Payroll processing and payslips
 
 ## Communication and services
 
@@ -43,7 +43,7 @@ This checklist reflects features present in the application, not deployment conf
 - [x] School calendar and leave requests
 - [x] Library and transport management
 - [x] Android and browser push notifications
-- [ ] Inventory and asset management
+- [x] Inventory and stock movement management
 
 ## Data and reporting
 

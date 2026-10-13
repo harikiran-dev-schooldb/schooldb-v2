@@ -892,6 +892,20 @@ export async function processWhatsappCampaignBatch(
   if (!campaign)
     throw new Error("This campaign is unavailable or not ready to send.");
 
+  const staleBefore = new Date(Date.now() - 15 * 60 * 1000);
+  await prisma.whatsappRecipient.updateMany({
+    where: {
+      campaignId,
+      schoolId,
+      status: "SENDING",
+      lastAttemptAt: { lt: staleBefore },
+    },
+    data: {
+      status: "FAILED",
+      errorMessage: "Recovered after an interrupted delivery worker.",
+    },
+  });
+
   const recipients = await prisma.whatsappRecipient.findMany({
     where: {
       campaignId,
@@ -903,27 +917,73 @@ export async function processWhatsappCampaignBatch(
     take: batchSize,
     select: { id: true, phone: true },
   });
-  if (recipients.length === 0)
-    throw new Error("There are no queued messages ready to send.");
+  if (recipients.length === 0) {
+    const [sentCount, deliveredCount, readCount, failedCount, unfinishedCount] =
+      await Promise.all([
+        prisma.whatsappRecipient.count({ where: { campaignId, status: { in: ["SENT", "DELIVERED", "READ"] } } }),
+        prisma.whatsappRecipient.count({ where: { campaignId, status: { in: ["DELIVERED", "READ"] } } }),
+        prisma.whatsappRecipient.count({ where: { campaignId, status: "READ" } }),
+        prisma.whatsappRecipient.count({ where: { campaignId, status: "FAILED" } }),
+        prisma.whatsappRecipient.count({ where: { campaignId, status: { in: ["QUEUED", "SENDING"] } } }),
+      ]);
+    const status = unfinishedCount > 0
+      ? "SENDING"
+      : failedCount === 0
+        ? "COMPLETED"
+        : sentCount === 0
+          ? "FAILED"
+          : "PARTIAL";
+    await prisma.whatsappCampaign.update({
+      where: { id: campaignId },
+      data: {
+        sentCount,
+        deliveredCount,
+        readCount,
+        failedCount,
+        status,
+        completedAt: unfinishedCount === 0 ? new Date() : null,
+      },
+    });
+    return { processed: 0, sentCount, failedCount, remaining: unfinishedCount };
+  }
 
-  await prisma.$transaction([
+  const claimedAt = new Date();
+  const [, claimed] = await prisma.$transaction([
     prisma.whatsappCampaign.update({
       where: { id: campaign.id },
       data: { status: "SENDING" },
     }),
     prisma.whatsappRecipient.updateMany({
-      where: { id: { in: recipients.map((recipient) => recipient.id) } },
+      where: {
+        id: { in: recipients.map((recipient) => recipient.id) },
+        status: { in: ["QUEUED", "FAILED"] },
+        attempts: { lt: 3 },
+      },
       data: {
         status: "SENDING",
-        lastAttemptAt: new Date(),
+        lastAttemptAt: claimedAt,
         attempts: { increment: 1 },
       },
     }),
   ]);
 
+  const claimedRecipients = claimed.count === recipients.length
+    ? recipients
+    : await prisma.whatsappRecipient.findMany({
+        where: {
+          id: { in: recipients.map((recipient) => recipient.id) },
+          status: "SENDING",
+          lastAttemptAt: claimedAt,
+        },
+        select: { id: true, phone: true },
+      });
+  if (claimedRecipients.length === 0) {
+    return { processed: 0, sentCount: 0, failedCount: 0, remaining: recipients.length };
+  }
+
   const groups = Array.from(
-    { length: Math.ceil(recipients.length / 5) },
-    (_, index) => recipients.slice(index * 5, index * 5 + 5),
+    { length: Math.ceil(claimedRecipients.length / 5) },
+    (_, index) => claimedRecipients.slice(index * 5, index * 5 + 5),
   );
 
   for (const group of groups) {
@@ -1036,7 +1096,7 @@ export async function processWhatsappCampaignBatch(
   });
 
   return {
-    processed: recipients.length,
+    processed: claimedRecipients.length,
     sentCount,
     failedCount,
     remaining: retryableCount,

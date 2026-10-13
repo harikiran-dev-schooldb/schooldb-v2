@@ -1,6 +1,6 @@
 import { mapWithConcurrency } from "@/features/notifications/batch";
 import { notificationDedupeKey } from "@/features/notifications/dedupe";
-import { sendAnnouncementPush } from "@/features/notifications/push";
+import { deliverAnnouncementPushDurably } from "@/features/notifications/push-queue";
 import { prisma } from "@/lib/prisma";
 
 export type FeeReminderFilters = {
@@ -216,7 +216,7 @@ export async function sendManualFeeReminders(input: {
             publishedAt: new Date(),
           },
         });
-        const delivery = await sendAnnouncementPush(announcement);
+        const delivery = await deliverAnnouncementPushDurably(announcement);
         return {
           notificationId: announcement.id,
           sent: delivery.sent,

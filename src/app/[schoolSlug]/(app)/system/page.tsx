@@ -43,7 +43,7 @@ export default async function SystemHealthPage({
     ["SUPER_ADMIN", "SCHOOL_ADMIN"],
     schoolSlug,
   );
-  const [academicYear, staffCount, studentCount, messageCounts, documentCounts] =
+  const [academicYear, staffCount, studentCount, messageCounts, documentCounts, pushJobCount] =
     await Promise.all([
       prisma.academicYear.findFirst({
         where: { schoolId: membership.schoolId, active: true },
@@ -72,6 +72,12 @@ export default async function SystemHealthPage({
           where: { schoolId: membership.schoolId },
         }),
       ]),
+      prisma.pushDeliveryJob.count({
+        where: {
+          schoolId: membership.schoolId,
+          status: { in: ["QUEUED", "PROCESSING", "FAILED"] },
+        },
+      }),
     ]);
   const queuedMessages =
     messageCounts.find((item) => item.status === "QUEUED")?._count._all ?? 0;
@@ -190,8 +196,8 @@ export default async function SystemHealthPage({
         <MetricCard
           icon={MessageCircleMore}
           label="Messages needing attention"
-          value={queuedMessages + failedMessages}
-          note={`${queuedMessages} queued · ${failedMessages} failed`}
+          value={queuedMessages + failedMessages + pushJobCount}
+          note={`${queuedMessages} WhatsApp queued · ${failedMessages} failed · ${pushJobCount} push pending`}
         />
       </section>
 

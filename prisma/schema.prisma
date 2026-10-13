@@ -100,6 +100,7 @@ model School {
   periods                     Period[]
   pushDevices                 PushDevice[]
   pushDeliveryReports         PushDeliveryReport[]
+  pushDeliveryJobs            PushDeliveryJob[]
   notificationPreferences     NotificationPreference[]
   admissionSetting            SchoolAdmissionSetting?
   analyticsSetting            SchoolAnalyticsSetting?
@@ -263,28 +264,48 @@ model RequestRateLimit {
 }
 
 model Announcement {
-  id          String             @id @default(cuid())
-  schoolId    String
-  title       String
-  body        String
-  category    String             @default("GENERAL")
-  priority    String             @default("NORMAL")
-  targetType  String             @default("SCHOOL")
-  targetId    String?
-  targetLabel String
-  sourceType  String?
-  sourceId    String?
-  dedupeKey   String?            @unique
-  createdBy   String
-  publishedAt DateTime
-  expiresAt   DateTime?
-  archived    Boolean            @default(false)
-  createdAt   DateTime           @default(now())
-  school      School             @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  reads       AnnouncementRead[]
+  id              String             @id @default(cuid())
+  schoolId        String
+  title           String
+  body            String
+  category        String             @default("GENERAL")
+  priority        String             @default("NORMAL")
+  targetType      String             @default("SCHOOL")
+  targetId        String?
+  targetLabel     String
+  sourceType      String?
+  sourceId        String?
+  dedupeKey       String?            @unique
+  createdBy       String
+  publishedAt     DateTime
+  expiresAt       DateTime?
+  archived        Boolean            @default(false)
+  createdAt       DateTime           @default(now())
+  school          School             @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  reads           AnnouncementRead[]
+  pushDeliveryJob PushDeliveryJob?
 
   @@index([schoolId, archived, publishedAt])
   @@index([schoolId, sourceType, sourceId])
+}
+
+model PushDeliveryJob {
+  id             String                @id @default(cuid())
+  schoolId       String
+  announcementId String                @unique
+  status         PushDeliveryJobStatus @default(QUEUED)
+  attempts       Int                   @default(0)
+  nextAttemptAt  DateTime              @default(now())
+  startedAt      DateTime?
+  completedAt    DateTime?
+  lastError      String?
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+  school         School                @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  announcement   Announcement          @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+
+  @@index([status, nextAttemptAt])
+  @@index([schoolId, createdAt(sort: Desc)])
 }
 
 model AnnouncementRead {
@@ -2371,6 +2392,13 @@ enum Category {
   ST
   EWS
   RTE
+}
+
+enum PushDeliveryJobStatus {
+  QUEUED
+  PROCESSING
+  COMPLETED
+  FAILED
 }
 
 enum ReportExportStatus {

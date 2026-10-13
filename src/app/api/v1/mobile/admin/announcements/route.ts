@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { resolveAudience } from "@/features/audiences/resolve";
-import { sendAnnouncementPush } from "@/features/notifications/push";
+import { deliverAnnouncementPushDurably } from "@/features/notifications/push-queue";
 import { requireRole } from "@/lib/auth";
 import { apiHandler } from "@/lib/api";
 import { recordAuditLog } from "@/lib/audit";
@@ -50,7 +50,7 @@ export async function POST(req: Request) {
       entityId: announcement.id,
       summary: `Published announcement “${announcement.title}” to ${announcement.targetLabel}.`,
     });
-    await sendAnnouncementPush(announcement);
+    await deliverAnnouncementPushDurably(announcement);
 
     return ApiResponse.success(
       { id: announcement.id },

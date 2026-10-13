@@ -22,7 +22,7 @@
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-strict-3178C6?style=flat-square&logo=typescript&logoColor=white" />
   <img alt="PostgreSQL" src="https://img.shields.io/badge/PostgreSQL-multi--tenant-4169E1?style=flat-square&logo=postgresql&logoColor=white" />
   <img alt="Prisma 7" src="https://img.shields.io/badge/Prisma-7-2D3748?style=flat-square&logo=prisma" />
-  <img alt="Tests" src="https://img.shields.io/badge/tests-130%20passing-16A34A?style=flat-square" />
+  <img alt="Tests" src="https://img.shields.io/badge/tests-145%20passing-16A34A?style=flat-square" />
 </p>
 
 > [!IMPORTANT]
