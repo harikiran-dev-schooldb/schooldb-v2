@@ -21,6 +21,27 @@ const browser = await chromium.launch({
 const context = await browser.newContext({ serviceWorkers: "block" });
 const page = await context.newPage();
 
+async function openAuthenticatedDashboard() {
+  const dashboardUrl = new URL(`/${schoolSlug}/dashboard`, baseUrl).toString();
+
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    try {
+      await page.goto(dashboardUrl, { waitUntil: "commit" });
+    } catch (error) {
+      // Successful OTP verification can redirect at the same moment as this
+      // navigation. Chromium reports that harmless collision as ERR_ABORTED.
+      if (!(error instanceof Error) || !error.message.includes("ERR_ABORTED")) {
+        throw error;
+      }
+    }
+
+    await page.waitForTimeout(750);
+    if (!page.url().endsWith("/login")) return;
+  }
+
+  throw new Error("SchoolDB rejected the OTP or did not create an authenticated session.");
+}
+
 try {
   await page.goto(new URL(`/${schoolSlug}/login`, baseUrl).toString(), {
     waitUntil: "domcontentloaded",
@@ -40,12 +61,7 @@ try {
   await page.locator("input:not([disabled])").last().fill(code);
   await page.getByRole("button", { name: "Verify & continue" }).click();
   await page.waitForTimeout(1_500);
-  await page.goto(new URL(`/${schoolSlug}/dashboard`, baseUrl).toString(), {
-    waitUntil: "domcontentloaded",
-  });
-  if (page.url().endsWith("/login")) {
-    throw new Error("SchoolDB rejected the OTP or did not create an authenticated session.");
-  }
+  await openAuthenticatedDashboard();
   await context.storageState({ path: authState });
   console.log(`Saved authenticated Playwright state to ${authState}.`);
 } finally {
