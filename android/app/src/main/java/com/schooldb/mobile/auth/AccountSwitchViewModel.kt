@@ -30,7 +30,11 @@ class AccountSwitchViewModel(
         }
     }
 
-    fun switchAccount(account: AccountSwitchChoice, onComplete: () -> Unit) {
+    fun switchAccount(
+        account: AccountSwitchChoice,
+        onComplete: () -> Unit,
+        onFailure: () -> Unit = {},
+    ) {
         if (account.current || _uiState.value.switchingId != null) return
         _uiState.value = _uiState.value.copy(switchingId = account.id, error = null)
         viewModelScope.launch {
@@ -41,6 +45,7 @@ class AccountSwitchViewModel(
                 onComplete()
             } catch (error: Exception) {
                 fail(error)
+                onFailure()
             }
         }
     }

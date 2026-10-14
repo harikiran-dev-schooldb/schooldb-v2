@@ -1,5 +1,6 @@
 import { AccountSwitcher } from "@/features/auth/components/AccountSwitcher";
 import { requireMembership } from "@/lib/auth";
+import { publicSchoolLogoUrl } from "@/lib/school-branding";
 
 export default async function SwitchAccountPage({
   params,
@@ -12,6 +13,11 @@ export default async function SwitchAccountPage({
     <AccountSwitcher
       schoolSlug={schoolSlug}
       schoolName={membership.school.name}
+      schoolLogo={publicSchoolLogoUrl(
+        schoolSlug,
+        membership.school.logo,
+        membership.school.updatedAt,
+      )}
     />
   );
 }

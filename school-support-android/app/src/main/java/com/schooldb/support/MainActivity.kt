@@ -137,6 +137,7 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
     var switchAccountsLoading by remember(school) { mutableStateOf(false) }
     var switchAccountsError by remember(school) { mutableStateOf<String?>(null) }
     var switchingAccountId by remember(school) { mutableStateOf<String?>(null) }
+    var accountSwitchInProgress by remember(school) { mutableStateOf(false) }
     var ticketDraft by remember(school) { mutableStateOf(TicketDraft()) }
     val replyDrafts = remember(school) { mutableStateMapOf<String, String>() }
     var resendSeconds by remember { mutableIntStateOf(0) }
@@ -462,6 +463,10 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
     // after swiping the app away or rebooting the device.
     LaunchedEffect(clerkInitialized, clerkUser, school, signingOut) {
         if (signingOut) return@LaunchedEffect
+        if (accountSwitchInProgress) {
+            page = SupportPage.LOADING
+            return@LaunchedEffect
+        }
         if (BuildConfig.CLERK_PUBLISHABLE_KEY.isBlank()) {
             error = "Configure CLERK_PUBLISHABLE_KEY before signing in."
             page = SupportPage.LOGIN
@@ -585,7 +590,11 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
                         Spacer(Modifier.height(18.dp))
                         CircularProgressIndicator(Modifier.size(28.dp), strokeWidth = 3.dp)
                         Spacer(Modifier.height(12.dp))
-                        Text("Preparing your support desk", color = Muted, style = MaterialTheme.typography.bodyMedium)
+                        Text(
+                            if (accountSwitchInProgress) "Switching account or role…" else "Preparing your support desk",
+                            color = Muted,
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
                     }
                 }
                 SupportPage.LOGIN -> AuthShell("School Support", "Enter your school code and registered mobile number.") {
@@ -747,6 +756,8 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
                         onSwitchAccount = { account ->
                             if (!account.current && switchingAccountId == null) {
                                 switchingAccountId = account.id
+                                accountSwitchInProgress = true
+                                page = SupportPage.LOADING
                                 switchAccountsError = null
                                 scope.launch {
                                     try {
@@ -769,10 +780,13 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
                                         replyDrafts.clear()
                                         dashboardTab = DashboardTab.OVERVIEW
                                         notice = "Account switched successfully."
+                                        page = SupportPage.DASHBOARD
                                     } catch (e: Exception) {
                                         switchAccountsError = e.message ?: "Account switch failed."
+                                        page = SupportPage.DASHBOARD
                                     } finally {
                                         switchingAccountId = null
+                                        accountSwitchInProgress = false
                                     }
                                 }
                             }

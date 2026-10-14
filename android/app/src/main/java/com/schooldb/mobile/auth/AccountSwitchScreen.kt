@@ -49,6 +49,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 @Composable
 fun AccountSwitchScreen(
     onBack: () -> Unit,
+    onSwitchStarted: () -> Unit,
+    onSwitchFailed: () -> Unit,
     onComplete: () -> Unit,
     viewModel: AccountSwitchViewModel = viewModel(),
 ) {
@@ -97,7 +99,10 @@ fun AccountSwitchScreen(
                 }
                 items(state.accounts, key = { it.id }) { account ->
                     Card(
-                        onClick = { viewModel.switchAccount(account, onComplete) },
+                        onClick = {
+                            onSwitchStarted()
+                            viewModel.switchAccount(account, onComplete, onSwitchFailed)
+                        },
                         enabled = !account.current && state.switchingId == null,
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(18.dp),

@@ -103,6 +103,7 @@ fun SchoolDbApp(
     val state by authViewModel.uiState.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
     var showAccountSwitcher by rememberSaveable { mutableStateOf(false) }
+    var switchingAccount by remember { mutableStateOf(false) }
     var showNotificationSettings by rememberSaveable { mutableStateOf(false) }
     var portalRefreshKey by rememberSaveable { mutableIntStateOf(0) }
     var appLocked by rememberSaveable { mutableStateOf(false) }
@@ -196,7 +197,9 @@ fun SchoolDbApp(
                 .padding(padding)
                 .imePadding(),
         ) {
-            when (val step = state.step) {
+            if (switchingAccount) {
+                AccountSwitchLoadingScreen()
+            } else when (val step = state.step) {
                 AuthStep.SignIn -> SignInScreen(
                     loading = state.loading,
                     onSendOtp = authViewModel::sendOtp,
@@ -232,9 +235,12 @@ fun SchoolDbApp(
                 AuthStep.SignedIn -> if (showAccountSwitcher) {
                     AccountSwitchScreen(
                         onBack = { showAccountSwitcher = false },
+                        onSwitchStarted = { switchingAccount = true },
+                        onSwitchFailed = { switchingAccount = false },
                         onComplete = {
                             portalRefreshKey += 1
                             showAccountSwitcher = false
+                            switchingAccount = false
                         },
                     )
                 } else {
@@ -286,6 +292,49 @@ fun SchoolDbApp(
                 androidx.compose.material3.TextButton(onClick = { showNotificationSettings = false }) { Text("Not now") }
             },
         )
+    }
+}
+
+@Composable
+private fun AccountSwitchLoadingScreen() {
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background,
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize().padding(32.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Surface(
+                modifier = Modifier.size(88.dp),
+                shape = RoundedCornerShape(24.dp),
+                color = Color.White,
+                shadowElevation = 12.dp,
+            ) {
+                Image(
+                    painter = painterResource(R.drawable.schooldb_logo_auth),
+                    contentDescription = null,
+                    modifier = Modifier.padding(14.dp),
+                )
+            }
+            CircularProgressIndicator(
+                modifier = Modifier.padding(top = 28.dp).size(30.dp),
+                strokeWidth = 3.dp,
+            )
+            Text(
+                "Switching account or role",
+                modifier = Modifier.padding(top = 18.dp),
+                fontWeight = FontWeight.Bold,
+                fontSize = 22.sp,
+            )
+            Text(
+                "Preparing your workspace…",
+                modifier = Modifier.padding(top = 7.dp),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+            )
+        }
     }
 }
 
