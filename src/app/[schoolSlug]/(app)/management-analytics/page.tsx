@@ -21,8 +21,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { AnalyticsSettingsPanel } from "@/features/reports/AnalyticsSettingsPanel";
 import { ReportsFilters } from "@/features/reports/ReportsFilters";
 import { ReportPageActions } from "@/features/reports/ReportPageActions";
-import { getSchoolPortfolio } from "@/features/reports/portfolio.service";
-import { getSchoolReport } from "@/features/reports/report.service";
+import {
+  getCachedSchoolPortfolio,
+  getCachedSchoolReport,
+} from "@/features/reports/analytics-cache";
 import { requireRole } from "@/lib/auth";
 
 type Props = {
@@ -58,7 +60,7 @@ export default async function ManagementAnalyticsPage({ params, searchParams }: 
     ["SUPER_ADMIN", "SCHOOL_ADMIN"],
     schoolSlug,
   );
-  const report = await getSchoolReport(membership.schoolId, filters);
+  const report = await getCachedSchoolReport(membership.schoolId, filters);
   const reportId = randomUUID();
   const generatedBy = [membership.user.firstName, membership.user.lastName]
     .filter(Boolean)
@@ -89,7 +91,7 @@ export default async function ManagementAnalyticsPage({ params, searchParams }: 
   }
 
   const portfolio = membership.role === "SUPER_ADMIN"
-    ? await getSchoolPortfolio(membership.userId, {
+    ? await getCachedSchoolPortfolio(membership.userId, {
         from: report.scope.from,
         to: report.scope.to,
       })

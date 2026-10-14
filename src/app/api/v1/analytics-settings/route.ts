@@ -1,4 +1,5 @@
 import { getAnalyticsSettings, saveAnalyticsSettings } from "@/features/reports/analytics-settings";
+import { invalidateAnalyticsCache } from "@/features/reports/analytics-cache";
 import { apiHandler } from "@/lib/api";
 import { recordAuditLog } from "@/lib/audit";
 import { requireRole } from "@/lib/auth";
@@ -15,6 +16,7 @@ export async function PATCH(request: Request) {
   return apiHandler(async () => {
     const actor = await requireRole(["SUPER_ADMIN", "SCHOOL_ADMIN"]);
     const setting = await saveAnalyticsSettings(actor.schoolId, await request.json());
+    invalidateAnalyticsCache(actor.schoolId);
 
     await recordAuditLog({
       actor,
