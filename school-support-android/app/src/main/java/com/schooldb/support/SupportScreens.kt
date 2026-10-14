@@ -31,6 +31,7 @@ import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.QrCode2
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.VerifiedUser
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
@@ -1124,34 +1125,75 @@ private fun OptionMenu(selected: String, values: List<String>, title: String = "
 
 @Composable
 internal fun AuthShell(title: String, subtitle: String, content: @Composable ColumnScope.() -> Unit) {
-    Box(Modifier.fillMaxSize().imePadding()) {
-        Box(Modifier.size(260.dp).offset(x = 210.dp, y = (-105).dp).clip(CircleShape)
-            .background(Violet.copy(alpha = .10f)))
-        Box(Modifier.size(190.dp).offset(x = (-105).dp, y = 480.dp).clip(CircleShape)
-            .background(Indigo.copy(alpha = .08f)))
+    Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(
+        Color(0xFFF8FAFF), Color(0xFFF3F5FF), Color(0xFFF8FAFC),
+    ))).imePadding()) {
+        Box(Modifier.size(280.dp).offset(x = 205.dp, y = (-120).dp).clip(CircleShape)
+            .background(Violet.copy(alpha = .12f)))
+        Box(Modifier.size(210.dp).offset(x = (-120).dp, y = 520.dp).clip(CircleShape)
+            .background(Indigo.copy(alpha = .09f)))
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally) {
-            Spacer(Modifier.height(54.dp))
-            BrandMark(Modifier.size(82.dp))
-            Spacer(Modifier.height(16.dp))
-            Text("SCHOOLDB  •  SCHOOL SUPPORT", style = MaterialTheme.typography.labelMedium, color = Indigo)
-            Spacer(Modifier.height(12.dp))
-            Text(title, style = MaterialTheme.typography.headlineMedium, color = Ink,
-                textAlign = TextAlign.Center, modifier = Modifier.padding(horizontal = 24.dp))
-            Spacer(Modifier.height(9.dp))
-            Text(subtitle, style = MaterialTheme.typography.bodyLarge, color = Muted,
-                textAlign = TextAlign.Center, modifier = Modifier.padding(horizontal = 34.dp))
-            Spacer(Modifier.height(26.dp))
-            Card(Modifier.fillMaxWidth().padding(horizontal = 20.dp),
-                shape = RoundedCornerShape(28.dp),
-                border = BorderStroke(1.dp, Line.copy(alpha = .8f)),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
-                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)) {
-                Column(Modifier.padding(horizontal = 22.dp, vertical = 24.dp), content = content)
-            }
-            Spacer(Modifier.height(28.dp))
-            Text("Private • Secure • Built for your school", style = MaterialTheme.typography.bodySmall, color = Muted)
             Spacer(Modifier.height(24.dp))
+            Row(Modifier.fillMaxWidth().padding(horizontal = 24.dp),
+                verticalAlignment = Alignment.CenterVertically) {
+                BrandMark(Modifier.size(54.dp))
+                Spacer(Modifier.width(12.dp))
+                Column {
+                    Text("SchoolDB", style = MaterialTheme.typography.titleLarge,
+                        color = Ink, fontWeight = FontWeight.ExtraBold)
+                    Text("SMARTER SCHOOLS · BRIGHTER FUTURES",
+                        style = MaterialTheme.typography.labelSmall, color = Muted)
+                }
+            }
+            Spacer(Modifier.height(30.dp))
+            Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp)) {
+                Surface(shape = CircleShape, color = Color(0xFFECFDF5),
+                    border = BorderStroke(1.dp, Color(0xFFA7F3D0))) {
+                    Row(Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
+                        verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Outlined.VerifiedUser, contentDescription = null,
+                            tint = Color(0xFF059669), modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(7.dp))
+                        Text("VERIFIED SUPPORT ACCESS", color = Color(0xFF047857),
+                            style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                    }
+                }
+                Spacer(Modifier.height(14.dp))
+                Text(title, style = MaterialTheme.typography.headlineLarge, color = Ink,
+                    fontWeight = FontWeight.ExtraBold)
+                Spacer(Modifier.height(8.dp))
+                Text(subtitle, style = MaterialTheme.typography.bodyLarge, color = Muted)
+            }
+            Spacer(Modifier.height(18.dp))
+            Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf("Tickets", "Fast replies", "Secure").forEach { label ->
+                    Surface(Modifier.weight(1f), shape = RoundedCornerShape(14.dp),
+                        color = Color.White.copy(alpha = .78f), border = BorderStroke(1.dp, Line)) {
+                        Text(label, Modifier.padding(vertical = 9.dp), textAlign = TextAlign.Center,
+                            style = MaterialTheme.typography.labelSmall, color = Indigo,
+                            fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+            Spacer(Modifier.height(16.dp))
+            Card(Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+                shape = RoundedCornerShape(30.dp), border = BorderStroke(1.dp, Color.White),
+                colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = .94f)),
+                elevation = CardDefaults.cardElevation(defaultElevation = 12.dp)) {
+                Column(Modifier.padding(horizontal = 22.dp, vertical = 24.dp)) {
+                    Text("SECURE ACCESS", color = Indigo, style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(16.dp))
+                    content()
+                }
+            }
+            Spacer(Modifier.height(22.dp))
+            Text("Encrypted access • Private school data • Secure sessions",
+                style = MaterialTheme.typography.bodySmall, color = Muted, textAlign = TextAlign.Center,
+                modifier = Modifier.padding(horizontal = 24.dp))
+            Spacer(Modifier.height(28.dp))
         }
     }
 }
