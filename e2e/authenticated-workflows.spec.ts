@@ -17,6 +17,26 @@ async function activateTab(page: Page, name: RegExp) {
   }).toPass({ timeout: 10_000 });
 }
 
+async function expectEnabledWorkflowPage(
+  page: Page,
+  path: string,
+  heading: string,
+) {
+  await expectUsablePage(page, `/${schoolSlug}/${path}`);
+
+  const expectedHeading = page.getByRole("heading", { name: heading }).first();
+  const accessDeniedHeading = page.getByRole("heading", {
+    name: "School Not Found",
+  });
+  await expect(expectedHeading.or(accessDeniedHeading)).toBeVisible();
+
+  test.skip(
+    await accessDeniedHeading.isVisible(),
+    `${path} is disabled by this school's route-access configuration.`,
+  );
+  await expect(expectedHeading).toBeVisible();
+}
+
 test.describe("authenticated school workflows", () => {
   test.skip(!schoolSlug, "Set E2E_SCHOOL_SLUG for authenticated workflow tests.");
 
@@ -28,13 +48,16 @@ test.describe("authenticated school workflows", () => {
     await expect(page).not.toHaveURL(/\/login/);
   });
 
-  test("staff attendance and delivery audit are reachable", async ({ page }) => {
-    await expectUsablePage(
+  test("staff attendance is reachable when enabled", async ({ page }) => {
+    await expectEnabledWorkflowPage(
       page,
-      `/${schoolSlug}/staff-operations`,
+      "staff-operations",
       "Staff attendance & payroll",
     );
-    await expectUsablePage(page, `/${schoolSlug}/whatsapp`, "WhatsApp delivery");
+  });
+
+  test("delivery audit is reachable when enabled", async ({ page }) => {
+    await expectEnabledWorkflowPage(page, "whatsapp", "WhatsApp delivery");
     await expect(page.getByText(/Automatic alert history/i)).toBeVisible();
   });
 
@@ -53,11 +76,7 @@ test.describe("authenticated school workflows", () => {
     { path: "transport", heading: "Transport management" },
   ]) {
     test(`${workflow.path} exposes the academic student filters`, async ({ page }) => {
-      await expectUsablePage(
-        page,
-        `/${schoolSlug}/${workflow.path}`,
-        workflow.heading,
-      );
+      await expectEnabledWorkflowPage(page, workflow.path, workflow.heading);
       // Library and Transport place their student controls inside a secondary
       // tab; activate that tab before asserting its filters are available.
       if (workflow.path === "library") {
