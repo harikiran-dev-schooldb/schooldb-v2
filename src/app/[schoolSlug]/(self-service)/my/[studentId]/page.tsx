@@ -151,14 +151,14 @@ export default async function StudentOverviewPage({
 
           <div className="flex items-center gap-4 rounded-[24px] border border-white/80 bg-white/70 p-4 shadow-sm backdrop-blur-xl sm:min-w-64">
             <div
-              className="grid size-20 shrink-0 place-items-center rounded-full"
+              className="grid size-20 shrink-0 place-items-center rounded-full sm:size-24"
               style={{ background: `conic-gradient(#6366f1 ${Math.min(attendancePercentage, 100) * 3.6}deg, rgba(99,102,241,0.12) 0deg)` }}
             >
-              <div className="grid size-16 place-items-center rounded-full bg-white">
-                <span className="text-xl font-black">{attendancePercentage}%</span>
+              <div className="grid size-16 place-items-center rounded-full bg-white sm:size-20">
+                <span className="whitespace-nowrap text-sm font-black leading-none tabular-nums sm:text-base">{attendancePercentage}%</span>
               </div>
             </div>
-            <div>
+            <div className="min-w-0">
               <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Attendance</p>
               <p className="mt-1 text-sm font-semibold text-slate-950">
                 {attendance?.summary.total ? `${attendance.summary.present} of ${attendance.summary.total} present` : "No sessions yet"}
