@@ -17,6 +17,16 @@ class AuthRepository(
         )
     }
 
+    fun sendEmailOtp(schoolSlug: String, email: String) {
+        post(
+            path = "api/v1/public/auth/send-otp",
+            body = JSONObject()
+                .put("channel", "EMAIL")
+                .put("schoolSlug", schoolSlug)
+                .put("email", email),
+        )
+    }
+
     fun verifyOtp(schoolSlug: String, phone: String, otp: String): VerifyResult {
         val response = post(
             path = "api/v1/public/auth/verify-otp",
@@ -24,6 +34,19 @@ class AuthRepository(
                 .put("action", "VERIFY")
                 .put("schoolSlug", schoolSlug)
                 .put("phone", phone)
+                .put("otp", otp),
+        )
+        return response.toVerifyResult()
+    }
+
+    fun verifyEmailOtp(schoolSlug: String, email: String, otp: String): VerifyResult {
+        val response = post(
+            path = "api/v1/public/auth/verify-otp",
+            body = JSONObject()
+                .put("action", "VERIFY")
+                .put("channel", "EMAIL")
+                .put("schoolSlug", schoolSlug)
+                .put("email", email)
                 .put("otp", otp),
         )
         return response.toVerifyResult()

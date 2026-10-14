@@ -2,7 +2,9 @@ import { clerkClient } from "@clerk/nextjs/server";
 import { z } from "zod";
 
 import {
+  emailHash,
   normalizeIndianMobile,
+  normalizeLoginEmail,
   otpHash,
   OTP_MAX_ATTEMPTS,
   otpMatches,
@@ -14,10 +16,18 @@ import { consumeRateLimit, requestIp } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 
-const inputSchema = z.discriminatedUnion("action", [
+const inputSchema = z.union([
   z.object({
     action: z.literal("VERIFY"),
+    channel: z.literal("WHATSAPP").optional(),
     phone: z.string(),
+    otp: z.string().regex(/^\d{6}$/),
+    schoolSlug: z.string().min(1),
+  }),
+  z.object({
+    action: z.literal("VERIFY"),
+    channel: z.literal("EMAIL"),
+    email: z.string(),
     otp: z.string().regex(/^\d{6}$/),
     schoolSlug: z.string().min(1),
   }),
@@ -35,6 +45,10 @@ const RATE_WINDOW_MS = Math.max(
 const PHONE_LIMIT = Math.max(
   1,
   Number(process.env.OTP_VERIFY_PHONE_LIMIT) || 10,
+);
+const EMAIL_LIMIT = Math.max(
+  1,
+  Number(process.env.OTP_VERIFY_EMAIL_LIMIT) || 10,
 );
 const IP_LIMIT = Math.max(1, Number(process.env.OTP_VERIFY_IP_LIMIT) || 50);
 
@@ -236,26 +250,42 @@ export async function POST(request: Request) {
           );
     }
 
-    const phone = normalizeIndianMobile(parsed.data.phone);
-    if (!phone)
+    const email =
+      "email" in parsed.data
+        ? normalizeLoginEmail(parsed.data.email)
+        : null;
+    const phone =
+      "phone" in parsed.data
+        ? normalizeIndianMobile(parsed.data.phone)
+        : null;
+    if (!email && !phone)
       return Response.json(
-        { error: "Enter a valid mobile number." },
+        { error: "Enter valid sign-in details." },
         { status: 400 },
       );
+    const identifier = email ? `email:${email}` : phone!;
     const otp = parsed.data.otp;
-    const phoneLimit = await consumeRateLimit(
-      `otp-verify-phone:${school.id}`,
-      phone,
-      PHONE_LIMIT,
+    const identifierLimit = await consumeRateLimit(
+      email
+        ? `otp-verify-email:${school.id}`
+        : `otp-verify-phone:${school.id}`,
+      email ?? phone!,
+      email ? EMAIL_LIMIT : PHONE_LIMIT,
       RATE_WINDOW_MS,
     );
-    if (!phoneLimit.allowed) return rateLimited(phoneLimit.retryAfterSeconds);
+    if (!identifierLimit.allowed)
+      return rateLimited(identifierLimit.retryAfterSeconds);
 
-    const hashedPhone = phoneHash(school.id, phone);
+    const hashedIdentifier = email
+      ? emailHash(school.id, email)
+      : phoneHash(school.id, phone!);
     const verification = await runSerializableTransaction(async (tx) => {
       const challenge = await tx.otpChallenge.findUnique({
         where: {
-          schoolId_phoneHash: { schoolId: school.id, phoneHash: hashedPhone },
+          schoolId_phoneHash: {
+            schoolId: school.id,
+            phoneHash: hashedIdentifier,
+          },
         },
         select: {
           id: true,
@@ -280,7 +310,12 @@ export async function POST(request: Request) {
           });
         return { ok: false as const, exhausted: true };
       }
-      if (!otpMatches(challenge.codeHash, otpHash(school.id, phone, otp))) {
+      if (
+        !otpMatches(
+          challenge.codeHash,
+          otpHash(school.id, identifier, otp),
+        )
+      ) {
         const attempts = challenge.attempts + 1;
         if (attempts >= OTP_MAX_ATTEMPTS)
           await tx.otpChallenge.delete({ where: { id: challenge.id } });

@@ -1,21 +1,19 @@
-import { createHash, createHmac, randomInt, timingSafeEqual } from "node:crypto";
+import { createHmac, randomInt, timingSafeEqual } from "node:crypto";
 
 import { Prisma } from "@/generated/prisma/client";
+import { normalizeIndianMobile } from "@/features/auth/otp-identifiers";
 import { prisma } from "@/lib/prisma";
+
+export {
+  emailHash,
+  normalizeIndianMobile,
+  normalizeLoginEmail,
+  phoneHash,
+} from "@/features/auth/otp-identifiers";
 
 export const OTP_EXPIRY_MS = 5 * 60 * 1000;
 export const OTP_RESEND_MS = 30 * 1000;
 export const OTP_MAX_ATTEMPTS = 5;
-
-export function normalizeIndianMobile(value: string) {
-  const digits = value.replace(/\D/g, "");
-  const national = digits.length === 12 && digits.startsWith("91") ? digits.slice(2) : digits;
-  return /^[6-9]\d{9}$/.test(national) ? national : null;
-}
-
-export function phoneHash(schoolId: string, phone: string) {
-  return createHash("sha256").update(`${schoolId}:${phone}`).digest("hex");
-}
 
 export function otpHash(schoolId: string, phone: string, code: string) {
   const secret = process.env.CLERK_SECRET_KEY;
@@ -152,5 +150,124 @@ export async function resolveOtpAccounts(schoolId: string, phone: string) {
       name: student?.fullName || userName || "SchoolDB user",
       detail: student ? `Admission ${student.admissionNo}` : membership.role.replaceAll("_", " ").toLowerCase(),
     }];
+  });
+}
+
+export async function resolveEmailOtpAccounts(schoolId: string, email: string) {
+  const staffUsers = await prisma.user.findMany({
+    where: {
+      email: { equals: email, mode: "insensitive" },
+      memberships: {
+        some: {
+          schoolId,
+          isActive: true,
+          role: { in: [...STAFF_ROLES] },
+        },
+      },
+    },
+    select: { id: true },
+  });
+
+  const matchingStudents = await prisma.student.findMany({
+    where: {
+      schoolId,
+      status: "ACTIVE",
+      clerkId: { not: null },
+      OR: [
+        { email: { equals: email, mode: "insensitive" } },
+        { fatherEmail: { equals: email, mode: "insensitive" } },
+        { motherEmail: { equals: email, mode: "insensitive" } },
+      ],
+    },
+    select: {
+      id: true,
+      clerkId: true,
+      fullName: true,
+      admissionNo: true,
+    },
+  });
+
+  const studentClerkIds = matchingStudents.flatMap((student) =>
+    student.clerkId ? [student.clerkId] : [],
+  );
+  const studentUsers = studentClerkIds.length
+    ? await prisma.user.findMany({
+        where: {
+          clerkUserId: { in: studentClerkIds },
+          memberships: {
+            some: { schoolId, isActive: true, role: "STUDENT" },
+          },
+        },
+        select: { id: true, clerkUserId: true },
+      })
+    : [];
+
+  const parentLinks = matchingStudents.length
+    ? await prisma.parentStudentLink.findMany({
+        where: {
+          schoolId,
+          studentId: { in: matchingStudents.map((student) => student.id) },
+          active: true,
+          parentUser: {
+            memberships: {
+              some: { schoolId, isActive: true, role: "PARENT" },
+            },
+          },
+        },
+        select: { parentUserId: true },
+      })
+    : [];
+
+  const candidateIds = [
+    ...new Set([
+      ...staffUsers.map((user) => user.id),
+      ...studentUsers.map((user) => user.id),
+      ...parentLinks.map((link) => link.parentUserId),
+    ]),
+  ];
+  if (!candidateIds.length) return [];
+
+  const users = await prisma.user.findMany({
+    where: { id: { in: candidateIds } },
+    select: {
+      id: true,
+      clerkUserId: true,
+      firstName: true,
+      lastName: true,
+      memberships: {
+        where: { schoolId, isActive: true },
+        select: { role: true },
+        take: 1,
+      },
+    },
+  });
+  const studentsByClerkId = new Map(
+    matchingStudents
+      .filter((student) => student.clerkId)
+      .map((student) => [student.clerkId!, student]),
+  );
+
+  return users.flatMap<OtpAccount>((user) => {
+    const membership = user.memberships[0];
+    if (!membership) return [];
+    const student =
+      membership.role === "STUDENT"
+        ? studentsByClerkId.get(user.clerkUserId)
+        : undefined;
+    const userName = [user.firstName, user.lastName]
+      .filter(Boolean)
+      .join(" ")
+      .trim();
+    return [
+      {
+        id: user.id,
+        clerkUserId: user.clerkUserId,
+        role: membership.role,
+        name: student?.fullName || userName || "SchoolDB user",
+        detail: student
+          ? `Admission ${student.admissionNo}`
+          : membership.role.replaceAll("_", " ").toLowerCase(),
+      },
+    ];
   });
 }

@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.update
 data class SupportAuthUiState(
     val school: String = "",
     val phone: String = "",
+    val email: String = "",
     val code: String = "",
     val challenge: String = "",
     val accounts: List<Pair<String, String>> = emptyList(),
@@ -29,6 +30,7 @@ class SupportAuthViewModel : ViewModel() {
         })
     }
     fun setPhone(value: String) = _state.update { it.copy(phone = value.filter(Char::isDigit).take(10)) }
+    fun setEmail(value: String) = _state.update { it.copy(email = value.trim().take(160)) }
     fun setCode(value: String) = _state.update { it.copy(code = value.filter(Char::isDigit).take(6)) }
 
     fun setAccountSelection(challenge: String, accounts: List<Pair<String, String>>) {
@@ -36,7 +38,7 @@ class SupportAuthViewModel : ViewModel() {
     }
 
     fun clearCredentials() {
-        _state.update { it.copy(phone = "", code = "", challenge = "", accounts = emptyList()) }
+        _state.update { it.copy(phone = "", email = "", code = "", challenge = "", accounts = emptyList()) }
     }
 
     fun clearAll(defaultSchool: String = "") {

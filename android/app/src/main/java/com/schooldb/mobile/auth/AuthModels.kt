@@ -8,11 +8,14 @@ data class SchoolAccount(
 
 sealed interface AuthStep {
     data object SignIn : AuthStep
+    data object EmailSignIn : AuthStep
     data class Verify(val schoolSlug: String, val phone: String) : AuthStep
+    data class VerifyEmail(val schoolSlug: String, val email: String) : AuthStep
     data class ChooseAccount(
         val schoolSlug: String,
         val challengeId: String,
         val accounts: List<SchoolAccount>,
+        val viaEmail: Boolean = false,
     ) : AuthStep
     data object SignedIn : AuthStep
 }

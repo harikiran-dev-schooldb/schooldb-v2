@@ -91,9 +91,20 @@ class SupportRepository {
             JSONObject().put("schoolSlug", school).put("phone", phone))
     }
 
+    suspend fun sendEmailCode(school: String, email: String) = withContext(Dispatchers.IO) {
+        request("POST", "api/v1/public/auth/send-otp", null,
+            JSONObject().put("channel", "EMAIL").put("schoolSlug", school).put("email", email))
+    }
+
     suspend fun verifyCode(school: String, phone: String, code: String): JSONObject = withContext(Dispatchers.IO) {
         request("POST", "api/v1/public/auth/verify-otp", null,
             JSONObject().put("action", "VERIFY").put("schoolSlug", school).put("phone", phone).put("otp", code))
+    }
+
+    suspend fun verifyEmailCode(school: String, email: String, code: String): JSONObject = withContext(Dispatchers.IO) {
+        request("POST", "api/v1/public/auth/verify-otp", null,
+            JSONObject().put("action", "VERIFY").put("channel", "EMAIL")
+                .put("schoolSlug", school).put("email", email).put("otp", code))
     }
 
     suspend fun selectAccount(school: String, challengeId: String, accountId: String): JSONObject = withContext(Dispatchers.IO) {

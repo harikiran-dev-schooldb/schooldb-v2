@@ -36,6 +36,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -48,6 +49,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -195,18 +197,37 @@ fun SchoolDbApp(
                 .imePadding(),
         ) {
             when (val step = state.step) {
-                AuthStep.SignIn -> SignInScreen(state.loading, authViewModel::sendOtp)
+                AuthStep.SignIn -> SignInScreen(
+                    loading = state.loading,
+                    onSendOtp = authViewModel::sendOtp,
+                    onUseEmail = authViewModel::showEmailSignIn,
+                )
+                AuthStep.EmailSignIn -> EmailSignInScreen(
+                    loading = state.loading,
+                    onSendOtp = authViewModel::sendEmailOtp,
+                    onBack = authViewModel::backToSignIn,
+                )
                 is AuthStep.Verify -> VerifyScreen(
                     phone = step.phone,
                     loading = state.loading,
                     onVerify = authViewModel::verifyOtp,
                     onBack = authViewModel::backToSignIn,
                 )
+                is AuthStep.VerifyEmail -> VerifyEmailScreen(
+                    email = step.email,
+                    loading = state.loading,
+                    onVerify = authViewModel::verifyEmailOtp,
+                    onBack = authViewModel::backToEmailSignIn,
+                )
                 is AuthStep.ChooseAccount -> AccountScreen(
                     accounts = step.accounts,
                     loading = state.loading,
                     onSelect = authViewModel::selectAccount,
-                    onBack = authViewModel::backToSignIn,
+                    onBack = if (step.viaEmail) {
+                        authViewModel::backToEmailSignIn
+                    } else {
+                        authViewModel::backToSignIn
+                    },
                 )
                 AuthStep.SignedIn -> if (showAccountSwitcher) {
                     AccountSwitchScreen(
@@ -276,7 +297,11 @@ private fun android.content.Context.schoolDbUnlockIntent(): Intent? =
     )
 
 @Composable
-private fun SignInScreen(loading: Boolean, onSendOtp: (String, String) -> Unit) {
+private fun SignInScreen(
+    loading: Boolean,
+    onSendOtp: (String, String) -> Unit,
+    onUseEmail: () -> Unit,
+) {
     var school by rememberSaveable { mutableStateOf("") }
     var phone by rememberSaveable { mutableStateOf("") }
     AuthPage(
@@ -313,6 +338,62 @@ private fun SignInScreen(loading: Boolean, onSendOtp: (String, String) -> Unit) 
             lineHeight = 18.sp,
             textAlign = TextAlign.Center,
         )
+        Spacer(Modifier.height(16.dp))
+        OutlinedButton(
+            onClick = onUseEmail,
+            enabled = !loading,
+            modifier = Modifier.fillMaxWidth().height(52.dp),
+            shape = RoundedCornerShape(18.dp),
+        ) {
+            Icon(Icons.Default.Email, contentDescription = null, modifier = Modifier.size(18.dp))
+            Text("Use email OTP instead", Modifier.padding(start = 9.dp), fontWeight = FontWeight.SemiBold)
+        }
+    }
+}
+
+@Composable
+private fun EmailSignInScreen(
+    loading: Boolean,
+    onSendOtp: (String, String) -> Unit,
+    onBack: () -> Unit,
+) {
+    var school by rememberSaveable { mutableStateOf("") }
+    var email by rememberSaveable { mutableStateOf("") }
+    AuthPage(
+        title = "Sign in with email",
+        subtitle = "Use the student, parent or staff email registered with your school.",
+        onBack = onBack,
+    ) {
+        OutlinedTextField(
+            value = school,
+            onValueChange = { school = it.replace(" ", "-") },
+            label = { Text("School code") },
+            placeholder = { Text("e.g. kotak-vsp") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Spacer(Modifier.height(14.dp))
+        OutlinedTextField(
+            value = email,
+            onValueChange = { email = it.trim().take(160) },
+            label = { Text("Registered email") },
+            leadingIcon = { Icon(Icons.Default.Email, contentDescription = null) },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Spacer(Modifier.height(22.dp))
+        PrimaryButton("Send email code", loading, Icons.AutoMirrored.Filled.Send) {
+            onSendOtp(school, email)
+        }
+        Spacer(Modifier.height(14.dp))
+        Text(
+            "If this email is linked to more than one child, you can choose the profile after verification.",
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontSize = 13.sp,
+            lineHeight = 18.sp,
+            textAlign = TextAlign.Center,
+        )
     }
 }
 
@@ -343,6 +424,38 @@ private fun VerifyScreen(
 }
 
 @Composable
+private fun VerifyEmailScreen(
+    email: String,
+    loading: Boolean,
+    onVerify: (String) -> Unit,
+    onBack: () -> Unit,
+) {
+    var otp by rememberSaveable { mutableStateOf("") }
+    val maskedEmail = email.substringBefore("@").let { local ->
+        when {
+            local.length <= 2 -> "${local.take(1)}•"
+            else -> "${local.take(2)}${"•".repeat((local.length - 2).coerceAtMost(6))}"
+        }
+    } + "@" + email.substringAfter("@", "")
+    AuthPage(
+        title = "Check your email",
+        subtitle = "Enter the six-digit code sent to $maskedEmail.",
+        onBack = onBack,
+    ) {
+        OutlinedTextField(
+            value = otp,
+            onValueChange = { otp = it.filter(Char::isDigit).take(6) },
+            label = { Text("Six-digit code") },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Spacer(Modifier.height(22.dp))
+        PrimaryButton("Verify and continue", loading, Icons.Default.CheckCircle) { onVerify(otp) }
+    }
+}
+
+@Composable
 private fun AccountScreen(
     accounts: List<SchoolAccount>,
     loading: Boolean,
@@ -351,7 +464,7 @@ private fun AccountScreen(
 ) {
     AuthPage(
         title = "Choose account or role",
-        subtitle = "This mobile number has more than one SchoolDB profile. Choose who you want to continue as.",
+        subtitle = "These sign-in details match more than one SchoolDB profile. Choose who you want to continue as.",
         onBack = onBack,
     ) {
         accounts.forEach { account ->

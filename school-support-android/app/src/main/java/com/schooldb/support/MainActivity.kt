@@ -33,6 +33,7 @@ import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.Dashboard
+import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.outlined.ConfirmationNumber
 import androidx.compose.material.icons.outlined.BarChart
 import androidx.compose.material.icons.outlined.Person
@@ -80,6 +81,16 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+private fun maskEmail(email: String): String {
+    val local = email.substringBefore('@')
+    val domain = email.substringAfter('@', "")
+    val maskedLocal = when {
+        local.length <= 2 -> local.take(1) + "•"
+        else -> local.take(2) + "•".repeat((local.length - 2).coerceAtMost(6))
+    }
+    return "$maskedLocal@$domain"
+}
+
 @Composable
 private fun SupportApp(notificationTicketId: String?, notificationSchool: String?, onNotificationConsumed: () -> Unit) {
     val context = LocalContext.current
@@ -107,8 +118,10 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
     var startupLoadFinished by remember(authState.school, clerkSession?.id) { mutableStateOf(false) }
     val school = authState.school
     val phone = authState.phone
+    val email = authState.email
     val code = authState.code
     var page by remember { mutableStateOf(SupportPage.LOADING) }
+    var accountVerificationPage by remember { mutableStateOf(SupportPage.OTP) }
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf("") }
     var notice by remember { mutableStateOf("") }
@@ -193,7 +206,9 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
         page == SupportPage.DASHBOARD && dashboardTab != DashboardTab.OVERVIEW -> dashboardTab = DashboardTab.OVERVIEW
         else -> when (page) {
         SupportPage.OTP -> page = SupportPage.LOGIN
-        SupportPage.ACCOUNTS -> page = SupportPage.OTP
+        SupportPage.EMAIL_LOGIN -> page = SupportPage.LOGIN
+        SupportPage.EMAIL_OTP -> page = SupportPage.EMAIL_LOGIN
+        SupportPage.ACCOUNTS -> page = accountVerificationPage
         SupportPage.CREATE_TICKET, SupportPage.TICKET_DETAIL, SupportPage.ADMINS -> page = SupportPage.DASHBOARD
         SupportPage.ADMIN_FORM -> page = SupportPage.ADMINS
         else -> page = SupportPage.DASHBOARD
@@ -391,7 +406,14 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
     LaunchedEffect(notificationTicketId, page, school) {
         val ticketId = notificationTicketId ?: return@LaunchedEffect
         if (school.isBlank() || Clerk.activeSession == null ||
-            page in listOf(SupportPage.LOADING, SupportPage.LOGIN, SupportPage.OTP, SupportPage.ACCOUNTS)
+            page in listOf(
+                SupportPage.LOADING,
+                SupportPage.LOGIN,
+                SupportPage.EMAIL_LOGIN,
+                SupportPage.OTP,
+                SupportPage.EMAIL_OTP,
+                SupportPage.ACCOUNTS,
+            )
         ) return@LaunchedEffect
         if (notificationSchool != school) {
             onNotificationConsumed()
@@ -446,7 +468,11 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
             page = SupportPage.LOADING
             return@LaunchedEffect
         }
-        page = if (school.isNotBlank() && clerkUser != null) SupportPage.DASHBOARD else SupportPage.LOGIN
+        if (school.isNotBlank() && clerkUser != null) {
+            page = SupportPage.DASHBOARD
+        } else if (page == SupportPage.LOADING) {
+            page = SupportPage.LOGIN
+        }
     }
     LaunchedEffect(page, school, sessionReady) {
         if (page == SupportPage.DASHBOARD && school.isNotBlank() && !startupLoadFinished && sessionReady) {
@@ -569,6 +595,34 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
                     Spacer(Modifier.height(20.dp))
                     PrimaryAction("Send WhatsApp code", !busy && !signingOut && school.isNotBlank() && phone.length == 10,
                         onClick = { run { api.sendCode(school, phone); resendSeconds = 60; page = SupportPage.OTP } })
+                    Spacer(Modifier.height(14.dp))
+                    OutlinedButton(
+                        onClick = { page = SupportPage.EMAIL_LOGIN },
+                        enabled = !busy && !signingOut,
+                        modifier = Modifier.fillMaxWidth().height(52.dp),
+                        shape = RoundedCornerShape(18.dp),
+                    ) {
+                        Icon(Icons.Outlined.Email, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Text("Use email OTP instead", Modifier.padding(start = 9.dp), fontWeight = FontWeight.SemiBold)
+                    }
+                }
+                SupportPage.EMAIL_LOGIN -> AuthShell(
+                    "Sign in with email",
+                    "Use the staff email registered with your school.",
+                ) {
+                    Text("YOUR SCHOOL", style = MaterialTheme.typography.labelSmall, color = Indigo, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(12.dp))
+                    SupportField(school, authViewModel::setSchool, "School code", enabled = !busy && !signingOut)
+                    Spacer(Modifier.height(16.dp))
+                    SupportField(email, authViewModel::setEmail, "Registered email", keyboardType = KeyboardType.Email,
+                        enabled = !busy && !signingOut)
+                    Spacer(Modifier.height(20.dp))
+                    PrimaryAction("Send email code", !busy && !signingOut && school.isNotBlank() && email.contains('@'),
+                        onClick = { run { api.sendEmailCode(school, email); resendSeconds = 60; page = SupportPage.EMAIL_OTP } })
+                    Spacer(Modifier.height(8.dp))
+                    TextButton(onClick = { page = SupportPage.LOGIN }, modifier = Modifier.align(Alignment.CenterHorizontally)) {
+                        Text("Use WhatsApp instead")
+                    }
                 }
                 SupportPage.OTP -> AuthShell("Check WhatsApp", "Enter the six-digit code sent to +91 ••••••" + phone.takeLast(4) + ".") {
                     Text("VERIFY MOBILE", style = MaterialTheme.typography.labelSmall, color = Indigo, fontWeight = FontWeight.Bold)
@@ -586,6 +640,7 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
                                 item.getString("id") to (item.optString("name") + " · " + item.optString("role"))
                             }
                             authViewModel.setAccountSelection(challenge, accountOptions)
+                            accountVerificationPage = SupportPage.OTP
                             page = SupportPage.ACCOUNTS
                         } else finishLogin(response.getString("token"))
                     } })
@@ -596,6 +651,39 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
                         modifier = Modifier.align(Alignment.CenterHorizontally),
                     ) { Text(if (resendSeconds > 0) "Resend code in ${resendSeconds}s" else "Resend WhatsApp code") }
                     TextButton(onClick = { resendSeconds = 0; page = SupportPage.LOGIN }, modifier = Modifier.align(Alignment.CenterHorizontally)) { Text("Change number") }
+                }
+                SupportPage.EMAIL_OTP -> AuthShell(
+                    "Check your email",
+                    "Enter the six-digit code sent to " + maskEmail(email) + ".",
+                ) {
+                    Text("VERIFY EMAIL", style = MaterialTheme.typography.labelSmall, color = Indigo, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(12.dp))
+                    SupportField(code, authViewModel::setCode, "Six-digit code", keyboardType = KeyboardType.NumberPassword,
+                        enabled = !busy)
+                    Spacer(Modifier.height(20.dp))
+                    PrimaryAction("Verify and continue", !busy && code.length == 6, onClick = { run {
+                        val response = api.verifyEmailCode(school, email, code)
+                        if (response.optBoolean("requiresAccountSelection")) {
+                            val challenge = response.getString("challengeId")
+                            val options = response.getJSONArray("accounts")
+                            val accountOptions = (0 until options.length()).map { index ->
+                                val item = options.getJSONObject(index)
+                                item.getString("id") to (item.optString("name") + " · " + item.optString("role"))
+                            }
+                            authViewModel.setAccountSelection(challenge, accountOptions)
+                            accountVerificationPage = SupportPage.EMAIL_OTP
+                            page = SupportPage.ACCOUNTS
+                        } else finishLogin(response.getString("token"))
+                    } })
+                    Spacer(Modifier.height(8.dp))
+                    TextButton(
+                        onClick = { run { api.sendEmailCode(school, email); resendSeconds = 60 } },
+                        enabled = !busy && resendSeconds == 0,
+                        modifier = Modifier.align(Alignment.CenterHorizontally),
+                    ) { Text(if (resendSeconds > 0) "Resend code in ${resendSeconds}s" else "Resend email code") }
+                    TextButton(onClick = { resendSeconds = 0; page = SupportPage.EMAIL_LOGIN }, modifier = Modifier.align(Alignment.CenterHorizontally)) {
+                        Text("Change email")
+                    }
                 }
                 SupportPage.ACCOUNTS -> AuthShell("Choose an account", "Select the account you want to use for this school.") {
                     authState.accounts.forEach { (id, label) ->

@@ -3,7 +3,9 @@ package com.schooldb.support
 enum class SupportPage {
     LOADING,
     LOGIN,
+    EMAIL_LOGIN,
     OTP,
+    EMAIL_OTP,
     ACCOUNTS,
     DASHBOARD,
     CREATE_TICKET,

@@ -1,12 +1,15 @@
 import { z } from "zod";
 
 import {
+  emailHash,
   generateOtp,
   normalizeIndianMobile,
+  normalizeLoginEmail,
   otpHash,
   OTP_EXPIRY_MS,
   OTP_RESEND_MS,
   phoneHash,
+  resolveEmailOtpAccounts,
   resolveOtpAccounts,
 } from "@/features/auth/otp";
 import { playReviewOtpFor } from "@/features/auth/play-review-login";
@@ -15,10 +18,18 @@ import { consumeRateLimit, requestIp } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 
-const inputSchema = z.object({
-  phone: z.string(),
-  schoolSlug: z.string().min(1),
-});
+const inputSchema = z.union([
+  z.object({
+    channel: z.literal("WHATSAPP").optional(),
+    phone: z.string(),
+    schoolSlug: z.string().min(1),
+  }),
+  z.object({
+    channel: z.literal("EMAIL"),
+    email: z.string(),
+    schoolSlug: z.string().min(1),
+  }),
+]);
 const genericSuccess = {
   success: true,
   message: "If this number is registered, a WhatsApp code has been sent.",
@@ -32,7 +43,12 @@ const OTP_RATE_LIMIT_WINDOW_MS = Math.max(
   Number(process.env.OTP_RATE_LIMIT_WINDOW_MS) || 10 * 60_000,
 );
 const OTP_PHONE_LIMIT = Math.max(1, Number(process.env.OTP_PHONE_LIMIT) || 5);
+const OTP_EMAIL_LIMIT = Math.max(1, Number(process.env.OTP_EMAIL_LIMIT) || 5);
 const OTP_IP_LIMIT = Math.max(1, Number(process.env.OTP_IP_LIMIT) || 20);
+const EMAIL_TIMEOUT_MS = Math.max(
+  10_000,
+  Number(process.env.AUTH_EMAIL_TIMEOUT_MS) || 20_000,
+);
 function isConnectionTimeout(error: unknown) {
   if (!(error instanceof Error)) return false;
   if (error.name === "AbortError") return true;
@@ -97,14 +113,206 @@ async function discardOtpChallenge(input: {
   }
 }
 
+async function sendEmailOtp(input: {
+  request: Request;
+  school: { id: string; name: string };
+  schoolSlug: string;
+  emailValue: string;
+}) {
+  const email = normalizeLoginEmail(input.emailValue);
+  if (!email)
+    return Response.json(
+      { error: "Enter a valid email address." },
+      { status: 400 },
+    );
+
+  const apiKey = process.env.RESEND_API_KEY;
+  const from = process.env.AUTH_EMAIL_FROM;
+  if (!apiKey || !from) {
+    return Response.json(
+      { error: "Email login is not configured yet." },
+      { status: 503 },
+    );
+  }
+
+  const ip = requestIp(input.request);
+  const [emailRateLimit, ipRateLimit] = await Promise.all([
+    consumeRateLimit(
+      `otp-send-email:${input.school.id}`,
+      email,
+      OTP_EMAIL_LIMIT,
+      OTP_RATE_LIMIT_WINDOW_MS,
+    ),
+    ip
+      ? consumeRateLimit(
+          `otp-send-ip:${input.school.id}`,
+          ip,
+          OTP_IP_LIMIT,
+          OTP_RATE_LIMIT_WINDOW_MS,
+        )
+      : null,
+  ]);
+  const blockedRateLimit = !emailRateLimit.allowed
+    ? emailRateLimit
+    : ipRateLimit && !ipRateLimit.allowed
+      ? ipRateLimit
+      : null;
+  if (blockedRateLimit) {
+    return Response.json(
+      { error: "Too many code requests. Please wait and try again." },
+      {
+        status: 429,
+        headers: {
+          "Retry-After": String(blockedRateLimit.retryAfterSeconds),
+        },
+      },
+    );
+  }
+
+  const accounts = await resolveEmailOtpAccounts(input.school.id, email);
+  const genericEmailSuccess = {
+    success: true,
+    message: "If this email is registered, a verification code has been sent.",
+  };
+  if (!accounts.length) return Response.json(genericEmailSuccess);
+
+  const hashedEmail = emailHash(input.school.id, email);
+  const existing = await prisma.otpChallenge.findUnique({
+    where: {
+      schoolId_phoneHash: {
+        schoolId: input.school.id,
+        phoneHash: hashedEmail,
+      },
+    },
+    select: { lastSentAt: true },
+  });
+  if (
+    existing &&
+    Date.now() - existing.lastSentAt.getTime() < OTP_RESEND_MS
+  ) {
+    return Response.json(
+      { error: "Please wait before requesting another code." },
+      { status: 429 },
+    );
+  }
+
+  const code = generateOtp();
+  const codeHash = otpHash(input.school.id, `email:${email}`, code);
+  await prisma.otpChallenge.upsert({
+    where: {
+      schoolId_phoneHash: {
+        schoolId: input.school.id,
+        phoneHash: hashedEmail,
+      },
+    },
+    update: {
+      userId: accounts[0].id,
+      candidateUserIds: accounts.map((account) => account.id),
+      codeHash,
+      expiresAt: new Date(Date.now() + OTP_EXPIRY_MS),
+      verifiedAt: null,
+      consumedAt: null,
+      attempts: 0,
+      lastSentAt: new Date(),
+    },
+    create: {
+      schoolId: input.school.id,
+      userId: accounts[0].id,
+      candidateUserIds: accounts.map((account) => account.id),
+      phoneHash: hashedEmail,
+      codeHash,
+      expiresAt: new Date(Date.now() + OTP_EXPIRY_MS),
+    },
+  });
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), EMAIL_TIMEOUT_MS);
+  let response: Response;
+  try {
+    response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      signal: controller.signal,
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from,
+        to: [email],
+        subject: `${input.school.name} SchoolDB verification code`,
+        text: [
+          `Your SchoolDB verification code is ${code}.`,
+          "",
+          "This code expires in 5 minutes. Do not share it with anyone.",
+          `School: ${input.school.name} (${input.schoolSlug})`,
+        ].join("\n"),
+      }),
+    });
+  } catch (error) {
+    await discardOtpChallenge({
+      schoolId: input.school.id,
+      phoneHash: hashedEmail,
+      codeHash,
+    });
+    console.error("EMAIL OTP REQUEST FAILED", {
+      requestId: input.request.headers.get("x-vercel-id"),
+      emailDomain: email.split("@")[1],
+      ...transportErrorDetails(error),
+    });
+    return Response.json(
+      { error: "Email could not send the code. Please try again." },
+      { status: isConnectionTimeout(error) ? 504 : 502 },
+    );
+  } finally {
+    clearTimeout(timeout);
+  }
+
+  if (!response.ok) {
+    const payload = await response.text().catch(() => "");
+    console.error("EMAIL OTP DELIVERY FAILED", {
+      requestId: input.request.headers.get("x-vercel-id"),
+      emailDomain: email.split("@")[1],
+      status: response.status,
+      responseLength: payload.length,
+    });
+    await discardOtpChallenge({
+      schoolId: input.school.id,
+      phoneHash: hashedEmail,
+      codeHash,
+    });
+    return Response.json(
+      { error: "Email could not send the code. Please try again." },
+      { status: 502 },
+    );
+  }
+
+  return Response.json(genericEmailSuccess);
+}
+
 export async function POST(request: Request) {
   try {
     const parsed = inputSchema.safeParse(await request.json());
     if (!parsed.success)
       return Response.json(
-        { error: "Phone and school are required." },
+        { error: "Your school and sign-in details are required." },
         { status: 400 },
       );
+
+    const school = await prisma.school.findUnique({
+      where: { slug: parsed.data.schoolSlug },
+      select: { id: true, name: true },
+    });
+    if (!school)
+      return Response.json({ error: "School not found." }, { status: 404 });
+
+    if ("email" in parsed.data) {
+      return sendEmailOtp({
+        request,
+        school,
+        schoolSlug: parsed.data.schoolSlug,
+        emailValue: parsed.data.email,
+      });
+    }
 
     const phone = normalizeIndianMobile(parsed.data.phone);
     if (!phone)
@@ -112,13 +320,6 @@ export async function POST(request: Request) {
         { error: "Enter a valid 10-digit Indian mobile number." },
         { status: 400 },
       );
-
-    const school = await prisma.school.findUnique({
-      where: { slug: parsed.data.schoolSlug },
-      select: { id: true },
-    });
-    if (!school)
-      return Response.json({ error: "School not found." }, { status: 404 });
 
     const reviewOtp = playReviewOtpFor(parsed.data.schoolSlug, phone);
     const phoneNumberId = process.env.META_PHONE_NUMBER_ID;

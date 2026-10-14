@@ -54,6 +54,23 @@ class AuthViewModel(
         }
     }
 
+    fun showEmailSignIn() {
+        if (_uiState.value.loading) return
+        _uiState.value = AuthUiState(step = AuthStep.EmailSignIn)
+    }
+
+    fun sendEmailOtp(schoolSlug: String, email: String) {
+        val cleanSchool = schoolSlug.trim().lowercase()
+        val cleanEmail = email.trim().lowercase()
+        if (cleanSchool.isBlank()) return showMessage("Enter your school code.")
+        if (!EMAIL_PATTERN.matches(cleanEmail)) return showMessage("Enter a valid email address.")
+
+        runRequest {
+            repository.sendEmailOtp(cleanSchool, cleanEmail)
+            _uiState.value = AuthUiState(step = AuthStep.VerifyEmail(cleanSchool, cleanEmail))
+        }
+    }
+
     fun verifyOtp(otp: String) {
         val current = _uiState.value.step as? AuthStep.Verify ?: return
         val cleanOtp = otp.filter(Char::isDigit)
@@ -63,7 +80,35 @@ class AuthViewModel(
             when (val result = repository.verifyOtp(current.schoolSlug, current.phone, cleanOtp)) {
                 is VerifyResult.SignedIn -> finishSignIn(result.token)
                 is VerifyResult.ChooseAccount -> _uiState.value = AuthUiState(
-                    AuthStep.ChooseAccount(current.schoolSlug, result.challengeId, result.accounts),
+                    AuthStep.ChooseAccount(
+                        current.schoolSlug,
+                        result.challengeId,
+                        result.accounts,
+                    ),
+                )
+            }
+        }
+    }
+
+    fun verifyEmailOtp(otp: String) {
+        val current = _uiState.value.step as? AuthStep.VerifyEmail ?: return
+        val cleanOtp = otp.filter(Char::isDigit)
+        if (cleanOtp.length != 6) return showMessage("Enter the 6-digit code.")
+
+        runRequest {
+            when (val result = repository.verifyEmailOtp(
+                current.schoolSlug,
+                current.email,
+                cleanOtp,
+            )) {
+                is VerifyResult.SignedIn -> finishSignIn(result.token)
+                is VerifyResult.ChooseAccount -> _uiState.value = AuthUiState(
+                    AuthStep.ChooseAccount(
+                        current.schoolSlug,
+                        result.challengeId,
+                        result.accounts,
+                        viaEmail = true,
+                    ),
                 )
             }
         }
@@ -93,6 +138,10 @@ class AuthViewModel(
 
     fun backToSignIn() {
         _uiState.value = AuthUiState()
+    }
+
+    fun backToEmailSignIn() {
+        _uiState.value = AuthUiState(step = AuthStep.EmailSignIn)
     }
 
     fun clearMessage() {
@@ -145,5 +194,9 @@ class AuthViewModel(
     private suspend fun finishSignIn(ticket: String) {
         sessionManager.activate(ticket)
         _uiState.value = AuthUiState(AuthStep.SignedIn)
+    }
+
+    private companion object {
+        val EMAIL_PATTERN = Regex("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$")
     }
 }
