@@ -2,12 +2,23 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { mapWithConcurrency } from "../src/features/notifications/batch.ts";
 import { notificationDedupeKey } from "../src/features/notifications/dedupe.ts";
+import { notificationAudienceIncludesAdmins } from "../src/features/notifications/audience.ts";
 
 test("notification dedupe keys are stable and source-specific", () => {
   assert.equal(notificationDedupeKey.homeworkPublished("hw-1"), "HOMEWORK:hw-1:PUBLISHED");
+  assert.equal(notificationDedupeKey.admin("HOMEWORK:hw-1:PUBLISHED"), "HOMEWORK:hw-1:PUBLISHED:ADMIN");
   assert.equal(notificationDedupeKey.examResultsPublished("exam-1", "SECTION", "sec-a"), "EXAM:exam-1:RESULTS:SECTION:sec-a");
+  assert.equal(notificationDedupeKey.birthdayAdminSummary("school-1", "2026-10-14"), "BIRTHDAY:school-1:2026-10-14:ADMIN_SUMMARY");
+  assert.equal(notificationDedupeKey.supportTicket("ticket-1", "MESSAGE:message-1"), "SUPPORT_TICKET:ticket-1:MESSAGE:message-1");
   assert.notEqual(notificationDedupeKey.attendanceAbsent("s1", "u1"), notificationDedupeKey.attendanceAbsent("s2", "u1"));
   assert.equal(notificationDedupeKey.feeReminder("u1", "2026-09-27"), "FEE_REMINDER:u1:2026-09-27");
+});
+
+test("class and section announcements include school administrators", () => {
+  assert.equal(notificationAudienceIncludesAdmins("CLASS", null), true);
+  assert.equal(notificationAudienceIncludesAdmins("SECTION", null), true);
+  assert.equal(notificationAudienceIncludesAdmins("SCHOOL", null), false);
+  assert.equal(notificationAudienceIncludesAdmins("CLASS", "HOMEWORK"), false);
 });
 
 test("bounded notification batching preserves order and concurrency", async () => {

@@ -51,6 +51,23 @@ async function createEventNotification(input: {
   }
 }
 
+async function createAdminEventNotification(input: {
+  schoolId: string;
+  title: string;
+  body: string;
+  category: string;
+  sourceType: string;
+  sourceId: string;
+  dedupeKey: string;
+}) {
+  return createEventNotification({
+    ...input,
+    targetType: "ADMIN",
+    targetId: input.sourceId,
+    targetLabel: "School administrators",
+  });
+}
+
 /**
  * Create the in-app alert shown to the affected staff member when they are
  * marked absent. The TEACHER target is resolved to the teacher's linked app
@@ -184,7 +201,7 @@ export async function notifyHomeworkPublished(homeworkId: string, schoolId: stri
     homework.dueDate ? `Due ${formatDate(homework.dueDate)}` : null,
   ].filter(Boolean).join(" · ") || "Open SchoolDB to view the homework.";
 
-  return createEventNotification({
+  const audienceNotification = await createEventNotification({
     schoolId,
     title,
     body,
@@ -196,6 +213,18 @@ export async function notifyHomeworkPublished(homeworkId: string, schoolId: stri
     sourceId: homework.id,
     dedupeKey: notificationDedupeKey.homeworkPublished(homework.id),
   });
+  await createAdminEventNotification({
+    schoolId,
+    title: `Homework published: ${homework.title}`,
+    body: `${targetLabel}${homework.subject?.name ? ` · ${homework.subject.name}` : ""}${homework.dueDate ? ` · Due ${formatDate(homework.dueDate)}` : ""}.`,
+    category: "HOMEWORK",
+    sourceType: "HOMEWORK",
+    sourceId: homework.id,
+    dedupeKey: notificationDedupeKey.admin(
+      notificationDedupeKey.homeworkPublished(homework.id),
+    ),
+  });
+  return audienceNotification;
 }
 
 export async function notifyExamResultsPublished(
@@ -280,6 +309,15 @@ export async function notifyExamResultsPublished(
       skipDuplicates: true,
     });
   }
+  await createAdminEventNotification({
+    schoolId,
+    title: `${exam.name} results published`,
+    body: `Results are now available for ${scopes.length} ${scopes.length === 1 ? "class or section" : "classes or sections"}.`,
+    category: "EXAM",
+    sourceType: "EXAM",
+    sourceId: examId,
+    dedupeKey: notificationDedupeKey.admin(`EXAM:${examId}:RESULTS`),
+  });
   return notifications;
 }
 
@@ -321,6 +359,28 @@ export async function notifyDailyBirthdays(now = new Date()) {
     });
     created += 1;
   }
+  const birthdaysBySchool = new Map<string, typeof birthdays>();
+  birthdays.forEach((student) => {
+    const schoolBirthdays = birthdaysBySchool.get(student.schoolId) ?? [];
+    schoolBirthdays.push(student);
+    birthdaysBySchool.set(student.schoolId, schoolBirthdays);
+  });
+  for (const [schoolId, schoolBirthdays] of birthdaysBySchool) {
+    const names = schoolBirthdays.map((student) =>
+      student.fullName?.trim() || student.admissionNo,
+    );
+    const visibleNames = names.slice(0, 4).join(", ");
+    const remaining = names.length - 4;
+    await createAdminEventNotification({
+      schoolId,
+      title: names.length === 1 ? "Student birthday today" : `${names.length} student birthdays today`,
+      body: remaining > 0 ? `${visibleNames} and ${remaining} more.` : `${visibleNames}.`,
+      category: "BIRTHDAY",
+      sourceType: "BIRTHDAY_SUMMARY",
+      sourceId: dateKey,
+      dedupeKey: notificationDedupeKey.birthdayAdminSummary(schoolId, dateKey),
+    });
+  }
   return { matched: birthdays.length, created };
 }
 
@@ -345,7 +405,7 @@ export async function notifyFeePayment(paymentId: string, schoolId: string) {
   const name = student.fullName?.trim() || student.admissionNo;
   const amount = Number(payment.amount).toLocaleString("en-IN");
 
-  return createEventNotification({
+  const studentNotification = await createEventNotification({
     schoolId,
     title: "Fee payment received",
     body: `₹${amount} received successfully. Receipt: ${payment.receiptNo}.`,
@@ -357,6 +417,18 @@ export async function notifyFeePayment(paymentId: string, schoolId: string) {
     sourceId: payment.id,
     dedupeKey: notificationDedupeKey.feePayment(payment.id),
   });
+  await createAdminEventNotification({
+    schoolId,
+    title: "Fee payment received",
+    body: `${name} · ₹${amount} · Receipt ${payment.receiptNo}.`,
+    category: "FEES",
+    sourceType: "FEE_PAYMENT",
+    sourceId: payment.id,
+    dedupeKey: notificationDedupeKey.admin(
+      notificationDedupeKey.feePayment(payment.id),
+    ),
+  });
+  return studentNotification;
 }
 
 export async function notifyAttendanceLocked(
@@ -473,7 +545,7 @@ export async function notifyLeaveRequestDecided(requestId: string, schoolId: str
 
   const approved = request.status === "APPROVED";
   const note = request.decisionNote?.trim();
-  return createEventNotification({
+  const studentNotification = await createEventNotification({
     schoolId,
     title: approved ? "Leave request approved" : "Leave request rejected",
     body: `${leaveDate(request.startDate)} to ${leaveDate(request.endDate)}${note ? ` · ${note}` : ""}`,
@@ -485,6 +557,18 @@ export async function notifyLeaveRequestDecided(requestId: string, schoolId: str
     sourceId: requestId,
     dedupeKey: notificationDedupeKey.leaveDecided(requestId, request.status),
   });
+  await createAdminEventNotification({
+    schoolId,
+    title: approved ? "Leave request approved" : "Leave request rejected",
+    body: `${request.student.fullName?.trim() || request.student.admissionNo} · ${leaveDate(request.startDate)} to ${leaveDate(request.endDate)}${note ? ` · ${note}` : ""}`,
+    category: "LEAVE_REQUEST",
+    sourceType: "LEAVE_REQUEST",
+    sourceId: requestId,
+    dedupeKey: notificationDedupeKey.admin(
+      notificationDedupeKey.leaveDecided(requestId, request.status),
+    ),
+  });
+  return studentNotification;
 }
 
 export async function notifyStudentProfileImageSubmitted(

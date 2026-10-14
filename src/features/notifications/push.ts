@@ -10,6 +10,7 @@ import {
   standardWebPushConfigured,
 } from "@/lib/web-push";
 import { mapWithConcurrency } from "./batch";
+import { notificationAudienceIncludesAdmins } from "./audience";
 import { notificationEnabled } from "./preferences";
 
 type PushAnnouncement = {
@@ -21,6 +22,7 @@ type PushAnnouncement = {
   priority: string;
   targetType: string;
   targetId: string | null;
+  sourceType?: string | null;
 };
 
 export type PushDeliveryReportInput = {
@@ -154,9 +156,24 @@ async function audienceUserIds(announcement: PushAnnouncement) {
         select: { id: true },
       })
     : [];
+  const includesAdmins = notificationAudienceIncludesAdmins(
+    announcement.targetType,
+    announcement.sourceType,
+  );
+  const adminMemberships = includesAdmins
+    ? await prisma.membership.findMany({
+        where: {
+          schoolId: announcement.schoolId,
+          isActive: true,
+          role: { in: ["SUPER_ADMIN", "SCHOOL_ADMIN"] },
+        },
+        select: { userId: true },
+      })
+    : [];
   return Array.from(new Set([
     ...students.flatMap((student) => student.parentLinks.map((link) => link.parentUserId)),
     ...directUsers.map((user) => user.id),
+    ...adminMemberships.map((membership) => membership.userId),
   ]));
 }
 

@@ -1,5 +1,7 @@
 import { firebaseMessaging } from "@/lib/firebase-admin";
 import { prisma } from "@/lib/prisma";
+import { notificationDedupeKey } from "@/features/notifications/dedupe";
+import { deliverAnnouncementPushDurably } from "@/features/notifications/push-queue";
 
 const SUPPORT_APP = "SCHOOL_SUPPORT";
 
@@ -17,17 +19,46 @@ export async function sendSupportPush(input: {
   body: string;
   ticketId: string;
   ticketNo: string;
+  eventKey: string;
 }) {
-  const userIds = [...new Set(input.userIds)].filter(
-    (id) => id && id !== input.excludeUserId,
-  );
-  if (!userIds.length) return;
-
   const school = await prisma.school.findUnique({
     where: { id: input.schoolId },
     select: { slug: true },
   });
   if (!school) return;
+
+  const dedupeKey = notificationDedupeKey.supportTicket(
+    input.ticketId,
+    input.eventKey,
+  );
+  try {
+    const announcement = await prisma.announcement.create({
+      data: {
+        schoolId: input.schoolId,
+        title: input.title,
+        body: input.body,
+        category: "SUPPORT",
+        priority: input.title.toLowerCase().includes("urgent") ? "URGENT" : "NORMAL",
+        targetType: "ADMIN",
+        targetId: input.ticketId,
+        targetLabel: "School administrators",
+        sourceType: "SUPPORT_TICKET",
+        sourceId: input.ticketId,
+        dedupeKey,
+        createdBy: "SYSTEM",
+        publishedAt: new Date(),
+      },
+    });
+    await deliverAnnouncementPushDurably(announcement);
+  } catch (error) {
+    const duplicate = error && typeof error === "object" && "code" in error && error.code === "P2002";
+    if (!duplicate) throw error;
+  }
+
+  const userIds = [...new Set(input.userIds)].filter(
+    (id) => id && id !== input.excludeUserId,
+  );
+  if (!userIds.length) return;
 
   const messaging = firebaseMessaging();
   if (!messaging) {

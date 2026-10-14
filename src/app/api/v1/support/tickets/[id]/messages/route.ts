@@ -57,6 +57,7 @@ export async function POST(request: Request, context: Context) {
       body: input.data.body.length > 120 ? input.data.body.slice(0, 117) + "..." : input.data.body,
       ticketId: ticket.id,
       ticketNo: ticket.ticketNo,
+      eventKey: `MESSAGE:${message.id}`,
     }).catch((error) => console.error("Support push failed", error));
 
     if (!input.data.isInternal && ticket.source === "PARENT_QR" && ticket.parentPhone) {

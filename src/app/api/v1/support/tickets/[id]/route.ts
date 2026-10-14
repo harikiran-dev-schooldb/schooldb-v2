@@ -117,6 +117,7 @@ export async function PATCH(request: Request, context: Context) {
         body: notificationDetail,
         ticketId: current.id,
         ticketNo: current.ticketNo,
+        eventKey: `UPDATE:${ticket.updatedAt.toISOString()}`,
       }).catch((error) => console.error("Support push failed", error));
     }
     const parentStatus = requestedStatus && requestedStatus !== current.status

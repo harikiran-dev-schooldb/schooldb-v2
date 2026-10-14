@@ -1,8 +1,11 @@
 export const notificationDedupeKey = {
+  admin: (sourceKey: string) => `${sourceKey}:ADMIN`,
   homeworkPublished: (homeworkId: string) => `HOMEWORK:${homeworkId}:PUBLISHED`,
   examResultsPublished: (examId: string, targetType: "CLASS" | "SECTION", targetId: string) =>
     `EXAM:${examId}:RESULTS:${targetType}:${targetId}`,
   birthday: (studentId: string, dateKey: string) => `BIRTHDAY:${studentId}:${dateKey}`,
+  birthdayAdminSummary: (schoolId: string, dateKey: string) =>
+    `BIRTHDAY:${schoolId}:${dateKey}:ADMIN_SUMMARY`,
   feePayment: (paymentId: string) => `FEE_PAYMENT:${paymentId}`,
   feeReminder: (studentId: string, dateKey: string) => `FEE_REMINDER:${studentId}:${dateKey}`,
   attendanceSummary: (sessionId: string) => `ATTENDANCE_SUMMARY:${sessionId}`,
@@ -13,4 +16,6 @@ export const notificationDedupeKey = {
   leaveDecided: (requestId: string, status: string) => `LEAVE_REQUEST:${requestId}:${status}`,
   profileImageSubmitted: (studentId: string, storageKey: string) =>
     `PROFILE_IMAGE:${studentId}:${storageKey}:SUBMITTED`,
+  supportTicket: (ticketId: string, eventKey: string) =>
+    `SUPPORT_TICKET:${ticketId}:${eventKey}`,
 } as const;
