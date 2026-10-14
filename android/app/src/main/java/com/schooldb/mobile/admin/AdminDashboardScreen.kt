@@ -13,6 +13,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
@@ -69,6 +70,7 @@ import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -629,93 +631,61 @@ private fun PremiumAdminNavigation(
         AdminNavDestination("Queries", "Queries", Lucide.MessageSquareText),
         AdminNavDestination("More", "More", Lucide.LayoutGrid),
     )
-    Box(Modifier.fillMaxWidth()) {
-        Surface(
-            modifier = Modifier
-                .navigationBarsPadding()
-                .padding(horizontal = 14.dp, vertical = 7.dp)
-                .shadow(
-                    elevation = 18.dp,
-                    shape = RoundedCornerShape(31.dp),
-                    ambientColor = Color.Black.copy(alpha = 0.30f),
-                    spotColor = Color.Black.copy(alpha = 0.38f),
-                ),
-            shape = RoundedCornerShape(31.dp),
-            color = Color.Transparent,
-            border = BorderStroke(1.dp, dockBorder),
-        ) {
-            Box(
-                modifier = Modifier.fillMaxWidth()
-                    .clip(RoundedCornerShape(31.dp))
-                    .background(
-                        Brush.linearGradient(
-                            dockColors,
-                        ),
-                    ),
-            ) {
-                Box(
-                    Modifier.fillMaxWidth().height(24.dp).align(Alignment.TopCenter)
-                        .background(
-                            Brush.verticalGradient(
-                                listOf(
-                                    Color.White.copy(alpha = 0.13f),
-                                    Color.Transparent,
-                                ),
-                            ),
-                        ),
-                )
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 5.dp, vertical = 5.dp),
-                ) {
-                    items.forEach { item ->
-                        val selected = selectedTab == item.key
-                        val badge = when (item.key) {
-                            "Home" -> homeBadge
-                            "Queries" -> queriesBadge
-                            else -> 0
-                        }
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .clip(RoundedCornerShape(25.dp))
-                                .then(if (selected) Modifier
-                                    .shadow(
-                                        elevation = 8.dp,
-                                        shape = RoundedCornerShape(25.dp),
-                                        ambientColor = Color(0xFF3154D9).copy(alpha = 0.18f),
-                                        spotColor = Color(0xFF3154D9).copy(alpha = 0.22f),
-                                    )
-                                    .background(selectedColor) else Modifier)
-                                .clickable {
-                                    if (!selected) {
-                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                        onSelect(item.key)
-                                    }
+    Surface(
+        modifier = Modifier.navigationBarsPadding().padding(horizontal = 14.dp, vertical = 7.dp)
+            .shadow(18.dp, RoundedCornerShape(31.dp), ambientColor = Color.Black.copy(alpha = 0.30f),
+                spotColor = Color.Black.copy(alpha = 0.38f)),
+        shape = RoundedCornerShape(31.dp),
+        color = Color.Transparent,
+        border = BorderStroke(1.dp, dockBorder),
+    ) {
+        Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(31.dp))
+            .background(Brush.linearGradient(dockColors))) {
+            Box(Modifier.fillMaxWidth().height(23.dp).align(Alignment.TopCenter)
+                .background(Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.13f), Color.Transparent))))
+            Row(Modifier.fillMaxWidth().padding(5.dp)) {
+                items.forEach { item ->
+                    val selected = selectedTab == item.key
+                    val badge = when (item.key) {
+                        "Home" -> homeBadge
+                        "Queries" -> queriesBadge
+                        else -> 0
+                    }
+                    Column(
+                        Modifier.weight(1f).clip(RoundedCornerShape(25.dp))
+                            .then(if (selected) Modifier.shadow(8.dp, RoundedCornerShape(25.dp),
+                                ambientColor = Color(0xFF3154D9).copy(alpha = 0.18f),
+                                spotColor = Color(0xFF3154D9).copy(alpha = 0.22f))
+                                .background(selectedColor) else Modifier)
+                            .selectable(selected = selected, role = Role.Tab) {
+                                if (!selected) {
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    onSelect(item.key)
                                 }
-                                .padding(vertical = 11.dp),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            if (selected) {
-                                Box(
-                                    Modifier.fillMaxWidth().height(18.dp).align(Alignment.TopCenter)
-                                        .background(
-                                            Brush.verticalGradient(
-                                                listOf(Color.White.copy(alpha = 0.14f), Color.Transparent),
-                                            ),
-                                        ),
-                                )
+                            }.padding(vertical = 10.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        BadgedBox(badge = {
+                            if (badge > 0) Badge {
+                                Text(if (badge > 99) "99+" else badge.toString(), fontSize = 8.sp)
                             }
-                            BadgedBox(badge = {
-                                if (badge > 0) Badge { Text(if (badge > 99) "99+" else badge.toString()) }
-                            }) {
-                                Icon(
-                                    imageVector = item.icon,
-                                    contentDescription = item.label,
-                                    tint = if (selected) selectedIconColor else inactiveColor,
-                                    modifier = Modifier.size(25.dp),
-                                )
-                            }
+                        }) {
+                            Icon(item.icon, contentDescription = item.label,
+                                tint = if (selected) selectedIconColor else inactiveColor,
+                                modifier = Modifier.size(22.dp))
                         }
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            text = item.label,
+                            modifier = Modifier.fillMaxWidth(),
+                            color = if (selected) selectedIconColor else inactiveColor,
+                            fontSize = 10.sp,
+                            lineHeight = 12.sp,
+                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                            textAlign = TextAlign.Center,
+                            maxLines = 1,
+                            overflow = TextOverflow.Clip,
+                        )
                     }
                 }
             }
