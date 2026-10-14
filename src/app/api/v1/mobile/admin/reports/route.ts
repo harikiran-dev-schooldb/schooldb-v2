@@ -1,12 +1,12 @@
+import { getCachedSchoolReport } from "@/features/reports/analytics-cache";
 import { apiHandler } from "@/lib/api";
 import { requireRole } from "@/lib/auth";
 import { ApiResponse } from "@/lib/response";
-import { getSchoolReport } from "@/features/reports/report.service";
 
 export async function GET() {
   return apiHandler(async () => {
     const membership = await requireRole(["SUPER_ADMIN", "SCHOOL_ADMIN"]);
-    const report = await getSchoolReport(membership.schoolId, {});
+    const report = await getCachedSchoolReport(membership.schoolId, {});
 
     if (!report) return ApiResponse.success({ available: false });
 
