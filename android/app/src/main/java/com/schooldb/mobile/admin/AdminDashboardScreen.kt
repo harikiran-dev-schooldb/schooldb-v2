@@ -485,7 +485,7 @@ fun AdminDashboardScreen(
                         shape = CircleShape, color = Color.Transparent) {
                         StudentAvatar(
                             name = school.userName,
-                            imageUrl = school.imageUrl,
+                            imageUrl = null,
                             size = 42.dp,
                             backgroundColor = Color(0xFF4F46E5),
                             contentColor = Color.White,
