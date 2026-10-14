@@ -44,7 +44,7 @@ export function AccountSwitcher({
   schoolLogo: string | null;
 }) {
   const router = useRouter();
-  const { client, setActive, signOut } = useClerk();
+  const { client, session, setActive } = useClerk();
   const { fetchStatus, signIn } = useSignIn();
   const [accounts, setAccounts] = useState<AccountChoice[]>([]);
   const [loading, setLoading] = useState(true);
@@ -126,7 +126,10 @@ export function AccountSwitcher({
       // End the current session first, then consume the short-lived ticket for
       // the selected account. The school root resolves the new role and sends
       // the user to the correct portal.
-      await signOut();
+      // End only the active session. Clerk's top-level signOut() performs its
+      // configured post-sign-out navigation, which briefly exposes the public
+      // schooldb.co.in page before the replacement ticket is redeemed.
+      await session?.end();
 
       const ticketResult = await signIn.ticket({ ticket: result.data.token });
       if (ticketResult.error) throw ticketResult.error;
