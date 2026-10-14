@@ -123,6 +123,7 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
     var page by remember { mutableStateOf(SupportPage.LOADING) }
     var accountVerificationPage by remember { mutableStateOf(SupportPage.OTP) }
     var busy by remember { mutableStateOf(false) }
+    var busyAction by remember { mutableStateOf<String?>(null) }
     var error by remember { mutableStateOf("") }
     var notice by remember { mutableStateOf("") }
     var dashboardTab by remember { mutableStateOf(DashboardTab.OVERVIEW) }
@@ -226,9 +227,10 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
         error = "Your session has expired. Please sign in again."
     }
 
-    fun run(action: suspend () -> Unit) {
+    fun run(actionId: String? = null, action: suspend () -> Unit) {
         if (busy) return
         busy = true
+        busyAction = actionId
         error = ""
         notice = ""
         scope.launch {
@@ -242,6 +244,7 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
                 error = e.message ?: "Request failed."
             } finally {
                 busy = false
+                busyAction = null
             }
         }
     }
@@ -570,7 +573,7 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
                 Text(error, Modifier.padding(14.dp), color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodyMedium)
             }
-            if (busy) LinearProgressIndicator(
+            if (busy && busyAction == null) LinearProgressIndicator(
                 Modifier.fillMaxWidth().height(2.dp),
                 color = Indigo,
                 trackColor = Indigo.copy(alpha = 0.08f),
@@ -593,8 +596,16 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
                     SupportField(phone, authViewModel::setPhone, "Mobile number", keyboardType = KeyboardType.Phone,
                         enabled = !busy && !signingOut)
                     Spacer(Modifier.height(20.dp))
-                    PrimaryAction("Send WhatsApp code", !busy && !signingOut && school.isNotBlank() && phone.length == 10,
-                        onClick = { run { api.sendCode(school, phone); resendSeconds = 60; page = SupportPage.OTP } })
+                    PrimaryAction(
+                        "Send WhatsApp code",
+                        !busy && !signingOut && school.isNotBlank() && phone.length == 10,
+                        loading = busyAction == "send-whatsapp",
+                        onClick = { run("send-whatsapp") {
+                            api.sendCode(school, phone)
+                            resendSeconds = 60
+                            page = SupportPage.OTP
+                        } },
+                    )
                     Spacer(Modifier.height(14.dp))
                     OutlinedButton(
                         onClick = { page = SupportPage.EMAIL_LOGIN },
@@ -617,8 +628,16 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
                     SupportField(email, authViewModel::setEmail, "Registered email", keyboardType = KeyboardType.Email,
                         enabled = !busy && !signingOut)
                     Spacer(Modifier.height(20.dp))
-                    PrimaryAction("Send email code", !busy && !signingOut && school.isNotBlank() && email.contains('@'),
-                        onClick = { run { api.sendEmailCode(school, email); resendSeconds = 60; page = SupportPage.EMAIL_OTP } })
+                    PrimaryAction(
+                        "Send email code",
+                        !busy && !signingOut && school.isNotBlank() && email.contains('@'),
+                        loading = busyAction == "send-email",
+                        onClick = { run("send-email") {
+                            api.sendEmailCode(school, email)
+                            resendSeconds = 60
+                            page = SupportPage.EMAIL_OTP
+                        } },
+                    )
                     Spacer(Modifier.height(8.dp))
                     TextButton(onClick = { page = SupportPage.LOGIN }, modifier = Modifier.align(Alignment.CenterHorizontally)) {
                         Text("Use WhatsApp instead")
@@ -630,7 +649,11 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
                     SupportField(code, authViewModel::setCode, "Six-digit code", keyboardType = KeyboardType.NumberPassword,
                         enabled = !busy)
                     Spacer(Modifier.height(20.dp))
-                    PrimaryAction("Verify and continue", !busy && code.length == 6, onClick = { run {
+                    PrimaryAction(
+                        "Verify and continue",
+                        !busy && code.length == 6,
+                        loading = busyAction == "verify-whatsapp",
+                        onClick = { run("verify-whatsapp") {
                         val response = api.verifyCode(school, phone, code)
                         if (response.optBoolean("requiresAccountSelection")) {
                             val challenge = response.getString("challengeId")
@@ -643,7 +666,8 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
                             accountVerificationPage = SupportPage.OTP
                             page = SupportPage.ACCOUNTS
                         } else finishLogin(response.getString("token"))
-                    } })
+                        } },
+                    )
                     Spacer(Modifier.height(8.dp))
                     TextButton(
                         onClick = { run { api.sendCode(school, phone); resendSeconds = 60 } },
@@ -661,7 +685,11 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
                     SupportField(code, authViewModel::setCode, "Six-digit code", keyboardType = KeyboardType.NumberPassword,
                         enabled = !busy)
                     Spacer(Modifier.height(20.dp))
-                    PrimaryAction("Verify and continue", !busy && code.length == 6, onClick = { run {
+                    PrimaryAction(
+                        "Verify and continue",
+                        !busy && code.length == 6,
+                        loading = busyAction == "verify-email",
+                        onClick = { run("verify-email") {
                         val response = api.verifyEmailCode(school, email, code)
                         if (response.optBoolean("requiresAccountSelection")) {
                             val challenge = response.getString("challengeId")
@@ -674,7 +702,8 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
                             accountVerificationPage = SupportPage.EMAIL_OTP
                             page = SupportPage.ACCOUNTS
                         } else finishLogin(response.getString("token"))
-                    } })
+                        } },
+                    )
                     Spacer(Modifier.height(8.dp))
                     TextButton(
                         onClick = { run { api.sendEmailCode(school, email); resendSeconds = 60 } },

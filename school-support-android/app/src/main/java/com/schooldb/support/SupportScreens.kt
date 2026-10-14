@@ -969,7 +969,7 @@ internal fun AdminAccountsScreen(result: AdminAccounts, busy: Boolean,
         verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Spacer(Modifier.height(2.dp))
         SupportPageHeading("School administrators", "Manage who can lead and respond to school issues.", "PEOPLE & ACCESS")
-        PrimaryAction("Add administrator", !busy, onCreate)
+        PrimaryAction("Add administrator", !busy, onClick = onCreate)
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically) {
             Text("${result.accounts.size} accounts", style = MaterialTheme.typography.titleMedium,
@@ -1217,10 +1217,36 @@ internal fun SupportField(value: String, onValueChange: (String) -> Unit, label:
 }
 
 @Composable
-internal fun PrimaryAction(label: String, enabled: Boolean, onClick: () -> Unit) {
-    Button(onClick = onClick, enabled = enabled, modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
-        shape = RoundedCornerShape(18.dp), colors = ButtonDefaults.buttonColors(containerColor = Indigo),
-        elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp, pressedElevation = 1.dp)) {
-        Text(label, fontWeight = FontWeight.SemiBold)
+internal fun PrimaryAction(
+    label: String,
+    enabled: Boolean,
+    loading: Boolean = false,
+    onClick: () -> Unit,
+) {
+    Button(
+        onClick = onClick,
+        enabled = enabled && !loading,
+        modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
+        shape = RoundedCornerShape(18.dp),
+        colors = if (loading) {
+            ButtonDefaults.buttonColors(
+                containerColor = Indigo,
+                disabledContainerColor = Indigo,
+                disabledContentColor = Color.White,
+            )
+        } else {
+            ButtonDefaults.buttonColors(containerColor = Indigo)
+        },
+        elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp, pressedElevation = 1.dp),
+    ) {
+        if (loading) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(20.dp),
+                color = Color.White,
+                strokeWidth = 2.dp,
+            )
+        } else {
+            Text(label, fontWeight = FontWeight.SemiBold)
+        }
     }
 }
