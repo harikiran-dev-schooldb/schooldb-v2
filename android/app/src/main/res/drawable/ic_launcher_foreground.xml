@@ -1,4 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
-<inset xmlns:android="http://schemas.android.com/apk/res/android"
-    android:drawable="@drawable/ic_schooldb"
-    android:inset="12dp" />
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:bottom="14dp"
+        android:left="14dp"
+        android:right="14dp"
+        android:top="14dp">
+        <bitmap
+            android:gravity="fill"
+            android:src="@drawable/schooldb_logo_light" />
+    </item>
+</layer-list>
