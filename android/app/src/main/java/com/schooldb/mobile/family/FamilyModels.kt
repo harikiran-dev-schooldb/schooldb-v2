@@ -30,6 +30,7 @@ data class FamilyDashboard(
     val role: String,
     val userName: String,
     val schoolName: String,
+    val schoolLogoUrl: String?,
     val students: List<FamilyStudent>,
 )
 

@@ -23,20 +23,22 @@ export default async function SelfServiceLayout({
 
   const { membership, students } = await listAccessibleStudents(schoolSlug);
   const unreadCount = await unreadNotificationCount(schoolSlug);
+  const schoolLogo = publicSchoolLogoUrl(
+    schoolSlug,
+    membership.school.logo,
+    membership.school.updatedAt,
+  );
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(99,102,241,0.08),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(139,92,246,0.07),transparent_32%)] bg-background">
       <WorkspaceEntryTransition
         schoolSlug={schoolSlug}
         schoolName={membership.school.name}
-        schoolLogo={publicSchoolLogoUrl(
-          schoolSlug,
-          membership.school.logo,
-          membership.school.updatedAt,
-        )}
+        schoolLogo={schoolLogo}
       />
       <SelfServiceHeader
         schoolName={membership.school.name}
+        schoolLogo={schoolLogo}
         schoolSlug={schoolSlug}
         role={membership.role}
         showStudentPicker={students.length > 1}

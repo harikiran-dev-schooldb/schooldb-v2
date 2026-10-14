@@ -1,9 +1,10 @@
 import { apiHandler } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 import { ApiResponse } from "@/lib/response";
+import { publicSchoolLogoUrl } from "@/lib/school-branding";
 import { listAccessibleStudents } from "@/lib/student-access";
 
-export async function GET() {
+export async function GET(request: Request) {
   return apiHandler(async () => {
     const { membership, students } = await listAccessibleStudents();
     const studentIds = students.map((student) => student.id);
@@ -79,6 +80,12 @@ export async function GET() {
       }),
     ]);
 
+    const schoolLogoPath = publicSchoolLogoUrl(
+      membership.school.slug,
+      membership.school.logo,
+      membership.school.updatedAt,
+    );
+
     return ApiResponse.success({
       role: membership.role,
       userName:
@@ -86,6 +93,9 @@ export async function GET() {
           .filter(Boolean)
           .join(" ") || membership.user.email,
       schoolName: membership.school.name,
+      schoolLogoUrl: schoolLogoPath
+        ? new URL(schoolLogoPath, request.url).toString()
+        : null,
       students: students.map((student) => {
         const enrollment = student.enrollments[0] ?? null;
         const records = attendance.filter((item) => item.studentId === student.id);

@@ -72,6 +72,7 @@ class FamilyRepository(
             role = data.optString("role", "PARENT"),
             userName = data.optString("userName", "SchoolDB user"),
             schoolName = data.optString("schoolName", "SchoolDB"),
+            schoolLogoUrl = data.optionalText("schoolLogoUrl"),
             students = students,
         )
     }

@@ -104,6 +104,7 @@ import com.schooldb.mobile.ui.notifications.matches
 import com.schooldb.mobile.ui.notifications.notificationDay
 import com.schooldb.mobile.ui.ConnectionStateScreen
 import com.schooldb.mobile.ui.OfflineDataBanner
+import com.schooldb.mobile.ui.SchoolLogo
 import com.schooldb.mobile.ui.StudentAvatar
 import com.schooldb.mobile.ui.rememberIsOnline
 import com.schooldb.mobile.preferences.AppPreferences
@@ -127,6 +128,7 @@ private data class StudentNavItem(val tab: FamilyTab, val icon: ImageVector)
 @Composable
 private fun StudentPremiumTopBar(
     schoolName: String,
+    schoolLogoUrl: String?,
     studentName: String,
     studentImageUrl: String?,
     unread: Int,
@@ -138,6 +140,12 @@ private fun StudentPremiumTopBar(
             .statusBarsPadding().padding(start = 20.dp, end = 14.dp, top = 12.dp, bottom = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        SchoolLogo(
+            schoolName = schoolName,
+            imageUrl = schoolLogoUrl,
+            size = 44.dp,
+        )
+        Spacer(Modifier.width(11.dp))
         Column(Modifier.weight(1f)) {
             Text("STUDENT SPACE", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold,
                 fontSize = 10.sp, letterSpacing = 1.3.sp)
@@ -312,6 +320,7 @@ fun FamilyDashboardScreen(
                 if (isStudent) {
                     StudentPremiumTopBar(
                         schoolName = dashboard.schoolName,
+                        schoolLogoUrl = dashboard.schoolLogoUrl,
                         studentName = student?.fullName.orEmpty(),
                         studentImageUrl = student?.imageUrl,
                         unread = state.unreadNotificationCount,
@@ -323,9 +332,17 @@ fun FamilyDashboardScreen(
                     )
                 } else TopAppBar(
                 title = {
-                    Column {
-                        Text(dashboard?.schoolName ?: "SchoolDB", fontWeight = FontWeight.Bold, maxLines = 1)
-                        Text("Parent space", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        SchoolLogo(
+                            schoolName = dashboard?.schoolName ?: "SchoolDB",
+                            imageUrl = dashboard?.schoolLogoUrl,
+                            size = 40.dp,
+                        )
+                        Spacer(Modifier.width(10.dp))
+                        Column {
+                            Text(dashboard?.schoolName ?: "SchoolDB", fontWeight = FontWeight.Bold, maxLines = 1)
+                            Text("Parent space", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+                        }
                     }
                 },
                 actions = {
