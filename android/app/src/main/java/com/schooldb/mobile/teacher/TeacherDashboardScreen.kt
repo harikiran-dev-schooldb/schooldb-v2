@@ -14,12 +14,14 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -51,12 +53,10 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import com.schooldb.mobile.ui.theme.WebTopAppBar as TopAppBar
@@ -71,10 +71,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -112,6 +119,12 @@ private enum class TeacherTab {
     NOTICES,
     MORE,
 }
+
+private data class TeacherNavItem(
+    val tab: TeacherTab,
+    val label: String,
+    val icon: ImageVector,
+)
 
 @Composable
 fun TeacherDashboardScreen(
@@ -396,180 +409,88 @@ private fun SchoolDbBottomBar(
     unreadNotices: Int,
     onTabSelected: (TeacherTab) -> Unit,
 ) {
-    val navigationColors = NavigationBarItemDefaults.colors(
-        selectedIconColor = SchoolDbIndigo,
-        selectedTextColor = SchoolDbIndigo,
-        indicatorColor = SchoolDbIndigoSoft,
-        unselectedIconColor = SchoolDbSlate400,
-        unselectedTextColor = SchoolDbSlate500,
-    )
+    val haptic = LocalHapticFeedback.current
+    val darkTheme = MaterialTheme.colorScheme.background.luminance() < 0.5f
+    val dockColors = if (darkTheme) {
+        listOf(Color(0xEE454547), Color(0xF52D2D30), Color(0xF23A3A3D))
+    } else {
+        listOf(Color(0xF8FFFFFF), Color(0xF3F4F6FF), Color(0xF8FFFFFF))
+    }
+    val border = if (darkTheme) Color.White.copy(alpha = 0.16f) else Color.White.copy(alpha = 0.96f)
+    val inactive = if (darkTheme) Color.White.copy(alpha = 0.72f) else Color(0xFF667085)
+    val selectedFill = if (darkTheme) Color(0xF0121213) else Color(0xFFE1E9FF)
+    val selectedTint = if (darkTheme) Color.White else SchoolDbIndigo
+    val items = buildList {
+        add(TeacherNavItem(TeacherTab.HOME, "Home", Icons.Outlined.Home))
+        if (access.attendance) {
+            add(TeacherNavItem(TeacherTab.ATTENDANCE, "Attendance", Icons.AutoMirrored.Outlined.FactCheck))
+        }
+        if (access.homework) {
+            add(TeacherNavItem(TeacherTab.HOMEWORK, "Homework", Icons.AutoMirrored.Outlined.Assignment))
+        }
+        add(TeacherNavItem(TeacherTab.NOTICES, "Notices", Icons.Outlined.Notifications))
+        add(TeacherNavItem(TeacherTab.MORE, "More", Icons.Outlined.GridView))
+    }
 
-    NavigationBar(
-        containerColor = Color.White,
-        tonalElevation = 0.dp,
-        modifier = Modifier.shadow(
-            elevation = 8.dp,
-            ambientColor = Color(0x120F172A),
-            spotColor = Color(0x120F172A),
-        ),
+    Surface(
+        modifier = Modifier.navigationBarsPadding().padding(horizontal = 14.dp, vertical = 7.dp)
+            .shadow(18.dp, RoundedCornerShape(31.dp), ambientColor = Color.Black.copy(alpha = 0.30f),
+                spotColor = Color.Black.copy(alpha = 0.38f)),
+        shape = RoundedCornerShape(31.dp),
+        color = Color.Transparent,
+        border = BorderStroke(1.dp, border),
     ) {
-
-        NavigationBarItem(
-            selected = selectedTab == TeacherTab.HOME,
-            onClick = {
-                onTabSelected(TeacherTab.HOME)
-            },
-            icon = {
-                Icon(
-                    imageVector = Icons.Outlined.Home,
-                    contentDescription = "Home",
-                    modifier = Modifier.size(23.dp),
-                )
-            },
-            label = {
-                Text(
-                    text = "Home",
-                    fontSize = 11.sp,
-                    fontWeight =
-                        if (selectedTab == TeacherTab.HOME) {
-                            FontWeight.SemiBold
-                        } else {
-                            FontWeight.Medium
-                        },
-                )
-            },
-            colors = navigationColors,
-        )
-
-        if (access.attendance) NavigationBarItem(
-            selected = selectedTab == TeacherTab.ATTENDANCE,
-            onClick = {
-                onTabSelected(TeacherTab.ATTENDANCE)
-            },
-            icon = {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Outlined.FactCheck,
-                    contentDescription = "Attendance",
-                    modifier = Modifier.size(23.dp),
-                )
-            },
-            label = {
-                Text(
-                    text = "Attendance",
-                    fontSize = 11.sp,
-                    fontWeight =
-                        if (selectedTab == TeacherTab.ATTENDANCE) {
-                            FontWeight.SemiBold
-                        } else {
-                            FontWeight.Medium
-                        },
-                )
-            },
-            colors = navigationColors,
-        )
-
-        if (access.homework) NavigationBarItem(
-            selected = selectedTab == TeacherTab.HOMEWORK,
-            onClick = {
-                onTabSelected(TeacherTab.HOMEWORK)
-            },
-            icon = {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Outlined.Assignment,
-                    contentDescription = "Homework",
-                    modifier = Modifier.size(23.dp),
-                )
-            },
-            label = {
-                Text(
-                    text = "Homework",
-                    fontSize = 11.sp,
-                    fontWeight =
-                        if (selectedTab == TeacherTab.HOMEWORK) {
-                            FontWeight.SemiBold
-                        } else {
-                            FontWeight.Medium
-                        },
-                )
-            },
-            colors = navigationColors,
-        )
-
-        NavigationBarItem(
-            selected = selectedTab == TeacherTab.NOTICES,
-            onClick = {
-                onTabSelected(TeacherTab.NOTICES)
-            },
-            icon = {
-                BadgedBox(
-                    badge = {
-                        if (unreadNotices > 0) {
-                            Badge(
-                                containerColor = SchoolDbDangerBadge,
-                                contentColor = Color.White,
-                            ) {
-                                Text(
-                                    text = unreadNotices
-                                        .coerceAtMost(99)
-                                        .toString(),
-                                    fontSize = 9.sp,
-                                    fontWeight = FontWeight.Bold,
-                                )
+        Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(31.dp))
+            .background(Brush.linearGradient(dockColors))) {
+            Box(Modifier.fillMaxWidth().height(23.dp).align(Alignment.TopCenter)
+                .background(Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.13f), Color.Transparent))))
+            Row(Modifier.fillMaxWidth().padding(5.dp)) {
+                items.forEach { item ->
+                    val selected = selectedTab == item.tab
+                    Column(
+                        Modifier.weight(1f).clip(RoundedCornerShape(25.dp))
+                            .then(if (selected) Modifier.shadow(8.dp, RoundedCornerShape(25.dp),
+                                ambientColor = SchoolDbIndigo.copy(alpha = 0.18f),
+                                spotColor = SchoolDbIndigo.copy(alpha = 0.22f))
+                                .background(selectedFill) else Modifier)
+                            .selectable(selected = selected, role = Role.Tab) {
+                                if (!selected) {
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    onTabSelected(item.tab)
+                                }
+                            }.padding(vertical = 10.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        BadgedBox(badge = {
+                            if (item.tab == TeacherTab.NOTICES && unreadNotices > 0) {
+                                Badge(containerColor = SchoolDbDangerBadge, contentColor = Color.White) {
+                                    Text(if (unreadNotices > 99) "99+" else unreadNotices.toString(),
+                                        fontSize = 8.sp, fontWeight = FontWeight.Bold)
+                                }
                             }
+                        }) {
+                            Icon(item.icon, contentDescription = item.label,
+                                tint = if (selected) selectedTint else inactive,
+                                modifier = Modifier.size(22.dp))
                         }
-                    },
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.Notifications,
-                        contentDescription = "Notices",
-                        modifier = Modifier.size(23.dp),
-                    )
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            text = item.label,
+                            modifier = Modifier.fillMaxWidth(),
+                            color = if (selected) selectedTint else inactive,
+                            fontSize = 10.sp,
+                            lineHeight = 12.sp,
+                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                            textAlign = TextAlign.Center,
+                            maxLines = 1,
+                            overflow = TextOverflow.Clip,
+                        )
+                    }
                 }
-            },
-            label = {
-                Text(
-                    text = "Notices",
-                    fontSize = 11.sp,
-                    fontWeight =
-                        if (selectedTab == TeacherTab.NOTICES) {
-                            FontWeight.SemiBold
-                        } else {
-                            FontWeight.Medium
-                        },
-                )
-            },
-            colors = navigationColors,
-        )
-
-        NavigationBarItem(
-            selected = selectedTab == TeacherTab.MORE,
-            onClick = {
-                onTabSelected(TeacherTab.MORE)
-            },
-            icon = {
-                Icon(
-                    imageVector = Icons.Outlined.GridView,
-                    contentDescription = "More",
-                    modifier = Modifier.size(23.dp),
-                )
-            },
-            label = {
-                Text(
-                    text = "More",
-                    fontSize = 11.sp,
-                    fontWeight =
-                        if (selectedTab == TeacherTab.MORE) {
-                            FontWeight.SemiBold
-                        } else {
-                            FontWeight.Medium
-                        },
-                )
-            },
-            colors = navigationColors,
-        )
+            }
+        }
     }
 }
-
 
 /* ==========================================================================
    MORE
