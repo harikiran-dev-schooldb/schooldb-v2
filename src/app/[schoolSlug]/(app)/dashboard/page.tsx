@@ -304,7 +304,9 @@ function fetchDashboard(cacheKey: string, force = false) {
   const pending = dashboardRequests.get(cacheKey);
   if (pending) return pending;
 
-  const request = getJson<DashboardData>("/api/v1/dashboard")
+  const request = getJson<DashboardData>(
+    force ? "/api/v1/dashboard?refresh=1" : "/api/v1/dashboard",
+  )
     .then((data) => {
       dashboardCache.set(cacheKey, {
         data,

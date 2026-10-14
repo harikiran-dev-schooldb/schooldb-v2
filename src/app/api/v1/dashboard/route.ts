@@ -1,19 +1,37 @@
 import { attendanceService } from "@/features/attendance/services/attendance.service";
+import { unstable_cache } from "next/cache";
 import { getFeeDashboard } from "@/features/fees/services/fee-dashboard.service";
 import { outstandingFeesService } from "@/features/fees/services/outstanding-fees.service";
 import { getAnalyticsSettings } from "@/features/reports/analytics-settings";
 import { getBirthdaySummary } from "@/features/students/services/birthday-summary.service";
 import { apiHandler } from "@/lib/api";
+import { createAsyncTtlCache } from "@/lib/async-ttl-cache";
 import { requireCurrentTeacher, requireTenant } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ApiResponse } from "@/lib/response";
 import { hasModuleAccess } from "@/lib/staff-permissions";
 
 const ADMIN_ROLES = ["SUPER_ADMIN", "SCHOOL_ADMIN"];
+const DASHBOARD_CACHE_TTL_MS = 15_000;
 
-export async function GET(request: Request) {
-  return apiHandler(async () => {
-    const startedAt = Date.now();
+type DashboardCacheInput = {
+  schoolId: string;
+  role: string;
+  canReadAttendance: boolean;
+  canReadFees: boolean;
+  canReadStaff: boolean;
+  isAdministrator: boolean;
+  teacherScope: Array<{ classId: string; sectionId: string }> | null;
+};
+
+async function loadDashboardData({
+  schoolId,
+  canReadAttendance,
+  canReadFees,
+  canReadStaff,
+  isAdministrator,
+  teacherScope,
+}: DashboardCacheInput) {
     const now = new Date();
     const indiaDate = new Intl.DateTimeFormat("en-CA", {
       timeZone: "Asia/Kolkata",
@@ -22,28 +40,12 @@ export async function GET(request: Request) {
       day: "2-digit",
     }).format(now);
     const today = new Date(`${indiaDate}T00:00:00.000Z`);
-    const membership = await requireTenant();
-    const { schoolId, role } = membership;
-    const canReadAttendance = hasModuleAccess(membership, "ATTENDANCE");
-    const canReadFees = hasModuleAccess(membership, "FEES");
-    const canReadStaff = hasModuleAccess(membership, "STAFF");
-    const isAdministrator = ADMIN_ROLES.includes(role);
-
-    const [academicYear, teacherScope, analyticsSettings] = await Promise.all([
+    const [academicYear, analyticsSettings] = await Promise.all([
       prisma.academicYear.findFirst({
         where: { schoolId, active: true },
         orderBy: { startDate: "desc" },
         select: { id: true, name: true, active: true },
       }),
-      role === "TEACHER"
-        ? requireCurrentTeacher(schoolId).then((teacher) =>
-            prisma.teacherAllocation.findMany({
-              where: { schoolId, teacherId: teacher.id, active: true },
-              distinct: ["classId", "sectionId"],
-              select: { classId: true, sectionId: true },
-            }),
-          )
-        : Promise.resolve(null),
       getAnalyticsSettings(schoolId),
     ]);
 
@@ -191,19 +193,7 @@ export async function GET(request: Request) {
           analyticsSettings.routeCapacityWarningPercent,
     ).length;
 
-    console.info(
-      JSON.stringify({
-        level: "info",
-        message: "Dashboard loaded",
-        route: "/api/v1/dashboard",
-        requestId: request.headers.get("x-vercel-id"),
-        schoolId,
-        role,
-        durationMs: Date.now() - startedAt,
-      }),
-    );
-
-    return ApiResponse.success({
+    return {
       academicYear,
       students,
       teachers,
@@ -229,6 +219,81 @@ export async function GET(request: Request) {
         staffAttendanceExceptions,
         overCapacityRoutes,
       },
-    });
+    };
+}
+
+type DashboardData = Awaited<ReturnType<typeof loadDashboardData>>;
+const dashboardCache = createAsyncTtlCache<DashboardData>({
+  ttlMs: DASHBOARD_CACHE_TTL_MS,
+  maxEntries: 500,
+});
+
+function loadPersistedDashboard(key: string, input: DashboardCacheInput) {
+  return unstable_cache(
+    () => loadDashboardData(input),
+    ["dashboard-data-v1", key],
+    { revalidate: DASHBOARD_CACHE_TTL_MS / 1_000 },
+  )();
+}
+
+function dashboardCacheKey(input: DashboardCacheInput) {
+  const teacherScope = input.teacherScope
+    ? [...input.teacherScope].sort((left, right) =>
+        `${left.classId}:${left.sectionId}`.localeCompare(
+          `${right.classId}:${right.sectionId}`,
+        ),
+      )
+    : null;
+
+  return JSON.stringify({ ...input, teacherScope });
+}
+
+export async function GET(request: Request) {
+  return apiHandler(async () => {
+    const startedAt = Date.now();
+    const membership = await requireTenant();
+    const { schoolId, role } = membership;
+    const teacherScope = role === "TEACHER"
+      ? await requireCurrentTeacher(schoolId).then((teacher) =>
+          prisma.teacherAllocation.findMany({
+            where: { schoolId, teacherId: teacher.id, active: true },
+            distinct: ["classId", "sectionId"],
+            select: { classId: true, sectionId: true },
+          }),
+        )
+      : null;
+    const cacheInput: DashboardCacheInput = {
+      schoolId,
+      role,
+      canReadAttendance: hasModuleAccess(membership, "ATTENDANCE"),
+      canReadFees: hasModuleAccess(membership, "FEES"),
+      canReadStaff: hasModuleAccess(membership, "STAFF"),
+      isAdministrator: ADMIN_ROLES.includes(role),
+      teacherScope,
+    };
+    const forceRefresh = new URL(request.url).searchParams.get("refresh") === "1";
+    const cacheKey = dashboardCacheKey(cacheInput);
+    const data = await dashboardCache.get(
+      cacheKey,
+      () => forceRefresh
+        ? loadDashboardData(cacheInput)
+        : loadPersistedDashboard(cacheKey, cacheInput),
+      { force: forceRefresh },
+    );
+
+    console.info(
+      JSON.stringify({
+        level: "info",
+        message: "Dashboard loaded",
+        route: "/api/v1/dashboard",
+        requestId: request.headers.get("x-vercel-id"),
+        schoolId,
+        role,
+        forceRefresh,
+        durationMs: Date.now() - startedAt,
+      }),
+    );
+
+    return ApiResponse.success(data);
   });
 }
