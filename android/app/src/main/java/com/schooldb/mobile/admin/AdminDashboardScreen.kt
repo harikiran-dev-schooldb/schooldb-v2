@@ -371,14 +371,15 @@ fun AdminDashboardScreen(
     var showAnnouncementComposer by rememberSaveable(school.schoolSlug) { mutableStateOf(false) }
     var showHomeworkComposer by rememberSaveable(school.schoolSlug) { mutableStateOf(false) }
     var showSignOutConfirmation by rememberSaveable(school.schoolSlug) { mutableStateOf(false) }
-    BackHandler(enabled = selectedSection != null || selectedTicket != null || selectedStudent != null || showAnnouncements || showAnnouncementComposer || showHomeworkComposer) {
+    BackHandler(enabled = selectedTab != "Home" || selectedSection != null || selectedTicket != null || selectedStudent != null || showAnnouncements || showAnnouncementComposer || showHomeworkComposer) {
         when {
             showAnnouncementComposer -> showAnnouncementComposer = false
             showHomeworkComposer -> showHomeworkComposer = false
             selectedTicket != null -> selectedTicket = null
             selectedStudent != null -> selectedStudent = null
             selectedSection != null -> selectedSection = null
-            else -> showAnnouncements = false
+            showAnnouncements -> showAnnouncements = false
+            else -> selectedTab = "Home"
         }
     }
 
@@ -462,6 +463,7 @@ fun AdminDashboardScreen(
                 schoolName = school.schoolName,
                 schoolLogoUrl = school.schoolLogoUrl,
                 title = when (selectedTab) {
+                    "Students" -> "Students"
                     "Reports" -> "Reports"
                     "Queries" -> "Queries"
                     "More" -> "School Tools"
@@ -527,6 +529,11 @@ fun AdminDashboardScreen(
             } else if (tab == "Queries") {
                 QueriesTab(dashboard, Modifier.padding(padding),
                     onTicket = { selectedTicket = it }, onAllQueries = { selectedSection = "queries" })
+            } else if (tab == "Students") {
+                AdminStudentsTab(
+                    modifier = Modifier.padding(padding),
+                    onStudent = { selectedStudent = it },
+                )
             } else {
                 AdminHomeTab(
                     school = school,
@@ -570,6 +577,109 @@ private data class AdminNavDestination(
     val icon: ImageVector,
 )
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AdminStudentsTab(
+    modifier: Modifier = Modifier,
+    onStudent: (String) -> Unit,
+    viewModel: AdminSectionViewModel = viewModel(key = "admin-students-tab"),
+) {
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    LaunchedEffect(Unit) {
+        if (state.rows.isEmpty()) viewModel.load("students")
+    }
+
+    PullToRefreshBox(
+        isRefreshing = state.loading && state.rows.isNotEmpty(),
+        onRefresh = { viewModel.load("students", state.page, forceRefresh = true) },
+        modifier = modifier.fillMaxSize(),
+    ) {
+        when {
+            state.loading && state.rows.isEmpty() -> AdminSectionSkeleton()
+            state.error != null && state.rows.isEmpty() -> Column(
+                Modifier.fillMaxSize().padding(24.dp),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text(state.error ?: "Could not load students", color = MaterialTheme.colorScheme.error)
+                Spacer(Modifier.height(12.dp))
+                Button(onClick = { viewModel.load("students", forceRefresh = true) }) { Text("Try again") }
+            }
+            else -> LazyColumn(
+                Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(18.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                item {
+                    Text(
+                        "${state.total} students",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = AdminWebSlate,
+                    )
+                }
+                items(state.rows, key = { it.id }) { student ->
+                    Surface(
+                        modifier = Modifier.fillMaxWidth().clickable { onStudent(student.id) },
+                        color = Color.White,
+                        shadowElevation = 1.dp,
+                        border = BorderStroke(1.dp, AdminWebBorder),
+                        shape = RoundedCornerShape(20.dp),
+                    ) {
+                        Row(
+                            Modifier.fillMaxWidth().padding(17.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Surface(
+                                modifier = Modifier.size(44.dp),
+                                shape = CircleShape,
+                                color = AdminWebTint,
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Text(
+                                        student.title.trim().take(1).uppercase().ifBlank { "S" },
+                                        color = AdminWebIndigo,
+                                        fontWeight = FontWeight.Bold,
+                                    )
+                                }
+                            }
+                            Spacer(Modifier.width(12.dp))
+                            Column(Modifier.weight(1f)) {
+                                Text(student.title, fontWeight = FontWeight.Bold,
+                                    maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                if (student.subtitle.isNotBlank()) Text(student.subtitle,
+                                    style = MaterialTheme.typography.bodySmall, color = AdminWebSlate)
+                                if (student.detail.isNotBlank()) Text(student.detail,
+                                    style = MaterialTheme.typography.bodySmall, color = AdminWebSlate,
+                                    maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            }
+                            Icon(Lucide.ArrowRight, contentDescription = null,
+                                tint = AdminWebSlate, modifier = Modifier.size(18.dp))
+                        }
+                    }
+                }
+                if (state.total > state.pageSize) item {
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Button(
+                            onClick = { viewModel.load("students", state.page - 1) },
+                            enabled = !state.loading && state.page > 1,
+                        ) { Text("Previous") }
+                        Text("Page ${state.page}", style = MaterialTheme.typography.bodySmall,
+                            color = AdminWebSlate)
+                        Button(
+                            onClick = { viewModel.load("students", state.page + 1) },
+                            enabled = !state.loading && state.page * state.pageSize < state.total,
+                        ) { Text("Next") }
+                    }
+                }
+            }
+        }
+    }
+}
+
 @Composable
 private fun PremiumAdminNavigation(
     selectedTab: String,
@@ -591,6 +701,7 @@ private fun PremiumAdminNavigation(
     val selectedIconColor = if (darkTheme) Color.White else Color(0xFF3154D9)
     val items = listOf(
         AdminNavDestination("Home", "Home", Lucide.House),
+        AdminNavDestination("Students", "Students", Lucide.GraduationCap),
         AdminNavDestination("Reports", "Reports", Lucide.ChartNoAxesColumnIncreasing),
         AdminNavDestination("Queries", "Queries", Lucide.MessageSquareText),
         AdminNavDestination("More", "More", Lucide.LayoutGrid),
