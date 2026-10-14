@@ -18,6 +18,7 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -26,6 +27,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
@@ -70,7 +72,9 @@ import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -135,51 +139,65 @@ private fun StudentPremiumTopBar(
     onNotifications: () -> Unit,
     onSwitchAccount: () -> Unit,
 ) {
-    Row(
-        Modifier.fillMaxWidth().background(Brush.linearGradient(listOf(Color.White, Color(0xFFF1F3FF), Color(0xFFF5F3FF))))
-            .statusBarsPadding().padding(start = 20.dp, end = 14.dp, top = 12.dp, bottom = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
+    val shape = RoundedCornerShape(bottomStart = 28.dp, bottomEnd = 28.dp)
+    Box(
+        Modifier.fillMaxWidth()
+            .shadow(12.dp, shape, ambientColor = Color.Black.copy(alpha = .06f),
+                spotColor = Color.Black.copy(alpha = .08f))
+            .clip(shape)
+            .background(Brush.linearGradient(listOf(Color.White, Color(0xFFF1F3FF), Color(0xFFF5F3FF))))
+            .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = .42f), shape),
     ) {
-        SchoolLogo(
-            schoolName = schoolName,
-            imageUrl = schoolLogoUrl,
-            size = 44.dp,
+        Box(
+            Modifier.size(150.dp).align(Alignment.TopEnd)
+                .background(MaterialTheme.colorScheme.primary.copy(alpha = .05f), CircleShape),
         )
-        Spacer(Modifier.width(11.dp))
-        Column(Modifier.weight(1f)) {
-            Text("STUDENT SPACE", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold,
-                fontSize = 10.sp, letterSpacing = 1.3.sp)
-            Text(schoolName, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold,
-                fontSize = 18.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        }
-        Surface(
-            onClick = onNotifications,
-            modifier = Modifier.size(42.dp),
-            shape = CircleShape,
-            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = .72f),
+        Row(
+            Modifier.fillMaxWidth().statusBarsPadding()
+                .padding(horizontal = 20.dp, vertical = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Box(contentAlignment = Alignment.Center) {
-                BadgedBox(badge = {
-                    if (unread > 0) Badge { Text(unread.coerceAtMost(99).toString(), fontSize = 9.sp) }
-                }) {
-                    Icon(Lucide.Bell, contentDescription = "Notifications", modifier = Modifier.size(20.dp))
+            SchoolLogo(
+                schoolName = schoolName,
+                imageUrl = schoolLogoUrl,
+                size = 42.dp,
+            )
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text("STUDENT SPACE", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold,
+                    fontSize = 10.sp, letterSpacing = 1.3.sp)
+                Text(schoolName, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            Surface(
+                onClick = onNotifications,
+                modifier = Modifier.size(42.dp),
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = .72f),
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    BadgedBox(badge = {
+                        if (unread > 0) Badge { Text(unread.coerceAtMost(99).toString(), fontSize = 9.sp) }
+                    }) {
+                        Icon(Lucide.Bell, contentDescription = "Notifications", modifier = Modifier.size(20.dp))
+                    }
                 }
             }
-        }
-        Spacer(Modifier.width(9.dp))
-        Surface(
-            onClick = onSwitchAccount,
-            modifier = Modifier.size(42.dp),
-            shape = CircleShape,
-            color = Color.Transparent,
-        ) {
-            StudentAvatar(
-                name = studentName,
-                imageUrl = studentImageUrl,
-                size = 42.dp,
-                backgroundColor = FamilyIndigo,
-                contentColor = Color.White,
-            )
+            Spacer(Modifier.width(9.dp))
+            Surface(
+                onClick = onSwitchAccount,
+                modifier = Modifier.size(42.dp),
+                shape = CircleShape,
+                color = Color.Transparent,
+            ) {
+                StudentAvatar(
+                    name = studentName,
+                    imageUrl = studentImageUrl,
+                    size = 42.dp,
+                    backgroundColor = FamilyIndigo,
+                    contentColor = Color.White,
+                )
+            }
         }
     }
 }
@@ -222,38 +240,40 @@ private fun StudentPremiumNavigation(
             Row(Modifier.fillMaxWidth().padding(5.dp)) {
                 items.forEach { item ->
                     val active = selected == item.tab
-                    Box(
+                    Column(
                         Modifier.weight(1f).clip(RoundedCornerShape(25.dp))
                             .then(if (active) Modifier.shadow(8.dp, RoundedCornerShape(25.dp),
                                 ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = .18f),
                                 spotColor = MaterialTheme.colorScheme.primary.copy(alpha = .22f))
                                 .background(selectedFill) else Modifier)
-                            .clickable {
+                            .selectable(selected = active, role = Role.Tab) {
                                 if (!active) {
                                     haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                     onSelect(item.tab)
                                 }
-                            }.padding(vertical = 8.dp),
-                        contentAlignment = Alignment.Center,
+                            }.padding(vertical = 10.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            BadgedBox(badge = {
-                                if (item.tab == FamilyTab.MORE && unread > 0) {
-                                    Badge { Text(if (unread > 99) "99+" else unread.toString(), fontSize = 8.sp) }
-                                }
-                            }) {
-                                Icon(item.icon, contentDescription = item.tab.label,
-                                    tint = if (active) selectedTint else inactive, modifier = Modifier.size(22.dp))
+                        BadgedBox(badge = {
+                            if (item.tab == FamilyTab.MORE && unread > 0) {
+                                Badge { Text(if (unread > 99) "99+" else unread.toString(), fontSize = 8.sp) }
                             }
-                            Spacer(Modifier.height(2.dp))
-                            Text(
-                                text = item.tab.label,
-                                color = if (active) selectedTint else inactive,
-                                fontSize = 9.sp,
-                                fontWeight = if (active) FontWeight.Bold else FontWeight.Medium,
-                                maxLines = 1,
-                            )
+                        }) {
+                            Icon(item.icon, contentDescription = item.tab.label,
+                                tint = if (active) selectedTint else inactive, modifier = Modifier.size(22.dp))
                         }
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            text = item.tab.label,
+                            modifier = Modifier.fillMaxWidth(),
+                            color = if (active) selectedTint else inactive,
+                            fontSize = 10.sp,
+                            lineHeight = 12.sp,
+                            fontWeight = if (active) FontWeight.Bold else FontWeight.Medium,
+                            textAlign = TextAlign.Center,
+                            maxLines = 1,
+                            overflow = TextOverflow.Clip,
+                        )
                     }
                 }
             }
