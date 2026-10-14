@@ -2,8 +2,9 @@ import { currentTeacherAccess, requireMembership } from "@/lib/auth";
 import { apiHandler } from "@/lib/api";
 import { ApiResponse } from "@/lib/response";
 import { canUnlockAttendance } from "@/features/attendance/policy";
+import { publicSchoolLogoUrl } from "@/lib/school-branding";
 
-export async function GET() {
+export async function GET(request: Request) {
   return apiHandler(async () => {
     const membership = await requireMembership();
     const fullName = [membership.user.firstName, membership.user.lastName]
@@ -12,10 +13,18 @@ export async function GET() {
     const access = membership.role === "TEACHER"
       ? await currentTeacherAccess(membership.schoolId)
       : null;
+    const schoolLogoPath = publicSchoolLogoUrl(
+      membership.school.slug,
+      membership.school.logo,
+      membership.school.updatedAt,
+    );
 
     return ApiResponse.success({
       userName: fullName || membership.user.email,
       schoolName: membership.school.name,
+      schoolLogoUrl: schoolLogoPath
+        ? new URL(schoolLogoPath, request.url).toString()
+        : null,
       schoolSlug: membership.school.slug,
       role: membership.role,
       designation: membership.designation,

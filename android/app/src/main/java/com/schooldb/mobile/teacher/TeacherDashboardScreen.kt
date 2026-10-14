@@ -96,6 +96,9 @@ import com.schooldb.mobile.preferences.StartTabPreference
 import com.schooldb.mobile.family.FamilyDashboardScreen
 import com.schooldb.mobile.ui.ConnectionStateScreen
 import com.schooldb.mobile.ui.OfflineDataBanner
+import com.schooldb.mobile.ui.SchoolDbHeaderAction
+import com.schooldb.mobile.ui.SchoolDbRoleHeader
+import com.schooldb.mobile.ui.StudentAvatar
 import com.schooldb.mobile.ui.rememberIsOnline
 
 
@@ -209,7 +212,7 @@ fun TeacherDashboardScreen(
             onOpenAttendance = viewModel::openAttendance,
             onOpenDailyAttendance = viewModel::openDailyAttendance,
             onOpenStudents = {},
-            onSignOut = viewModel::signOut,
+            onSwitchAccount = onSwitchAccount ?: viewModel::signOut,
         )
     }
 }
@@ -314,7 +317,7 @@ private fun TeacherShell(
                             tab = TeacherTab.MORE
                             moreScreen = "STUDENTS"
                         },
-                        onSignOut = teacherViewModel::signOut,
+                        onSwitchAccount = onSwitchAccount,
                     )
                 }
 
@@ -1111,7 +1114,7 @@ private fun TeacherHome(
     onOpenAttendance: (TeachingPeriod) -> Unit,
     onOpenDailyAttendance: (DailyAttendanceTarget) -> Unit,
     onOpenStudents: () -> Unit,
-    onSignOut: () -> Unit,
+    onSwitchAccount: () -> Unit,
 ) {
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -1121,57 +1124,30 @@ private fun TeacherHome(
             )
         },
         topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(
-                            text = "SchoolDB",
-                            fontWeight = FontWeight.Bold,
-                        )
-
-                        state.dashboard?.let {
-                            Text(
-                                text = it.schoolName,
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-
-                        if (state.dashboard == null) {
-                            state.context?.let {
-                                Text(
-                                    text = it.schoolName,
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
-                        }
+            SchoolDbRoleHeader(
+                schoolName = state.dashboard?.schoolName ?: state.context?.schoolName ?: "SchoolDB",
+                schoolLogoUrl = state.context?.schoolLogoUrl,
+                title = "Teacher Space",
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    SchoolDbHeaderAction(onClick = onRefresh) {
+                        Icon(Icons.Default.Refresh, contentDescription = "Refresh",
+                            tint = if (state.loading) SchoolDbSlate400 else SchoolDbSlate900,
+                            modifier = Modifier.size(20.dp))
                     }
-                },
-                actions = {
-                    IconButton(
-                        onClick = onRefresh,
-                        enabled = !state.loading,
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Refresh,
-                            contentDescription = "Refresh",
+                    Spacer(Modifier.width(9.dp))
+                    Surface(onClick = onSwitchAccount, modifier = Modifier.size(42.dp),
+                        shape = CircleShape, color = Color.Transparent) {
+                        StudentAvatar(
+                            name = state.context?.userName ?: state.dashboard?.teacherName.orEmpty(),
+                            imageUrl = state.context?.imageUrl,
+                            size = 42.dp,
+                            backgroundColor = SchoolDbIndigo,
+                            contentColor = Color.White,
                         )
                     }
-
-                    IconButton(
-                        onClick = onSignOut,
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.Logout,
-                            contentDescription = "Sign out",
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                ),
-            )
+                }
+            }
         },
     ) { padding ->
 

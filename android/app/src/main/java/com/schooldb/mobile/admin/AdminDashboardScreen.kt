@@ -84,6 +84,9 @@ import com.schooldb.mobile.network.AuthenticatedApiClient
 import com.schooldb.mobile.network.ApiException
 import com.schooldb.mobile.teacher.MobileContext
 import com.schooldb.mobile.ui.ConnectionStateScreen
+import com.schooldb.mobile.ui.SchoolDbHeaderAction
+import com.schooldb.mobile.ui.SchoolDbRoleHeader
+import com.schooldb.mobile.ui.StudentAvatar
 import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.Activity
 import com.composables.icons.lucide.ArrowRight
@@ -455,76 +458,37 @@ fun AdminDashboardScreen(
             )
         },
         topBar = {
-            val headerShape = RoundedCornerShape(bottomStart = 28.dp, bottomEnd = 28.dp)
-            Box(
-                Modifier.fillMaxWidth()
-                    .shadow(12.dp, headerShape, ambientColor = Color(0xFF0F172A).copy(alpha = .06f),
-                        spotColor = Color(0xFF0F172A).copy(alpha = .08f))
-                    .clip(headerShape)
-                    .background(Brush.linearGradient(listOf(
-                        Color.White, Color(0xFFF1F3FF), Color(0xFFF5F3FF),
-                    )))
-                    .border(1.dp, Color(0xFFE0E7FF), headerShape)
-                    .statusBarsPadding(),
+            SchoolDbRoleHeader(
+                schoolName = school.schoolName,
+                schoolLogoUrl = school.schoolLogoUrl,
+                title = when (selectedTab) {
+                    "Reports" -> "Reports"
+                    "Queries" -> "Queries"
+                    "More" -> "School Tools"
+                    else -> "Admin Overview"
+                },
             ) {
-                Box(Modifier.size(150.dp).align(Alignment.TopEnd)
-                    .background(Color(0xFF818CF8).copy(alpha = .08f), CircleShape))
-                Box(Modifier.size(94.dp).align(Alignment.BottomStart)
-                    .background(Color(0xFFA78BFA).copy(alpha = .08f), CircleShape))
-                Column(Modifier.fillMaxWidth()
-                    .padding(start = 20.dp, end = 14.dp, top = 12.dp, bottom = 16.dp)) {
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Column(Modifier.weight(1f)) {
-                            Text(school.schoolName.uppercase(), fontSize = 10.sp,
-                                letterSpacing = 1.3.sp, fontWeight = FontWeight.Bold,
-                                color = Color(0xFF4F46E5))
-                            Text("SchoolDB", style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
-                        }
-                        if (selectedTab == "Home") {
-                            AdminPremiumHeaderButton(
-                                onClick = { showAnnouncements = true },
-                                contentDescription = "Announcements",
-                            ) {
-                                BadgedBox(badge = {
-                                    val unread = state.dashboard?.unreadAnnouncements ?: 0
-                                    if (unread > 0) Badge { Text(unread.coerceAtMost(99).toString()) }
-                                }) {
-                                    Icon(Lucide.Bell, contentDescription = "Announcements",
-                                        modifier = Modifier.size(20.dp))
-                                }
-                            }
-                        }
-                        Spacer(Modifier.width(8.dp))
-                        AdminPremiumHeaderButton(
-                            onClick = {
-                                if (selectedTab == "Reports") viewModel.loadReport(forceRefresh = true)
-                                else viewModel.refresh(forceRefresh = true)
-                            },
-                            contentDescription = "Refresh dashboard",
-                            enabled = if (selectedTab == "Reports") !state.reportLoading else !state.loading,
-                        ) {
-                            Icon(Lucide.RefreshCw, contentDescription = "Refresh dashboard",
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    SchoolDbHeaderAction(onClick = { showAnnouncements = true }) {
+                        BadgedBox(badge = {
+                            val unread = state.dashboard?.unreadAnnouncements ?: 0
+                            if (unread > 0) Badge { Text(unread.coerceAtMost(99).toString()) }
+                        }) {
+                            Icon(Lucide.Bell, contentDescription = "Announcements",
                                 modifier = Modifier.size(20.dp))
                         }
-                        Spacer(Modifier.width(8.dp))
-                        Surface(onClick = onSwitchAccount, modifier = Modifier.size(42.dp),
-                            shape = CircleShape, color = Color(0xFF4F46E5),
-                            border = BorderStroke(1.dp, Color(0xFF4338CA))) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Text(school.userName.trim().take(1).uppercase().ifBlank { "S" },
-                                    color = Color.White, fontWeight = FontWeight.Bold)
-                            }
-                        }
                     }
-                    Spacer(Modifier.height(12.dp))
-                    Text(when (selectedTab) {
-                        "Reports" -> "Reports"
-                        "Queries" -> "Queries"
-                        "More" -> "School tools"
-                        else -> "Overview"
-                    }, fontSize = 32.sp, lineHeight = 36.sp, fontWeight = FontWeight.ExtraBold,
-                        letterSpacing = (-0.6).sp, color = Color(0xFF0F172A))
+                    Spacer(Modifier.width(9.dp))
+                    Surface(onClick = onSwitchAccount, modifier = Modifier.size(42.dp),
+                        shape = CircleShape, color = Color.Transparent) {
+                        StudentAvatar(
+                            name = school.userName,
+                            imageUrl = school.imageUrl,
+                            size = 42.dp,
+                            backgroundColor = Color(0xFF4F46E5),
+                            contentColor = Color.White,
+                        )
+                    }
                 }
             }
         },

@@ -109,6 +109,8 @@ import com.schooldb.mobile.ui.notifications.notificationDay
 import com.schooldb.mobile.ui.ConnectionStateScreen
 import com.schooldb.mobile.ui.OfflineDataBanner
 import com.schooldb.mobile.ui.SchoolLogo
+import com.schooldb.mobile.ui.SchoolDbHeaderAction
+import com.schooldb.mobile.ui.SchoolDbRoleHeader
 import com.schooldb.mobile.ui.StudentAvatar
 import com.schooldb.mobile.ui.rememberIsOnline
 import com.schooldb.mobile.preferences.AppPreferences
@@ -139,48 +141,17 @@ private fun StudentPremiumTopBar(
     onNotifications: () -> Unit,
     onSwitchAccount: () -> Unit,
 ) {
-    val shape = RoundedCornerShape(bottomStart = 28.dp, bottomEnd = 28.dp)
-    Box(
-        Modifier.fillMaxWidth()
-            .shadow(12.dp, shape, ambientColor = Color.Black.copy(alpha = .06f),
-                spotColor = Color.Black.copy(alpha = .08f))
-            .clip(shape)
-            .background(Brush.linearGradient(listOf(Color.White, Color(0xFFF1F3FF), Color(0xFFF5F3FF))))
-            .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = .42f), shape),
+    SchoolDbRoleHeader(
+        schoolName = schoolName,
+        schoolLogoUrl = schoolLogoUrl,
+        title = "Student Space",
     ) {
-        Box(
-            Modifier.size(150.dp).align(Alignment.TopEnd)
-                .background(MaterialTheme.colorScheme.primary.copy(alpha = .05f), CircleShape),
-        )
-        Row(
-            Modifier.fillMaxWidth().statusBarsPadding()
-                .padding(horizontal = 20.dp, vertical = 16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            SchoolLogo(
-                schoolName = schoolName,
-                imageUrl = schoolLogoUrl,
-                size = 42.dp,
-            )
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f)) {
-                Text("STUDENT SPACE", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold,
-                    fontSize = 10.sp, letterSpacing = 1.3.sp)
-                Text(schoolName, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            }
-            Surface(
-                onClick = onNotifications,
-                modifier = Modifier.size(42.dp),
-                shape = CircleShape,
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = .72f),
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    BadgedBox(badge = {
-                        if (unread > 0) Badge { Text(unread.coerceAtMost(99).toString(), fontSize = 9.sp) }
-                    }) {
-                        Icon(Lucide.Bell, contentDescription = "Notifications", modifier = Modifier.size(20.dp))
-                    }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            SchoolDbHeaderAction(onClick = onNotifications) {
+                BadgedBox(badge = {
+                    if (unread > 0) Badge { Text(unread.coerceAtMost(99).toString(), fontSize = 9.sp) }
+                }) {
+                    Icon(Lucide.Bell, contentDescription = "Notifications", modifier = Modifier.size(20.dp))
                 }
             }
             Spacer(Modifier.width(9.dp))
@@ -350,23 +321,13 @@ fun FamilyDashboardScreen(
                         },
                         onSwitchAccount = onSwitchAccount,
                     )
-                } else TopAppBar(
-                title = {
+                } else SchoolDbRoleHeader(
+                    schoolName = dashboard?.schoolName ?: "SchoolDB",
+                    schoolLogoUrl = dashboard?.schoolLogoUrl,
+                    title = "Parent Space",
+                ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        SchoolLogo(
-                            schoolName = dashboard?.schoolName ?: "SchoolDB",
-                            imageUrl = dashboard?.schoolLogoUrl,
-                            size = 40.dp,
-                        )
-                        Spacer(Modifier.width(10.dp))
-                        Column {
-                            Text(dashboard?.schoolName ?: "SchoolDB", fontWeight = FontWeight.Bold, maxLines = 1)
-                            Text("Parent space", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
-                        }
-                    }
-                },
-                actions = {
-                    IconButton(onClick = {
+                    SchoolDbHeaderAction(onClick = {
                         tab = FamilyTab.MORE
                         moreScreen = "NOTIFICATIONS"
                     }) {
@@ -385,12 +346,19 @@ fun FamilyDashboardScreen(
                             Icon(Icons.Outlined.Notifications, contentDescription = "Notifications")
                         }
                     }
-                    IconButton(onClick = onSwitchAccount) {
-                        Icon(Icons.Default.SwapHoriz, contentDescription = "Switch account or role")
+                    Spacer(Modifier.width(9.dp))
+                    Surface(onClick = onSwitchAccount, modifier = Modifier.size(42.dp),
+                        shape = CircleShape, color = Color.Transparent) {
+                        StudentAvatar(
+                            name = dashboard?.userName.orEmpty(),
+                            imageUrl = null,
+                            size = 42.dp,
+                            backgroundColor = FamilyIndigo,
+                            contentColor = Color.White,
+                        )
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface),
-            )
+                    }
+                }
                 if (!isOnline && dashboard != null) OfflineDataBanner()
             }
         },

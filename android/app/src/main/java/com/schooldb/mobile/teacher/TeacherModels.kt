@@ -3,8 +3,10 @@ package com.schooldb.mobile.teacher
 data class MobileContext(
     val userName: String,
     val schoolName: String,
+    val schoolLogoUrl: String?,
     val schoolSlug: String,
     val role: String,
+    val imageUrl: String?,
     val canUnlockAttendance: Boolean = false,
     val teacherAccess: TeacherAccess = TeacherAccess(),
 )

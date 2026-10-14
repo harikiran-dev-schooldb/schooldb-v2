@@ -23,8 +23,10 @@ class TeacherRepository(
         return MobileContext(
             userName = data.optString("userName", "SchoolDB user"),
             schoolName = data.optString("schoolName", "SchoolDB"),
+            schoolLogoUrl = data.optString("schoolLogoUrl").takeIf { it.isNotBlank() },
             schoolSlug = data.optString("schoolSlug"),
             role = data.optString("role", "UNKNOWN"),
+            imageUrl = data.optString("imageUrl").takeIf { it.isNotBlank() },
             canUnlockAttendance = data.optJSONObject("permissions")
                 ?.optBoolean("canUnlockAttendance") == true,
             teacherAccess = access?.toTeacherAccess() ?: TeacherAccess.legacyEnabled(),
