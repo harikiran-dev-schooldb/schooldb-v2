@@ -97,7 +97,10 @@ export default defineConfig({
           : `npm run dev -- --hostname ${localServerHostname} --port ${localServerPort}`,
         url: `${baseURL}/api/health`,
         reuseExistingServer: !process.env.CI,
-        timeout: 120_000,
+        // A clean CI production build can take a little over two minutes
+        // before the health endpoint is available. Keep startup timing from
+        // failing the browser suite before any tests have run.
+        timeout: 240_000,
         stdout: "pipe",
         stderr: "pipe",
       }
