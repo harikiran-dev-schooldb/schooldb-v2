@@ -52,6 +52,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.clerk.api.Clerk
 import com.schooldb.support.tickets.*
 import kotlinx.coroutines.flow.first
@@ -533,14 +534,14 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
                     horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         if (page == SupportPage.DASHBOARD) SchoolIdentityMark(identity, Modifier.size(42.dp), loading = !identityCacheLoaded)
-                        else Surface(shape = CircleShape, color = Canvas, border = BorderStroke(1.dp, Line)) {
-                            IconButton(onClick = { page = if (page == SupportPage.ADMIN_FORM) SupportPage.ADMINS else SupportPage.DASHBOARD }, modifier = Modifier.size(42.dp)) {
-                            Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Back", tint = Ink)
-                            }
+                        else SupportHeaderAction(
+                            onClick = { page = if (page == SupportPage.ADMIN_FORM) SupportPage.ADMINS else SupportPage.DASHBOARD },
+                        ) {
+                            Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Back", tint = Indigo)
                         }
                         Column {
                             Text((identity?.name ?: school).uppercase(), maxLines = 1, overflow = TextOverflow.Ellipsis,
-                                style = MaterialTheme.typography.labelSmall, color = Muted, fontWeight = FontWeight.Bold)
+                                style = MaterialTheme.typography.labelSmall, color = Indigo, fontWeight = FontWeight.ExtraBold)
                             Text(when (page) {
                                 SupportPage.DASHBOARD -> if (dashboardTab == DashboardTab.PROFILE) "My Profile" else "Support Desk"
                                 SupportPage.CREATE_TICKET -> "New ticket"
@@ -548,13 +549,12 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
                                 SupportPage.ADMINS -> "Administrators"
                                 else -> if (adminState.selected == null) "Add administrator" else "Edit administrator"
                             },
-                                style = MaterialTheme.typography.titleMedium, color = Ink, fontWeight = FontWeight.Bold)
+                                fontSize = 18.sp, lineHeight = 23.sp, color = Ink, fontWeight = FontWeight.ExtraBold)
                         }
                     }
-                    if (page == SupportPage.DASHBOARD) IconButton(
+                    if (page == SupportPage.DASHBOARD) SupportHeaderAction(
                         onClick = { dashboardTab = DashboardTab.PROFILE },
-                        modifier = Modifier.size(42.dp),
-                    ) { Icon(Icons.Outlined.Person, contentDescription = "Open profile", tint = Muted) }
+                    ) { Icon(Icons.Outlined.Person, contentDescription = "Open profile", tint = Indigo) }
                 }
             }
         }

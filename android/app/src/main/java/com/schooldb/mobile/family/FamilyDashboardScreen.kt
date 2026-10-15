@@ -2201,29 +2201,46 @@ private fun StudentPageHeader(
     onBack: (() -> Unit)? = null,
     action: (@Composable () -> Unit)? = null,
 ) {
-    Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp), verticalAlignment = Alignment.CenterVertically) {
-        if (onBack != null) {
-            Surface(
-                onClick = onBack,
-                modifier = Modifier.size(43.dp),
-                shape = CircleShape,
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = .78f),
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", modifier = Modifier.size(21.dp))
+    val shape = RoundedCornerShape(24.dp)
+    Box(
+        Modifier.fillMaxWidth().padding(horizontal = 16.dp)
+            .shadow(8.dp, shape, ambientColor = Color(0xFF0F172A).copy(alpha = .05f),
+                spotColor = Color(0xFF0F172A).copy(alpha = .07f))
+            .clip(shape)
+            .background(Brush.linearGradient(listOf(Color.White, Color(0xFFF2F5FF), Color(0xFFF8F3FF))))
+            .border(1.dp, Color(0xFFE0E7FF), shape),
+    ) {
+        Box(Modifier.size(92.dp).align(Alignment.TopEnd)
+            .background(FamilyIndigo.copy(alpha = .06f), CircleShape))
+        Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+            if (onBack != null) {
+                Surface(
+                    onClick = onBack,
+                    modifier = Modifier.size(43.dp),
+                    shape = CircleShape,
+                    color = Color.White.copy(alpha = .9f),
+                    border = BorderStroke(1.dp, Color(0xFFD8E0FF)),
+                    shadowElevation = 2.dp,
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back",
+                            modifier = Modifier.size(21.dp), tint = FamilyIndigo)
+                    }
                 }
+                Spacer(Modifier.width(13.dp))
             }
-            Spacer(Modifier.width(13.dp))
-        }
-        Column(Modifier.weight(1f)) {
-            Text(title, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.ExtraBold,
-                fontSize = 27.sp, lineHeight = 31.sp, letterSpacing = (-.45).sp)
-            Text(subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp,
-                maxLines = 1, overflow = TextOverflow.Ellipsis)
-        }
-        if (action != null) {
-            Spacer(Modifier.width(10.dp))
-            action()
+            Column(Modifier.weight(1f)) {
+                Text("STUDENT SPACE", color = FamilyIndigo, fontSize = 9.sp,
+                    fontWeight = FontWeight.ExtraBold, letterSpacing = 1.sp)
+                Text(title, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.ExtraBold,
+                    fontSize = 25.sp, lineHeight = 30.sp, letterSpacing = (-.4).sp)
+                Text(subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            if (action != null) {
+                Spacer(Modifier.width(10.dp))
+                action()
+            }
         }
     }
 }

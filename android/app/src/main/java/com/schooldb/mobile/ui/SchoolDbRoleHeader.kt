@@ -28,6 +28,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 
 @Composable
 fun SchoolDbRoleHeader(
@@ -37,39 +38,48 @@ fun SchoolDbRoleHeader(
     modifier: Modifier = Modifier,
     actions: @Composable BoxScope.() -> Unit = {},
 ) {
-    val shape = RoundedCornerShape(bottomStart = 28.dp, bottomEnd = 28.dp)
+    val shape = RoundedCornerShape(bottomStart = 30.dp, bottomEnd = 30.dp)
     Box(
         modifier.fillMaxWidth()
-            .shadow(12.dp, shape, ambientColor = Color(0xFF0F172A).copy(alpha = 0.06f),
-                spotColor = Color(0xFF0F172A).copy(alpha = 0.08f))
+            .shadow(14.dp, shape, ambientColor = Color(0xFF0F172A).copy(alpha = 0.07f),
+                spotColor = Color(0xFF0F172A).copy(alpha = 0.10f))
             .clip(shape)
-            .background(Brush.linearGradient(listOf(Color.White, Color(0xFFF1F3FF), Color(0xFFF5F3FF))))
+            .background(Brush.linearGradient(listOf(
+                Color.White, Color(0xFFF7F8FF), Color(0xFFEEF2FF), Color(0xFFF7F3FF),
+            )))
             .border(1.dp, Color(0xFFE0E7FF), shape),
     ) {
-        Box(Modifier.size(150.dp).align(Alignment.TopEnd)
-            .background(Color(0xFF4F46E5).copy(alpha = 0.05f), CircleShape))
+        Box(Modifier.size(172.dp).align(Alignment.TopEnd)
+            .background(Color(0xFF818CF8).copy(alpha = 0.075f), CircleShape))
+        Box(Modifier.size(92.dp).align(Alignment.BottomStart)
+            .background(Color(0xFFA78BFA).copy(alpha = 0.07f), CircleShape))
         Row(
-            Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 20.dp, vertical = 16.dp),
+            Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 20.dp, vertical = 15.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            SchoolLogo(schoolName = schoolName, imageUrl = schoolLogoUrl, size = 42.dp)
-            Spacer(Modifier.width(12.dp))
+            Surface(shape = RoundedCornerShape(15.dp), color = Color.White.copy(alpha = .9f),
+                border = BorderStroke(1.dp, Color(0xFFD8E0FF)), shadowElevation = 2.dp) {
+                SchoolLogo(schoolName = schoolName, imageUrl = schoolLogoUrl, size = 42.dp)
+            }
+            Spacer(Modifier.width(13.dp))
             Column(Modifier.weight(1f)) {
                 Text(
                     schoolName.uppercase(),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     style = MaterialTheme.typography.labelSmall,
-                    color = Color(0xFF64748B),
-                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF4F46E5),
+                    fontWeight = FontWeight.ExtraBold,
+                    letterSpacing = .7.sp,
                 )
                 Text(
                     title,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    style = MaterialTheme.typography.titleMedium,
+                    fontSize = 18.sp,
+                    lineHeight = 23.sp,
                     color = Color(0xFF0F172A),
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.ExtraBold,
                 )
             }
             Box(contentAlignment = Alignment.Center, content = actions)
@@ -87,8 +97,9 @@ fun SchoolDbHeaderAction(
         onClick = onClick,
         modifier = modifier.size(42.dp),
         shape = CircleShape,
-        color = Color(0xFFF1F3FF),
-        border = BorderStroke(1.dp, Color(0xFFE0E7FF)),
+        color = Color.White.copy(alpha = .88f),
+        border = BorderStroke(1.dp, Color(0xFFD8E0FF)),
+        shadowElevation = 2.dp,
     ) {
         Box(contentAlignment = Alignment.Center, content = content)
     }

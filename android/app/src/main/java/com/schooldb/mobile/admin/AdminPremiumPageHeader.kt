@@ -52,23 +52,23 @@ internal fun AdminPremiumPageHeader(
     onAction: (() -> Unit)? = null,
 ) {
     AdminLightStatusBarEffect()
-    val shape = RoundedCornerShape(bottomStart = 28.dp, bottomEnd = 28.dp)
+    val shape = RoundedCornerShape(bottomStart = 30.dp, bottomEnd = 30.dp)
     Box(
         modifier.fillMaxWidth()
-            .shadow(12.dp, shape, ambientColor = HeaderNavy.copy(alpha = .06f),
-                spotColor = HeaderNavy.copy(alpha = .08f))
+            .shadow(14.dp, shape, ambientColor = HeaderNavy.copy(alpha = .07f),
+                spotColor = HeaderNavy.copy(alpha = .10f))
             .clip(shape)
             .background(Brush.linearGradient(listOf(
-                Color.White, Color(0xFFF1F3FF), Color(0xFFF5F3FF),
+                Color.White, Color(0xFFF7F8FF), Color(0xFFEEF2FF), Color(0xFFF7F3FF),
             )))
             .border(1.dp, HeaderBorder, shape)
             .statusBarsPadding(),
     ) {
-        Box(Modifier.size(150.dp).align(Alignment.TopEnd)
-            .background(Color(0xFF818CF8).copy(alpha = .08f), CircleShape))
-        Box(Modifier.size(94.dp).align(Alignment.BottomStart)
-            .background(Color(0xFFA78BFA).copy(alpha = .08f), CircleShape))
-        Column(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 13.dp)) {
+        Box(Modifier.size(172.dp).align(Alignment.TopEnd)
+            .background(Color(0xFF818CF8).copy(alpha = .075f), CircleShape))
+        Box(Modifier.size(104.dp).align(Alignment.BottomStart)
+            .background(Color(0xFFA78BFA).copy(alpha = .07f), CircleShape))
+        Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 14.dp)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically) {
                 AdminPremiumHeaderButton(
@@ -90,16 +90,19 @@ internal fun AdminPremiumPageHeader(
                     Spacer(Modifier.size(42.dp))
                 }
             }
-            Spacer(Modifier.size(15.dp))
-            Text(eyebrow, color = HeaderIndigo, fontSize = 9.sp,
-                fontWeight = FontWeight.ExtraBold, letterSpacing = 1.25.sp)
-            Text(title, color = HeaderNavy, fontSize = 28.sp, lineHeight = 33.sp,
+            Spacer(Modifier.size(16.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(6.dp).background(HeaderIndigo, CircleShape))
+                Text(eyebrow, Modifier.padding(start = 8.dp), color = HeaderIndigo, fontSize = 9.sp,
+                    fontWeight = FontWeight.ExtraBold, letterSpacing = 1.25.sp)
+            }
+            Text(title, Modifier.padding(top = 4.dp), color = HeaderNavy, fontSize = 29.sp, lineHeight = 34.sp,
                 fontWeight = FontWeight.ExtraBold, letterSpacing = (-.4).sp,
                 maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(subtitle, Modifier.padding(top = 4.dp), color = HeaderSlate,
                 fontSize = 12.sp, lineHeight = 17.sp, maxLines = 2,
                 overflow = TextOverflow.Ellipsis)
-            Spacer(Modifier.size(8.dp))
+            Spacer(Modifier.size(10.dp))
         }
     }
 }
@@ -116,9 +119,10 @@ internal fun AdminPremiumHeaderButton(
         enabled = enabled,
         modifier = Modifier.size(42.dp).semantics { this.contentDescription = contentDescription },
         shape = CircleShape,
-        color = if (enabled) Color(0xFFEEF2FF) else Color(0xFFF8FAFC),
+        color = if (enabled) Color.White.copy(alpha = .88f) else Color(0xFFF8FAFC),
         contentColor = HeaderIndigo,
         border = BorderStroke(1.dp, if (enabled) HeaderBorder else Color(0xFFE2E8F0)),
+        shadowElevation = if (enabled) 2.dp else 0.dp,
     ) {
         Box(contentAlignment = Alignment.Center) { content() }
     }

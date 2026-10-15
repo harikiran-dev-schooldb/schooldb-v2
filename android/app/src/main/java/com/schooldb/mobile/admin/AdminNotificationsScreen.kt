@@ -182,23 +182,23 @@ fun AdminNotificationsScreen(onBack: () -> Unit, onCreate: () -> Unit) {
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            val headerShape = RoundedCornerShape(bottomStart = 32.dp, bottomEnd = 32.dp)
+            val headerShape = RoundedCornerShape(bottomStart = 30.dp, bottomEnd = 30.dp)
             Box(
                 Modifier.fillMaxWidth()
-                    .shadow(14.dp, headerShape, ambientColor = Color(0xFF0F172A).copy(alpha = .06f),
-                        spotColor = Color(0xFF0F172A).copy(alpha = .08f))
+                    .shadow(14.dp, headerShape, ambientColor = Color(0xFF0F172A).copy(alpha = .07f),
+                        spotColor = Color(0xFF0F172A).copy(alpha = .10f))
                     .clip(headerShape)
                     .background(Brush.linearGradient(listOf(
-                        Color.White, Color(0xFFF1F3FF), Color(0xFFF5F3FF),
+                        Color.White, Color(0xFFF7F8FF), Color(0xFFEEF2FF), Color(0xFFF7F3FF),
                     )))
                     .border(1.dp, Color(0xFFE0E7FF), headerShape)
                     .statusBarsPadding(),
             ) {
-                Box(Modifier.size(180.dp).align(Alignment.TopEnd).padding(top = 6.dp)
-                    .background(Color(0xFF818CF8).copy(alpha = .08f), CircleShape))
-                Box(Modifier.size(125.dp).align(Alignment.BottomStart)
-                    .background(Color(0xFFA78BFA).copy(alpha = .08f), CircleShape))
-                Column(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 14.dp)) {
+                Box(Modifier.size(172.dp).align(Alignment.TopEnd)
+                    .background(Color(0xFF818CF8).copy(alpha = .075f), CircleShape))
+                Box(Modifier.size(104.dp).align(Alignment.BottomStart)
+                    .background(Color(0xFFA78BFA).copy(alpha = .07f), CircleShape))
+                Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 14.dp)) {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically) {
                         PremiumHeaderIcon(onClick = onBack, contentDescription = "Back") {
@@ -336,9 +336,10 @@ private fun PremiumHeaderIcon(
         enabled = enabled,
         modifier = Modifier.size(42.dp).semantics { this.contentDescription = contentDescription },
         shape = CircleShape,
-        color = if (enabled) Color(0xFFEEF2FF) else Color(0xFFF8FAFC),
+        color = if (enabled) Color.White.copy(alpha = .88f) else Color(0xFFF8FAFC),
         contentColor = Color(0xFF4F46E5),
-        border = BorderStroke(1.dp, if (enabled) Color(0xFFC7D2FE) else Color(0xFFE2E8F0)),
+        border = BorderStroke(1.dp, if (enabled) Color(0xFFD8E0FF) else Color(0xFFE2E8F0)),
+        shadowElevation = if (enabled) 2.dp else 0.dp,
     ) {
         Box(contentAlignment = Alignment.Center) { content() }
     }

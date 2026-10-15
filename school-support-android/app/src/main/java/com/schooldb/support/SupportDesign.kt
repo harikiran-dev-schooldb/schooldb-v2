@@ -152,15 +152,36 @@ internal fun priorityTint(priority: String): Color = when (priority) {
 /** Matches the main Android app's rounded, light gradient page headers. */
 @Composable
 internal fun SupportHeaderSurface(content: @Composable BoxScope.() -> Unit) {
-    val shape = RoundedCornerShape(bottomStart = 28.dp, bottomEnd = 28.dp)
-    Box(Modifier.fillMaxWidth().shadow(12.dp, shape,
-        ambientColor = Ink.copy(alpha = .06f), spotColor = Ink.copy(alpha = .08f))
-        .clip(shape).background(Brush.linearGradient(listOf(Color.White, Color(0xFFF1F3FF), Color(0xFFF5F3FF))))
+    val shape = RoundedCornerShape(bottomStart = 30.dp, bottomEnd = 30.dp)
+    Box(Modifier.fillMaxWidth().shadow(14.dp, shape,
+        ambientColor = Ink.copy(alpha = .07f), spotColor = Ink.copy(alpha = .10f))
+        .clip(shape).background(Brush.linearGradient(listOf(
+            Color.White, Color(0xFFF7F8FF), Color(0xFFEEF2FF), Color(0xFFF7F3FF),
+        )))
         .border(1.dp, Line, shape)) {
-        Box(Modifier.matchParentSize()) {
-            Box(Modifier.size(150.dp).align(Alignment.TopEnd).background(Indigo.copy(alpha = .05f), CircleShape))
-        }
+        Box(Modifier.size(172.dp).align(Alignment.TopEnd)
+            .background(Color(0xFF818CF8).copy(alpha = .075f), CircleShape))
+        Box(Modifier.size(92.dp).align(Alignment.BottomStart)
+            .background(Color(0xFFA78BFA).copy(alpha = .07f), CircleShape))
         content()
+    }
+}
+
+@Composable
+internal fun SupportHeaderAction(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    content: @Composable BoxScope.() -> Unit,
+) {
+    Surface(
+        onClick = onClick,
+        modifier = modifier.size(42.dp),
+        shape = CircleShape,
+        color = Color.White.copy(alpha = .88f),
+        border = BorderStroke(1.dp, Color(0xFFD8E0FF)),
+        shadowElevation = 2.dp,
+    ) {
+        Box(contentAlignment = Alignment.Center, content = content)
     }
 }
 
