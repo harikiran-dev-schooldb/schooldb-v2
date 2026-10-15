@@ -743,35 +743,24 @@ private fun StudentQuickActions(
 private fun StudentHero(student: FamilyStudent) {
     Box(
         Modifier.fillMaxWidth().padding(horizontal = 20.dp)
-            .clip(RoundedCornerShape(28.dp))
+            .clip(RoundedCornerShape(22.dp))
             .background(Brush.linearGradient(listOf(Color.White, Color(0xFFF1F3FF), Color(0xFFF5F3FF)))),
     ) {
-        Box(Modifier.align(Alignment.TopEnd).offset(x = 60.dp, y = (-65).dp).size(180.dp).background(Color.White.copy(alpha = .07f), CircleShape))
-        Box(Modifier.align(Alignment.BottomEnd).offset(x = 38.dp, y = 60.dp).size(145.dp).background(Color.White.copy(alpha = .06f), CircleShape))
-        Column(Modifier.fillMaxWidth().padding(22.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                StudentAvatar(
-                    name = student.fullName,
-                    imageUrl = student.imageUrl,
-                    size = 52.dp,
-                    backgroundColor = FamilyIndigo,
-                    contentColor = Color.White,
-                )
-                Spacer(Modifier.width(11.dp))
-                Text("STUDENT PROFILE", color = Color(0xFF64748B), fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
-            }
-            Spacer(Modifier.height(19.dp))
-            Text(student.fullName, color = Color(0xFF0F172A), fontWeight = FontWeight.Bold, fontSize = 25.sp, lineHeight = 29.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        Box(Modifier.matchParentSize()) {
+            Box(Modifier.align(Alignment.TopEnd).offset(x = 60.dp, y = (-65).dp).size(180.dp).background(Color.White.copy(alpha = .07f), CircleShape))
+            Box(Modifier.align(Alignment.BottomEnd).offset(x = 38.dp, y = 60.dp).size(145.dp).background(Color.White.copy(alpha = .06f), CircleShape))
+        }
+        Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 18.dp)) {
+            Text(student.fullName, color = Color(0xFF0F172A), fontWeight = FontWeight.Bold, fontSize = 21.sp, lineHeight = 25.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
             Text(
-                listOfNotNull(student.className, student.sectionName?.let { "Section $it" }, student.rollNo?.let { "Roll $it" }).joinToString("  ·  ").ifBlank { "Enrollment details unavailable" },
-                Modifier.padding(top = 7.dp), color = Color(0xFF64748B), fontSize = 13.sp,
+                listOfNotNull(student.className?.let { "Class $it" }, student.sectionName?.let { "Section $it" }, student.rollNo?.let { "Roll $it" }).joinToString("  ·  ").ifBlank { "Enrollment details unavailable" },
+                Modifier.padding(top = 6.dp), color = Color(0xFF64748B), fontSize = 13.sp,
             )
             if (student.admissionNo.isNotBlank()) {
-                Spacer(Modifier.height(20.dp))
                 Text(
-                    "ADMISSION  ${student.admissionNo}",
-                    Modifier.background(Color.White.copy(alpha = .14f), RoundedCornerShape(10.dp)).padding(horizontal = 11.dp, vertical = 7.dp),
-                    color = Color(0xFF0F172A), fontSize = 11.sp, fontWeight = FontWeight.SemiBold, letterSpacing = .4.sp,
+                    "Admission no. ${student.admissionNo}",
+                    Modifier.padding(top = 6.dp),
+                    color = Color(0xFF0F172A), fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
                 )
             }
         }
