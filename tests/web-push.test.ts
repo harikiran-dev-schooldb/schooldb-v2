@@ -37,5 +37,10 @@ test("accepts valid stored subscriptions and rejects malformed JSON", () => {
 test("recognizes expired web push endpoints", () => {
   assert.equal(isExpiredWebPushError({ statusCode: 404 }), true);
   assert.equal(isExpiredWebPushError({ statusCode: 410 }), true);
+  assert.equal(isExpiredWebPushError({
+    statusCode: 400,
+    body: '{"reason":"VapidPkHashMismatch"}',
+  }), true);
+  assert.equal(isExpiredWebPushError({ statusCode: 400, body: "BadJwtToken" }), false);
   assert.equal(isExpiredWebPushError({ statusCode: 429 }), false);
 });

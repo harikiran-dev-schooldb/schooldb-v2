@@ -29,6 +29,10 @@ export function browserDeviceKey(schoolSlug: string) {
   return `schooldb:web-push:v1:${schoolSlug}`;
 }
 
+function browserVapidKeyKey(schoolSlug: string) {
+  return `schooldb:web-push-vapid:v1:${schoolSlug}`;
+}
+
 export function isApplePlatform() {
   return /iPhone|iPad|iPod|Macintosh/i.test(navigator.userAgent)
     || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
@@ -50,6 +54,12 @@ function applicationServerKey(value: string) {
   return Uint8Array.from(window.atob(base64), (character) => character.charCodeAt(0));
 }
 
+function applicationServerKeysMatch(current: ArrayBuffer, expected: Uint8Array) {
+  const currentBytes = new Uint8Array(current);
+  return currentBytes.length === expected.length
+    && currentBytes.every((value, index) => value === expected[index]);
+}
+
 export function browserPushState(schoolSlug: string): BrowserPushState {
   if (
     !("Notification" in window)
@@ -65,20 +75,29 @@ export function browserPushState(schoolSlug: string): BrowserPushState {
   return "available";
 }
 
-async function registrationBody(registration: ServiceWorkerRegistration) {
+async function registrationBody(registration: ServiceWorkerRegistration, schoolSlug: string) {
   if (isApplePlatform()) {
     if (!standardWebPushVapidKey) {
       throw new Error("iPhone and Safari push needs the Web Push VAPID key to be configured.");
     }
-    const subscription = (await registration.pushManager.getSubscription())
-      ?? await withTimeout(
-        registration.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: applicationServerKey(standardWebPushVapidKey),
-        }),
-        20_000,
-        "Safari did not create a push subscription. Check notification settings and try again.",
-      );
+    const expectedKey = applicationServerKey(standardWebPushVapidKey);
+    let subscription = await registration.pushManager.getSubscription();
+    const subscribedKey = subscription?.options.applicationServerKey;
+    const savedVapidKey = localStorage.getItem(browserVapidKeyKey(schoolSlug));
+    const keyChanged = savedVapidKey !== standardWebPushVapidKey
+      || Boolean(subscribedKey && !applicationServerKeysMatch(subscribedKey, expectedKey));
+    if (subscription && keyChanged) {
+      await subscription.unsubscribe();
+      subscription = null;
+    }
+    subscription ??= await withTimeout(
+      registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: expectedKey,
+      }),
+      20_000,
+      "Safari did not create a push subscription. Check notification settings and try again.",
+    );
     return { webPushSubscription: subscription.toJSON() };
   }
 
@@ -133,7 +152,7 @@ async function saveRegistration(schoolSlug: string, requestPermission: boolean) 
     10_000,
     "The notification service worker did not become ready. Reload the page and try again.",
   );
-  const body = await registrationBody(registration);
+  const body = await registrationBody(registration, schoolSlug);
   const key = browserDeviceKey(schoolSlug);
   const installationId = localStorage.getItem(key) ?? `web:${crypto.randomUUID()}`;
   const response = await fetch("/api/v1/web-push/devices", {
@@ -146,6 +165,9 @@ async function saveRegistration(schoolSlug: string, requestPermission: boolean) 
     throw new Error(result.message || "Unable to enable browser alerts.");
   }
   localStorage.setItem(key, installationId);
+  if (isApplePlatform() && standardWebPushVapidKey) {
+    localStorage.setItem(browserVapidKeyKey(schoolSlug), standardWebPushVapidKey);
+  }
   return true;
 }
 

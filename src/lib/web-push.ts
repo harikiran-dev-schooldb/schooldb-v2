@@ -85,5 +85,13 @@ export async function sendStandardWebPush(
 
 export function isExpiredWebPushError(error: unknown) {
   if (!error || typeof error !== "object" || !("statusCode" in error)) return false;
-  return error.statusCode === 404 || error.statusCode === 410;
+  if (error.statusCode === 404 || error.statusCode === 410) return true;
+
+  // Apple returns 400 when the subscription was created with a different
+  // VAPID public key. That subscription cannot succeed again and must be
+  // replaced by the browser using the currently configured key.
+  if (error.statusCode === 400 && "body" in error && typeof error.body === "string") {
+    return error.body.includes("VapidPkHashMismatch");
+  }
+  return false;
 }
