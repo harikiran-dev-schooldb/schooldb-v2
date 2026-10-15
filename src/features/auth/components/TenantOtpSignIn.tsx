@@ -530,15 +530,6 @@ export function TenantOtpSignIn({ schoolSlug, schoolName, schoolLogo }: Props) {
 
         <section className="flex w-full min-w-0 items-center justify-center lg:justify-end">
           <div className="w-full min-w-0 max-w-[530px]">
-            <div className="mb-5 min-w-0 overflow-hidden rounded-[24px] border border-indigo-100 bg-white/75 p-4 shadow-[0_18px_50px_rgba(79,70,229,.08)] backdrop-blur-xl lg:hidden">
-              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-indigo-600">Connected school workspace</p>
-              <h1 className="mt-2 text-2xl font-black tracking-[-0.045em] text-slate-950 sm:text-3xl">Your school day, <span className="text-indigo-600">beautifully connected.</span></h1>
-              <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
-                {HIGHLIGHTS.map(({ label, icon: Icon }) => (
-                  <span key={label} className="flex shrink-0 items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-[11px] font-semibold text-slate-600"><Icon className="size-3.5 text-indigo-500" /> {label}</span>
-                ))}
-              </div>
-            </div>
             <div className="schooldb-auth-card relative overflow-hidden rounded-[30px] border border-white bg-white/88 p-5 shadow-[0_35px_100px_rgba(79,70,229,.14),0_8px_30px_rgba(15,23,42,.06),inset_0_1px_0_rgba(255,255,255,.95)] backdrop-blur-2xl sm:rounded-[36px] sm:p-8 xl:p-9">
               <div className="pointer-events-none absolute inset-x-12 top-0 h-px bg-gradient-to-r from-transparent via-indigo-400/70 to-transparent" />
               <div className="pointer-events-none absolute -right-20 -top-20 size-52 rounded-full bg-indigo-300/20 blur-3xl" />
