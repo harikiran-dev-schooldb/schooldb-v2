@@ -1,6 +1,7 @@
 "use client";
 
 import { useSignIn, useUser } from "@clerk/nextjs";
+import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -460,9 +461,14 @@ export function TenantOtpSignIn({ schoolSlug, schoolName, schoolLogo }: Props) {
 
       <header className="relative z-20 mx-auto flex w-full max-w-[1680px] items-center justify-between">
         <div className="flex items-center gap-3.5">
-          <div className="schooldb-logo-glow flex size-11 items-center justify-center rounded-2xl border border-indigo-200/80 bg-white/85 text-indigo-600 shadow-[0_10px_30px_rgba(79,70,229,.12)] backdrop-blur-xl sm:size-12">
-            <School className="size-5 sm:size-6" />
-          </div>
+          <Image
+            src="/schooldb-app-logo.png"
+            alt=""
+            width={48}
+            height={48}
+            priority
+            className="schooldb-logo-glow size-11 rounded-2xl object-cover shadow-[0_10px_30px_rgba(79,70,229,.18)] sm:size-12"
+          />
           <div>
             <p className="text-lg font-black tracking-[-0.035em] sm:text-xl">SchoolDB</p>
             <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-400 sm:text-[10px]">
