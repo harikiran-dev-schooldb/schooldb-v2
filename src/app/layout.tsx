@@ -5,6 +5,7 @@ import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { Analytics } from "@vercel/analytics/next";
 import { PwaRegistration } from "@/components/pwa/PwaRegistration";
+import { AccountSwitchTransition } from "@/components/layout/AccountSwitchTransition";
 
 export const metadata: Metadata = {
   title: {
@@ -55,6 +56,7 @@ export default function RootLayout({
     >
       <body className="flex min-h-screen flex-col bg-background text-foreground">
         <ClerkProvider proxyUrl={process.env.NEXT_PUBLIC_CLERK_PROXY_URL}>
+          <AccountSwitchTransition />
           {children}
 
           <PwaRegistration />
