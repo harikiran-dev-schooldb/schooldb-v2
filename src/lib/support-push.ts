@@ -93,6 +93,7 @@ export async function sendSupportPush(input: {
       body: input.body,
       ticketId: input.ticketId,
       ticketNo: input.ticketNo,
+      priority: input.title.toLowerCase().includes("urgent") ? "URGENT" : "NORMAL",
     },
     android: {
       priority: "high",

@@ -1,4 +1,4 @@
-const CACHE_NAME = "schooldb-pwa-v9";
+const CACHE_NAME = "schooldb-pwa-v10";
 const OFFLINE_URL = "/offline";
 const HOSTNAME = self.location.hostname.toLowerCase();
 const LOCAL_PREVIEW_HOSTS = ["localhost", "127.0.0.1", "[::1]", "::1"];
@@ -111,13 +111,22 @@ self.addEventListener("push", (event) => {
   const notification = payload.notification || {};
   const data = payload.data || {};
   const title = notification.title || data.title || "SchoolDB";
+  const priority = String(data.priority || "NORMAL").toUpperCase();
   const options = {
     body: notification.body || data.body || "You have a new school update.",
     icon: notification.icon || "/pwa-192.png",
     badge: notification.badge || "/pwa-192.png",
     tag: notification.tag || data.announcementId || "schooldb-update",
+    timestamp: Date.now(),
+    renotify: priority === "URGENT",
+    requireInteraction: priority === "URGENT",
+    vibrate: priority === "URGENT" ? [180, 80, 180] : [120],
+    actions: [{ action: "open", title: "Open SchoolDB" }],
     data: {
       url: notification.navigate || data.link || payload.fcmOptions?.link || "/",
+      announcementId: data.announcementId,
+      category: data.category,
+      priority,
     },
   };
 

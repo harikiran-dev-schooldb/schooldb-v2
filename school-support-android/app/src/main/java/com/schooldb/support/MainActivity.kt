@@ -162,9 +162,12 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
     LaunchedEffect(school, clerkUser, resumeVersion, identityCacheLoaded) {
+        val notificationManager = context.getSystemService(android.app.NotificationManager::class.java)
+        val supportChannelsEnabled = listOf("support_updates_v2", "support_urgent_v2").any { channelId ->
+            notificationManager.getNotificationChannel(channelId)?.importance != android.app.NotificationManager.IMPORTANCE_NONE
+        }
         alertsEnabled = androidx.core.app.NotificationManagerCompat.from(context).areNotificationsEnabled() &&
-            (context.getSystemService(android.app.NotificationManager::class.java)
-                .getNotificationChannel("support_tickets")?.importance != android.app.NotificationManager.IMPORTANCE_NONE)
+            supportChannelsEnabled
         if (school.isNotBlank() && clerkUser != null && identityCacheLoaded) {
             try {
                 val fresh = loadSchoolIdentity(school)

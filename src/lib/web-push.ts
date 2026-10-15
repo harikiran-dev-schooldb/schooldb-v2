@@ -76,7 +76,7 @@ export async function sendStandardWebPush(
     buildWebPushPayload(payload),
     {
       TTL: 24 * 60 * 60,
-      urgency: "normal",
+      urgency: payload.data?.priority === "URGENT" ? "high" : "normal",
       topic: payload.tag?.slice(0, 32),
       headers: { "Content-Type": "application/notification+json" },
     },

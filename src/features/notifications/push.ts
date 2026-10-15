@@ -241,6 +241,8 @@ export async function sendAnnouncementPush(announcement: PushAnnouncement) {
     const data = {
       announcementId: announcement.id,
       schoolId: announcement.schoolId,
+      title: announcement.title,
+      body: notificationBody,
       category: announcement.category,
       priority: announcement.priority,
       link: school ? `/${school.slug}/notifications/open?announcementId=${encodeURIComponent(announcement.id)}` : "/",
@@ -343,11 +345,9 @@ export async function sendAnnouncementPush(announcement: PushAnnouncement) {
           }
           return {
             fid: device.installationId,
-            notification: { title: announcement.title, body: notificationBody },
             data,
             android: {
               priority: announcement.priority === "URGENT" ? "high" : "normal",
-              notification: { channelId: "school_updates", sound: "default" },
             },
           };
         });
