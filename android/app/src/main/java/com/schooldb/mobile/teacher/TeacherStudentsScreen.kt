@@ -1,5 +1,7 @@
 package com.schooldb.mobile.teacher
 
+import androidx.activity.compose.BackHandler
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -93,6 +95,9 @@ fun TeacherStudentsScreen(
         mutableStateOf("")
     }
     var selectedStudent by remember { mutableStateOf<TeacherStudent?>(null) }
+    BackHandler {
+        if (selectedStudent != null) selectedStudent = null else onBack()
+    }
 
     val students = selected?.students.orEmpty()
     val filteredStudents = remember(students, query) {

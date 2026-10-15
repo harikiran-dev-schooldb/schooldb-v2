@@ -21,11 +21,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.material3.Button
 import androidx.compose.material3.AlertDialog
@@ -312,7 +314,29 @@ fun AdminSectionScreen(
             onDismissRequest = {
                 if (state.savingId == null) decisionRequest = null
             },
-            title = { Text(if (approving) "Approve leave?" else "Reject leave?") },
+            icon = {
+                Surface(
+                    shape = CircleShape,
+                    color = if (approving) Color(0xFFECFDF5) else Color(0xFFFEF2F2),
+                    border = BorderStroke(
+                        1.dp,
+                        if (approving) Color(0xFFA7F3D0) else Color(0xFFFECACA),
+                    ),
+                ) {
+                    Icon(
+                        if (approving) Lucide.Check else Lucide.X,
+                        contentDescription = null,
+                        tint = if (approving) Color(0xFF059669) else Color(0xFFDC2626),
+                        modifier = Modifier.padding(12.dp).size(24.dp),
+                    )
+                }
+            },
+            title = {
+                Text(
+                    if (approving) "Approve leave?" else "Reject leave?",
+                    fontWeight = FontWeight.ExtraBold,
+                )
+            },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(
@@ -328,6 +352,12 @@ fun AdminSectionScreen(
                         minLines = 2,
                         maxLines = 5,
                         shape = RoundedCornerShape(16.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = Color.White,
+                            unfocusedContainerColor = Color.White,
+                            focusedBorderColor = AdminWebIndigo,
+                            unfocusedBorderColor = AdminWebBorder,
+                        ),
                     )
                 }
             },
@@ -350,12 +380,15 @@ fun AdminSectionScreen(
                 }
             },
             dismissButton = {
-                TextButton(
+                OutlinedButton(
                     onClick = { decisionRequest = null },
                     enabled = state.savingId == null,
+                    shape = RoundedCornerShape(14.dp),
                 ) { Text("Cancel") }
             },
             shape = RoundedCornerShape(28.dp),
+            containerColor = Color.White,
+            tonalElevation = 4.dp,
         )
     }
 
@@ -388,6 +421,8 @@ fun AdminSectionScreen(
                 ) { Text("Cancel") }
             },
             shape = RoundedCornerShape(28.dp),
+            containerColor = Color.White,
+            tonalElevation = 4.dp,
         )
     }
 

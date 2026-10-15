@@ -1,5 +1,7 @@
 package com.schooldb.mobile.teacher
 
+import androidx.activity.compose.BackHandler
+
 import android.content.Intent
 import android.provider.Settings
 import androidx.core.app.NotificationManagerCompat
@@ -72,6 +74,7 @@ fun SettingsScreen(
     var showResetConfirmation by remember { mutableStateOf(false) }
     val context = androidx.compose.ui.platform.LocalContext.current
     val notificationsEnabled = NotificationManagerCompat.from(context).areNotificationsEnabled()
+    BackHandler(onBack = onBack)
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,

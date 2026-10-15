@@ -1,5 +1,7 @@
 package com.schooldb.mobile.teacher
 
+import androidx.activity.compose.BackHandler
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -73,6 +75,7 @@ fun ProfileScreen(
     viewModel: ProfileViewModel = viewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    BackHandler(onBack = onBack)
 
     Scaffold(
         containerColor = ProfileBackground,

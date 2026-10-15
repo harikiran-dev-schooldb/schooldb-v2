@@ -7,6 +7,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.provider.Settings
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
@@ -119,6 +120,23 @@ fun SchoolDbApp(
         ActivityResultContracts.RequestPermission(),
     ) { granted ->
         if (granted) PushNotificationManager.registerCurrentDevice()
+    }
+
+    BackHandler(
+        enabled = state.step != AuthStep.SignIn &&
+            state.step != AuthStep.SignedIn &&
+            !state.loading,
+    ) {
+        when (val step = state.step) {
+            AuthStep.EmailSignIn -> authViewModel.backToSignIn()
+            is AuthStep.Verify -> authViewModel.backToSignIn()
+            is AuthStep.VerifyEmail -> authViewModel.backToEmailSignIn()
+            is AuthStep.ChooseAccount -> {
+                if (step.viaEmail) authViewModel.backToEmailSignIn()
+                else authViewModel.backToSignIn()
+            }
+            else -> Unit
+        }
     }
 
     LaunchedEffect(state.step, portalRefreshKey) {

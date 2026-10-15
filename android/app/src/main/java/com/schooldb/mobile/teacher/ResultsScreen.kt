@@ -1,5 +1,7 @@
 package com.schooldb.mobile.teacher
 
+import androidx.activity.compose.BackHandler
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -75,6 +77,9 @@ fun ResultsScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
+    BackHandler {
+        if (state.sheet != null) viewModel.closeSheet() else onBack()
+    }
 
     LaunchedEffect(state.message) {
         state.message?.let {

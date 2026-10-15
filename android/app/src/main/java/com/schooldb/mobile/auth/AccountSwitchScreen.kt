@@ -1,4 +1,5 @@
 package com.schooldb.mobile.auth
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 
 import androidx.compose.foundation.layout.Arrangement
@@ -55,6 +56,7 @@ fun AccountSwitchScreen(
     viewModel: AccountSwitchViewModel = viewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    BackHandler(enabled = state.switchingId == null, onBack = onBack)
     LaunchedEffect(Unit) { viewModel.refresh() }
     Scaffold(
         topBar = {

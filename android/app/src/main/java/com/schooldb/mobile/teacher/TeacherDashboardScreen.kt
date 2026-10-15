@@ -1,5 +1,7 @@
 package com.schooldb.mobile.teacher
 
+import androidx.activity.compose.BackHandler
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -279,6 +281,15 @@ private fun TeacherShell(
         moreScreen == "STUDENTS" && !access.students -> "MENU"
         moreScreen == "RESULTS" && !canUseResults -> "MENU"
         else -> moreScreen
+    }
+
+    BackHandler(enabled = tab != TeacherTab.HOME || activeMoreScreen != "MENU") {
+        if (tab == TeacherTab.MORE && activeMoreScreen != "MENU") {
+            moreScreen = "MENU"
+        } else {
+            tab = TeacherTab.HOME
+            moreScreen = "MENU"
+        }
     }
 
     val noticeState by noticeViewModel.uiState.collectAsStateWithLifecycle()
@@ -1959,6 +1970,7 @@ private fun AttendanceScreen(
     snackbar: SnackbarHostState,
 ) {
     var confirmLock by rememberSaveable { mutableStateOf(false) }
+    BackHandler(enabled = !saving, onBack = onBack)
 
     if (confirmLock) {
         AlertDialog(

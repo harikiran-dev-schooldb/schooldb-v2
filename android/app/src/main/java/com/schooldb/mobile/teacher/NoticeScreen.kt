@@ -1,4 +1,5 @@
 package com.schooldb.mobile.teacher
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -48,6 +49,7 @@ import com.schooldb.mobile.ui.notifications.notificationDay
 
 @Composable
 fun NoticeScreen(state: NoticeUiState, viewModel: NoticeViewModel) {
+    BackHandler(enabled = state.selected != null) { viewModel.close() }
     state.selected?.let { notice ->
         TeacherNoticeDetails(notice, viewModel::close)
         return
