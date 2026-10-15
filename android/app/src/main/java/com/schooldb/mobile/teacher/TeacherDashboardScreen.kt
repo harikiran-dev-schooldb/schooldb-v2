@@ -132,6 +132,7 @@ private data class TeacherNavItem(
 @Composable
 fun TeacherDashboardScreen(
     refreshKey: Int = 0,
+    onAccountChangeFinished: () -> Unit = {},
     onSwitchAccount: (() -> Unit)? = null,
     onSignOut: (() -> Unit)? = null,
     openNotificationId: String? = null,
@@ -153,7 +154,23 @@ fun TeacherDashboardScreen(
             withFrameNanos { }
             delay(50)
         }
-        if (refreshKey > 0) viewModel.refreshForAccountChange() else viewModel.load()
+        if (refreshKey > 0) {
+            viewModel.refreshForAccountChange(onAccountChangeFinished)
+        } else {
+            viewModel.load()
+        }
+    }
+
+    if (state.context == null) {
+        if (state.error != null) {
+            ConnectionStateScreen(
+                message = state.error.orEmpty(),
+                onRetry = viewModel::refresh,
+            )
+        } else {
+            LoadingPage()
+        }
+        return
     }
 
     if (state.context?.role in setOf("PARENT", "STUDENT")) {
@@ -1127,7 +1144,7 @@ private fun TeacherHome(
             SchoolDbRoleHeader(
                 schoolName = state.dashboard?.schoolName ?: state.context?.schoolName ?: "SchoolDB",
                 schoolLogoUrl = state.context?.schoolLogoUrl,
-                title = "Teacher Space",
+                title = state.context?.role?.let { "${it.displayRole} Space" } ?: "Workspace",
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     SchoolDbHeaderAction(onClick = onRefresh) {

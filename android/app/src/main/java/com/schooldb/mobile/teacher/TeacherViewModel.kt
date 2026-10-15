@@ -27,9 +27,17 @@ class TeacherViewModel(
 
     fun refresh() = loadDashboard(clearPrevious = false, forceRefresh = true)
 
-    fun refreshForAccountChange() = loadDashboard(clearPrevious = true, forceRefresh = true)
+    fun refreshForAccountChange(onFinished: () -> Unit = {}) = loadDashboard(
+        clearPrevious = true,
+        forceRefresh = true,
+        onFinished = onFinished,
+    )
 
-    private fun loadDashboard(clearPrevious: Boolean, forceRefresh: Boolean) {
+    private fun loadDashboard(
+        clearPrevious: Boolean,
+        forceRefresh: Boolean,
+        onFinished: () -> Unit = {},
+    ) {
         _uiState.value = if (clearPrevious) TeacherUiState(loading = true)
             else _uiState.value.copy(loading = true, message = null, error = null)
         viewModelScope.launch {
@@ -48,8 +56,10 @@ class TeacherViewModel(
                     dashboard = dashboard,
                     loading = false,
                 )
+                onFinished()
             } catch (error: Exception) {
                 fail(error)
+                onFinished()
             }
         }
     }

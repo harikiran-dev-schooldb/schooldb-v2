@@ -197,9 +197,7 @@ fun SchoolDbApp(
                 .padding(padding)
                 .imePadding(),
         ) {
-            if (switchingAccount) {
-                AccountSwitchLoadingScreen()
-            } else when (val step = state.step) {
+            when (val step = state.step) {
                 AuthStep.SignIn -> SignInScreen(
                     loading = state.loading,
                     onSendOtp = authViewModel::sendOtp,
@@ -240,18 +238,21 @@ fun SchoolDbApp(
                         onComplete = {
                             portalRefreshKey += 1
                             showAccountSwitcher = false
-                            switchingAccount = false
                         },
                     )
                 } else {
                     TeacherDashboardScreen(
                         refreshKey = portalRefreshKey,
+                        onAccountChangeFinished = { switchingAccount = false },
                         onSwitchAccount = { showAccountSwitcher = true },
                         onSignOut = authViewModel::signOut,
                         openNotificationId = openNotificationId,
                         onNotificationOpened = onNotificationOpened,
                     )
                 }
+            }
+            if (switchingAccount) {
+                AccountSwitchLoadingScreen()
             }
             if (appLocked && state.step == AuthStep.SignedIn) {
                 Surface(
