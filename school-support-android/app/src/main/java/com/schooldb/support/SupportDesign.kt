@@ -164,10 +164,15 @@ internal fun SupportHeaderSurface(content: @Composable BoxScope.() -> Unit) {
             Color.White, Color(0xFFF7F8FF), Color(0xFFEEF2FF), Color(0xFFF7F3FF),
         )))
         .border(1.dp, Line, shape)) {
-        Box(Modifier.size(172.dp).align(Alignment.TopEnd)
-            .background(Color(0xFF818CF8).copy(alpha = .075f), CircleShape))
-        Box(Modifier.size(92.dp).align(Alignment.BottomStart)
-            .background(Color(0xFFA78BFA).copy(alpha = .07f), CircleShape))
+        // Keep the decorative circles out of this Box's intrinsic measurement. A
+        // direct 172.dp child made every header at least that tall, leaving a large
+        // empty gap below the title row on phones.
+        Box(Modifier.matchParentSize()) {
+            Box(Modifier.size(172.dp).align(Alignment.TopEnd)
+                .background(Color(0xFF818CF8).copy(alpha = .075f), CircleShape))
+            Box(Modifier.size(92.dp).align(Alignment.BottomStart)
+                .background(Color(0xFFA78BFA).copy(alpha = .07f), CircleShape))
+        }
         content()
     }
 }

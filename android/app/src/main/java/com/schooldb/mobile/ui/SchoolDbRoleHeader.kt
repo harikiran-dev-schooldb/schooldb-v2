@@ -49,10 +49,14 @@ fun SchoolDbRoleHeader(
             )))
             .border(1.dp, Color(0xFFE0E7FF), shape),
     ) {
-        Box(Modifier.size(172.dp).align(Alignment.TopEnd)
-            .background(Color(0xFF818CF8).copy(alpha = 0.075f), CircleShape))
-        Box(Modifier.size(92.dp).align(Alignment.BottomStart)
-            .background(Color(0xFFA78BFA).copy(alpha = 0.07f), CircleShape))
+        // Draw the circles as an overlay so their size does not force the top bar
+        // to be 172.dp tall and create an empty gap above the page content.
+        Box(Modifier.matchParentSize()) {
+            Box(Modifier.size(172.dp).align(Alignment.TopEnd)
+                .background(Color(0xFF818CF8).copy(alpha = 0.075f), CircleShape))
+            Box(Modifier.size(92.dp).align(Alignment.BottomStart)
+                .background(Color(0xFFA78BFA).copy(alpha = 0.07f), CircleShape))
+        }
         Row(
             Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 20.dp, vertical = 15.dp),
             verticalAlignment = Alignment.CenterVertically,
