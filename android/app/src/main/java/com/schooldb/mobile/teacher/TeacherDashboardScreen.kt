@@ -168,6 +168,7 @@ fun TeacherDashboardScreen(
             ConnectionStateScreen(
                 message = state.error.orEmpty(),
                 onRetry = viewModel::refresh,
+                destinationLabel = "your teacher dashboard",
             )
         } else {
             LoadingPage()
@@ -1155,7 +1156,12 @@ private fun TeacherHome(
             SchoolDbRoleHeader(
                 schoolName = state.dashboard?.schoolName ?: state.context?.schoolName ?: "SchoolDB",
                 schoolLogoUrl = state.context?.schoolLogoUrl,
-                title = state.context?.role?.let { "${it.displayRole} Space" } ?: "Workspace",
+                title = when {
+                    state.error != null -> "Dashboard unavailable"
+                    state.loading && state.dashboard == null -> "Loading your dashboard"
+                    state.dashboard != null -> "Today’s teaching overview"
+                    else -> "Teaching dashboard"
+                },
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     SchoolDbHeaderAction(onClick = onRefresh) {
@@ -2358,5 +2364,10 @@ private fun ErrorPage(
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    ConnectionStateScreen(message = message, onRetry = onRetry, modifier = modifier)
+    ConnectionStateScreen(
+        message = message,
+        onRetry = onRetry,
+        modifier = modifier,
+        destinationLabel = "your teacher dashboard",
+    )
 }

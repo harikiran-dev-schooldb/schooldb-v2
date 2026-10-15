@@ -251,6 +251,7 @@ export async function sendAnnouncementPush(announcement: PushAnnouncement) {
     let sent = 0;
     let failed = 0;
     const invalidDeviceIds: string[] = [];
+    const firebaseFailureCodes = new Map<string, number>();
     const usersWithDevices = new Set(devices.map((device) => device.userId));
     const noDeviceUsers = enabledUserIds.filter((userId) => !usersWithDevices.has(userId)).length;
 
@@ -356,11 +357,16 @@ export async function sendAnnouncementPush(announcement: PushAnnouncement) {
         failed += result.failureCount;
         result.responses.forEach((response, index) => {
           if (response.success) return;
+          const errorCode = response.error?.code ?? "messaging/unknown-error";
+          firebaseFailureCodes.set(
+            errorCode,
+            (firebaseFailureCodes.get(errorCode) ?? 0) + 1,
+          );
           if ([
             "messaging/registration-token-not-registered",
             "messaging/invalid-registration-token",
             "messaging/installation-id-not-registered",
-          ].includes(response.error?.code ?? "")) {
+          ].includes(errorCode)) {
             invalidDeviceIds.push(chunk[index].id);
           }
         });
@@ -414,7 +420,8 @@ export async function sendAnnouncementPush(announcement: PushAnnouncement) {
       firebaseDevices: firebaseDevices.length,
       sent,
       failed,
-      invalidDevices: invalidDeviceIds.length,
+      invalidDevices: new Set(invalidDeviceIds).size,
+      firebaseFailureCodes: Object.fromEntries(firebaseFailureCodes),
     });
     return { sent, failed, noDeviceUsers, skipped: false };
   } catch (error) {

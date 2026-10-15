@@ -57,10 +57,21 @@ fun ConnectionStateScreen(
     message: String,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
+    destinationLabel: String = "SchoolDB",
 ) {
     val offline = message.contains("reach", ignoreCase = true) ||
         message.contains("connection", ignoreCase = true) ||
         message.contains("network", ignoreCase = true)
+    val destination = destinationLabel.trim().ifEmpty { "SchoolDB" }
+    val displayMessage = message.trim().takeUnless {
+        it.isBlank() ||
+            it.equals("unknown", ignoreCase = true) ||
+            it.contains("unknown message", ignoreCase = true)
+    } ?: if (offline) {
+        "Check your internet connection, then try again."
+    } else {
+        "We couldn’t load the latest information. Please try again."
+    }
     val transition = rememberInfiniteTransition(label = "offline-animation")
     val pulse by transition.animateFloat(
         initialValue = 0.82f,
@@ -219,7 +230,11 @@ fun ConnectionStateScreen(
                     ) {
                         Box(Modifier.size(7.dp).background(Color(0xFFF59E0B), CircleShape))
                         Text(
-                            if (offline) "No internet connection" else "SchoolDB is unavailable",
+                            if (offline) {
+                                "No internet connection"
+                            } else {
+                                "${destination.replaceFirstChar(Char::uppercase)} is unavailable"
+                            },
                             style = MaterialTheme.typography.labelMedium,
                             color = Color(0xFF92400E),
                         )
@@ -228,7 +243,7 @@ fun ConnectionStateScreen(
 
                 Spacer(Modifier.height(15.dp))
                 Text(
-                    if (offline) "You are offline." else "Couldn’t load SchoolDB.",
+                    if (offline) "You are offline." else "Couldn’t load $destination.",
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold,
                     color = OfflineInk,
@@ -236,7 +251,7 @@ fun ConnectionStateScreen(
                 )
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    message,
+                    displayMessage,
                     style = MaterialTheme.typography.bodyMedium,
                     color = OfflineMuted,
                     textAlign = TextAlign.Center,

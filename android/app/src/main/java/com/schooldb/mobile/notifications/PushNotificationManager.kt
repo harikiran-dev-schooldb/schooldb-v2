@@ -81,11 +81,10 @@ object PushNotificationManager {
 
     fun registerCurrentDevice() {
         if (!isConfigured()) return
-        val savedInstallationId = sharedPreferences?.getString(INSTALLATION_ID, null)
-        if (!savedInstallationId.isNullOrBlank()) {
-            registerInstallation(savedInstallationId)
-        }
         FirebaseMessaging.getInstance().register()
+            .addOnSuccessListener {
+                Log.i(TAG, "Firebase device registration succeeded")
+            }
             .addOnFailureListener { error ->
                 Log.e(TAG, "Firebase device registration failed", error)
             }

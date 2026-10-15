@@ -119,7 +119,11 @@ fun SchoolDbApp(
     val notificationPermission = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
     ) { granted ->
-        if (granted) PushNotificationManager.registerCurrentDevice()
+        if (granted) {
+            PushNotificationManager.registerCurrentDevice()
+        } else {
+            showNotificationSettings = true
+        }
     }
 
     BackHandler(
@@ -167,6 +171,16 @@ fun SchoolDbApp(
 
     DisposableEffect(lifecycleOwner, state.step, preferences.secureReentry) {
         val observer = LifecycleEventObserver { _, event ->
+            if (
+                event == Lifecycle.Event.ON_RESUME &&
+                state.step == AuthStep.SignedIn &&
+                PushNotificationManager.isConfigured() &&
+                androidx.core.app.NotificationManagerCompat.from(context).areNotificationsEnabled()
+            ) {
+                // Register again after returning from Android notification settings.
+                PushNotificationManager.registerCurrentDevice()
+                showNotificationSettings = false
+            }
             if (event == Lifecycle.Event.ON_STOP &&
                 state.step == AuthStep.SignedIn && preferences.secureReentry
             ) {
