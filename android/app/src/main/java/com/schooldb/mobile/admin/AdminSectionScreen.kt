@@ -97,7 +97,7 @@ private val sectionTitles = mapOf(
     "library" to "Library",
     "transport" to "Transport",
     "inventory" to "Inventory",
-    "birthdays" to "Upcoming birthdays",
+    "birthdays" to "Birthdays",
 )
 
 private val sectionDescriptions = mapOf(
@@ -116,7 +116,7 @@ private val sectionDescriptions = mapOf(
     "library" to "Books, copies, categories and shelf locations",
     "transport" to "Routes, vehicles, stops and student assignments",
     "inventory" to "School assets, stock levels and condition",
-    "birthdays" to "Student birthdays coming up in the next 60 days",
+    "birthdays" to "Student birthdays today, this week and this month",
 )
 
 internal data class AdminListRow(
@@ -148,6 +148,7 @@ internal class AdminSectionViewModel : ViewModel() {
         section: String,
         page: Int = mutableState.value.page,
         query: String = "",
+        period: String = "",
         forceRefresh: Boolean = false,
     ) {
         mutableState.value = mutableState.value.copy(loading = true, error = null)
@@ -155,7 +156,8 @@ internal class AdminSectionViewModel : ViewModel() {
             try {
                 val data = withContext(Dispatchers.IO) {
                     val encoded = URLEncoder.encode(query.trim(), StandardCharsets.UTF_8.toString())
-                    api.get("api/v1/mobile/admin/sections?section=$section&page=$page&q=$encoded",
+                    val encodedPeriod = URLEncoder.encode(period, StandardCharsets.UTF_8.toString())
+                    api.get("api/v1/mobile/admin/sections?section=$section&page=$page&q=$encoded&period=$encodedPeriod",
                         cacheTtlMillis = 120_000L, forceRefresh = forceRefresh)
                 }
                 val items = data.getJSONArray("rows")
@@ -284,18 +286,24 @@ fun AdminSectionScreen(
     val title = sectionTitles[section] ?: "School data"
     var query by rememberSaveable(section) { mutableStateOf("") }
     var statusFilter by rememberSaveable(section) { mutableStateOf("ALL") }
+    var birthdayPeriod by rememberSaveable(section) { mutableStateOf("TODAY") }
     var decisionRequest by rememberSaveable(section) { mutableStateOf<String?>(null) }
     var decisionType by rememberSaveable(section) { mutableStateOf("APPROVED") }
     var decisionNote by rememberSaveable(section) { mutableStateOf("") }
     var unlockRequestId by rememberSaveable(section) { mutableStateOf<String?>(null) }
     val unlockRequest = state.rows.firstOrNull { it.id == unlockRequestId }
     val statuses = state.rows.map { it.status }.filter(String::isNotBlank).distinct().sorted()
-    val visibleRows = if (statusFilter == "ALL") state.rows else state.rows.filter { it.status == statusFilter }
+    val visibleRows = if (section == "birthdays" || statusFilter == "ALL") {
+        state.rows
+    } else {
+        state.rows.filter { it.status == statusFilter }
+    }
+    val period = if (section == "birthdays") birthdayPeriod else ""
     BackHandler(onBack = onBack)
-    LaunchedEffect(section, query) {
+    LaunchedEffect(section, query, birthdayPeriod) {
         delay(if (query.isBlank()) 0 else 350)
         statusFilter = "ALL"
-        viewModel.load(section, 1, query)
+        viewModel.load(section, 1, query, period = period)
     }
 
     if (decisionRequest != null) {
@@ -392,12 +400,12 @@ fun AdminSectionScreen(
             actionIcon = Lucide.RefreshCw,
             actionDescription = "Refresh $title",
             actionEnabled = !state.loading,
-            onAction = { viewModel.load(section, state.page, query, forceRefresh = true) },
+            onAction = { viewModel.load(section, state.page, query, period = period, forceRefresh = true) },
         )
     }) { padding ->
         PullToRefreshBox(
             isRefreshing = state.loading && state.rows.isNotEmpty(),
-            onRefresh = { viewModel.load(section, state.page, query, forceRefresh = true) },
+            onRefresh = { viewModel.load(section, state.page, query, period = period, forceRefresh = true) },
             modifier = Modifier.fillMaxSize().padding(padding),
         ) {
         if (state.loading && state.rows.isEmpty()) {
@@ -407,7 +415,7 @@ fun AdminSectionScreen(
                 verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(state.error ?: "Could not load", color = MaterialTheme.colorScheme.error)
                 Spacer(Modifier.height(12.dp))
-                Button(onClick = { viewModel.load(section, 1, query, forceRefresh = true) }) { Text("Try again") }
+                Button(onClick = { viewModel.load(section, 1, query, period = period, forceRefresh = true) }) { Text("Try again") }
             }
         } else {
             LazyColumn(Modifier.fillMaxSize(),
@@ -434,7 +442,33 @@ fun AdminSectionScreen(
                         ),
                     )
                 }
-                if (statuses.size > 1) item {
+                if (section == "birthdays") item {
+                    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf(
+                            "TODAY" to "Today",
+                            "WEEK" to "This week",
+                            "MONTH" to "This month",
+                        ).forEach { (value, label) ->
+                            FilterChip(
+                                selected = birthdayPeriod == value,
+                                onClick = { birthdayPeriod = value },
+                                label = { Text(label) },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    containerColor = Color.White,
+                                    selectedContainerColor = Color(0xFFEEF2FF),
+                                    selectedLabelColor = AdminWebIndigo,
+                                ),
+                                border = FilterChipDefaults.filterChipBorder(
+                                    enabled = true,
+                                    selected = birthdayPeriod == value,
+                                    borderColor = AdminWebBorder,
+                                    selectedBorderColor = Color(0xFFC7D2FE),
+                                ),
+                            )
+                        }
+                    }
+                } else if (statuses.size > 1) item {
                     Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         listOf("ALL") .plus(statuses).forEach { status ->
@@ -458,7 +492,13 @@ fun AdminSectionScreen(
                     }
                 }
                 item {
-                    Text(if (statusFilter == "ALL") "${state.total} records" else "${visibleRows.size} shown",
+                    Text(if (section == "birthdays") {
+                        "${state.total} ${if (state.total == 1) "birthday" else "birthdays"}"
+                    } else if (statusFilter == "ALL") {
+                        "${state.total} records"
+                    } else {
+                        "${visibleRows.size} shown"
+                    },
                         style = MaterialTheme.typography.labelLarge,
                         color = AdminWebSlate)
                 }
@@ -484,7 +524,17 @@ fun AdminSectionScreen(
                 if (visibleRows.isEmpty()) item {
                     Surface(Modifier.fillMaxWidth(), color = Color.White, shape = RoundedCornerShape(18.dp),
                         border = BorderStroke(1.dp, AdminWebBorder)) {
-                        Text(if (query.isBlank() && statusFilter == "ALL") "No records yet" else "No matching records",
+                        Text(if (section == "birthdays" && query.isBlank()) {
+                            when (birthdayPeriod) {
+                                "TODAY" -> "No birthdays today"
+                                "WEEK" -> "No birthdays this week"
+                                else -> "No birthdays this month"
+                            }
+                        } else if (query.isBlank() && statusFilter == "ALL") {
+                            "No records yet"
+                        } else {
+                            "No matching records"
+                        },
                             Modifier.padding(18.dp), color = AdminWebSlate)
                     }
                 }
@@ -602,12 +652,12 @@ fun AdminSectionScreen(
                 item {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically) {
-                        OutlinedButton(onClick = { viewModel.load(section, state.page - 1, query) },
+                        OutlinedButton(onClick = { viewModel.load(section, state.page - 1, query, period = period) },
                             enabled = !state.loading && state.page > 1,
                             shape = RoundedCornerShape(14.dp)) { Text("Previous") }
                         Text("Page ${state.page} of ${((state.total + state.pageSize - 1) / state.pageSize).coerceAtLeast(1)}",
                             style = MaterialTheme.typography.bodySmall, color = AdminWebSlate)
-                        OutlinedButton(onClick = { viewModel.load(section, state.page + 1, query) },
+                        OutlinedButton(onClick = { viewModel.load(section, state.page + 1, query, period = period) },
                             enabled = !state.loading && state.page * state.pageSize < state.total,
                             shape = RoundedCornerShape(14.dp)) { Text("Next") }
                     }

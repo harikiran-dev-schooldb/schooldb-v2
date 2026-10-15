@@ -359,28 +359,6 @@ export async function notifyDailyBirthdays(now = new Date()) {
     });
     created += 1;
   }
-  const birthdaysBySchool = new Map<string, typeof birthdays>();
-  birthdays.forEach((student) => {
-    const schoolBirthdays = birthdaysBySchool.get(student.schoolId) ?? [];
-    schoolBirthdays.push(student);
-    birthdaysBySchool.set(student.schoolId, schoolBirthdays);
-  });
-  for (const [schoolId, schoolBirthdays] of birthdaysBySchool) {
-    const names = schoolBirthdays.map((student) =>
-      student.fullName?.trim() || student.admissionNo,
-    );
-    const visibleNames = names.slice(0, 4).join(", ");
-    const remaining = names.length - 4;
-    await createAdminEventNotification({
-      schoolId,
-      title: names.length === 1 ? "Student birthday today" : `${names.length} student birthdays today`,
-      body: remaining > 0 ? `${visibleNames} and ${remaining} more.` : `${visibleNames}.`,
-      category: "BIRTHDAY",
-      sourceType: "BIRTHDAY_SUMMARY",
-      sourceId: dateKey,
-      dedupeKey: notificationDedupeKey.birthdayAdminSummary(schoolId, dateKey),
-    });
-  }
   return { matched: birthdays.length, created };
 }
 

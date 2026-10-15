@@ -10,6 +10,22 @@ const VALID_SECTIONS = new Set([
   "transport", "inventory", "birthdays",
 ]);
 
+const BIRTHDAY_PERIODS = new Set(["TODAY", "WEEK", "MONTH"]);
+
+function indiaDateParts(value: Date) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Kolkata",
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+  }).formatToParts(value);
+  return {
+    year: Number(parts.find((part) => part.type === "year")?.value),
+    month: Number(parts.find((part) => part.type === "month")?.value),
+    day: Number(parts.find((part) => part.type === "day")?.value),
+  };
+}
+
 export async function GET(request: Request) {
   return apiHandler(async () => {
     const membership = await requireRole(["SUPER_ADMIN", "SCHOOL_ADMIN"]);
@@ -18,6 +34,10 @@ export async function GET(request: Request) {
     if (!VALID_SECTIONS.has(section)) return ApiResponse.error("Unknown admin section.", 400);
     const page = Math.max(1, Math.min(1000, Number.parseInt(searchParams.get("page") ?? "1", 10) || 1));
     const query = (searchParams.get("q") ?? "").trim().slice(0, 100);
+    const requestedBirthdayPeriod = (searchParams.get("period") ?? "MONTH").toUpperCase();
+    const birthdayPeriod = BIRTHDAY_PERIODS.has(requestedBirthdayPeriod)
+      ? requestedBirthdayPeriod
+      : "MONTH";
     const text = query ? { contains: query, mode: "insensitive" as const } : undefined;
     const skip = (page - 1) * PAGE_SIZE;
     const schoolId = membership.schoolId;
@@ -364,33 +384,47 @@ export async function GET(request: Request) {
           enrollments: { where: { active: true, academicYear: { active: true } }, take: 1,
             select: { class: { select: { name: true } }, section: { select: { name: true } } } } },
       });
-      const now = new Date();
-      const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-      const upcoming = students.map((student) => {
-        let nextBirthday = new Date(Date.UTC(
-          today.getUTCFullYear(), student.dob.getUTCMonth(), student.dob.getUTCDate(),
-        ));
-        if (nextBirthday < today) {
-          nextBirthday = new Date(Date.UTC(
-            today.getUTCFullYear() + 1, student.dob.getUTCMonth(), student.dob.getUTCDate(),
-          ));
+      const indiaToday = indiaDateParts(new Date());
+      const today = new Date(Date.UTC(indiaToday.year, indiaToday.month - 1, indiaToday.day));
+      const birthdays = students.map((student) => {
+        const birthdayMonth = student.dob.getUTCMonth();
+        const birthdayDay = student.dob.getUTCDate();
+        let occurrence = new Date(Date.UTC(indiaToday.year, birthdayMonth, birthdayDay));
+        if (birthdayPeriod !== "MONTH" && occurrence < today) {
+          occurrence = new Date(Date.UTC(indiaToday.year + 1, birthdayMonth, birthdayDay));
         }
-        const daysAway = Math.round((nextBirthday.getTime() - today.getTime()) / 86_400_000);
-        return { student, nextBirthday, daysAway };
-      }).filter((item) => item.daysAway <= 60)
-        .sort((left, right) => left.daysAway - right.daysAway ||
+        const daysAway = Math.round((occurrence.getTime() - today.getTime()) / 86_400_000);
+        return { student, occurrence, daysAway, birthdayMonth };
+      }).filter((item) => {
+        if (birthdayPeriod === "TODAY") return item.daysAway === 0;
+        if (birthdayPeriod === "WEEK") return item.daysAway >= 0 && item.daysAway <= 7;
+        return item.birthdayMonth === indiaToday.month - 1;
+      }).sort((left, right) => left.occurrence.getTime() - right.occurrence.getTime() ||
           (left.student.fullName || left.student.admissionNo)
             .localeCompare(right.student.fullName || right.student.admissionNo));
-      const rows = upcoming.slice(skip, skip + PAGE_SIZE).map(({ student, nextBirthday, daysAway }) => ({
+      const rows = birthdays.slice(skip, skip + PAGE_SIZE).map(({ student, occurrence, daysAway }) => ({
         id: student.id,
         title: student.fullName || student.admissionNo,
         subtitle: student.enrollments[0]
           ? `${student.enrollments[0].class.name} · ${student.enrollments[0].section.name}`
           : `Admission ${student.admissionNo}`,
-        detail: nextBirthday.toISOString().slice(0, 10),
-        status: daysAway === 0 ? "TODAY" : daysAway === 1 ? "TOMORROW" : `IN ${daysAway} DAYS`,
+        detail: occurrence.toISOString().slice(0, 10),
+        status: daysAway === 0
+          ? "TODAY"
+          : daysAway === 1
+            ? "TOMORROW"
+            : daysAway > 1
+              ? `IN ${daysAway} DAYS`
+              : occurrence.toLocaleDateString("en-IN", { month: "short", day: "numeric", timeZone: "UTC" }).toUpperCase(),
       }));
-      return ApiResponse.success({ section, total: upcoming.length, page, pageSize: PAGE_SIZE, rows });
+      return ApiResponse.success({
+        section,
+        period: birthdayPeriod,
+        total: birthdays.length,
+        page,
+        pageSize: PAGE_SIZE,
+        rows,
+      });
     }
 
     const where = { schoolId, source: "PARENT_QR", ...(text ? { OR: [

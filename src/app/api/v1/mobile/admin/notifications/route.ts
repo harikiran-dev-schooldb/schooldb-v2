@@ -16,7 +16,10 @@ async function notificationContext() {
       schoolId: membership.schoolId,
       archived: false,
       publishedAt: { lte: now },
-      OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+      AND: [
+        { OR: [{ expiresAt: null }, { expiresAt: { gt: now } }] },
+        { OR: [{ sourceType: null }, { sourceType: { not: "BIRTHDAY_SUMMARY" } }] },
+      ],
     },
   };
 }

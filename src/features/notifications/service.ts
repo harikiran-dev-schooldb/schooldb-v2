@@ -70,6 +70,7 @@ export async function notificationContext(schoolSlug: string) {
         AND: [
           { OR: [{ expiresAt: null }, { expiresAt: { gt: now } }] },
           { OR: audience },
+          { OR: [{ sourceType: null }, { sourceType: { not: "BIRTHDAY_SUMMARY" } }] },
         ],
       },
     };

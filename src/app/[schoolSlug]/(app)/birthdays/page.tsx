@@ -280,7 +280,7 @@ export default function BirthdaysPage() {
         <Card className="rounded-2xl border border-blue-100 bg-white shadow-[0_8px_24px_rgba(15,23,42,0.04)]">
           <CardContent className="flex items-center justify-between p-5">
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">Next 7 Days</p>
+              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">This Week</p>
               <p className="mt-1 text-3xl font-bold tracking-tight text-slate-950">{loading ? "—" : data.next7.length}</p>
               <p className="mt-1 text-xs text-slate-500">Coming up soon</p>
             </div>
@@ -347,8 +347,8 @@ export default function BirthdaysPage() {
             <div className="flex items-center gap-3 border-b border-slate-100 px-5 py-5 md:px-7">
               <div className="flex size-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600 ring-1 ring-blue-100"><Clock3 className="size-4" /></div>
               <div><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-blue-600">Coming Up</p>
-              <h2 className="mt-0.5 text-lg font-bold text-slate-950">Next 7 Days</h2>
-              <p className="text-xs text-slate-500">Upcoming birthdays after today.</p></div>
+              <h2 className="mt-0.5 text-lg font-bold text-slate-950">This Week</h2>
+              <p className="text-xs text-slate-500">Birthdays coming up in the next seven days.</p></div>
             </div>
             <div className="p-4 md:p-6">
             {data.next7.length ? (
@@ -362,7 +362,7 @@ export default function BirthdaysPage() {
                 ))}
               </div>
             ) : (
-              <div className="flex min-h-28 flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 text-center"><Clock3 className="mb-2 size-6 text-slate-300" /><p className="text-sm text-slate-500">No birthdays in the next 7 days.</p></div>
+              <div className="flex min-h-28 flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 text-center"><Clock3 className="mb-2 size-6 text-slate-300" /><p className="text-sm text-slate-500">No birthdays this week.</p></div>
             )}
             </div>
           </section>

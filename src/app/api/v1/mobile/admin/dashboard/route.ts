@@ -66,7 +66,10 @@ export async function GET() {
           schoolId,
           archived: false,
           publishedAt: { lte: now },
-          OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+          AND: [
+            { OR: [{ expiresAt: null }, { expiresAt: { gt: now } }] },
+            { OR: [{ sourceType: null }, { sourceType: { not: "BIRTHDAY_SUMMARY" } }] },
+          ],
         },
         orderBy: [{ priority: "desc" }, { publishedAt: "desc" }],
         take: 4,
@@ -86,7 +89,10 @@ export async function GET() {
           schoolId,
           archived: false,
           publishedAt: { lte: now },
-          OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+          AND: [
+            { OR: [{ expiresAt: null }, { expiresAt: { gt: now } }] },
+            { OR: [{ sourceType: null }, { sourceType: { not: "BIRTHDAY_SUMMARY" } }] },
+          ],
           reads: { none: { userId: membership.userId } },
         },
       }),

@@ -8,7 +8,6 @@ test("notification dedupe keys are stable and source-specific", () => {
   assert.equal(notificationDedupeKey.homeworkPublished("hw-1"), "HOMEWORK:hw-1:PUBLISHED");
   assert.equal(notificationDedupeKey.admin("HOMEWORK:hw-1:PUBLISHED"), "HOMEWORK:hw-1:PUBLISHED:ADMIN");
   assert.equal(notificationDedupeKey.examResultsPublished("exam-1", "SECTION", "sec-a"), "EXAM:exam-1:RESULTS:SECTION:sec-a");
-  assert.equal(notificationDedupeKey.birthdayAdminSummary("school-1", "2026-10-14"), "BIRTHDAY:school-1:2026-10-14:ADMIN_SUMMARY");
   assert.equal(notificationDedupeKey.supportTicket("ticket-1", "MESSAGE:message-1"), "SUPPORT_TICKET:ticket-1:MESSAGE:message-1");
   assert.notEqual(notificationDedupeKey.attendanceAbsent("s1", "u1"), notificationDedupeKey.attendanceAbsent("s2", "u1"));
   assert.equal(notificationDedupeKey.feeReminder("u1", "2026-09-27"), "FEE_REMINDER:u1:2026-09-27");
