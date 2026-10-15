@@ -344,11 +344,24 @@ export async function sendAnnouncementPush(announcement: PushAnnouncement) {
               },
             };
           }
+          const urgent = announcement.priority === "URGENT";
           return {
             fid: device.installationId,
+            notification: {
+              title: announcement.title,
+              body: notificationBody,
+            },
             data,
             android: {
-              priority: announcement.priority === "URGENT" ? "high" : "normal",
+              priority: urgent ? "high" : "normal",
+              collapseKey: `announcement-${announcement.id}`,
+              notification: {
+                channelId: urgent ? "school_urgent_v2" : "school_updates_v2",
+                icon: "ic_schooldb",
+                color: "#4F46E5",
+                tag: `announcement-${announcement.id}`,
+                priority: urgent ? "high" : "default",
+              },
             },
           };
         });
