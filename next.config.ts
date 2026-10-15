@@ -3,6 +3,14 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   agentRules: false,
   allowedDevOrigins: ["*.trycloudflare.com"],
+  async rewrites() {
+    return [
+      {
+        source: "/apple-touch-icon-precomposed.png",
+        destination: "/apple-touch-icon.png",
+      },
+    ];
+  },
   async headers() {
     return [
       {
