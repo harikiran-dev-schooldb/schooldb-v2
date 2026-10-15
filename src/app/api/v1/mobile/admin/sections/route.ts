@@ -114,14 +114,50 @@ export async function GET(request: Request) {
       const where = { schoolId, ...(text ? { OR: [
         { reason: text }, { student: { OR: [{ fullName: text }, { admissionNo: text }] } },
       ] } : {}) };
-      const [total, requests] = await Promise.all([
+      const [total, pendingTotal] = await Promise.all([
         prisma.leaveRequest.count({ where }),
-        prisma.leaveRequest.findMany({ where, orderBy: [{ status: "desc" }, { createdAt: "desc" }],
-          skip, take: PAGE_SIZE,
-          select: { id: true, startDate: true, endDate: true, reason: true, status: true,
-            student: { select: { fullName: true, admissionNo: true } },
-            enrollment: { select: { class: { select: { name: true } }, section: { select: { name: true } } } } } }),
+        prisma.leaveRequest.count({ where: { ...where, status: "PENDING" } }),
       ]);
+      // Pending decisions are the actionable records on this screen. Page across the
+      // pending and completed groups separately so an older rejected request can never
+      // push a newer pending request onto a later page.
+      const pendingSkip = Math.min(skip, pendingTotal);
+      const pendingTake = Math.min(PAGE_SIZE, Math.max(0, pendingTotal - pendingSkip));
+      const completedSkip = Math.max(0, skip - pendingTotal);
+      const completedTake = PAGE_SIZE - pendingTake;
+      const [pendingRequests, completedRequests] = await Promise.all([
+        pendingTake > 0 ? prisma.leaveRequest.findMany({
+          where: { ...where, status: "PENDING" }, orderBy: { createdAt: "desc" },
+          skip: pendingSkip, take: pendingTake,
+          select: {
+            id: true, startDate: true, endDate: true, reason: true, status: true,
+            student: { select: { fullName: true, admissionNo: true } },
+            enrollment: {
+              select: {
+                class: { select: { name: true } },
+                section: { select: { name: true } },
+              },
+            },
+          },
+        })
+        : Promise.resolve([]),
+        completedTake > 0 ? prisma.leaveRequest.findMany({
+          where: { ...where, NOT: { status: "PENDING" } }, orderBy: { createdAt: "desc" },
+          skip: completedSkip, take: completedTake,
+          select: {
+            id: true, startDate: true, endDate: true, reason: true, status: true,
+            student: { select: { fullName: true, admissionNo: true } },
+            enrollment: {
+              select: {
+                class: { select: { name: true } },
+                section: { select: { name: true } },
+              },
+            },
+          },
+        })
+        : Promise.resolve([]),
+      ]);
+      const requests = [...pendingRequests, ...completedRequests];
       return ApiResponse.success({ section, total, page, pageSize: PAGE_SIZE,
         rows: requests.map((item) => ({ id: item.id,
           title: item.student.fullName || item.student.admissionNo,
