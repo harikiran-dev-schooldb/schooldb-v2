@@ -57,10 +57,9 @@ fun ConnectionStateScreen(
     message: String,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
+    isOnline: Boolean = true,
 ) {
-    val offline = message.contains("reach", ignoreCase = true) ||
-        message.contains("connection", ignoreCase = true) ||
-        message.contains("network", ignoreCase = true)
+    val offline = !isOnline
     val transition = rememberInfiniteTransition(label = "offline-animation")
     val pulse by transition.animateFloat(
         initialValue = 0.82f,
