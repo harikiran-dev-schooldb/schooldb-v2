@@ -143,6 +143,13 @@ fun TeacherDashboardScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
+    val isOnline by rememberIsOnline()
+    var wasOffline by remember { mutableStateOf(!isOnline) }
+
+    LaunchedEffect(isOnline) {
+        if (isOnline && wasOffline) viewModel.refresh()
+        wasOffline = !isOnline
+    }
 
     LaunchedEffect(state.message) {
         state.message?.let {
@@ -168,6 +175,7 @@ fun TeacherDashboardScreen(
             ConnectionStateScreen(
                 message = state.error.orEmpty(),
                 onRetry = viewModel::refresh,
+                isOnline = isOnline,
             )
         } else {
             LoadingPage()
@@ -1155,7 +1163,7 @@ private fun TeacherHome(
             SchoolDbRoleHeader(
                 schoolName = state.dashboard?.schoolName ?: state.context?.schoolName ?: "SchoolDB",
                 schoolLogoUrl = state.context?.schoolLogoUrl,
-                title = state.context?.role?.let { "${it.displayRole} Space" } ?: "Workspace",
+                title = "SchoolDB",
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     SchoolDbHeaderAction(onClick = onRefresh) {
@@ -1191,6 +1199,7 @@ private fun TeacherHome(
                     message = state.error,
                     onRetry = onRefresh,
                     modifier = Modifier.padding(padding),
+                    isOnline = isOnline,
                 )
             }
 
@@ -2357,6 +2366,7 @@ private fun ErrorPage(
     message: String,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
+    isOnline: Boolean = true,
 ) {
-    ConnectionStateScreen(message = message, onRetry = onRetry, modifier = modifier)
+    ConnectionStateScreen(message = message, onRetry = onRetry, modifier = modifier, isOnline = isOnline)
 }
