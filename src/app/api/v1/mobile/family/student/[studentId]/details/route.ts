@@ -72,6 +72,7 @@ export async function GET(
       examSchedule,
       transport,
       libraryLoans,
+      documents,
     ] = await Promise.all([
       selectedAttendanceAcademicYear
         ? attendanceService.studentAttendanceReport(
@@ -189,6 +190,25 @@ export async function GET(
               book: { select: { title: true, author: true, shelf: true } },
             },
           },
+        },
+      }),
+      prisma.studentDocument.findMany({
+        where: {
+          schoolId: membership.schoolId,
+          studentId,
+          visibleToFamily: true,
+        },
+        orderBy: { createdAt: "desc" },
+        take: 100,
+        select: {
+          id: true,
+          type: true,
+          name: true,
+          originalName: true,
+          mimeType: true,
+          sizeBytes: true,
+          notes: true,
+          createdAt: true,
         },
       }),
     ]);
@@ -382,6 +402,7 @@ export async function GET(
             ? "OVERDUE"
             : "BORROWED",
       })),
+      documents,
     });
   });
 }

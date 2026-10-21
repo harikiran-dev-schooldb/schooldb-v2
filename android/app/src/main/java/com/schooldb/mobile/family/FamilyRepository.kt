@@ -1,6 +1,7 @@
 package com.schooldb.mobile.family
 
 import com.schooldb.mobile.network.AuthenticatedApiClient
+import com.schooldb.mobile.network.DownloadedFile
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -15,6 +16,9 @@ class FamilyRepository(
 
     private fun JSONObject.optionalText(key: String): String? =
         if (isNull(key)) null else optString(key).takeIf(String::isNotBlank)
+
+    suspend fun downloadDocument(studentId: String, documentId: String): DownloadedFile =
+        api.download("api/v1/students/$studentId/documents/$documentId/download")
 
     suspend fun dashboard(forceRefresh: Boolean = false): FamilyDashboard {
         val data = api.get(
@@ -338,6 +342,25 @@ class FamilyRepository(
             }
         }
 
+        val documentsJson = data.optJSONArray("documents") ?: JSONArray()
+        val documents = buildList {
+            repeat(documentsJson.length()) { index ->
+                val item = documentsJson.getJSONObject(index)
+                add(
+                    FamilyDocument(
+                        id = item.getString("id"),
+                        type = item.optString("type", "OTHER"),
+                        name = item.optString("name", "Document"),
+                        originalName = item.optString("originalName"),
+                        mimeType = item.optString("mimeType"),
+                        sizeBytes = item.optInt("sizeBytes"),
+                        notes = item.optionalText("notes"),
+                        createdAt = item.optString("createdAt"),
+                    ),
+                )
+            }
+        }
+
         return FamilyStudentDetails(
             attendanceAcademicYears = attendanceAcademicYears,
             selectedAttendanceAcademicYearId = data.optionalText("selectedAttendanceAcademicYearId"),
@@ -350,6 +373,7 @@ class FamilyRepository(
             calendarEvents = calendarEvents,
             transport = transport,
             libraryLoans = libraryLoans,
+            documents = documents,
         )
     }
 

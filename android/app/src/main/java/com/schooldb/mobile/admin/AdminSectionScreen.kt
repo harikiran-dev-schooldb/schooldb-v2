@@ -100,6 +100,11 @@ private val sectionTitles = mapOf(
     "transport" to "Transport",
     "inventory" to "Inventory",
     "birthdays" to "Birthdays",
+    "staff" to "Staff & attendance",
+    "visitors" to "Visitors & gate passes",
+    "health" to "Student health",
+    "pickup" to "Student pickup",
+    "maintenance" to "Maintenance",
 )
 
 private val sectionDescriptions = mapOf(
@@ -119,6 +124,11 @@ private val sectionDescriptions = mapOf(
     "transport" to "Routes, vehicles, stops and student assignments",
     "inventory" to "School assets, stock levels and condition",
     "birthdays" to "Student birthdays today, this week and this month",
+    "staff" to "Active staff and today’s attendance status",
+    "visitors" to "Visitor check-ins, gate passes and checkout status",
+    "health" to "Recent clinic visits and recorded follow-up",
+    "pickup" to "Authorized pickup people, validity and status",
+    "maintenance" to "Facility and equipment issues requiring follow-up",
 )
 
 internal data class AdminListRow(

@@ -8,9 +8,12 @@ Native Android client built with Kotlin and Jetpack Compose.
 - WhatsApp OTP delivery and verification through the existing SchoolDB API
 - Account selection when a number belongs to multiple users
 - Teacher attendance, homework, notices, timetable, students, results and profile
-- Family/student attendance, homework, fees, results, timetable, leave, calendar, transport, library loans and notifications
+- Family/student attendance, homework, fees, results, timetable, leave, calendar, transport, library loans, secure school-shared documents and notifications
 - Administrator dashboards, reports, queries, announcements, homework publishing and school-operation lists
 - Administrator mobile views for library, transport, inventory and upcoming birthdays
+- Accountant workspace for students, fee payments and follow-up, staff attendance, inventory and support queries
+- Receptionist workspace for student records, admissions, visitors, student health, authorized pickup, maintenance and support queries
+- Server-enforced staff module permissions, including custom per-account access
 - Light-mode SchoolDB design shared with the web app
 - Emulator and production backend configuration
 

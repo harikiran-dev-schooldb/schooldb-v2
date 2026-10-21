@@ -210,6 +210,17 @@ data class FamilyLibraryLoan(
     val status: String,
 )
 
+data class FamilyDocument(
+    val id: String,
+    val type: String,
+    val name: String,
+    val originalName: String,
+    val mimeType: String,
+    val sizeBytes: Int,
+    val notes: String?,
+    val createdAt: String,
+)
+
 data class FamilyStudentDetails(
     val attendanceAcademicYears: List<FamilyAcademicYear>,
     val selectedAttendanceAcademicYearId: String?,
@@ -222,6 +233,7 @@ data class FamilyStudentDetails(
     val calendarEvents: List<FamilyCalendarEvent>,
     val transport: FamilyTransportAssignment?,
     val libraryLoans: List<FamilyLibraryLoan>,
+    val documents: List<FamilyDocument>,
 )
 
 data class FamilyUiState(

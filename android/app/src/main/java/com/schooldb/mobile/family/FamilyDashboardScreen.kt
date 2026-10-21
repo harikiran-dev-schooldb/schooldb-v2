@@ -42,6 +42,7 @@ import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.DirectionsBus
+import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.LocalLibrary
@@ -57,6 +58,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
@@ -91,6 +93,7 @@ import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 import java.util.Locale
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import com.composables.icons.lucide.CalendarCheck
 import com.composables.icons.lucide.Bell
 import com.composables.icons.lucide.ClipboardCheck
@@ -486,6 +489,16 @@ fun FamilyDashboardScreen(
                         onBack = { moreScreen = "MENU" },
                         modifier = Modifier.padding(padding),
                     )
+                } else if (moreScreen == "DOCUMENTS") {
+                    DocumentsTab(
+                        dashboard,
+                        student,
+                        state,
+                        viewModel::selectStudent,
+                        viewModel::refreshDetails,
+                        onBack = { moreScreen = "MENU" },
+                        modifier = Modifier.padding(padding),
+                    )
                 } else if (moreScreen == "NOTIFICATIONS") {
                     NotificationsTab(
                         state = state,
@@ -506,6 +519,7 @@ fun FamilyDashboardScreen(
                         onOpenCalendar = { moreScreen = "CALENDAR" },
                         onOpenTransport = { moreScreen = "TRANSPORT" },
                         onOpenLibrary = { moreScreen = "LIBRARY" },
+                        onOpenDocuments = { moreScreen = "DOCUMENTS" },
                         onOpenNotifications = { moreScreen = "NOTIFICATIONS" },
                         onOpenFees = { moreScreen = "FEES" },
                         onSwitchAccount = onSwitchAccount,
@@ -1179,6 +1193,7 @@ private fun MoreTab(
     onOpenCalendar: () -> Unit,
     onOpenTransport: () -> Unit,
     onOpenLibrary: () -> Unit,
+    onOpenDocuments: () -> Unit,
     onOpenNotifications: () -> Unit,
     onOpenFees: () -> Unit,
     onSwitchAccount: () -> Unit,
@@ -1189,10 +1204,23 @@ private fun MoreTab(
 ) {
     if (dashboard.role == "STUDENT") {
         StudentMoreTab(
-            dashboard, student, state, onSelect, onOpenTimetable, onOpenLeave,
-            onOpenCalendar, onOpenTransport, onOpenLibrary, onOpenNotifications,
-            onOpenFees,
-            onSwitchAccount, onSignOut, secureReentry, onSecureReentryChange, modifier,
+            dashboard = dashboard,
+            student = student,
+            state = state,
+            onSelect = onSelect,
+            onOpenTimetable = onOpenTimetable,
+            onOpenLeave = onOpenLeave,
+            onOpenCalendar = onOpenCalendar,
+            onOpenTransport = onOpenTransport,
+            onOpenLibrary = onOpenLibrary,
+            onOpenNotifications = onOpenNotifications,
+            onOpenDocuments = onOpenDocuments,
+            onOpenFees = onOpenFees,
+            onSwitchAccount = onSwitchAccount,
+            onSignOut = onSignOut,
+            secureReentry = secureReentry,
+            onSecureReentryChange = onSecureReentryChange,
+            modifier = modifier,
         )
         return
     }
@@ -1273,6 +1301,21 @@ private fun MoreTab(
     }
     item {
         Card(
+            onClick = onOpenDocuments,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 6.dp),
+            shape = RoundedCornerShape(18.dp),
+        ) {
+            Row(Modifier.fillMaxWidth().padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Outlined.Description, contentDescription = null, tint = FamilyIndigo)
+                Column(Modifier.padding(start = 14.dp).weight(1f)) {
+                    Text("Documents", fontWeight = FontWeight.Bold)
+                    Text("School-shared records and certificates", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+                }
+            }
+        }
+    }
+    item {
+        Card(
             onClick = onOpenCalendar,
             modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 6.dp),
             shape = RoundedCornerShape(18.dp),
@@ -1332,6 +1375,7 @@ private fun StudentMoreTab(
     onOpenTransport: () -> Unit,
     onOpenLibrary: () -> Unit,
     onOpenNotifications: () -> Unit,
+    onOpenDocuments: () -> Unit,
     onOpenFees: () -> Unit,
     onSwitchAccount: () -> Unit,
     onSignOut: () -> Unit,
@@ -1359,6 +1403,7 @@ private fun StudentMoreTab(
         }
         item { StudentMoreAction(Icons.Outlined.DirectionsBus, "School transport", "Route, stop and pickup time", FamilyIndigo, onOpenTransport) }
         item { StudentMoreAction(Icons.Outlined.LocalLibrary, "My library", "Loans, due dates and return history", FamilyIndigo, onOpenLibrary) }
+        item { StudentMoreAction(Icons.Outlined.Description, "Documents", "School-shared records and certificates", FamilyIndigo, onOpenDocuments) }
         item { StudentMoreAction(Icons.AutoMirrored.Outlined.EventNote, "Leave requests", "Request leave and track decisions", FamilyIndigo, onOpenLeave) }
         item { Spacer(Modifier.height(5.dp)) }
         item { StudentSectionHeading("Account", "Your school account") }
@@ -1972,6 +2017,85 @@ private fun LibraryLoanCard(loan: FamilyLibraryLoan) {
                 color = FamilyRed, fontWeight = FontWeight.Bold, fontSize = 12.sp)
         }
     }
+}
+
+@Composable
+private fun DocumentsTab(
+    dashboard: FamilyDashboard,
+    student: FamilyStudent,
+    state: FamilyUiState,
+    onSelect: (String) -> Unit,
+    onRefresh: () -> Unit,
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var openingId by remember { mutableStateOf<String?>(null) }
+
+    DetailList(modifier, dashboard, student, "Documents", state, onSelect, onRefresh, onBack) { details ->
+    item {
+        Text(
+            "Only records your school has approved for family access are shown here.",
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 6.dp),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontSize = 12.sp,
+        )
+    }
+    if (details.documents.isEmpty()) {
+        item { EmptyMessage("No documents have been shared with this student yet.") }
+    } else {
+        items(details.documents, key = { it.id }) { document ->
+            Card(
+                onClick = {
+                    if (openingId == null) {
+                        openingId = document.id
+                        scope.launch {
+                            openFamilyDocument(context, student.id, document)?.let { message ->
+                                Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+                            }
+                            openingId = null
+                        }
+                    }
+                },
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 5.dp),
+                shape = RoundedCornerShape(18.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            ) {
+                Row(Modifier.fillMaxWidth().padding(17.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        Modifier.size(44.dp).background(FamilyIndigo.copy(alpha = .1f), RoundedCornerShape(14.dp)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(Icons.Outlined.Description, contentDescription = null, tint = FamilyIndigo)
+                    }
+                    Column(Modifier.weight(1f).padding(start = 13.dp)) {
+                        Text(document.name, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        Text(
+                            "${document.type.replace('_', ' ').lowercase().replaceFirstChar(Char::uppercase)} · ${formatFileSize(document.sizeBytes)}",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontSize = 12.sp,
+                        )
+                        document.notes?.let {
+                            Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        }
+                    }
+                    if (openingId == document.id) {
+                        CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
+                    } else {
+                        Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "Open ${document.name}")
+                    }
+                }
+            }
+        }
+    }
+}
+}
+
+private fun formatFileSize(bytes: Int): String = when {
+    bytes >= 1_048_576 -> String.format(Locale.US, "%.1f MB", bytes / 1_048_576.0)
+    bytes >= 1_024 -> String.format(Locale.US, "%.1f KB", bytes / 1_024.0)
+    else -> "$bytes B"
 }
 
 @Composable

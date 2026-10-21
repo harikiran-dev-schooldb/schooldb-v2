@@ -30,6 +30,16 @@ class TeacherRepository(
             canUnlockAttendance = data.optJSONObject("permissions")
                 ?.optBoolean("canUnlockAttendance") == true,
             teacherAccess = access?.toTeacherAccess() ?: TeacherAccess.legacyEnabled(),
+            staffModules = data.optJSONArray("staffModules")?.let { modules ->
+                buildSet {
+                    repeat(modules.length()) { index -> add(modules.optString(index)) }
+                }
+            } ?: emptySet(),
+            staffManagedModules = data.optJSONArray("staffManagedModules")?.let { modules ->
+                buildSet {
+                    repeat(modules.length()) { index -> add(modules.optString(index)) }
+                }
+            } ?: emptySet(),
         )
     }
 

@@ -363,6 +363,7 @@ fun AdminDashboardScreen(
 ) {
     val viewModel: AdminDashboardViewModel = viewModel(key = "admin-dashboard-${school.schoolSlug}")
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val isAdministrator = school.role in setOf("SUPER_ADMIN", "SCHOOL_ADMIN")
     var selectedTab by rememberSaveable(school.schoolSlug) { mutableStateOf("Home") }
     var selectedSection by rememberSaveable(school.schoolSlug) { mutableStateOf<String?>(null) }
     var selectedTicket by rememberSaveable(school.schoolSlug) { mutableStateOf<String?>(null) }
@@ -414,7 +415,11 @@ fun AdminDashboardScreen(
         return
     }
     selectedTicket?.let { ticketId ->
-        AdminTicketScreen(ticketId, onBack = { selectedTicket = null })
+        AdminTicketScreen(
+            ticketId,
+            canManage = "SUPPORT" in school.staffManagedModules,
+            onBack = { selectedTicket = null },
+        )
         return
     }
     selectedStudent?.let { studentId ->
@@ -427,7 +432,7 @@ fun AdminDashboardScreen(
             canUnlockAttendance = school.canUnlockAttendance,
             onBack = { selectedSection = null },
             onTicket = { selectedTicket = it },
-            onStudent = { selectedStudent = it },
+            onStudent = { if (school.role != "ACCOUNTANT") selectedStudent = it },
         )
         return
     }
@@ -440,7 +445,7 @@ fun AdminDashboardScreen(
         viewModel.refresh()
     }
     LaunchedEffect(selectedTab) {
-        if (selectedTab == "Reports" && state.report == null && !state.reportLoading) {
+        if (isAdministrator && selectedTab == "Reports" && state.report == null && !state.reportLoading) {
             withFrameNanos { }
             delay(50)
             viewModel.loadReport()
@@ -453,6 +458,9 @@ fun AdminDashboardScreen(
         bottomBar = {
             PremiumAdminNavigation(
                 selectedTab = selectedTab,
+                showReports = isAdministrator,
+                showStudents = "STUDENTS" in school.staffModules,
+                showQueries = "SUPPORT" in school.staffModules,
                 homeBadge = state.dashboard?.unreadAnnouncements ?: 0,
                 queriesBadge = state.dashboard?.let { it.openTickets + it.inProgressTickets } ?: 0,
                 onSelect = { selectedTab = it },
@@ -467,11 +475,15 @@ fun AdminDashboardScreen(
                     "Reports" -> "Reports"
                     "Queries" -> "Queries"
                     "More" -> "School Tools"
-                    else -> "Admin Overview"
+                    else -> when (school.role) {
+                        "ACCOUNTANT" -> "Accounts Overview"
+                        "RECEPTIONIST" -> "Front Desk Overview"
+                        else -> "Admin Overview"
+                    }
                 },
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    SchoolDbHeaderAction(onClick = { showAnnouncements = true }) {
+                    if (isAdministrator) SchoolDbHeaderAction(onClick = { showAnnouncements = true }) {
                         BadgedBox(badge = {
                             val unread = state.dashboard?.unreadAnnouncements ?: 0
                             if (unread > 0) Badge { Text(unread.coerceAtMost(99).toString()) }
@@ -505,7 +517,7 @@ fun AdminDashboardScreen(
             modifier = Modifier.fillMaxSize(),
         ) {
         Crossfade(targetState = selectedTab, animationSpec = tween(220), label = "admin-tabs") { tab ->
-            if (tab == "Reports") {
+            if (tab == "Reports" && isAdministrator) {
                 ReportsTab(state, Modifier.padding(padding)) { viewModel.loadReport(forceRefresh = true) }
             } else if (tab == "More") {
                 MoreTab(
@@ -532,7 +544,7 @@ fun AdminDashboardScreen(
             } else if (tab == "Students") {
                 AdminStudentsTab(
                     modifier = Modifier.padding(padding),
-                    onStudent = { selectedStudent = it },
+                    onStudent = { if (school.role != "ACCOUNTANT") selectedStudent = it },
                 )
             } else {
                 AdminHomeTab(
@@ -683,6 +695,9 @@ private fun AdminStudentsTab(
 @Composable
 private fun PremiumAdminNavigation(
     selectedTab: String,
+    showReports: Boolean,
+    showStudents: Boolean,
+    showQueries: Boolean,
     homeBadge: Int,
     queriesBadge: Int,
     onSelect: (String) -> Unit,
@@ -705,7 +720,14 @@ private fun PremiumAdminNavigation(
         AdminNavDestination("Reports", "Reports", Lucide.ChartNoAxesColumnIncreasing),
         AdminNavDestination("Queries", "Queries", Lucide.MessageSquareText),
         AdminNavDestination("More", "More", Lucide.LayoutGrid),
-    )
+    ).filter { item ->
+        when (item.key) {
+            "Reports" -> showReports
+            "Students" -> showStudents
+            "Queries" -> showQueries
+            else -> true
+        }
+    }
     Surface(
         modifier = Modifier.navigationBarsPadding().padding(horizontal = 14.dp, vertical = 7.dp)
             .shadow(18.dp, RoundedCornerShape(31.dp), ambientColor = Color.Black.copy(alpha = 0.30f),
@@ -950,7 +972,9 @@ private fun AdminHomeTab(
             Card(
                 onClick = {
                     haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                    if (hasUrgent) onQueries() else if (hasLeave) onSection("leave") else onAnnouncements()
+                    if (hasUrgent) onQueries()
+                    else if (hasLeave) onSection("leave")
+                    else if (school.role in setOf("SUPER_ADMIN", "SCHOOL_ADMIN")) onAnnouncements()
                 },
                 shape = RoundedCornerShape(20.dp),
                 colors = CardDefaults.cardColors(
@@ -995,7 +1019,15 @@ private fun AdminHomeTab(
                     AdminTool("Students", "PEOPLE", "Student records", Lucide.GraduationCap, "students", listOf(Color(0xFF3977F6), Color(0xFF3154D9))),
                     AdminTool("Fees", "FINANCE", "Fee status", Lucide.WalletCards, "fees", listOf(Color(0xFF34C989), Color(0xFF149669))),
                     AdminTool("Leave", "APPROVALS", "Leave requests", Lucide.ClipboardCheck, "leave", listOf(Color(0xFFF2B641), Color(0xFFD58A18))),
-                ).forEach { tool ->
+                ).filter { tool ->
+                    val module = when (tool.destination) {
+                        "attendance" -> "ATTENDANCE"
+                        "students" -> "STUDENTS"
+                        "fees" -> "FEES"
+                        else -> "CALENDAR"
+                    }
+                    module in school.staffModules
+                }.forEach { tool ->
                     Surface(onClick = {
                         haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                         onSection(tool.destination)
@@ -1024,11 +1056,13 @@ private fun AdminHomeTab(
             }
         }
 
-        item { SectionTitle("Announcements", "View all", onAnnouncements) }
-        if (dashboard.announcements.isEmpty()) item {
+        if ("COMMUNICATION" in school.staffModules) item {
+            SectionTitle("Announcements", "View all", onAnnouncements)
+        }
+        if ("COMMUNICATION" in school.staffModules && dashboard.announcements.isEmpty()) item {
             EmptyHomeCard("No active announcements", "New school updates will appear here.")
         }
-        items(dashboard.announcements.take(3), key = { "announcement-${it.id}" }) { announcement ->
+        if ("COMMUNICATION" in school.staffModules) items(dashboard.announcements.take(3), key = { "announcement-${it.id}" }) { announcement ->
             Card(onClick = onAnnouncements, shape = RoundedCornerShape(20.dp),
                 colors = CardDefaults.cardColors(
                     containerColor = if (announcement.read) MaterialTheme.colorScheme.surface
@@ -1063,11 +1097,11 @@ private fun AdminHomeTab(
             }
         }
 
-        item { SectionTitle("Coming up") }
-        if (dashboard.upcomingEvents.isEmpty()) item {
+        if ("CALENDAR" in school.staffModules) item { SectionTitle("Coming up") }
+        if ("CALENDAR" in school.staffModules && dashboard.upcomingEvents.isEmpty()) item {
             EmptyHomeCard("Nothing scheduled", "Upcoming events and holidays will appear here.")
         }
-        items(dashboard.upcomingEvents.take(3), key = { "event-${it.id}" }) { event ->
+        if ("CALENDAR" in school.staffModules) items(dashboard.upcomingEvents.take(3), key = { "event-${it.id}" }) { event ->
             Card(shape = RoundedCornerShape(18.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
                 Row(Modifier.fillMaxWidth().padding(15.dp), verticalAlignment = Alignment.CenterVertically,
@@ -1093,11 +1127,11 @@ private fun AdminHomeTab(
             }
         }
 
-        item { SectionTitle("Recent activity", "View queries", onQueries) }
-        if (dashboard.recentTickets.isEmpty()) item {
+        if ("SUPPORT" in school.staffModules) item { SectionTitle("Recent activity", "View queries", onQueries) }
+        if ("SUPPORT" in school.staffModules && dashboard.recentTickets.isEmpty()) item {
             EmptyHomeCard("No recent activity", "Support and parent query updates will appear here.")
         }
-        items(dashboard.recentTickets.take(3), key = { "activity-${it.id}" }) { ticket ->
+        if ("SUPPORT" in school.staffModules) items(dashboard.recentTickets.take(3), key = { "activity-${it.id}" }) { ticket ->
             Card(onClick = { onTicket(ticket.id) }, shape = RoundedCornerShape(18.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
                 Row(Modifier.fillMaxWidth().padding(15.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -1387,6 +1421,10 @@ private fun MoreTab(
     onSwitchAccount: () -> Unit,
     onSignOut: () -> Unit,
 ) {
+    if (school.role !in setOf("SUPER_ADMIN", "SCHOOL_ADMIN")) {
+        StaffToolsTab(school, dashboard, modifier, onSection, onSwitchAccount, onSignOut)
+        return
+    }
     val darkTheme = MaterialTheme.colorScheme.background.luminance() < 0.5f
     val tools = listOf(
         AdminTool("Attendance", "LIVE OPERATIONS", "Sessions, absences and daily status", Lucide.CalendarCheck, "attendance", listOf(Color(0xFF818CF8), Color(0xFF4F46E5))),
@@ -1464,6 +1502,61 @@ private fun MoreTab(
             }
         }
         item { PremiumSectionTitle("Account", "Manage the administrator signed in on this device") }
+        item { AdminAccountActions(school, onSwitchAccount, onSignOut) }
+        item { Spacer(Modifier.height(8.dp)) }
+    }
+}
+
+@Composable
+private fun StaffToolsTab(
+    school: MobileContext,
+    dashboard: AdminDashboard?,
+    modifier: Modifier,
+    onSection: (String) -> Unit,
+    onSwitchAccount: () -> Unit,
+    onSignOut: () -> Unit,
+) {
+    val modules = school.staffModules
+    val tools = buildList {
+        if ("STUDENTS" in modules) add(AdminTool("Students", "PEOPLE", "Search the active student directory", Lucide.UserRoundSearch, "students", listOf(Color(0xFF93C5FD), Color(0xFF2563EB))))
+        if ("FEES" in modules) {
+            add(AdminTool("Fee payments", "FINANCE", "Review payment and receipt history", Lucide.BadgeIndianRupee, "fees", listOf(Color(0xFF86EFAC), Color(0xFF059669))))
+            add(AdminTool("Fee follow-up", "COLLECTIONS", "Pending installments and balances", Lucide.ReceiptIndianRupee, "fee-collection", listOf(Color(0xFF6EE7B7), Color(0xFF047857))))
+        }
+        if ("STAFF" in modules) add(AdminTool("Staff & attendance", "PAYROLL", "Today’s staff attendance register", Lucide.BriefcaseBusiness, "staff", listOf(Color(0xFFC4B5FD), Color(0xFF7C3AED))))
+        if ("INVENTORY" in modules) add(AdminTool("Inventory", "ASSETS", "Stock, condition and reorder alerts", Lucide.Boxes, "inventory", listOf(Color(0xFFFDE68A), Color(0xFFD97706))))
+        if ("ADMISSIONS" in modules) add(AdminTool("Admissions", "FRONT DESK", "Applications awaiting front-office follow-up", Lucide.UserRoundPlus, "admissions", listOf(Color(0xFF818CF8), Color(0xFF4F46E5))))
+        if ("FRONT_OFFICE" in modules) {
+            add(AdminTool("Visitors", "SECURITY", "Gate passes and visitor check-in status", Lucide.UserRoundSearch, "visitors", listOf(Color(0xFF93C5FD), Color(0xFF2563EB))))
+            add(AdminTool("Student health", "CARE", "Clinic visits and follow-up records", Lucide.Activity, "health", listOf(Color(0xFFFDA4AF), Color(0xFFE11D48))))
+            add(AdminTool("Student pickup", "SAFETY", "Authorized pickup people and codes", Lucide.Bus, "pickup", listOf(Color(0xFF86EFAC), Color(0xFF059669))))
+            add(AdminTool("Maintenance", "FACILITIES", "Open facility and equipment issues", Lucide.CircleAlert, "maintenance", listOf(Color(0xFFFDE68A), Color(0xFFD97706))))
+        }
+        if ("SUPPORT" in modules) add(AdminTool("Queries", "SUPPORT", "School and parent support follow-up", Lucide.MessageSquareText, "queries", listOf(Color(0xFFC4B5FD), Color(0xFF7C3AED))))
+    }
+    val darkTheme = MaterialTheme.colorScheme.background.luminance() < 0.5f
+    LazyColumn(
+        modifier.fillMaxSize().background(
+            Brush.verticalGradient(
+                if (darkTheme) listOf(Color(0xFF060A13), Color(0xFF09101D), Color(0xFF060A13))
+                else listOf(Color(0xFFF8FAFC), Color(0xFFF4F6FF), Color(0xFFF8FAFC)),
+            ),
+        ),
+        contentPadding = PaddingValues(horizontal = 18.dp, vertical = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        item { SchoolCommandHero(school, dashboard, tools.size) }
+        item {
+            PremiumSectionTitle(
+                if (school.role == "ACCOUNTANT") "Accounts workspace" else "Front desk workspace",
+                "Only tools allowed for this account are shown",
+            )
+        }
+        items(tools, key = { it.destination }) { tool -> WideAdminTool(tool, onSection) }
+        if (tools.isEmpty()) item {
+            EmptyHomeCard("No mobile modules assigned", "Ask a school administrator to review this account’s module permissions.")
+        }
+        item { PremiumSectionTitle("Account", "Manage the account signed in on this device") }
         item { AdminAccountActions(school, onSwitchAccount, onSignOut) }
         item { Spacer(Modifier.height(8.dp)) }
     }

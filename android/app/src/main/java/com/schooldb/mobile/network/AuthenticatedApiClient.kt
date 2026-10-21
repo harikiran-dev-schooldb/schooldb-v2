@@ -12,6 +12,11 @@ import java.util.UUID
 import kotlinx.coroutines.delay
 import org.json.JSONObject
 
+data class DownloadedFile(
+    val bytes: ByteArray,
+    val contentType: String,
+)
+
 class AuthenticatedApiClient(
     private val baseUrl: String = BuildConfig.API_BASE_URL,
 ) {
@@ -52,7 +57,37 @@ class AuthenticatedApiClient(
 
     suspend fun put(path: String, body: JSONObject): JSONObject = request("PUT", path, body)
 
+    suspend fun patch(path: String, body: JSONObject): JSONObject = request("PATCH", path, body)
+
     suspend fun delete(path: String, body: JSONObject): JSONObject = request("DELETE", path, body)
+
+    suspend fun download(path: String): DownloadedFile {
+        val token = sessionToken()
+        val connection = URL(baseUrl + path.trimStart('/')).openConnection() as HttpURLConnection
+        return try {
+            connection.requestMethod = "GET"
+            connection.instanceFollowRedirects = false
+            connection.connectTimeout = CONNECT_TIMEOUT_MILLIS
+            connection.readTimeout = READ_TIMEOUT_MILLIS
+            connection.useCaches = false
+            connection.setRequestProperty("Authorization", "Bearer $token")
+            connection.setRequestProperty("x-school-slug", SchoolContext.schoolSlug())
+            connection.setRequestProperty("X-Request-Id", UUID.randomUUID().toString())
+            connection.setRequestProperty("X-SchoolDB-Client", "android/${BuildConfig.VERSION_NAME}")
+            val status = connection.responseCode
+            if (status !in 200..299) {
+                val payload = connection.errorStream?.bufferedReader()?.use { it.readText() }.orEmpty()
+                ApiResponseParser.parse(payload, status, connection.contentType)
+                throw ApiException("Unable to open this document.", status)
+            }
+            DownloadedFile(
+                bytes = connection.inputStream.use { it.readBytes() },
+                contentType = connection.contentType?.substringBefore(';') ?: "application/octet-stream",
+            )
+        } finally {
+            connection.disconnect()
+        }
+    }
 
     private suspend fun retryingGet(path: String): JSONObject {
         var lastFailure: Exception? = null

@@ -9,6 +9,8 @@ data class MobileContext(
     val imageUrl: String?,
     val canUnlockAttendance: Boolean = false,
     val teacherAccess: TeacherAccess = TeacherAccess(),
+    val staffModules: Set<String> = emptySet(),
+    val staffManagedModules: Set<String> = emptySet(),
 )
 
 data class TeacherAccess(

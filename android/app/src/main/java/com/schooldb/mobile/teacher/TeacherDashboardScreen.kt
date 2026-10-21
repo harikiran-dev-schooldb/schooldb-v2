@@ -188,7 +188,10 @@ fun TeacherDashboardScreen(
     }
 
     val adminContext = state.context
-    if (adminContext != null && adminContext.role in setOf("SUPER_ADMIN", "SCHOOL_ADMIN")) {
+    if (
+        adminContext != null &&
+        adminContext.role in setOf("SUPER_ADMIN", "SCHOOL_ADMIN", "ACCOUNTANT", "RECEPTIONIST")
+    ) {
         AdminDashboardScreen(
             school = adminContext,
             refreshKey = refreshKey,

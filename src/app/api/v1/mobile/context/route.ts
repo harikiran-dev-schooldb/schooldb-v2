@@ -3,6 +3,10 @@ import { apiHandler } from "@/lib/api";
 import { ApiResponse } from "@/lib/response";
 import { canUnlockAttendance } from "@/features/attendance/policy";
 import { publicSchoolLogoUrl } from "@/lib/school-branding";
+import {
+  hasModuleAccess,
+  STAFF_PERMISSION_MODULES,
+} from "@/lib/staff-permissions";
 
 export async function GET(request: Request) {
   return apiHandler(async () => {
@@ -49,6 +53,12 @@ export async function GET(request: Request) {
             marksEntry: access.marksEntryAccess,
           }
         : null,
+      staffModules: STAFF_PERMISSION_MODULES
+        .filter((module) => hasModuleAccess(membership, module.key, "VIEW"))
+        .map((module) => module.key),
+      staffManagedModules: STAFF_PERMISSION_MODULES
+        .filter((module) => hasModuleAccess(membership, module.key, "MANAGE"))
+        .map((module) => module.key),
     });
   });
 }

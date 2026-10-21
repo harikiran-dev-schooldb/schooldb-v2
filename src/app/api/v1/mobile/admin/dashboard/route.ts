@@ -2,6 +2,7 @@ import { requireRole } from "@/lib/auth";
 import { apiHandler } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 import { ApiResponse } from "@/lib/response";
+import { hasModuleAccess } from "@/lib/staff-permissions";
 
 const ACTIVE_TICKET_STATUSES = ["OPEN", "REOPENED", "ASSIGNED", "IN_PROGRESS", "WAITING"] as const;
 
@@ -18,9 +19,25 @@ function schoolDate() {
 
 export async function GET() {
   return apiHandler(async () => {
-    const membership = await requireRole(["SUPER_ADMIN", "SCHOOL_ADMIN"]);
+    const membership = await requireRole([
+      "SUPER_ADMIN",
+      "SCHOOL_ADMIN",
+      "ACCOUNTANT",
+      "RECEPTIONIST",
+    ]);
     const schoolId = membership.schoolId;
     const now = new Date();
+    const canReadStudents = hasModuleAccess(membership, "STUDENTS", "VIEW");
+    const canReadStaff = hasModuleAccess(membership, "STAFF", "VIEW");
+    const canReadAttendance = hasModuleAccess(membership, "ATTENDANCE", "VIEW");
+    const canReadLeave = hasModuleAccess(membership, "CALENDAR", "VIEW");
+    const canReadSupport = hasModuleAccess(membership, "SUPPORT", "VIEW");
+    const canManageSupport = hasModuleAccess(membership, "SUPPORT", "MANAGE");
+    const canReadCommunication = hasModuleAccess(membership, "COMMUNICATION", "VIEW");
+    const canReadCalendar = hasModuleAccess(membership, "CALENDAR", "VIEW");
+    const supportScope = canManageSupport
+      ? {}
+      : { OR: [{ createdById: membership.userId }, { assignedToId: membership.userId }] };
     const activeYear = await prisma.academicYear.findFirst({
       where: { schoolId, active: true },
       orderBy: { startDate: "desc" },
@@ -30,25 +47,35 @@ export async function GET() {
     const [students, teachers, classes, attendanceSessionsToday, pendingLeaveRequests,
       openTickets, inProgressTickets, urgentTickets, parentQueries, recentTickets,
       announcements, unreadAnnouncements, upcomingEvents] = await Promise.all([
-      prisma.student.count({ where: { schoolId, status: "ACTIVE" } }),
-      prisma.teacher.count({ where: { schoolId, active: true } }),
+      canReadStudents
+        ? prisma.student.count({ where: { schoolId, status: "ACTIVE" } })
+        : Promise.resolve(0),
+      canReadStaff
+        ? prisma.teacher.count({ where: { schoolId, active: true } })
+        : Promise.resolve(0),
       prisma.class.count({ where: { schoolId, active: true } }),
-      activeYear
+      activeYear && canReadAttendance
         ? prisma.attendanceSession.count({
             where: { schoolId, academicYearId: activeYear.id, attendanceDate: schoolDate() },
           })
         : Promise.resolve(0),
-      prisma.leaveRequest.count({ where: { schoolId, status: "PENDING" } }),
-      prisma.supportTicket.count({ where: { schoolId, status: { in: ["OPEN", "REOPENED"] } } }),
-      prisma.supportTicket.count({ where: { schoolId, status: { in: ["ASSIGNED", "IN_PROGRESS", "WAITING"] } } }),
-      prisma.supportTicket.count({
-        where: { schoolId, priority: "URGENT", status: { in: [...ACTIVE_TICKET_STATUSES] } },
-      }),
-      prisma.supportTicket.count({
-        where: { schoolId, source: "PARENT_QR", status: { in: [...ACTIVE_TICKET_STATUSES] } },
-      }),
-      prisma.supportTicket.findMany({
-        where: { schoolId },
+      canReadLeave
+        ? prisma.leaveRequest.count({ where: { schoolId, status: "PENDING" } })
+        : Promise.resolve(0),
+      canReadSupport
+        ? prisma.supportTicket.count({ where: { schoolId, ...supportScope, status: { in: ["OPEN", "REOPENED"] } } })
+        : Promise.resolve(0),
+      canReadSupport
+        ? prisma.supportTicket.count({ where: { schoolId, ...supportScope, status: { in: ["ASSIGNED", "IN_PROGRESS", "WAITING"] } } })
+        : Promise.resolve(0),
+      canReadSupport ? prisma.supportTicket.count({
+        where: { schoolId, ...supportScope, priority: "URGENT", status: { in: [...ACTIVE_TICKET_STATUSES] } },
+      }) : Promise.resolve(0),
+      canReadSupport ? prisma.supportTicket.count({
+        where: { schoolId, ...supportScope, source: "PARENT_QR", status: { in: [...ACTIVE_TICKET_STATUSES] } },
+      }) : Promise.resolve(0),
+      canReadSupport ? prisma.supportTicket.findMany({
+        where: { schoolId, ...supportScope },
         orderBy: { createdAt: "desc" },
         take: 5,
         select: {
@@ -60,8 +87,8 @@ export async function GET() {
           source: true,
           createdAt: true,
         },
-      }),
-      prisma.announcement.findMany({
+      }) : Promise.resolve([]),
+      canReadCommunication ? prisma.announcement.findMany({
         where: {
           schoolId,
           archived: false,
@@ -83,8 +110,8 @@ export async function GET() {
           publishedAt: true,
           reads: { where: { userId: membership.userId }, select: { id: true } },
         },
-      }),
-      prisma.announcement.count({
+      }) : Promise.resolve([]),
+      canReadCommunication ? prisma.announcement.count({
         where: {
           schoolId,
           archived: false,
@@ -95,8 +122,8 @@ export async function GET() {
           ],
           reads: { none: { userId: membership.userId } },
         },
-      }),
-      prisma.schoolCalendarEvent.findMany({
+      }) : Promise.resolve(0),
+      canReadCalendar ? prisma.schoolCalendarEvent.findMany({
         where: { schoolId, archived: false, endDate: { gte: schoolDate() } },
         orderBy: [{ startDate: "asc" }, { title: "asc" }],
         take: 4,
@@ -108,7 +135,7 @@ export async function GET() {
           endDate: true,
           targetLabel: true,
         },
-      }),
+      }) : Promise.resolve([]),
     ]);
 
     return ApiResponse.success({

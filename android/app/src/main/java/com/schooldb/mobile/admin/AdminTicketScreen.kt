@@ -131,7 +131,7 @@ internal class AdminTicketViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 withContext(Dispatchers.IO) {
-                    api.post("api/v1/support/tickets/$id", JSONObject().put("status", status))
+                    api.patch("api/v1/support/tickets/$id", JSONObject().put("status", status))
                 }
                 mutableState.value = mutableState.value.copy(saving = false)
                 load(id)
@@ -166,7 +166,7 @@ internal class AdminTicketViewModel : ViewModel() {
 }
 
 @Composable
-fun AdminTicketScreen(id: String, onBack: () -> Unit) {
+fun AdminTicketScreen(id: String, canManage: Boolean, onBack: () -> Unit) {
     val viewModel: AdminTicketViewModel = viewModel(key = "admin-ticket-$id")
     val state by viewModel.state.collectAsStateWithLifecycle()
     var note by rememberSaveable(id) { mutableStateOf("") }
@@ -221,7 +221,7 @@ fun AdminTicketScreen(id: String, onBack: () -> Unit) {
                     TicketTextCard("Parent contact", listOf(ticket.parentName, ticket.parentPhone)
                         .filter(String::isNotBlank).joinToString(" · "))
                 }
-                item {
+                if (canManage) item {
                     Text("Update status", style = MaterialTheme.typography.titleMedium,
                         color = AdminWebNavy, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(8.dp))

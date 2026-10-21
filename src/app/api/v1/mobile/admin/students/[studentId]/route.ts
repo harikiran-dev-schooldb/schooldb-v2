@@ -2,13 +2,17 @@ import { apiHandler } from "@/lib/api";
 import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ApiResponse } from "@/lib/response";
+import { hasModuleAccess } from "@/lib/staff-permissions";
 
 export async function GET(
   _request: Request,
   context: { params: Promise<{ studentId: string }> },
 ) {
   return apiHandler(async () => {
-    const membership = await requireRole(["SUPER_ADMIN", "SCHOOL_ADMIN"]);
+    const membership = await requireRole(["SUPER_ADMIN", "SCHOOL_ADMIN", "RECEPTIONIST"]);
+    if (!hasModuleAccess(membership, "STUDENTS", "MANAGE")) {
+      return ApiResponse.error("You do not have permission to view private student details.", 403);
+    }
     const { studentId } = await context.params;
     const student = await prisma.student.findFirst({
       where: { id: studentId, schoolId: membership.schoolId },

@@ -2,13 +2,39 @@ import { apiHandler } from "@/lib/api";
 import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ApiResponse } from "@/lib/response";
+import { hasModuleAccess, type StaffPermissionModule } from "@/lib/staff-permissions";
 
 const PAGE_SIZE = 20;
 const VALID_SECTIONS = new Set([
   "students", "teachers", "classes", "attendance", "fees", "leave", "queries",
   "timetable", "exams", "calendar", "fee-collection", "admissions", "library",
   "transport", "inventory", "birthdays",
+  "staff", "visitors", "health", "pickup", "maintenance",
 ]);
+
+const SECTION_MODULES: Record<string, StaffPermissionModule> = {
+  students: "STUDENTS",
+  teachers: "ACADEMICS",
+  classes: "ACADEMICS",
+  attendance: "ATTENDANCE",
+  fees: "FEES",
+  leave: "CALENDAR",
+  queries: "SUPPORT",
+  timetable: "TIMETABLE",
+  exams: "LEARNING",
+  calendar: "CALENDAR",
+  "fee-collection": "FEES",
+  admissions: "ADMISSIONS",
+  library: "LIBRARY",
+  transport: "TRANSPORT",
+  inventory: "INVENTORY",
+  birthdays: "STUDENT_RECORDS",
+  staff: "STAFF",
+  visitors: "FRONT_OFFICE",
+  health: "FRONT_OFFICE",
+  pickup: "FRONT_OFFICE",
+  maintenance: "FRONT_OFFICE",
+};
 
 const BIRTHDAY_PERIODS = new Set(["TODAY", "WEEK", "MONTH"]);
 
@@ -26,12 +52,25 @@ function indiaDateParts(value: Date) {
   };
 }
 
+function schoolDate() {
+  const parts = indiaDateParts(new Date());
+  return new Date(Date.UTC(parts.year, parts.month - 1, parts.day));
+}
+
 export async function GET(request: Request) {
   return apiHandler(async () => {
-    const membership = await requireRole(["SUPER_ADMIN", "SCHOOL_ADMIN"]);
+    const membership = await requireRole([
+      "SUPER_ADMIN",
+      "SCHOOL_ADMIN",
+      "ACCOUNTANT",
+      "RECEPTIONIST",
+    ]);
     const { searchParams } = new URL(request.url);
     const section = searchParams.get("section") ?? "";
     if (!VALID_SECTIONS.has(section)) return ApiResponse.error("Unknown admin section.", 400);
+    if (!hasModuleAccess(membership, SECTION_MODULES[section], "VIEW")) {
+      return ApiResponse.error("You do not have permission to view this section.", 403);
+    }
     const page = Math.max(1, Math.min(1000, Number.parseInt(searchParams.get("page") ?? "1", 10) || 1));
     const query = (searchParams.get("q") ?? "").trim().slice(0, 100);
     const requestedBirthdayPeriod = (searchParams.get("period") ?? "MONTH").toUpperCase();
@@ -41,6 +80,92 @@ export async function GET(request: Request) {
     const text = query ? { contains: query, mode: "insensitive" as const } : undefined;
     const skip = (page - 1) * PAGE_SIZE;
     const schoolId = membership.schoolId;
+
+    if (section === "staff") {
+      const today = schoolDate();
+      const where = { schoolId, active: true,
+        ...(text ? { OR: [{ fullName: text }, { employeeId: text }, { designation: text }] } : {}) };
+      const [total, teachers] = await Promise.all([
+        prisma.teacher.count({ where }),
+        prisma.teacher.findMany({ where, orderBy: { fullName: "asc" }, skip, take: PAGE_SIZE,
+          select: { id: true, fullName: true, employeeId: true, designation: true,
+            staffAttendances: { where: { date: today }, take: 1,
+              select: { status: true, checkIn: true, checkOut: true } } } }),
+      ]);
+      return ApiResponse.success({ section, total, page, pageSize: PAGE_SIZE,
+        rows: teachers.map((teacher) => {
+          const attendance = teacher.staffAttendances[0];
+          return { id: teacher.id, title: teacher.fullName,
+            subtitle: `${teacher.employeeId} · ${teacher.designation || "Staff"}`,
+            detail: attendance
+              ? [attendance.checkIn && `In ${attendance.checkIn}`, attendance.checkOut && `Out ${attendance.checkOut}`]
+                  .filter(Boolean).join(" · ") || "Attendance recorded"
+              : "Attendance not recorded today",
+            status: attendance?.status || "NOT MARKED" };
+        }) });
+    }
+
+    if (section === "visitors") {
+      const where = { schoolId, ...(text ? { OR: [
+        { visitorName: text }, { phone: text }, { purpose: text }, { personToMeet: text },
+        { gatePassCode: text },
+      ] } : {}) };
+      const [total, visitors] = await Promise.all([
+        prisma.visitorLog.count({ where }),
+        prisma.visitorLog.findMany({ where, orderBy: { checkInAt: "desc" }, skip, take: PAGE_SIZE }),
+      ]);
+      return ApiResponse.success({ section, total, page, pageSize: PAGE_SIZE,
+        rows: visitors.map((visitor) => ({ id: visitor.id, title: visitor.visitorName,
+          subtitle: `${visitor.gatePassCode} · ${visitor.phone}`,
+          detail: `${visitor.purpose}${visitor.personToMeet ? ` · Meeting ${visitor.personToMeet}` : ""}`,
+          status: visitor.status })) });
+    }
+
+    if (section === "health") {
+      const where = { schoolId, student: { status: "ACTIVE" as const,
+        ...(text ? { OR: [{ fullName: text }, { admissionNo: text }] } : {}) } };
+      const [total, visits] = await Promise.all([
+        prisma.studentHealthVisit.count({ where }),
+        prisma.studentHealthVisit.findMany({ where, orderBy: { occurredAt: "desc" }, skip, take: PAGE_SIZE,
+          include: { student: { select: { fullName: true, admissionNo: true } } } }),
+      ]);
+      return ApiResponse.success({ section, total, page, pageSize: PAGE_SIZE,
+        rows: visits.map((visit) => ({ id: visit.id, title: visit.student.fullName,
+          subtitle: `${visit.student.admissionNo} · ${visit.occurredAt.toISOString().slice(0, 10)}`,
+          detail: `${visit.complaint} · ${visit.actionTaken}`,
+          status: visit.disposition })) });
+    }
+
+    if (section === "pickup") {
+      const where = { schoolId, student: { status: "ACTIVE" as const,
+        ...(text ? { OR: [{ fullName: text }, { admissionNo: text }] } : {}) } };
+      const [total, authorizations] = await Promise.all([
+        prisma.pickupAuthorization.count({ where }),
+        prisma.pickupAuthorization.findMany({ where, orderBy: { createdAt: "desc" }, skip, take: PAGE_SIZE,
+          include: { student: { select: { fullName: true, admissionNo: true } } } }),
+      ]);
+      return ApiResponse.success({ section, total, page, pageSize: PAGE_SIZE,
+        rows: authorizations.map((authorization) => ({ id: authorization.id,
+          title: authorization.student.fullName,
+          subtitle: `${authorization.student.admissionNo} · ${authorization.authorizedName}`,
+          detail: `${authorization.relationship} · ${authorization.phone} · Code ${authorization.pickupCode}`,
+          status: authorization.status })) });
+    }
+
+    if (section === "maintenance") {
+      const where = { schoolId, ...(text ? { OR: [
+        { title: text }, { ticketNo: text }, { description: text }, { location: text },
+      ] } : {}) };
+      const [total, tickets] = await Promise.all([
+        prisma.maintenanceTicket.count({ where }),
+        prisma.maintenanceTicket.findMany({ where,
+          orderBy: [{ status: "asc" }, { createdAt: "desc" }], skip, take: PAGE_SIZE }),
+      ]);
+      return ApiResponse.success({ section, total, page, pageSize: PAGE_SIZE,
+        rows: tickets.map((ticket) => ({ id: ticket.id, title: ticket.title,
+          subtitle: `${ticket.ticketNo} · ${ticket.category}${ticket.location ? ` · ${ticket.location}` : ""}`,
+          detail: ticket.description, status: ticket.status })) });
+    }
 
     if (section === "students") {
       const where = { schoolId, status: "ACTIVE" as const,
@@ -427,9 +552,18 @@ export async function GET(request: Request) {
       });
     }
 
-    const where = { schoolId, source: "PARENT_QR", ...(text ? { OR: [
+    const canManageSupport = hasModuleAccess(membership, "SUPPORT", "MANAGE");
+    const searchScope = text ? { OR: [
       { subject: text }, { ticketNo: text }, { description: text },
-    ] } : {}) };
+    ] } : {};
+    const visibilityScope = canManageSupport
+      ? {}
+      : { OR: [{ createdById: membership.userId }, { assignedToId: membership.userId }] };
+    const where = {
+      schoolId,
+      source: "PARENT_QR" as const,
+      AND: [searchScope, visibilityScope],
+    };
     const [total, queries] = await Promise.all([
       prisma.supportTicket.count({ where }),
       prisma.supportTicket.findMany({ where, orderBy: { createdAt: "desc" }, skip, take: PAGE_SIZE,
