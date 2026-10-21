@@ -254,8 +254,12 @@ export async function GET(
       startDate: item.dueDate!,
       endDate: item.dueDate!,
       targetLabel: "Homework",
-    })), ...ledgers.flatMap((ledger) =>
-      ledger.installments.map((installment) => ({
+    })), ...ledgers.flatMap((ledger) => {
+      const installment = ledger.installments.find(
+        (candidate) => candidate.outstanding > 0,
+      );
+
+      return installment ? [{
         id: `fee:${installment.id}`,
         title: `${installment.name} due`,
         description: `${ledger.studentFee.feePlan.name} · ${installment.feeCategory.name}`,
@@ -263,8 +267,8 @@ export async function GET(
         startDate: installment.dueDate,
         endDate: installment.dueDate,
         targetLabel: "Fees",
-      })),
-    )].sort((a, b) => a.startDate.getTime() - b.startDate.getTime());
+      }] : [];
+    })].sort((a, b) => a.startDate.getTime() - b.startDate.getTime());
 
     return ApiResponse.success({
       attendanceAcademicYears: attendanceAcademicYears.map((item) => ({
