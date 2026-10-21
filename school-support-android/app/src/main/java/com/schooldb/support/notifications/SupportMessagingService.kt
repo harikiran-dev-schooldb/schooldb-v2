@@ -8,6 +8,8 @@ import android.content.pm.PackageManager
 import android.content.Intent
 import android.os.Build
 import androidx.core.content.ContextCompat
+import androidx.core.content.edit
+import androidx.core.net.toUri
 import androidx.core.app.NotificationCompat
 import com.clerk.api.Clerk
 import com.google.firebase.messaging.FirebaseMessagingService
@@ -28,14 +30,14 @@ class SupportMessagingService : FirebaseMessagingService() {
 
     override fun onRegistered(installationId: String) {
         val pushPreferences = getSharedPreferences("support_push", MODE_PRIVATE)
-        pushPreferences.edit().putString("pending_fcm_token", installationId).apply()
+        pushPreferences.edit { putString("pending_fcm_token", installationId) }
         SupportPushSync.enqueue(this)
     }
 
     override fun onUnregistered(installationId: String) {
-        getSharedPreferences("support_push", MODE_PRIVATE).edit()
-            .remove("pending_fcm_token")
-            .apply()
+        getSharedPreferences("support_push", MODE_PRIVATE).edit {
+            remove("pending_fcm_token")
+        }
     }
 
     override fun onMessageReceived(message: RemoteMessage) {
@@ -53,7 +55,9 @@ class SupportMessagingService : FirebaseMessagingService() {
         val ticketNo = message.data["ticketNo"]?.takeIf(String::isNotBlank) ?: "Support ticket"
         val urgent = message.data["priority"]?.uppercase() == "URGENT"
         updates.value = school to (updates.value.second + 1)
-        getSharedPreferences("support_push", MODE_PRIVATE).edit().putLong("updated_at", System.currentTimeMillis()).apply()
+        getSharedPreferences("support_push", MODE_PRIVATE).edit {
+            putLong("updated_at", System.currentTimeMillis())
+        }
 
         val manager = getSystemService(NotificationManager::class.java)
         createChannel(this)
@@ -62,7 +66,7 @@ class SupportMessagingService : FirebaseMessagingService() {
             flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
             putExtra("ticketId", ticketId)
             putExtra("schoolSlug", school)
-            data = android.net.Uri.parse("school-support://ticket/$school/$ticketId")
+            data = "school-support://ticket/$school/$ticketId".toUri()
         }
         val pendingIntent = PendingIntent.getActivity(
             this,

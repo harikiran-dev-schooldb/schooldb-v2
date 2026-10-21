@@ -124,7 +124,7 @@ internal fun SurfaceCard(modifier: Modifier = Modifier, content: @Composable Col
 }
 
 @Composable
-internal fun SectionTitle(title: String, subtitle: String? = null, modifier: Modifier = Modifier) {
+internal fun SectionTitle(title: String, subtitle: String?, modifier: Modifier = Modifier) {
     Column(modifier, verticalArrangement = Arrangement.spacedBy(3.dp)) {
         Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = Ink)
         if (subtitle != null) Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = Muted)

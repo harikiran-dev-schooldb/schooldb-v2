@@ -6,6 +6,7 @@ import android.net.Uri
 import android.provider.OpenableColumns
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.net.toUri
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -51,7 +52,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.Locale
 
-private const val MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024
 private val attachmentMimeTypes = setOf("application/pdf", "image/jpeg", "image/png", "image/webp")
 
 private suspend fun readAttachment(context: Context, uri: Uri): PendingAttachment =
@@ -61,14 +61,26 @@ private suspend fun readAttachment(context: Context, uri: Uri): PendingAttachmen
         if (mimeType !in attachmentMimeTypes) {
             error("Choose a PDF, JPG, PNG, or WebP file.")
         }
-        val name = resolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
-            if (cursor.moveToFirst()) cursor.getString(0) else null
-        }?.takeIf(String::isNotBlank) ?: "Attachment"
-        val bytes = resolver.openInputStream(uri)?.use { it.readBytes() }
-            ?: error("Could not read the selected file.")
-        if (bytes.isEmpty() || bytes.size > MAX_ATTACHMENT_BYTES) {
-            error("Attachment must be smaller than 5 MB.")
+        val metadata = resolver.query(
+            uri,
+            arrayOf(OpenableColumns.DISPLAY_NAME, OpenableColumns.SIZE),
+            null,
+            null,
+            null,
+        )?.use { cursor ->
+            if (!cursor.moveToFirst()) null else {
+                val name = cursor.getString(0)?.takeIf(String::isNotBlank) ?: "Attachment"
+                val size = if (cursor.isNull(1)) null else cursor.getLong(1)
+                name to size
+            }
         }
+        val name = metadata?.first ?: "Attachment"
+        if (metadata?.second?.let { it > MAX_SUPPORT_ATTACHMENT_BYTES } == true) {
+            throw AttachmentTooLargeException()
+        }
+        val bytes = resolver.openInputStream(uri)?.use { it.readBytesWithLimit() }
+            ?: error("Could not read the selected file.")
+        if (bytes.isEmpty()) error("Attachment cannot be empty.")
         PendingAttachment(name, mimeType, bytes)
     }
 
@@ -203,7 +215,7 @@ internal fun TicketDashboard(school: String, tickets: List<TicketSummary>, summa
                         Spacer(Modifier.height(8.dp))
                         TextButton(onClick = {
                             val url = BuildConfig.API_BASE_URL.trimEnd('/') + "/$school/parent-query/qr"
-                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                            context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
                         }) {
                             Icon(Icons.Outlined.QrCode2, contentDescription = null, tint = Indigo)
                             Spacer(Modifier.width(8.dp))

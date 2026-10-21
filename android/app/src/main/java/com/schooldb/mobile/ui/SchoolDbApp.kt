@@ -346,7 +346,7 @@ private fun AccountSwitchLoadingScreen() {
                 shadowElevation = 12.dp,
             ) {
                 Image(
-                    painter = painterResource(R.drawable.schooldb_logo_auth),
+                    painter = painterResource(R.drawable.schooldb_logo_light),
                     contentDescription = null,
                     modifier = Modifier.padding(14.dp),
                 )
@@ -618,7 +618,7 @@ private fun AuthPage(
             ) {
                 Card(shape = RoundedCornerShape(18.dp), elevation = CardDefaults.cardElevation(8.dp),
                     colors = CardDefaults.cardColors(containerColor = Color.White)) {
-                    Image(painter = painterResource(R.drawable.schooldb_logo_auth),
+                    Image(painter = painterResource(R.drawable.schooldb_logo_light),
                         contentDescription = "SchoolDB", modifier = Modifier.size(54.dp))
                 }
                 Spacer(Modifier.size(12.dp))

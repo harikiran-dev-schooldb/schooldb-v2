@@ -6,3 +6,6 @@
 # JSONObject repositories are accessed directly, not through reflection.
 # Retain Firebase Messaging service callbacks invoked by the Android runtime.
 -keep class com.schooldb.mobile.notifications.SchoolDbMessagingService { *; }
+-keep class com.schooldb.mobile.notifications.PushRegistrationCleanup {
+    public <init>(android.content.Context, androidx.work.WorkerParameters);
+}

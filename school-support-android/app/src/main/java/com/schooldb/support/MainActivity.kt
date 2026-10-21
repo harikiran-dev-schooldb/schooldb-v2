@@ -1,16 +1,20 @@
 package com.schooldb.support
 
 import android.Manifest
+import android.app.Activity
+import android.app.KeyguardManager
 import android.os.Build
 import android.os.Bundle
 import android.content.Intent
 import android.net.Uri
 import android.content.pm.PackageManager
 import android.util.Log
+import android.view.WindowManager
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
+import androidx.core.content.edit
 import com.google.firebase.messaging.FirebaseMessaging
 import java.util.UUID
 import java.io.File
@@ -40,9 +44,11 @@ import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.QrCode2
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.Security
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -50,6 +56,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -69,6 +76,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
         notificationTicketId.value = intent.getStringExtra("ticketId")
         notificationSchool.value = intent.getStringExtra("schoolSlug")
         setContent { SupportTheme { SupportApp(notificationTicketId.value, notificationSchool.value) { notificationTicketId.value = null } } }
@@ -143,6 +151,12 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
     val replyDrafts = remember(school) { mutableStateMapOf<String, String>() }
     var resendSeconds by remember { mutableIntStateOf(0) }
     var resumeVersion by remember { mutableIntStateOf(0) }
+    var secureReentry by remember {
+        mutableStateOf(preferences.getBoolean("secure_reentry", false))
+    }
+    var appLocked by rememberSaveable { mutableStateOf(false) }
+    var hasBackgrounded by rememberSaveable { mutableStateOf(false) }
+    var unlockAttempt by rememberSaveable { mutableIntStateOf(0) }
     val identitySchool = school.ifBlank { savedSchool }
     val identityCache = remember { SchoolIdentityCache(context) }
     var identity by remember(identitySchool) { mutableStateOf<SchoolIdentity?>(null) }
@@ -154,12 +168,40 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
     }
     var alertsEnabled by remember { mutableStateOf(true) }
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
-    DisposableEffect(lifecycleOwner) {
+    val unlockLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult(),
+    ) { result -> appLocked = result.resultCode != Activity.RESULT_OK }
+    val isAuthenticated = school.isNotBlank() && sessionReady
+    DisposableEffect(lifecycleOwner, isAuthenticated, secureReentry) {
         val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
             if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) resumeVersion++
+            if (
+                event == androidx.lifecycle.Lifecycle.Event.ON_STOP &&
+                shouldLockSupportApp(isAuthenticated, secureReentry)
+            ) {
+                hasBackgrounded = true
+                appLocked = true
+            }
+            if (!isAuthenticated) {
+                appLocked = false
+                hasBackgrounded = false
+            }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+    LaunchedEffect(appLocked, unlockAttempt, isAuthenticated, secureReentry) {
+        if (!appLocked || !hasBackgrounded || !shouldLockSupportApp(isAuthenticated, secureReentry)) {
+            return@LaunchedEffect
+        }
+        val intent = context.supportUnlockIntent()
+        if (intent == null) {
+            preferences.edit { putBoolean("secure_reentry", false) }
+            secureReentry = false
+            appLocked = false
+        } else {
+            unlockLauncher.launch(intent)
+        }
     }
     LaunchedEffect(school, clerkUser, resumeVersion, identityCacheLoaded) {
         val notificationManager = context.getSystemService(android.app.NotificationManager::class.java)
@@ -197,7 +239,7 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
                 !pushPreferences.getBoolean("permission_requested", false) &&
                 ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
             ) {
-                pushPreferences.edit().putBoolean("permission_requested", true).apply()
+                pushPreferences.edit { putBoolean("permission_requested", true) }
                 notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
             // A startup worker may have completed before login or may still be backing off
@@ -224,7 +266,7 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
 
     fun handleSessionExpired() {
         if (cacheUserId.isNotBlank()) ticketCache.clear(cacheUserId, school)
-        preferences.edit().remove("school").apply()
+        preferences.edit { remove("school") }
         ticketViewModel.reset()
         adminViewModel.reset()
         authViewModel.clearCredentials()
@@ -292,31 +334,31 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
         if (signingOut) return
         signingOut = true
         page = SupportPage.LOGIN
-        preferences.edit().remove("school").apply()
+        preferences.edit { remove("school") }
         context.getSystemService(android.app.NotificationManager::class.java).cancelAll()
-        context.getSharedPreferences("support_push", 0).edit().putBoolean("delete_token", true).apply()
+        context.getSharedPreferences("support_push", 0).edit { putBoolean("delete_token", true) }
         scope.launch {
             val pushPreferences = context.getSharedPreferences("support_push", 0)
             try {
                 pushPreferences.getString("installation_id", null)?.let { installationId ->
                     try {
                         api.unregisterPushDevice(school, installationId)
-                        pushPreferences.edit()
-                            .remove("pending_unregister_school")
-                            .remove("pending_unregister_installation_id")
-                            .apply()
+                        pushPreferences.edit {
+                            remove("pending_unregister_school")
+                            remove("pending_unregister_installation_id")
+                        }
                     } catch (_: Exception) {
-                        pushPreferences.edit()
-                            .putString("pending_unregister_school", school)
-                            .putString("pending_unregister_installation_id", installationId)
-                            .apply()
+                        pushPreferences.edit {
+                            putString("pending_unregister_school", school)
+                            putString("pending_unregister_installation_id", installationId)
+                        }
                     }
                 }
                 api.signOut()
             } catch (exception: Exception) {
                 Log.w("SupportAuth", "Remote sign out cleanup failed", exception)
             } finally {
-                preferences.edit().remove("school").apply()
+                preferences.edit { remove("school") }
                 if (cacheUserId.isNotBlank()) ticketCache.clear(cacheUserId, school)
                 ticketViewModel.reset()
                 adminViewModel.reset()
@@ -458,7 +500,7 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
 
     suspend fun finishLogin(token: String) {
         api.activate(token)
-        preferences.edit().putString("school", school).apply()
+        preferences.edit { putString("school", school) }
         ticketViewModel.reset()
         page = SupportPage.DASHBOARD
     }
@@ -519,50 +561,52 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
         }
     }
 
-    Scaffold(
-        modifier = Modifier.fillMaxSize().background(Canvas).safeDrawingPadding(),
-        containerColor = Canvas,
-        contentWindowInsets = WindowInsets(0, 0, 0, 0),
-        bottomBar = {
-            if (page == SupportPage.DASHBOARD) {
-                SupportNavigationDock(dashboardTab.label) { label ->
-                    dashboardTab = DashboardTab.entries.first { it.label == label }
+    Box(Modifier.fillMaxSize()) {
+        Scaffold(
+            modifier = Modifier.fillMaxSize().background(Canvas).safeDrawingPadding(),
+            containerColor = Canvas,
+            contentWindowInsets = WindowInsets(0, 0, 0, 0),
+            bottomBar = {
+                if (page == SupportPage.DASHBOARD) {
+                    SupportNavigationDock(dashboardTab.label) { label ->
+                        dashboardTab = DashboardTab.entries.first { it.label == label }
+                    }
                 }
-            }
-        },
-        topBar = {
-        if (page in listOf(SupportPage.DASHBOARD, SupportPage.CREATE_TICKET, SupportPage.TICKET_DETAIL, SupportPage.ADMINS, SupportPage.ADMIN_FORM)) {
-            SupportHeaderSurface {
-                Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        if (page == SupportPage.DASHBOARD) SchoolIdentityMark(identity, Modifier.size(42.dp), loading = !identityCacheLoaded)
-                        else SupportHeaderAction(
-                            onClick = { page = if (page == SupportPage.ADMIN_FORM) SupportPage.ADMINS else SupportPage.DASHBOARD },
-                        ) {
-                            Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Back", tint = Indigo)
-                        }
-                        Column {
-                            Text((identity?.name ?: school).uppercase(), maxLines = 1, overflow = TextOverflow.Ellipsis,
-                                style = MaterialTheme.typography.labelSmall, color = Indigo, fontWeight = FontWeight.ExtraBold)
-                            Text(when (page) {
-                                SupportPage.DASHBOARD -> if (dashboardTab == DashboardTab.PROFILE) "My Profile" else "Support Desk"
-                                SupportPage.CREATE_TICKET -> "New ticket"
-                                SupportPage.TICKET_DETAIL -> "Ticket details"
-                                SupportPage.ADMINS -> "Administrators"
-                                else -> if (adminState.selected == null) "Add administrator" else "Edit administrator"
-                            },
-                                fontSize = 18.sp, lineHeight = 23.sp, color = Ink, fontWeight = FontWeight.ExtraBold)
+            },
+            topBar = {
+                if (page in listOf(SupportPage.DASHBOARD, SupportPage.CREATE_TICKET, SupportPage.TICKET_DETAIL, SupportPage.ADMINS, SupportPage.ADMIN_FORM)) {
+                    SupportHeaderSurface {
+                        Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                            Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                if (page == SupportPage.DASHBOARD) SchoolIdentityMark(identity, Modifier.size(42.dp), loading = !identityCacheLoaded)
+                                else SupportHeaderAction(
+                                    onClick = { page = if (page == SupportPage.ADMIN_FORM) SupportPage.ADMINS else SupportPage.DASHBOARD },
+                                ) {
+                                    Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Back", tint = Indigo)
+                                }
+                                Column {
+                                    Text((identity?.name ?: school).uppercase(), maxLines = 1, overflow = TextOverflow.Ellipsis,
+                                        style = MaterialTheme.typography.labelSmall, color = Indigo, fontWeight = FontWeight.ExtraBold)
+                                    Text(when (page) {
+                                        SupportPage.DASHBOARD -> if (dashboardTab == DashboardTab.PROFILE) "My Profile" else "Support Desk"
+                                        SupportPage.CREATE_TICKET -> "New ticket"
+                                        SupportPage.TICKET_DETAIL -> "Ticket details"
+                                        SupportPage.ADMINS -> "Administrators"
+                                        else -> if (adminState.selected == null) "Add administrator" else "Edit administrator"
+                                    },
+                                        fontSize = 18.sp, lineHeight = 23.sp, color = Ink, fontWeight = FontWeight.ExtraBold)
+                                }
+                            }
+                            if (page == SupportPage.DASHBOARD) SupportHeaderAction(
+                                onClick = { dashboardTab = DashboardTab.PROFILE },
+                            ) { Icon(Icons.Outlined.Person, contentDescription = "Open profile", tint = Indigo) }
                         }
                     }
-                    if (page == SupportPage.DASHBOARD) SupportHeaderAction(
-                        onClick = { dashboardTab = DashboardTab.PROFILE },
-                    ) { Icon(Icons.Outlined.Person, contentDescription = "Open profile", tint = Indigo) }
                 }
-            }
-        }
-    }) { padding ->
-        Column(Modifier.fillMaxSize().padding(padding)) {
+            },
+        ) { padding ->
+            Column(Modifier.fillMaxSize().padding(padding)) {
             if (page == SupportPage.DASHBOARD && !alertsEnabled) {
                 TextButton(onClick = {
                     context.startActivity(Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS)
@@ -750,6 +794,7 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
                         loading = profileLoading,
                         error = profileError,
                         alertsEnabled = alertsEnabled,
+                        secureReentry = secureReentry,
                         accounts = switchAccounts,
                         accountsLoading = switchAccountsLoading,
                         accountsError = switchAccountsError,
@@ -797,6 +842,15 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
                         onNotificationSettings = {
                             context.startActivity(Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS)
                                 .putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName))
+                        },
+                        onSecureReentryChange = { enabled ->
+                            val deviceIsSecure = context.getSystemService(KeyguardManager::class.java).isDeviceSecure
+                            if (enabled && !deviceIsSecure) {
+                                error = "Set up a PIN, pattern, or password in Android settings before enabling app lock."
+                            } else {
+                                secureReentry = enabled
+                                preferences.edit { putBoolean("secure_reentry", enabled) }
+                            }
                         },
                         onSignOut = { showSignOutConfirmation = true },
                     )
@@ -921,6 +975,41 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
                     page = SupportPage.ADMINS
                     notice = if (creatingAdmin) "Administrator account created." else "Administrator account updated."
                 } }
+                }
+            }
+        }
+        if (appLocked && isAuthenticated) {
+            Surface(
+                modifier = Modifier.fillMaxSize(),
+                color = MaterialTheme.colorScheme.background,
+            ) {
+                Column(
+                    Modifier.fillMaxSize().padding(32.dp),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Icon(
+                        Icons.Outlined.Security,
+                        contentDescription = null,
+                        tint = Indigo,
+                        modifier = Modifier.size(54.dp),
+                    )
+                    Text(
+                        "School Support is locked",
+                        Modifier.padding(top = 18.dp),
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 24.sp,
+                    )
+                    Text(
+                        "Confirm your device lock to continue.",
+                        Modifier.padding(top = 7.dp),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                    )
+                    Button(onClick = { unlockAttempt += 1 }, modifier = Modifier.padding(top = 22.dp)) {
+                        Text("Unlock School Support")
+                    }
+                }
             }
         }
     }
@@ -945,3 +1034,10 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
         )
     }
 }
+
+@Suppress("DEPRECATION")
+private fun android.content.Context.supportUnlockIntent(): Intent? =
+    getSystemService(KeyguardManager::class.java).createConfirmDeviceCredentialIntent(
+        "Unlock School Support",
+        "Confirm your device lock to protect support information.",
+    )

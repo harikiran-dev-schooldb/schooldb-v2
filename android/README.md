@@ -83,3 +83,12 @@ FIREBASE_PRIVATE_KEY=-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----
 Without `google-services.json`, Android builds normally but push registration is
 disabled. Without the three server variables, announcements are still published
 but push delivery is skipped.
+
+Push payloads include `schoolSlug`, and the app rejects messages that do not
+match the currently authenticated user and school. Signing out immediately
+clears the local notification scope, removes displayed notifications, and
+schedules network-constrained Firebase registration cleanup that survives
+process death.
+
+Android screenshots and recent-app previews are disabled because authenticated
+screens can contain student, family, attendance, fee, and staff information.

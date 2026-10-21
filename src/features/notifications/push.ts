@@ -241,6 +241,7 @@ export async function sendAnnouncementPush(announcement: PushAnnouncement) {
     const data = {
       announcementId: announcement.id,
       schoolId: announcement.schoolId,
+      schoolSlug: school?.slug ?? "",
       title: announcement.title,
       body: notificationBody,
       category: announcement.category,

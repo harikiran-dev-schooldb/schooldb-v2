@@ -39,6 +39,7 @@ internal fun SupportProfileScreen(
     loading: Boolean,
     error: String?,
     alertsEnabled: Boolean,
+    secureReentry: Boolean,
     accounts: List<AccountSwitchChoice>,
     accountsLoading: Boolean,
     accountsError: String?,
@@ -47,6 +48,7 @@ internal fun SupportProfileScreen(
     onRefreshAccounts: () -> Unit,
     onSwitchAccount: (AccountSwitchChoice) -> Unit,
     onNotificationSettings: () -> Unit,
+    onSecureReentryChange: (Boolean) -> Unit,
     onSignOut: () -> Unit,
 ) {
     LazyColumn(
@@ -176,6 +178,26 @@ internal fun SupportProfileScreen(
             }
 
             item { ProfileSectionLabel("APP & DEVICE") }
+            item {
+                SurfaceCard(Modifier.fillMaxWidth()) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        ProfileIcon(Icons.Outlined.Security, Indigo)
+                        Spacer(Modifier.width(12.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text("Require device unlock", fontWeight = FontWeight.SemiBold, color = Ink)
+                            Text(
+                                "Lock this app after you leave it",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Muted,
+                            )
+                        }
+                        Switch(
+                            checked = secureReentry,
+                            onCheckedChange = onSecureReentryChange,
+                        )
+                    }
+                }
+            }
             item {
                 ProfileDetailsCard(
                     listOf(

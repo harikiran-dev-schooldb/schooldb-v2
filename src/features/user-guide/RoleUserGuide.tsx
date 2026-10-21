@@ -191,7 +191,7 @@ const guides: Record<GuideRole, Guide> = {
         ],
       },
     ],
-    checks: ["All classes marked", "Homework audience checked", "Marks verified", "Pending offline work synced"],
+    checks: ["All classes marked", "Homework audience checked", "Marks verified", "Saved changes confirmed"],
   },
   ACCOUNTANT: {
     label: "Accountant",

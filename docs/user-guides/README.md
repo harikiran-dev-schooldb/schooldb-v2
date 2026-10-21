@@ -6,7 +6,7 @@ The signed-in application also includes a visual **User Guide**. It provides rol
 
 ## Start here
 
-- [Getting started, sign-in, offline use, and support](getting-started.md)
+- [Getting started, sign-in, notifications, and support](getting-started.md)
 - [Super Admin guide](super-admin.md)
 - [Principal / School Admin guide](school-admin.md)
 - [Teacher guide](teacher.md)

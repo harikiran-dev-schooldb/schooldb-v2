@@ -1,27 +1,22 @@
 "use client";
 
-import { useAuth, useUser } from "@clerk/nextjs";
+import { useUser } from "@clerk/nextjs";
 import {
   BellRing,
   BarChart3,
   CheckCircle2,
-  Cloud,
-  Database,
   Fingerprint,
-  HardDrive,
-  RefreshCw,
   Share2,
   Send,
   Smartphone,
-  Wifi,
+  type LucideIcon,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { Switch } from "@/components/ui/switch";
 import {
   browserPushState,
@@ -29,14 +24,6 @@ import {
   isStandalonePwa,
   type BrowserPushState,
 } from "@/lib/browser-push";
-import {
-  deletePwaSnapshot,
-  flushPwaActions,
-  listPwaActions,
-  readPwaSnapshot,
-  savePwaSnapshot,
-  type PwaOfflineSnapshot,
-} from "@/lib/pwa-storage";
 import {
   defaultNotificationPreferences,
   type NotificationPreferenceValues,
@@ -73,14 +60,9 @@ export function PwaControlCenter({
   schoolSlug: string;
   canViewDeliveryReports: boolean;
 }) {
-  const { userId } = useAuth();
   const { user } = useUser();
-  const ownerKey = useMemo(() => userId ? `${userId}:${schoolSlug}` : null, [schoolSlug, userId]);
   const [pushState, setPushState] = useState<BrowserPushState>("unsupported");
   const [preferences, setPreferences] = useState(defaultNotificationPreferences);
-  const [snapshot, setSnapshot] = useState<PwaOfflineSnapshot | null>(null);
-  const [pendingActions, setPendingActions] = useState(0);
-  const [storage, setStorage] = useState<{ usage: number; quota: number } | null>(null);
   const [serviceWorker, setServiceWorker] = useState("Checking");
   const [installed, setInstalled] = useState(false);
   const [testResult, setTestResult] = useState<string | null>(null);
@@ -94,19 +76,7 @@ export function PwaControlCenter({
       ? await navigator.serviceWorker.getRegistration("/")
       : null;
     setServiceWorker(registration?.active ? "Active" : registration ? "Installing" : "Not registered");
-    if (navigator.storage?.estimate) {
-      const estimate = await navigator.storage.estimate();
-      setStorage({ usage: estimate.usage ?? 0, quota: estimate.quota ?? 0 });
-    }
-    if (ownerKey) {
-      const [cached, actions] = await Promise.all([
-        readPwaSnapshot(ownerKey),
-        listPwaActions(ownerKey),
-      ]);
-      setSnapshot(cached);
-      setPendingActions(actions.length);
-    }
-  }, [ownerKey, schoolSlug]);
+  }, [schoolSlug]);
 
   const loadDeliveryReports = useCallback(async () => {
     if (!canViewDeliveryReports) return;
@@ -196,42 +166,6 @@ export function PwaControlCenter({
     }
   }
 
-  async function syncOfflineData() {
-    if (!ownerKey) return;
-    if (!navigator.onLine) {
-      toast.error("Reconnect to refresh saved information.");
-      return;
-    }
-    setBusy(true);
-    try {
-      const flushed = await flushPwaActions(ownerKey);
-      const response = await fetch(`/api/v1/pwa/snapshot?schoolSlug=${encodeURIComponent(schoolSlug)}`, { cache: "no-store" });
-      const result = await response.json();
-      if (!response.ok || !result.success) throw new Error(result.message || "Sync failed.");
-      await savePwaSnapshot(ownerKey, result.data);
-      if (flushed.failed) {
-        toast.error(
-          flushed.failures[0]?.message ||
-            `${flushed.failed} saved change${flushed.failed === 1 ? " was" : "s were"} rejected by the server.`,
-        );
-      } else {
-        toast.success(flushed.completed ? "Saved data refreshed and pending requests submitted." : "Offline data refreshed.");
-      }
-      await loadLocalStatus();
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Unable to sync offline data.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function clearOfflineData() {
-    if (!ownerKey) return;
-    await deletePwaSnapshot(ownerKey);
-    setSnapshot(null);
-    toast.success("Saved offline school information removed from this device.");
-  }
-
   async function createPasskey() {
     if (!user) return;
     setBusy(true);
@@ -258,10 +192,6 @@ export function PwaControlCenter({
       toast.error("Unable to share SchoolDB.");
     }
   }
-
-  const storageLabel = storage
-    ? `${(storage.usage / 1024 / 1024).toFixed(1)} MB used of ${(storage.quota / 1024 / 1024).toFixed(0)} MB`
-    : "Storage estimate unavailable";
 
   return (
     <div className="grid gap-5 lg:grid-cols-2">
@@ -297,32 +227,12 @@ export function PwaControlCenter({
       <div className="space-y-5">
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2"><Cloud className="size-5 text-primary" /> App and offline status</CardTitle>
-            <CardDescription>Check install, connectivity, updates, cached information, and pending work.</CardDescription>
+            <CardTitle className="flex items-center gap-2"><Smartphone className="size-5 text-primary" /> App status</CardTitle>
+            <CardDescription>Check the installed app and notification service.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             <StatusRow icon={Smartphone} label="Installed app" value={installed ? "Installed" : "Browser tab"} good={installed} />
-            <StatusRow icon={Wifi} label="Connection" value={typeof navigator !== "undefined" && navigator.onLine ? "Online" : "Offline"} good={typeof navigator !== "undefined" && navigator.onLine} />
             <StatusRow icon={CheckCircle2} label="Service worker" value={serviceWorker} good={serviceWorker === "Active"} />
-            <StatusRow icon={Database} label="Offline snapshot" value={snapshot ? new Date(snapshot.generatedAt).toLocaleString("en-IN") : "Not saved yet"} good={Boolean(snapshot)} />
-            <StatusRow icon={RefreshCw} label="Pending requests" value={String(pendingActions)} good={pendingActions === 0} />
-            <StatusRow icon={HardDrive} label="Browser storage" value={storageLabel} good={Boolean(storage)} />
-            <div className="flex flex-wrap gap-2 pt-2">
-              <Button type="button" disabled={busy} onClick={() => void syncOfflineData()}><RefreshCw className="size-4" /> Sync now</Button>
-              {snapshot && (
-                <ConfirmDialog
-                  eyebrow="Device storage"
-                  title="Clear saved offline data?"
-                  description="This removes the saved school snapshot from this device. Server data is not affected."
-                  consequence="You will need to reconnect and sync before SchoolDB can be used offline again."
-                  confirmLabel="Clear saved data"
-                  destructive
-                  pending={busy}
-                  onConfirm={() => void clearOfflineData()}
-                  trigger={<Button type="button" variant="outline" disabled={busy}>Clear saved data</Button>}
-                />
-              )}
-            </div>
           </CardContent>
         </Card>
 
@@ -380,7 +290,7 @@ export function PwaControlCenter({
   );
 }
 
-function StatusRow({ icon: Icon, label, value, good }: { icon: typeof Wifi; label: string; value: string; good: boolean }) {
+function StatusRow({ icon: Icon, label, value, good }: { icon: LucideIcon; label: string; value: string; good: boolean }) {
   return (
     <div className="flex items-center gap-3 rounded-2xl border border-border/70 p-3">
       <Icon className="size-4 text-muted-foreground" />

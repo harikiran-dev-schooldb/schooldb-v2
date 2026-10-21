@@ -51,7 +51,7 @@ committed to Git.
 
 Keep the shared Firebase file at `app/google-services.json`. It must contain an Android client for `com.schooldb.support`. The API key must be allowed to call the Firebase Installations API; otherwise token retrieval fails with `FIS_AUTH_ERROR`. One Firebase registration and one installed app serve all schools; push payloads continue to be checked against the signed-in school code.
 
-Release 0.8.0 requires the matching server `src/lib/support-push.ts` update: messages are data-only and include `schoolSlug`, `title`, `body`, and `ticketId`. Deploy the server change alongside the APK; legacy unscoped messages are rejected by the updated client. Device registration and logout token deletion retry through WorkManager when connectivity returns. Notification taps only open tickets for the signed-in school. Android notification permission and the Support tickets channel must be enabled.
+Release 0.8.0 requires the matching server `src/lib/support-push.ts` update: messages are data-only and include `schoolSlug`, `title`, `body`, and `ticketId`. Deploy the server change alongside the APK; legacy unscoped messages are rejected by the updated client. Device registration and logout token deletion retry through WorkManager when connectivity returns. Notification taps only open tickets for the signed-in school. Android notification permission and the Support tickets channel must be enabled. Logout first attempts server deregistration while the old session is active; Firebase token invalidation remains retryable after the local session is cleared.
 
 ## School branding
 
@@ -60,3 +60,9 @@ Upload or replace the school logo on the website's **Schools** page. After sign-
 School branding is stored in app-private, school-scoped files and restored on cold startup, including after RAM cleanup. Network failures retain the last downloaded logo; a successful response explicitly removing the logo clears the saved image. The pull-to-refresh indicator is reserved for explicit refresh requests, not ticket selections, filtering, or background synchronization.
 
 Startup observes Clerk's active-session flow before loading the dashboard, with up to three attempts for temporary network/token failures. While the initial data is unavailable, the dashboard explicitly shows loading rather than presenting an empty account as ready. The overview hero uses the main Android app's light neutral surface, dark text, and indigo accents.
+
+Attachment reads and downloads are capped at 5 MB before their contents can be
+accumulated in memory. Android screenshots and recent-app previews are disabled
+because tickets can include student details, parent contact information, and
+attachments. Staff can also enable **Require device unlock** from Profile to
+authenticate with the device PIN, pattern, or password after leaving the app.

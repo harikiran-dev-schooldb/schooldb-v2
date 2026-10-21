@@ -27,7 +27,6 @@ test("keeps the public route allowlist narrow", () => {
     "/account-deletion",
     "/about",
     "/contact",
-    "/offline",
     "/privacy-policy",
     "/refund-policy",
     "/terms",

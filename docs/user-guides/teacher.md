@@ -19,8 +19,6 @@ Teachers start on **My Dashboard**. The visible classes and modules depend on al
 - Use Class Report, Student Report, and Attendance Ranking when they are enabled.
 - Locked-session correction depends on school policy and administrator authority.
 
-Attendance can be saved offline when the class data was synced to the device. It will be submitted automatically after reconnection.
-
 ## Homework
 
 1. Choose the allocated class/section and subject.
@@ -28,11 +26,9 @@ Attendance can be saved offline when the class data was synced to the device. It
 3. Review the audience before publishing.
 4. Edit or remove an item only according to school policy.
 
-New homework can be queued offline if the required class/student information is available on the device.
-
 ## Exams and marks
 
-Open **Learning → Exams & Results**, choose the exam and schedule, and enter marks only for the assigned subject or class. Check maximum marks, absent status, and every value before saving. A marks page that was loaded while online may support offline entry; sync and verify the final online totals afterward.
+Open **Learning → Exams & Results**, choose the exam and schedule, and enter marks only for the assigned subject or class. Check maximum marks, absent status, and every value before saving.
 
 ## Student information
 
@@ -44,5 +40,5 @@ Teachers normally receive view access to the student directory. Private tabs and
 - Use precise homework instructions and realistic due dates.
 - Never share one student's marks, documents, health data, or contact details with another family.
 - Report an incorrect allocation to the Principal/Admin instead of working around it.
-- Before leaving, confirm that the offline pending-request count is zero or inform the office that work is awaiting sync.
+- Confirm important changes appear in SchoolDB before leaving the page.
 

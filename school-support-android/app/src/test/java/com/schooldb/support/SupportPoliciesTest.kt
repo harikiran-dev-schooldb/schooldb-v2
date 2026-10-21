@@ -39,4 +39,11 @@ class SupportPoliciesTest {
         assertFalse(firstUser == supportTicketCacheKey("user-1", "school-b"))
         assertEquals(firstUser, supportTicketCacheKey(" USER-1 ", " SCHOOL-A "))
     }
+
+    @Test
+    fun appLockRequiresBothAnAuthenticatedSessionAndOptIn() {
+        assertTrue(shouldLockSupportApp(isAuthenticated = true, secureReentry = true))
+        assertFalse(shouldLockSupportApp(isAuthenticated = false, secureReentry = true))
+        assertFalse(shouldLockSupportApp(isAuthenticated = true, secureReentry = false))
+    }
 }

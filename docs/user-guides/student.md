@@ -30,10 +30,6 @@ The dashboard shows current attendance, active homework, fee balance, next exam,
 
 Use **Settings** to view account details. A student may submit a profile image, but it can require school approval before it is used. The student cannot edit official academic, attendance, fee, or identity records.
 
-## Offline use
-
-After the app has synced online, selected saved information remains readable without internet. A leave request may be queued for later submission. Results, balances, and notifications shown offline can be older than the school's live records; sync again after reconnecting.
-
 ## Get help
 
 If a mark, attendance entry, timetable, fee, document, or personal detail appears incorrect, note the exact item and contact the relevant teacher or school office. Never use another student's account.

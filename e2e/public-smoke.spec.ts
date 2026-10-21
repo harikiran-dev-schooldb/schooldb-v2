@@ -13,11 +13,6 @@ test.describe("public and PWA smoke checks", () => {
     await expect(page.getByRole("button", { name: /continue/i })).toBeVisible();
   });
 
-  test("offline fallback renders a recovery action", async ({ page }) => {
-    await expectUsablePage(page, "/offline", "You are offline");
-    await expect(page.getByRole("link", { name: "Try again" })).toBeVisible();
-  });
-
   test("manifest contains installable PWA metadata", async ({ request }) => {
     const response = await request.get("/manifest.webmanifest");
     expect(response.ok()).toBeTruthy();
@@ -40,28 +35,9 @@ test.describe("public and PWA smoke checks", () => {
   test("service worker is available", async ({ request }) => {
     const response = await request.get("/sw.js");
     expect(response.ok()).toBeTruthy();
-    expect(await response.text()).toContain("self.addEventListener");
-  });
-
-  test("installed service worker serves the offline fallback", async ({ page, context }, testInfo) => {
-    test.skip(testInfo.project.name !== "desktop-chromium", "One Chromium run covers the shared service worker.");
-    test.skip(process.env.E2E_PRODUCTION_SERVER !== "true", "Service workers are disabled during local dev runs.");
-
-    await page.goto("/");
-    const needsControlledReload = await page.evaluate(async () => {
-      await navigator.serviceWorker.ready;
-      return !navigator.serviceWorker.controller;
-    });
-    if (needsControlledReload) await page.reload({ waitUntil: "domcontentloaded" });
-    await expect.poll(() => page.evaluate(() => Boolean(navigator.serviceWorker.controller))).toBe(true);
-
-    try {
-      await context.setOffline(true);
-      await page.goto("/choose-school?offline-check=1", { waitUntil: "domcontentloaded" });
-      await expect(page.getByText("You are offline")).toBeVisible();
-    } finally {
-      await context.setOffline(false);
-    }
+    const worker = await response.text();
+    expect(worker).toContain('self.addEventListener("push"');
+    expect(worker).not.toContain('self.addEventListener("fetch"');
   });
 
   test("security policy is enforced", async ({ request }) => {

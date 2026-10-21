@@ -1,6 +1,5 @@
 "use client";
 
-import { useAuth } from "@clerk/nextjs";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ArrowLeft, RefreshCw, Save } from "lucide-react";
 import { toast } from "sonner";
@@ -14,7 +13,6 @@ import { SyllabusSelect } from "@/components/common/select/SyllabusSelect";
 import { Input } from "@/components/ui/input";
 import { refreshTable } from "@/lib/table-event";
 import { EXAM_GRADES } from "@/features/exams/assessment";
-import { queuePwaAction } from "@/lib/pwa-storage";
 
 type Status = "PRESENT" | "ABSENT" | "EXEMPTED";
 
@@ -68,7 +66,6 @@ type Props = {
 
 export function ExamMarksPage({ schoolSlug, examId }: Props) {
   const router = useRouter();
-  const { userId } = useAuth();
 
   const [examName, setExamName] = useState("");
   const [schedules, setSchedules] = useState<Schedule[]>([]);
@@ -332,12 +329,6 @@ export function ExamMarksPage({ schoolSlug, examId }: Props) {
 
     try {
       setSaving(true);
-      const offline = !navigator.onLine;
-      if (offline && !userId) {
-        toast.error("Reconnect to save exam results.");
-        return;
-      }
-
       await Promise.all(
         applicableSchedules.map(async (schedule) => {
           const body = {
@@ -365,19 +356,6 @@ export function ExamMarksPage({ schoolSlug, examId }: Props) {
             sectionId,
           )}`;
 
-          if (offline) {
-            const id = crypto.randomUUID();
-            await queuePwaAction({
-              id,
-              ownerKey: `${userId}:${schoolSlug}`,
-              url,
-              method: "PUT",
-              body,
-              createdAt: new Date().toISOString(),
-            });
-            return;
-          }
-
           const response = await fetch(url, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
@@ -394,12 +372,6 @@ export function ExamMarksPage({ schoolSlug, examId }: Props) {
           }
         }),
       );
-
-      if (offline) {
-        window.dispatchEvent(new Event("schooldb:offline-queue-changed"));
-        toast.success("Exam results saved offline and will sync when you reconnect.");
-        return;
-      }
 
       toast.success("Exam results saved successfully.");
       refreshTable("exams");

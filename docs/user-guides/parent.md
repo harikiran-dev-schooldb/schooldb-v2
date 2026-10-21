@@ -36,11 +36,11 @@ If the result is pending or unclear, do not immediately pay again. Wait for conf
 
 ## Submit leave or permission
 
-Open **Leave**, choose the request type, enter dates/times and reason, then submit. Track the status from the same page. Leave requests may be queued offline and submitted automatically when the device reconnects.
+Open **Leave**, choose the request type, enter dates/times and reason, then submit. Track the status from the same page.
 
 ## Notifications and settings
 
-Use the bell for school updates and the calendar icon for events. In **Settings**, review the account and open PWA/device options. The Parent account cannot change official student records; request corrections from the school.
+Use the bell for school updates and the calendar icon for events. In **Settings**, review the account and open app/device options. The Parent account cannot change official student records; request corrections from the school.
 
 ## Privacy
 

@@ -10,7 +10,7 @@ internal object SchoolBrand {
     const val supportLabel = "SCHOOL SUPPORT"
 
     @DrawableRes
-    val logoRes: Int = R.drawable.school_logo
+    val logoRes: Int = R.drawable.schooldb_logo
 
     val primary = Color(0xFF4F46E5)
     val secondary = Color(0xFF7C3AED)

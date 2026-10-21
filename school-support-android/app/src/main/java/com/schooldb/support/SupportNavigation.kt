@@ -20,3 +20,6 @@ enum class DashboardTab(val label: String) {
     ANALYTICS("Analytics"),
     PROFILE("Profile"),
 }
+
+internal fun shouldLockSupportApp(isAuthenticated: Boolean, secureReentry: Boolean): Boolean =
+    isAuthenticated && secureReentry

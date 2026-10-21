@@ -12,7 +12,6 @@ import java.net.SocketTimeoutException
 import java.net.UnknownHostException
 import java.net.URL
 import java.io.IOException
-import java.io.ByteArrayOutputStream
 import java.io.DataOutputStream
 import android.os.Build
 import kotlinx.coroutines.Dispatchers
@@ -594,9 +593,7 @@ class SupportRepository {
                 val parsed = runCatching { JSONObject(message).optString("message") }.getOrNull()
                 throw SupportApiException(status, parsed?.ifBlank { null } ?: "Attachment download failed (HTTP $status).")
             }
-            val buffer = ByteArrayOutputStream()
-            connection.inputStream.use { input -> input.copyTo(buffer) }
-            buffer.toByteArray()
+            connection.inputStream.use { input -> input.readBytesWithLimit() }
         } catch (error: SupportSessionExpiredException) {
             throw error
         } catch (error: SupportApiException) {

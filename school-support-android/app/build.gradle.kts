@@ -121,7 +121,7 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.11.0")
     implementation("androidx.profileinstaller:profileinstaller:1.4.1")
     implementation("androidx.work:work-runtime-ktx:2.12.0")
-    implementation("com.clerk:clerk-android-api:1.1.11")
+    implementation("com.clerk:clerk-android-api:1.2.1")
     implementation("com.google.firebase:firebase-messaging")
     implementation("com.google.firebase:firebase-installations")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")

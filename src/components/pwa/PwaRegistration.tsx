@@ -1,10 +1,10 @@
 "use client";
 
 import { useAuth } from "@clerk/nextjs";
-import { BellRing, CloudOff, Download, RefreshCw, Share, X } from "lucide-react";
+import { BellRing, Download, RefreshCw, Share, X } from "lucide-react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { usePathname } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -25,15 +25,6 @@ import {
   type BrowserPushState,
 } from "@/lib/browser-push";
 import { isSchoolDbProductionHost } from "@/lib/production-domain";
-import {
-  activePwaOwner,
-  clearActivePwaOwner,
-  clearPwaOwnerData,
-  flushPwaActions,
-  rememberPwaOwner,
-  savePwaSnapshot,
-  type PwaOfflineSnapshot,
-} from "@/lib/pwa-storage";
 import { schoolSlugFromPath } from "@/lib/tenant-context";
 
 type BeforeInstallPromptEvent = Event & {
@@ -41,33 +32,27 @@ type BeforeInstallPromptEvent = Event & {
   userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
 };
 
-function subscribeOnlineStatus(callback: () => void) {
-  window.addEventListener("online", callback);
-  window.addEventListener("offline", callback);
-  return () => {
-    window.removeEventListener("online", callback);
-    window.removeEventListener("offline", callback);
-  };
-}
-
-function browserOnlineStatus() {
-  return navigator.onLine;
-}
-
 export function PwaRegistration() {
   const { isLoaded, isSignedIn, userId } = useAuth();
-  const router = useRouter();
   const pathname = usePathname();
   const schoolSlug = useMemo(() => schoolSlugFromPath(pathname), [pathname]);
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showAppleInstructions, setShowAppleInstructions] = useState(false);
-  const online = useSyncExternalStore(subscribeOnlineStatus, browserOnlineStatus, () => true);
   const [updateReady, setUpdateReady] = useState(false);
   const [pushDialogOpen, setPushDialogOpen] = useState(false);
   const [pushBusy, setPushBusy] = useState(false);
   const [pushState, setPushState] = useState<BrowserPushState>("available");
 
   useEffect(() => {
+    // Offline mode was retired. Remove snapshots, queued writes, and caches
+    // created by earlier releases while retaining the worker for web push.
+    localStorage.removeItem("schooldb:pwa:active-owner");
+    if ("indexedDB" in window) indexedDB.deleteDatabase("schooldb-pwa");
+    if ("caches" in window) {
+      void caches.keys().then((keys) =>
+        Promise.all(keys.filter((key) => key.startsWith("schooldb-pwa-")).map((key) => caches.delete(key))),
+      );
+    }
     if (!("serviceWorker" in navigator)) return;
 
     const hostname = window.location.hostname.toLowerCase();
@@ -117,61 +102,6 @@ export function PwaRegistration() {
     window.addEventListener("load", register, { once: true });
     return () => window.removeEventListener("load", register);
   }, []);
-
-  useEffect(() => {
-    if (!online) return;
-    window.dispatchEvent(new Event("schooldb:sync-requested"));
-  }, [online]);
-
-  useEffect(() => {
-    if (!isLoaded) return;
-    if (!isSignedIn || !userId) {
-      const previousOwner = activePwaOwner();
-      clearActivePwaOwner();
-      if (previousOwner) void clearPwaOwnerData(previousOwner).catch(() => undefined);
-      return;
-    }
-    if (!schoolSlug) return;
-
-    const ownerKey = `${userId}:${schoolSlug}`;
-    const previousOwner = activePwaOwner();
-    if (previousOwner && previousOwner !== ownerKey) {
-      void clearPwaOwnerData(previousOwner).catch(() => undefined);
-    }
-    rememberPwaOwner(ownerKey);
-    let cancelled = false;
-    const sync = async () => {
-      if (!navigator.onLine) return;
-      try {
-        const flushed = await flushPwaActions(ownerKey);
-        const response = await fetch(`/api/v1/pwa/snapshot?schoolSlug=${encodeURIComponent(schoolSlug)}`, {
-          cache: "no-store",
-        });
-        const result = await response.json();
-        if (response.ok && result.success && !cancelled) {
-          await savePwaSnapshot(ownerKey, result.data as PwaOfflineSnapshot);
-        }
-        if (flushed.completed > 0 && !cancelled) {
-          toast.success(`${flushed.completed} saved request${flushed.completed === 1 ? "" : "s"} submitted.`);
-          router.refresh();
-        }
-        if (flushed.failed > 0 && !cancelled) {
-          toast.error(`${flushed.failed} offline change${flushed.failed === 1 ? " was" : "s were"} rejected. Review the latest online data before trying again.`);
-        }
-      } catch {
-        // The cached copy and pending actions remain available for a later sync.
-      }
-    };
-    const handleSync = () => void sync();
-    void sync();
-    window.addEventListener("schooldb:sync-requested", handleSync);
-    window.addEventListener("schooldb:offline-queue-changed", handleSync);
-    return () => {
-      cancelled = true;
-      window.removeEventListener("schooldb:sync-requested", handleSync);
-      window.removeEventListener("schooldb:offline-queue-changed", handleSync);
-    };
-  }, [isLoaded, isSignedIn, router, schoolSlug, userId]);
 
   useEffect(() => {
     if (!isSchoolDbProductionHost(window.location.hostname) || isStandalonePwa()) return;
@@ -281,12 +211,6 @@ export function PwaRegistration() {
 
   return (
     <>
-      {!online && (
-        <div className="fixed inset-x-0 top-0 z-[70] flex items-center justify-center gap-2 bg-amber-500 px-3 pt-[max(0.5rem,env(safe-area-inset-top))] pb-2 text-center text-xs font-semibold text-amber-950 shadow-lg">
-          <CloudOff className="size-4" /> Offline mode · saved information remains available
-        </div>
-      )}
-
       {(installPrompt || showAppleInstructions || updateReady) && (
         <aside className="fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-50 mx-auto flex max-w-md items-center gap-3 rounded-2xl border border-border/70 bg-card/95 p-3 shadow-2xl backdrop-blur-xl">
           <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
@@ -296,7 +220,7 @@ export function PwaRegistration() {
             <p className="text-sm font-semibold">{updateReady ? "SchoolDB update ready" : "Install SchoolDB"}</p>
             <p className="text-xs leading-5 text-muted-foreground">
               {updateReady
-                ? "Reload to use the newest app and offline improvements."
+                ? "Reload to use the newest version of SchoolDB."
                 : showAppleInstructions
                   ? "Tap Share, then Add to Home Screen. Open the installed app to enable iPhone notifications."
                   : "Install the app for faster access and reliable notifications."}
@@ -334,13 +258,13 @@ export function PwaRegistration() {
             </DialogDescription>
           </DialogHeader>
           <div className="rounded-2xl border border-border/70 bg-muted/35 p-4 text-sm leading-6 text-muted-foreground">
-            You can choose notification categories and inspect PWA status from the PWA settings page.
+            You can choose notification categories and inspect app status from the notification settings page.
           </div>
           <DialogFooter className="gap-2 sm:gap-0">
             <Button type="button" variant="ghost" onClick={snoozeNotifications}>Not now</Button>
             {schoolSlug && (
               <Button asChild type="button" variant="outline">
-                <Link href={`/${schoolSlug}/pwa`} onClick={() => setPushDialogOpen(false)}>PWA settings</Link>
+                <Link href={`/${schoolSlug}/pwa`} onClick={() => setPushDialogOpen(false)}>Notification settings</Link>
               </Button>
             )}
             <Button type="button" disabled={pushBusy || pushState !== "available"} onClick={() => void enableNotifications()}>

@@ -14,6 +14,16 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.edit
+import androidx.work.BackoffPolicy
+import androidx.work.Constraints
+import androidx.work.CoroutineWorker
+import androidx.work.ExistingWorkPolicy
+import androidx.work.NetworkType
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
+import androidx.work.WorkerParameters
+import com.clerk.api.Clerk
+import com.google.android.gms.tasks.Tasks
 import com.google.firebase.messaging.FirebaseMessaging
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
@@ -21,6 +31,8 @@ import com.schooldb.mobile.BuildConfig
 import com.schooldb.mobile.MainActivity
 import com.schooldb.mobile.R
 import com.schooldb.mobile.network.AuthenticatedApiClient
+import com.schooldb.mobile.network.SchoolContext
+import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -32,17 +44,23 @@ object PushNotificationManager {
     const val URGENT_CHANNEL_ID = "school_urgent_v2"
     private const val PREFERENCES = "schooldb_push"
     private const val PERMISSION_ASKED = "permission_asked"
-    private const val INSTALLATION_ID = "installation_id"
+    internal const val INSTALLATION_ID = "installation_id"
+    private const val ACTIVE_SCHOOL = "active_school"
+    private const val ACTIVE_USER = "active_user"
+    internal const val DELETE_FIREBASE_REGISTRATION = "delete_firebase_registration"
     private const val TAG = "SchoolDbPush"
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var sharedPreferences: SharedPreferences? = null
+    private var applicationContext: Context? = null
 
     fun isConfigured() = BuildConfig.FIREBASE_CONFIGURED
 
     fun initialize(context: Context) {
+        applicationContext = context.applicationContext
         sharedPreferences = context.applicationContext
             .getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
         createChannels(context)
+        PushRegistrationCleanup.enqueue(context)
     }
 
     private fun createChannels(context: Context) {
@@ -92,7 +110,14 @@ object PushNotificationManager {
 
     fun registerInstallation(installationId: String) {
         if (!isConfigured() || installationId.isBlank()) return
-        sharedPreferences?.edit { putString(INSTALLATION_ID, installationId) }
+        val school = runCatching { SchoolContext.schoolSlug() }.getOrNull() ?: return
+        val userId = Clerk.activeUser?.id?.takeIf(String::isNotBlank) ?: return
+        sharedPreferences?.edit {
+            putString(INSTALLATION_ID, installationId)
+            putString(ACTIVE_SCHOOL, school)
+            putString(ACTIVE_USER, userId)
+            remove(DELETE_FIREBASE_REGISTRATION)
+        }
         scope.launch {
             runCatching {
                 AuthenticatedApiClient().post(
@@ -110,17 +135,94 @@ object PushNotificationManager {
     }
 
     suspend fun unregisterCurrentDevice() {
+        val context = applicationContext ?: return
+        NotificationManagerCompat.from(context).cancelAll()
+        sharedPreferences?.edit {
+            remove(ACTIVE_SCHOOL)
+            remove(ACTIVE_USER)
+        }
         if (!isConfigured()) return
         val installationId = sharedPreferences?.getString(INSTALLATION_ID, null)
-            ?: return
-        runCatching {
+        val serverCleanupSucceeded = installationId != null && runCatching {
             AuthenticatedApiClient().delete(
                 "api/v1/mobile/push/devices",
                 JSONObject().put("installationId", installationId),
             )
+        }.isSuccess
+        sharedPreferences?.edit {
+            putBoolean(DELETE_FIREBASE_REGISTRATION, true)
+            if (serverCleanupSucceeded) remove(INSTALLATION_ID)
+        }
+        PushRegistrationCleanup.enqueue(context, replace = true)
+    }
+
+    internal fun shouldDisplay(messageSchool: String?): Boolean {
+        val preferences = sharedPreferences ?: return false
+        val activeSchool = preferences.getString(ACTIVE_SCHOOL, null)
+        val activeUser = preferences.getString(ACTIVE_USER, null)
+        return notificationBelongsToActiveSchool(
+            hasActiveSession = Clerk.activeSession != null,
+            activeUser = activeUser,
+            activeSchool = activeSchool,
+            messageSchool = messageSchool,
+        )
+    }
+
+    internal fun preferences(context: Context): SharedPreferences =
+        context.applicationContext.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
+}
+
+class PushRegistrationCleanup(context: Context, parameters: WorkerParameters) :
+    CoroutineWorker(context, parameters) {
+    override suspend fun doWork(): Result {
+        if (!BuildConfig.FIREBASE_CONFIGURED) return Result.success()
+        val preferences = PushNotificationManager.preferences(applicationContext)
+        if (!preferences.getBoolean(PushNotificationManager.DELETE_FIREBASE_REGISTRATION, false)) {
+            return Result.success()
+        }
+        return runCatching {
+            Tasks.await(FirebaseMessaging.getInstance().unregister(), 20, TimeUnit.SECONDS)
+            preferences.edit {
+                remove(PushNotificationManager.DELETE_FIREBASE_REGISTRATION)
+                remove(PushNotificationManager.INSTALLATION_ID)
+            }
+        }.fold(
+            onSuccess = { Result.success() },
+            onFailure = { Result.retry() },
+        )
+    }
+
+    companion object {
+        private const val WORK_NAME = "schooldb-push-cleanup-v1"
+
+        fun enqueue(context: Context, replace: Boolean = false) {
+            if (!BuildConfig.FIREBASE_CONFIGURED) return
+            val request = OneTimeWorkRequestBuilder<PushRegistrationCleanup>()
+                .setConstraints(
+                    Constraints.Builder()
+                        .setRequiredNetworkType(NetworkType.CONNECTED)
+                        .build(),
+                )
+                .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
+                .build()
+            WorkManager.getInstance(context.applicationContext).enqueueUniqueWork(
+                WORK_NAME,
+                if (replace) ExistingWorkPolicy.REPLACE else ExistingWorkPolicy.KEEP,
+                request,
+            )
         }
     }
 }
+
+internal fun notificationBelongsToActiveSchool(
+    hasActiveSession: Boolean,
+    activeUser: String?,
+    activeSchool: String?,
+    messageSchool: String?,
+): Boolean = hasActiveSession &&
+    !activeUser.isNullOrBlank() &&
+    !activeSchool.isNullOrBlank() &&
+    messageSchool == activeSchool
 
 class SchoolDbMessagingService : FirebaseMessagingService() {
     @Suppress("DEPRECATION")
@@ -136,6 +238,7 @@ class SchoolDbMessagingService : FirebaseMessagingService() {
     }
 
     override fun onMessageReceived(message: RemoteMessage) {
+        if (!PushNotificationManager.shouldDisplay(message.data["schoolSlug"])) return
         val title = message.data["title"] ?: message.notification?.title ?: "SchoolDB update"
         val body = message.data["body"] ?: message.notification?.body ?: return
         val categoryKey = message.data["category"]?.uppercase() ?: "SCHOOL"

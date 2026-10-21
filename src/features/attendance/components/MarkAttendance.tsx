@@ -1,6 +1,5 @@
 "use client";
 
-import { useAuth } from "@clerk/nextjs";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
@@ -38,8 +37,6 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { refreshTable } from "@/lib/table-event";
-import { queuePwaAction } from "@/lib/pwa-storage";
-import { useSchool } from "@/contexts/school-context";
 
 import { useAttendanceSession } from "../hooks/useAttendanceSession";
 import { AttendanceStatus } from "@/generated/prisma/enums";
@@ -75,8 +72,6 @@ function mapStudents(
 }
 
 export function MarkAttendance({ sessionId }: Props) {
-  const { userId } = useAuth();
-  const { school } = useSchool();
   const { loading, data, reload } = useAttendanceSession(sessionId);
 
   const [editedStudents, setEditedStudents] = useState<
@@ -344,28 +339,6 @@ export function MarkAttendance({ sessionId }: Props) {
 
         setEditing(false);
 
-        return;
-      }
-
-      if (!navigator.onLine) {
-        if (!userId) {
-          toast.error("Reconnect to save attendance.");
-          return;
-        }
-        const id = crypto.randomUUID();
-        await queuePwaAction({
-          id,
-          ownerKey: `${userId}:${school.slug}`,
-          url: `/api/v1/attendance/session/${sessionId}/correction`,
-          method: "POST",
-          body: { changes },
-          createdAt: new Date().toISOString(),
-        });
-        setOriginalStudents(students);
-        setEditedStudents(students);
-        setEditing(false);
-        window.dispatchEvent(new Event("schooldb:offline-queue-changed"));
-        toast.success("Attendance saved offline and will sync when you reconnect.");
         return;
       }
 

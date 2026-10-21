@@ -19,16 +19,12 @@ Do not create a duplicate student because spelling differs. Search by admission 
 3. Follow the school's approval/security process before entry.
 4. Record check-out when the visitor leaves.
 
-A visitor check-in can be queued offline on a prepared device. Confirm it appears online after reconnection.
-
 ## Student pickup
 
 1. Find the correct student.
 2. Verify the authorized person's identity and relationship.
 3. Record the authorization and pickup details.
 4. Follow the school escalation process for any mismatch.
-
-Pickup authorization can be saved offline when the student directory was synced. Offline capability does not replace physical identity verification.
 
 ## Health and maintenance
 
@@ -39,8 +35,7 @@ Pickup authorization can be saved offline when the student directory was synced.
 ## End-of-shift checklist
 
 - Check out remaining visitors or hand them over clearly.
-- Confirm pickup and admission changes are synchronized.
+- Confirm pickup and admission changes are saved.
 - Review unresolved maintenance tickets and queries.
 - Secure printed forms and ID cards.
-- Confirm **Pending requests** is zero before clearing app data or handing over the device.
 

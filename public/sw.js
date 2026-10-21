@@ -1,34 +1,13 @@
-const CACHE_NAME = "schooldb-pwa-v10";
-const OFFLINE_URL = "/offline";
 const HOSTNAME = self.location.hostname.toLowerCase();
 const LOCAL_PREVIEW_HOSTS = ["localhost", "127.0.0.1", "[::1]", "::1"];
 const ALLOWED_HOST = HOSTNAME === "schooldb.co.in"
   || HOSTNAME.endsWith(".schooldb.co.in")
   || LOCAL_PREVIEW_HOSTS.includes(HOSTNAME);
-const APP_ASSETS = [
-  OFFLINE_URL,
-  "/pwa-192.png",
-  "/pwa-512.png",
-  "/apple-touch-icon.png",
-];
-
-async function cacheOfflineShell() {
-  const cache = await caches.open(CACHE_NAME);
-  await cache.addAll(APP_ASSETS.filter((asset) => asset !== OFFLINE_URL));
-  const response = await fetch(OFFLINE_URL, { cache: "no-store" });
-  if (!response.ok) throw new Error("Offline page could not be cached");
-  await cache.put(OFFLINE_URL, response.clone());
-  const html = await response.text();
-  const staticAssets = [...new Set(html.match(/\/_next\/static\/[^"'<>\s]+/g) || [])];
-  await Promise.all(staticAssets.map((asset) => cache.add(asset).catch(() => undefined)));
-}
-
 self.addEventListener("install", (event) => {
   if (!ALLOWED_HOST) {
     event.waitUntil(self.registration.unregister());
     return;
   }
-  event.waitUntil(cacheOfflineShell());
   self.skipWaiting();
 });
 
@@ -42,59 +21,14 @@ self.addEventListener("activate", (event) => {
     return;
   }
   event.waitUntil(
-    caches
-      .keys()
-      .then((keys) =>
-        Promise.all(
-          keys
-            .filter((key) => key.startsWith("schooldb-pwa-") && key !== CACHE_NAME)
-            .map((key) => caches.delete(key)),
-        ),
-      )
+    caches.keys()
+      .then((keys) => Promise.all(keys.filter((key) => key.startsWith("schooldb-pwa-")).map((key) => caches.delete(key))))
       .then(() => self.clients.claim()),
   );
 });
 
 self.addEventListener("message", (event) => {
   if (event.data?.type === "SKIP_WAITING") self.skipWaiting();
-});
-
-self.addEventListener("fetch", (event) => {
-  if (!ALLOWED_HOST) return;
-  const request = event.request;
-  if (request.method !== "GET") return;
-
-  const url = new URL(request.url);
-  if (url.origin !== self.location.origin || url.pathname.startsWith("/api/")) {
-    return;
-  }
-
-  if (request.mode === "navigate") {
-    event.respondWith(
-      fetch(request).catch(() => caches.match(OFFLINE_URL)),
-    );
-    return;
-  }
-
-  // Next.js fingerprints production assets and controls their caching headers.
-  // Caching dev chunks here can keep old environment variables in the browser.
-  const isStaticAsset = APP_ASSETS.includes(url.pathname) || url.pathname.startsWith("/_next/static/");
-
-  if (!isStaticAsset) return;
-
-  event.respondWith(
-    caches.match(request).then((cached) => {
-      if (cached) return cached;
-
-      return fetch(request).then((response) => {
-        if (response.ok) {
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
-        }
-        return response;
-      });
-    }),
-  );
 });
 
 self.addEventListener("push", (event) => {

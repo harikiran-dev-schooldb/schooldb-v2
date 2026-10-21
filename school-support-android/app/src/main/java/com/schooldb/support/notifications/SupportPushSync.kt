@@ -2,6 +2,7 @@ package com.schooldb.support.notifications
 
 import android.content.Context
 import androidx.work.*
+import androidx.core.content.edit
 import com.clerk.api.Clerk
 import com.google.android.gms.tasks.Tasks
 import com.google.firebase.messaging.FirebaseMessaging
@@ -25,7 +26,15 @@ class SupportPushSync(context: Context, parameters: WorkerParameters) : Coroutin
         try {
             if (push.getBoolean("delete_token", false)) {
                 Tasks.await(FirebaseMessaging.getInstance().unregister(), 20, TimeUnit.SECONDS)
-                push.edit().remove("delete_token").remove("pending_fcm_token").apply()
+                push.edit {
+                    remove("delete_token")
+                    remove("pending_fcm_token")
+                    // Server deregistration is attempted while the old session is still
+                    // active. Once Firebase invalidates the token, the server record can no
+                    // longer deliver notifications and no authenticated retry is possible.
+                    remove("pending_unregister_school")
+                    remove("pending_unregister_installation_id")
+                }
             }
             withTimeout(15_000) { Clerk.isInitialized.first { it } }
             if (Clerk.activeSession == null) {
@@ -35,17 +44,20 @@ class SupportPushSync(context: Context, parameters: WorkerParameters) : Coroutin
             val pendingInstallationId = push.getString("pending_unregister_installation_id", null)?.takeIf(String::isNotBlank)
             if (pendingSchool != null && pendingInstallationId != null) {
                 SupportRepository().unregisterPushDevice(pendingSchool, pendingInstallationId)
-                push.edit().remove("pending_unregister_school").remove("pending_unregister_installation_id").apply()
+                push.edit {
+                    remove("pending_unregister_school")
+                    remove("pending_unregister_installation_id")
+                }
             }
             val school = session.getString("school", null)?.takeIf(String::isNotBlank)
                 ?: return@withContext Result.success()
             val installationId = push.getString("installation_id", null) ?: UUID.randomUUID().toString().also {
-                push.edit().putString("installation_id", it).apply()
+                push.edit { putString("installation_id", it) }
             }
             // Only upload an FID delivered by FCM's successful registration callback.
             // A raw Firebase Installations ID can exist before FCM has registered it for
             // messaging, which can later fail with installation-id-not-registered.
-            push.edit().remove("pending_fcm_token").apply()
+            push.edit { remove("pending_fcm_token") }
             Tasks.await(FirebaseMessaging.getInstance().register(), 20, TimeUnit.SECONDS)
             val registeredFid = withTimeout(10_000) {
                 var token: String?
@@ -61,7 +73,7 @@ class SupportPushSync(context: Context, parameters: WorkerParameters) : Coroutin
                 return@withContext Result.retry()
             }
             SupportRepository().registerPushDevice(school, installationId, registeredFid)
-            push.edit().remove("pending_fcm_token").apply()
+            push.edit { remove("pending_fcm_token") }
             Result.success()
         } catch (_: kotlinx.coroutines.TimeoutCancellationException) {
             Result.retry()

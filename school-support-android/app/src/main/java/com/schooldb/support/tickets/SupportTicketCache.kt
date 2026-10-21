@@ -1,6 +1,7 @@
 package com.schooldb.support.tickets
 
 import android.content.Context
+import androidx.core.content.edit
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -83,18 +84,18 @@ class SupportTicketCache(context: Context) {
             put("total", result.total)
             put("totalPages", result.totalPages)
         }
-        preferences.edit().putString(key(userId, school), payload.toString()).apply()
+        preferences.edit { putString(key(userId, school), payload.toString()) }
     }
 
     fun clear(userId: String, school: String) {
-        preferences.edit()
-            .remove(key(userId, school))
-            .remove(legacyKey(school))
-            .apply()
+        preferences.edit {
+            remove(key(userId, school))
+            remove(legacyKey(school))
+        }
     }
 
     private fun removeLegacySchoolEntry(school: String) {
-        preferences.edit().remove(legacyKey(school)).apply()
+        preferences.edit { remove(legacyKey(school)) }
     }
 
     private fun key(userId: String, school: String) = supportTicketCacheKey(userId, school)

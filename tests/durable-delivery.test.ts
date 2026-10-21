@@ -12,7 +12,8 @@ test("push delivery uses a durable uniquely keyed job", () => {
 
   assert.match(schema, /model PushDeliveryJob/);
   assert.match(schema, /announcementId\s+String\s+@unique/);
-  assert.match(schema, /@@index\(\[status, nextAttemptAt\]\)/);
+  assert.match(schema, /@@index\(\[status, nextAttemptAt, createdAt\]\)/);
+  assert.match(schema, /@@index\(\[status, startedAt\]\)/);
   assert.match(queue, /attempts:\s*\{ lt: MAX_PUSH_ATTEMPTS \}/);
   assert.match(queue, /Recovered after an interrupted worker/);
 });

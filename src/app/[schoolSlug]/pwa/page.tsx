@@ -18,8 +18,8 @@ export default async function PwaSettingsPage({ params }: { params: Promise<{ sc
         <Button asChild variant="ghost" size="sm"><Link href={backHref}><ArrowLeft className="size-4" /> Back</Link></Button>
       </div>
       <PageHeader
-        title="PWA & device settings"
-        description="Notifications, offline access, updates, passkeys, sharing, and device diagnostics."
+        title="App & notification settings"
+        description="Notifications, app updates, passkeys, sharing, and device diagnostics."
       />
       <PwaControlCenter
         schoolSlug={schoolSlug}
