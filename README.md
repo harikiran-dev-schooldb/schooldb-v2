@@ -296,6 +296,7 @@ for supported production document and export workflows.
 | `npm run test:e2e:public` | Run public-page Playwright tests |
 | `npm run validate` | Validate the Prisma schema |
 | `npm run load:test` | Run the configured API load test |
+| `npm run load:test:plan` | Print the configured load-test profile without sending requests |
 | `npm run web-push:keys` | Generate Web Push VAPID keys |
 | `npm run db:migrate:deploy` | Apply production database migrations |
 

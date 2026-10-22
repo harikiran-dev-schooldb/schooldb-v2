@@ -42,20 +42,32 @@ LOAD_TEST_CONCURRENCY=250 LOAD_TEST_DURATION_SECONDS=30 npm run load:test
 
 The default pass criteria are no more than 1% failed requests and p95 latency no higher than 1,000 ms. The health test measures web-server and database connectivity capacity; key authenticated workflows should also be tested with synthetic staging accounts before launch.
 
-For a mixed authenticated staging run, provide comma-separated endpoints and a
-dedicated test account's cookie through the environment (never commit it):
+For realistic staging tests, use one of the read-only profiles. Each profile
+first checks every endpoint once and stops before the load phase if the account,
+role, school slug, or route is invalid. `admin-mobile`, `teacher-mobile`, and
+`family-mobile` cover the main Android app; `support-mobile` covers the separate
+support app.
 
 ```sh
-LOAD_TEST_URLS="https://staging.example.com/api/health,https://staging.example.com/api/v1/dashboard" \
+LOAD_TEST_PROFILE=admin-mobile \
+LOAD_TEST_BASE_URL="https://staging.example.com" \
 LOAD_TEST_SCHOOL_SLUG="demo-school" \
-LOAD_TEST_COOKIE="__session=..." \
-LOAD_TEST_CONCURRENCY=250 \
+LOAD_TEST_AUTH_TOKEN="dedicated-staging-user-token" \
+LOAD_TEST_CONCURRENCY=25 \
 LOAD_TEST_DURATION_SECONDS=30 \
 npm run load:test
 ```
 
-The test distributes requests across the supplied endpoints and reports both the
-combined latency/error threshold and per-target request/error counts.
+Use `LOAD_TEST_COOKIE` instead of `LOAD_TEST_AUTH_TOKEN` when testing a saved web
+session. Run `npm run load:test:plan` first to print the selected endpoints
+without sending requests. The test includes realistic endpoint weights and a
+250ms think time, and reports combined and per-endpoint latency, status, and
+error measurements. It sends only GET requests and never performs writes.
+
+Production domains are rejected unless `LOAD_TEST_ALLOW_PRODUCTION=true` is set
+explicitly. Prefer staging; production tests compete with real student traffic.
+Custom comma-separated `LOAD_TEST_URLS` remain available for focused read-only
+tests.
 
 ## Backup restore drill
 
