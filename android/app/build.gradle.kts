@@ -56,6 +56,16 @@ val versionCodeOverride = providers.gradleProperty("VERSION_CODE")
     .orElse(providers.environmentVariable("VERSION_CODE"))
     .orNull
     ?.toIntOrNull()
+val trackedVersionCodeFile = rootProject.file(".version-code")
+val trackedVersionCode = trackedVersionCodeFile
+    .takeIf { it.isFile }
+    ?.readText()
+    ?.trim()
+    ?.toIntOrNull()
+
+require(trackedVersionCode != null && trackedVersionCode > 0) {
+    "${trackedVersionCodeFile.path} must contain a positive integer version code."
+}
 
 android {
     namespace = "com.schooldb.mobile"
@@ -65,7 +75,7 @@ android {
         applicationId = "com.schooldb.mobile"
         minSdk = 26
         targetSdk = 37
-        versionCode = versionCodeOverride ?: 19
+        versionCode = versionCodeOverride ?: trackedVersionCode
         versionName = "0.3.14"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
