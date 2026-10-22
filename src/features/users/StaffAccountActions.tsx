@@ -173,6 +173,8 @@ export function CreateStaffAccountButton({
 
 type EditableStaffAccount = {
   id: string;
+  userId: string;
+  clerkUserId: string;
   name: string;
   phone: string;
   role: string;
@@ -254,7 +256,7 @@ export function EditStaffAccountButton({
         </Button>
       </DialogTrigger>
 
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
         <form onSubmit={submit}>
           <DialogHeader>
             <DialogTitle>Edit staff user</DialogTitle>
@@ -265,6 +267,35 @@ export function EditStaffAccountButton({
           </DialogHeader>
 
           <div className="grid gap-5 py-6">
+            <div className="grid gap-3 rounded-xl border border-border/70 bg-muted/40 p-3">
+              <div className="grid gap-2">
+                <Label htmlFor={`edit-staff-user-id-${account.id}`}>
+                  User ID
+                </Label>
+                <Input
+                  id={`edit-staff-user-id-${account.id}`}
+                  value={account.userId}
+                  readOnly
+                  className="bg-background font-mono text-xs text-muted-foreground"
+                />
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor={`edit-staff-clerk-id-${account.id}`}>
+                  Clerk ID
+                </Label>
+                <Input
+                  id={`edit-staff-clerk-id-${account.id}`}
+                  value={account.clerkUserId}
+                  readOnly
+                  className="bg-background font-mono text-xs text-muted-foreground"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                These account IDs are read-only.
+              </p>
+            </div>
+
             <div className="grid gap-2">
               <Label htmlFor={`edit-staff-name-${account.id}`}>
                 Full name

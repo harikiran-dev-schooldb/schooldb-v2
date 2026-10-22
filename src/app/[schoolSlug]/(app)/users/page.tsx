@@ -44,6 +44,7 @@ export default async function StaffUsersPage({ params }: Props) {
       userId: true,
       user: {
         select: {
+          clerkUserId: true,
           firstName: true,
           lastName: true,
           phone: true,
@@ -72,6 +73,7 @@ export default async function StaffUsersPage({ params }: Props) {
     return {
       id: account.id,
       userId: account.userId,
+      clerkUserId: account.user.clerkUserId,
       name,
       phone: account.user.phone || "",
       role: account.role,
