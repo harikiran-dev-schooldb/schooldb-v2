@@ -26,6 +26,7 @@ import {
 export type StaffUserRow = {
   id: string;
   userId: string;
+  clerkUserId: string;
   name: string;
   phone: string;
   role: string;
@@ -169,6 +170,8 @@ const staffColumns: ColumnDef<StaffUserRow>[] = [
               <EditStaffAccountButton
                 account={{
                   id: account.id,
+                  userId: account.userId,
+                  clerkUserId: account.clerkUserId,
                   name: account.name,
                   phone: account.phone,
                   role: account.role,
