@@ -22,6 +22,9 @@ data class SupportTicketUiState(
     val analyticsError: String? = null,
     val query: String = "",
     val filter: String = "ALL",
+    val priorityFilter: String = "ALL",
+    val typeFilter: String = "ALL",
+    val sourceFilter: String = "ALL",
     val page: Int = 1,
     val total: Int = 0,
     val totalPages: Int = 1,
@@ -43,6 +46,18 @@ class SupportTicketViewModel(
         _state.update { it.copy(filter = value, page = 1) }
     }
 
+    fun setInboxFilters(queue: String, priority: String, type: String, source: String) {
+        _state.update {
+            it.copy(
+                filter = queue,
+                priorityFilter = priority,
+                typeFilter = type,
+                sourceFilter = source,
+                page = 1,
+            )
+        }
+    }
+
     fun setPage(value: Int) {
         _state.update { it.copy(page = value) }
     }
@@ -59,14 +74,18 @@ class SupportTicketViewModel(
         filter: String = state.value.filter,
         query: String = state.value.query,
         targetPage: Int = state.value.page,
+        priority: String = state.value.priorityFilter,
+        type: String = state.value.typeFilter,
+        source: String = state.value.sourceFilter,
         cache: SupportTicketCache? = null,
         cacheUserId: String? = null,
     ) {
         _state.update { it.copy(ticketsLoading = true) }
         try {
-            val result = repository.tickets(school, filter, query, targetPage)
+            val result = repository.tickets(school, filter, query, targetPage, priority, type, source)
             applyTicketList(result, showingCachedData = false, cachedAt = System.currentTimeMillis())
-            if ((filter.isBlank() || filter == "ALL") && query.isBlank() && targetPage == 1) {
+            if ((filter.isBlank() || filter == "ALL") && priority == "ALL" && type == "ALL" &&
+                source == "ALL" && query.isBlank() && targetPage == 1) {
                 if (!cacheUserId.isNullOrBlank()) {
                     withContext(Dispatchers.IO) { cache?.write(cacheUserId, school, result) }
                 }

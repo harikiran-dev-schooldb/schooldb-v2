@@ -379,14 +379,20 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
         filter: String = ticketState.filter,
         query: String = ticketState.query,
         targetPage: Int = ticketState.page,
+        priority: String = ticketState.priorityFilter,
+        type: String = ticketState.typeFilter,
+        source: String = ticketState.sourceFilter,
     ) {
         ticketViewModel.loadTickets(
-            school,
-            filter,
-            query,
-            targetPage,
-            ticketCache,
-            cacheUserId.takeIf(String::isNotBlank),
+            school = school,
+            filter = filter,
+            query = query,
+            targetPage = targetPage,
+            priority = priority,
+            type = type,
+            source = source,
+            cache = ticketCache,
+            cacheUserId = cacheUserId.takeIf(String::isNotBlank),
         )
     }
 
@@ -860,6 +866,10 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
                     manualRefreshing = manualRefreshing,
                     selectedTab = dashboardTab.label,
                     query = ticketState.query,
+                    queueFilter = ticketState.filter,
+                    priorityFilter = ticketState.priorityFilter,
+                    typeFilter = ticketState.typeFilter,
+                    sourceFilter = ticketState.sourceFilter,
                     page = ticketState.page,
                     total = ticketState.total,
                     totalPages = ticketState.totalPages,
@@ -871,6 +881,10 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
                     onPage = { nextPage ->
                         ticketViewModel.setPage(nextPage)
                         run { loadTickets(ticketState.filter, ticketState.query, nextPage) }
+                    },
+                    onFiltersChange = { queue, priority, type, source ->
+                        ticketViewModel.setInboxFilters(queue, priority, type, source)
+                        run { loadTickets(queue, ticketState.query, 1, priority, type, source) }
                     },
                     requestedFilter = requestedTicketFilter,
                     onFilterConsumed = { requestedTicketFilter = null },

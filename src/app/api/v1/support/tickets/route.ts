@@ -30,6 +30,9 @@ export async function GET(request: Request) {
     const visibility = ticketVisibility(actor);
     const url = new URL(request.url);
     const filter = url.searchParams.get("filter")?.toUpperCase() ?? "ALL";
+    const priority = url.searchParams.get("priority")?.toUpperCase() ?? "ALL";
+    const type = url.searchParams.get("type")?.toUpperCase() ?? "ALL";
+    const source = url.searchParams.get("source")?.toUpperCase() ?? "ALL";
     const q = url.searchParams.get("q")?.trim().slice(0, 100) ?? "";
     const page = Math.max(Number.parseInt(url.searchParams.get("page") ?? "1", 10) || 1, 1);
     const pageSize = Math.min(Math.max(Number.parseInt(url.searchParams.get("pageSize") ?? "25", 10) || 25, 10), 100);
@@ -53,10 +56,21 @@ export async function GET(request: Request) {
             { description: { contains: q, mode: "insensitive" } },
             { student: { is: { fullName: { contains: q, mode: "insensitive" } } } },
             { student: { is: { admissionNo: { contains: q, mode: "insensitive" } } } },
+            { parentName: { contains: q, mode: "insensitive" } },
+            { parentPhone: { contains: q, mode: "insensitive" } },
           ],
         }
       : {};
-    const where: Prisma.SupportTicketWhereInput = { ...visibility, ...filterWhere, ...searchWhere };
+    const refinementWhere: Prisma.SupportTicketWhereInput = {
+      ...(Object.values(SupportTicketPriority).includes(priority as SupportTicketPriority)
+        ? { priority: priority as SupportTicketPriority }
+        : {}),
+      ...(Object.values(SupportTicketType).includes(type as SupportTicketType)
+        ? { type: type as SupportTicketType }
+        : {}),
+      ...(source === "PARENT_QR" || source === "STAFF" ? { source } : {}),
+    };
+    const where: Prisma.SupportTicketWhereInput = { AND: [visibility, filterWhere, searchWhere, refinementWhere] };
     const [tickets, total, open, inProgress, urgent, resolved] = await Promise.all([
       prisma.supportTicket.findMany({
       where,

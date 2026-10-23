@@ -168,10 +168,21 @@ class SupportRepository {
         if (!succeeded) error(failure ?: "Could not sign out.")
     }
 
-    suspend fun tickets(school: String, filter: String? = null, query: String = "", page: Int = 1): TicketList = withContext(Dispatchers.IO) {
+    suspend fun tickets(
+        school: String,
+        filter: String? = null,
+        query: String = "",
+        page: Int = 1,
+        priority: String = "ALL",
+        type: String = "ALL",
+        source: String = "ALL",
+    ): TicketList = withContext(Dispatchers.IO) {
         val params = mutableListOf<String>()
         if (!filter.isNullOrBlank() && filter != "ALL") params += "filter=" + java.net.URLEncoder.encode(filter, "UTF-8")
         if (query.isNotBlank()) params += "q=" + java.net.URLEncoder.encode(query.trim(), "UTF-8")
+        if (priority != "ALL") params += "priority=" + java.net.URLEncoder.encode(priority, "UTF-8")
+        if (type != "ALL") params += "type=" + java.net.URLEncoder.encode(type, "UTF-8")
+        if (source != "ALL") params += "source=" + java.net.URLEncoder.encode(source, "UTF-8")
         params += "page=" + page
         params += "pageSize=25"
         val path = "api/v1/support/tickets?" + params.joinToString("&")
