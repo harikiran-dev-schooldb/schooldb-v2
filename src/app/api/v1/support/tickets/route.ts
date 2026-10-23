@@ -126,6 +126,7 @@ export async function POST(request: Request) {
         ticketId: ticket.id,
         ticketNo: ticket.ticketNo,
         eventKey: "CREATED",
+        priority: ticket.priority,
       });
     } catch (error) {
       console.error("Support push failed", error);

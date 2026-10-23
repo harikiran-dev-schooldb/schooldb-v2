@@ -12,6 +12,7 @@ import {
 import { mapWithConcurrency } from "./batch";
 import { notificationAudienceIncludesAdmins } from "./audience";
 import { notificationEnabled } from "./preferences";
+import { SCHOOLDB_PUSH_APP } from "./routing";
 
 type PushAnnouncement = {
   id: string;
@@ -222,6 +223,7 @@ export async function sendAnnouncementPush(announcement: PushAnnouncement) {
           where: {
             schoolId: announcement.schoolId,
             userId: { in: enabledUserIds },
+            app: SCHOOLDB_PUSH_APP,
             enabled: true,
           },
           select: {

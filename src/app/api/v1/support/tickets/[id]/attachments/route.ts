@@ -1,6 +1,7 @@
 import { apiErrorResponse } from "@/lib/api";
 import { ApiError } from "@/lib/errors";
 import { prisma } from "@/lib/prisma";
+import { sendSupportPush, supportAdminUserIds } from "@/lib/support-push";
 import {
   deleteSupportTicketAttachment,
   saveSupportTicketAttachment,
@@ -68,6 +69,25 @@ export async function POST(request: Request, context: Context) {
 
       return created;
     });
+
+    try {
+      const recipients = ticket.assignedToId
+        ? [ticket.createdById, ticket.assignedToId]
+        : [ticket.createdById, ...(await supportAdminUserIds(actor.schoolId))];
+      await sendSupportPush({
+        schoolId: actor.schoolId,
+        userIds: recipients.filter((id): id is string => Boolean(id)),
+        excludeUserId: actor.userId,
+        title: `Attachment added · ${ticket.ticketNo}`,
+        body: attachment.originalName,
+        ticketId: ticket.id,
+        ticketNo: ticket.ticketNo,
+        eventKey: `ATTACHMENT:${attachment.id}`,
+        priority: ticket.priority,
+      });
+    } catch (error) {
+      console.error("Support push failed", error);
+    }
 
     return Response.json(
       { success: true, data: attachment, message: "Attachment uploaded" },

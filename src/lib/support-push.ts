@@ -2,6 +2,7 @@ import { firebaseMessaging } from "@/lib/firebase-admin";
 import { prisma } from "@/lib/prisma";
 import { notificationDedupeKey } from "@/features/notifications/dedupe";
 import { deliverAnnouncementPushDurably } from "@/features/notifications/push-queue";
+import { supportNotificationPriority } from "@/features/notifications/routing";
 
 const SUPPORT_APP = "SCHOOL_SUPPORT";
 
@@ -20,6 +21,7 @@ export async function sendSupportPush(input: {
   ticketId: string;
   ticketNo: string;
   eventKey: string;
+  priority: string;
 }) {
   const school = await prisma.school.findUnique({
     where: { id: input.schoolId },
@@ -38,7 +40,7 @@ export async function sendSupportPush(input: {
         title: input.title,
         body: input.body,
         category: "SUPPORT",
-        priority: input.title.toLowerCase().includes("urgent") ? "URGENT" : "NORMAL",
+        priority: supportNotificationPriority(input.priority),
         targetType: "ADMIN",
         targetId: input.ticketId,
         targetLabel: "School administrators",
@@ -93,7 +95,7 @@ export async function sendSupportPush(input: {
       body: input.body,
       ticketId: input.ticketId,
       ticketNo: input.ticketNo,
-      priority: input.title.toLowerCase().includes("urgent") ? "URGENT" : "NORMAL",
+      priority: supportNotificationPriority(input.priority),
     },
     android: {
       priority: "high",

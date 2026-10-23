@@ -173,6 +173,7 @@ export async function submitParentSupport(input: {
       ticketId: ticket.id,
       ticketNo: ticket.ticketNo,
       eventKey: "CREATED",
+      priority: "NORMAL",
     });
   } catch (error) {
     console.error("Parent support push failed", error);

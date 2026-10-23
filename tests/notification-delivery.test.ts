@@ -3,6 +3,10 @@ import test from "node:test";
 import { mapWithConcurrency } from "../src/features/notifications/batch.ts";
 import { notificationDedupeKey } from "../src/features/notifications/dedupe.ts";
 import { notificationAudienceIncludesAdmins } from "../src/features/notifications/audience.ts";
+import {
+  SCHOOLDB_PUSH_APP,
+  supportNotificationPriority,
+} from "../src/features/notifications/routing.ts";
 
 test("notification dedupe keys are stable and source-specific", () => {
   assert.equal(notificationDedupeKey.homeworkPublished("hw-1"), "HOMEWORK:hw-1:PUBLISHED");
@@ -33,4 +37,11 @@ test("bounded notification batching preserves order and concurrency", async () =
 
 test("batch helper rejects invalid concurrency", async () => {
   await assert.rejects(() => mapWithConcurrency([1], 0, async (v) => v), /positive integer/);
+});
+
+test("announcement and support pushes use separate app routing", () => {
+  assert.equal(SCHOOLDB_PUSH_APP, "SCHOOLDB");
+  assert.equal(supportNotificationPriority("URGENT"), "URGENT");
+  assert.equal(supportNotificationPriority("HIGH"), "NORMAL");
+  assert.equal(supportNotificationPriority("normal"), "NORMAL");
 });
