@@ -271,10 +271,24 @@ class SupportRepository {
         )
     }
 
-    suspend fun searchStudents(school: String, query: String): List<StudentOption> = withContext(Dispatchers.IO) {
+    suspend fun searchStudents(
+        school: String,
+        query: String,
+        classId: String = "",
+        sectionId: String = "",
+        gender: String = "",
+        isRte: String = "",
+    ): StudentSearchResult = withContext(Dispatchers.IO) {
         val encoded = java.net.URLEncoder.encode(query, "UTF-8")
-        val items = request("GET", "api/v1/support/students?q=$encoded", school).getJSONArray("data")
-        (0 until items.length()).map { index ->
+        val encodedClassId = java.net.URLEncoder.encode(classId, "UTF-8")
+        val encodedSectionId = java.net.URLEncoder.encode(sectionId, "UTF-8")
+        val data = request(
+            "GET",
+            "api/v1/support/students?q=$encoded&classId=$encodedClassId&sectionId=$encodedSectionId&gender=$gender&isRte=$isRte",
+            school,
+        ).getJSONObject("data")
+        val items = data.getJSONArray("students")
+        val students = (0 until items.length()).map { index ->
             val item = items.getJSONObject(index)
             StudentOption(item.getString("id"), item.getString("admissionNo"), item.getString("fullName"),
                 item.optString("academicYearName").takeUnless { it.isBlank() || it == "null" },
@@ -283,6 +297,23 @@ class SupportRepository {
                 item.optString("className").takeUnless { it.isBlank() || it == "null" },
                 item.optString("sectionName").takeUnless { it.isBlank() || it == "null" })
         }
+        val classItems = data.getJSONArray("classes")
+        val sectionItems = data.getJSONArray("sections")
+        StudentSearchResult(
+            students = students,
+            classes = (0 until classItems.length()).map { index ->
+                val item = classItems.getJSONObject(index)
+                StudentClassOption(item.getString("id"), item.getString("name"))
+            },
+            sections = (0 until sectionItems.length()).map { index ->
+                val item = sectionItems.getJSONObject(index)
+                StudentSectionOption(
+                    item.getString("id"),
+                    item.getString("name"),
+                    item.getString("classId"),
+                )
+            },
+        )
     }
 
     suspend fun create(school: String, subject: String, description: String, type: TicketType,

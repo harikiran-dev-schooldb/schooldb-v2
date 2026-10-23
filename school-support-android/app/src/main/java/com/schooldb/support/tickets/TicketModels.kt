@@ -24,6 +24,23 @@ data class StudentOption(
     val sectionName: String?,
 )
 
+data class StudentClassOption(
+    val id: String,
+    val name: String,
+)
+
+data class StudentSectionOption(
+    val id: String,
+    val name: String,
+    val classId: String,
+)
+
+data class StudentSearchResult(
+    val students: List<StudentOption>,
+    val classes: List<StudentClassOption>,
+    val sections: List<StudentSectionOption>,
+)
+
 data class TicketSummary(
     val id: String,
     val ticketNo: String,

@@ -140,6 +140,17 @@ internal data class AdminListRow(
     val locked: Boolean = false,
 )
 
+internal data class AdminStudentClass(
+    val id: String,
+    val name: String,
+)
+
+internal data class AdminStudentSection(
+    val id: String,
+    val name: String,
+    val classId: String,
+)
+
 internal data class AdminSectionState(
     val rows: List<AdminListRow> = emptyList(),
     val total: Int = 0,
@@ -149,6 +160,8 @@ internal data class AdminSectionState(
     val error: String? = null,
     val savingId: String? = null,
     val actionMessage: String? = null,
+    val studentClasses: List<AdminStudentClass> = emptyList(),
+    val studentSections: List<AdminStudentSection> = emptyList(),
 )
 
 internal class AdminSectionViewModel : ViewModel() {
@@ -161,6 +174,10 @@ internal class AdminSectionViewModel : ViewModel() {
         page: Int = mutableState.value.page,
         query: String = "",
         period: String = "",
+        classId: String = "",
+        sectionId: String = "",
+        gender: String = "",
+        isRte: String = "",
         forceRefresh: Boolean = false,
     ) {
         mutableState.value = mutableState.value.copy(loading = true, error = null)
@@ -169,10 +186,14 @@ internal class AdminSectionViewModel : ViewModel() {
                 val data = withContext(Dispatchers.IO) {
                     val encoded = URLEncoder.encode(query.trim(), StandardCharsets.UTF_8.toString())
                     val encodedPeriod = URLEncoder.encode(period, StandardCharsets.UTF_8.toString())
-                    api.get("api/v1/mobile/admin/sections?section=$section&page=$page&q=$encoded&period=$encodedPeriod",
+                    val encodedClassId = URLEncoder.encode(classId, StandardCharsets.UTF_8.toString())
+                    val encodedSectionId = URLEncoder.encode(sectionId, StandardCharsets.UTF_8.toString())
+                    api.get("api/v1/mobile/admin/sections?section=$section&page=$page&q=$encoded&period=$encodedPeriod&classId=$encodedClassId&sectionId=$encodedSectionId&gender=$gender&isRte=$isRte",
                         cacheTtlMillis = 120_000L, forceRefresh = forceRefresh)
                 }
                 val items = data.getJSONArray("rows")
+                val classes = data.optJSONArray("classes")
+                val sections = data.optJSONArray("sections")
                 mutableState.value = mutableState.value.copy(
                     rows = (0 until items.length()).map { index ->
                         val item = items.getJSONObject(index)
@@ -190,6 +211,20 @@ internal class AdminSectionViewModel : ViewModel() {
                     pageSize = data.optInt("pageSize", 20),
                     loading = false,
                     error = null,
+                    studentClasses = if (classes == null) mutableState.value.studentClasses else
+                        (0 until classes.length()).map { index ->
+                            val item = classes.getJSONObject(index)
+                            AdminStudentClass(item.optString("id"), item.optString("name"))
+                        },
+                    studentSections = if (sections == null) mutableState.value.studentSections else
+                        (0 until sections.length()).map { index ->
+                            val item = sections.getJSONObject(index)
+                            AdminStudentSection(
+                                item.optString("id"),
+                                item.optString("name"),
+                                item.optString("classId"),
+                            )
+                        },
                 )
             } catch (error: Exception) {
                 mutableState.value = mutableState.value.copy(
@@ -297,6 +332,10 @@ fun AdminSectionScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val title = sectionTitles[section] ?: "School data"
     var query by rememberSaveable(section) { mutableStateOf("") }
+    var studentClassId by rememberSaveable(section) { mutableStateOf("") }
+    var studentSectionId by rememberSaveable(section) { mutableStateOf("") }
+    var studentGender by rememberSaveable(section) { mutableStateOf("") }
+    var studentRte by rememberSaveable(section) { mutableStateOf("") }
     var statusFilter by rememberSaveable(section) { mutableStateOf("ALL") }
     var birthdayPeriod by rememberSaveable(section) { mutableStateOf("TODAY") }
     var decisionRequest by rememberSaveable(section) { mutableStateOf<String?>(null) }
@@ -312,10 +351,11 @@ fun AdminSectionScreen(
     }
     val period = if (section == "birthdays") birthdayPeriod else ""
     BackHandler(onBack = onBack)
-    LaunchedEffect(section, query, birthdayPeriod) {
+    LaunchedEffect(section, query, birthdayPeriod, studentClassId, studentSectionId, studentGender, studentRte) {
         delay(if (query.isBlank()) 0 else 350)
         statusFilter = "ALL"
-        viewModel.load(section, 1, query, period = period)
+        viewModel.load(section, 1, query, period = period, classId = studentClassId,
+            sectionId = studentSectionId, gender = studentGender, isRte = studentRte)
     }
 
     if (decisionRequest != null) {
@@ -445,12 +485,14 @@ fun AdminSectionScreen(
             actionIcon = Lucide.RefreshCw,
             actionDescription = "Refresh $title",
             actionEnabled = !state.loading,
-            onAction = { viewModel.load(section, state.page, query, period = period, forceRefresh = true) },
+            onAction = { viewModel.load(section, state.page, query, period = period, classId = studentClassId,
+                sectionId = studentSectionId, gender = studentGender, isRte = studentRte, forceRefresh = true) },
         )
     }) { padding ->
         PullToRefreshBox(
             isRefreshing = state.loading && state.rows.isNotEmpty(),
-            onRefresh = { viewModel.load(section, state.page, query, period = period, forceRefresh = true) },
+            onRefresh = { viewModel.load(section, state.page, query, period = period, classId = studentClassId,
+                sectionId = studentSectionId, gender = studentGender, isRte = studentRte, forceRefresh = true) },
             modifier = Modifier.fillMaxSize().padding(padding),
         ) {
         if (state.loading && state.rows.isEmpty()) {
@@ -460,7 +502,8 @@ fun AdminSectionScreen(
                 verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(state.error ?: "Could not load", color = MaterialTheme.colorScheme.error)
                 Spacer(Modifier.height(12.dp))
-                Button(onClick = { viewModel.load(section, 1, query, period = period, forceRefresh = true) }) { Text("Try again") }
+                Button(onClick = { viewModel.load(section, 1, query, period = period, classId = studentClassId,
+                    sectionId = studentSectionId, gender = studentGender, isRte = studentRte, forceRefresh = true) }) { Text("Try again") }
             }
         } else {
             LazyColumn(Modifier.fillMaxSize(),
@@ -470,7 +513,7 @@ fun AdminSectionScreen(
                         value = query,
                         onValueChange = { query = it.take(100) },
                         modifier = Modifier.fillMaxWidth(),
-                        placeholder = { Text("Search $title") },
+                        placeholder = { Text(if (section == "students") "Search name, admission no. or phone" else "Search $title") },
                         leadingIcon = { Icon(Lucide.Search, contentDescription = null) },
                         trailingIcon = {
                             if (query.isNotEmpty()) IconButton(onClick = { query = "" }) {
@@ -485,6 +528,24 @@ fun AdminSectionScreen(
                             focusedContainerColor = Color.White,
                             unfocusedContainerColor = Color.White,
                         ),
+                    )
+                }
+                if (section == "students") item {
+                    StudentDirectoryFilters(
+                        state = state,
+                        classId = studentClassId,
+                        sectionId = studentSectionId,
+                        gender = studentGender,
+                        rte = studentRte,
+                        onClass = { nextClassId ->
+                            studentClassId = nextClassId
+                            if (state.studentSections.none { it.id == studentSectionId && (nextClassId.isBlank() || it.classId == nextClassId) }) {
+                                studentSectionId = ""
+                            }
+                        },
+                        onSection = { studentSectionId = it },
+                        onGender = { studentGender = it },
+                        onRte = { studentRte = it },
                     )
                 }
                 if (section == "birthdays") item {
@@ -697,12 +758,14 @@ fun AdminSectionScreen(
                 item {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically) {
-                        OutlinedButton(onClick = { viewModel.load(section, state.page - 1, query, period = period) },
+                        OutlinedButton(onClick = { viewModel.load(section, state.page - 1, query, period = period, classId = studentClassId,
+                            sectionId = studentSectionId, gender = studentGender, isRte = studentRte) },
                             enabled = !state.loading && state.page > 1,
                             shape = RoundedCornerShape(14.dp)) { Text("Previous") }
                         Text("Page ${state.page} of ${((state.total + state.pageSize - 1) / state.pageSize).coerceAtLeast(1)}",
                             style = MaterialTheme.typography.bodySmall, color = AdminWebSlate)
-                        OutlinedButton(onClick = { viewModel.load(section, state.page + 1, query, period = period) },
+                        OutlinedButton(onClick = { viewModel.load(section, state.page + 1, query, period = period, classId = studentClassId,
+                            sectionId = studentSectionId, gender = studentGender, isRte = studentRte) },
                             enabled = !state.loading && state.page * state.pageSize < state.total,
                             shape = RoundedCornerShape(14.dp)) { Text("Next") }
                     }
@@ -711,6 +774,72 @@ fun AdminSectionScreen(
                 state.error?.let { message -> item { Text(message, color = MaterialTheme.colorScheme.error) } }
             }
         }
+        }
+    }
+}
+
+@Composable
+internal fun StudentDirectoryFilters(
+    state: AdminSectionState,
+    classId: String,
+    sectionId: String,
+    gender: String,
+    rte: String,
+    onClass: (String) -> Unit,
+    onSection: (String) -> Unit,
+    onGender: (String) -> Unit,
+    onRte: (String) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (state.studentClasses.isNotEmpty()) {
+            StudentFilterRow(
+                options = listOf("" to "All classes") + state.studentClasses.map { it.id to it.name },
+                selected = classId,
+                onSelect = onClass,
+            )
+        }
+        val visibleSections = state.studentSections.filter { classId.isBlank() || it.classId == classId }
+        if (visibleSections.isNotEmpty()) {
+            StudentFilterRow(
+                options = listOf("" to "All sections") + visibleSections.map { it.id to it.name },
+                selected = sectionId,
+                onSelect = onSection,
+            )
+        }
+        StudentFilterRow(
+            options = listOf("" to "All genders", "MALE" to "Male", "FEMALE" to "Female", "OTHER" to "Other"),
+            selected = gender,
+            onSelect = onGender,
+        )
+        StudentFilterRow(
+            options = listOf("" to "All students", "true" to "RTE", "false" to "Non-RTE"),
+            selected = rte,
+            onSelect = onRte,
+        )
+    }
+}
+
+@Composable
+private fun StudentFilterRow(
+    options: List<Pair<String, String>>,
+    selected: String,
+    onSelect: (String) -> Unit,
+) {
+    Row(
+        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        options.forEach { (value, label) ->
+            FilterChip(
+                selected = selected == value,
+                onClick = { onSelect(value) },
+                label = { Text(label) },
+                colors = FilterChipDefaults.filterChipColors(
+                    containerColor = Color.White,
+                    selectedContainerColor = Color(0xFFEEF2FF),
+                    selectedLabelColor = AdminWebIndigo,
+                ),
+            )
         }
     }
 }

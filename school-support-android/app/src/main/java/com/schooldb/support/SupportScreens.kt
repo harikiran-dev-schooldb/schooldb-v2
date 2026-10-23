@@ -598,7 +598,44 @@ internal fun CreateTicket(api: SupportRepository, school: String, busy: Boolean,
     val scope = rememberCoroutineScope()
     var search by remember { mutableStateOf("") }
     var options by remember { mutableStateOf<List<StudentOption>>(emptyList()) }
+    var classes by remember { mutableStateOf<List<StudentClassOption>>(emptyList()) }
+    var sections by remember { mutableStateOf<List<StudentSectionOption>>(emptyList()) }
+    var selectedClassId by remember { mutableStateOf("") }
+    var selectedSectionId by remember { mutableStateOf("") }
+    var selectedGender by remember { mutableStateOf("") }
+    var selectedRte by remember { mutableStateOf("") }
     var searchError by remember { mutableStateOf("") }
+    fun findStudents(
+        classFilter: String = selectedClassId,
+        sectionFilter: String = selectedSectionId,
+        genderFilter: String = selectedGender,
+        rteFilter: String = selectedRte,
+    ) {
+        scope.launch {
+            try {
+                val result = api.searchStudents(
+                    school, search, classFilter, sectionFilter, genderFilter, rteFilter,
+                )
+                options = result.students
+                classes = result.classes
+                sections = result.sections
+                searchError = ""
+            } catch (e: Exception) {
+                searchError = e.message ?: "Search failed."
+            }
+        }
+    }
+    LaunchedEffect(draft.type) {
+        if (draft.type == TicketType.STUDENT && classes.isEmpty()) {
+            try {
+                val result = api.searchStudents(school, "")
+                classes = result.classes
+                sections = result.sections
+            } catch (_: Exception) {
+                // The explicit search action will surface a connection error.
+            }
+        }
+    }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Spacer(Modifier.height(2.dp))
@@ -630,14 +667,93 @@ internal fun CreateTicket(api: SupportRepository, school: String, busy: Boolean,
         }
         if (draft.type == TicketType.STUDENT) {
             SurfaceCard(Modifier.fillMaxWidth()) {
-                SectionTitle("Link a student", "Search by name or admission number")
+                SectionTitle("Link a student", "Search by name, admission number, or phone")
                 Spacer(Modifier.height(12.dp))
-                SupportField(search, { search = it; onDraftChange(draft.copy(selectedStudent = null)) }, "Student name or admission number")
+                SupportField(search, { search = it; onDraftChange(draft.copy(selectedStudent = null)) }, "Name, admission number, or phone")
+                if (classes.isNotEmpty()) {
+                    Spacer(Modifier.height(10.dp))
+                    Row(
+                        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        listOf(StudentClassOption("", "All classes")).plus(classes).forEach { option ->
+                            FilterChip(
+                                selected = selectedClassId == option.id,
+                                onClick = {
+                                    selectedClassId = option.id
+                                    selectedSectionId = ""
+                                    onDraftChange(draft.copy(selectedStudent = null))
+                                    findStudents(classFilter = option.id, sectionFilter = "")
+                                },
+                                label = { Text(option.name) },
+                            )
+                        }
+                    }
+                }
+                val visibleSections = sections.filter {
+                    selectedClassId.isBlank() || it.classId == selectedClassId
+                }
+                if (visibleSections.isNotEmpty()) {
+                    Spacer(Modifier.height(8.dp))
+                    Row(
+                        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        listOf(StudentSectionOption("", "All sections", ""))
+                            .plus(visibleSections).forEach { option ->
+                                FilterChip(
+                                    selected = selectedSectionId == option.id,
+                                    onClick = {
+                                        selectedSectionId = option.id
+                                        onDraftChange(draft.copy(selectedStudent = null))
+                                        findStudents(sectionFilter = option.id)
+                                    },
+                                    label = { Text(option.name) },
+                                )
+                            }
+                    }
+                }
                 Spacer(Modifier.height(8.dp))
-                OutlinedButton(onClick = { scope.launch {
-                    try { options = api.searchStudents(school, search); searchError = "" }
-                    catch (e: Exception) { searchError = e.message ?: "Search failed." }
-                } }, enabled = search.length >= 2, modifier = Modifier.fillMaxWidth(),
+                Row(
+                    Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    listOf("" to "All genders", "MALE" to "Male", "FEMALE" to "Female", "OTHER" to "Other")
+                        .forEach { (value, label) ->
+                            FilterChip(
+                                selected = selectedGender == value,
+                                onClick = {
+                                    selectedGender = value
+                                    onDraftChange(draft.copy(selectedStudent = null))
+                                    findStudents(genderFilter = value)
+                                },
+                                label = { Text(label) },
+                            )
+                        }
+                }
+                Spacer(Modifier.height(8.dp))
+                Row(
+                    Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    listOf("" to "All students", "true" to "RTE", "false" to "Non-RTE")
+                        .forEach { (value, label) ->
+                            FilterChip(
+                                selected = selectedRte == value,
+                                onClick = {
+                                    selectedRte = value
+                                    onDraftChange(draft.copy(selectedStudent = null))
+                                    findStudents(rteFilter = value)
+                                },
+                                label = { Text(label) },
+                            )
+                        }
+                }
+                Spacer(Modifier.height(8.dp))
+                OutlinedButton(onClick = { findStudents() },
+                    enabled = search.trim().length >= 2 || selectedClassId.isNotBlank() ||
+                        selectedSectionId.isNotBlank() || selectedGender.isNotBlank() || selectedRte.isNotBlank(),
+                    modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(13.dp)) {
                     Icon(Icons.Outlined.Search, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))

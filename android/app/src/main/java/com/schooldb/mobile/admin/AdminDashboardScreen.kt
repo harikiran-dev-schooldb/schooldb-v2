@@ -49,7 +49,10 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -113,10 +116,12 @@ import com.composables.icons.lucide.MessageSquareText
 import com.composables.icons.lucide.RefreshCw
 import com.composables.icons.lucide.ReceiptIndianRupee
 import com.composables.icons.lucide.School
+import com.composables.icons.lucide.Search
 import com.composables.icons.lucide.Sparkles
 import com.composables.icons.lucide.UserRoundPlus
 import com.composables.icons.lucide.UserRoundSearch
 import com.composables.icons.lucide.WalletCards
+import com.composables.icons.lucide.X
 import java.io.IOException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -597,13 +602,21 @@ private fun AdminStudentsTab(
     viewModel: AdminSectionViewModel = viewModel(key = "admin-students-tab"),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    LaunchedEffect(Unit) {
-        if (state.rows.isEmpty()) viewModel.load("students")
+    var query by rememberSaveable { mutableStateOf("") }
+    var classId by rememberSaveable { mutableStateOf("") }
+    var sectionId by rememberSaveable { mutableStateOf("") }
+    var gender by rememberSaveable { mutableStateOf("") }
+    var rte by rememberSaveable { mutableStateOf("") }
+    LaunchedEffect(query, classId, sectionId, gender, rte) {
+        delay(if (query.isBlank()) 0 else 350)
+        viewModel.load("students", page = 1, query = query, classId = classId,
+            sectionId = sectionId, gender = gender, isRte = rte)
     }
 
     PullToRefreshBox(
         isRefreshing = state.loading && state.rows.isNotEmpty(),
-        onRefresh = { viewModel.load("students", state.page, forceRefresh = true) },
+        onRefresh = { viewModel.load("students", state.page, query, classId = classId,
+            sectionId = sectionId, gender = gender, isRte = rte, forceRefresh = true) },
         modifier = modifier.fillMaxSize(),
     ) {
         when {
@@ -615,13 +628,54 @@ private fun AdminStudentsTab(
             ) {
                 Text(state.error ?: "Could not load students", color = MaterialTheme.colorScheme.error)
                 Spacer(Modifier.height(12.dp))
-                Button(onClick = { viewModel.load("students", forceRefresh = true) }) { Text("Try again") }
+                Button(onClick = { viewModel.load("students", query = query, classId = classId,
+                    sectionId = sectionId, gender = gender, isRte = rte, forceRefresh = true) }) { Text("Try again") }
             }
             else -> LazyColumn(
                 Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(18.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
+                item {
+                    OutlinedTextField(
+                        value = query,
+                        onValueChange = { query = it.take(100) },
+                        modifier = Modifier.fillMaxWidth(),
+                        placeholder = { Text("Search name, admission no. or phone") },
+                        leadingIcon = { Icon(Lucide.Search, contentDescription = null) },
+                        trailingIcon = {
+                            if (query.isNotEmpty()) IconButton(onClick = { query = "" }) {
+                                Icon(Lucide.X, contentDescription = "Clear search")
+                            }
+                        },
+                        singleLine = true,
+                        shape = RoundedCornerShape(18.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = AdminWebIndigo,
+                            unfocusedBorderColor = AdminWebBorder,
+                            focusedContainerColor = Color.White,
+                            unfocusedContainerColor = Color.White,
+                        ),
+                    )
+                }
+                item {
+                    StudentDirectoryFilters(
+                        state = state,
+                        classId = classId,
+                        sectionId = sectionId,
+                        gender = gender,
+                        rte = rte,
+                        onClass = { nextClassId ->
+                            classId = nextClassId
+                            if (state.studentSections.none { it.id == sectionId && (nextClassId.isBlank() || it.classId == nextClassId) }) {
+                                sectionId = ""
+                            }
+                        },
+                        onSection = { sectionId = it },
+                        onGender = { gender = it },
+                        onRte = { rte = it },
+                    )
+                }
                 item {
                     Text(
                         "${state.total} students",
@@ -676,13 +730,15 @@ private fun AdminStudentsTab(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Button(
-                            onClick = { viewModel.load("students", state.page - 1) },
+                            onClick = { viewModel.load("students", state.page - 1, query, classId = classId,
+                                sectionId = sectionId, gender = gender, isRte = rte) },
                             enabled = !state.loading && state.page > 1,
                         ) { Text("Previous") }
                         Text("Page ${state.page}", style = MaterialTheme.typography.bodySmall,
                             color = AdminWebSlate)
                         Button(
-                            onClick = { viewModel.load("students", state.page + 1) },
+                            onClick = { viewModel.load("students", state.page + 1, query, classId = classId,
+                                sectionId = sectionId, gender = gender, isRte = rte) },
                             enabled = !state.loading && state.page * state.pageSize < state.total,
                         ) { Text("Next") }
                     }

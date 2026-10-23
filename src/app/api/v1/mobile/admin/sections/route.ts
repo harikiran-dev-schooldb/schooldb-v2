@@ -73,6 +73,11 @@ export async function GET(request: Request) {
     }
     const page = Math.max(1, Math.min(1000, Number.parseInt(searchParams.get("page") ?? "1", 10) || 1));
     const query = (searchParams.get("q") ?? "").trim().slice(0, 100);
+    const classId = (searchParams.get("classId") ?? "").trim();
+    const sectionId = (searchParams.get("sectionId") ?? "").trim();
+    const gender = (searchParams.get("gender") ?? "").toUpperCase();
+    const isRteParam = searchParams.get("isRte") ?? "";
+    const isRte = isRteParam === "true" ? true : isRteParam === "false" ? false : undefined;
     const requestedBirthdayPeriod = (searchParams.get("period") ?? "MONTH").toUpperCase();
     const birthdayPeriod = BIRTHDAY_PERIODS.has(requestedBirthdayPeriod)
       ? requestedBirthdayPeriod
@@ -169,15 +174,47 @@ export async function GET(request: Request) {
 
     if (section === "students") {
       const where = { schoolId, status: "ACTIVE" as const,
-        ...(text ? { OR: [{ fullName: text }, { admissionNo: text }] } : {}) };
-      const [total, students] = await Promise.all([
+        ...(gender === "MALE" || gender === "FEMALE" || gender === "OTHER"
+          ? { gender: gender as "MALE" | "FEMALE" | "OTHER" } : {}),
+        ...(isRte !== undefined ? { isRte } : {}),
+        ...(text ? { OR: [
+          { fullName: text }, { admissionNo: text }, { phone: text },
+          { alternatePhone: text }, { fatherPhone: text }, { motherPhone: text },
+          { guardianPhone: text },
+        ] } : {}),
+        ...(classId || sectionId ? { enrollments: { some: {
+          active: true,
+          ...(classId ? { classId } : {}),
+          ...(sectionId ? { sectionId } : {}),
+          academicYear: { active: true },
+        } } } : {}) };
+      const [total, students, classes, sections] = await Promise.all([
         prisma.student.count({ where }),
         prisma.student.findMany({ where, orderBy: { fullName: "asc" }, skip, take: PAGE_SIZE,
           select: { id: true, fullName: true, admissionNo: true,
             enrollments: { where: { active: true, academicYear: { active: true } }, take: 1,
               select: { class: { select: { name: true } }, section: { select: { name: true } } } } } }),
+        prisma.class.findMany({
+          where: {
+            schoolId,
+            active: true,
+            enrollments: { some: { active: true, academicYear: { active: true } } },
+          },
+          orderBy: [{ displayOrder: "asc" }, { name: "asc" }],
+          select: { id: true, name: true },
+        }),
+        prisma.section.findMany({
+          where: {
+            active: true,
+            class: { schoolId, active: true },
+            enrollments: { some: { active: true, academicYear: { active: true } } },
+          },
+          orderBy: [{ displayOrder: "asc" }, { name: "asc" }],
+          select: { id: true, name: true, classId: true },
+        }),
       ]);
       return ApiResponse.success({ section, total, page, pageSize: PAGE_SIZE,
+        classes, sections,
         rows: students.map((student) => ({ id: student.id,
           title: student.fullName || student.admissionNo,
           subtitle: `Admission ${student.admissionNo}`,
