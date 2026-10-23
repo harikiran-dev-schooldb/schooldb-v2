@@ -3,7 +3,7 @@ import "dotenv/config";
 const wabaId = process.env.META_WABA_ID;
 const accessToken = process.env.META_WA_TOKEN;
 const apiVersion = process.env.META_WA_API_VERSION || "v22.0";
-const name = process.env.META_WA_SUPPORT_ASSIGNMENT_TEMPLATE || "school_support_assignment";
+const name = process.env.META_WA_SUPPORT_ASSIGNMENT_TEMPLATE || "school_support_assignment_v2";
 const language = process.env.META_WA_ANNOUNCEMENT_LANGUAGE || "en";
 
 if (!wabaId || !accessToken) {
@@ -35,7 +35,7 @@ const response = await fetch(endpoint, {
     components: [
       {
         type: "BODY",
-        text: "Hello {{1}}, a new support task has been assigned to you at {{5}}.\n\nTask: {{2}} — {{3}}\nDescription: {{4}}\n\nPlease open School Support to review and update it.",
+        text: "Hello {{1}}, a new support task has been assigned to you at {{5}}.\n\nTask:\n{{2}} — {{3}}\n\nDescription:\n{{4}}\n\nPlease open School Support to review and update it.",
         example: {
           body_text: [[
             "Ananya Rao",
