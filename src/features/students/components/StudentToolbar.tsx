@@ -63,7 +63,7 @@ export function StudentToolbar({
     <div className="overflow-x-auto border-b border-border/70 bg-card p-3 sm:p-4 md:px-5">
       <div className="flex min-w-max items-center gap-2">
         <DataGridSearch
-          placeholder="Search by name or admission number..."
+          placeholder="Search name, admission number or phone..."
           value={search}
           onSearch={onSearch}
         />

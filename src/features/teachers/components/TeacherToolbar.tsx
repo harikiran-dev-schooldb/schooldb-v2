@@ -12,7 +12,7 @@ export function TeacherToolbar({ search, onSearch }: Props) {
     <CrudToolbar
       search={search}
       onSearch={onSearch}
-      placeholder="Search teachers..."
+      placeholder="Search name, employee ID, phone or email..."
     />
   );
 }

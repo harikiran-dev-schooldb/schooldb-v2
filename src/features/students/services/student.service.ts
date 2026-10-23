@@ -87,6 +87,30 @@ export const studentService = {
               mode: "insensitive" as const,
             },
           },
+          {
+            alternatePhone: {
+              contains: query.search,
+              mode: "insensitive" as const,
+            },
+          },
+          {
+            fatherPhone: {
+              contains: query.search,
+              mode: "insensitive" as const,
+            },
+          },
+          {
+            motherPhone: {
+              contains: query.search,
+              mode: "insensitive" as const,
+            },
+          },
+          {
+            guardianPhone: {
+              contains: query.search,
+              mode: "insensitive" as const,
+            },
+          },
         ],
       }),
     };

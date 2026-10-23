@@ -271,7 +271,7 @@ export function StaffUsersDirectory({
             setSearch(value);
             setPage(1);
           }}
-          placeholder="Search name, mobile or designation..."
+          placeholder="Search name, phone number or designation..."
         >
           <div className="flex flex-wrap items-center gap-2">
             <div className="hidden items-center gap-2 px-1 text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground lg:flex">
