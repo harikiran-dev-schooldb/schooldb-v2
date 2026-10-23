@@ -51,16 +51,16 @@ class HomeworkRepository(
         title: String,
         description: String,
         dueDate: String,
-    ) {
+    ): Boolean {
         val body = JSONObject()
                 .put("allocationId", allocationId)
                 .put("title", title)
                 .put("description", description)
                 .put("dueDate", dueDate)
-        if (homeworkId == null) {
-            api.post("api/v1/mobile/teacher/homework", body)
+        return if (homeworkId == null) {
+            api.postOrQueue("api/v1/mobile/teacher/homework", body)
         } else {
-            api.put("api/v1/mobile/teacher/homework/$homeworkId", body)
+            api.putOrQueue("api/v1/mobile/teacher/homework/$homeworkId", body)
         }
     }
 }

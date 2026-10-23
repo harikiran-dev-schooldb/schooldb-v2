@@ -27,12 +27,12 @@ class FamilyFlowPolicyTest {
     }
 
     @Test
-    fun parentAttendanceDoesNotHideOtherMonths() {
+    fun parentAttendanceUsesTheSameSelectedMonthExperience() {
         val records = attendanceRecords()
 
         val visible = attendanceRecordsForRole("PARENT", records, "2026-10")
 
-        assertEquals(records, visible)
+        assertEquals(listOf("october"), visible.map { it.id })
     }
 
     private fun attendanceRecords() = listOf(

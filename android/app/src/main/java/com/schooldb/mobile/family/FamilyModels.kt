@@ -120,6 +120,14 @@ data class FamilyFeeDetails(
     val payments: List<FamilyFeePayment>,
 )
 
+data class FamilyPaymentOrder(
+    val orderId: String,
+    val publicUrl: String,
+    val amount: Double,
+    val status: String,
+    val feePaymentId: String? = null,
+)
+
 data class FamilyResult(
     val id: String,
     val name: String,
@@ -251,4 +259,7 @@ data class FamilyUiState(
     val unreadNotificationCount: Int = 0,
     val notificationsLoading: Boolean = false,
     val notificationsError: String? = null,
+    val paymentOrder: FamilyPaymentOrder? = null,
+    val paymentLoading: Boolean = false,
+    val paymentMessage: String? = null,
 )

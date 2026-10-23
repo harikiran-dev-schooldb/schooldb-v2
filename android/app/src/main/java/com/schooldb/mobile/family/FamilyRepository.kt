@@ -2,6 +2,8 @@ package com.schooldb.mobile.family
 
 import com.schooldb.mobile.network.AuthenticatedApiClient
 import com.schooldb.mobile.network.DownloadedFile
+import com.schooldb.mobile.network.SchoolContext
+import java.util.UUID
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -19,6 +21,37 @@ class FamilyRepository(
 
     suspend fun downloadDocument(studentId: String, documentId: String): DownloadedFile =
         api.download("api/v1/students/$studentId/documents/$documentId/download")
+
+    suspend fun createPayment(studentId: String, installmentIds: List<String>): FamilyPaymentOrder {
+        val body = JSONObject()
+            .put("schoolSlug", SchoolContext.schoolSlug())
+            .put("studentId", studentId)
+            .put("installmentIds", JSONArray(installmentIds))
+            .put("idempotencyKey", UUID.randomUUID().toString())
+        return api.post("api/v1/online-payments/cashfree/orders", body).toPaymentOrder("ACTIVE")
+    }
+
+    suspend fun verifyPayment(studentId: String, order: FamilyPaymentOrder): FamilyPaymentOrder {
+        val data = api.post(
+            "api/v1/online-payments/cashfree/orders/${order.orderId}/verify",
+            JSONObject()
+                .put("schoolSlug", SchoolContext.schoolSlug())
+                .put("studentId", studentId),
+        )
+        return order.copy(
+            status = data.optString("status", order.status),
+            amount = data.optDouble("amount", order.amount),
+            feePaymentId = data.optionalText("feePaymentId"),
+        )
+    }
+
+    private fun JSONObject.toPaymentOrder(defaultStatus: String) = FamilyPaymentOrder(
+        orderId = getString("orderId"),
+        publicUrl = getString("publicUrl"),
+        amount = optDouble("amount"),
+        status = optString("status", defaultStatus),
+        feePaymentId = optionalText("feePaymentId"),
+    )
 
     suspend fun dashboard(forceRefresh: Boolean = false): FamilyDashboard {
         val data = api.get(

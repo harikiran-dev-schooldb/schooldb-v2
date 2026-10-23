@@ -64,6 +64,9 @@ class FamilyViewModel(
                 detailsError = null,
                 attendanceAcademicYearId = null,
                 leaveMessage = null,
+                paymentOrder = null,
+                paymentLoading = false,
+                paymentMessage = null,
             )
             viewModelScope.launch { loadDetails(studentId, forceRefresh = false) }
         }
@@ -155,6 +158,77 @@ class FamilyViewModel(
                 }
             }
         }
+    }
+
+    fun startPayment(installmentIds: List<String>) {
+        val studentId = _uiState.value.selectedStudentId ?: return
+        if (installmentIds.isEmpty()) {
+            _uiState.value = _uiState.value.copy(paymentMessage = "Select at least one outstanding installment.")
+            return
+        }
+        if (_uiState.value.paymentLoading) return
+        _uiState.value = _uiState.value.copy(
+            paymentLoading = true,
+            paymentMessage = null,
+            paymentOrder = null,
+        )
+        viewModelScope.launch {
+            try {
+                val order = withContext(Dispatchers.IO) {
+                    repository.createPayment(studentId, installmentIds.distinct())
+                }
+                if (_uiState.value.selectedStudentId == studentId) {
+                    _uiState.value = _uiState.value.copy(
+                        paymentLoading = false,
+                        paymentOrder = order,
+                        paymentMessage = "Secure Cashfree checkout is ready.",
+                    )
+                }
+            } catch (error: Exception) {
+                if (_uiState.value.selectedStudentId == studentId) {
+                    _uiState.value = _uiState.value.copy(
+                        paymentLoading = false,
+                        paymentMessage = requestError(error, "Unable to prepare online payment."),
+                    )
+                }
+            }
+        }
+    }
+
+    fun verifyPayment() {
+        val studentId = _uiState.value.selectedStudentId ?: return
+        val order = _uiState.value.paymentOrder ?: return
+        if (_uiState.value.paymentLoading || order.status == "PAID") return
+        _uiState.value = _uiState.value.copy(paymentLoading = true, paymentMessage = "Checking payment status…")
+        viewModelScope.launch {
+            try {
+                val verified = withContext(Dispatchers.IO) { repository.verifyPayment(studentId, order) }
+                if (_uiState.value.selectedStudentId == studentId) {
+                    val paid = verified.status == "PAID" && !verified.feePaymentId.isNullOrBlank()
+                    _uiState.value = _uiState.value.copy(
+                        paymentLoading = false,
+                        paymentOrder = verified,
+                        paymentMessage = if (paid) {
+                            "Payment confirmed. Your receipt and balance are updated."
+                        } else {
+                            "Payment is ${verified.status.lowercase().replace('_', ' ')}. You can check again safely."
+                        },
+                    )
+                    if (paid) loadDetails(studentId, forceRefresh = true)
+                }
+            } catch (error: Exception) {
+                if (_uiState.value.selectedStudentId == studentId) {
+                    _uiState.value = _uiState.value.copy(
+                        paymentLoading = false,
+                        paymentMessage = requestError(error, "Unable to verify payment yet."),
+                    )
+                }
+            }
+        }
+    }
+
+    fun clearPayment() {
+        _uiState.value = _uiState.value.copy(paymentOrder = null, paymentMessage = null)
     }
 
     private suspend fun loadDetails(

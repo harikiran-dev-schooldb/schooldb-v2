@@ -204,7 +204,7 @@ class TeacherRepository(
         )
     }
 
-    suspend fun saveAttendance(sheet: AttendanceSheet, finalize: Boolean = false) {
+    suspend fun saveAttendance(sheet: AttendanceSheet, finalize: Boolean = false): Boolean {
         val rows = JSONArray()
         sheet.students.forEach { student ->
             rows.put(
@@ -213,7 +213,7 @@ class TeacherRepository(
                     .put("status", student.status.name),
             )
         }
-        api.post(
+        return api.postOrQueue(
             "api/v1/attendance",
             JSONObject()
                 .put("sessionId", sheet.sessionId)
@@ -222,9 +222,8 @@ class TeacherRepository(
         )
     }
 
-    suspend fun saveAndLockAttendance(sheet: AttendanceSheet) {
+    suspend fun saveAndLockAttendance(sheet: AttendanceSheet): Boolean =
         saveAttendance(sheet, finalize = true)
-    }
 
     private suspend fun createSession(period: TeachingPeriod): String {
         val data = api.post(

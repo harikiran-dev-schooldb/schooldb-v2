@@ -138,6 +138,7 @@ fun TeacherDashboardScreen(
     onSwitchAccount: (() -> Unit)? = null,
     onSignOut: (() -> Unit)? = null,
     openNotificationId: String? = null,
+    openNotificationDestination: String? = null,
     onNotificationOpened: () -> Unit = {},
     viewModel: TeacherViewModel = viewModel(),
 ) {
@@ -182,6 +183,7 @@ fun TeacherDashboardScreen(
             onSwitchAccount = onSwitchAccount ?: viewModel::signOut,
             onSignOut = onSignOut ?: viewModel::signOut,
             openNotificationId = openNotificationId,
+            openNotificationDestination = openNotificationDestination,
             onNotificationOpened = onNotificationOpened,
         )
         return
@@ -224,6 +226,7 @@ fun TeacherDashboardScreen(
             teacherViewModel = viewModel,
             onSwitchAccount = onSwitchAccount ?: viewModel::signOut,
             openNotificationId = openNotificationId,
+            openNotificationDestination = openNotificationDestination,
             onNotificationOpened = onNotificationOpened,
         )
     } else {
@@ -247,6 +250,7 @@ private fun TeacherShell(
     teacherViewModel: TeacherViewModel,
     onSwitchAccount: () -> Unit,
     openNotificationId: String?,
+    openNotificationDestination: String?,
     onNotificationOpened: () -> Unit,
     noticeViewModel: NoticeViewModel = viewModel(),
 ) {
@@ -306,10 +310,20 @@ private fun TeacherShell(
         }
     }
 
-    LaunchedEffect(openNotificationId) {
+    LaunchedEffect(openNotificationId, openNotificationDestination) {
         if (!openNotificationId.isNullOrBlank()) {
-            tab = TeacherTab.NOTICES
-            noticeViewModel.refresh()
+            when (openNotificationDestination?.uppercase()) {
+                "ATTENDANCE", "ATTENDANCE_SUMMARY" -> if (access.attendance) tab = TeacherTab.ATTENDANCE
+                "HOMEWORK" -> if (access.homework) tab = TeacherTab.HOMEWORK
+                "EXAM", "RESULTS" -> if (canUseResults) {
+                    tab = TeacherTab.MORE
+                    moreScreen = "RESULTS"
+                }
+                else -> {
+                    tab = TeacherTab.NOTICES
+                    noticeViewModel.refresh()
+                }
+            }
             onNotificationOpened()
         }
     }

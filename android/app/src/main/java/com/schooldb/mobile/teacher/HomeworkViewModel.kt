@@ -65,7 +65,7 @@ class HomeworkViewModel(
         _uiState.value = _uiState.value.copy(saving = true, message = null, error = null)
         viewModelScope.launch {
             try {
-                withContext(Dispatchers.IO) {
+                val synced = withContext(Dispatchers.IO) {
                     repository.save(
                         _uiState.value.editingItem?.id,
                         allocationId,
@@ -74,19 +74,28 @@ class HomeworkViewModel(
                         parsedDueDate.toString(),
                     )
                 }
-                val (allocations, items) = withContext(Dispatchers.IO) { repository.load() }
-                _uiState.value = HomeworkUiState(
-                    allocations = allocations,
-                    items = items,
-                    loading = false,
-                    saving = false,
-                    showForm = false,
-                    message = if (_uiState.value.editingItem == null) {
-                        "Homework published successfully."
-                    } else {
-                        "Homework updated successfully."
-                    },
-                )
+                if (synced) {
+                    val (allocations, items) = withContext(Dispatchers.IO) { repository.load() }
+                    _uiState.value = HomeworkUiState(
+                        allocations = allocations,
+                        items = items,
+                        loading = false,
+                        saving = false,
+                        showForm = false,
+                        message = if (_uiState.value.editingItem == null) {
+                            "Homework published successfully."
+                        } else {
+                            "Homework updated successfully."
+                        },
+                    )
+                } else {
+                    _uiState.value = _uiState.value.copy(
+                        saving = false,
+                        showForm = false,
+                        editingItem = null,
+                        message = "Homework saved offline and will sync automatically.",
+                    )
+                }
             } catch (error: Exception) {
                 fail(error)
             }

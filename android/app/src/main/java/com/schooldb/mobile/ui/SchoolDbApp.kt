@@ -98,6 +98,7 @@ import kotlinx.coroutines.delay
 @Composable
 fun SchoolDbApp(
     openNotificationId: String? = null,
+    openNotificationDestination: String? = null,
     onNotificationOpened: () -> Unit = {},
     authViewModel: AuthViewModel = viewModel(),
 ) {
@@ -279,6 +280,7 @@ fun SchoolDbApp(
                         onSwitchAccount = { showAccountSwitcher = true },
                         onSignOut = authViewModel::signOut,
                         openNotificationId = openNotificationId,
+                        openNotificationDestination = openNotificationDestination,
                         onNotificationOpened = onNotificationOpened,
                     )
                 }

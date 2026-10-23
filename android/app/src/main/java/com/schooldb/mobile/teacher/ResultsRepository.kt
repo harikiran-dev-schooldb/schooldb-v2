@@ -48,7 +48,7 @@ class ResultsRepository(
         return ResultSheet(schedule, students)
     }
 
-    suspend fun save(sheet: ResultSheet) {
+    suspend fun save(sheet: ResultSheet): Boolean {
         val marks = JSONArray()
         sheet.students.forEach { student ->
             marks.put(
@@ -66,7 +66,7 @@ class ResultsRepository(
             )
         }
         val section = URLEncoder.encode(sheet.schedule.sectionId, StandardCharsets.UTF_8.toString())
-        api.put(
+        return api.putOrQueue(
             "api/v1/mobile/teacher/results/${sheet.schedule.id}?sectionId=$section",
             JSONObject().put("marks", marks),
         )

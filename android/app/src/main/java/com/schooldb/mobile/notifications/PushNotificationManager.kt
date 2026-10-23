@@ -245,9 +245,11 @@ class SchoolDbMessagingService : FirebaseMessagingService() {
         val category = notificationCategoryLabel(categoryKey)
         val urgent = message.data["priority"]?.uppercase() == "URGENT"
         val announcementId = message.data["announcementId"]
+        val destination = message.data["destination"] ?: categoryKey
         val intent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
             putExtra("announcementId", announcementId)
+            putExtra("destination", destination)
         }
         val pendingIntent = PendingIntent.getActivity(
             this,

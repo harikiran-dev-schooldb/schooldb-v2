@@ -113,14 +113,22 @@ class TeacherViewModel(
         _uiState.value = _uiState.value.copy(saving = true, message = null)
         viewModelScope.launch {
             try {
-                withContext(Dispatchers.IO) { repository.saveAttendance(sheet) }
-                val dashboard = withContext(Dispatchers.IO) { repository.dashboard(forceRefresh = true) }
-                _uiState.value = TeacherUiState(
-                    context = _uiState.value.context,
-                    dashboard = dashboard,
-                    loading = false,
-                    message = "Attendance saved successfully.",
-                )
+                val synced = withContext(Dispatchers.IO) { repository.saveAttendance(sheet) }
+                if (synced) {
+                    val dashboard = withContext(Dispatchers.IO) { repository.dashboard(forceRefresh = true) }
+                    _uiState.value = TeacherUiState(
+                        context = _uiState.value.context,
+                        dashboard = dashboard,
+                        loading = false,
+                        message = "Attendance saved successfully.",
+                    )
+                } else {
+                    _uiState.value = _uiState.value.copy(
+                        attendanceSheet = null,
+                        saving = false,
+                        message = "Attendance saved offline and will sync automatically.",
+                    )
+                }
             } catch (error: Exception) {
                 fail(error)
             }
@@ -133,14 +141,22 @@ class TeacherViewModel(
         _uiState.value = _uiState.value.copy(saving = true, message = null, error = null)
         viewModelScope.launch {
             try {
-                withContext(Dispatchers.IO) { repository.saveAndLockAttendance(sheet) }
-                val dashboard = withContext(Dispatchers.IO) { repository.dashboard(forceRefresh = true) }
-                _uiState.value = TeacherUiState(
-                    context = _uiState.value.context,
-                    dashboard = dashboard,
-                    loading = false,
-                    message = "Attendance saved and locked successfully.",
-                )
+                val synced = withContext(Dispatchers.IO) { repository.saveAndLockAttendance(sheet) }
+                if (synced) {
+                    val dashboard = withContext(Dispatchers.IO) { repository.dashboard(forceRefresh = true) }
+                    _uiState.value = TeacherUiState(
+                        context = _uiState.value.context,
+                        dashboard = dashboard,
+                        loading = false,
+                        message = "Attendance saved and locked successfully.",
+                    )
+                } else {
+                    _uiState.value = _uiState.value.copy(
+                        attendanceSheet = null,
+                        saving = false,
+                        message = "Attendance lock is queued and will sync automatically.",
+                    )
+                }
             } catch (error: Exception) {
                 fail(error)
             }

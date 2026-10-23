@@ -61,6 +61,24 @@ class AuthenticatedApiClient(
 
     suspend fun delete(path: String, body: JSONObject): JSONObject = request("DELETE", path, body)
 
+    suspend fun postOrQueue(path: String, body: JSONObject): Boolean = requestOrQueue("POST", path, body)
+
+    suspend fun putOrQueue(path: String, body: JSONObject): Boolean = requestOrQueue("PUT", path, body)
+
+    private suspend fun requestOrQueue(method: String, path: String, body: JSONObject): Boolean = try {
+        request(method, path, body)
+        true
+    } catch (error: Exception) {
+        val canQueue = error is IOException || (error is ApiException && error.isRetryable)
+        if (!canQueue) throw error
+        PendingActionQueue.enqueue(method, path, body)
+        false
+    }
+
+    internal suspend fun replay(method: String, path: String, body: JSONObject) {
+        request(method, path, body)
+    }
+
     suspend fun download(path: String): DownloadedFile {
         val token = sessionToken()
         val connection = URL(baseUrl + path.trimStart('/')).openConnection() as HttpURLConnection

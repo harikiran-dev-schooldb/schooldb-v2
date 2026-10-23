@@ -54,6 +54,7 @@ import androidx.compose.material.icons.outlined.Route
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -82,6 +83,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
 import java.text.NumberFormat
 import java.time.LocalDate
@@ -262,12 +266,12 @@ fun FamilyDashboardScreen(
     onSignOut: () -> Unit,
     refreshKey: Int = 0,
     openNotificationId: String? = null,
+    openNotificationDestination: String? = null,
     onNotificationOpened: () -> Unit = {},
     viewModel: FamilyViewModel = viewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val dashboard = state.dashboard
-    val isStudent = dashboard?.role == "STUDENT"
     val student = dashboard?.students?.firstOrNull { it.id == state.selectedStudentId }
     var tab by rememberSaveable { mutableStateOf(FamilyTab.HOME) }
     var moreScreen by rememberSaveable { mutableStateOf("MENU") }
@@ -284,11 +288,6 @@ fun FamilyDashboardScreen(
         }
     }
 
-    LaunchedEffect(dashboard?.role) {
-        if ((isStudent && tab == FamilyTab.FEES) || (!isStudent && tab == FamilyTab.RESULTS)) {
-            tab = FamilyTab.HOME
-        }
-    }
     LaunchedEffect(refreshKey) {
         if (refreshKey == 0) {
             withFrameNanos { }
@@ -296,12 +295,27 @@ fun FamilyDashboardScreen(
         }
         if (refreshKey > 0) viewModel.refreshForAccountChange() else viewModel.load()
     }
-    LaunchedEffect(openNotificationId, dashboard != null) {
+    LaunchedEffect(openNotificationId, openNotificationDestination, dashboard != null) {
         if (!openNotificationId.isNullOrBlank()) {
-            tab = FamilyTab.MORE
-            moreScreen = "NOTIFICATIONS"
+            when (openNotificationDestination?.uppercase()) {
+                "ATTENDANCE", "ATTENDANCE_SUMMARY" -> tab = FamilyTab.ATTENDANCE
+                "HOMEWORK" -> tab = FamilyTab.HOMEWORK
+                "FEES", "PAYMENT" -> {
+                    tab = FamilyTab.MORE
+                    moreScreen = "FEES"
+                }
+                "EXAM", "RESULTS" -> tab = FamilyTab.RESULTS
+                "LEAVE_REQUEST" -> {
+                    tab = FamilyTab.MORE
+                    moreScreen = "LEAVE"
+                }
+                else -> {
+                    tab = FamilyTab.MORE
+                    moreScreen = "NOTIFICATIONS"
+                }
+            }
             if (dashboard != null) {
-                if (!state.notificationsLoading) viewModel.refreshNotifications()
+                if (moreScreen == "NOTIFICATIONS" && !state.notificationsLoading) viewModel.refreshNotifications()
                 onNotificationOpened()
             }
         }
@@ -311,93 +325,31 @@ fun FamilyDashboardScreen(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             Column {
-                if (isStudent) {
-                    StudentPremiumTopBar(
-                        schoolName = dashboard.schoolName,
-                        schoolLogoUrl = dashboard.schoolLogoUrl,
-                        studentName = student?.fullName.orEmpty(),
-                        studentImageUrl = student?.imageUrl,
-                        unread = state.unreadNotificationCount,
-                        onNotifications = {
-                            tab = FamilyTab.MORE
-                            moreScreen = "NOTIFICATIONS"
-                        },
-                        onSwitchAccount = onSwitchAccount,
-                    )
-                } else SchoolDbRoleHeader(
+                StudentPremiumTopBar(
                     schoolName = dashboard?.schoolName ?: "SchoolDB",
                     schoolLogoUrl = dashboard?.schoolLogoUrl,
-                    title = "Parent Space",
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                    SchoolDbHeaderAction(onClick = {
+                    studentName = student?.fullName ?: dashboard?.userName.orEmpty(),
+                    studentImageUrl = student?.imageUrl,
+                    unread = state.unreadNotificationCount,
+                    onNotifications = {
                         tab = FamilyTab.MORE
                         moreScreen = "NOTIFICATIONS"
-                    }) {
-                        BadgedBox(
-                            badge = {
-                                if (state.unreadNotificationCount > 0) {
-                                    Badge {
-                                        Text(
-                                            state.unreadNotificationCount.coerceAtMost(99).toString(),
-                                            fontSize = 9.sp,
-                                        )
-                                    }
-                                }
-                            },
-                        ) {
-                            Icon(Icons.Outlined.Notifications, contentDescription = "Notifications")
-                        }
-                    }
-                    Spacer(Modifier.width(9.dp))
-                    Surface(onClick = onSwitchAccount, modifier = Modifier.size(42.dp),
-                        shape = CircleShape, color = Color.Transparent) {
-                        StudentAvatar(
-                            name = dashboard?.userName.orEmpty(),
-                            imageUrl = null,
-                            size = 42.dp,
-                            backgroundColor = FamilyIndigo,
-                            contentColor = Color.White,
-                        )
-                    }
-                    }
-                }
+                    },
+                    onSwitchAccount = onSwitchAccount,
+                )
                 if (!isOnline && dashboard != null) OfflineDataBanner()
             }
         },
         bottomBar = {
             if (student != null) {
-                if (isStudent) {
-                    StudentPremiumNavigation(
-                        selected = tab,
-                        unread = state.unreadNotificationCount,
-                        onSelect = {
-                            tab = it
-                            moreScreen = "MENU"
-                        },
-                    )
-                } else NavigationBar(containerColor = MaterialTheme.colorScheme.surface, tonalElevation = 0.dp) {
-                    val tabs =
-                        listOf(FamilyTab.HOME, FamilyTab.ATTENDANCE, FamilyTab.HOMEWORK, FamilyTab.FEES, FamilyTab.MORE)
-                    tabs.forEach { item ->
-                        NavigationBarItem(
-                            selected = tab == item,
-                            onClick = {
-                                tab = item
-                                moreScreen = "MENU"
-                            },
-                            icon = { Icon(item.icon, contentDescription = item.label) },
-                            label = { Text(item.label, fontSize = 10.sp) },
-                            colors = NavigationBarItemDefaults.colors(
-                                selectedIconColor = FamilyIndigo,
-                                selectedTextColor = FamilyIndigo,
-                                indicatorColor = FamilyIndigo.copy(alpha = .1f),
-                                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                            ),
-                        )
-                    }
-                }
+                StudentPremiumNavigation(
+                    selected = tab,
+                    unread = state.unreadNotificationCount,
+                    onSelect = {
+                        tab = it
+                        moreScreen = "MENU"
+                    },
+                )
             }
         },
     ) { padding ->
@@ -429,12 +381,19 @@ fun FamilyDashboardScreen(
                     Modifier.padding(padding),
                 )
                 FamilyTab.HOMEWORK -> HomeworkTab(dashboard, student, state, viewModel::selectStudent, viewModel::refreshDetails, Modifier.padding(padding))
-                FamilyTab.FEES -> FeesTab(dashboard, student, state, viewModel::selectStudent, viewModel::refreshDetails, Modifier.padding(padding))
+                FamilyTab.FEES -> FeesTab(
+                    dashboard, student, state, viewModel::selectStudent,
+                    viewModel::refreshDetails, viewModel::startPayment,
+                    viewModel::verifyPayment, viewModel::clearPayment,
+                    Modifier.padding(padding),
+                )
                 FamilyTab.RESULTS -> ResultsTab(dashboard, student, state, viewModel::selectStudent, viewModel::refreshDetails, Modifier.padding(padding))
                 FamilyTab.MORE -> if (moreScreen == "FEES") {
                     FeesTab(
                         dashboard, student, state, viewModel::selectStudent,
-                        viewModel::refreshDetails, Modifier.padding(padding),
+                        viewModel::refreshDetails, viewModel::startPayment,
+                        viewModel::verifyPayment, viewModel::clearPayment,
+                        Modifier.padding(padding),
                         onBack = { moreScreen = "MENU" },
                     )
                 } else if (moreScreen == "TIMETABLE") {
@@ -570,51 +529,28 @@ private fun FamilyHome(
     onOpenNotifications: () -> Unit,
     modifier: Modifier,
 ) {
-    if (dashboard.role == "STUDENT") {
-        StudentHome(
-            student,
-            state,
-            onRefresh,
-            onOpenAttendance,
-            onOpenHomework,
-            onOpenResults,
-            onOpenFees,
-            onOpenTimetable,
-            onOpenNotifications,
-            modifier,
-        )
-        return
-    }
-    LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 28.dp)) {
-        item { FamilyPageIntro(dashboard, student, if (dashboard.role == "STUDENT") "My overview" else "Student overview", onSelect) }
-        item {
-            StudentSummary(student)
-            Text("Today at a glance", Modifier.padding(start = 20.dp, top = 24.dp, bottom = 12.dp), fontWeight = FontWeight.Bold, fontSize = 18.sp)
-            Metrics(student, dashboard.role == "STUDENT")
-            Text("Upcoming events", Modifier.padding(start = 20.dp, top = 24.dp, bottom = 8.dp), fontWeight = FontWeight.Bold, fontSize = 18.sp)
-        }
-        val today = LocalDate.now().toString()
-        val upcomingEvents = state.details?.calendarEvents
-            ?.filter { it.endDate.take(10) >= today }
-            ?.take(3)
-            .orEmpty()
-        if (state.details != null && upcomingEvents.isEmpty()) {
-            item { EmptyMessage("No upcoming school events or deadlines.") }
-        } else {
-            items(upcomingEvents, key = { it.id }) { CalendarEventCard(it) }
-        }
-        item {
-            SectionHeader("Recent homework", onRefresh)
-        }
-        if (student.recentHomework.isEmpty()) item { EmptyMessage("No active homework right now.") }
-        else items(student.recentHomework, key = { it.id }) { HomeworkSummaryCard(it) }
-    }
+    StudentHome(
+        dashboard,
+        student,
+        state,
+        onSelect,
+        onRefresh,
+        onOpenAttendance,
+        onOpenHomework,
+        onOpenResults,
+        onOpenFees,
+        onOpenTimetable,
+        onOpenNotifications,
+        modifier,
+    )
 }
 
 @Composable
 private fun StudentHome(
+    dashboard: FamilyDashboard,
     student: FamilyStudent,
     state: FamilyUiState,
+    onSelect: (String) -> Unit,
     onRefresh: () -> Unit,
     onOpenAttendance: () -> Unit,
     onOpenHomework: () -> Unit,
@@ -645,6 +581,21 @@ private fun StudentHome(
                 Text("YOUR SCHOOL DAY", color = FamilyIndigo, fontWeight = FontWeight.Bold, fontSize = 11.sp, letterSpacing = 1.4.sp)
                 Text("Welcome back, $firstName", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold, fontSize = 29.sp, letterSpacing = (-.7).sp)
                 Text(today.format(DateTimeFormatter.ofPattern("EEEE, d MMMM", Locale.ENGLISH)), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
+            }
+        }
+        if (dashboard.students.size > 1) {
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    StudentSectionHeading("Children", "Choose whose school space you want to view")
+                    LazyRow(
+                        contentPadding = PaddingValues(horizontal = 20.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        items(dashboard.students, key = { it.id }) { item ->
+                            StudentChip(item, item.id == student.id) { onSelect(item.id) }
+                        }
+                    }
+                }
             }
         }
         item { StudentHero(student) }
@@ -868,17 +819,15 @@ private fun AttendanceTab(
         val attendance = loaded.attendance
         if (attendance == null) item { EmptyMessage("Attendance becomes available after enrollment.") }
         else {
-            if (dashboard.role == "STUDENT") {
-                item {
-                    StudentAttendanceFilters(
-                        years = loaded.attendanceAcademicYears,
-                        selectedYearId = state.attendanceAcademicYearId,
-                        months = availableMonths,
-                        selectedMonth = selectedMonth,
-                        onYearSelect = onAcademicYearSelect,
-                        onMonthSelect = { selectedMonth = it.toString() },
-                    )
-                }
+            item {
+                StudentAttendanceFilters(
+                    years = loaded.attendanceAcademicYears,
+                    selectedYearId = state.attendanceAcademicYearId,
+                    months = availableMonths,
+                    selectedMonth = selectedMonth,
+                    onYearSelect = onAcademicYearSelect,
+                    onMonthSelect = { selectedMonth = it.toString() },
+                )
             }
             val visibleRecords = attendanceRecordsForRole(
                 role = dashboard.role,
@@ -892,18 +841,12 @@ private fun AttendanceTab(
                 else attended * 100.0 / visibleRecords.size
         item {
             Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                if (dashboard.role == "STUDENT") {
-                    StudentMetricCard("Attendance", "${number(percentage)}%", "${visibleRecords.size} sessions", Icons.Outlined.CalendarMonth, if (percentage < 75) FamilyRed else FamilyIndigo, Modifier.weight(1f))
-                    StudentMetricCard("Present", attended.toString(), "${visibleRecords.count { it.status == "ABSENT" }} absent", Icons.Default.CheckCircle, FamilyGreen, Modifier.weight(1f))
-                } else {
-                    MetricCard("Attendance", "${number(attendance.percentage)}%", "${attendance.total} sessions", Modifier.weight(1f))
-                    MetricCard("Present", attendance.present.toString(), "${attendance.absent} absent", Modifier.weight(1f))
-                }
+                StudentMetricCard("Attendance", "${number(percentage)}%", "${visibleRecords.size} sessions", Icons.Outlined.CalendarMonth, if (percentage < 75) FamilyRed else FamilyIndigo, Modifier.weight(1f))
+                StudentMetricCard("Present", attended.toString(), "${visibleRecords.count { it.status == "ABSENT" }} absent", Icons.Default.CheckCircle, FamilyGreen, Modifier.weight(1f))
             }
         }
         if (visibleRecords.isEmpty()) item {
-            if (dashboard.role == "STUDENT") StudentEmptyState(Icons.Outlined.CalendarMonth, "No records yet", "Attendance will appear after your classes are recorded.")
-            else EmptyMessage("No attendance has been recorded yet.")
+            StudentEmptyState(Icons.Outlined.CalendarMonth, "No records yet", "Attendance will appear after classes are recorded.")
         }
         else items(visibleRecords, key = { it.id }) { AttendanceCard(it) }
         }
@@ -1123,16 +1066,14 @@ private fun ResultsTab(
             else details.results.filter { it.id == selectedExamId }
         if (details.results.isEmpty()) item { StudentEmptyState(Icons.Default.EmojiEvents, "Results are on the way", "Completed examination results will appear here.") }
         else {
-            if (dashboard.role == "STUDENT") {
-                item {
-                    StudentResultsSummary(details.results)
-                    LazyRow(contentPadding = PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        item {
-                            FilterChip(selected = selectedExamId == "ALL", onClick = { selectedExamId = "ALL" }, label = { Text("All exams") })
-                        }
-                        items(details.results, key = { it.id }) { result ->
-                            FilterChip(selected = selectedExamId == result.id, onClick = { selectedExamId = result.id }, label = { Text(result.name) })
-                        }
+            item {
+                StudentResultsSummary(details.results)
+                LazyRow(contentPadding = PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    item {
+                        FilterChip(selected = selectedExamId == "ALL", onClick = { selectedExamId = "ALL" }, label = { Text("All exams") })
+                    }
+                    items(details.results, key = { it.id }) { result ->
+                        FilterChip(selected = selectedExamId == result.id, onClick = { selectedExamId = result.id }, label = { Text(result.name) })
                     }
                 }
             }
@@ -1161,22 +1102,140 @@ private fun FeesTab(
     state: FamilyUiState,
     onSelect: (String) -> Unit,
     onRefresh: () -> Unit,
+    onStartPayment: (List<String>) -> Unit,
+    onVerifyPayment: () -> Unit,
+    onClearPayment: () -> Unit,
     modifier: Modifier,
     onBack: (() -> Unit)? = null,
-) = DetailList(modifier, dashboard, student, "Fees", state, onSelect, onRefresh, onBack) { details ->
-    item {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            MetricCard("Paid", currency(details.fees.paid), "of ${currency(details.fees.payable)}", Modifier.weight(1f))
-            MetricCard("Outstanding", currency(details.fees.outstanding), "remaining balance", Modifier.weight(1f))
+) {
+    var selectedIds by rememberSaveable(student.id) { mutableStateOf<List<String>>(emptyList()) }
+    var launchedOrderId by rememberSaveable(student.id) { mutableStateOf<String?>(null) }
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val activeOrder = state.paymentOrder
+
+    LaunchedEffect(activeOrder?.orderId) {
+        val order = activeOrder ?: return@LaunchedEffect
+        if (order.status == "ACTIVE" && order.publicUrl.isNotBlank() && launchedOrderId != order.orderId) {
+            launchedOrderId = order.orderId
+            runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, order.publicUrl.toUri())) }
         }
-        Subheading("Installments")
     }
-    if (details.fees.installments.isEmpty()) item { EmptyMessage("No fee plan is assigned.") }
-    else items(details.fees.installments, key = { it.id }) { InstallmentCard(it) }
-    if (details.fees.payments.isNotEmpty()) {
-        item { Subheading("Recent payments") }
-        items(details.fees.payments, key = { it.id }) {
-            PaymentCard(it, dashboard.schoolName, student.fullName)
+
+    DisposableEffect(lifecycleOwner, activeOrder?.orderId, launchedOrderId) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (
+                event == Lifecycle.Event.ON_RESUME &&
+                activeOrder?.status == "ACTIVE" &&
+                launchedOrderId == activeOrder.orderId
+            ) onVerifyPayment()
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
+    DetailList(modifier, dashboard, student, "Fees", state, onSelect, onRefresh, onBack) { details ->
+        val outstanding = details.fees.installments.filter { it.outstanding > 0 }
+        val selected = outstanding.filter { it.id in selectedIds }
+        item {
+            Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                MetricCard("Paid", currency(details.fees.paid), "of ${currency(details.fees.payable)}", Modifier.weight(1f))
+                MetricCard("Outstanding", currency(details.fees.outstanding), "remaining balance", Modifier.weight(1f))
+            }
+        }
+        if (outstanding.isNotEmpty()) {
+            item {
+                Card(
+                    Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
+                    shape = RoundedCornerShape(22.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    border = BorderStroke(1.dp, FamilyIndigo.copy(alpha = .22f)),
+                ) {
+                    Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text("Pay fees online", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                        Text(
+                            if (selected.isEmpty()) "Select one or more installments below."
+                            else "${selected.size} selected · ${currency(selected.sumOf { it.outstanding })}",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontSize = 12.sp,
+                        )
+                        Button(
+                            onClick = { onStartPayment(selected.map { it.id }) },
+                            enabled = selected.isNotEmpty() && !state.paymentLoading,
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(14.dp),
+                        ) {
+                            if (state.paymentLoading && activeOrder == null) {
+                                CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = Color.White)
+                                Spacer(Modifier.width(8.dp))
+                            }
+                            Text(if (selected.isEmpty()) "Select installments" else "Pay ${currency(selected.sumOf { it.outstanding })} securely")
+                        }
+                        Text("Payments are verified by SchoolDB before balances and receipts change.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
+                    }
+                }
+            }
+        }
+        activeOrder?.let { order ->
+            item {
+                Card(
+                    Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp),
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (order.status == "PAID") FamilyGreen.copy(alpha = .10f) else FamilyIndigo.copy(alpha = .08f),
+                    ),
+                ) {
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            if (order.status == "PAID") "Payment confirmed" else "Cashfree payment ${order.status.lowercase().replace('_', ' ')}",
+                            fontWeight = FontWeight.Bold,
+                        )
+                        Text("${currency(order.amount)} · ${order.orderId}", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+                        state.paymentMessage?.let { Text(it, fontSize = 12.sp) }
+                        if (order.status != "PAID") {
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                OutlinedButton(onClick = onVerifyPayment, enabled = !state.paymentLoading) {
+                                    Text(if (state.paymentLoading) "Checking…" else "Check status")
+                                }
+                                TextButton(onClick = {
+                                    launchedOrderId = null
+                                    runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, order.publicUrl.toUri())) }
+                                    launchedOrderId = order.orderId
+                                }) { Text("Open checkout") }
+                            }
+                        } else {
+                            TextButton(onClick = {
+                                selectedIds = emptyList()
+                                onClearPayment()
+                            }) { Text("Done") }
+                        }
+                    }
+                }
+            }
+        } ?: state.paymentMessage?.let { message ->
+            item {
+                Text(message, Modifier.padding(horizontal = 20.dp), color = FamilyRed, fontSize = 12.sp)
+            }
+        }
+        item { Subheading("Installments") }
+        if (details.fees.installments.isEmpty()) item { EmptyMessage("No fee plan is assigned.") }
+        else items(details.fees.installments, key = { it.id }) { installment ->
+            InstallmentCard(
+                item = installment,
+                selected = installment.id in selectedIds,
+                onSelectionChange = if (installment.outstanding > 0 && activeOrder == null) {
+                    { checked ->
+                        selectedIds = if (checked) (selectedIds + installment.id).distinct()
+                        else selectedIds - installment.id
+                    }
+                } else null,
+            )
+        }
+        if (details.fees.payments.isNotEmpty()) {
+            item { Subheading("Recent payments") }
+            items(details.fees.payments, key = { it.id }) {
+                PaymentCard(it, dashboard.schoolName, student.fullName)
+            }
         }
     }
 }
@@ -1202,29 +1261,28 @@ private fun MoreTab(
     onSecureReentryChange: (Boolean) -> Unit,
     modifier: Modifier,
 ) {
-    if (dashboard.role == "STUDENT") {
-        StudentMoreTab(
-            dashboard = dashboard,
-            student = student,
-            state = state,
-            onSelect = onSelect,
-            onOpenTimetable = onOpenTimetable,
-            onOpenLeave = onOpenLeave,
-            onOpenCalendar = onOpenCalendar,
-            onOpenTransport = onOpenTransport,
-            onOpenLibrary = onOpenLibrary,
-            onOpenNotifications = onOpenNotifications,
-            onOpenDocuments = onOpenDocuments,
-            onOpenFees = onOpenFees,
-            onSwitchAccount = onSwitchAccount,
-            onSignOut = onSignOut,
-            secureReentry = secureReentry,
-            onSecureReentryChange = onSecureReentryChange,
-            modifier = modifier,
-        )
-        return
-    }
+    StudentMoreTab(
+        dashboard = dashboard,
+        student = student,
+        state = state,
+        onSelect = onSelect,
+        onOpenTimetable = onOpenTimetable,
+        onOpenLeave = onOpenLeave,
+        onOpenCalendar = onOpenCalendar,
+        onOpenTransport = onOpenTransport,
+        onOpenLibrary = onOpenLibrary,
+        onOpenNotifications = onOpenNotifications,
+        onOpenDocuments = onOpenDocuments,
+        onOpenFees = onOpenFees,
+        onSwitchAccount = onSwitchAccount,
+        onSignOut = onSignOut,
+        secureReentry = secureReentry,
+        onSecureReentryChange = onSecureReentryChange,
+        modifier = modifier,
+    )
+    return
 
+    @Suppress("UNREACHABLE_CODE")
     DetailList(modifier, dashboard, student, "More", state, onSelect, onRefresh) { details ->
     item {
         Card(
@@ -2287,17 +2345,12 @@ private fun FamilyPageIntro(
     onBack: (() -> Unit)? = null,
 ) {
     Column(Modifier.padding(top = 12.dp, bottom = 14.dp)) {
-        if (dashboard.role == "STUDENT") {
-            StudentPageHeader(
-                title = title,
-                subtitle = listOfNotNull(student.className, student.sectionName?.let { "Section $it" })
-                    .joinToString("  ·  ").ifBlank { student.fullName },
-                onBack = onBack,
-            )
-        } else {
-            Text(title, Modifier.padding(horizontal = 20.dp), fontWeight = FontWeight.Bold, fontSize = 24.sp)
-            Text(student.fullName, Modifier.padding(horizontal = 20.dp), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
-        }
+        StudentPageHeader(
+            title = title,
+            subtitle = listOfNotNull(student.className, student.sectionName?.let { "Section $it" })
+                .joinToString("  ·  ").ifBlank { student.fullName },
+            onBack = onBack,
+        )
         if (dashboard.students.size > 1) {
             Spacer(Modifier.height(14.dp))
             LazyRow(contentPadding = PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -2470,9 +2523,20 @@ private fun HomeworkCard(item: FamilyHomeworkDetails) {
 }
 
 @Composable
-private fun InstallmentCard(item: FamilyFeeInstallment) {
+private fun InstallmentCard(
+    item: FamilyFeeInstallment,
+    selected: Boolean = false,
+    onSelectionChange: ((Boolean) -> Unit)? = null,
+) {
     ColumnCard {
         Row(Modifier.fillMaxWidth()) {
+            if (onSelectionChange != null) {
+                Checkbox(
+                    checked = selected,
+                    onCheckedChange = onSelectionChange,
+                    modifier = Modifier.padding(end = 8.dp),
+                )
+            }
             Column(Modifier.weight(1f)) {
                 Text(item.name, fontWeight = FontWeight.Bold)
                 Text(listOf(item.planName, item.categoryName).filter(String::isNotBlank).joinToString(" · "), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
@@ -2816,12 +2880,8 @@ internal fun attendanceRecordsForRole(
     role: String,
     records: List<FamilyAttendanceRecord>,
     selectedMonth: String,
-): List<FamilyAttendanceRecord> = if (role == "STUDENT") {
-    records.filter { record ->
-        calendarDate(record.date)?.let(YearMonth::from)?.toString() == selectedMonth
-    }
-} else {
-    records
+): List<FamilyAttendanceRecord> = records.filter { record ->
+    calendarDate(record.date)?.let(YearMonth::from)?.toString() == selectedMonth
 }
 
 private fun academicYearMonths(year: FamilyAcademicYear?): List<YearMonth> {

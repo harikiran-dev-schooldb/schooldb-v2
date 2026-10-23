@@ -76,13 +76,20 @@ class ResultsViewModel(
         _uiState.value = _uiState.value.copy(saving = true, message = null, error = null)
         viewModelScope.launch {
             try {
-                withContext(Dispatchers.IO) { repository.save(sheet) }
-                val refreshed = withContext(Dispatchers.IO) { repository.loadMarks(sheet.schedule) }
-                _uiState.value = _uiState.value.copy(
-                    sheet = refreshed,
-                    saving = false,
-                    message = "Marks saved successfully.",
-                )
+                val synced = withContext(Dispatchers.IO) { repository.save(sheet) }
+                if (synced) {
+                    val refreshed = withContext(Dispatchers.IO) { repository.loadMarks(sheet.schedule) }
+                    _uiState.value = _uiState.value.copy(
+                        sheet = refreshed,
+                        saving = false,
+                        message = "Marks saved successfully.",
+                    )
+                } else {
+                    _uiState.value = _uiState.value.copy(
+                        saving = false,
+                        message = "Marks saved offline and will sync automatically.",
+                    )
+                }
             } catch (error: Exception) {
                 fail(error)
             }
