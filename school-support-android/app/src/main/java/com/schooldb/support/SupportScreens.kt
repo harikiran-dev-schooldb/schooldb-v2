@@ -838,7 +838,11 @@ private fun SupportStudentFilterDropdown(
                 Icon(Icons.Outlined.KeyboardArrowDown, contentDescription = null,
                     tint = Muted, modifier = Modifier.size(18.dp))
             }
-            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            DropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false },
+                containerColor = Color.White,
+            ) {
                 options.forEach { (value, optionLabel) ->
                     DropdownMenuItem(
                         text = { Text(optionLabel) },

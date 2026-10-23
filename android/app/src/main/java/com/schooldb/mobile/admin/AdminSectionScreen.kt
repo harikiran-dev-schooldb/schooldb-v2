@@ -30,6 +30,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
@@ -856,13 +857,21 @@ private fun StudentFilterDropdown(
                 modifier = Modifier.fillMaxWidth().height(48.dp),
                 shape = RoundedCornerShape(14.dp),
                 border = BorderStroke(1.dp, AdminWebBorder),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    containerColor = Color.White,
+                    contentColor = AdminWebNavy,
+                ),
             ) {
                 Text(selectedLabel, modifier = Modifier.weight(1f), maxLines = 1,
                     overflow = TextOverflow.Ellipsis, color = AdminWebNavy)
                 Icon(Lucide.ChevronDown, contentDescription = null,
                     tint = AdminWebSlate, modifier = Modifier.size(17.dp))
             }
-            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            DropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false },
+                containerColor = Color.White,
+            ) {
                 options.forEach { (value, optionLabel) ->
                     DropdownMenuItem(
                         text = { Text(optionLabel) },
