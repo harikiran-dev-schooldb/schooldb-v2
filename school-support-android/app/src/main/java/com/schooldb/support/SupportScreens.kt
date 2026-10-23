@@ -29,6 +29,7 @@ import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.AttachFile
 import androidx.compose.material.icons.outlined.BarChart
 import androidx.compose.material.icons.outlined.ChevronRight
+import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.QrCode2
 import androidx.compose.material.icons.outlined.Search
@@ -670,84 +671,61 @@ internal fun CreateTicket(api: SupportRepository, school: String, busy: Boolean,
                 SectionTitle("Link a student", "Search by name, admission number, or phone")
                 Spacer(Modifier.height(12.dp))
                 SupportField(search, { search = it; onDraftChange(draft.copy(selectedStudent = null)) }, "Name, admission number, or phone")
-                if (classes.isNotEmpty()) {
-                    Spacer(Modifier.height(10.dp))
-                    Row(
-                        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        listOf(StudentClassOption("", "All classes")).plus(classes).forEach { option ->
-                            FilterChip(
-                                selected = selectedClassId == option.id,
-                                onClick = {
-                                    selectedClassId = option.id
-                                    selectedSectionId = ""
-                                    onDraftChange(draft.copy(selectedStudent = null))
-                                    findStudents(classFilter = option.id, sectionFilter = "")
-                                },
-                                label = { Text(option.name) },
-                            )
-                        }
-                    }
-                }
                 val visibleSections = sections.filter {
                     selectedClassId.isBlank() || it.classId == selectedClassId
                 }
-                if (visibleSections.isNotEmpty()) {
-                    Spacer(Modifier.height(8.dp))
-                    Row(
-                        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        listOf(StudentSectionOption("", "All sections", ""))
-                            .plus(visibleSections).forEach { option ->
-                                FilterChip(
-                                    selected = selectedSectionId == option.id,
-                                    onClick = {
-                                        selectedSectionId = option.id
-                                        onDraftChange(draft.copy(selectedStudent = null))
-                                        findStudents(sectionFilter = option.id)
-                                    },
-                                    label = { Text(option.name) },
-                                )
-                            }
+                Spacer(Modifier.height(10.dp))
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    SupportStudentFilterDropdown(
+                        label = "Class",
+                        options = listOf("" to "All classes") + classes.map { it.id to it.name },
+                        selected = selectedClassId,
+                        modifier = Modifier.weight(1f),
+                    ) { value ->
+                        selectedClassId = value
+                        selectedSectionId = ""
+                        onDraftChange(draft.copy(selectedStudent = null))
+                        findStudents(classFilter = value, sectionFilter = "")
+                    }
+                    SupportStudentFilterDropdown(
+                        label = "Section",
+                        options = listOf("" to "All sections") + visibleSections.map { it.id to it.name },
+                        selected = selectedSectionId,
+                        modifier = Modifier.weight(1f),
+                    ) { value ->
+                        selectedSectionId = value
+                        onDraftChange(draft.copy(selectedStudent = null))
+                        findStudents(sectionFilter = value)
                     }
                 }
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(10.dp))
                 Row(
-                    Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    listOf("" to "All genders", "MALE" to "Male", "FEMALE" to "Female", "OTHER" to "Other")
-                        .forEach { (value, label) ->
-                            FilterChip(
-                                selected = selectedGender == value,
-                                onClick = {
-                                    selectedGender = value
-                                    onDraftChange(draft.copy(selectedStudent = null))
-                                    findStudents(genderFilter = value)
-                                },
-                                label = { Text(label) },
-                            )
-                        }
-                }
-                Spacer(Modifier.height(8.dp))
-                Row(
-                    Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    listOf("" to "All students", "true" to "RTE", "false" to "Non-RTE")
-                        .forEach { (value, label) ->
-                            FilterChip(
-                                selected = selectedRte == value,
-                                onClick = {
-                                    selectedRte = value
-                                    onDraftChange(draft.copy(selectedStudent = null))
-                                    findStudents(rteFilter = value)
-                                },
-                                label = { Text(label) },
-                            )
-                        }
+                    SupportStudentFilterDropdown(
+                        label = "Gender",
+                        options = listOf("" to "All genders", "MALE" to "Male", "FEMALE" to "Female", "OTHER" to "Other"),
+                        selected = selectedGender,
+                        modifier = Modifier.weight(1f),
+                    ) { value ->
+                        selectedGender = value
+                        onDraftChange(draft.copy(selectedStudent = null))
+                        findStudents(genderFilter = value)
+                    }
+                    SupportStudentFilterDropdown(
+                        label = "RTE status",
+                        options = listOf("" to "All students", "true" to "RTE", "false" to "Non-RTE"),
+                        selected = selectedRte,
+                        modifier = Modifier.weight(1f),
+                    ) { value ->
+                        selectedRte = value
+                        onDraftChange(draft.copy(selectedStudent = null))
+                        findStudents(rteFilter = value)
+                    }
                 }
                 Spacer(Modifier.height(8.dp))
                 OutlinedButton(onClick = { findStudents() },
@@ -829,6 +807,52 @@ internal fun CreateTicket(api: SupportRepository, school: String, busy: Boolean,
         Text("Your ticket will be visible to the support team at " + school + ".",
             style = MaterialTheme.typography.bodySmall, color = Muted)
         Spacer(Modifier.height(20.dp))
+    }
+}
+
+@Composable
+private fun SupportStudentFilterDropdown(
+    label: String,
+    options: List<Pair<String, String>>,
+    selected: String,
+    modifier: Modifier = Modifier,
+    onSelect: (String) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val selectedLabel = options.firstOrNull { it.first == selected }?.second ?: options.first().second
+    Column(modifier) {
+        Text(label, style = MaterialTheme.typography.labelSmall, color = Muted,
+            fontWeight = FontWeight.SemiBold)
+        Spacer(Modifier.height(5.dp))
+        Box {
+            OutlinedButton(
+                onClick = { expanded = true },
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                colors = ButtonDefaults.outlinedButtonColors(containerColor = Color.White),
+                shape = RoundedCornerShape(14.dp),
+                border = BorderStroke(1.dp, Line),
+                contentPadding = PaddingValues(horizontal = 12.dp),
+            ) {
+                Text(selectedLabel, modifier = Modifier.weight(1f), color = Ink,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Start)
+                Icon(Icons.Outlined.KeyboardArrowDown, contentDescription = null,
+                    tint = Muted, modifier = Modifier.size(18.dp))
+            }
+            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                options.forEach { (value, optionLabel) ->
+                    DropdownMenuItem(
+                        text = { Text(optionLabel) },
+                        onClick = {
+                            expanded = false
+                            onSelect(value)
+                        },
+                        trailingIcon = {
+                            if (selected == value) RadioButton(selected = true, onClick = null)
+                        },
+                    )
+                }
+            }
+        }
     }
 }
 

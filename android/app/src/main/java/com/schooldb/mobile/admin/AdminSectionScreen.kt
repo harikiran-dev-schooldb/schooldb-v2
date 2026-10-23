@@ -32,6 +32,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.material3.Button
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
@@ -68,6 +70,7 @@ import com.schooldb.mobile.network.ApiException
 import com.schooldb.mobile.network.AuthenticatedApiClient
 import com.composables.icons.lucide.ArrowLeft
 import com.composables.icons.lucide.Check
+import com.composables.icons.lucide.ChevronDown
 import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.RefreshCw
 import com.composables.icons.lucide.Search
@@ -790,56 +793,90 @@ internal fun StudentDirectoryFilters(
     onGender: (String) -> Unit,
     onRte: (String) -> Unit,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        if (state.studentClasses.isNotEmpty()) {
-            StudentFilterRow(
+    val visibleSections = state.studentSections.filter { classId.isBlank() || it.classId == classId }
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            StudentFilterDropdown(
+                label = "Class",
                 options = listOf("" to "All classes") + state.studentClasses.map { it.id to it.name },
                 selected = classId,
                 onSelect = onClass,
+                modifier = Modifier.weight(1f),
             )
-        }
-        val visibleSections = state.studentSections.filter { classId.isBlank() || it.classId == classId }
-        if (visibleSections.isNotEmpty()) {
-            StudentFilterRow(
+            StudentFilterDropdown(
+                label = "Section",
                 options = listOf("" to "All sections") + visibleSections.map { it.id to it.name },
                 selected = sectionId,
                 onSelect = onSection,
+                modifier = Modifier.weight(1f),
             )
         }
-        StudentFilterRow(
-            options = listOf("" to "All genders", "MALE" to "Male", "FEMALE" to "Female", "OTHER" to "Other"),
-            selected = gender,
-            onSelect = onGender,
-        )
-        StudentFilterRow(
-            options = listOf("" to "All students", "true" to "RTE", "false" to "Non-RTE"),
-            selected = rte,
-            onSelect = onRte,
-        )
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            StudentFilterDropdown(
+                label = "Gender",
+                options = listOf("" to "All genders", "MALE" to "Male", "FEMALE" to "Female", "OTHER" to "Other"),
+                selected = gender,
+                onSelect = onGender,
+                modifier = Modifier.weight(1f),
+            )
+            StudentFilterDropdown(
+                label = "RTE status",
+                options = listOf("" to "All students", "true" to "RTE", "false" to "Non-RTE"),
+                selected = rte,
+                onSelect = onRte,
+                modifier = Modifier.weight(1f),
+            )
+        }
     }
 }
 
 @Composable
-private fun StudentFilterRow(
+private fun StudentFilterDropdown(
+    label: String,
     options: List<Pair<String, String>>,
     selected: String,
+    modifier: Modifier = Modifier,
     onSelect: (String) -> Unit,
 ) {
-    Row(
-        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        options.forEach { (value, label) ->
-            FilterChip(
-                selected = selected == value,
-                onClick = { onSelect(value) },
-                label = { Text(label) },
-                colors = FilterChipDefaults.filterChipColors(
-                    containerColor = Color.White,
-                    selectedContainerColor = Color(0xFFEEF2FF),
-                    selectedLabelColor = AdminWebIndigo,
-                ),
-            )
+    var expanded by rememberSaveable { mutableStateOf(false) }
+    val selectedLabel = options.firstOrNull { it.first == selected }?.second ?: options.first().second
+    Column(modifier) {
+        Text(label, style = MaterialTheme.typography.labelSmall, color = AdminWebSlate,
+            fontWeight = FontWeight.SemiBold)
+        Spacer(Modifier.height(5.dp))
+        Box {
+            OutlinedButton(
+                onClick = { expanded = true },
+                modifier = Modifier.fillMaxWidth().height(48.dp),
+                shape = RoundedCornerShape(14.dp),
+                border = BorderStroke(1.dp, AdminWebBorder),
+            ) {
+                Text(selectedLabel, modifier = Modifier.weight(1f), maxLines = 1,
+                    overflow = TextOverflow.Ellipsis, color = AdminWebNavy)
+                Icon(Lucide.ChevronDown, contentDescription = null,
+                    tint = AdminWebSlate, modifier = Modifier.size(17.dp))
+            }
+            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                options.forEach { (value, optionLabel) ->
+                    DropdownMenuItem(
+                        text = { Text(optionLabel) },
+                        onClick = {
+                            expanded = false
+                            onSelect(value)
+                        },
+                        trailingIcon = {
+                            if (selected == value) Icon(Lucide.Check, contentDescription = null,
+                                tint = AdminWebIndigo, modifier = Modifier.size(17.dp))
+                        },
+                    )
+                }
+            }
         }
     }
 }
