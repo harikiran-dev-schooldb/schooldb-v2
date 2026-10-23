@@ -51,6 +51,13 @@ data class TicketSummary(
     val source: String = "STAFF",
     val student: StudentOption? = null,
     val studentName: String? = null,
+    val assignedToName: String? = null,
+    val createdAt: String = "",
+    val updatedAt: String = "",
+    val labels: List<String> = emptyList(),
+    val responseSlaState: String = "DUE",
+    val resolutionSlaState: String = "DUE",
+    val resolutionDueAt: String = "",
 )
 
 data class PendingAttachment(

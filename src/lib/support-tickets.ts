@@ -53,6 +53,7 @@ export async function visibleTicket(id: string, actor: Awaited<ReturnType<typeof
       },
       createdBy: { select: { id: true, firstName: true, lastName: true } },
       assignedTo: { select: { id: true, firstName: true, lastName: true } },
+      duplicateOf: { select: { id: true, ticketNo: true, subject: true } },
       messages: {
         orderBy: { createdAt: "asc" },
         include: { author: { select: { id: true, firstName: true, lastName: true } } },

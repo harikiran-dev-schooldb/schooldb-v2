@@ -8,6 +8,7 @@ import { prisma } from "@/lib/prisma";
 import { ApiResponse } from "@/lib/response";
 import { supportActor, ticketVisibility } from "@/lib/support-tickets";
 import { sendSupportPush, supportAdminUserIds } from "@/lib/support-push";
+import { supportSla } from "@/lib/support-sla";
 
 const createInput = z.object({
   subject: z.string().trim().min(3).max(160),
@@ -47,6 +48,18 @@ export async function GET(request: Request) {
       filter === "URGENT" ? { priority: SupportTicketPriority.URGENT, status: { notIn: [SupportTicketStatus.RESOLVED, SupportTicketStatus.CLOSED] } } :
       filter === "UNASSIGNED" ? { assignedToId: null, status: { notIn: [SupportTicketStatus.RESOLVED, SupportTicketStatus.CLOSED] } } :
       filter === "NEW_TODAY" ? { createdAt: { gte: startOfToday } } :
+      filter === "MY" ? { assignedToId: actor.userId } :
+      filter === "MY_OVERDUE" ? {
+        assignedToId: actor.userId,
+        status: { in: [SupportTicketStatus.OPEN, SupportTicketStatus.REOPENED, SupportTicketStatus.ASSIGNED, SupportTicketStatus.IN_PROGRESS, SupportTicketStatus.WAITING] },
+        OR: [
+          { priority: SupportTicketPriority.URGENT, createdAt: { lte: new Date(now.getTime() - 24 * 3_600_000) } },
+          { priority: SupportTicketPriority.HIGH, createdAt: { lte: new Date(now.getTime() - 48 * 3_600_000) } },
+          { priority: SupportTicketPriority.NORMAL, createdAt: { lte: new Date(now.getTime() - 72 * 3_600_000) } },
+          { priority: SupportTicketPriority.LOW, createdAt: { lte: new Date(now.getTime() - 120 * 3_600_000) } },
+        ],
+      } :
+      filter === "URGENT_UNASSIGNED" ? { assignedToId: null, priority: SupportTicketPriority.URGENT, status: { notIn: [SupportTicketStatus.RESOLVED, SupportTicketStatus.CLOSED] } } :
       filter === "RESOLVED" ? { status: { in: [SupportTicketStatus.RESOLVED, SupportTicketStatus.CLOSED] } } : {};
     const searchWhere: Prisma.SupportTicketWhereInput = q
       ? {
@@ -75,7 +88,16 @@ export async function GET(request: Request) {
       prisma.supportTicket.findMany({
       where,
       orderBy: { createdAt: "desc" }, skip: (page - 1) * pageSize, take: pageSize,
-      include: { student: { select: { id: true, admissionNo: true, fullName: true } } },
+      include: {
+        student: { select: { id: true, admissionNo: true, fullName: true } },
+        assignedTo: { select: { id: true, firstName: true, lastName: true } },
+        messages: {
+          where: { isInternal: false },
+          orderBy: { createdAt: "asc" },
+          take: 1,
+          select: { createdAt: true },
+        },
+      },
       }),
       prisma.supportTicket.count({ where }),
       prisma.supportTicket.count({ where: { ...visibility, status: { in: ["OPEN", "REOPENED"] } } }),
@@ -84,7 +106,16 @@ export async function GET(request: Request) {
       prisma.supportTicket.count({ where: { ...visibility, status: { in: ["RESOLVED", "CLOSED"] } } }),
     ]);
     return ApiResponse.success({
-      tickets,
+      tickets: tickets.map((ticket) => ({
+        ...ticket,
+        sla: supportSla({
+          createdAt: ticket.createdAt,
+          priority: ticket.priority,
+          status: ticket.status,
+          firstResponseAt: ticket.messages[0]?.createdAt,
+          resolvedAt: ticket.resolvedAt,
+        }),
+      })),
       isAdmin: actor.isAdmin,
       canManageAdmins: actor.role === "SUPER_ADMIN",
       summary: { open, inProgress, urgent, resolved },

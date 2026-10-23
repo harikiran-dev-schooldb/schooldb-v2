@@ -39,6 +39,7 @@ internal fun SupportProfileScreen(
     loading: Boolean,
     error: String?,
     alertsEnabled: Boolean,
+    overdueRemindersEnabled: Boolean,
     secureReentry: Boolean,
     accounts: List<AccountSwitchChoice>,
     accountsLoading: Boolean,
@@ -48,6 +49,7 @@ internal fun SupportProfileScreen(
     onRefreshAccounts: () -> Unit,
     onSwitchAccount: (AccountSwitchChoice) -> Unit,
     onNotificationSettings: () -> Unit,
+    onOverdueRemindersChange: (Boolean) -> Unit,
     onSecureReentryChange: (Boolean) -> Unit,
     onSignOut: () -> Unit,
 ) {
@@ -71,6 +73,17 @@ internal fun SupportProfileScreen(
                         CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 3.dp)
                         Spacer(Modifier.width(12.dp))
                         Text("Loading your profile…", color = Muted)
+                    }
+                    HorizontalDivider(Modifier.padding(vertical = 12.dp), color = Line)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        ProfileIcon(Icons.Outlined.Notifications, SchoolGold)
+                        Spacer(Modifier.width(12.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text("Overdue reminders", fontWeight = FontWeight.SemiBold, color = Ink)
+                            Text("Show an alert when the support queue needs follow-up",
+                                style = MaterialTheme.typography.bodySmall, color = Muted)
+                        }
+                        Switch(checked = overdueRemindersEnabled, onCheckedChange = onOverdueRemindersChange)
                     }
                 }
             }

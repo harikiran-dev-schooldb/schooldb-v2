@@ -142,13 +142,16 @@ private data class SupportTimelineEntry(
 
 @Composable
 internal fun TicketDashboard(school: String, tickets: List<TicketSummary>, summary: List<Int>,
-    admin: Boolean, canManageAdmins: Boolean, analytics: SupportAnalytics?, analyticsLoading: Boolean,
+    admin: Boolean, canManageAdmins: Boolean, staff: List<StaffOption>, analytics: SupportAnalytics?, analyticsLoading: Boolean,
     analyticsError: String?, busy: Boolean, ticketsLoading: Boolean, ticketsLoaded: Boolean,
     showingCachedData: Boolean, manualRefreshing: Boolean,
     selectedTab: String, query: String, queueFilter: String, priorityFilter: String,
     typeFilter: String, sourceFilter: String, page: Int, total: Int, totalPages: Int,
     onQueryChange: (String) -> Unit, onSearch: () -> Unit, onPage: (Int) -> Unit,
     onFiltersChange: (String, String, String, String) -> Unit,
+    onBulkStatus: (List<String>, TicketStatus) -> Unit,
+    onBulkPriority: (List<String>, TicketPriority) -> Unit,
+    onBulkAssign: (List<String>, String?) -> Unit,
     requestedFilter: String?, onFilterConsumed: () -> Unit,
     onOpenQueue: (String) -> Unit,
     onCreate: () -> Unit, onManageAdmins: () -> Unit,
@@ -158,6 +161,8 @@ internal fun TicketDashboard(school: String, tickets: List<TicketSummary>, summa
     val ticketsScroll = rememberLazyListState()
     val analyticsScroll = rememberLazyListState()
     val keyboard = LocalSoftwareKeyboardController.current
+    var selectionMode by remember { mutableStateOf(false) }
+    val selectedTicketIds = remember { mutableStateListOf<String>() }
     LaunchedEffect(requestedFilter) {
         requestedFilter?.let {
             onFilterConsumed()
@@ -297,6 +302,7 @@ internal fun TicketDashboard(school: String, tickets: List<TicketSummary>, summa
                     Spacer(Modifier.height(18.dp))
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         AnalyticsValue("Resolution", formatPercent(analytics.month.resolutionRate), Modifier.weight(1f))
+                            AnalyticsValue("Avg. response", formatResolutionTime(analytics.month.averageResponseHours), Modifier.weight(1f))
                         AnalyticsValue("Avg. resolution", formatResolutionTime(analytics.month.averageResolutionHours), Modifier.weight(1f))
                     }
                 }
@@ -308,6 +314,38 @@ internal fun TicketDashboard(school: String, tickets: List<TicketSummary>, summa
                         Spacer(Modifier.height(14.dp))
                         analytics.byType.forEach { category ->
                             AnalyticsRow(category.type.replace('_', ' ').lowercase().replaceFirstChar { it.uppercase() }, category.count.toString())
+                        }
+                    }
+                }
+                if (analytics.dailyTrend.isNotEmpty()) {
+                    item {
+                        SurfaceCard(Modifier.fillMaxWidth()) {
+                            SectionTitle("14-day trend", "Created versus resolved tickets")
+                            Spacer(Modifier.height(14.dp))
+                            val trendMax = analytics.dailyTrend.maxOf { maxOf(it.created, it.resolved) }.coerceAtLeast(1)
+                            analytics.dailyTrend.takeLast(7).forEach { day ->
+                                Row(Modifier.fillMaxWidth().padding(vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    Text(day.date.takeLast(5), modifier = Modifier.width(48.dp), style = MaterialTheme.typography.labelSmall, color = Muted)
+                                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                                        LinearProgressIndicator(
+                                            progress = { day.created.toFloat() / trendMax },
+                                            modifier = Modifier.fillMaxWidth().height(5.dp).clip(CircleShape),
+                                            color = Indigo,
+                                            trackColor = Indigo.copy(alpha = 0.10f),
+                                        )
+                                        LinearProgressIndicator(
+                                            progress = { day.resolved.toFloat() / trendMax },
+                                            modifier = Modifier.fillMaxWidth().height(5.dp).clip(CircleShape),
+                                            color = SchoolGreen,
+                                            trackColor = SchoolGreen.copy(alpha = 0.10f),
+                                        )
+                                    }
+                                    Spacer(Modifier.width(8.dp))
+                                    Text("${day.created}/${day.resolved}", style = MaterialTheme.typography.labelSmall, color = Ink)
+                                }
+                            }
+                            Spacer(Modifier.height(6.dp))
+                            Text("Created / resolved", style = MaterialTheme.typography.bodySmall, color = Muted)
                         }
                     }
                 }
@@ -365,7 +403,10 @@ internal fun TicketDashboard(school: String, tickets: List<TicketSummary>, summa
                             AnalyticsValue("Resolution rate", formatPercent(analytics.month.resolutionRate), Modifier.weight(1f))
                         }
                         Spacer(Modifier.height(18.dp))
-                        AnalyticsValue("Average resolution", formatResolutionTime(analytics.month.averageResolutionHours))
+                        Row(Modifier.fillMaxWidth()) {
+                            AnalyticsValue("Average response", formatResolutionTime(analytics.month.averageResponseHours), Modifier.weight(1f))
+                            AnalyticsValue("Average resolution", formatResolutionTime(analytics.month.averageResolutionHours), Modifier.weight(1f))
+                        }
                     }
                 }
                 item {
@@ -473,13 +514,15 @@ internal fun TicketDashboard(school: String, tickets: List<TicketSummary>, summa
                 Spacer(Modifier.height(12.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     InboxFilterDropdown(
-                        label = "Queue",
+                        label = "Queue / saved view",
                         value = queueFilter,
                         options = listOf(
                             "ALL" to "All tickets", "OPEN" to "Open", "ACTIVE" to "Active",
                             "WAITING" to "Waiting", "WAITING_OVERDUE" to "Waiting > 2 days",
                             "URGENT" to "Urgent", "UNASSIGNED" to "Unassigned",
-                            "NEW_TODAY" to "New today", "RESOLVED" to "Resolved",
+                            "NEW_TODAY" to "New today", "MY" to "My tickets",
+                            "MY_OVERDUE" to "My overdue", "URGENT_UNASSIGNED" to "Urgent unassigned",
+                            "RESOLVED" to "Resolved",
                         ),
                         enabled = !busy && !ticketsLoading,
                         modifier = Modifier.weight(1f),
@@ -513,6 +556,36 @@ internal fun TicketDashboard(school: String, tickets: List<TicketSummary>, summa
                 }
             }
         }
+        if (admin && tickets.isNotEmpty()) item {
+            SurfaceCard(Modifier.fillMaxWidth()) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween) {
+                    Column {
+                        Text(if (selectionMode) "${selectedTicketIds.size} selected" else "Bulk actions",
+                            style = MaterialTheme.typography.titleMedium, color = Ink, fontWeight = FontWeight.Bold)
+                        Text("Assign or update several tickets together", style = MaterialTheme.typography.bodySmall, color = Muted)
+                    }
+                    TextButton(onClick = {
+                        selectionMode = !selectionMode
+                        if (!selectionMode) selectedTicketIds.clear()
+                    }) { Text(if (selectionMode) "Cancel" else "Select") }
+                }
+                if (selectionMode && selectedTicketIds.isNotEmpty()) {
+                    Spacer(Modifier.height(10.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        InboxFilterDropdown("Status", "", TicketStatus.entries.map { it.name to it.name.replace('_', ' ') }, !busy,
+                            Modifier.weight(1f)) { value -> onBulkStatus(selectedTicketIds.toList(), TicketStatus.valueOf(value)); selectedTicketIds.clear() }
+                        InboxFilterDropdown("Priority", "", TicketPriority.entries.map { it.name to it.name }, !busy,
+                            Modifier.weight(1f)) { value -> onBulkPriority(selectedTicketIds.toList(), TicketPriority.valueOf(value)); selectedTicketIds.clear() }
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    InboxFilterDropdown(
+                        "Assignee", "", listOf("UNASSIGNED" to "Unassigned") + staff.map { it.id to it.name }, !busy,
+                        Modifier.fillMaxWidth(),
+                    ) { value -> onBulkAssign(selectedTicketIds.toList(), value.takeUnless { it == "UNASSIGNED" }); selectedTicketIds.clear() }
+                }
+            }
+        }
         if (ticketsLoading && !ticketsLoaded) item(contentType = "ticket-loading") {
             LoadingTicketCard()
         }
@@ -522,7 +595,16 @@ internal fun TicketDashboard(school: String, tickets: List<TicketSummary>, summa
                 if (query.isNotBlank() || filtersActive) "Try another search or filter."
                 else "Raise the first ticket to start tracking a concern.")
         }
-        items(tickets, key = { it.id }, contentType = { "ticket" }) { ticket -> TicketCard(ticket) { onTicket(ticket.id) } }
+        items(tickets, key = { it.id }, contentType = { "ticket" }) { ticket ->
+            TicketCard(
+                ticket = ticket,
+                selectable = selectionMode,
+                selected = ticket.id in selectedTicketIds,
+                onSelect = {
+                    if (ticket.id in selectedTicketIds) selectedTicketIds.remove(ticket.id) else selectedTicketIds.add(ticket.id)
+                },
+            ) { onTicket(ticket.id) }
+        }
         if (ticketsLoaded) item {
             SurfaceCard(Modifier.fillMaxWidth()) {
                 Text(
@@ -560,7 +642,8 @@ private fun InboxFilterDropdown(
     onSelect: (String) -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
-    val selectedLabel = options.firstOrNull { it.first == value }?.second ?: value.replace('_', ' ')
+    val selectedLabel = options.firstOrNull { it.first == value }?.second
+        ?: value.replace('_', ' ').ifBlank { "Choose" }
     Column(modifier) {
         Text(label, style = MaterialTheme.typography.labelSmall, color = Muted, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(5.dp))
@@ -660,9 +743,19 @@ private fun formatResolutionTime(hours: Double?): String {
 }
 
 @Composable
-private fun TicketCard(ticket: TicketSummary, onClick: () -> Unit) {
-    SurfaceCard(Modifier.fillMaxWidth().clickable(onClick = onClick)) {
+private fun TicketCard(
+    ticket: TicketSummary,
+    selectable: Boolean = false,
+    selected: Boolean = false,
+    onSelect: () -> Unit = {},
+    onClick: () -> Unit,
+) {
+    SurfaceCard(Modifier.fillMaxWidth().clickable(onClick = if (selectable) onSelect else onClick)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
+            if (selectable) {
+                Checkbox(checked = selected, onCheckedChange = { onSelect() })
+                Spacer(Modifier.width(6.dp))
+            }
             Box(
                 Modifier.width(4.dp).height(44.dp).background(statusTint(ticket.status.name), CircleShape)
             )
@@ -681,12 +774,19 @@ private fun TicketCard(ticket: TicketSummary, onClick: () -> Unit) {
             Text("Student · " + it, style = MaterialTheme.typography.bodySmall, color = Muted,
                 maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
+        ticket.assignedToName?.let {
+            Spacer(Modifier.height(4.dp))
+            Text("Assigned to $it", style = MaterialTheme.typography.bodySmall, color = Muted)
+        }
         Spacer(Modifier.height(16.dp))
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Pill(ticket.status.name.replace('_', ' '), statusTint(ticket.status.name))
             if (ticket.source == "PARENT_QR") Pill("PARENT QUERY", Indigo)
             if (ticket.priority == TicketPriority.URGENT || ticket.priority == TicketPriority.HIGH)
                 Pill(ticket.priority.name, priorityTint(ticket.priority.name))
+            if (ticket.responseSlaState == "OVERDUE" || ticket.resolutionSlaState == "OVERDUE")
+                Pill("SLA OVERDUE", Color(0xFFD05F50))
+            ticket.labels.take(2).forEach { Pill(it.uppercase(), Color(0xFF6B7280)) }
         }
     }
 }
@@ -961,14 +1061,18 @@ private fun SupportStudentFilterDropdown(
 
 @Composable
 internal fun TicketDetails(ticket: TicketDetail, admin: Boolean, busy: Boolean, staff: List<StaffOption>,
+    duplicateCandidates: List<TicketSummary>,
     reply: String, onReplyChange: (String) -> Unit,
     onReply: (String, Boolean) -> Unit, onStatus: (TicketStatus) -> Unit,
     onPriority: (TicketPriority) -> Unit, onAssign: (String?) -> Unit,
+    onLabels: (List<String>) -> Unit, onDuplicate: (String?) -> Unit,
+    onRetryDelivery: () -> Unit,
     onOpenAttachment: (TicketAttachment) -> Unit,
     onAddAttachment: (PendingAttachment) -> Unit) {
     val context = LocalContext.current
     var replyVisibility by remember(ticket.id, admin) { mutableStateOf(if (admin) "INTERNAL_ONLY" else "SHOW_TO_PARENT") }
     var pendingStatus by remember(ticket.id) { mutableStateOf<TicketStatus?>(null) }
+    var labelsText by remember(ticket.id, ticket.labels) { mutableStateOf(ticket.labels.joinToString(", ")) }
     val timeline = remember(ticket.messages, ticket.activities) {
         buildList {
             ticket.messages.forEach { message ->
@@ -1043,6 +1147,32 @@ internal fun TicketDetails(ticket: TicketDetail, admin: Boolean, busy: Boolean, 
             SectionTitle("Issue", ticket.type.replace('_', ' ').lowercase().replaceFirstChar { it.uppercase() })
             Spacer(Modifier.height(12.dp))
             Text(ticket.description, style = MaterialTheme.typography.bodyLarge, color = Ink)
+        }
+        SurfaceCard(Modifier.fillMaxWidth()) {
+            SectionTitle("Service level", "Response and resolution commitments")
+            Spacer(Modifier.height(10.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Pill("RESPONSE ${ticket.responseSlaState}", if (ticket.responseSlaState in listOf("OVERDUE", "BREACHED")) Color(0xFFD05F50) else SchoolGreen)
+                Pill("RESOLUTION ${ticket.resolutionSlaState}", if (ticket.resolutionSlaState in listOf("OVERDUE", "BREACHED")) Color(0xFFD05F50) else SchoolGreen)
+            }
+            if (ticket.resolutionDueAt.isNotBlank()) {
+                Spacer(Modifier.height(8.dp))
+                Text("Resolution target · ${formatSupportTimestamp(ticket.resolutionDueAt)}", style = MaterialTheme.typography.bodySmall, color = Muted)
+            }
+        }
+        ticket.parentDelivery?.let { delivery ->
+            SurfaceCard(Modifier.fillMaxWidth()) {
+                SectionTitle("Parent delivery", "Latest WhatsApp communication")
+                Spacer(Modifier.height(10.dp))
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Pill(delivery.status, if (delivery.status == "FAILED") Color(0xFFD05F50) else SchoolGreen)
+                    Spacer(Modifier.weight(1f))
+                    if (delivery.status == "FAILED" && admin) {
+                        TextButton(onClick = onRetryDelivery, enabled = !busy) { Text("Retry") }
+                    }
+                }
+                delivery.error?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = Muted) }
+            }
         }
         if (ticket.diagnostics != null) SurfaceCard(Modifier.fillMaxWidth()) {
             SectionTitle("App diagnostics", "Captured automatically when this ticket was created")
@@ -1121,6 +1251,30 @@ internal fun TicketDetails(ticket: TicketDetail, admin: Boolean, busy: Boolean, 
                     }
                 }
             }
+            Spacer(Modifier.height(14.dp))
+            Text("LABELS", style = MaterialTheme.typography.labelSmall, color = Muted, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(6.dp))
+            SupportField(labelsText, { labelsText = it }, "billing, app, follow-up")
+            Spacer(Modifier.height(6.dp))
+            OutlinedButton(
+                onClick = {
+                    onLabels(labelsText.split(',').map(String::trim).filter(String::isNotBlank).distinct().take(8))
+                },
+                enabled = !busy,
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text("Save labels") }
+            Spacer(Modifier.height(14.dp))
+            Text("DUPLICATE OF", style = MaterialTheme.typography.labelSmall, color = Muted, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(6.dp))
+            InboxFilterDropdown(
+                label = "Original ticket",
+                value = ticket.duplicateOfId ?: "NONE",
+                options = listOf("NONE" to "Not a duplicate") + duplicateCandidates
+                    .filter { it.id != ticket.id }
+                    .map { it.id to "${it.ticketNo} · ${it.subject}" },
+                enabled = !busy,
+                modifier = Modifier.fillMaxWidth(),
+            ) { onDuplicate(it.takeUnless { value -> value == "NONE" }) }
         }
         SurfaceCard(Modifier.fillMaxWidth()) {
             SectionTitle("Timeline", timeline.size.toString() + " updates · newest first")

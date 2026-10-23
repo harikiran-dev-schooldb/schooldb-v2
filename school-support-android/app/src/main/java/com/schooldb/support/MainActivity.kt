@@ -106,6 +106,7 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
     val preferences = context.getSharedPreferences("support_session", 0)
     val api = remember { SupportRepository() }
     val ticketCache = remember { SupportTicketCache(context) }
+    val replyOutbox = remember { SupportReplyOutbox(context) }
     val ticketViewModel: SupportTicketViewModel = viewModel()
     val ticketState by ticketViewModel.state.collectAsStateWithLifecycle()
     val authViewModel: SupportAuthViewModel = viewModel()
@@ -154,6 +155,10 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
     var secureReentry by remember {
         mutableStateOf(preferences.getBoolean("secure_reentry", false))
     }
+    var overdueRemindersEnabled by remember {
+        mutableStateOf(preferences.getBoolean("overdue_reminders", true))
+    }
+    var lastOverdueReminderCount by remember(school) { mutableIntStateOf(0) }
     var appLocked by rememberSaveable { mutableStateOf(false) }
     var hasBackgrounded by rememberSaveable { mutableStateOf(false) }
     var unlockAttempt by rememberSaveable { mutableIntStateOf(0) }
@@ -398,6 +403,7 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
 
     suspend fun loadDetail(id: String) {
         ticketViewModel.loadDetail(school, id)
+        replyDrafts[id] = replyOutbox.draft(school, id)
         page = SupportPage.TICKET_DETAIL
     }
 
@@ -447,8 +453,32 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
         }
     }
 
+    LaunchedEffect(ticketState.analytics?.attention?.waitingOverTwoDays, overdueRemindersEnabled) {
+        val overdue = ticketState.analytics?.attention?.waitingOverTwoDays ?: 0
+        if (overdueRemindersEnabled && overdue > 0 && overdue != lastOverdueReminderCount) {
+            notice = "$overdue support ${if (overdue == 1) "ticket has" else "tickets have"} been waiting over two days."
+        }
+        lastOverdueReminderCount = overdue
+    }
+
+    LaunchedEffect(sessionReady, school, resumeVersion) {
+        if (!sessionReady || school.isBlank()) return@LaunchedEffect
+        replyOutbox.pending().filter { it.school == school }.forEach { pending ->
+            try {
+                api.reply(school, pending.ticketId, pending.body, pending.isInternal)
+                replyOutbox.remove(pending.key)
+                if (ticketState.detail?.id == pending.ticketId) ticketViewModel.loadDetail(school, pending.ticketId)
+                notice = "Saved reply sent."
+            } catch (_: SupportNetworkException) {
+                return@LaunchedEffect
+            } catch (_: Exception) {
+                replyOutbox.remove(pending.key)
+            }
+        }
+    }
+
     LaunchedEffect(page, school, ticketState.isAdmin) {
-        if (page == SupportPage.TICKET_DETAIL && ticketState.isAdmin && school.isNotBlank()) {
+        if (page in listOf(SupportPage.DASHBOARD, SupportPage.TICKET_DETAIL) && ticketState.isAdmin && school.isNotBlank()) {
             try {
                 ticketViewModel.loadStaff(school)
             } catch (e: SupportSessionExpiredException) {
@@ -800,6 +830,7 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
                         loading = profileLoading,
                         error = profileError,
                         alertsEnabled = alertsEnabled,
+                        overdueRemindersEnabled = overdueRemindersEnabled,
                         secureReentry = secureReentry,
                         accounts = switchAccounts,
                         accountsLoading = switchAccountsLoading,
@@ -849,6 +880,10 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
                             context.startActivity(Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS)
                                 .putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName))
                         },
+                        onOverdueRemindersChange = { enabled ->
+                            overdueRemindersEnabled = enabled
+                            preferences.edit { putBoolean("overdue_reminders", enabled) }
+                        },
                         onSecureReentryChange = { enabled ->
                             val deviceIsSecure = context.getSystemService(KeyguardManager::class.java).isDeviceSecure
                             if (enabled && !deviceIsSecure) {
@@ -860,7 +895,7 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
                         },
                         onSignOut = { showSignOutConfirmation = true },
                     )
-                } else TicketDashboard(school, ticketState.tickets, ticketState.summary, ticketState.isAdmin, ticketState.canManageAdmins, ticketState.analytics,
+                } else TicketDashboard(school, ticketState.tickets, ticketState.summary, ticketState.isAdmin, ticketState.canManageAdmins, ticketState.staff, ticketState.analytics,
                     ticketState.analyticsLoading, ticketState.analyticsError, busy, ticketState.ticketsLoading, ticketState.ticketsLoaded,
                     showingCachedData = ticketState.showingCachedData,
                     manualRefreshing = manualRefreshing,
@@ -886,6 +921,24 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
                         ticketViewModel.setInboxFilters(queue, priority, type, source)
                         run { loadTickets(queue, ticketState.query, 1, priority, type, source) }
                     },
+                    onBulkStatus = { ids, status -> run {
+                        api.bulkUpdate(school, ids, status = status)
+                        notice = "${ids.size} tickets updated."
+                        loadTickets()
+                        ticketViewModel.invalidateAnalytics()
+                    } },
+                    onBulkPriority = { ids, priority -> run {
+                        api.bulkUpdate(school, ids, priority = priority)
+                        notice = "${ids.size} ticket priorities updated."
+                        loadTickets()
+                        ticketViewModel.invalidateAnalytics()
+                    } },
+                    onBulkAssign = { ids, assigneeId -> run {
+                        api.bulkUpdate(school, ids, assignedToId = assigneeId, updateAssignment = true)
+                        notice = "${ids.size} ticket assignments updated."
+                        loadTickets()
+                        ticketViewModel.invalidateAnalytics()
+                    } },
                     requestedFilter = requestedTicketFilter,
                     onFilterConsumed = { requestedTicketFilter = null },
                     onOpenQueue = { filter ->
@@ -950,16 +1003,30 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
                     }
                 } }
                 SupportPage.TICKET_DETAIL -> ticketState.detail?.let { ticket -> TicketDetails(ticket, ticketState.isAdmin, busy, ticketState.staff,
+                    duplicateCandidates = ticketState.tickets,
                     reply = replyDrafts[ticket.id].orEmpty(),
-                    onReplyChange = { replyDrafts[ticket.id] = it },
+                    onReplyChange = {
+                        replyDrafts[ticket.id] = it
+                        replyOutbox.setDraft(school, ticket.id, it)
+                    },
                     onReply = { body, isInternal -> run {
-                        api.reply(school, ticket.id, body, isInternal)
-                        replyDrafts.remove(ticket.id)
-                        refreshTicketAfterMutation(ticket.id)
+                        try {
+                            api.reply(school, ticket.id, body, isInternal)
+                            replyDrafts.remove(ticket.id)
+                            replyOutbox.setDraft(school, ticket.id, "")
+                            refreshTicketAfterMutation(ticket.id)
+                        } catch (network: SupportNetworkException) {
+                            replyOutbox.enqueue(school, ticket.id, body, isInternal)
+                            replyDrafts.remove(ticket.id)
+                            notice = "No connection. Reply saved and will send automatically."
+                        }
                     } },
                     onStatus = { status -> run { api.updateStatus(school, ticket.id, status); refreshTicketAfterMutation(ticket.id) } },
                     onPriority = { priority -> run { api.updatePriority(school, ticket.id, priority); refreshTicketAfterMutation(ticket.id) } },
                     onAssign = { userId -> run { api.assign(school, ticket.id, userId); refreshTicketAfterMutation(ticket.id) } },
+                    onLabels = { labels -> run { api.updateLabels(school, ticket.id, labels); refreshTicketAfterMutation(ticket.id) } },
+                    onDuplicate = { duplicateOfId -> run { api.linkDuplicate(school, ticket.id, duplicateOfId); refreshTicketAfterMutation(ticket.id) } },
+                    onRetryDelivery = { run { api.retryParentDelivery(school, ticket.id); refreshTicketAfterMutation(ticket.id) } },
                     onOpenAttachment = { attachment -> run {
                         val contents = api.downloadAttachment(school, ticket.id, attachment)
                         val directory = File(context.cacheDir, "support-attachments").apply { mkdirs() }

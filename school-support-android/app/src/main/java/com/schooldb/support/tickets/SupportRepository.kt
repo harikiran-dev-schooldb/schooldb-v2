@@ -41,10 +41,19 @@ data class TicketDetail(
     val assignedToName: String?,
     val messages: List<TicketMessage>,
     val activities: List<TicketActivity>,
+    val labels: List<String>,
+    val duplicateOfId: String?,
+    val duplicateOfTicketNo: String?,
+    val responseSlaState: String,
+    val resolutionSlaState: String,
+    val responseDueAt: String,
+    val resolutionDueAt: String,
+    val parentDelivery: ParentDelivery?,
 )
 
 data class TicketMessage(val body: String, val author: String, val isInternal: Boolean, val createdAt: String)
 data class TicketActivity(val action: String, val detail: String, val actor: String, val createdAt: String)
+data class ParentDelivery(val campaignId: String, val status: String, val error: String?, val updatedAt: String)
 data class StaffOption(val id: String, val name: String, val role: String)
 data class AdminAccount(val id: String, val userId: String, val fullName: String,
     val phone: String, val role: String, val designation: String, val isActive: Boolean)
@@ -60,15 +69,17 @@ data class AttentionAnalytics(
 )
 data class MonthAnalytics(
     val total: Int, val resolved: Int, val pending: Int,
-    val resolutionRate: Double, val averageResolutionHours: Double?,
+    val resolutionRate: Double, val averageResolutionHours: Double?, val averageResponseHours: Double?,
 )
 data class CategoryAnalytics(val type: String, val count: Int)
 data class StaffWorkload(val userId: String, val name: String, val active: Int)
+data class DailySupportTrend(val date: String, val created: Int, val resolved: Int)
 data class SupportAnalytics(
     val attention: AttentionAnalytics,
     val month: MonthAnalytics,
     val byType: List<CategoryAnalytics>,
     val staffWorkload: List<StaffWorkload>,
+    val dailyTrend: List<DailySupportTrend>,
 )
 
 class SupportApiException(
@@ -197,6 +208,18 @@ class SupportRepository {
                 status = ticketStatusOrDefault(item.getString("status")),
                 source = item.optString("source", "STAFF"),
                 studentName = item.optJSONObject("student")?.optString("fullName")?.takeIf(String::isNotBlank),
+                assignedToName = item.optJSONObject("assignedTo")?.let { person ->
+                    listOf(person.optString("firstName"), person.optString("lastName"))
+                        .filter(String::isNotBlank).joinToString(" ")
+                }?.takeIf(String::isNotBlank),
+                createdAt = item.optString("createdAt"),
+                updatedAt = item.optString("updatedAt"),
+                labels = item.optJSONArray("labels")?.let { labels ->
+                    (0 until labels.length()).map { labels.getString(it) }
+                }.orEmpty(),
+                responseSlaState = item.optJSONObject("sla")?.optString("responseState", "DUE") ?: "DUE",
+                resolutionSlaState = item.optJSONObject("sla")?.optString("resolutionState", "DUE") ?: "DUE",
+                resolutionDueAt = item.optJSONObject("sla")?.optString("resolutionDueAt").orEmpty(),
             )
         }, data.optBoolean("isAdmin"), data.optBoolean("canManageAdmins"), data.getJSONObject("summary").optInt("open"),
             data.getJSONObject("summary").optInt("inProgress"),
@@ -214,6 +237,8 @@ class SupportRepository {
         val activities = item.optJSONArray("activities") ?: JSONArray()
         val attachments = item.optJSONArray("attachments") ?: JSONArray()
         val diagnostics = item.optJSONObject("diagnostics")
+        val sla = item.optJSONObject("sla")
+        val delivery = item.optJSONObject("parentDelivery")
         TicketDetail(
             id = item.getString("id"), ticketNo = item.getString("ticketNo"),
             subject = item.getString("subject"), description = item.getString("description"),
@@ -277,6 +302,23 @@ class SupportRepository {
                     actor = listOf(actor.optString("firstName"), actor.optString("lastName"))
                         .filter { it.isNotBlank() }.joinToString(" ").ifBlank { "Staff" },
                     createdAt = activity.optString("createdAt"),
+                )
+            },
+            labels = item.optJSONArray("labels")?.let { labels ->
+                (0 until labels.length()).map { labels.getString(it) }
+            }.orEmpty(),
+            duplicateOfId = item.optJSONObject("duplicateOf")?.optString("id")?.takeIf(String::isNotBlank),
+            duplicateOfTicketNo = item.optJSONObject("duplicateOf")?.optString("ticketNo")?.takeIf(String::isNotBlank),
+            responseSlaState = sla?.optString("responseState", "DUE") ?: "DUE",
+            resolutionSlaState = sla?.optString("resolutionState", "DUE") ?: "DUE",
+            responseDueAt = sla?.optString("responseDueAt").orEmpty(),
+            resolutionDueAt = sla?.optString("resolutionDueAt").orEmpty(),
+            parentDelivery = delivery?.let {
+                ParentDelivery(
+                    campaignId = it.optString("campaignId"),
+                    status = it.optString("status", "QUEUED"),
+                    error = it.optString("error").takeUnless(String::isBlank),
+                    updatedAt = it.optString("updatedAt"),
                 )
             },
         )
@@ -385,12 +427,40 @@ class SupportRepository {
         request("POST", "api/v1/support/tickets/$id", school, JSONObject().put("assignedToId", userId))
     }
 
+    suspend fun updateLabels(school: String, id: String, labels: List<String>) = withContext(Dispatchers.IO) {
+        request("POST", "api/v1/support/tickets/$id", school, JSONObject().put("labels", JSONArray(labels)))
+    }
+
+    suspend fun linkDuplicate(school: String, id: String, duplicateOfId: String?) = withContext(Dispatchers.IO) {
+        request("POST", "api/v1/support/tickets/$id", school, JSONObject().put("duplicateOfId", duplicateOfId))
+    }
+
+    suspend fun retryParentDelivery(school: String, id: String) = withContext(Dispatchers.IO) {
+        request("POST", "api/v1/support/tickets/$id/delivery/retry", school, JSONObject())
+    }
+
+    suspend fun bulkUpdate(
+        school: String,
+        ticketIds: List<String>,
+        status: TicketStatus? = null,
+        priority: TicketPriority? = null,
+        assignedToId: String? = null,
+        updateAssignment: Boolean = false,
+    ) = withContext(Dispatchers.IO) {
+        val body = JSONObject().put("ticketIds", JSONArray(ticketIds))
+        status?.let { body.put("status", it.name) }
+        priority?.let { body.put("priority", it.name) }
+        if (updateAssignment) body.put("assignedToId", assignedToId)
+        request("POST", "api/v1/support/tickets/bulk", school, body)
+    }
+
     suspend fun analytics(school: String): SupportAnalytics = withContext(Dispatchers.IO) {
         val data = request("GET", "api/v1/support/analytics", school).getJSONObject("data")
         val attention = data.getJSONObject("attention")
         val month = data.getJSONObject("month")
         val categories = data.getJSONArray("byType")
         val workload = data.getJSONArray("staffWorkload")
+        val dailyTrend = data.optJSONArray("dailyTrend") ?: JSONArray()
         SupportAnalytics(
             attention = AttentionAnalytics(
                 open = attention.optInt("open"),
@@ -407,6 +477,8 @@ class SupportRepository {
                 resolutionRate = month.optDouble("resolutionRate"),
                 averageResolutionHours = if (month.isNull("averageResolutionHours")) null
                     else month.optDouble("averageResolutionHours"),
+                averageResponseHours = if (month.isNull("averageResponseHours")) null
+                    else month.optDouble("averageResponseHours"),
             ),
             byType = (0 until categories.length()).map { index ->
                 val item = categories.getJSONObject(index)
@@ -415,6 +487,10 @@ class SupportRepository {
             staffWorkload = (0 until workload.length()).map { index ->
                 val item = workload.getJSONObject(index)
                 StaffWorkload(item.getString("userId"), item.getString("name"), item.optInt("active"))
+            },
+            dailyTrend = (0 until dailyTrend.length()).map { index ->
+                val item = dailyTrend.getJSONObject(index)
+                DailySupportTrend(item.getString("date"), item.optInt("created"), item.optInt("resolved"))
             },
         )
     }

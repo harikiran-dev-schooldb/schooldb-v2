@@ -30,6 +30,8 @@ export async function GET() {
       byType,
       assignees,
       resolvedForTiming,
+      recentTickets,
+      responseSamples,
     ] = await Promise.all([
       prisma.supportTicket.count({ where: { ...schoolWhere, createdAt: { gte: monthStart } } }),
       prisma.supportTicket.count({
@@ -84,6 +86,22 @@ export async function GET() {
         },
         select: { createdAt: true, resolvedAt: true },
       }),
+      prisma.supportTicket.findMany({
+        where: { ...schoolWhere, createdAt: { gte: new Date(now.getTime() - 13 * 86_400_000) } },
+        select: { createdAt: true, resolvedAt: true },
+      }),
+      prisma.supportTicket.findMany({
+        where: { ...schoolWhere, createdAt: { gte: monthStart } },
+        select: {
+          createdAt: true,
+          messages: {
+            where: { isInternal: false },
+            orderBy: { createdAt: "asc" },
+            take: 1,
+            select: { createdAt: true },
+          },
+        },
+      }),
     ]);
 
     const staffIds = assignees
@@ -112,9 +130,24 @@ export async function GET() {
       resolutionHours.length > 0
         ? Math.round((resolutionHours.reduce((sum, hours) => sum + hours, 0) / resolutionHours.length) * 10) / 10
         : null;
+    const responseHours = responseSamples
+      .filter((ticket) => ticket.messages[0])
+      .map((ticket) => (ticket.messages[0]!.createdAt.getTime() - ticket.createdAt.getTime()) / 3_600_000);
+    const averageResponseHours = responseHours.length
+      ? Math.round((responseHours.reduce((sum, hours) => sum + hours, 0) / responseHours.length) * 10) / 10
+      : null;
 
     const resolutionRate =
       totalThisMonth > 0 ? Math.round((resolvedCreatedThisMonth / totalThisMonth) * 1000) / 10 : 0;
+    const dailyTrend = Array.from({ length: 14 }, (_, index) => {
+      const day = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (13 - index));
+      const next = new Date(day.getTime() + 86_400_000);
+      return {
+        date: day.toISOString().slice(0, 10),
+        created: recentTickets.filter((ticket) => ticket.createdAt >= day && ticket.createdAt < next).length,
+        resolved: recentTickets.filter((ticket) => ticket.resolvedAt && ticket.resolvedAt >= day && ticket.resolvedAt < next).length,
+      };
+    });
 
     return ApiResponse.success({
       attention: { open, active, urgent, unassigned, waitingOverTwoDays, newToday },
@@ -125,6 +158,7 @@ export async function GET() {
         resolvedThroughput: resolvedThisMonth,
         resolutionRate,
         averageResolutionHours,
+        averageResponseHours,
       },
       byType: byType
         .map((row) => ({ type: row.type, count: row._count._all }))
@@ -137,6 +171,7 @@ export async function GET() {
           active: row._count._all,
         }))
         .sort((a, b) => b.active - a.active),
+      dailyTrend,
     });
   });
 }

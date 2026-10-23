@@ -2503,7 +2503,9 @@ model SupportTicket {
   parentPhone  String?
   complaintBy  SupportTicketComplaintBy?
   diagnostics  Json?
+  labels       String[]                  @default([])
   assignedToId String?
+  duplicateOfId String?
   createdAt    DateTime                  @default(now())
   updatedAt    DateTime                  @updatedAt
   resolvedAt   DateTime?
@@ -2511,6 +2513,8 @@ model SupportTicket {
   student      Student?                  @relation(fields: [studentId], references: [id], onDelete: SetNull)
   createdBy    User?                     @relation("SupportTicketCreator", fields: [createdById], references: [id], onDelete: SetNull)
   assignedTo   User?                     @relation("SupportTicketAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+  duplicateOf  SupportTicket?            @relation("SupportTicketDuplicates", fields: [duplicateOfId], references: [id], onDelete: SetNull)
+  duplicates   SupportTicket[]           @relation("SupportTicketDuplicates")
   messages     SupportTicketMessage[]
   activities   SupportTicketActivity[]
   reads        SupportTicketRead[]
@@ -2521,6 +2525,7 @@ model SupportTicket {
   @@index([schoolId, createdById])
   @@index([schoolId, source, createdAt(sort: Desc)])
   @@index([schoolId, assignedToId])
+  @@index([schoolId, duplicateOfId])
   @@index([schoolId, studentId])
 }
 
