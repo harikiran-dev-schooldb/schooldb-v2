@@ -424,7 +424,12 @@ class SupportRepository {
     }
 
     suspend fun assign(school: String, id: String, userId: String?) = withContext(Dispatchers.IO) {
-        request("POST", "api/v1/support/tickets/$id", school, JSONObject().put("assignedToId", userId))
+        request(
+            "POST",
+            "api/v1/support/tickets/$id",
+            school,
+            JSONObject().put("assignedToId", userId ?: JSONObject.NULL),
+        )
     }
 
     suspend fun updateLabels(school: String, id: String, labels: List<String>) = withContext(Dispatchers.IO) {
@@ -432,7 +437,12 @@ class SupportRepository {
     }
 
     suspend fun linkDuplicate(school: String, id: String, duplicateOfId: String?) = withContext(Dispatchers.IO) {
-        request("POST", "api/v1/support/tickets/$id", school, JSONObject().put("duplicateOfId", duplicateOfId))
+        request(
+            "POST",
+            "api/v1/support/tickets/$id",
+            school,
+            JSONObject().put("duplicateOfId", duplicateOfId ?: JSONObject.NULL),
+        )
     }
 
     suspend fun retryParentDelivery(school: String, id: String) = withContext(Dispatchers.IO) {
@@ -450,7 +460,7 @@ class SupportRepository {
         val body = JSONObject().put("ticketIds", JSONArray(ticketIds))
         status?.let { body.put("status", it.name) }
         priority?.let { body.put("priority", it.name) }
-        if (updateAssignment) body.put("assignedToId", assignedToId)
+        if (updateAssignment) body.put("assignedToId", assignedToId ?: JSONObject.NULL)
         request("POST", "api/v1/support/tickets/bulk", school, body)
     }
 
