@@ -33,6 +33,33 @@ function browserVapidKeyKey(schoolSlug: string) {
   return `schooldb:web-push-vapid:v1:${schoolSlug}`;
 }
 
+async function unsubscribeBrowserPush() {
+  if (!("serviceWorker" in navigator)) return;
+
+  if (!isApplePlatform()) {
+    try {
+      const [{ deleteToken }, firebaseClient] = await Promise.all([
+        import("firebase/messaging"),
+        import("./firebase-client"),
+      ]);
+      if (firebaseClient.firebaseWebPushConfigured) {
+        const messaging = await firebaseClient.webMessaging();
+        if (messaging) await deleteToken(messaging);
+      }
+    } catch (error) {
+      console.warn("Unable to delete the Firebase browser token during sign out.", error);
+    }
+  }
+
+  try {
+    const registration = await navigator.serviceWorker.getRegistration("/");
+    const subscription = await registration?.pushManager.getSubscription();
+    await subscription?.unsubscribe();
+  } catch (error) {
+    console.warn("Unable to remove the browser push subscription during sign out.", error);
+  }
+}
+
 export function isApplePlatform() {
   return /iPhone|iPad|iPod|Macintosh/i.test(navigator.userAgent)
     || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
@@ -173,6 +200,39 @@ async function saveRegistration(schoolSlug: string, requestPermission: boolean) 
 
 export function enableBrowserPush(schoolSlug: string) {
   return saveRegistration(schoolSlug, true);
+}
+
+export async function disableBrowserPush(schoolSlug: string) {
+  const key = browserDeviceKey(schoolSlug);
+  const installationId = localStorage.getItem(key);
+  let serverDisabled = !installationId;
+
+  if (installationId) {
+    try {
+      const response = await fetch("/api/v1/web-push/devices", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ schoolSlug, installationId }),
+        keepalive: true,
+      });
+      serverDisabled = response.ok;
+      if (!response.ok) {
+        console.warn("The server could not disable browser notifications during sign out.");
+      }
+    } catch (error) {
+      console.warn("Unable to disable browser notifications during sign out.", error);
+    }
+  }
+
+  await unsubscribeBrowserPush();
+
+  if (serverDisabled) {
+    localStorage.removeItem(key);
+    localStorage.removeItem(browserVapidKeyKey(schoolSlug));
+    localStorage.removeItem(`schooldb:push-snooze:${schoolSlug}`);
+  }
+
+  return serverDisabled;
 }
 
 export async function refreshBrowserPush(schoolSlug: string) {

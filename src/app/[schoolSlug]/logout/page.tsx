@@ -5,6 +5,8 @@ import { useClerk } from "@clerk/nextjs";
 import { useParams } from "next/navigation";
 import { GraduationCap, LogOut, ShieldCheck } from "lucide-react";
 
+import { disableBrowserPush } from "@/lib/browser-push";
+
 export default function LogoutPage() {
   const { signOut } = useClerk();
 
@@ -14,9 +16,17 @@ export default function LogoutPage() {
   useEffect(() => {
     if (!schoolSlug) return;
 
-    const logout = async () => signOut({
-      redirectUrl: `/${schoolSlug}/login`,
-    });
+    const logout = async () => {
+      // Disable the authenticated server-side device record before Clerk ends
+      // the session, then remove the local browser subscription as a fallback.
+      try {
+        await disableBrowserPush(schoolSlug);
+      } finally {
+        await signOut({
+          redirectUrl: `/${schoolSlug}/login`,
+        });
+      }
+    };
 
     void logout();
   }, [schoolSlug, signOut]);
