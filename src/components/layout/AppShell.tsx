@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 
 import { AppHeader } from "./AppHeader";
 import { AppSidebar } from "./AppSidebar";
@@ -20,11 +21,16 @@ type Props = {
 };
 
 export function AppShell({ children }: Props) {
+  const pathname = usePathname();
   const { school } = useSchool();
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
   const schoolLogo = school.logo
     ? `/api/v1/public/schools/${encodeURIComponent(school.slug)}/logo?v=${new Date(school.updatedAt).getTime()}`
     : null;
+
+  if (/\/presentation\/?$/.test(pathname)) {
+    return <>{children}</>;
+  }
 
   return (
     <div className="min-h-screen overflow-x-clip bg-background">

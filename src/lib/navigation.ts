@@ -11,6 +11,7 @@ import {
   IndianRupee,
   LayoutDashboard,
   Megaphone,
+  MonitorPlay,
   Settings2,
   School,
   UserRound,
@@ -51,6 +52,12 @@ export const navigation: NavigationItem[] = [
     href: "dashboard",
     icon: LayoutDashboard,
     roles: [...ADMIN_ROLES, "ACCOUNTANT", "RECEPTIONIST"],
+  },
+  {
+    title: "Presentation Mode",
+    href: "presentation",
+    icon: MonitorPlay,
+    roles: ADMIN_ROLES,
   },
   {
     title: "My Dashboard",

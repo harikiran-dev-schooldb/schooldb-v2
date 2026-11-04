@@ -20,6 +20,8 @@
     "load:test": "node scripts/load-test.mjs",
     "load:test:plan": "node scripts/load-test.mjs --dry-run",
     "db:restore:verify": "node scripts/verify-backup-restore.mjs",
+    "demo:check": "node scripts/demo-readiness.mjs",
+    "demo:preflight": "npm run typecheck && npm run lint && npm test && npm run validate && npm run build && npm run demo:check",
     "web-push:keys": "web-push generate-vapid-keys"
   },
   "dependencies": {

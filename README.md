@@ -389,6 +389,22 @@ schooldb/
 - [ ] Verify tenant isolation and role permissions before launch.
 - [ ] Confirm logs and screenshots contain no personal or secret data.
 
+## School demonstration preflight
+
+Before an in-person demonstration, run the read-only demo audit and the full
+quality gate:
+
+```bash
+npm run demo:preflight
+```
+
+The audit checks the school selected by `DEMO_SCHOOL_SLUG` (default: `demo`),
+reports missing presentation data, and warns if live payment or WhatsApp settings
+could make a demonstration unsafe. It does not create, update, or delete data.
+
+See [the school demo runbook](docs/SCHOOL-DEMO-RUNBOOK.md) for the recommended
+15–20 minute walkthrough, visit checklist, and offline fallback.
+
 ## Contributing
 
 1. Create a focused branch.

@@ -104,3 +104,20 @@ test("new school operations routes can be granted independently", () => {
   assert.equal(isSchoolPathAllowed(config, "/demo/inventory", "demo", "SCHOOL_ADMIN"), true);
   assert.equal(isSchoolPathAllowed(config, "/demo/visitors", "demo", "SCHOOL_ADMIN"), false);
 });
+
+test("presentation mode is an independently configurable school route", () => {
+  const enabled = {
+    routeAccessRestricted: true,
+    allowedRoutes: ["presentation"],
+  };
+  const disabled = { routeAccessRestricted: true, allowedRoutes: [] };
+
+  assert.equal(
+    isSchoolPathAllowed(enabled, "/demo/presentation", "demo", "SCHOOL_ADMIN"),
+    true,
+  );
+  assert.equal(
+    isSchoolPathAllowed(disabled, "/demo/presentation", "demo", "SCHOOL_ADMIN"),
+    false,
+  );
+});

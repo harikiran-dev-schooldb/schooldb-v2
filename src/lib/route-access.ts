@@ -41,6 +41,7 @@ export const BULK_OPERATION_ROUTES = [
 
 const navigationRoutes = [
   "dashboard",
+  "presentation",
   "teacher/dashboard",
   "reports",
   "management-analytics",
