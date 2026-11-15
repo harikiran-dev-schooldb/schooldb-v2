@@ -69,6 +69,17 @@ test("maps pages and APIs to modules and access levels", () => {
   );
 });
 
+test("global search is read-only and limited to searchable modules", () => {
+  assert.deepEqual(
+    permissionPolicyForRequest("/api/v1/search", "demo", "GET"),
+    {
+      modules: ["STUDENTS", "ADMISSIONS", "FEES", "ACADEMICS", "SUPPORT"],
+      required: "VIEW",
+      route: null,
+    },
+  );
+});
+
 test("shared academic lookups are readable without granting academic writes", () => {
   const readPolicy = permissionPolicyForRequest(
     "/api/v1/classes/options",

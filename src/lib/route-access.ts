@@ -11,6 +11,12 @@ export const ALWAYS_AVAILABLE_ROUTES = new Set([
 export const ALWAYS_MEMBER_ROUTES = new Set(["user-guide", "teacher/profile"]);
 
 export const BULK_OPERATION_ROUTES = [
+  { title: "Academic-year Rollover", href: "bulk-operations/academic-year-rollover" },
+  { title: "Inventory & Assets", href: "bulk-operations/admin/inventory" },
+  { title: "Expenses & Opening Entries", href: "bulk-operations/admin/expenses" },
+  { title: "Calendar & Holidays", href: "bulk-operations/admin/calendar" },
+  { title: "Parent & Guardian Links", href: "bulk-operations/admin/parent-links" },
+  { title: "Salary Structures", href: "bulk-operations/admin/salary-structures" },
   { title: "Copy School Setup", href: "bulk-operations/copy-school-setup" },
   { title: "Students", href: "bulk-operations/students" },
   { title: "Student Login Access", href: "bulk-operations/student-logins" },

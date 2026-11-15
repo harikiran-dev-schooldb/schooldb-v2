@@ -72,6 +72,19 @@ type BulkOperation = {
 };
 
 const operations: BulkOperation[] = [
+  { title: "Inventory & Assets", description: "Import assets with server dry run, export, history and safe rollback.", href: "bulk-operations/admin/inventory", icon: Layers3, status: "V2", category: "operations" },
+  { title: "Expenses & Opening Entries", description: "Load audited expense and opening entries with rollback protection.", href: "bulk-operations/admin/expenses", icon: IndianRupee, status: "V2", category: "finance" },
+  { title: "Calendar & Holidays", description: "Import events and holidays with flexible column mapping.", href: "bulk-operations/admin/calendar", icon: CalendarDays, status: "V2", category: "operations" },
+  { title: "Parent & Guardian Links", description: "Link existing parent logins to students without creating accounts.", href: "bulk-operations/admin/parent-links", icon: Users, status: "V2", category: "people" },
+  { title: "Salary Structures", description: "Import effective-dated teacher pay structures and allowance rules.", href: "bulk-operations/admin/salary-structures", icon: UserRound, status: "V2", category: "people" },
+  {
+    title: "Academic-year Rollover",
+    description: "Preview and copy mappings, allocations, class teachers, timetable and fee plans into a new year.",
+    href: "bulk-operations/academic-year-rollover",
+    icon: CalendarDays,
+    status: "Ready",
+    category: "setup",
+  },
   {
     title: "Copy School Setup",
     description:

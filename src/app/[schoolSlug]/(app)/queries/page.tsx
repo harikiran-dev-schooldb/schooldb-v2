@@ -5,6 +5,7 @@ import {
   CircleDot,
   Inbox,
   MessageSquareText,
+  Printer,
   Search,
   SlidersHorizontal,
   Sparkles,
@@ -122,8 +123,21 @@ export default async function QueriesPage({ params, searchParams }: { params: Pa
   return (
     <PageContainer>
       <PageHeader
-        title="Queries"
-        description="Review and respond to support requests from parents and the School Support app."
+        title="Support & Parent Queries"
+        description="Review every request from parents and the School Support app in one queue."
+        actions={
+          ["SUPER_ADMIN", "SCHOOL_ADMIN"].includes(membership.role) ? (
+            <Button asChild variant="outline">
+              <Link
+                href={`/${schoolSlug}/parent-query/qr`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Printer className="size-4" /> Print parent QR
+              </Link>
+            </Button>
+          ) : undefined
+        }
       />
 
       <section className="relative overflow-hidden rounded-3xl border border-indigo-100 bg-gradient-to-br from-white via-indigo-50/60 to-violet-50/60 p-5 shadow-[0_16px_45px_rgba(15,23,42,0.06)] sm:p-6">

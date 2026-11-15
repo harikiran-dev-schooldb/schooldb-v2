@@ -7,7 +7,6 @@ import {
   LogOut,
   Menu,
   Repeat2,
-  Search,
   User,
 } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
@@ -23,6 +22,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { NotificationMenu } from "@/features/notifications/NotificationMenu";
+import { GlobalSearch } from "@/features/search/GlobalSearch";
 import { isRouteAllowed } from "@/lib/route-access";
 
 function formatRole(role: string) {
@@ -83,16 +83,7 @@ export function AppHeader({ onMenuClick }: Props) {
 
         {/* Actions */}
         <div className="flex items-center gap-1.5 sm:gap-2">
-          {/* Search */}
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            aria-label="Search"
-            className="hidden rounded-xl text-muted-foreground transition-all hover:bg-card hover:text-foreground hover:shadow-sm md:inline-flex"
-          >
-            <Search className="size-[18px]" />
-          </Button>
+          <GlobalSearch schoolSlug={schoolSlug} />
 
           {isRouteAllowed(school, "notification-inbox") && (
             <NotificationMenu schoolSlug={schoolSlug} />

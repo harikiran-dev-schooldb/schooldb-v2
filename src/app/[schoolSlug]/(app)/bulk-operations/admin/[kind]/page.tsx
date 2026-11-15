@@ -1,0 +1,11 @@
+import { notFound } from "next/navigation";
+import { BulkAdminImport } from "@/features/bulk/BulkAdminImport";
+
+const configs: Record<string, { kind: string; title: string; description: string; headers: string[]; sample: string[] }> = {
+  inventory: { kind: "inventory", title: "Inventory and assets", description: "Create asset records with server validation, export, history and safe rollback.", headers: ["assetCode", "name", "category", "location", "quantity", "reorderLevel", "unitCost", "condition", "custodian", "purchaseDate", "warrantyUntil"], sample: ["AST-001", "Projector", "Electronics", "Room 101", "1", "0", "45000", "GOOD", "A. Kumar", "2026-04-01", "2028-03-31"] },
+  expenses: { kind: "expenses", title: "Expenses and opening entries", description: "Import posted expense or opening-balance entries with audit history.", headers: ["category", "description", "vendor", "amount", "expenseDate", "paymentMode", "referenceNo", "remarks"], sample: ["Opening Balance", "Opening expense entry", "", "1000", "2026-04-01", "BANK_TRANSFER", "OPEN-001", "Imported opening entry"] },
+  calendar: { kind: "calendar", title: "Calendar and holidays", description: "Import school events, holidays and date ranges.", headers: ["title", "description", "category", "startDate", "endDate"], sample: ["Independence Day", "School holiday", "HOLIDAY", "2026-08-15", "2026-08-15"] },
+  "parent-links": { kind: "parent-links", title: "Parent and guardian links", description: "Link existing active parent logins to students without creating external accounts.", headers: ["parentEmail", "admissionNo", "relationship"], sample: ["parent@example.com", "ADM-001", "Father"] },
+  "salary-structures": { kind: "salary-structures", title: "Salary structures", description: "Import effective-dated teacher salary structures and JSON allowance rules.", headers: ["employeeId", "effectiveFrom", "basicSalary", "allowances", "deductions"], sample: ["EMP-001", "2026-04-01", "35000", "{\"HRA\":5000}", "{\"PF\":1800}"] },
+};
+export default async function AdminBulkPage({ params }: { params: Promise<{ kind: string }> }) { const config = configs[(await params).kind]; if (!config) notFound(); return <div className="p-4 pb-12 sm:p-6"><BulkAdminImport config={config} /></div>; }

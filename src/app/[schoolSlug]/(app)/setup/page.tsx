@@ -1,198 +1,48 @@
-"use client";
-
 import Link from "next/link";
-import {
-  ArrowRight,
-  BookOpenCheck,
-  CalendarDays,
-  CheckCircle2,
-  FileBadge2,
-  GitBranch,
-  Layers3,
-  School,
-} from "lucide-react";
-
+import { ArrowRight, CheckCircle2, CircleDashed, RotateCw } from "lucide-react";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useSchool } from "@/contexts/school-context";
+import { Card, CardContent } from "@/components/ui/card";
+import { requireRole } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 
-const setupItems = [
-  {
-    title: "Certificate Settings",
-    description:
-      "Customize certificate wording, footer information and the authorised signatory.",
-    href: "certificate-settings",
-    icon: FileBadge2,
-  },
-  {
-    title: "Academic Year",
-    description:
-      "Configure academic years, dates and the attendance mode used by the school.",
-    href: "academicyear",
-    icon: CalendarDays,
-  },
-  {
-    title: "Syllabi & Branches",
-    description:
-      "Configure curricula and academic divisions such as KG, Primary and Secondary.",
-    href: "academic-structure",
-    icon: GitBranch,
-  },
-  {
-    title: "Classes",
-    description:
-      "Create and manage the academic classes available in the school.",
-    href: "classes",
-    icon: School,
-  },
-  {
-    title: "Sections",
-    description:
-      "Configure sections under each class and organize their display order.",
-    href: "sections",
-    icon: Layers3,
-  },
-  {
-    title: "Class Subjects",
-    description:
-      "Define the subjects offered to each class for every academic year.",
-    href: "class-subjects",
-    icon: BookOpenCheck,
-  },
-];
-
-export default function SchoolSetupPage() {
-  const { school } = useSchool();
-
-  return (
-    <div className="space-y-6 p-4 pb-12 sm:p-6">
-      <PageHeader
-        eyebrow="School Setup"
-        title="School Setup"
-        description="Configure the core academic structure of your school."
-      />
-
-      <Card className="premium-card overflow-hidden rounded-3xl border-0">
-        <CardContent className="p-6">
-          <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-4">
-              <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-                <School className="size-6" />
-              </div>
-
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  School
-                </p>
-                <h2 className="mt-1 text-lg font-bold tracking-tight">
-                  {school.name}
-                </h2>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Manage the foundational academic configuration for this school.
-                </p>
-              </div>
-            </div>
-
-            <Badge variant="success" className="w-fit">
-              Setup Center
-            </Badge>
-          </div>
-        </CardContent>
-      </Card>
-
-      <div>
-        <div className="mb-5">
-          <h2 className="text-lg font-bold tracking-tight">Configuration</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Select a setup item to configure or update it.
-          </p>
-        </div>
-
-        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-          {setupItems.map((item) => {
-            const Icon = item.icon;
-
-            return (
-              <Link
-                key={item.href}
-                href={`/${school.slug}/setup/${item.href}`}
-                className="group block"
-              >
-                <Card className="premium-card h-full overflow-hidden rounded-2xl border-0 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg">
-                  <CardHeader className="px-6 pb-3 pt-6">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex size-11 items-center justify-center rounded-xl bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
-                        <Icon className="size-5" />
-                      </div>
-                      <ArrowRight className="mt-1 size-4 text-muted-foreground transition-transform group-hover:translate-x-1 group-hover:text-primary" />
-                    </div>
-                    <CardTitle className="pt-3 text-base">
-                      {item.title}
-                    </CardTitle>
-                  </CardHeader>
-
-                  <CardContent className="px-6 pb-6">
-                    <p className="text-sm leading-6 text-muted-foreground">
-                      {item.description}
-                    </p>
-                    <div className="mt-5 flex items-center gap-2 text-xs font-semibold text-primary">
-                      <CheckCircle2 className="size-4" />
-                      Manage {item.title}
-                    </div>
-                  </CardContent>
-                </Card>
-              </Link>
-            );
-          })}
-        </div>
-      </div>
-
-      <Card className="premium-card overflow-hidden rounded-2xl border-0">
-        <CardHeader className="border-b border-border/60 px-6 py-5">
-          <CardTitle className="text-base">Setup Structure</CardTitle>
-        </CardHeader>
-
-        <CardContent className="p-6">
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
-            <InfoItem number="01" title="Academic Year" description="Academic calendar and attendance configuration." />
-            <InfoItem number="02" title="Syllabi & Branches" description="Curricula and academic divisions." />
-            <InfoItem number="03" title="Classes" description="Classes organized under each branch." />
-            <InfoItem number="04" title="Sections" description="Sections organized under each class." />
-            <InfoItem number="05" title="Class Subjects" description="Subjects offered to each class for an academic year." />
-            <InfoItem number="06" title="Certificates" description="Official wording, footer and authorised signatory." />
-          </div>
-        </CardContent>
-      </Card>
-
-      <div className="rounded-2xl border border-primary/15 bg-primary/[0.03] p-5">
-        <p className="text-sm font-semibold">Setup items can be configured independently.</p>
-        <p className="mt-1 text-xs leading-5 text-muted-foreground">
-          Students, teachers, teacher allocations, periods, timetables and other operational data are managed separately through their respective modules.
-        </p>
-      </div>
-    </div>
-  );
-}
-
-function InfoItem({
-  number,
-  title,
-  description,
-}: {
-  number: string;
-  title: string;
-  description: string;
-}) {
-  return (
-    <div className="rounded-2xl border border-border/60 bg-muted/20 p-5">
-      <div className="flex items-center gap-3">
-        <span className="flex size-8 items-center justify-center rounded-lg bg-background text-[10px] font-bold text-muted-foreground">
-          {number}
-        </span>
-        <p className="text-sm font-semibold">{title}</p>
-      </div>
-      <p className="mt-3 text-xs leading-5 text-muted-foreground">{description}</p>
-    </div>
-  );
+export default async function SchoolSetupPage({ params }: { params: Promise<{ schoolSlug: string }> }) {
+  const { schoolSlug } = await params;
+  const member = await requireRole(["SUPER_ADMIN", "SCHOOL_ADMIN"], schoolSlug);
+  const schoolId = member.schoolId;
+  const year = await prisma.academicYear.findFirst({ where: { schoolId, active: true }, select: { id: true } });
+  const [syllabi, classes, sections, subjects, mappings, periods, teachers, allocations, plans, timetable] = await Promise.all([
+    prisma.syllabus.count({ where: { schoolId, active: true } }),
+    prisma.class.count({ where: { schoolId, active: true } }),
+    prisma.section.count({ where: { class: { schoolId }, active: true } }),
+    prisma.subject.count({ where: { schoolId, active: true } }),
+    year ? prisma.classSubject.count({ where: { schoolId, academicYearId: year.id, active: true } }) : 0,
+    prisma.period.count({ where: { schoolId, active: true } }),
+    prisma.teacher.count({ where: { schoolId, active: true } }),
+    year ? prisma.teacherAllocation.count({ where: { schoolId, academicYearId: year.id, active: true } }) : 0,
+    year ? prisma.feePlan.count({ where: { schoolId, academicYearId: year.id, active: true } }) : 0,
+    year ? prisma.timetable.count({ where: { schoolId, academicYearId: year.id, active: true } }) : 0,
+  ]);
+  const steps = [
+    ["Academic year", "Create and activate the current academic year.", "academic-year", Boolean(year)],
+    ["Syllabus and branches", "Define curricula and academic divisions.", "setup/academic-structure", syllabi > 0],
+    ["Classes and sections", "Build the teaching structure.", "classes", classes > 0 && sections > 0],
+    ["Subjects", "Add the subjects taught by the school.", "subjects", subjects > 0],
+    ["Class subjects", "Map subjects to classes for the active year.", "setup/class-subjects", mappings > 0],
+    ["Periods", "Configure the daily period master.", "periods", periods > 0],
+    ["Teachers", "Add active teaching staff.", "teachers", teachers > 0],
+    ["Teacher allocations", "Assign teachers to class, section and subject.", "teacher-allocations", allocations > 0],
+    ["Fee plans", "Prepare the active year's fee structure.", "fees/plans", plans > 0],
+    ["Timetable", "Publish teaching slots for the active year.", "timetable", timetable > 0],
+  ] as const;
+  const complete = steps.filter((step) => step[3]).length;
+  const percent = Math.round(complete / steps.length * 100);
+  return <div className="space-y-6 p-4 pb-12 sm:p-6">
+    <PageHeader eyebrow="Administration" title="Guided school setup" description="A live readiness checklist that takes you through setup in the right order." />
+    <Card className="overflow-hidden rounded-3xl border-0 bg-primary text-primary-foreground"><CardContent className="p-6 sm:p-8">
+      <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-sm font-semibold opacity-80">Setup readiness</p><p className="mt-2 text-4xl font-black">{percent}%</p><p className="mt-2 text-sm opacity-80">{complete} of {steps.length} essentials are ready.</p></div><Link href={`/${schoolSlug}/bulk-operations/academic-year-rollover`} className="inline-flex h-11 items-center gap-2 rounded-xl bg-background px-4 text-sm font-bold text-foreground"><RotateCw className="size-4" />Academic-year rollover</Link></div>
+      <div className="mt-6 h-2 overflow-hidden rounded-full bg-primary-foreground/20"><div className="h-full rounded-full bg-primary-foreground" style={{ width: `${percent}%` }} /></div>
+    </CardContent></Card>
+    <div className="grid gap-3 md:grid-cols-2">{steps.map(([title, description, href, ready], index) => <Link key={href} href={`/${schoolSlug}/${href}`} className="group"><Card className="h-full rounded-2xl border-border/60 transition hover:-translate-y-0.5 hover:shadow-md"><CardContent className="flex items-start gap-4 p-5"><div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-muted text-sm font-black">{String(index + 1).padStart(2, "0")}</div><div className="min-w-0 flex-1"><div className="flex items-center gap-2"><h2 className="font-bold">{title}</h2><Badge variant={ready ? "success" : "secondary"}>{ready ? "Ready" : "To do"}</Badge></div><p className="mt-1 text-sm text-muted-foreground">{description}</p></div>{ready ? <CheckCircle2 className="mt-1 size-5 text-emerald-600" /> : <CircleDashed className="mt-1 size-5 text-muted-foreground" />}<ArrowRight className="mt-1 size-4 text-muted-foreground transition group-hover:translate-x-1" /></CardContent></Card></Link>)}</div>
+  </div>;
 }

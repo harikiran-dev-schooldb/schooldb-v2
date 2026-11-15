@@ -139,6 +139,10 @@ const ACADEMIC_REFERENCE_CONSUMERS = [
 
 /** Shared reference data can be consumed without granting write access. */
 export const API_ACCESS_RULES: readonly ApiAccessRule[] = [
+  {
+    prefix: "/api/v1/search",
+    read: ["STUDENTS", "ADMISSIONS", "FEES", "ACADEMICS", "SUPPORT"],
+  },
   { prefix: "/api/v1/attendance", read: ["ATTENDANCE"], write: ["ATTENDANCE"] },
   { prefix: "/api/v1/fees", read: ["FEES"], write: ["FEES"] },
   { prefix: "/api/v1/fee-", read: ["FEES"], write: ["FEES"] },
@@ -318,6 +322,7 @@ const SELF_SERVICE_API_PREFIXES = [
 ] as const;
 
 const ROLE_ONLY_API_PREFIXES = [
+  "/api/v1/bulk-admin",
   "/api/v1/analytics-settings",
   "/api/v1/onboarding",
   "/api/v1/schools",

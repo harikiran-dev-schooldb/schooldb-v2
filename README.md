@@ -297,6 +297,8 @@ for supported production document and export workflows.
 | `npm run validate` | Validate the Prisma schema |
 | `npm run load:test` | Run the configured API load test |
 | `npm run load:test:plan` | Print the configured load-test profile without sending requests |
+| `npm run demo:check -- --strict` | Verify all demo content and safety checks |
+| `npm run demo:seed -- --apply` | Idempotently add fictional readiness data to a local demo database |
 | `npm run web-push:keys` | Generate Web Push VAPID keys |
 | `npm run db:migrate:deploy` | Apply production database migrations |
 
@@ -333,6 +335,11 @@ E2E_LOGIN_EMAIL="your-test-account@example.com" npm run test:e2e:auth
 ```
 
 Use a dedicated non-production test account and rotate it regularly.
+
+The demo seeder refuses remote databases unless `--allow-remote` is explicitly
+provided. It creates fictional records without phone numbers, notification jobs,
+or external payments. Run `npm run demo:check -- --strict` afterward to verify
+that every readiness check passes.
 
 ## Security and tenancy
 
