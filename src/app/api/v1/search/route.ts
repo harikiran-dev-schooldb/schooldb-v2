@@ -20,6 +20,27 @@ export async function GET(request: Request) {
 
     const schoolId = membership.schoolId;
     const schoolSlug = membership.school.slug;
+    const phoneDigits = query.replace(/\D/g, "");
+    const phoneQuery = phoneDigits.length > 10 ? phoneDigits.slice(-10) : phoneDigits;
+    const phoneFilters = phoneQuery.length >= 3
+      ? [
+          { phone: { contains: phoneQuery, mode: "insensitive" as const } },
+          { alternatePhone: { contains: phoneQuery, mode: "insensitive" as const } },
+          { fatherPhone: { contains: phoneQuery, mode: "insensitive" as const } },
+          { motherPhone: { contains: phoneQuery, mode: "insensitive" as const } },
+          { guardianPhone: { contains: phoneQuery, mode: "insensitive" as const } },
+          {
+            parentLinks: {
+              some: {
+                active: true,
+                parentUser: {
+                  is: { phone: { contains: phoneQuery, mode: "insensitive" as const } },
+                },
+              },
+            },
+          },
+        ]
+      : [];
     const canSearchStudents = isMemberRouteAllowed(membership, "students");
     const canSearchTeachers = isMemberRouteAllowed(membership, "teachers");
     const canSearchAdmissions = isMemberRouteAllowed(membership, "admissions");
@@ -38,6 +59,7 @@ export async function GET(request: Request) {
               OR: [
                 { admissionNo: { contains: query, mode: "insensitive" } },
                 { fullName: { contains: query, mode: "insensitive" } },
+                ...phoneFilters,
               ],
               ...(membership.role === "TEACHER"
                 ? {
