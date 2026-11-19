@@ -168,6 +168,7 @@ export const navigation: NavigationItem[] = [
       { title: "Homework", href: "homework" },
       { title: "Exams & Results", href: "exams" },
       { title: "Toppers", href: "toppers" },
+      { title: "Failures", href: "failures" },
     ],
   },
   {

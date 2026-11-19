@@ -39,6 +39,7 @@ const ROUTE_FEATURES: Array<[string, TeacherAccessFeature]> = [
   ["homework", "HOMEWORK"],
   ["exams", "EXAMS"],
   ["toppers", "RESULTS"],
+  ["failures", "RESULTS"],
   ["timetable", "TIMETABLE"],
   ["students", "STUDENTS"],
 ];
