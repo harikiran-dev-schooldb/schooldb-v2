@@ -1,14 +1,15 @@
-import { navigation } from "@/lib/navigation";
+import { navigation } from "./navigation.ts";
 import {
+  BULK_OPERATION_ROUTES,
   isRouteAllowed,
   resolveConfiguredRoute,
   type RouteAccessConfig,
-} from "@/lib/route-access";
+} from "./route-access.ts";
 import {
   hasModuleAccess,
   moduleForRoute,
   type StaffPermissionMembership,
-} from "@/lib/staff-permissions";
+} from "./staff-permissions.ts";
 
 export type MemberRouteAccess = StaffPermissionMembership;
 
@@ -33,14 +34,18 @@ export function isDefaultRoleRouteAllowed(role: string, href?: string) {
   if (roleOnlyAccess !== null) return roleOnlyAccess;
   if (ALWAYS_VISIBLE_MEMBER_ROUTES.has(href)) return true;
 
+  const navigationHref = BULK_OPERATION_ROUTES.some((route) => route.href === href)
+    ? "bulk-operations"
+    : href;
+
   for (const item of navigation) {
     if (item.roles && !item.roles.includes(role)) continue;
 
-    if (item.href === href) return true;
+    if (item.href === navigationHref) return true;
     if (
       item.children?.some(
         (child) =>
-          child.href === href && (!child.roles || child.roles.includes(role)),
+          child.href === navigationHref && (!child.roles || child.roles.includes(role)),
       )
     ) {
       return true;

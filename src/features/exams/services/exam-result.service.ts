@@ -1,4 +1,12 @@
+import type { ExamSchedule, StudentExamMark } from "@/generated/prisma/client";
+import { ApiError } from "@/lib/errors";
 import { prisma } from "@/lib/prisma";
+import {
+  assignedExamScheduleFilter,
+  canViewExamSchedule,
+  getExamTeacherAssignments,
+  type ExamTeacherAssignment,
+} from "../exam-teacher-scope";
 
 type GetExamResultsOptions = {
   examId: string;
@@ -11,7 +19,9 @@ type GetExamToppersOptions = GetExamResultsOptions & {
   limit: number;
 };
 
-type GetExamFailuresOptions = GetExamResultsOptions;
+type GetExamFailuresOptions = GetExamResultsOptions & {
+  teacherScope?: readonly ExamTeacherAssignment[];
+};
 
 type SubjectResultStatus =
   | "PENDING"
@@ -21,6 +31,21 @@ type SubjectResultStatus =
   | "EXEMPTED";
 
 type OverallStatus = "PENDING" | "PASS" | "FAIL";
+
+function getSubjectResultStatus(
+  schedule: Pick<ExamSchedule, "assessmentType" | "passMarks">,
+  mark: Pick<StudentExamMark, "status" | "marksObtained" | "grade"> | undefined,
+): SubjectResultStatus {
+  if (!mark) return "PENDING";
+  if (mark.status === "ABSENT" || mark.status === "EXEMPTED") {
+    return mark.status;
+  }
+  if (schedule.assessmentType === "GRADE") return mark.grade ? "PASS" : "FAIL";
+  return schedule.passMarks === null ||
+    Number(mark.marksObtained ?? 0) >= Number(schedule.passMarks)
+    ? "PASS"
+    : "FAIL";
+}
 
 export const examResultService = {
   async getToppers({
@@ -248,13 +273,14 @@ export const examResultService = {
     schoolId,
     classId,
     sectionId,
+    teacherScope,
   }: GetExamFailuresOptions) {
     if (!classId) {
-      throw new Error("Select a class to view failures.");
+      throw new ApiError(400, "Select a class to view failures.");
     }
 
     const exam = await prisma.exam.findFirst({
-      where: { id: examId, schoolId },
+      where: { id: examId, schoolId, status: { not: "CANCELLED" } },
       select: {
         id: true,
         name: true,
@@ -265,21 +291,36 @@ export const examResultService = {
     });
 
     if (!exam) {
-      throw new Error("Exam not found.");
+      throw new ApiError(404, "Exam not found.");
     }
+
+    const assignments = teacherScope
+      ? getExamTeacherAssignments(teacherScope, exam.academicYearId, classId, sectionId)
+      : undefined;
+    if (assignments?.length === 0) {
+      throw new ApiError(
+        403,
+        "You do not have an assignment for this class or section in the exam year.",
+      );
+    }
+    const assignedSectionIds = assignments && [...new Set(assignments.map((item) => item.sectionId))];
 
     const schedules = await prisma.examSchedule.findMany({
       where: {
         examId,
         schoolId,
         classId,
-        ...(sectionId
-          ? { OR: [{ sectionId }, { sectionId: null }] }
-          : {}),
+        ...(assignments
+          ? { OR: assignments.map(assignedExamScheduleFilter) }
+          : sectionId
+            ? { OR: [{ sectionId }, { sectionId: null }] }
+            : {}),
       },
       select: {
         id: true,
         sectionId: true,
+        subjectId: true,
+        subject: { select: { name: true } },
         maxMarks: true,
         passMarks: true,
         assessmentType: true,
@@ -314,8 +355,12 @@ export const examResultService = {
           academicYearId: exam.academicYearId,
           classId,
           active: true,
-          student: { status: "ACTIVE" },
-          ...(sectionId ? { sectionId } : {}),
+          student: { schoolId, status: "ACTIVE" },
+          ...(assignedSectionIds
+            ? { sectionId: { in: assignedSectionIds } }
+            : sectionId
+              ? { sectionId }
+              : {}),
         },
         select: {
           id: true,
@@ -331,10 +376,11 @@ export const examResultService = {
             },
           },
           examMarks: {
-            where: { examScheduleId: { in: schedules.map(({ id }) => id) } },
+            where: { schoolId, examScheduleId: { in: schedules.map(({ id }) => id) } },
             select: {
               examScheduleId: true,
               marksObtained: true,
+              grade: true,
               status: true,
             },
           },
@@ -343,13 +389,15 @@ export const examResultService = {
     ]);
 
     if (!classRecord || (sectionId && !sectionRecord)) {
-      throw new Error("The selected class or section was not found.");
+      throw new ApiError(404, "The selected class or section was not found.");
     }
 
     const calculated = enrollments.map((enrollment) => {
       const applicableSchedules = schedules.filter(
         (schedule) =>
-          schedule.sectionId === null || schedule.sectionId === enrollment.sectionId,
+          (schedule.sectionId === null || schedule.sectionId === enrollment.sectionId) &&
+          (!assignments ||
+            canViewExamSchedule(assignments, enrollment.sectionId, schedule.subjectId)),
       );
       const marksBySchedule = new Map(
         enrollment.examMarks.map((mark) => [mark.examScheduleId, mark]),
@@ -357,36 +405,33 @@ export const examResultService = {
 
       let totalObtained = 0;
       let totalMaxMarks = 0;
-      let failedSubjects = 0;
+      const failedSubjectNames: string[] = [];
       let absentSubjects = 0;
-      let assessedSubjects = 0;
       let pending = false;
 
       for (const schedule of applicableSchedules) {
-        if (schedule.assessmentType === "GRADE") continue;
-        assessedSubjects += 1;
         const mark = marksBySchedule.get(schedule.id);
+        const subjectStatus = getSubjectResultStatus(schedule, mark);
 
-        if (!mark) {
+        if (subjectStatus === "PENDING") {
           pending = true;
           continue;
         }
 
-        if (mark.status === "EXEMPTED") continue;
+        if (subjectStatus === "EXEMPTED") continue;
 
-        totalMaxMarks += Number(schedule.maxMarks);
-
-        if (mark.status === "ABSENT") {
+        if (subjectStatus === "ABSENT") {
           absentSubjects += 1;
-          failedSubjects += 1;
-          continue;
+        }
+        if (subjectStatus === "ABSENT" || subjectStatus === "FAIL") {
+          failedSubjectNames.push(schedule.subject.name);
         }
 
-        const obtained = Number(mark.marksObtained ?? 0);
-        totalObtained += obtained;
-
-        if (schedule.passMarks !== null && obtained < Number(schedule.passMarks)) {
-          failedSubjects += 1;
+        if (schedule.assessmentType === "MARKS") {
+          totalMaxMarks += Number(schedule.maxMarks);
+          if (subjectStatus !== "ABSENT") {
+            totalObtained += Number(mark?.marksObtained ?? 0);
+          }
         }
       }
 
@@ -402,8 +447,9 @@ export const examResultService = {
         imageUrl: enrollment.student.imageUrl,
         rollNo: enrollment.rollNo,
         section: enrollment.section,
-        subjects: assessedSubjects,
-        failedSubjects,
+        subjects: applicableSchedules.length,
+        failedSubjects: failedSubjectNames.length,
+        failedSubjectNames: failedSubjectNames.sort((a, b) => a.localeCompare(b)),
         absentSubjects,
         totalObtained,
         totalMaxMarks,
@@ -430,10 +476,10 @@ export const examResultService = {
 
     return {
       exam,
-      scope: { class: classRecord, section: sectionRecord },
+      scope: { class: classRecord, section: sectionRecord, restricted: Boolean(assignments) },
       eligibleStudents: completed.length,
       passingStudents: completed.length - failures.length,
-      pendingStudents: calculated.length - completed.length,
+      pendingStudents: calculated.filter((student) => student.pending).length,
       failures,
     };
   },
@@ -692,69 +738,31 @@ export const examResultService = {
 
               subjects += 1;
 
-              let subjectStatus: SubjectResultStatus;
-
-              /*
-               * No mark entered.
-               */
-
-              if (!mark) {
-                subjectStatus = "PENDING";
-                pendingSubjects += 1;
-              }
-
-              /*
-               * Absent.
-               */
-
-              else if (
-                mark.status === "ABSENT"
-              ) {
-                subjectStatus = "ABSENT";
-                absentSubjects += 1;
-                failedSubjects += 1;
-              }
-
-              /*
-               * Exempted.
-               *
-               * Exempted is not counted as pass or fail.
-               * It also does not contribute marks.
-               */
-
-              else if (
-                mark.status === "EXEMPTED"
-              ) {
-                subjectStatus = "EXEMPTED";
-                exemptedSubjects += 1;
-              }
-
-              /*
-               * Present.
-               */
-
-              else {
-                if (schedule.assessmentType === "GRADE") {
-                  subjectStatus = grade ? "PASS" : "FAIL";
-                  if (subjectStatus === "PASS") passedSubjects += 1;
-                  else failedSubjects += 1;
-                } else {
-                const obtained =
-                  marksObtained ?? 0;
-
-                totalObtained += obtained;
-
-                if (
-                  passMarks === null ||
-                  obtained >= passMarks
-                ) {
-                  subjectStatus = "PASS";
-                  passedSubjects += 1;
-                } else {
-                  subjectStatus = "FAIL";
+              const subjectStatus = getSubjectResultStatus(schedule, mark);
+              switch (subjectStatus) {
+                case "PENDING":
+                  pendingSubjects += 1;
+                  break;
+                case "ABSENT":
+                  absentSubjects += 1;
                   failedSubjects += 1;
-                }
-                }
+                  break;
+                case "EXEMPTED":
+                  exemptedSubjects += 1;
+                  break;
+                case "PASS":
+                  passedSubjects += 1;
+                  break;
+                case "FAIL":
+                  failedSubjects += 1;
+                  break;
+              }
+
+              if (
+                schedule.assessmentType === "MARKS" &&
+                (subjectStatus === "PASS" || subjectStatus === "FAIL")
+              ) {
+                totalObtained += marksObtained ?? 0;
               }
 
               return {

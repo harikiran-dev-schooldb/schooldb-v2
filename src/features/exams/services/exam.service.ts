@@ -1,4 +1,8 @@
 import { prisma } from "@/lib/prisma";
+import {
+  assignedExamScheduleFilter,
+  type ExamTeacherAssignment,
+} from "../exam-teacher-scope";
 
 function validateExamDates(
   startDate: Date | null | undefined,
@@ -41,12 +45,7 @@ export const examService = {
    */
   async getAll(
     schoolId: string,
-    teacherScope?: Array<{
-      academicYearId: string;
-      classId: string;
-      sectionId: string;
-      subjectId?: string;
-    }>,
+    teacherScope?: readonly ExamTeacherAssignment[],
   ) {
     return prisma.exam.findMany({
       where: {
@@ -56,11 +55,7 @@ export const examService = {
               OR: teacherScope.map((item) => ({
                 academicYearId: item.academicYearId,
                 schedules: {
-                  some: {
-                    classId: item.classId,
-                    OR: [{ sectionId: item.sectionId }, { sectionId: null }],
-                    ...(item.subjectId ? { subjectId: item.subjectId } : {}),
-                  },
+                  some: assignedExamScheduleFilter(item),
                 },
               })),
             }
@@ -87,6 +82,36 @@ export const examService = {
           startDate: "asc",
         },
       ],
+    });
+  },
+
+  async getFailureOptions(
+    schoolId: string,
+    teacherScope?: readonly ExamTeacherAssignment[],
+  ) {
+    if (teacherScope?.length === 0) return [];
+
+    return prisma.exam.findMany({
+      where: {
+        schoolId,
+        status: { not: "CANCELLED" },
+        ...(teacherScope && {
+          OR: teacherScope.map((assignment) => ({
+            academicYearId: assignment.academicYearId,
+            schedules: {
+              some: { schoolId, ...assignedExamScheduleFilter(assignment) },
+            },
+          })),
+        }),
+      },
+      select: {
+        id: true,
+        name: true,
+        status: true,
+        academicYearId: true,
+        academicYear: { select: { id: true, name: true, active: true } },
+      },
+      orderBy: [{ academicYear: { startDate: "desc" } }, { startDate: "asc" }],
     });
   },
 

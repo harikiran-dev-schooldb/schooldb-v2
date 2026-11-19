@@ -1,6 +1,6 @@
 import { examResultService } from "@/features/exams/services/exam-result.service";
+import { requireExamFailureAccess } from "@/features/exams/services/exam-failure-access";
 import { apiHandler } from "@/lib/api";
-import { requireTenant } from "@/lib/auth";
 import { ApiResponse } from "@/lib/response";
 
 type RouteContext = {
@@ -9,7 +9,7 @@ type RouteContext = {
 
 export async function GET(request: Request, context: RouteContext) {
   return apiHandler(async () => {
-    const tenant = await requireTenant();
+    const { schoolId, teacherScope } = await requireExamFailureAccess();
     const { examId } = await context.params;
     const searchParams = new URL(request.url).searchParams;
     const classId = searchParams.get("classId")?.trim();
@@ -21,9 +21,10 @@ export async function GET(request: Request, context: RouteContext) {
 
     const result = await examResultService.getFailures({
       examId,
-      schoolId: tenant.schoolId,
+      schoolId,
       classId,
       sectionId,
+      teacherScope,
     });
 
     return ApiResponse.success(result);

@@ -6,16 +6,10 @@ BEGIN;
 
 DO $$
 DECLARE
-  source_students integer;
   target_students integer;
   source_teacher integer;
   conflicting_teacher integer;
 BEGIN
-  SELECT count(*) INTO source_students
-  FROM "Student" student
-  JOIN "School" school ON school.id = student."schoolId"
-  WHERE school.slug = 'kotak';
-
   SELECT count(*) INTO target_students
   FROM "Student" student
   JOIN "School" school ON school.id = student."schoolId"
@@ -31,9 +25,6 @@ BEGIN
   JOIN "School" school ON school.id = teacher."schoolId"
   WHERE school.slug = 'demo' AND lower(teacher."employeeId") = 'demo_001';
 
-  IF source_students <> 115 THEN
-    RAISE EXCEPTION 'Expected 115 Kotak students, found %. No changes were made.', source_students;
-  END IF;
   IF target_students <> 0 THEN
     RAISE EXCEPTION 'Expected Demo to be empty, found % students. No changes were made.', target_students;
   END IF;
@@ -47,25 +38,35 @@ WITH source_templates AS (
   SELECT
     student.gender,
     student."isRte" AS is_rte,
+    syllabus.name AS syllabus_name,
+    branch.name AS branch_name,
     class.name AS class_name,
     section.name AS section_name,
     row_number() OVER (
-      ORDER BY class."displayOrder", section."displayOrder", enrollment."rollNo" NULLS LAST, student."admissionNo"
-    )::integer AS template_number
+      ORDER BY syllabus.name, branch.name, class."displayOrder", section."displayOrder",
+               enrollment."rollNo" NULLS LAST, student."admissionNo"
+    ) AS template_number,
+    count(*) OVER () AS template_count
   FROM "Student" student
   JOIN "School" school ON school.id = student."schoolId"
-  JOIN "StudentEnrollment" enrollment ON enrollment."studentId" = student.id
-  JOIN "AcademicYear" year ON year.id = enrollment."academicYearId"
-  JOIN "Class" class ON class.id = enrollment."classId"
-  JOIN "Section" section ON section.id = enrollment."sectionId"
+  JOIN "StudentEnrollment" enrollment
+    ON enrollment."studentId" = student.id AND enrollment."schoolId" = school.id
+  JOIN "AcademicYear" year ON year.id = enrollment."academicYearId" AND year."schoolId" = school.id
+  JOIN "Class" class ON class.id = enrollment."classId" AND class."schoolId" = school.id
+  JOIN "Section" section ON section.id = enrollment."sectionId" AND section."classId" = class.id
+  JOIN "AcademicBranch" branch ON branch.id = class."branchId" AND branch."schoolId" = school.id
+  JOIN "Syllabus" syllabus ON syllabus.id = branch."syllabusId" AND syllabus."schoolId" = school.id
   WHERE school.slug = 'kotak'
     AND year.name = '2026-27'
     AND enrollment.active = true
+    AND student.status = 'ACTIVE'
 ), numbered AS (
   SELECT
     series.student_number,
     template.gender,
     template.is_rte,
+    template.syllabus_name,
+    template.branch_name,
     template.class_name,
     template.section_name,
     CASE
@@ -95,7 +96,7 @@ WITH source_templates AS (
     ])[(((series.student_number - 1) / 25) % 20) + 1] AS last_name
   FROM generate_series(1, 500) AS series(student_number)
   JOIN source_templates template
-    ON template.template_number = ((series.student_number - 1) % 115) + 1
+    ON template.template_number = ((series.student_number - 1) % template.template_count) + 1
 )
 SELECT
   numbered.*,
@@ -113,8 +114,16 @@ JOIN "School" target_school ON target_school.slug = 'demo'
 JOIN "AcademicYear" target_year
   ON target_year."schoolId" = target_school.id
  AND target_year.name = '2026-27'
+JOIN "Syllabus" target_syllabus
+  ON target_syllabus."schoolId" = target_school.id
+ AND target_syllabus.name = numbered.syllabus_name
+JOIN "AcademicBranch" target_branch
+  ON target_branch."schoolId" = target_school.id
+ AND target_branch."syllabusId" = target_syllabus.id
+ AND target_branch.name = numbered.branch_name
 JOIN "Class" target_class
   ON target_class."schoolId" = target_school.id
+ AND target_class."branchId" = target_branch.id
  AND target_class.name = numbered.class_name
 JOIN "Section" target_section
   ON target_section."classId" = target_class.id
@@ -126,7 +135,7 @@ DECLARE
 BEGIN
   SELECT count(*) INTO generated_count FROM generated_demo_students;
   IF generated_count <> 500 THEN
-    RAISE EXCEPTION 'Expected 500 mapped Demo students, generated %. No changes were made.', generated_count;
+    RAISE EXCEPTION 'Expected 500 mapped Demo students, generated %. Check the active Kotak enrollments and matching Demo academic structure.', generated_count;
   END IF;
 END $$;
 
@@ -207,6 +216,7 @@ FROM generated_demo_students;
 CREATE TEMP TABLE target_demo_fee_plan ON COMMIT DROP AS
 SELECT
   plan.id AS fee_plan_id,
+  plan."appliesToAllClasses" AS applies_to_all_classes,
   item.id AS fee_plan_item_id,
   item."feeCategoryId" AS fee_category_id,
   item.amount,
@@ -214,7 +224,7 @@ SELECT
   year."endDate" AS year_end
 FROM "FeePlan" plan
 JOIN "School" school ON school.id = plan."schoolId"
-JOIN "AcademicYear" year ON year.id = plan."academicYearId"
+JOIN "AcademicYear" year ON year.id = plan."academicYearId" AND year."schoolId" = school.id
 JOIN "FeePlanItem" item ON item."feePlanId" = plan.id
 WHERE school.slug = 'demo'
   AND year.name = '2026-27'
@@ -228,6 +238,20 @@ BEGIN
   SELECT count(*) INTO plan_item_count FROM target_demo_fee_plan;
   IF plan_item_count <> 1 THEN
     RAISE EXCEPTION 'Expected one Demo IX/X term fee item, found %. No changes were made.', plan_item_count;
+  END IF;
+  IF EXISTS (
+    SELECT 1
+    FROM generated_demo_students generated
+    CROSS JOIN target_demo_fee_plan plan
+    WHERE NOT plan.applies_to_all_classes
+      AND NOT EXISTS (
+        SELECT 1
+        FROM "FeePlanClass" plan_class
+        WHERE plan_class."feePlanId" = plan.fee_plan_id
+          AND plan_class."classId" = generated.class_id
+      )
+  ) THEN
+    RAISE EXCEPTION 'The Demo IX/X term fee plan does not cover every generated class. No changes were made.';
   END IF;
 END $$;
 
@@ -408,18 +432,18 @@ COMMIT;
 
 SELECT
   school.slug,
-  count(DISTINCT student.id) AS students,
-  count(DISTINCT enrollment.id) AS enrollments,
-  count(DISTINCT fee.id) AS fee_assignments,
-  count(DISTINCT term.id) AS fee_installments
+  (SELECT count(*) FROM "Student" student WHERE student."schoolId" = school.id) AS students,
+  (SELECT count(*) FROM "StudentEnrollment" enrollment WHERE enrollment."schoolId" = school.id) AS enrollments,
+  (SELECT count(*) FROM "StudentFee" fee WHERE fee."schoolId" = school.id) AS fee_assignments,
+  (
+    SELECT count(*)
+    FROM "StudentFee" fee
+    JOIN "StudentFeeItem" item ON item."studentFeeId" = fee.id
+    JOIN "StudentFeeInstallment" term ON term."studentFeeItemId" = item.id
+    WHERE fee."schoolId" = school.id
+  ) AS fee_installments
 FROM "School" school
-LEFT JOIN "Student" student ON student."schoolId" = school.id
-LEFT JOIN "StudentEnrollment" enrollment ON enrollment."schoolId" = school.id
-LEFT JOIN "StudentFee" fee ON fee."schoolId" = school.id
-LEFT JOIN "StudentFeeItem" item ON item."studentFeeId" = fee.id
-LEFT JOIN "StudentFeeInstallment" term ON term."studentFeeItemId" = item.id
-WHERE school.slug = 'demo'
-GROUP BY school.slug;
+WHERE school.slug = 'demo';
 
 SELECT school.slug, teacher."employeeId", teacher."fullName"
 FROM "Teacher" teacher

@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import {
-  useCallback,
   useEffect,
   useMemo,
   useState,
@@ -19,7 +18,6 @@ import {
   UserRoundX,
   type LucideIcon,
 } from "lucide-react";
-import { toast } from "sonner";
 
 import { PageHeader } from "@/components/common/PageHeader";
 import {
@@ -58,6 +56,7 @@ type FailedStudent = {
   section: { id: string; name: string };
   subjects: number;
   failedSubjects: number;
+  failedSubjectNames: string[];
   absentSubjects: number;
   totalObtained: number;
   totalMaxMarks: number;
@@ -73,6 +72,7 @@ type FailuresData = {
   scope: {
     class: { id: string; name: string };
     section: { id: string; name: string } | null;
+    restricted?: boolean;
   } | null;
   eligibleStudents: number;
   passingStudents: number;
@@ -82,6 +82,11 @@ type FailuresData = {
 
 type Props = { schoolSlug: string };
 type ResultScope = "CLASS" | "SECTION";
+type ReportRequest = { url: string; attempt: number };
+type ReportResult = { request: ReportRequest } & (
+  | { data: FailuresData; error?: never }
+  | { error: string; data?: never }
+);
 
 export function FailuresPage({ schoolSlug }: Props) {
   const [exams, setExams] = useState<ExamOption[]>([]);
@@ -92,23 +97,29 @@ export function FailuresPage({ schoolSlug }: Props) {
   const [classId, setClassId] = useState("");
   const [sectionId, setSectionId] = useState("");
   const [scope, setScope] = useState<ResultScope>("CLASS");
-  const [data, setData] = useState<FailuresData | null>(null);
+  const [reportResult, setReportResult] = useState<ReportResult | null>(null);
+  const [reportAttempt, setReportAttempt] = useState(0);
   const [loadingExams, setLoadingExams] = useState(true);
-  const [loading, setLoading] = useState(false);
+  const [examOptionsError, setExamOptionsError] = useState<string | null>(null);
+  const [examOptionsAttempt, setExamOptionsAttempt] = useState(0);
 
   useEffect(() => {
-    let active = true;
+    const controller = new AbortController();
+    const { signal } = controller;
 
     async function loadExams() {
       try {
-        const response = await fetch("/api/v1/exams", { cache: "no-store" });
+        const response = await fetch("/api/v1/exams/failure-options", {
+          cache: "no-store",
+          signal,
+        });
         const result = await response.json();
 
         if (!response.ok || !result.success) {
           throw new Error(result.message || "Unable to load examinations.");
         }
 
-        if (!active) return;
+        if (signal.aborted) return;
 
         const available = (result.data as ExamOption[]).filter(
           (exam) => exam.status !== "CANCELLED",
@@ -123,72 +134,92 @@ export function FailuresPage({ schoolSlug }: Props) {
           setExamId(preferred.id);
         }
       } catch (error) {
-        if (active) {
-          toast.error(
+        if (!signal.aborted) {
+          setExamOptionsError(
             error instanceof Error
               ? error.message
               : "Unable to load examinations.",
           );
         }
       } finally {
-        if (active) setLoadingExams(false);
+        if (!signal.aborted) setLoadingExams(false);
       }
     }
 
     void loadExams();
-    return () => {
-      active = false;
-    };
-  }, []);
+    return () => controller.abort();
+  }, [examOptionsAttempt]);
 
   const filteredExams = useMemo(
     () => exams.filter((exam) => exam.academicYearId === academicYearId),
     [academicYearId, exams],
   );
 
-  const loadFailures = useCallback(async () => {
-    if (!examId || !classId || (scope === "SECTION" && !sectionId)) {
-      setData(null);
-      return;
-    }
+  const reportRequest = useMemo<ReportRequest | null>(() => {
+    if (!examId || !classId || (scope === "SECTION" && !sectionId)) return null;
 
     const params = new URLSearchParams({ classId });
     if (scope === "SECTION") params.set("sectionId", sectionId);
 
-    try {
-      setLoading(true);
-      const response = await fetch(
-        `/api/v1/exams/${encodeURIComponent(examId)}/failures?${params}`,
-        { cache: "no-store" },
-      );
-      const result = await response.json();
-
-      if (!response.ok || !result.success) {
-        throw new Error(result.message || "Unable to load failures.");
-      }
-
-      setData(result.data);
-    } catch (error) {
-      setData(null);
-      toast.error(
-        error instanceof Error ? error.message : "Unable to load failures.",
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, [classId, examId, scope, sectionId]);
+    return {
+      url: `/api/v1/exams/${encodeURIComponent(examId)}/failures?${params}`,
+      attempt: reportAttempt,
+    };
+  }, [classId, examId, scope, sectionId, reportAttempt]);
 
   useEffect(() => {
-    const timeout = window.setTimeout(() => void loadFailures(), 150);
-    return () => window.clearTimeout(timeout);
-  }, [loadFailures]);
+    if (!reportRequest) return;
+    const request = reportRequest;
+    const controller = new AbortController();
+    const { signal } = controller;
 
-  const ready = Boolean(examId && classId && (scope === "CLASS" || sectionId));
+    async function loadFailures() {
+      try {
+        const response = await fetch(request.url, { cache: "no-store", signal });
+        const result = await response.json();
+
+        if (!response.ok || !result.success) {
+          throw new Error(result.message || "Unable to load failures.");
+        }
+
+        if (!signal.aborted) setReportResult({ request, data: result.data });
+      } catch (error) {
+        if (!signal.aborted) {
+          setReportResult({
+            request,
+            error: error instanceof Error ? error.message : "Unable to load failures.",
+          });
+        }
+      }
+    }
+
+    const timeout = window.setTimeout(() => void loadFailures(), 150);
+    return () => {
+      window.clearTimeout(timeout);
+      controller.abort();
+    };
+  }, [reportRequest]);
+
+  const currentReport = reportResult?.request === reportRequest ? reportResult : null;
+  const data = currentReport?.data;
+  const loading = Boolean(reportRequest && !currentReport);
+  const ready = reportRequest !== null;
+
+  function retryReport() {
+    setReportAttempt((attempt) => attempt + 1);
+  }
+
+  function retryExamOptions() {
+    setExamOptionsError(null);
+    setLoadingExams(true);
+    setExamOptionsAttempt((attempt) => attempt + 1);
+  }
 
   function changeAcademicYear(value: string) {
     setAcademicYearId(value);
     setExamId(exams.find((exam) => exam.academicYearId === value)?.id ?? "");
-    setData(null);
+    setClassId("");
+    setSectionId("");
   }
 
   return (
@@ -201,7 +232,7 @@ export function FailuresPage({ schoolSlug }: Props) {
           <Button
             variant="outline"
             disabled={!ready || loading}
-            onClick={() => void loadFailures()}
+            onClick={retryReport}
           >
             <RefreshCw className={cn("size-4", loading && "animate-spin")} />
             Refresh failures
@@ -235,8 +266,13 @@ export function FailuresPage({ schoolSlug }: Props) {
                 {data.scope.class.name}
                 {data.scope.section
                   ? ` · Section ${data.scope.section.name}`
-                  : " · All sections"}
+                  : data.scope.restricted
+                    ? " · Assigned sections"
+                    : " · All sections"}
               </p>
+              {data.scope.restricted && (
+                <p className="mt-1 text-sm text-muted-foreground">Assigned subjects only</p>
+              )}
             </div>
           )}
         </div>
@@ -267,16 +303,15 @@ export function FailuresPage({ schoolSlug }: Props) {
               <AcademicYearSelect
                 value={academicYearId}
                 onChange={changeAcademicYear}
+                autoSelectActive={false}
+                disabled={loadingExams}
               />
             </Filter>
             <Filter label="Examination">
               <Select
                 value={examId}
-                onValueChange={(value) => {
-                  setExamId(value);
-                  setData(null);
-                }}
-                disabled={loadingExams || !academicYearId}
+                onValueChange={setExamId}
+                disabled={loadingExams || filteredExams.length === 0}
               >
                 <SelectTrigger>
                   <SelectValue
@@ -300,7 +335,6 @@ export function FailuresPage({ schoolSlug }: Props) {
                   setBranchId("");
                   setClassId("");
                   setSectionId("");
-                  setData(null);
                 }}
               />
             </Filter>
@@ -312,41 +346,59 @@ export function FailuresPage({ schoolSlug }: Props) {
                   setBranchId(value);
                   setClassId("");
                   setSectionId("");
-                  setData(null);
                 }}
               />
             </Filter>
             <Filter label="Class">
               <ClassSelect
+                key={`${academicYearId}:${syllabusId}:${branchId}`}
                 syllabusId={syllabusId}
                 branchId={branchId}
+                academicYearId={academicYearId}
                 value={classId}
                 disabled={!branchId}
                 onChange={(value) => {
                   setClassId(value);
                   setSectionId("");
-                  setData(null);
                 }}
               />
             </Filter>
             <Filter label="Section" muted={scope === "CLASS"}>
               <SectionSelect
+                key={`${academicYearId}:${classId}`}
                 classId={classId}
+                academicYearId={academicYearId}
                 value={sectionId}
                 allowAll={false}
                 disabled={scope === "CLASS" || !classId}
                 placeholder={scope === "CLASS" ? "All sections" : "Select section"}
-                onChange={(value) => {
-                  setSectionId(value);
-                  setData(null);
-                }}
+                onChange={setSectionId}
               />
             </Filter>
           </div>
         </CardContent>
       </Card>
 
-      {!ready && (
+      {examOptionsError && (
+        <EmptyState
+          icon={ShieldAlert}
+          title="Could not load examinations"
+          description={examOptionsError}
+          action={<Button variant="outline" onClick={retryExamOptions}>Try again</Button>}
+        />
+      )}
+
+      {!examOptionsError && !loadingExams && filteredExams.length === 0 && (
+        <EmptyState
+          icon={BookOpenCheck}
+          title="No examinations available"
+          description={academicYearId
+            ? "Choose another academic year to review its examinations."
+            : "There are no examinations available for this report."}
+        />
+      )}
+
+      {!ready && !loadingExams && !examOptionsError && filteredExams.length > 0 && (
         <EmptyState
           icon={BookOpenCheck}
           title="Choose the result details"
@@ -354,20 +406,47 @@ export function FailuresPage({ schoolSlug }: Props) {
         />
       )}
 
-      {ready && loading && (
-        <Card className="border-border/60">
+      {(loadingExams || loading) && (
+        <Card className="border-border/60" role="status">
           <CardContent className="flex min-h-72 items-center justify-center">
             <div className="text-center">
               <LoaderCircle className="mx-auto size-8 animate-spin text-primary" />
               <p className="mt-3 text-sm text-muted-foreground">
-                Checking completed results...
+                {loadingExams ? "Loading examinations..." : "Checking completed results..."}
               </p>
             </div>
           </CardContent>
         </Card>
       )}
 
-      {ready && !loading && data && data.failures.length === 0 && (
+      {currentReport?.error && (
+        <EmptyState
+          icon={ShieldAlert}
+          title="Could not load exam failures"
+          description={currentReport.error}
+          action={<Button variant="outline" onClick={retryReport}>Try again</Button>}
+        />
+      )}
+
+      {data && !data.scope && (
+        <EmptyState
+          icon={BookOpenCheck}
+          title="No exam schedules"
+          description="Choose a class or section with schedules for this examination."
+        />
+      )}
+
+      {data?.scope && data.eligibleStudents === 0 && (
+        <EmptyState
+          icon={data.pendingStudents > 0 ? Clock3 : BookOpenCheck}
+          title="No completed results"
+          description={data.pendingStudents > 0
+            ? `${data.pendingStudents} student result${data.pendingStudents === 1 ? " is" : "s are"} still awaiting complete marks.`
+            : "There are no assessed students for the selected class or section."}
+        />
+      )}
+
+      {data?.scope && data.eligibleStudents > 0 && data.failures.length === 0 && (
         <EmptyState
           icon={CircleCheckBig}
           title="No failed students"
@@ -380,7 +459,7 @@ export function FailuresPage({ schoolSlug }: Props) {
         />
       )}
 
-      {ready && !loading && data && data.failures.length > 0 && (
+      {data && data.failures.length > 0 && (
         <>
           <div className="grid gap-4 sm:grid-cols-3">
             <Metric
@@ -456,6 +535,9 @@ export function FailuresPage({ schoolSlug }: Props) {
                         <span className="inline-flex min-w-9 items-center justify-center rounded-full bg-rose-100 px-3 py-1.5 font-bold text-rose-700 dark:bg-rose-950 dark:text-rose-300">
                           {student.failedSubjects}
                         </span>
+                        <p className="mx-auto mt-1.5 max-w-48 text-xs text-muted-foreground">
+                          {student.failedSubjectNames.join(", ")}
+                        </p>
                       </td>
                       <td className="px-5 py-4 text-center text-muted-foreground">
                         {student.absentSubjects}
@@ -586,11 +668,13 @@ function EmptyState({
   icon: Icon,
   title,
   description,
+  action,
   success = false,
 }: {
   icon: LucideIcon;
   title: string;
   description: string;
+  action?: ReactNode;
   success?: boolean;
 }) {
   return (
@@ -610,6 +694,7 @@ function EmptyState({
         <p className="mt-1 max-w-md text-sm leading-6 text-muted-foreground">
           {description}
         </p>
+        {action && <div className="mt-4">{action}</div>}
       </CardContent>
     </Card>
   );
