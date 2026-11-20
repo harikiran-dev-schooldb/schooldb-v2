@@ -107,6 +107,8 @@ jobs:
   android-instrumentation:
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    env:
+      ANDROID_I_WANT_MY_TCG: "yes"
     strategy:
       fail-fast: false
       matrix:
@@ -124,6 +126,7 @@ jobs:
           api-level: 35
           arch: x86_64
           profile: pixel_6
+          emulator-boot-timeout: 900
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
           script: cd ${{ matrix.project }} && ./gradlew connectedDebugAndroidTest --no-daemon
