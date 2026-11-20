@@ -161,6 +161,10 @@ model SchoolAnalyticsSetting {
   lateCountsAsPresent         Boolean  @default(false)
   feeOverdueAlertDays         Int      @default(30)
   routeCapacityWarningPercent Decimal  @default(100.00) @db.Decimal(5, 2)
+  annualGradeBands            Json?
+  annualPassPercentage        Decimal  @default(40.00) @db.Decimal(5, 2)
+  requireAllSubjectsPass      Boolean  @default(true)
+  maximumGraceMarks           Decimal  @default(0.00) @db.Decimal(6, 2)
   createdAt                   DateTime @default(now())
   updatedAt                   DateTime @updatedAt
   school                      School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
@@ -2057,6 +2061,10 @@ model Exam {
   endDate          DateTime?
   status           ExamStatus        @default(DRAFT)
   active           Boolean           @default(true)
+  annualWeight     Decimal           @default(1.00) @db.Decimal(6, 2)
+  resultsLockedAt  DateTime?
+  resultsLockedBy  String?
+  resultsVersion   Int               @default(1)
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
   academicYear     AcademicYear      @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
@@ -2081,22 +2089,33 @@ enum StudentFollowUpStatus {
   COMPLETED
 }
 
+enum StudentFollowUpOutcome {
+  IMPROVED
+  CONTINUE_SUPPORT
+  REFERRED
+  NO_RESPONSE
+}
+
 model StudentFollowUp {
-  id            String                @id @default(cuid())
-  schoolId      String
-  enrollmentId String
-  teacherId     String
-  examId        String?
-  source        StudentFollowUpSource
-  status        StudentFollowUpStatus @default(OPEN)
-  nextAction    String                @db.VarChar(500)
-  dueDate       DateTime              @db.Date
-  createdAt     DateTime              @default(now())
-  updatedAt     DateTime              @updatedAt
-  school        School                @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  enrollment    StudentEnrollment     @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
-  teacher       Teacher               @relation(fields: [teacherId], references: [id], onDelete: NoAction)
-  exam          Exam?                 @relation(fields: [examId], references: [id], onDelete: SetNull)
+  id                String                  @id @default(cuid())
+  schoolId          String
+  enrollmentId      String
+  teacherId         String
+  examId            String?
+  source            StudentFollowUpSource
+  status            StudentFollowUpStatus   @default(OPEN)
+  nextAction        String                  @db.VarChar(500)
+  dueDate           DateTime                @db.Date
+  parentContactedAt DateTime?
+  closureNotes      String?                 @db.VarChar(1000)
+  outcome           StudentFollowUpOutcome?
+  escalationLevel   Int                     @default(0)
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
+  school            School                  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  enrollment        StudentEnrollment       @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  teacher           Teacher                 @relation(fields: [teacherId], references: [id], onDelete: NoAction)
+  exam              Exam?                   @relation(fields: [examId], references: [id], onDelete: SetNull)
 
   @@index([schoolId, dueDate])
   @@index([schoolId, teacherId, status, dueDate])
@@ -2525,37 +2544,37 @@ enum SupportTicketComplaintBy {
 }
 
 model SupportTicket {
-  id           String                    @id @default(cuid())
-  schoolId     String
-  ticketNo     String
-  subject      String
-  description  String
-  type         SupportTicketType
-  priority     SupportTicketPriority     @default(NORMAL)
-  status       SupportTicketStatus       @default(OPEN)
-  studentId    String?
-  createdById  String?
-  source       String                    @default("STAFF")
-  parentName   String?
-  parentPhone  String?
-  complaintBy  SupportTicketComplaintBy?
-  diagnostics  Json?
-  labels       String[]                  @default([])
-  assignedToId String?
+  id            String                    @id @default(cuid())
+  schoolId      String
+  ticketNo      String
+  subject       String
+  description   String
+  type          SupportTicketType
+  priority      SupportTicketPriority     @default(NORMAL)
+  status        SupportTicketStatus       @default(OPEN)
+  studentId     String?
+  createdById   String?
+  source        String                    @default("STAFF")
+  parentName    String?
+  parentPhone   String?
+  complaintBy   SupportTicketComplaintBy?
+  diagnostics   Json?
+  labels        String[]                  @default([])
+  assignedToId  String?
   duplicateOfId String?
-  createdAt    DateTime                  @default(now())
-  updatedAt    DateTime                  @updatedAt
-  resolvedAt   DateTime?
-  school       School                    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  student      Student?                  @relation(fields: [studentId], references: [id], onDelete: SetNull)
-  createdBy    User?                     @relation("SupportTicketCreator", fields: [createdById], references: [id], onDelete: SetNull)
-  assignedTo   User?                     @relation("SupportTicketAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
-  duplicateOf  SupportTicket?            @relation("SupportTicketDuplicates", fields: [duplicateOfId], references: [id], onDelete: SetNull)
-  duplicates   SupportTicket[]           @relation("SupportTicketDuplicates")
-  messages     SupportTicketMessage[]
-  activities   SupportTicketActivity[]
-  reads        SupportTicketRead[]
-  attachments  SupportTicketAttachment[]
+  createdAt     DateTime                  @default(now())
+  updatedAt     DateTime                  @updatedAt
+  resolvedAt    DateTime?
+  school        School                    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student       Student?                  @relation(fields: [studentId], references: [id], onDelete: SetNull)
+  createdBy     User?                     @relation("SupportTicketCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  assignedTo    User?                     @relation("SupportTicketAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+  duplicateOf   SupportTicket?            @relation("SupportTicketDuplicates", fields: [duplicateOfId], references: [id], onDelete: SetNull)
+  duplicates    SupportTicket[]           @relation("SupportTicketDuplicates")
+  messages      SupportTicketMessage[]
+  activities    SupportTicketActivity[]
+  reads         SupportTicketRead[]
+  attachments   SupportTicketAttachment[]
 
   @@unique([schoolId, ticketNo])
   @@index([schoolId, status, createdAt(sort: Desc)])

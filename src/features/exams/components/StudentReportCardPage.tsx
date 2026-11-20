@@ -73,6 +73,8 @@ type StudentResultData = {
     name: string;
     startDate: string | null;
     endDate: string | null;
+    resultsVersion: number;
+    resultsLockedAt: string | null;
 
     academicYear: {
       id: string;
@@ -314,6 +316,7 @@ export function StudentReportCardPage({
                     {data.exam.academicYear.name}
                   </span>
                 </p>
+                <p className="mt-1 text-xs text-muted-foreground print:text-black">Official result version {data.exam.resultsVersion}{data.exam.resultsLockedAt ? ` · Published ${formatDate(data.exam.resultsLockedAt)}` : ""}</p>
               </div>
             </div>
           </div>

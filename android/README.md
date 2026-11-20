@@ -52,9 +52,10 @@ hours. Cache entries are isolated by Clerk user and school, and all cached API
 responses are removed when the user signs out.
 
 When no cached dashboard is available, the app shows the animated light-mode
-connection screen with a retry action. Live actions such as attendance changes,
-leave requests, account switching, OTP sign-in, and other writes still require
-a working connection.
+connection screen with a retry action. Teacher attendance, homework and marks
+can be queued offline and replayed when connectivity returns; the teacher
+workspace shows how many changes are waiting. Leave requests, account switching,
+OTP sign-in, and other writes still require a working connection.
 
 Run the complete local verification suite with:
 

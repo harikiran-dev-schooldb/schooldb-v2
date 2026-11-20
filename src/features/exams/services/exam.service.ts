@@ -251,7 +251,9 @@ export const examService = {
       startDate?: Date;
       endDate?: Date;
       status?: "DRAFT" | "PUBLISHED" | "COMPLETED" | "CANCELLED";
+      annualWeight?: number;
       publishOverride?: { reason: string; reviewKey: string };
+      correctionReason?: string;
     },
   ) {
     const { schoolId } = actor;
@@ -280,6 +282,13 @@ export const examService = {
       }
 
       const publishing = data.status === "COMPLETED" && exam.status !== "COMPLETED";
+      const reopening = exam.status === "COMPLETED" && data.status === "PUBLISHED";
+      if (exam.status === "COMPLETED" && data.status && !["COMPLETED", "PUBLISHED"].includes(data.status)) {
+        throw new Error("Published results can only be reopened for an audited correction.");
+      }
+      if (reopening && !data.correctionReason?.trim()) {
+        throw new Error("Enter a reason before reopening published results.");
+      }
       const checklist = publishing ? await getExamPublishChecklist(tx, exam) : null;
       const canOverride = canOverrideExamPublish(actor.role);
       const override = data.publishOverride;
@@ -292,7 +301,15 @@ export const examService = {
 
       const updated = await tx.exam.update({
         where: { id: exam.id, schoolId },
-        data: { name, startDate, endDate, status: data.status },
+        data: {
+          name,
+          startDate,
+          endDate,
+          status: data.status,
+          annualWeight: data.annualWeight,
+          ...(publishing ? { resultsLockedAt: new Date(), resultsLockedBy: actor.userId } : {}),
+          ...(reopening ? { resultsLockedAt: null, resultsLockedBy: null, resultsVersion: { increment: 1 } } : {}),
+        },
         include: { academicYear: true },
       });
 
@@ -313,6 +330,18 @@ export const examService = {
             scheduleCount: checklist.scheduleCount,
             ...(overrideRequired && override ? { overrideReason: override.reason } : {}),
           },
+        });
+      }
+
+      if (reopening) {
+        await writeAuditLog(tx, {
+          actor,
+          module: "ACADEMICS",
+          action: "CORRECT",
+          entityType: "EXAM",
+          entityId: exam.id,
+          summary: `Reopened published results for ${name}.`,
+          metadata: { reason: data.correctionReason!, nextVersion: exam.resultsVersion + 1 },
         });
       }
 

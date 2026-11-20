@@ -6,12 +6,10 @@ import {
   CalendarRange,
   ChartNoAxesCombined,
   CircleHelp,
-  FileSpreadsheet,
   GraduationCap,
   IndianRupee,
   LayoutDashboard,
   Megaphone,
-  MonitorPlay,
   Settings2,
   School,
   UserRound,
@@ -54,12 +52,6 @@ export const navigation: NavigationItem[] = [
     roles: [...ADMIN_ROLES, "ACCOUNTANT", "RECEPTIONIST"],
   },
   {
-    title: "Presentation Mode",
-    href: "presentation",
-    icon: MonitorPlay,
-    roles: ADMIN_ROLES,
-  },
-  {
     title: "My Dashboard",
     href: "teacher/dashboard",
     icon: LayoutDashboard,
@@ -78,16 +70,14 @@ export const navigation: NavigationItem[] = [
     roles: ["SUPER_ADMIN"],
   },
   {
-    title: "Reports",
-    href: "reports",
-    icon: FileSpreadsheet,
-    roles: ADMIN_ROLES,
-  },
-  {
-    title: "Analytics",
-    href: "management-analytics",
+    title: "Reports & Insights",
     icon: ChartNoAxesCombined,
     roles: ADMIN_ROLES,
+    children: [
+      { title: "Report Exports", href: "reports" },
+      { title: "School Analytics", href: "management-analytics" },
+      { title: "Presentation Mode", href: "presentation" },
+    ],
   },
   {
     title: "People",
@@ -167,10 +157,9 @@ export const navigation: NavigationItem[] = [
     children: [
       { title: "Homework", href: "homework" },
       { title: "Exams & Results", href: "exams" },
-      { title: "Toppers", href: "toppers" },
-      { title: "Subject Performance", href: "exams/subject-performance" },
-      { title: "Failures", href: "failures" },
+      { title: "Results Analytics", href: "exams/subject-performance" },
       { title: "Student Follow-Ups", href: "student-follow-ups" },
+      { title: "Grading Policy", href: "exams/grading-policy", roles: ADMIN_ROLES },
     ],
   },
   {
@@ -286,7 +275,8 @@ export const navigation: NavigationItem[] = [
     icon: Megaphone,
     roles: STAFF_ROLES,
     children: [
-      { title: "Notifications", href: "notifications", roles: TEACHING_ROLES },
+      { title: "Create Announcements", href: "notifications", roles: TEACHING_ROLES },
+      { title: "My Inbox", href: "notification-inbox", roles: STAFF_ROLES },
       { title: "Support & Parent Queries", href: "queries", roles: STAFF_ROLES },
       { title: "WhatsApp Messages", href: "whatsapp", roles: ADMIN_ROLES },
     ],

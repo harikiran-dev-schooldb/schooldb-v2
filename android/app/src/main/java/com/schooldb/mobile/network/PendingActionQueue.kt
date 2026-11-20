@@ -71,6 +71,21 @@ object PendingActionQueue {
 
     internal fun count(context: Context): Int = synchronized(lock) { read(context).length() }
 
+    fun pendingCount(): Int {
+        val context = applicationContext ?: return 0
+        val userId = Clerk.activeUser?.id?.takeIf(String::isNotBlank) ?: return 0
+        val schoolSlug = runCatching { SchoolContext.schoolSlug() }.getOrNull() ?: return 0
+        return synchronized(lock) {
+            val actions = read(context)
+            (0 until actions.length()).count { index ->
+                val action = actions.getJSONObject(index)
+                action.optString("userId") == userId && action.optString("schoolSlug") == schoolSlug
+            }
+        }
+    }
+
+    fun retryNow() = enqueueSync()
+
     private fun read(context: Context): JSONArray {
         val raw = context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
             .getString(ACTIONS, "[]") ?: "[]"

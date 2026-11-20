@@ -49,6 +49,8 @@ export const updateExamSchema = z
       reviewKey: z.string().regex(/^[a-f0-9]{64}$/, "Review the current publish checklist."),
     }).optional(),
 
+    correctionReason: z.string().trim().min(5, "Enter a correction reason.").max(500).optional(),
+
     startDate: z
       .string()
       .min(1, "Start date is required.")
@@ -58,6 +60,8 @@ export const updateExamSchema = z
       .string()
       .min(1, "End date is required.")
       .optional(),
+
+    annualWeight: z.number().min(0, "Annual weight cannot be negative.").max(100).optional(),
   })
   .refine(
     (data) => {

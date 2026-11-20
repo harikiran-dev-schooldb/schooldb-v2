@@ -20,6 +20,7 @@ import {
   fetchFollowUpData,
   FOLLOW_UP_SOURCES,
   FOLLOW_UP_STATUSES,
+  FOLLOW_UP_OUTCOMES,
   followUpOriginParams,
   followUpStudentName,
   formatFollowUpDate,
@@ -202,6 +203,10 @@ function CreateFollowUp({ origin, cancelHref, onCreated }: {
           teacherId: values.get("teacherId"),
           dueDate: values.get("dueDate"),
           nextAction,
+          parentContacted: values.get("parentContacted") === "on",
+          escalationLevel: Number(values.get("escalationLevel") ?? 0),
+          outcome: values.get("outcome") || null,
+          closureNotes: String(values.get("closureNotes") ?? "").trim(),
         }),
       });
       setSubmitted(true);
@@ -331,6 +336,22 @@ function FollowUpCard({ followUp, onUpdated, canReassign }: {
                 {canReassign && <ReassignTeacherField id={`${id}-reassign`} followUp={followUp} />}
               </div>
               <NextActionField id={`${id}-next-action`} value={followUp.nextAction} />
+              <div className="grid max-w-2xl gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor={`${id}-escalation`}>Escalation</Label>
+                  <select id={`${id}-escalation`} name="escalationLevel" className={selectClassName} defaultValue={followUp.escalationLevel}>
+                    <option value="0">Assigned teacher</option><option value="1">Class teacher</option><option value="2">Academic coordinator</option><option value="3">Principal</option>
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor={`${id}-outcome`}>Outcome</Label>
+                  <select id={`${id}-outcome`} name="outcome" className={selectClassName} defaultValue={followUp.outcome ?? ""}>
+                    <option value="">Not decided</option>{Object.entries(FOLLOW_UP_OUTCOMES).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                  </select>
+                </div>
+              </div>
+              <label className="flex max-w-2xl items-center gap-3 rounded-xl border p-3 text-sm font-medium"><input type="checkbox" name="parentContacted" defaultChecked={Boolean(followUp.parentContactedAt)} className="size-4" />Parent or guardian contacted</label>
+              <div className="max-w-2xl space-y-2"><Label htmlFor={`${id}-closure-notes`}>Intervention notes or closure outcome</Label><Textarea id={`${id}-closure-notes`} name="closureNotes" maxLength={1000} defaultValue={followUp.closureNotes ?? ""} placeholder="Record the conversation, agreed support and result." /></div>
             </fieldset>
             {error && <p className="text-sm text-destructive" role="alert">{error}</p>}
             <div className="flex flex-wrap gap-2">
@@ -343,6 +364,10 @@ function FollowUpCard({ followUp, onUpdated, canReassign }: {
             <div><dt className="text-xs text-muted-foreground">Assigned teacher</dt><dd className="break-words">{followUp.teacher.fullName}</dd></div>
             <div><dt className="text-xs text-muted-foreground">Due date</dt><dd><time dateTime={followUp.dueDate}>{formatFollowUpDate(followUp.dueDate)}</time></dd></div>
             <div className="sm:col-span-2 lg:col-span-1"><dt className="text-xs text-muted-foreground">Next action</dt><dd className="whitespace-pre-wrap break-words">{followUp.nextAction}</dd></div>
+            <div><dt className="text-xs text-muted-foreground">Parent contact</dt><dd>{followUp.parentContactedAt ? "Contacted" : "Not recorded"}</dd></div>
+            <div><dt className="text-xs text-muted-foreground">Escalation</dt><dd>{["Assigned teacher", "Class teacher", "Academic coordinator", "Principal"][followUp.escalationLevel] ?? "Assigned teacher"}</dd></div>
+            <div><dt className="text-xs text-muted-foreground">Outcome</dt><dd>{followUp.outcome ? FOLLOW_UP_OUTCOMES[followUp.outcome] : "Not decided"}</dd></div>
+            {followUp.closureNotes && <div className="sm:col-span-2 lg:col-span-3"><dt className="text-xs text-muted-foreground">Intervention notes</dt><dd className="whitespace-pre-wrap break-words">{followUp.closureNotes}</dd></div>}
           </dl>
         )}
       </CardContent>

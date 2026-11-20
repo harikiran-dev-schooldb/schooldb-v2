@@ -63,6 +63,8 @@ export async function GET(
         startDate: true,
         endDate: true,
         academicYearId: true,
+        resultsVersion: true,
+        resultsLockedAt: true,
 
         academicYear: {
           select: {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { CheckCheck, Loader2, Route, Save, ShieldCheck } from "lucide-react";
+import { Loader2, Route, Save, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/common/PageHeader";
@@ -69,6 +69,16 @@ function routeGroups(): RouteGroup[] {
 
 const ROUTE_GROUPS = routeGroups();
 const ALL_ROUTES = [...CONFIGURABLE_ROUTES];
+const OPTIONAL_CAMPUS_ROUTES = new Set([
+  "presentation", "staff-operations", "visitors", "student-health", "inventory",
+  "student-pickup", "maintenance", "library", "transport", "whatsapp",
+]);
+const CORE_SCHOOL_ROUTES = ALL_ROUTES.filter(
+  (route) => !route.startsWith("bulk-operations/") && !OPTIONAL_CAMPUS_ROUTES.has(route),
+);
+const ACADEMIC_ONLY_ROUTES = CORE_SCHOOL_ROUTES.filter(
+  (route) => !route.startsWith("fees/") && !["expenses", "reports", "management-analytics"].includes(route),
+);
 
 export function SchoolRouteAccessManager() {
   const [schools, setSchools] = useState<SchoolRouteAccess[]>([]);
@@ -251,8 +261,14 @@ export function SchoolRouteAccessManager() {
 
           {draft.routeAccessRestricted && (
             <div className="flex flex-wrap gap-2">
+              <Button type="button" variant="outline" size="sm" onClick={() => setDraft((current) => ({ ...current, allowedRoutes: ACADEMIC_ONLY_ROUTES }))}>
+                Academic only
+              </Button>
+              <Button type="button" variant="outline" size="sm" onClick={() => setDraft((current) => ({ ...current, allowedRoutes: CORE_SCHOOL_ROUTES }))}>
+                Core school
+              </Button>
               <Button type="button" variant="outline" size="sm" onClick={() => setDraft((current) => ({ ...current, allowedRoutes: ALL_ROUTES }))}>
-                <CheckCheck className="size-4" /> Select all
+                Full campus
               </Button>
               <Button type="button" variant="outline" size="sm" onClick={() => setDraft((current) => ({ ...current, allowedRoutes: [] }))}>
                 Clear all

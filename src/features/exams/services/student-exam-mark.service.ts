@@ -199,12 +199,16 @@ export const studentExamMarkService = {
         sectionId: true,
         maxMarks: true,
         assessmentType: true,
-        exam: { select: { academicYearId: true } },
+        exam: { select: { academicYearId: true, status: true } },
       },
     });
 
     if (!schedule) {
       throw new Error("Exam schedule not found.");
+    }
+
+    if (schedule.exam.status === "COMPLETED" || schedule.exam.status === "CANCELLED") {
+      throw new Error("Published or cancelled exam results are locked. An administrator must reopen the exam before marks can be changed.");
     }
 
     if (!sectionId) {

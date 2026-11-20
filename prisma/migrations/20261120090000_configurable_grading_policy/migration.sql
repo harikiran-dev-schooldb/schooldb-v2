@@ -1,0 +1,8 @@
+ALTER TABLE "SchoolAnalyticsSetting"
+ADD COLUMN "annualGradeBands" JSONB,
+ADD COLUMN "annualPassPercentage" DECIMAL(5,2) NOT NULL DEFAULT 40.00,
+ADD COLUMN "requireAllSubjectsPass" BOOLEAN NOT NULL DEFAULT true,
+ADD COLUMN "maximumGraceMarks" DECIMAL(6,2) NOT NULL DEFAULT 0.00;
+
+ALTER TABLE "Exam"
+ADD COLUMN "annualWeight" DECIMAL(6,2) NOT NULL DEFAULT 1.00;

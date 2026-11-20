@@ -29,6 +29,10 @@ const followUpSelect = {
   status: true,
   nextAction: true,
   dueDate: true,
+  parentContactedAt: true,
+  closureNotes: true,
+  outcome: true,
+  escalationLevel: true,
   enrollment: {
     select: {
       academicYearId: true,
@@ -43,7 +47,7 @@ const followUpSelect = {
 
 type FollowUpRow = Prisma.StudentFollowUpGetPayload<{ select: typeof followUpSelect }>;
 
-function formatFollowUp({ enrollment, dueDate, ...followUp }: FollowUpRow) {
+function formatFollowUp({ enrollment, dueDate, parentContactedAt, ...followUp }: FollowUpRow) {
   return {
     ...followUp,
     student: enrollment.student,
@@ -51,6 +55,7 @@ function formatFollowUp({ enrollment, dueDate, ...followUp }: FollowUpRow) {
     className: enrollment.class.name,
     sectionName: enrollment.section.name,
     dueDate: dueDate.toISOString().slice(0, 10),
+    parentContactedAt: parentContactedAt?.toISOString() ?? null,
   };
 }
 
@@ -328,6 +333,10 @@ export async function updateFollowUp(access: FollowUpAccess, id: string, input: 
         nextAction: input.nextAction,
         teacherId: input.teacherId,
         dueDate: input.dueDate ? followUpDate(input.dueDate) : undefined,
+        parentContactedAt: input.parentContacted === undefined ? undefined : input.parentContacted ? new Date() : null,
+        closureNotes: input.closureNotes,
+        outcome: input.outcome,
+        escalationLevel: input.escalationLevel,
       },
       select: followUpSelect,
     });

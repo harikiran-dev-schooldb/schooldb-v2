@@ -93,7 +93,12 @@ export async function PATCH(
           status: parsed.data.status,
         }),
 
+        ...(parsed.data.annualWeight !== undefined && {
+          annualWeight: parsed.data.annualWeight,
+        }),
+
         publishOverride: parsed.data.publishOverride,
+        correctionReason: parsed.data.correctionReason,
       },
     );
 
@@ -120,7 +125,7 @@ export async function PATCH(
       await notifyExamResultsPublished(exam.id, tenant.schoolId, tenant.userId);
     }
 
-    if (!update.published && parsed.data.status !== "COMPLETED") {
+    if (!update.published && parsed.data.status !== "COMPLETED" && !parsed.data.correctionReason) {
       await recordAuditLog({
         actor: tenant,
         module: "ACADEMICS",

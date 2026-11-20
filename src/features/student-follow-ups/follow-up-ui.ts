@@ -1,5 +1,6 @@
 export type FollowUpSource = "EXAM_FAILURE" | "LOW_ATTENDANCE";
 export type FollowUpStatus = "OPEN" | "IN_PROGRESS" | "COMPLETED";
+export type FollowUpOutcome = "IMPROVED" | "CONTINUE_SUPPORT" | "REFERRED" | "NO_RESPONSE";
 
 export type FollowUpOrigin = {
   studentId: string;
@@ -24,6 +25,10 @@ export type FollowUp = {
   className: string;
   sectionName: string;
   exam: Exam | null;
+  parentContactedAt: string | null;
+  closureNotes: string | null;
+  outcome: FollowUpOutcome | null;
+  escalationLevel: number;
 };
 
 export type FollowUpList = {
@@ -46,6 +51,13 @@ export const FOLLOW_UP_STATUSES: Record<FollowUpStatus, string> = {
   OPEN: "Open",
   IN_PROGRESS: "In progress",
   COMPLETED: "Completed",
+};
+
+export const FOLLOW_UP_OUTCOMES: Record<FollowUpOutcome, string> = {
+  IMPROVED: "Improved",
+  CONTINUE_SUPPORT: "Continue support",
+  REFERRED: "Referred for additional support",
+  NO_RESPONSE: "No parent response",
 };
 
 export function isFollowUpSource(value: string | undefined): value is FollowUpSource {

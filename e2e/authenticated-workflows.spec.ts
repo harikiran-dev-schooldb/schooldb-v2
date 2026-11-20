@@ -69,6 +69,18 @@ test.describe("authenticated school workflows", () => {
     await expect(page).not.toHaveURL(/\/login/);
   });
 
+  test("results analytics and intervention workflows load", async ({ page }) => {
+    await expectEnabledWorkflowPage(page, "exams/subject-performance", "Subject Performance");
+    await expect(page.getByRole("navigation", { name: "Results analytics" })).toBeVisible();
+    await expectEnabledWorkflowPage(page, "student-follow-ups", "Student Follow-Ups");
+  });
+
+  test("administrators can open grading policy settings", async ({ page }) => {
+    await expectEnabledWorkflowPage(page, "exams/grading-policy", "Grading & annual results");
+    await expect(page.getByText("Annual result rules")).toBeVisible();
+    await expect(page.getByText("Annual examination weightage")).toBeVisible();
+  });
+
   for (const workflow of [
     { path: "student-health", heading: "Student health & emergency records" },
     { path: "student-pickup", heading: "Authorized student pickup" },

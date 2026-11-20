@@ -98,6 +98,7 @@ import com.schooldb.mobile.preferences.StartTabPreference
 import com.schooldb.mobile.family.FamilyDashboardScreen
 import com.schooldb.mobile.ui.ConnectionStateScreen
 import com.schooldb.mobile.ui.OfflineDataBanner
+import com.schooldb.mobile.ui.PendingSyncBanner
 import com.schooldb.mobile.ui.SchoolDbHeaderAction
 import com.schooldb.mobile.ui.SchoolDbRoleHeader
 import com.schooldb.mobile.ui.StudentAvatar
@@ -349,6 +350,7 @@ private fun TeacherShell(
                 .padding(padding),
         ) {
             if (!isOnline) OfflineDataBanner()
+            PendingSyncBanner()
             Box(Modifier.fillMaxWidth().weight(1f)) {
             when (tab) {
                 TeacherTab.HOME -> {

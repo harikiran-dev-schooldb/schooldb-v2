@@ -11,11 +11,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CloudOff
+import androidx.compose.material.icons.outlined.CloudSync
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -25,6 +27,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.delay
+import com.schooldb.mobile.network.PendingActionQueue
 
 @Composable
 fun rememberIsOnline(): State<Boolean> {
@@ -64,6 +68,39 @@ fun OfflineDataBanner(modifier: Modifier = Modifier) {
             color = MaterialTheme.colorScheme.onTertiaryContainer,
             fontWeight = FontWeight.SemiBold,
             fontSize = 12.sp,
+        )
+    }
+}
+
+@Composable
+fun PendingSyncBanner(modifier: Modifier = Modifier) {
+    val pending by produceState(initialValue = PendingActionQueue.pendingCount()) {
+        while (true) {
+            value = PendingActionQueue.pendingCount()
+            delay(2_000)
+        }
+    }
+    if (pending <= 0) return
+    Row(
+        modifier.fillMaxWidth()
+            .background(MaterialTheme.colorScheme.secondaryContainer)
+            .padding(horizontal = 18.dp, vertical = 7.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(Icons.Outlined.CloudSync, contentDescription = null, tint = MaterialTheme.colorScheme.onSecondaryContainer)
+        Text(
+            "$pending ${if (pending == 1) "change" else "changes"} waiting to sync",
+            Modifier.padding(start = 8.dp).weight(1f),
+            color = MaterialTheme.colorScheme.onSecondaryContainer,
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 12.sp,
+        )
+        Text(
+            "Syncs automatically when online",
+            Modifier.padding(start = 12.dp),
+            color = MaterialTheme.colorScheme.primary,
+            fontWeight = FontWeight.Bold,
+            fontSize = 11.sp,
         )
     }
 }

@@ -45,6 +45,7 @@ export function ExamStatusControl({
   const [loadingChecklist, setLoadingChecklist] = useState(false);
   const [checklistError, setChecklistError] = useState<string | null>(null);
   const [overrideReason, setOverrideReason] = useState("");
+  const [correctionReason, setCorrectionReason] = useState("");
   const checklistRequest = useRef<AbortController | null>(null);
   const overrideRequired = checklist !== null && requiresPublishOverride(checklist);
 
@@ -58,6 +59,7 @@ export function ExamStatusControl({
     setChecklist(null);
     setChecklistError(null);
     setOverrideReason("");
+    setCorrectionReason("");
 
     try {
       const response = await fetch(`/api/v1/exams/${examId}/publish-checklist`, {
@@ -96,6 +98,9 @@ export function ExamStatusControl({
           ...(nextStatus === "COMPLETED" && checklist && overrideRequired && canOverride && {
             publishOverride: { reason: overrideReason, reviewKey: checklist.reviewKey },
           }),
+          ...(status === "COMPLETED" && nextStatus === "PUBLISHED" && {
+            correctionReason,
+          }),
         }),
       });
       const result = await response.json();
@@ -110,7 +115,9 @@ export function ExamStatusControl({
         return;
       }
       toast.success(
-        nextStatus === "COMPLETED"
+        status === "COMPLETED"
+          ? "Results reopened for correction."
+          : nextStatus === "COMPLETED"
           ? "Results published."
           : "Exam schedule published.",
       );
@@ -125,12 +132,7 @@ export function ExamStatusControl({
   }
 
   if (status === "COMPLETED") {
-    return (
-      <Button variant="outline" disabled>
-        <CheckCircle2 className="mr-2 size-4" />
-        Results published
-      </Button>
-    );
+    if (!canOverride) return <Button variant="outline" disabled><CheckCircle2 className="mr-2 size-4" />Results published</Button>;
   }
 
   if (status === "CANCELLED") {
@@ -143,7 +145,8 @@ export function ExamStatusControl({
 
   if (!canManage) return null;
 
-  const target = status === "DRAFT" ? "PUBLISHED" : "COMPLETED";
+  const reopening = status === "COMPLETED";
+  const target = status === "DRAFT" || reopening ? "PUBLISHED" : "COMPLETED";
   return (
     <>
       <Button onClick={() => {
@@ -151,7 +154,7 @@ export function ExamStatusControl({
         if (target === "COMPLETED") void loadChecklist();
       }}>
         <Send className="mr-2 size-4" />
-        {target === "PUBLISHED" ? "Publish schedule" : "Publish results"}
+        {reopening ? "Reopen results" : target === "PUBLISHED" ? "Publish schedule" : "Publish results"}
       </Button>
       <AlertDialog
         open={nextStatus !== null}
@@ -160,16 +163,21 @@ export function ExamStatusControl({
         <AlertDialogContent className={target === "COMPLETED" ? "max-w-xl" : undefined}>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {target === "PUBLISHED"
+              {reopening
+                ? "Reopen published results?"
+                : target === "PUBLISHED"
                 ? "Publish exam schedule?"
                 : "Publish exam results?"}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {target === "PUBLISHED"
+              {reopening
+                ? `Results for “${examName}” will be hidden while authorized corrections are entered. The revision is recorded in the audit log.`
+                : target === "PUBLISHED"
                 ? `“${examName}” will become visible to students.`
                 : `Publishing makes results for “${examName}” visible to students and families.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
+          {reopening && <label className="block space-y-1.5 text-sm font-medium"><span>Reason for correction</span><textarea className="min-h-24 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={correctionReason} onChange={(event) => setCorrectionReason(event.target.value)} minLength={5} maxLength={500} required disabled={saving} placeholder="Explain what must be corrected and who approved it." /></label>}
           {target === "COMPLETED" && (
             <div className="space-y-4">
               {loadingChecklist && <p role="status" className="text-sm text-muted-foreground">Checking marks and grades…</p>}
@@ -233,7 +241,7 @@ export function ExamStatusControl({
           <AlertDialogFooter>
             <AlertDialogCancel disabled={saving}>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              disabled={saving || (target === "COMPLETED" && (
+              disabled={saving || (reopening && correctionReason.trim().length < 5) || (target === "COMPLETED" && (
                 !checklist || (overrideRequired && (!canOverride || !overrideReason.trim()))
               ))}
               onClick={(event) => {
@@ -241,7 +249,7 @@ export function ExamStatusControl({
                 void updateStatus();
               }}
             >
-              {saving ? "Publishing…" : overrideRequired ? "Publish incomplete results" : "Confirm publish"}
+              {saving ? "Saving…" : reopening ? "Reopen for correction" : overrideRequired ? "Publish incomplete results" : "Confirm publish"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

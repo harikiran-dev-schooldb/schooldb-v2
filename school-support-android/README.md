@@ -27,7 +27,9 @@ Release 0.9.0 adds staff replies with admin-only internal notes, valid status-tr
 
 Super Admins can open **Manage administrators** from the support dashboard to create or update
 Super Admin and School Admin accounts. New administrators sign in with the mobile number entered
-there and a WhatsApp OTP. An administrator cannot edit their own account from this screen.
+there and a WhatsApp OTP. An administrator cannot edit their own account from this screen. Because
+this is a privileged action, **Require device unlock** must be enabled in Profile before the
+administrator workspace can be opened.
 
 Ticket records are stored in SchoolDB. The first migration is `20260920080000_support_tickets`. The API routes are under `/api/v1/support/`.
 

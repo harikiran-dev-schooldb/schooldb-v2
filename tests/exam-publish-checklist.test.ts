@@ -88,6 +88,13 @@ test("completed marks and grades pass review while empty scopes require an admin
   }).success, false);
 });
 
+test("result corrections require a meaningful reason and validate annual weight", () => {
+  assert.equal(updateExamSchema.safeParse({ status: "PUBLISHED", correctionReason: "Fix an approved transcription error." }).success, true);
+  assert.equal(updateExamSchema.safeParse({ status: "PUBLISHED", correctionReason: "bad" }).success, false);
+  assert.equal(updateExamSchema.safeParse({ annualWeight: 25 }).success, true);
+  assert.equal(updateExamSchema.safeParse({ annualWeight: -1 }).success, false);
+});
+
 test("a publish review key changes when different entries are missing, even with unchanged counts", async () => {
   const exam = { id: "exam-one", schoolId: "school-one", academicYearId: "year-one" };
   async function check(rows: Enrollment[]) {

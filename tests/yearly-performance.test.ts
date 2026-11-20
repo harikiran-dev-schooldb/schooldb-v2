@@ -14,3 +14,14 @@ test("annual academic grades use stable percentage bands", () => {
 test("annual academic grades do not invent a grade without numeric marks", () => {
   assert.equal(annualGrade(null), "—");
 });
+
+test("annual academic grades accept a school grading policy", () => {
+  const bands = [
+    { label: "O", minimumPercentage: 85 },
+    { label: "S", minimumPercentage: 50 },
+    { label: "N", minimumPercentage: 0 },
+  ];
+  assert.equal(annualGrade(88, bands), "O");
+  assert.equal(annualGrade(67, bands), "S");
+  assert.equal(annualGrade(20, bands), "N");
+});

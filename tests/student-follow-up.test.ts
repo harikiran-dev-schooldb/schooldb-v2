@@ -23,6 +23,18 @@ test("follow-up inputs reject impossible dates and empty or unauthorized field u
   assert.equal(updateFollowUpSchema.safeParse({ status: "COMPLETED", schoolId: "other" }).success, false);
 });
 
+test("follow-up updates accept intervention outcomes and bounded escalation", () => {
+  assert.equal(updateFollowUpSchema.safeParse({
+    status: "COMPLETED",
+    parentContacted: true,
+    escalationLevel: 2,
+    outcome: "IMPROVED",
+    closureNotes: "Parent meeting completed and the reassessment improved.",
+  }).success, true);
+  assert.equal(updateFollowUpSchema.safeParse({ escalationLevel: 4 }).success, false);
+  assert.equal(updateFollowUpSchema.safeParse({ outcome: "UNKNOWN" }).success, false);
+});
+
 test("only school admins and teachers can open follow-ups, and teachers need results or attendance access", () => {
   const route = "student-follow-ups";
   const roles = { customPermissionsEnabled: true, permissions: ["LEARNING:MANAGE"] };

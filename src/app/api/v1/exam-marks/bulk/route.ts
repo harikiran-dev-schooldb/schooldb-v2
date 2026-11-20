@@ -128,7 +128,7 @@ export async function POST(request: Request) {
         }),
         prisma.exam.findMany({
           where: { schoolId: tenant.schoolId },
-          select: { id: true, name: true, academicYearId: true },
+          select: { id: true, name: true, academicYearId: true, status: true },
         }),
         prisma.subject.findMany({
           where: { schoolId: tenant.schoolId },
@@ -211,6 +211,9 @@ export async function POST(request: Request) {
       const exam = examByKey.get(`${year.id}:${normalize(row.examName)}`);
       if (!exam) {
         throw new Error(`Row ${rowNumber}: Exam not found: ${row.examName}.`);
+      }
+      if (exam.status === "COMPLETED" || exam.status === "CANCELLED") {
+        throw new Error(`Row ${rowNumber}: Results for ${exam.name} are locked. Reopen the exam before importing corrections.`);
       }
 
       const subject = subjectByName.get(normalize(row.subjectName));

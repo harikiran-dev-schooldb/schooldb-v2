@@ -4,6 +4,7 @@ import { SCHOOL_TIME_ZONE } from "../../lib/date-time.ts";
 
 export const FOLLOW_UP_SOURCES = ["EXAM_FAILURE", "LOW_ATTENDANCE"] as const;
 export const FOLLOW_UP_STATUSES = ["OPEN", "IN_PROGRESS", "COMPLETED"] as const;
+export const FOLLOW_UP_OUTCOMES = ["IMPROVED", "CONTINUE_SUPPORT", "REFERRED", "NO_RESPONSE"] as const;
 
 export type FollowUpSource = (typeof FOLLOW_UP_SOURCES)[number];
 
@@ -29,6 +30,10 @@ export const updateFollowUpSchema = z.strictObject({
   nextAction: nextAction.optional(),
   dueDate: dueDate.optional(),
   teacherId: identifier.optional(),
+  parentContacted: z.boolean().optional(),
+  closureNotes: z.string().trim().max(1000).optional(),
+  outcome: z.enum(FOLLOW_UP_OUTCOMES).nullable().optional(),
+  escalationLevel: z.number().int().min(0).max(3).optional(),
 }).refine((value) => Object.keys(value).length > 0, "Enter a change to save.");
 
 export const listFollowUpsSchema = z.object({

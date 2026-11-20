@@ -2,6 +2,7 @@ import { attendanceService } from "@/features/attendance/services/attendance.ser
 import { prisma } from "@/lib/prisma";
 
 import { isAssessmentEntryMissing } from "../assessment";
+import { getGradingPolicy } from "../grading-policy";
 import { annualGrade, type YearlyResultStatus } from "../yearly-performance";
 
 function percentage(obtained: number, maximum: number) {
@@ -68,7 +69,7 @@ export async function getStudentYearlyPerformance(
     };
   }
 
-  const [examRecords, attendanceReport] = await Promise.all([
+  const [examRecords, attendanceReport, gradingPolicy] = await Promise.all([
     prisma.exam.findMany({
       where: {
         schoolId,
@@ -87,6 +88,7 @@ export async function getStudentYearlyPerformance(
         name: true,
         startDate: true,
         endDate: true,
+        annualWeight: true,
         schedules: {
           where: {
             classId: enrollment.classId,
@@ -120,6 +122,7 @@ export async function getStudentYearlyPerformance(
       studentId,
       enrollment.academicYearId,
     ),
+    getGradingPolicy(schoolId),
   ]);
 
   const subjectMap = new Map<
@@ -138,6 +141,7 @@ export async function getStudentYearlyPerformance(
         grade: string | null;
         status: YearlyResultStatus;
         remarks: string | null;
+        examWeight: number;
       }>;
     }
   >();
@@ -180,7 +184,7 @@ export async function getStudentYearlyPerformance(
         status = "PASS";
       } else {
         status =
-          passMarks === null || Number(marksObtained ?? 0) >= passMarks
+          passMarks === null || Number(marksObtained ?? 0) + gradingPolicy.maximumGraceMarks >= passMarks
             ? "PASS"
             : "FAIL";
         failed ||= status === "FAIL";
@@ -207,6 +211,7 @@ export async function getStudentYearlyPerformance(
         grade: mark?.grade ?? null,
         status,
         remarks: mark?.remarks ?? null,
+        examWeight: Number(exam.annualWeight),
       });
       subjectMap.set(schedule.subjectId, subject);
     }
@@ -219,6 +224,7 @@ export async function getStudentYearlyPerformance(
       obtained,
       maximum,
       percentage: percentage(obtained, maximum),
+      annualWeight: Number(exam.annualWeight),
       status: pending ? ("PENDING" as const) : failed ? ("FAIL" as const) : ("PASS" as const),
     };
   });
@@ -268,14 +274,18 @@ export async function getStudentYearlyPerformance(
             : failed
               ? "FAIL"
               : "PASS";
-      const annualPercentage = percentage(obtained, maximum);
+      const weightedResults = numericResults.filter((result) => result.maxMarks > 0 && result.examWeight > 0);
+      const totalWeight = weightedResults.reduce((sum, result) => sum + result.examWeight, 0);
+      const annualPercentage = totalWeight > 0
+        ? Number((weightedResults.reduce((sum, result) => sum + (((result.status === "ABSENT" ? 0 : (result.marksObtained ?? 0)) / result.maxMarks) * 100 * result.examWeight), 0) / totalWeight).toFixed(2))
+        : percentage(obtained, maximum);
 
       return {
         ...subject,
         obtained,
         maximum,
         percentage: annualPercentage,
-        grade: annualGrade(annualPercentage),
+        grade: annualGrade(annualPercentage, gradingPolicy.gradeBands),
         status,
       };
     })
@@ -283,11 +293,17 @@ export async function getStudentYearlyPerformance(
 
   const totalObtained = subjects.reduce((sum, subject) => sum + subject.obtained, 0);
   const totalMaximum = subjects.reduce((sum, subject) => sum + subject.maximum, 0);
-  const annualPercentage = percentage(totalObtained, totalMaximum);
+  const weightedExams = exams.filter((exam) => exam.percentage !== null && exam.annualWeight > 0);
+  const annualWeightTotal = weightedExams.reduce((sum, exam) => sum + exam.annualWeight, 0);
+  const annualPercentage = annualWeightTotal > 0
+    ? Number((weightedExams.reduce((sum, exam) => sum + (exam.percentage ?? 0) * exam.annualWeight, 0) / annualWeightTotal).toFixed(2))
+    : percentage(totalObtained, totalMaximum);
   const pending = subjects.some((subject) => subject.status === "PENDING");
-  const failed = subjects.some(
+  const hasFailedSubject = subjects.some(
     (subject) => subject.status === "FAIL" || subject.status === "ABSENT",
   );
+  const failed = annualPercentage !== null && annualPercentage < gradingPolicy.annualPassPercentage
+    || gradingPolicy.requireAllSubjectsPass && hasFailedSubject;
   const overallStatus: YearlyResultStatus = pending ? "PENDING" : failed ? "FAIL" : "PASS";
   const scoredSubjects = subjects
     .filter((subject) => subject.percentage !== null)
@@ -318,7 +334,7 @@ export async function getStudentYearlyPerformance(
       obtained: totalObtained,
       maximum: totalMaximum,
       percentage: annualPercentage,
-      grade: annualGrade(annualPercentage),
+      grade: annualGrade(annualPercentage, gradingPolicy.gradeBands),
       status: overallStatus,
       passedSubjects: subjects.filter((subject) => subject.status === "PASS").length,
       failedSubjects: subjects.filter(
@@ -326,6 +342,7 @@ export async function getStudentYearlyPerformance(
       ).length,
     },
     observation,
+    gradingPolicy,
   };
 }
 

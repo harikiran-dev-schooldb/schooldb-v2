@@ -70,6 +70,7 @@ const navigationRoutes = [
   "attendance/ranking",
   "homework",
   "exams",
+  "exams/grading-policy",
   "toppers",
   "failures",
   "student-follow-ups",

@@ -5,13 +5,24 @@ export type YearlyResultStatus =
   | "ABSENT"
   | "EXEMPTED";
 
-export function annualGrade(percentage: number | null) {
+export type GradeBand = { label: string; minimumPercentage: number };
+
+export const DEFAULT_GRADE_BANDS: GradeBand[] = [
+  { label: "A+", minimumPercentage: 90 },
+  { label: "A", minimumPercentage: 80 },
+  { label: "B+", minimumPercentage: 70 },
+  { label: "B", minimumPercentage: 60 },
+  { label: "C", minimumPercentage: 50 },
+  { label: "D", minimumPercentage: 40 },
+  { label: "E", minimumPercentage: 0 },
+];
+
+export function annualGrade(
+  percentage: number | null,
+  bands: readonly GradeBand[] = DEFAULT_GRADE_BANDS,
+) {
   if (percentage === null) return "—";
-  if (percentage >= 90) return "A+";
-  if (percentage >= 80) return "A";
-  if (percentage >= 70) return "B+";
-  if (percentage >= 60) return "B";
-  if (percentage >= 50) return "C";
-  if (percentage >= 40) return "D";
-  return "E";
+  return [...bands]
+    .sort((a, b) => b.minimumPercentage - a.minimumPercentage)
+    .find((band) => percentage >= band.minimumPercentage)?.label ?? "—";
 }

@@ -958,6 +958,12 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
                     },
                     onCreate = { page = SupportPage.CREATE_TICKET },
                     onManageAdmins = { run {
+                        if (!secureReentry) {
+                            error = "Enable Require device unlock in Profile before managing administrator accounts."
+                            dashboardTab = DashboardTab.PROFILE
+                            page = SupportPage.DASHBOARD
+                            return@run
+                        }
                         adminViewModel.setAccounts(api.adminAccounts(school))
                         page = SupportPage.ADMINS
                     } },
