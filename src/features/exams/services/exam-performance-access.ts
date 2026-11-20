@@ -24,5 +24,5 @@ export async function requireExamPerformanceAccess() {
     teacherScope = [...subjectAssignments, ...classAssignments];
   }
 
-  return { schoolId: tenant.schoolId, teacherScope };
+  return { schoolId: tenant.schoolId, role: tenant.role, teacherScope };
 }

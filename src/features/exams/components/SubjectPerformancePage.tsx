@@ -12,6 +12,7 @@ import { SyllabusSelect } from "@/components/common/select/SyllabusSelect";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useSchool } from "@/contexts/school-context";
 import { cn } from "@/lib/utils";
 
 type ExamOption = {
@@ -81,9 +82,12 @@ type PerformanceData = {
 
 type Props = { schoolSlug: string };
 type Scope = "CLASS" | "SECTION";
+type TeacherOption = { id: string; label: string };
 
 export function SubjectPerformancePage({ schoolSlug }: Props) {
+  const { role } = useSchool();
   const [exams, setExams] = useState<ExamOption[]>([]);
+  const [teachers, setTeachers] = useState<TeacherOption[]>([]);
   const [academicYearId, setAcademicYearId] = useState("");
   const [examId, setExamId] = useState("");
   const [syllabusId, setSyllabusId] = useState("");
@@ -91,9 +95,11 @@ export function SubjectPerformancePage({ schoolSlug }: Props) {
   const [classId, setClassId] = useState("");
   const [sectionId, setSectionId] = useState("");
   const [scope, setScope] = useState<Scope>("CLASS");
+  const [teacherId, setTeacherId] = useState(role === "TEACHER" ? "SELF" : "ALL");
   const [selectedSubjectId, setSelectedSubjectId] = useState("ALL");
   const [data, setData] = useState<PerformanceData | null>(null);
   const [loadingExams, setLoadingExams] = useState(true);
+  const [loadingTeachers, setLoadingTeachers] = useState(role !== "TEACHER");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -116,6 +122,20 @@ export function SubjectPerformancePage({ schoolSlug }: Props) {
     return () => { active = false; };
   }, []);
 
+  useEffect(() => {
+    if (role === "TEACHER") return;
+    let active = true;
+    void fetch("/api/v1/teachers/options", { cache: "no-store" })
+      .then(async (response) => {
+        const result = await response.json();
+        if (!response.ok || !result.success) throw new Error(result.message || "Unable to load teachers.");
+        if (active) setTeachers(result.data as TeacherOption[]);
+      })
+      .catch((error: unknown) => active && toast.error(error instanceof Error ? error.message : "Unable to load teachers."))
+      .finally(() => active && setLoadingTeachers(false));
+    return () => { active = false; };
+  }, [role]);
+
   const filteredExams = useMemo(
     () => exams.filter((exam) => exam.academicYearId === academicYearId),
     [academicYearId, exams],
@@ -126,6 +146,7 @@ export function SubjectPerformancePage({ schoolSlug }: Props) {
     if (!ready) { setData(null); return; }
     const params = new URLSearchParams({ classId });
     if (scope === "SECTION") params.set("sectionId", sectionId);
+    if (role !== "TEACHER" && teacherId !== "ALL") params.set("teacherId", teacherId);
     try {
       setLoading(true);
       const response = await fetch(
@@ -146,7 +167,7 @@ export function SubjectPerformancePage({ schoolSlug }: Props) {
     } finally {
       setLoading(false);
     }
-  }, [classId, examId, ready, scope, sectionId]);
+  }, [classId, examId, ready, role, scope, sectionId, teacherId]);
 
   useEffect(() => {
     const timeout = window.setTimeout(() => void loadPerformance(), 150);
@@ -161,8 +182,8 @@ export function SubjectPerformancePage({ schoolSlug }: Props) {
     <div className="space-y-6 p-4 pb-10 sm:p-6">
       <PageHeader
         eyebrow="Academic Performance"
-        title="Subject-wise Performance"
-        description="Compare every student's marks, grade, pass status and subject-level class outcomes for one examination."
+        title="Teacher & Subject-wise Marks"
+        description="Choose a teacher, class, section and subject to view admission numbers, student names and examination marks."
         action={<Button variant="outline" disabled={!ready || loading} onClick={() => void loadPerformance()}><RefreshCw className={cn("size-4", loading && "animate-spin")} />Refresh</Button>}
       />
 
@@ -174,11 +195,12 @@ export function SubjectPerformancePage({ schoolSlug }: Props) {
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <Filter label="Academic year"><AcademicYearSelect value={academicYearId} autoSelectActive={false} disabled={loadingExams} onChange={(value) => { setAcademicYearId(value); setExamId(exams.find((exam) => exam.academicYearId === value)?.id ?? ""); setClassId(""); setSectionId(""); }} /></Filter>
           <Filter label="Examination"><Select value={examId} onValueChange={setExamId} disabled={loadingExams || !filteredExams.length}><SelectTrigger><SelectValue placeholder="Select exam" /></SelectTrigger><SelectContent>{filteredExams.map((exam) => <SelectItem key={exam.id} value={exam.id}>{exam.name}</SelectItem>)}</SelectContent></Select></Filter>
+          <Filter label="Teacher"><Select value={teacherId} disabled={role === "TEACHER" || loadingTeachers} onValueChange={(value) => { setTeacherId(value); setClassId(""); setSectionId(""); setSelectedSubjectId("ALL"); }}><SelectTrigger><SelectValue placeholder="Select teacher" /></SelectTrigger><SelectContent>{role === "TEACHER" ? <SelectItem value="SELF">My assigned subjects</SelectItem> : <><SelectItem value="ALL">All teachers</SelectItem>{teachers.map((teacher) => <SelectItem key={teacher.id} value={teacher.id}>{teacher.label}</SelectItem>)}</>}</SelectContent></Select></Filter>
           <Filter label="Syllabus"><SyllabusSelect value={syllabusId} onChange={(value) => { setSyllabusId(value); setBranchId(""); setClassId(""); setSectionId(""); }} /></Filter>
           <Filter label="Academic branch"><AcademicBranchSelect syllabusId={syllabusId} value={branchId} onChange={(value) => { setBranchId(value); setClassId(""); setSectionId(""); }} /></Filter>
           <Filter label="Class"><ClassSelect key={`${academicYearId}:${syllabusId}:${branchId}`} syllabusId={syllabusId} branchId={branchId} academicYearId={academicYearId} value={classId} disabled={!branchId} onChange={(value) => { setClassId(value); setSectionId(""); }} /></Filter>
           <Filter label="Section"><SectionSelect key={`${academicYearId}:${classId}`} classId={classId} academicYearId={academicYearId} value={sectionId} allowAll={false} disabled={scope === "CLASS" || !classId} placeholder={scope === "CLASS" ? "All sections" : "Select section"} onChange={setSectionId} /></Filter>
-          <Filter label="Displayed subject"><Select value={selectedSubjectId} onValueChange={setSelectedSubjectId} disabled={!data?.subjects.length}><SelectTrigger><SelectValue placeholder="All subjects" /></SelectTrigger><SelectContent><SelectItem value="ALL">All subjects</SelectItem>{data?.subjects.map((subject) => <SelectItem key={subject.id} value={subject.id}>{subject.name}</SelectItem>)}</SelectContent></Select></Filter>
+          <Filter label="Subject"><Select value={selectedSubjectId} onValueChange={setSelectedSubjectId} disabled={!data?.subjects.length}><SelectTrigger><SelectValue placeholder="All subjects" /></SelectTrigger><SelectContent><SelectItem value="ALL">All subjects</SelectItem>{data?.subjects.map((subject) => <SelectItem key={subject.id} value={subject.id}>{subject.name}</SelectItem>)}</SelectContent></Select></Filter>
         </div>
       </CardContent></Card>
 
@@ -199,16 +221,85 @@ export function SubjectPerformancePage({ schoolSlug }: Props) {
           </button>)}
         </div>
 
-        <Card className="overflow-hidden border-border/60">
-          <div className="border-b px-5 py-4"><h2 className="font-semibold">Student performance matrix</h2><p className="mt-1 text-sm text-muted-foreground">{data.scope.class.name}{data.scope.section ? ` · Section ${data.scope.section.name}` : " · All sections"}{data.scope.restricted ? " · Assigned subjects only" : ""}</p></div>
-          <div className="overflow-x-auto"><table className="w-full min-w-[900px] text-sm"><thead className="bg-muted/30"><tr><th className="sticky left-0 z-10 min-w-64 bg-muted/95 px-5 py-3 text-left">Student</th><th className="px-4 py-3 text-left">Section</th>{visibleSubjects.map((subject) => <th key={subject.id} className="min-w-40 px-4 py-3 text-center">{subject.name}</th>)}</tr></thead><tbody>{data.students.map((student) => <tr key={student.studentId} className="border-t"><td className="sticky left-0 bg-card px-5 py-4"><Link className="font-semibold hover:text-primary" href={`/${schoolSlug}/students/${student.studentId}`}>{student.fullName}</Link><p className="mt-1 text-xs text-muted-foreground">{student.admissionNo}{student.rollNo ? ` · Roll ${student.rollNo}` : ""}</p></td><td className="px-4 py-4 text-muted-foreground">{student.section.name}</td>{visibleSubjects.map((subject) => <ResultCell key={subject.id} result={student.results.find((result) => result.subjectId === subject.id)} />)}</tr>)}</tbody></table></div>
-        </Card>
+        {selectedSubjectId === "ALL" ? (
+          <Card className="overflow-hidden border-border/60">
+            <div className="border-b px-5 py-4"><h2 className="font-semibold">Student performance matrix</h2><p className="mt-1 text-sm text-muted-foreground">{data.scope.class.name}{data.scope.section ? ` · Section ${data.scope.section.name}` : " · All sections"}{data.scope.restricted ? " · Assigned subjects only" : ""}</p></div>
+            <div className="overflow-x-auto"><table className="w-full min-w-[900px] text-sm"><thead className="bg-muted/30"><tr><th className="px-5 py-3 text-left">Admission no.</th><th className="min-w-56 px-5 py-3 text-left">Student name</th><th className="px-4 py-3 text-left">Section</th>{visibleSubjects.map((subject) => <th key={subject.id} className="min-w-40 px-4 py-3 text-center">{subject.name}</th>)}</tr></thead><tbody>{data.students.map((student) => <tr key={student.studentId} className="border-t"><td className="px-5 py-4 font-mono text-xs">{student.admissionNo}</td><td className="px-5 py-4"><Link className="font-semibold hover:text-primary" href={`/${schoolSlug}/students/${student.studentId}`}>{student.fullName}</Link>{student.rollNo ? <p className="mt-1 text-xs text-muted-foreground">Roll {student.rollNo}</p> : null}</td><td className="px-4 py-4 text-muted-foreground">{student.section.name}</td>{visibleSubjects.map((subject) => <ResultCell key={subject.id} result={student.results.find((result) => result.subjectId === subject.id)} />)}</tr>)}</tbody></table></div>
+          </Card>
+        ) : (
+          <SubjectMarksRegister schoolSlug={schoolSlug} examName={data.exam.name} subject={visibleSubjects[0]} students={data.students} className={data.scope.class.name} />
+        )}
       </>}
 
       {!loading && ready && data && !data.scope && <Card><CardContent className="py-16 text-center"><BookOpenCheck className="mx-auto size-9 text-muted-foreground" /><p className="mt-3 font-semibold">No exam schedules found</p><p className="mt-1 text-sm text-muted-foreground">Choose a class or section scheduled for this examination.</p></CardContent></Card>}
       {!loading && !ready && <Card><CardContent className="py-16 text-center"><BarChart3 className="mx-auto size-9 text-muted-foreground" /><p className="mt-3 font-semibold">Choose the performance scope</p><p className="mt-1 text-sm text-muted-foreground">Select an exam and class. Select a section for section-wise analysis.</p></CardContent></Card>}
     </div>
   );
+}
+
+function SubjectMarksRegister({
+  schoolSlug,
+  examName,
+  subject,
+  students,
+  className,
+}: {
+  schoolSlug: string;
+  examName: string;
+  subject?: SubjectSummary;
+  students: PerformanceData["students"];
+  className: string;
+}) {
+  if (!subject) return null;
+  return (
+    <Card className="overflow-hidden border-border/60">
+      <div className="border-b px-5 py-4">
+        <h2 className="font-semibold">Subject marks register</h2>
+        <p className="mt-1 text-sm text-muted-foreground">{examName} · {className} · {subject.name}</p>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[820px] text-sm">
+          <thead className="bg-muted/30 text-left">
+            <tr>
+              <th className="px-5 py-3">Admission no.</th>
+              <th className="min-w-56 px-5 py-3">Student name</th>
+              <th className="px-4 py-3">Section</th>
+              <th className="px-4 py-3">Exam</th>
+              <th className="px-4 py-3">Subject</th>
+              <th className="px-4 py-3 text-right">Marks</th>
+              <th className="px-4 py-3 text-right">Maximum</th>
+              <th className="px-5 py-3 text-center">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {students.map((student) => {
+              const result = student.results.find((item) => item.subjectId === subject.id);
+              return (
+                <tr key={student.studentId} className="border-t">
+                  <td className="px-5 py-4 font-mono text-xs">{student.admissionNo}</td>
+                  <td className="px-5 py-4"><Link className="font-semibold hover:text-primary" href={`/${schoolSlug}/students/${student.studentId}`}>{student.fullName}</Link>{student.rollNo ? <p className="mt-1 text-xs text-muted-foreground">Roll {student.rollNo}</p> : null}</td>
+                  <td className="px-4 py-4">{student.section.name}</td>
+                  <td className="px-4 py-4 text-muted-foreground">{examName}</td>
+                  <td className="px-4 py-4 font-medium">{subject.name}</td>
+                  <td className="px-4 py-4 text-right font-semibold">{result ? marksValue(result) : "—"}</td>
+                  <td className="px-4 py-4 text-right">{result?.assessmentType === "GRADE" ? "Grade" : result?.maxMarks ?? "—"}</td>
+                  <td className="px-5 py-4 text-center">{result ? <span className={cn("inline-flex rounded-full px-2 py-0.5 text-[11px] font-bold", statusClass(result.status))}>{result.status}</span> : "—"}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </Card>
+  );
+}
+
+function marksValue(result: StudentResult) {
+  if (result.assessmentType === "GRADE") return result.grade || "—";
+  if (result.status === "ABSENT") return "Absent";
+  if (result.status === "EXEMPTED") return "Exempt";
+  if (result.status === "PENDING") return "Pending";
+  return result.marksObtained ?? 0;
 }
 
 function ResultCell({ result }: { result?: StudentResult }) {

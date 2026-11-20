@@ -36,7 +36,12 @@ export const subjectPerformanceService = {
       ? getExamTeacherAssignments(teacherScope, exam.academicYearId, classId, sectionId)
       : undefined;
     if (assignments?.length === 0) {
-      throw new ApiError(403, "You do not have a results assignment for this class or section.");
+      const classRecord = await prisma.class.findFirst({
+        where: { id: classId, schoolId },
+        select: { id: true, name: true },
+      });
+      if (!classRecord) throw new ApiError(404, "The selected class was not found.");
+      return { exam, scope: null, subjects: [], students: [], totals: emptyTotals() };
     }
 
     const schedules = await prisma.examSchedule.findMany({
