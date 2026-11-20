@@ -4,6 +4,7 @@ import { PageContainer, PageHeader } from "@/components/common/layout";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { EarlyWarningScanButton } from "@/features/strategic-workflows/EarlyWarningScanButton";
+import { canCreateStrategicWorkflow, canUpdateStrategicWorkflow } from "@/features/strategic-workflows/access";
 import { StrategicWorkflowForm } from "@/features/strategic-workflows/StrategicWorkflowForm";
 import { StrategicWorkflowUpdateForm } from "@/features/strategic-workflows/StrategicWorkflowUpdateForm";
 import { WORKFLOW_TYPES, workflowLabel } from "@/features/strategic-workflows/constants";
@@ -34,6 +35,7 @@ export default async function StrategicWorkflowsPage({ params }: { params: Promi
   const { schoolSlug } = await params;
   const membership = await requireRole(roles, schoolSlug);
   const isAdmin = ["SUPER_ADMIN", "SCHOOL_ADMIN"].includes(membership.role);
+  const canCreate = canCreateStrategicWorkflow(membership);
   const activeYear = await prisma.academicYear.findFirst({
     where: { schoolId: membership.schoolId, active: true },
     orderBy: { startDate: "desc" },
@@ -113,12 +115,12 @@ export default async function StrategicWorkflowsPage({ params }: { params: Promi
         ))}
       </section>
 
-      <StrategicWorkflowForm
+      {canCreate && <StrategicWorkflowForm
         schoolSlug={schoolSlug}
         staff={staff.map(({ userId, role, user }) => ({ value: userId, label: `${[user.firstName, user.lastName].filter(Boolean).join(" ") || user.email} · ${workflowLabel(role)}` }))}
         students={students.map(({ id, rollNo, student, class: classRecord, section }) => ({ value: id, label: `${student.fullName || student.admissionNo} · ${classRecord.name}-${section.name}${rollNo ? ` · Roll ${rollNo}` : ""}` }))}
         teachers={teachers.map(({ id, employeeId, fullName }) => ({ value: id, label: `${fullName} · ${employeeId}` }))}
-      />
+      />}
 
       <section className="space-y-4">
         <div><h2 className="text-xl font-black">Workflow board</h2><p className="text-sm text-muted-foreground">Latest 300 records, ordered by active status, priority and deadline.</p></div>
@@ -146,7 +148,7 @@ export default async function StrategicWorkflowsPage({ params }: { params: Promi
                   <div><dt className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Due</dt><dd className="mt-1 font-medium">{dateTime(workflow.dueAt)}</dd></div>
                 </dl>
                 {workflow.events.length > 0 && <div className="space-y-2"><h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Recent history</h3>{workflow.events.map((event) => <div key={event.id} className="flex flex-col gap-1 rounded-xl border border-border/60 px-3 py-2 text-xs sm:flex-row sm:items-center sm:justify-between"><span>{event.message || workflowLabel(event.type)}</span><span className="text-muted-foreground">{dateTime(event.createdAt)}</span></div>)}</div>}
-                <StrategicWorkflowUpdateForm schoolSlug={schoolSlug} workflowId={workflow.id} status={workflow.status} />
+                {canUpdateStrategicWorkflow(membership, workflow) && <StrategicWorkflowUpdateForm schoolSlug={schoolSlug} workflowId={workflow.id} status={workflow.status} />}
               </CardContent>
             </Card>
           );
