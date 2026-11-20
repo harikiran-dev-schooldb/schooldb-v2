@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import type { Prisma } from "@/generated/prisma/client";
+import { canCreateStrategicWorkflow, canUpdateStrategicWorkflow } from "./access";
 import { writeAuditLog } from "@/lib/audit";
 import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -56,6 +57,7 @@ export async function createStrategicWorkflow(
 ): Promise<WorkflowActionState> {
   void _previous;
   const actor = await requireRole(allowedRoles, schoolSlug);
+  if (!canCreateStrategicWorkflow(actor)) return { error: "You do not have permission to create workflows.", success: false };
   const parsed = createSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: parsed.error.issues[0]?.message || "Complete the required fields.", success: false };
 
@@ -150,8 +152,8 @@ export async function updateStrategicWorkflow(
     select: { id: true, title: true, status: true, confidential: true, ownerUserId: true, createdByUserId: true },
   });
   if (!existing) return { error: "Workflow not found.", success: false };
-  if (existing.confidential && !["SUPER_ADMIN", "SCHOOL_ADMIN"].includes(actor.role) && ![existing.ownerUserId, existing.createdByUserId].includes(actor.userId)) {
-    return { error: "This confidential workflow is restricted to its owner and school administrators.", success: false };
+  if (!canUpdateStrategicWorkflow(actor, existing)) {
+    return { error: "You do not have permission to update this workflow.", success: false };
   }
 
   await prisma.$transaction(async (tx) => {
@@ -200,7 +202,7 @@ export async function generateEarlyWarnings(
       schoolId: actor.schoolId,
       status: { in: ["PRESENT", "ABSENT"] },
       studentEnrollment: { academicYearId: activeYear.id, active: true, student: { status: "ACTIVE" } },
-      examSchedule: { exam: { academicYearId: activeYear.id, status: { not: "CANCELLED" } } },
+      examSchedule: { exam: { academicYearId: activeYear.id, status: { in: ["PUBLISHED", "COMPLETED"] } } },
     },
     select: {
       status: true,
@@ -214,7 +216,8 @@ export async function generateEarlyWarnings(
     const failed = mark.status === "ABSENT" || (
       mark.examSchedule.assessmentType === "MARKS" &&
       mark.examSchedule.passMarks !== null &&
-      Number(mark.marksObtained ?? 0) < Number(mark.examSchedule.passMarks)
+      mark.marksObtained !== null &&
+      Number(mark.marksObtained) < Number(mark.examSchedule.passMarks)
     );
     if (failed) failures.set(mark.studentEnrollmentId, (failures.get(mark.studentEnrollmentId) ?? 0) + 1);
   }
