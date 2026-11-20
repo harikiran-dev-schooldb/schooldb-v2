@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useEffect, useRef } from "react";
+import { Plus, X } from "lucide-react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -26,6 +27,7 @@ export function StrategicWorkflowForm({
   teachers: Option[];
 }) {
   const ref = useRef<HTMLFormElement>(null);
+  const [expanded, setExpanded] = useState(false);
   const [state, action, pending] = useActionState(createStrategicWorkflow.bind(null, schoolSlug), { error: "", success: false });
 
   useEffect(() => {
@@ -35,11 +37,26 @@ export function StrategicWorkflowForm({
     }
   }, [state]);
 
+  if (!expanded) {
+    return (
+      <section className="flex flex-col gap-4 rounded-3xl border border-indigo-200/70 bg-gradient-to-r from-indigo-50/75 via-card to-violet-50/60 p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between dark:border-indigo-500/20 dark:from-indigo-500/10 dark:to-violet-500/[0.06]">
+        <div>
+          <h2 className="font-bold">Start accountable work</h2>
+          <p className="mt-1 text-sm text-muted-foreground">Assign an owner, deadline and linked student or teacher only when needed.</p>
+        </div>
+        <Button type="button" onClick={() => setExpanded(true)} className="shrink-0"><Plus className="size-4" />New workflow</Button>
+      </section>
+    );
+  }
+
   return (
-    <form ref={ref} action={action} className="space-y-5 rounded-3xl border border-border/70 bg-card p-5 shadow-sm sm:p-6">
-      <div>
-        <h2 className="text-lg font-bold">Create workflow</h2>
-        <p className="mt-1 text-sm text-muted-foreground">Start an accountable workflow with an owner, deadline and permanent history.</p>
+    <form ref={ref} action={action} className="space-y-5 rounded-3xl border border-border/70 bg-card p-5 shadow-[0_18px_50px_rgba(15,23,42,0.06)] sm:p-6">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-lg font-bold">Create workflow</h2>
+          <p className="mt-1 text-sm text-muted-foreground">Start an accountable workflow with an owner, deadline and permanent history.</p>
+        </div>
+        <Button type="button" variant="ghost" size="icon" className="shrink-0 rounded-xl" onClick={() => setExpanded(false)} aria-label="Close workflow form"><X className="size-4" /></Button>
       </div>
       <div className="grid gap-4 md:grid-cols-2">
         <label className="grid gap-2 text-sm font-semibold">Workflow area

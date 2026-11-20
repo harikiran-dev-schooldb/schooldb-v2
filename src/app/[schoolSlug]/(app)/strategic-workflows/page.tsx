@@ -1,13 +1,15 @@
-import { AlertTriangle, Clock3, LockKeyhole, Workflow } from "lucide-react";
+import Link from "next/link";
+import { AlertTriangle, Clock3, LockKeyhole, Search, SlidersHorizontal, Workflow, X } from "lucide-react";
 
 import { PageContainer, PageHeader } from "@/components/common/layout";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { EarlyWarningScanButton } from "@/features/strategic-workflows/EarlyWarningScanButton";
 import { canCreateStrategicWorkflow, canUpdateStrategicWorkflow } from "@/features/strategic-workflows/access";
 import { StrategicWorkflowForm } from "@/features/strategic-workflows/StrategicWorkflowForm";
 import { StrategicWorkflowUpdateForm } from "@/features/strategic-workflows/StrategicWorkflowUpdateForm";
-import { WORKFLOW_TYPES, workflowLabel } from "@/features/strategic-workflows/constants";
+import { WORKFLOW_STATUSES, WORKFLOW_TYPES, workflowLabel } from "@/features/strategic-workflows/constants";
 import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
@@ -31,8 +33,20 @@ function priorityVariant(priority: string) {
   return "outline" as const;
 }
 
-export default async function StrategicWorkflowsPage({ params }: { params: Promise<{ schoolSlug: string }> }) {
+export default async function StrategicWorkflowsPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ schoolSlug: string }>;
+  searchParams: Promise<{ q?: string | string[]; type?: string | string[]; status?: string | string[] }>;
+}) {
   const { schoolSlug } = await params;
+  const filters = await searchParams;
+  const query = (Array.isArray(filters.q) ? filters.q[0] : filters.q)?.trim().slice(0, 100) ?? "";
+  const requestedType = Array.isArray(filters.type) ? filters.type[0] : filters.type;
+  const requestedStatus = Array.isArray(filters.status) ? filters.status[0] : filters.status;
+  const selectedType = WORKFLOW_TYPES.some(({ value }) => value === requestedType) ? requestedType : "";
+  const selectedStatus = WORKFLOW_STATUSES.includes(requestedStatus as (typeof WORKFLOW_STATUSES)[number]) ? requestedStatus : "";
   const membership = await requireRole(roles, schoolSlug);
   const isAdmin = ["SUPER_ADMIN", "SCHOOL_ADMIN"].includes(membership.role);
   const canCreate = canCreateStrategicWorkflow(membership);
@@ -45,7 +59,7 @@ export default async function StrategicWorkflowsPage({ params }: { params: Promi
     ? {}
     : { OR: [{ confidential: false }, { ownerUserId: membership.userId }, { createdByUserId: membership.userId }] };
 
-  const [workflows, staff, students, teachers] = await Promise.all([
+  const [allWorkflows, staff, students, teachers] = await Promise.all([
     prisma.strategicWorkflow.findMany({
       where: { schoolId: membership.schoolId, ...visibility },
       include: {
@@ -87,10 +101,28 @@ export default async function StrategicWorkflowsPage({ params }: { params: Promi
     }),
   ]);
 
-  const openCount = workflows.filter(({ status }) => !["COMPLETED", "CANCELLED"].includes(status)).length;
-  const overdueCount = workflows.filter(({ status, dueAt }) => dueAt && dueAt < new Date() && !["COMPLETED", "CANCELLED"].includes(status)).length;
-  const criticalCount = workflows.filter(({ priority, status }) => priority === "CRITICAL" && !["COMPLETED", "CANCELLED"].includes(status)).length;
-  const typeCounts = new Map(WORKFLOW_TYPES.map(({ value }) => [value, workflows.filter(({ type }) => type === value).length]));
+  const normalizedQuery = query.toLowerCase();
+  const workflows = allWorkflows.filter((workflow) => {
+    if (selectedType && workflow.type !== selectedType) return false;
+    if (selectedStatus && workflow.status !== selectedStatus) return false;
+    if (!normalizedQuery) return true;
+    const searchable = [
+      workflow.title,
+      workflow.description,
+      workflow.studentEnrollment?.student.fullName,
+      workflow.studentEnrollment?.student.admissionNo,
+      workflow.teacher?.fullName,
+      workflow.owner?.firstName,
+      workflow.owner?.lastName,
+      workflow.owner?.email,
+    ].filter(Boolean).join(" ").toLowerCase();
+    return searchable.includes(normalizedQuery);
+  });
+  const openCount = allWorkflows.filter(({ status }) => !["COMPLETED", "CANCELLED"].includes(status)).length;
+  const overdueCount = allWorkflows.filter(({ status, dueAt }) => dueAt && dueAt < new Date() && !["COMPLETED", "CANCELLED"].includes(status)).length;
+  const criticalCount = allWorkflows.filter(({ priority, status }) => priority === "CRITICAL" && !["COMPLETED", "CANCELLED"].includes(status)).length;
+  const typeCounts = new Map(WORKFLOW_TYPES.map(({ value }) => [value, allWorkflows.filter(({ type }) => type === value).length]));
+  const filtering = Boolean(query || selectedType || selectedStatus);
 
   return (
     <PageContainer>
@@ -108,10 +140,16 @@ export default async function StrategicWorkflowsPage({ params }: { params: Promi
 
       <section className="grid gap-3 md:grid-cols-4">
         {WORKFLOW_TYPES.map((item) => (
-          <div key={item.value} className="rounded-2xl border border-border/70 bg-card p-4">
+          <Link
+            key={item.value}
+            href={`/${schoolSlug}/strategic-workflows?type=${item.value}`}
+            className={selectedType === item.value
+              ? "rounded-2xl border border-indigo-300 bg-indigo-50/80 p-4 shadow-sm ring-2 ring-indigo-500/10 transition dark:border-indigo-500/35 dark:bg-indigo-500/10"
+              : "rounded-2xl border border-border/70 bg-card p-4 transition hover:-translate-y-0.5 hover:border-indigo-200 hover:shadow-md dark:hover:border-indigo-500/30"}
+          >
             <div className="flex items-center justify-between gap-3"><h2 className="font-bold">{item.label}</h2><Badge variant="outline">{typeCounts.get(item.value) ?? 0}</Badge></div>
             <p className="mt-2 text-xs leading-5 text-muted-foreground">{item.description}</p>
-          </div>
+          </Link>
         ))}
       </section>
 
@@ -123,8 +161,14 @@ export default async function StrategicWorkflowsPage({ params }: { params: Promi
       />}
 
       <section className="space-y-4">
-        <div><h2 className="text-xl font-black">Workflow board</h2><p className="text-sm text-muted-foreground">Latest 300 records, ordered by active status, priority and deadline.</p></div>
-        {workflows.length === 0 && <div className="rounded-3xl border border-dashed p-12 text-center text-muted-foreground">No workflows yet. Create one above or run the academic-risk scan.</div>}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><h2 className="text-xl font-black">Workflow board</h2><p className="text-sm text-muted-foreground">{filtering ? `${workflows.length} of ${allWorkflows.length} records match these filters.` : "Latest 300 records, ordered by active status, priority and deadline."}</p></div>{filtering && <Button asChild variant="ghost" size="sm"><Link href={`/${schoolSlug}/strategic-workflows`}><X className="size-4" />Clear filters</Link></Button>}</div>
+        <form className="grid gap-3 rounded-2xl border border-border/70 bg-card/80 p-3 shadow-sm sm:grid-cols-[minmax(220px,1fr)_220px_180px_auto]" method="get">
+          <label className="relative"><span className="sr-only">Search workflows</span><Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" /><input name="q" defaultValue={query} placeholder="Search title, student, teacher or owner…" className="h-10 w-full rounded-xl border border-input bg-background pl-10 pr-3 text-sm outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/10" /></label>
+          <label><span className="sr-only">Workflow area</span><select name="type" defaultValue={selectedType} className="h-10 w-full rounded-xl border border-input bg-background px-3 text-sm"><option value="">All workflow areas</option>{WORKFLOW_TYPES.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}</select></label>
+          <label><span className="sr-only">Workflow status</span><select name="status" defaultValue={selectedStatus} className="h-10 w-full rounded-xl border border-input bg-background px-3 text-sm"><option value="">All statuses</option>{WORKFLOW_STATUSES.map((status) => <option key={status} value={status}>{workflowLabel(status)}</option>)}</select></label>
+          <Button type="submit" variant="outline"><SlidersHorizontal className="size-4" />Filter</Button>
+        </form>
+        {workflows.length === 0 && <div className="rounded-3xl border border-dashed p-12 text-center text-muted-foreground">{filtering ? "No workflows match these filters." : "No workflows yet. Create one above or run the academic-risk scan."}</div>}
         {workflows.map((workflow) => {
           const student = workflow.studentEnrollment;
           const ownerName = workflow.owner ? [workflow.owner.firstName, workflow.owner.lastName].filter(Boolean).join(" ") || workflow.owner.email : "Unassigned";

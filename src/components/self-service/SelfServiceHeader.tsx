@@ -4,6 +4,7 @@ import { Building2, CalendarDays, CircleHelp, LogOut, Repeat2, Settings, Users }
 import { SchoolLogo } from "@/components/branding/SchoolLogo";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { NotificationMenu } from "@/features/notifications/NotificationMenu";
 
 export function SelfServiceHeader({
@@ -39,7 +40,7 @@ export function SelfServiceHeader({
           </span>
         </Link>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 rounded-2xl border border-border/60 bg-card/55 p-1 shadow-sm sm:gap-2 sm:p-1.5">
           <Badge variant="secondary" className="hidden sm:inline-flex">
             {role === "PARENT" ? "Parent" : "Student"}
           </Badge>
@@ -67,12 +68,13 @@ export function SelfServiceHeader({
               <CalendarDays className="size-4" />
             </Link>
           </Button>
+          <ThemeToggle />
           <NotificationMenu
             schoolSlug={schoolSlug}
             notificationsHref={`/${schoolSlug}/my/notifications`}
             initialUnreadCount={unreadCount}
           />
-          <Button asChild variant="ghost" size="icon-sm">
+          <Button asChild variant="ghost" size="icon-sm" className="hidden min-[430px]:inline-flex">
             <Link href={`/${schoolSlug}/my/guide`} aria-label="User guide">
               <CircleHelp className="size-4" />
             </Link>
