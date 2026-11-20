@@ -87,6 +87,7 @@ export const ROUTE_MODULES: Partial<Record<string, StaffPermissionModule>> = {
   toppers: "LEARNING",
   failures: "LEARNING",
   "student-follow-ups": "LEARNING",
+  "strategic-workflows": "SUPPORT",
   "fees/dashboard": "FEES",
   "fees/collection": "FEES",
   "fees/outstanding": "FEES",

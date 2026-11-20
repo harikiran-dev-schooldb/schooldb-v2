@@ -74,6 +74,7 @@ const navigationRoutes = [
   "toppers",
   "failures",
   "student-follow-ups",
+  "strategic-workflows",
   "fees/dashboard",
   "fees/collection",
   "fees/outstanding",

@@ -147,6 +147,8 @@ model School {
   inventoryMovements          InventoryMovement[]
   pickupAuthorizations        PickupAuthorization[]
   maintenanceTickets          MaintenanceTicket[]
+  strategicWorkflows          StrategicWorkflow[]
+  strategicWorkflowEvents     StrategicWorkflowEvent[]
 }
 
 model SchoolAnalyticsSetting {
@@ -233,6 +235,9 @@ model User {
   reportExportJobs            ReportExportJob[]
   submittedDirectUpiPayments  DirectUpiPaymentSubmission[] @relation("DirectUpiSubmittedBy")
   reviewedDirectUpiPayments   DirectUpiPaymentSubmission[] @relation("DirectUpiReviewedBy")
+  ownedStrategicWorkflows     StrategicWorkflow[]          @relation("StrategicWorkflowOwner")
+  createdStrategicWorkflows   StrategicWorkflow[]          @relation("StrategicWorkflowCreator")
+  strategicWorkflowEvents     StrategicWorkflowEvent[]     @relation("StrategicWorkflowEventActor")
 
   @@index([phone])
 }
@@ -1107,6 +1112,7 @@ model StudentEnrollment {
   studentFees           StudentFee[]
   transportAssignments  StudentTransportAssignment[]
   houseAssignment       StudentHouse?
+  strategicWorkflows    StrategicWorkflow[]
 
   @@unique([studentId, academicYearId])
   @@unique([academicYearId, classId, sectionId, rollNo])
@@ -1393,6 +1399,7 @@ model Teacher {
   salaryStructures        SalaryStructure[]
   payrollEntries          PayrollEntry[]
   studentFollowUps        StudentFollowUp[]
+  strategicWorkflows      StrategicWorkflow[]
 
   @@unique([schoolId, employeeId])
   @@index([schoolId])
@@ -2198,6 +2205,92 @@ model StudentActivity {
   @@index([sourceType, sourceId])
   @@index([createdAt])
   @@index([studentId, createdAt])
+}
+
+enum StrategicWorkflowType {
+  LESSON_PLAN
+  ASSIGNMENT_SUBMISSION
+  PARENT_TEACHER_MEETING
+  STUDENT_WELLBEING
+  TRANSPORT_SAFETY
+  PROCUREMENT
+  TIMETABLE_SUBSTITUTION
+  EARLY_WARNING
+}
+
+enum StrategicWorkflowStatus {
+  DRAFT
+  OPEN
+  IN_PROGRESS
+  WAITING
+  COMPLETED
+  CANCELLED
+}
+
+enum StrategicWorkflowPriority {
+  LOW
+  NORMAL
+  HIGH
+  CRITICAL
+}
+
+enum StrategicWorkflowEventType {
+  CREATED
+  UPDATED
+  COMMENT
+  STATUS_CHANGED
+  COMPLETED
+}
+
+model StrategicWorkflow {
+  id                  String                    @id @default(cuid())
+  schoolId            String
+  type                StrategicWorkflowType
+  title               String                    @db.VarChar(180)
+  description         String?                   @db.VarChar(5000)
+  status              StrategicWorkflowStatus   @default(OPEN)
+  priority            StrategicWorkflowPriority @default(NORMAL)
+  confidential        Boolean                   @default(false)
+  ownerUserId         String?
+  createdByUserId     String
+  studentEnrollmentId String?
+  teacherId           String?
+  startsAt            DateTime?
+  dueAt               DateTime?
+  completedAt         DateTime?
+  location            String?                   @db.VarChar(180)
+  metadata            Json?
+  createdAt           DateTime                  @default(now())
+  updatedAt           DateTime                  @updatedAt
+  school              School                    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  owner               User?                     @relation("StrategicWorkflowOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
+  createdBy           User                      @relation("StrategicWorkflowCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  studentEnrollment   StudentEnrollment?        @relation(fields: [studentEnrollmentId], references: [id], onDelete: SetNull)
+  teacher             Teacher?                  @relation(fields: [teacherId], references: [id], onDelete: SetNull)
+  events              StrategicWorkflowEvent[]
+
+  @@index([schoolId, type, status])
+  @@index([schoolId, ownerUserId, status])
+  @@index([schoolId, studentEnrollmentId, status])
+  @@index([schoolId, dueAt])
+  @@index([teacherId, status])
+}
+
+model StrategicWorkflowEvent {
+  id          String                     @id @default(cuid())
+  schoolId    String
+  workflowId  String
+  actorUserId String?
+  type        StrategicWorkflowEventType
+  message     String?                    @db.VarChar(2000)
+  metadata    Json?
+  createdAt   DateTime                   @default(now())
+  school      School                     @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  workflow    StrategicWorkflow          @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  actor       User?                      @relation("StrategicWorkflowEventActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([schoolId, workflowId, createdAt])
+  @@index([schoolId, actorUserId, createdAt])
 }
 
 model ClassSubject {

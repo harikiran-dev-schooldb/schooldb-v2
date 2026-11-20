@@ -10,6 +10,7 @@ const VALID_SECTIONS = new Set([
   "timetable", "exams", "calendar", "fee-collection", "admissions", "library",
   "transport", "inventory", "birthdays",
   "staff", "visitors", "health", "pickup", "maintenance",
+  "workflows",
 ]);
 
 const SECTION_MODULES: Record<string, StaffPermissionModule> = {
@@ -34,6 +35,7 @@ const SECTION_MODULES: Record<string, StaffPermissionModule> = {
   health: "FRONT_OFFICE",
   pickup: "FRONT_OFFICE",
   maintenance: "FRONT_OFFICE",
+  workflows: "SUPPORT",
 };
 
 const BIRTHDAY_PERIODS = new Set(["TODAY", "WEEK", "MONTH"]);
@@ -85,6 +87,70 @@ export async function GET(request: Request) {
     const text = query ? { contains: query, mode: "insensitive" as const } : undefined;
     const skip = (page - 1) * PAGE_SIZE;
     const schoolId = membership.schoolId;
+
+    if (section === "workflows") {
+      const canSeeConfidential = ["SUPER_ADMIN", "SCHOOL_ADMIN"].includes(membership.role);
+      const where = {
+        schoolId,
+        AND: [
+          ...(text ? [{ OR: [{ title: text }, { description: text }] }] : []),
+          ...(canSeeConfidential
+            ? []
+            : [{ OR: [{ confidential: false }, { ownerUserId: membership.userId }, { createdByUserId: membership.userId }] }]),
+        ],
+      };
+      const [total, workflows] = await Promise.all([
+        prisma.strategicWorkflow.count({ where }),
+        prisma.strategicWorkflow.findMany({
+          where,
+          orderBy: [{ status: "asc" }, { priority: "desc" }, { dueAt: "asc" }, { updatedAt: "desc" }],
+          skip,
+          take: PAGE_SIZE,
+          select: {
+            id: true,
+            type: true,
+            title: true,
+            description: true,
+            status: true,
+            priority: true,
+            dueAt: true,
+            confidential: true,
+            owner: { select: { firstName: true, lastName: true, email: true } },
+            studentEnrollment: {
+              select: {
+                student: { select: { fullName: true, admissionNo: true } },
+                class: { select: { name: true } },
+                section: { select: { name: true } },
+              },
+            },
+          },
+        }),
+      ]);
+      return ApiResponse.success({
+        section,
+        total,
+        page,
+        pageSize: PAGE_SIZE,
+        rows: workflows.map((workflow) => {
+          const student = workflow.studentEnrollment;
+          const owner = workflow.owner
+            ? [workflow.owner.firstName, workflow.owner.lastName].filter(Boolean).join(" ") || workflow.owner.email
+            : "Unassigned";
+          return {
+            id: workflow.id,
+            title: workflow.title,
+            subtitle: `${workflow.type.replaceAll("_", " ")} · ${workflow.priority}`,
+            detail: [
+              student && `${student.student.fullName || student.student.admissionNo} · ${student.class.name}-${student.section.name}`,
+              `Owner ${owner}`,
+              workflow.dueAt && `Due ${workflow.dueAt.toISOString()}`,
+              workflow.confidential && "Confidential",
+            ].filter(Boolean).join(" · ") || workflow.description || "No additional details",
+            status: workflow.status,
+          };
+        }),
+      });
+    }
 
     if (section === "staff") {
       const today = schoolDate();

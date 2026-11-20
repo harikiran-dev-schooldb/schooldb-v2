@@ -109,6 +109,7 @@ private val sectionTitles = mapOf(
     "health" to "Student health",
     "pickup" to "Student pickup",
     "maintenance" to "Maintenance",
+    "workflows" to "Strategic workflows",
 )
 
 private val sectionDescriptions = mapOf(
@@ -133,6 +134,7 @@ private val sectionDescriptions = mapOf(
     "health" to "Recent clinic visits and recorded follow-up",
     "pickup" to "Authorized pickup people, validity and status",
     "maintenance" to "Facility and equipment issues requiring follow-up",
+    "workflows" to "Learning, meetings, wellbeing, transport, procurement, substitutions and early warnings",
 )
 
 internal data class AdminListRow(

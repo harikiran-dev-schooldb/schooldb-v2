@@ -260,6 +260,11 @@ export const navigation: NavigationItem[] = [
         href: "maintenance",
         roles: [...ADMIN_ROLES, "RECEPTIONIST"],
       },
+      {
+        title: "Strategic Workflows",
+        href: "strategic-workflows",
+        roles: STAFF_ROLES,
+      },
       { title: "Library", href: "library", roles: ADMIN_ROLES },
       { title: "Transport", href: "transport", roles: ADMIN_ROLES },
       { title: "School Calendar", href: "calendar", roles: ADMIN_ROLES },

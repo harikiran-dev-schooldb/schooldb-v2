@@ -1500,6 +1500,7 @@ private fun MoreTab(
         AdminTool("Transport", "OPERATIONS", "Routes, vehicles and student assignments", Lucide.Bus, "transport", listOf(Color(0xFF86EFAC), Color(0xFF059669))),
         AdminTool("Inventory", "ASSETS", "Stock, condition and reorder alerts", Lucide.Boxes, "inventory", listOf(Color(0xFFFDE68A), Color(0xFFD97706))),
         AdminTool("Birthdays", "SCHOOL LIFE", "Upcoming student birthdays", Lucide.Cake, "birthdays", listOf(Color(0xFFF0ABFC), Color(0xFFA21CAF))),
+        AdminTool("Strategic workflows", "ACTION CENTER", "Owned work, deadlines and interventions", Lucide.ClipboardCheck, "workflows", listOf(Color(0xFFFDA4AF), Color(0xFFBE123C))),
     )
     val byId = tools.associateBy { it.destination }
     LazyColumn(
@@ -1540,6 +1541,7 @@ private fun MoreTab(
             }
         }
         item { WideAdminTool(byId.getValue("calendar"), onSection) }
+        item { WideAdminTool(byId.getValue("workflows"), onSection) }
         item { WideAdminTool(byId.getValue("announcements")) { onAnnouncement() } }
         item { PremiumSectionTitle("Office & growth", "Money, admissions and front-office momentum") }
         item { WideAdminTool(byId.getValue("fee-collection"), onSection) }
@@ -1589,6 +1591,7 @@ private fun StaffToolsTab(
             add(AdminTool("Maintenance", "FACILITIES", "Open facility and equipment issues", Lucide.CircleAlert, "maintenance", listOf(Color(0xFFFDE68A), Color(0xFFD97706))))
         }
         if ("SUPPORT" in modules) add(AdminTool("Queries", "SUPPORT", "School and parent support follow-up", Lucide.MessageSquareText, "queries", listOf(Color(0xFFC4B5FD), Color(0xFF7C3AED))))
+        if ("SUPPORT" in modules) add(AdminTool("Strategic workflows", "ACTION CENTER", "Owned work, deadlines and interventions", Lucide.ClipboardCheck, "workflows", listOf(Color(0xFFFDA4AF), Color(0xFFBE123C))))
     }
     val darkTheme = MaterialTheme.colorScheme.background.luminance() < 0.5f
     LazyColumn(
