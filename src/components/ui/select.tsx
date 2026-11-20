@@ -5,6 +5,7 @@ import * as SelectPrimitive from "@radix-ui/react-select";
 import { Check, ChevronDown, ChevronUp } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { selectTriggerClasses } from "./select-styles";
 
 function Select(props: React.ComponentProps<typeof SelectPrimitive.Root>) {
   return <SelectPrimitive.Root data-slot="select" {...props} />;
@@ -31,11 +32,7 @@ function SelectTrigger({
     <SelectPrimitive.Trigger
       data-slot="select-trigger"
       className={cn(
-        "flex h-11 w-full items-center justify-between gap-2 rounded-xl border border-input bg-card px-3.5 sm:h-10",
-        "text-base text-foreground shadow-sm transition-all duration-200 sm:text-sm",
-        "hover:border-primary/25",
-        "focus:border-primary/50 focus:ring-4 focus:ring-primary/10",
-        "disabled:cursor-not-allowed disabled:opacity-50",
+        selectTriggerClasses,
         "data-[placeholder]:text-muted-foreground/70",
         "[&>span]:line-clamp-1",
         className,
