@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { isAssessmentEntryMissing } from "../assessment";
 
 export const studentExamService = {
   listSchedule(
@@ -112,7 +113,7 @@ export const studentExamService = {
 
         let status: "PENDING" | "PASS" | "FAIL" | "ABSENT" | "EXEMPTED";
 
-        if (!mark) {
+        if (!mark || isAssessmentEntryMissing(schedule.assessmentType, mark)) {
           status = "PENDING";
           pending = true;
           if (schedule.assessmentType === "MARKS") maximum += maxMarks;
@@ -125,7 +126,7 @@ export const studentExamService = {
         } else {
           const value = marksObtained ?? 0;
           if (schedule.assessmentType === "GRADE") {
-            status = grade ? "PASS" : "FAIL";
+            status = "PASS";
           } else {
             obtained += value;
             maximum += maxMarks;

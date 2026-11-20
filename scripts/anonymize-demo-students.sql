@@ -56,6 +56,11 @@ BEGIN
     SELECT 'support tickets' FROM "SupportTicket" record
       WHERE record."schoolId" = target.school_id AND record."studentId" = target.student_id
     UNION ALL
+    SELECT 'student follow-ups' FROM "StudentEnrollment" enrollment
+      JOIN "StudentFollowUp" record ON record."enrollmentId" = enrollment.id
+      WHERE enrollment."schoolId" = target.school_id AND enrollment."studentId" = target.student_id
+        AND record."schoolId" = target.school_id
+    UNION ALL
     SELECT 'medical records' FROM "StudentHealthRecord" record
       WHERE record."schoolId" = target.school_id AND record."studentId" = target.student_id
     UNION ALL

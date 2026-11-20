@@ -6,13 +6,15 @@ import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 import { TimetableDialog } from "./TimetableDialog";
+import type { TimetableInitialSelection } from "./TimetableForm";
 
 type Props = {
   onSuccess?: () => void;
+  initialSelection?: TimetableInitialSelection;
 };
 
-export function AddTimetableButton({ onSuccess }: Props) {
-  const [open, setOpen] = useState(false);
+export function AddTimetableButton({ onSuccess, initialSelection }: Props) {
+  const [open, setOpen] = useState(Boolean(initialSelection));
 
   function handleSuccess() {
     setOpen(false);
@@ -31,6 +33,7 @@ export function AddTimetableButton({ onSuccess }: Props) {
         onOpenChange={setOpen}
         mode="create"
         onSuccess={handleSuccess}
+        initialSelection={initialSelection}
       />
     </>
   );

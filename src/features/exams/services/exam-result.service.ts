@@ -1,6 +1,7 @@
 import type { ExamSchedule, StudentExamMark } from "@/generated/prisma/client";
 import { ApiError } from "@/lib/errors";
 import { prisma } from "@/lib/prisma";
+import { isAssessmentEntryMissing } from "../assessment";
 import {
   assignedExamScheduleFilter,
   canViewExamSchedule,
@@ -36,11 +37,11 @@ function getSubjectResultStatus(
   schedule: Pick<ExamSchedule, "assessmentType" | "passMarks">,
   mark: Pick<StudentExamMark, "status" | "marksObtained" | "grade"> | undefined,
 ): SubjectResultStatus {
-  if (!mark) return "PENDING";
+  if (!mark || isAssessmentEntryMissing(schedule.assessmentType, mark)) return "PENDING";
   if (mark.status === "ABSENT" || mark.status === "EXEMPTED") {
     return mark.status;
   }
-  if (schedule.assessmentType === "GRADE") return mark.grade ? "PASS" : "FAIL";
+  if (schedule.assessmentType === "GRADE") return "PASS";
   return schedule.passMarks === null ||
     Number(mark.marksObtained ?? 0) >= Number(schedule.passMarks)
     ? "PASS"

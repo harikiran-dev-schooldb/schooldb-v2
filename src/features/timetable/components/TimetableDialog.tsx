@@ -1,7 +1,7 @@
 "use client";
 
 import { CrudDialog } from "@/components/common/crud";
-import { TimetableForm } from "./TimetableForm";
+import { TimetableForm, type TimetableInitialSelection } from "./TimetableForm";
 
 type Props = {
   open: boolean;
@@ -9,6 +9,7 @@ type Props = {
   mode: "create" | "edit";
   timetableId?: string;
   onSuccess: () => void;
+  initialSelection?: TimetableInitialSelection;
 };
 
 export function TimetableDialog({
@@ -17,6 +18,7 @@ export function TimetableDialog({
   mode,
   timetableId,
   onSuccess,
+  initialSelection,
 }: Props) {
   function handleSuccess() {
     // Close first
@@ -41,6 +43,7 @@ export function TimetableDialog({
         mode={mode}
         timetableId={timetableId}
         onSuccess={handleSuccess}
+        initialSelection={initialSelection}
       />
     </CrudDialog>
   );

@@ -15,9 +15,10 @@ type Props = {
   onOpenChange: (open: boolean) => void;
   mode: "create" | "edit";
   sectionId?: string;
+  initialClassId?: string;
 };
 
-export function SectionDialog({ open, onOpenChange, mode, sectionId }: Props) {
+export function SectionDialog({ open, onOpenChange, mode, sectionId, initialClassId }: Props) {
   const isCreate = mode === "create";
 
   return (
@@ -43,6 +44,7 @@ export function SectionDialog({ open, onOpenChange, mode, sectionId }: Props) {
           <SectionForm
             mode={mode}
             sectionId={sectionId}
+            initialClassId={initialClassId}
             onSuccess={() => onOpenChange(false)}
           />
         </div>

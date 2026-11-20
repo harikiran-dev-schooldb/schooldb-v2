@@ -8,12 +8,18 @@ import { useClassTimetable } from "../hooks/useClassTimetable";
 import { TimetableFilters } from "./TimetableFilters";
 import { TimetableGrid } from "./TimetableGrid";
 
-export function ClassTimetable() {
-  const [academicYearId, setAcademicYearId] = useState("");
+type Props = {
+  initialAcademicYearId?: string;
+  initialClassId?: string;
+  initialSectionId?: string;
+};
 
-  const [classId, setClassId] = useState("");
+export function ClassTimetable({ initialAcademicYearId, initialClassId, initialSectionId }: Props = {}) {
+  const [academicYearId, setAcademicYearId] = useState(initialAcademicYearId ?? "");
 
-  const [sectionId, setSectionId] = useState("");
+  const [classId, setClassId] = useState(initialClassId ?? "");
+
+  const [sectionId, setSectionId] = useState(initialSectionId ?? "");
 
   const { data, loading } = useClassTimetable(
     academicYearId,

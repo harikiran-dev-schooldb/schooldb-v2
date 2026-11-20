@@ -5,13 +5,15 @@ import { Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { TeacherAllocationDialog } from "./TeacherAllocationDialog";
+import type { TeacherAllocationInitialSelection } from "./TeacherAllocationForm";
 
 type Props = {
   onSuccess?: () => void;
+  initialSelection?: TeacherAllocationInitialSelection;
 };
 
-export function AddTeacherAllocationButton({ onSuccess }: Props) {
-  const [open, setOpen] = useState(false);
+export function AddTeacherAllocationButton({ onSuccess, initialSelection }: Props) {
+  const [open, setOpen] = useState(Boolean(initialSelection));
 
   return (
     <>
@@ -25,6 +27,7 @@ export function AddTeacherAllocationButton({ onSuccess }: Props) {
         onOpenChange={setOpen}
         mode="create"
         onSuccess={onSuccess}
+        initialSelection={initialSelection}
       />
     </>
   );

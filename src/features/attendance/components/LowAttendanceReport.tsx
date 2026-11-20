@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import {
@@ -12,14 +12,13 @@ import {
   Users,
 } from "lucide-react";
 
-import { toast } from "sonner";
-
 import {
   AcademicYearSelect,
   ClassSelect,
   SectionSelect,
 } from "@/components/common/select";
 import { ClearFiltersButton } from "@/components/common/crud";
+import { StudentFollowUpLink, useCanCreateStudentFollowUp } from "@/features/student-follow-ups/components/StudentFollowUpLink";
 
 type Props = {
   schoolSlug: string;
@@ -46,8 +45,15 @@ type ReportData = {
   students: Student[];
 };
 
+type ReportRequest = { url: string; attempt: number };
+type ReportResult = { request: ReportRequest } & (
+  | { data: ReportData; error?: never }
+  | { error: string; data?: never }
+);
+
 export function LowAttendanceReport({ schoolSlug }: Props) {
   const router = useRouter();
+  const canCreateFollowUp = useCanCreateStudentFollowUp("LOW_ATTENDANCE");
 
   const [academicYearId, setAcademicYearId] = useState("");
   const [classId, setClassId] = useState("");
@@ -56,20 +62,12 @@ export function LowAttendanceReport({ schoolSlug }: Props) {
   const [toDate, setToDate] = useState("");
   const [threshold, setThreshold] = useState("75");
 
-  const [data, setData] = useState<ReportData | null>(null);
-  const [loading, setLoading] = useState(false);
-
-  const canLoadReport = Boolean(academicYearId);
+  const [reportResult, setReportResult] = useState<ReportResult | null>(null);
+  const [attempt, setAttempt] = useState(0);
 
   function changeClass(value: string) {
     setClassId(value);
     setSectionId("");
-    setData(null);
-  }
-
-  function changeThreshold(value: string) {
-    setThreshold(value);
-    setData(null);
   }
 
   function clearFilters() {
@@ -79,92 +77,66 @@ export function LowAttendanceReport({ schoolSlug }: Props) {
     setFromDate("");
     setToDate("");
     setThreshold("75");
-    setData(null);
   }
 
-  useEffect(() => {
-    if (!canLoadReport) {
-      return;
-    }
-
+  const request = useMemo<ReportRequest | null>(() => {
     const parsedThreshold = Number(threshold);
-
     if (
-      Number.isNaN(parsedThreshold) ||
+      !academicYearId ||
+      !Number.isFinite(parsedThreshold) ||
       parsedThreshold < 0 ||
       parsedThreshold > 100
     ) {
-      return;
+      return null;
     }
 
-    let cancelled = false;
+    const params = new URLSearchParams({
+      academicYearId,
+      threshold: String(parsedThreshold),
+    });
+    if (classId) params.set("classId", classId);
+    if (sectionId) params.set("sectionId", sectionId);
+    if (fromDate) params.set("fromDate", fromDate);
+    if (toDate) params.set("toDate", toDate);
+
+    return { url: `/api/v1/attendance/reports/low?${params}`, attempt };
+  }, [academicYearId, classId, sectionId, fromDate, toDate, threshold, attempt]);
+
+  useEffect(() => {
+    if (!request) return;
+    const activeRequest = request;
+    const controller = new AbortController();
+    const { signal } = controller;
 
     async function loadReport() {
       try {
-        setLoading(true);
-
-        const params = new URLSearchParams({
-          academicYearId,
-          threshold: String(parsedThreshold),
-        });
-
-        if (classId) {
-          params.set("classId", classId);
+        const response = await fetch(activeRequest.url, { signal, cache: "no-store" });
+        const result = await response.json().catch(() => null);
+        if (!response.ok || !result?.success) {
+          throw new Error(result?.message || "Failed to load the low attendance report.");
         }
-
-        if (sectionId) {
-          params.set("sectionId", sectionId);
-        }
-
-        if (fromDate) {
-          params.set("fromDate", fromDate);
-        }
-
-        if (toDate) {
-          params.set("toDate", toDate);
-        }
-
-        const response = await fetch(
-          `/api/v1/attendance/reports/low?${params.toString()}`,
-        );
-
-        const result = await response.json();
-
-        if (cancelled) {
-          return;
-        }
-
-        if (!response.ok || !result.success) {
-          toast.error(result.message ?? "Failed to load report.");
-          return;
-        }
-
-        setData(result.data);
-      } catch {
-        if (!cancelled) {
-          toast.error("Failed to load low attendance report.");
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
+        if (!signal.aborted) setReportResult({ request: activeRequest, data: result.data });
+      } catch (error) {
+        if (!signal.aborted) {
+          setReportResult({
+            request: activeRequest,
+            error: error instanceof Error ? error.message : "Failed to load the low attendance report.",
+          });
         }
       }
     }
 
     void loadReport();
+    return () => controller.abort();
+  }, [request]);
 
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    academicYearId,
-    canLoadReport,
-    classId,
-    sectionId,
-    fromDate,
-    toDate,
-    threshold,
-  ]);
+  const currentReport = reportResult?.request === request ? reportResult : null;
+  const data = currentReport?.data;
+  const loading = Boolean(request && !currentReport);
+
+  function retryReport() {
+    setAttempt((previous) => previous + 1);
+  }
 
   function openStudent(studentId: string) {
     router.push(
@@ -276,7 +248,7 @@ export function LowAttendanceReport({ schoolSlug }: Props) {
               min={0}
               max={100}
               value={threshold}
-              onChange={(event) => changeThreshold(event.target.value)}
+              onChange={(event) => setThreshold(event.target.value)}
               placeholder="Threshold"
               aria-label="Attendance threshold"
               className="h-10 w-full rounded-md border bg-background pl-8 pr-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
@@ -292,7 +264,7 @@ export function LowAttendanceReport({ schoolSlug }: Props) {
       </div>
 
       {/* Empty state */}
-      {!canLoadReport ? (
+      {!academicYearId ? (
         <div className="rounded-2xl border bg-card p-12 text-center shadow-sm">
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-muted">
             <FileText className="h-5 w-5 text-muted-foreground" />
@@ -310,6 +282,13 @@ export function LowAttendanceReport({ schoolSlug }: Props) {
           <p className="text-sm text-muted-foreground">
             Loading low attendance report...
           </p>
+        </div>
+      ) : currentReport?.error ? (
+        <div className="rounded-2xl border bg-card p-6 text-center shadow-sm">
+          <p className="text-sm text-destructive" role="alert">{currentReport.error}</p>
+          <button type="button" className="mt-2 text-sm font-medium text-primary hover:underline" onClick={retryReport}>
+            Try again
+          </button>
         </div>
       ) : data ? (
         <>
@@ -438,6 +417,9 @@ export function LowAttendanceReport({ schoolSlug }: Props) {
                       <th className="px-5 py-3 text-right font-medium text-muted-foreground">
                         Attendance
                       </th>
+                      {canCreateFollowUp && (
+                        <th className="px-5 py-3 text-right font-medium text-muted-foreground">Actions</th>
+                      )}
                     </tr>
                   </thead>
 
@@ -496,6 +478,11 @@ export function LowAttendanceReport({ schoolSlug }: Props) {
                             {student.attendancePercentage}%
                           </span>
                         </td>
+                        {canCreateFollowUp && (
+                          <td className="px-5 py-4 text-right">
+                            <StudentFollowUpLink schoolSlug={schoolSlug} origin={{ studentId: student.studentId, academicYearId, source: "LOW_ATTENDANCE" }} />
+                          </td>
+                        )}
                       </tr>
                     ))}
                   </tbody>

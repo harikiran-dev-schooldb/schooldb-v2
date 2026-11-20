@@ -19,10 +19,12 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { SectionSelect } from "@/components/common/select";
 import { refreshTable } from "@/lib/table-event";
 import { EXAM_GRADES } from "@/features/exams/assessment";
 
-type StudentExamStatus = "PRESENT" | "ABSENT";
+type StudentExamStatus = "PRESENT" | "ABSENT" | "EXEMPTED";
+const EXAM_STATUSES = { PRESENT: "Present", ABSENT: "Absent", EXEMPTED: "Exempted" } as const;
 
 type StudentMark = {
   id: string | null;
@@ -81,6 +83,10 @@ type Props = {
   schoolSlug: string;
   examId: string;
   scheduleId: string;
+  classId: string;
+  academicYearId: string;
+  initialSectionId: string;
+  fixedSection: boolean;
 };
 
 function formatDate(value: string) {
@@ -91,9 +97,12 @@ function formatDate(value: string) {
   }).format(new Date(value));
 }
 
-export function MarksEntryPage({ schoolSlug, examId, scheduleId }: Props) {
+export function MarksEntryPage({
+  schoolSlug, examId, scheduleId, classId, academicYearId, initialSectionId, fixedSection,
+}: Props) {
   const router = useRouter();
 
+  const [sectionId, setSectionId] = useState(initialSectionId);
   const [data, setData] = useState<MarksData | null>(null);
   const [students, setStudents] = useState<StudentRow[]>([]);
 
@@ -104,18 +113,21 @@ export function MarksEntryPage({ schoolSlug, examId, scheduleId }: Props) {
   /* LOAD DATA                                                              */
   /* ---------------------------------------------------------------------- */
 
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (signal?: AbortSignal) => {
+    if (!sectionId) return;
     try {
       setLoading(true);
 
       const response = await fetch(
-        `/api/v1/exams/schedules/${scheduleId}/marks`,
+        `/api/v1/exams/schedules/${scheduleId}/marks?${new URLSearchParams({ sectionId })}`,
         {
           cache: "no-store",
+          signal,
         },
       );
 
       const result = await response.json();
+      if (signal?.aborted) return;
 
       if (!response.ok || !result.success) {
         toast.error(result.message || "Failed to load marks.");
@@ -128,23 +140,35 @@ export function MarksEntryPage({ schoolSlug, examId, scheduleId }: Props) {
         Array.isArray(result.data.students) ? result.data.students : [],
       );
     } catch (error) {
+      if (signal?.aborted) return;
       console.error("Failed to load marks:", error);
 
       toast.error("Failed to load student marks.");
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) setLoading(false);
     }
-  }, [scheduleId]);
+  }, [scheduleId, sectionId]);
 
   useEffect(() => {
+    if (!sectionId) return;
+    const controller = new AbortController();
     const timeoutId = window.setTimeout(() => {
-      void loadData();
+      void loadData(controller.signal);
     }, 0);
 
     return () => {
       window.clearTimeout(timeoutId);
+      controller.abort();
     };
-  }, [loadData]);
+  }, [loadData, sectionId]);
+
+  function changeSection(value: string) {
+    if (sectionId === value) return;
+    setData(null);
+    setStudents([]);
+    setLoading(Boolean(value));
+    setSectionId(value);
+  }
 
   /* ---------------------------------------------------------------------- */
   /* UPDATE MARK                                                            */
@@ -193,8 +217,8 @@ export function MarksEntryPage({ schoolSlug, examId, scheduleId }: Props) {
                 ...student.mark,
                 status,
                 marksObtained:
-                  status === "ABSENT" ? null : student.mark.marksObtained,
-                grade: status === "ABSENT" ? null : student.mark.grade,
+                  status === "PRESENT" ? student.mark.marksObtained : null,
+                grade: status === "PRESENT" ? student.mark.grade : null,
               },
             }
           : student,
@@ -232,8 +256,8 @@ export function MarksEntryPage({ schoolSlug, examId, scheduleId }: Props) {
     [students],
   );
 
-  const absentCount = useMemo(
-    () => students.filter((student) => student.mark.status === "ABSENT").length,
+  const nonPresentCount = useMemo(
+    () => students.filter((student) => student.mark.status !== "PRESENT").length,
     [students],
   );
 
@@ -250,10 +274,11 @@ export function MarksEntryPage({ schoolSlug, examId, scheduleId }: Props) {
   );
 
   const pendingCount = presentCount - enteredCount;
+  const accountedCount = enteredCount + nonPresentCount;
 
   const progress =
     students.length > 0
-      ? Math.round((enteredCount / students.length) * 100)
+      ? Math.round((accountedCount / students.length) * 100)
       : 0;
 
   /* ---------------------------------------------------------------------- */
@@ -266,7 +291,7 @@ export function MarksEntryPage({ schoolSlug, examId, scheduleId }: Props) {
     const maxMarks = Number(data.schedule.maxMarks);
 
     for (const student of data.schedule.assessmentType === "MARKS" ? students : []) {
-      if (student.mark.status === "ABSENT") {
+      if (student.mark.status !== "PRESENT") {
         continue;
       }
 
@@ -300,7 +325,7 @@ export function MarksEntryPage({ schoolSlug, examId, scheduleId }: Props) {
       setSaving(true);
 
       const response = await fetch(
-        `/api/v1/exams/schedules/${scheduleId}/marks`,
+        `/api/v1/exams/schedules/${scheduleId}/marks?${new URLSearchParams({ sectionId })}`,
         {
           method: "PUT",
 
@@ -313,7 +338,7 @@ export function MarksEntryPage({ schoolSlug, examId, scheduleId }: Props) {
               studentEnrollmentId: student.studentEnrollmentId,
 
               marksObtained:
-                data.schedule.assessmentType === "GRADE" || student.mark.status === "ABSENT"
+                data.schedule.assessmentType === "GRADE" || student.mark.status !== "PRESENT"
                   ? null
                   : student.mark.marksObtained === null ||
                       student.mark.marksObtained === ""
@@ -357,7 +382,19 @@ export function MarksEntryPage({ schoolSlug, examId, scheduleId }: Props) {
   /* LOADING                                                                */
   /* ---------------------------------------------------------------------- */
 
-  if (loading) {
+  const sectionSelector = !fixedSection && (
+    <SectionSelect
+      classId={classId}
+      academicYearId={academicYearId}
+      value={sectionId}
+      allowAll={false}
+      disabled={saving}
+      onChange={changeSection}
+      triggerClassName="w-full sm:w-44"
+    />
+  );
+
+  if (loading && sectionId) {
     return (
       <div className="space-y-6 p-4 sm:p-6">
         <div className="h-8 w-56 animate-pulse rounded-lg bg-muted" />
@@ -399,7 +436,9 @@ export function MarksEntryPage({ schoolSlug, examId, scheduleId }: Props) {
             <ClipboardList className="size-6 text-muted-foreground" />
           </div>
 
-          <h2 className="mt-4 font-semibold">Marks data not found</h2>
+          <h2 className="mt-4 font-semibold">{sectionId ? "Unable to load marks" : "Choose a section"}</h2>
+
+          {sectionSelector && <div className="mt-4">{sectionSelector}</div>}
 
           <Button
             variant="outline"
@@ -461,6 +500,7 @@ export function MarksEntryPage({ schoolSlug, examId, scheduleId }: Props) {
           </div>
 
           <div className="flex flex-wrap gap-2">
+            {sectionSelector}
             <Button
               variant="outline"
               className="rounded-xl"
@@ -473,7 +513,7 @@ export function MarksEntryPage({ schoolSlug, examId, scheduleId }: Props) {
 
             <Button
               className="rounded-xl"
-              disabled={saving}
+              disabled={saving || students.length === 0}
               onClick={() => void saveMarks()}
             >
               <Save className="mr-2 size-4" />
@@ -553,8 +593,8 @@ export function MarksEntryPage({ schoolSlug, examId, scheduleId }: Props) {
         />
 
         <StatCard
-          label="Absent"
-          value={absentCount}
+          label="Absent or exempted"
+          value={nonPresentCount}
           icon={<XCircle className="size-5" />}
           tone="danger"
         />
@@ -571,7 +611,7 @@ export function MarksEntryPage({ schoolSlug, examId, scheduleId }: Props) {
               <p className="text-sm font-semibold">Entry Progress</p>
 
               <p className="mt-0.5 text-xs text-muted-foreground">
-                {enteredCount} of {students.length} students have {schedule.assessmentType === "GRADE" ? "grades" : "marks"} entered.
+                {accountedCount} of {students.length} student entries are complete.
               </p>
             </div>
 
@@ -662,13 +702,13 @@ export function MarksEntryPage({ schoolSlug, examId, scheduleId }: Props) {
 
                 <tbody>
                   {students.map((student, index) => {
-                    const absent = student.mark.status === "ABSENT";
+                    const nonPresent = student.mark.status !== "PRESENT";
 
                     return (
                       <tr
                         key={student.studentEnrollmentId}
                         className={`border-b border-border/50 transition-colors last:border-0 ${
-                          absent ? "bg-muted/[0.35]" : "hover:bg-muted/[0.2]"
+                          nonPresent ? "bg-muted/[0.35]" : "hover:bg-muted/[0.2]"
                         }`}
                       >
                         <td className="px-4 py-4 text-center text-xs font-medium text-muted-foreground">
@@ -689,7 +729,7 @@ export function MarksEntryPage({ schoolSlug, examId, scheduleId }: Props) {
                           {schedule.assessmentType === "GRADE" ? (
                             <select
                               value={student.mark.grade ?? ""}
-                              disabled={saving || absent}
+                              disabled={saving || nonPresent}
                               onChange={(event) => updateGrade(student.studentEnrollmentId, event.target.value)}
                               className="h-10 w-full rounded-lg border bg-background px-3 text-center font-semibold"
                             >
@@ -706,7 +746,7 @@ export function MarksEntryPage({ schoolSlug, examId, scheduleId }: Props) {
                                 ? ""
                                 : student.mark.marksObtained
                             }
-                            disabled={saving || absent}
+                            disabled={saving || nonPresent}
                             onChange={(event) =>
                               updateMarks(
                                 student.studentEnrollmentId,
@@ -719,43 +759,7 @@ export function MarksEntryPage({ schoolSlug, examId, scheduleId }: Props) {
                         </td>
 
                         <td className="px-4 py-4">
-                          <div className="flex gap-1 rounded-lg bg-muted p-1">
-                            <button
-                              type="button"
-                              disabled={saving}
-                              onClick={() =>
-                                updateStatus(
-                                  student.studentEnrollmentId,
-                                  "PRESENT",
-                                )
-                              }
-                              className={`flex-1 rounded-md px-3 py-1.5 text-xs font-semibold transition-colors ${
-                                !absent
-                                  ? "bg-background text-foreground shadow-sm"
-                                  : "text-muted-foreground hover:text-foreground"
-                              }`}
-                            >
-                              Present
-                            </button>
-
-                            <button
-                              type="button"
-                              disabled={saving}
-                              onClick={() =>
-                                updateStatus(
-                                  student.studentEnrollmentId,
-                                  "ABSENT",
-                                )
-                              }
-                              className={`flex-1 rounded-md px-3 py-1.5 text-xs font-semibold transition-colors ${
-                                absent
-                                  ? "bg-background text-foreground shadow-sm"
-                                  : "text-muted-foreground hover:text-foreground"
-                              }`}
-                            >
-                              Absent
-                            </button>
-                          </div>
+                          <ExamStudentStatusSelect student={student} disabled={saving} onChange={updateStatus} />
                         </td>
 
                         <td className="px-4 py-4">
@@ -782,12 +786,12 @@ export function MarksEntryPage({ schoolSlug, examId, scheduleId }: Props) {
             {/* Mobile */}
             <div className="divide-y divide-border/50 lg:hidden">
               {students.map((student, index) => {
-                const absent = student.mark.status === "ABSENT";
+                const nonPresent = student.mark.status !== "PRESENT";
 
                 return (
                   <div
                     key={student.studentEnrollmentId}
-                    className={`p-5 ${absent ? "bg-muted/[0.35]" : ""}`}
+                    className={`p-5 ${nonPresent ? "bg-muted/[0.35]" : ""}`}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex min-w-0 items-start gap-3">
@@ -806,9 +810,9 @@ export function MarksEntryPage({ schoolSlug, examId, scheduleId }: Props) {
                         </div>
                       </div>
 
-                      {absent ? (
+                      {nonPresent ? (
                         <span className="rounded-full bg-muted px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                          Absent
+                          {EXAM_STATUSES[student.mark.status]}
                         </span>
                       ) : (
                         <span className="rounded-full bg-primary/[0.08] px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-primary">
@@ -826,7 +830,7 @@ export function MarksEntryPage({ schoolSlug, examId, scheduleId }: Props) {
                         {schedule.assessmentType === "GRADE" ? (
                           <select
                             value={student.mark.grade ?? ""}
-                            disabled={saving || absent}
+                            disabled={saving || nonPresent}
                             onChange={(event) => updateGrade(student.studentEnrollmentId, event.target.value)}
                             className="h-11 w-full rounded-xl border bg-background px-3 text-center font-semibold"
                           >
@@ -843,7 +847,7 @@ export function MarksEntryPage({ schoolSlug, examId, scheduleId }: Props) {
                               ? ""
                               : student.mark.marksObtained
                           }
-                          disabled={saving || absent}
+                          disabled={saving || nonPresent}
                           onChange={(event) =>
                             updateMarks(
                               student.studentEnrollmentId,
@@ -860,43 +864,7 @@ export function MarksEntryPage({ schoolSlug, examId, scheduleId }: Props) {
                           Status
                         </label>
 
-                        <div className="flex h-11 gap-1 rounded-xl bg-muted p-1">
-                          <button
-                            type="button"
-                            disabled={saving}
-                            onClick={() =>
-                              updateStatus(
-                                student.studentEnrollmentId,
-                                "PRESENT",
-                              )
-                            }
-                            className={`flex-1 rounded-lg text-xs font-semibold ${
-                              !absent
-                                ? "bg-background shadow-sm"
-                                : "text-muted-foreground"
-                            }`}
-                          >
-                            Present
-                          </button>
-
-                          <button
-                            type="button"
-                            disabled={saving}
-                            onClick={() =>
-                              updateStatus(
-                                student.studentEnrollmentId,
-                                "ABSENT",
-                              )
-                            }
-                            className={`flex-1 rounded-lg text-xs font-semibold ${
-                              absent
-                                ? "bg-background shadow-sm"
-                                : "text-muted-foreground"
-                            }`}
-                          >
-                            Absent
-                          </button>
-                        </div>
+                        <ExamStudentStatusSelect student={student} disabled={saving} onChange={updateStatus} />
                       </div>
                     </div>
 
@@ -931,14 +899,14 @@ export function MarksEntryPage({ schoolSlug, examId, scheduleId }: Props) {
           <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 rounded-2xl border border-border/70 bg-background/95 p-3 shadow-[0_12px_40px_rgb(15_23_42_/_0.14)] backdrop-blur-xl">
             <div className="hidden min-w-0 sm:block">
               <p className="text-sm font-semibold">
-                {enteredCount} of {students.length} marks entered
+                {accountedCount} of {students.length} entries complete
               </p>
 
               <p className="text-xs text-muted-foreground">
-                {absentCount} absent
+                {nonPresentCount} absent or exempted
                 {pendingCount > 0
                   ? ` • ${pendingCount} pending`
-                  : " • All marks entered"}
+                  : ""}
               </p>
             </div>
 
@@ -972,6 +940,24 @@ export function MarksEntryPage({ schoolSlug, examId, scheduleId }: Props) {
 /* -------------------------------------------------------------------------- */
 /* UI helpers                                                                 */
 /* -------------------------------------------------------------------------- */
+
+function ExamStudentStatusSelect({ student, disabled, onChange }: {
+  student: StudentRow;
+  disabled: boolean;
+  onChange: (enrollmentId: string, status: StudentExamStatus) => void;
+}) {
+  return (
+    <select
+      aria-label={`Exam status for ${student.student.fullName || student.student.admissionNo}`}
+      value={student.mark.status}
+      disabled={disabled}
+      onChange={(event) => onChange(student.studentEnrollmentId, event.target.value as StudentExamStatus)}
+      className="h-10 w-full rounded-lg border bg-background px-2 text-sm"
+    >
+      {Object.entries(EXAM_STATUSES).map(([status, label]) => <option key={status} value={status}>{label}</option>)}
+    </select>
+  );
+}
 
 function SummaryItem({
   icon,

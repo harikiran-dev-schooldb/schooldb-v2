@@ -72,6 +72,7 @@ const navigationRoutes = [
   "exams",
   "toppers",
   "failures",
+  "student-follow-ups",
   "fees/dashboard",
   "fees/collection",
   "fees/outstanding",

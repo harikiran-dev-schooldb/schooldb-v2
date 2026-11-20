@@ -169,6 +169,7 @@ export const navigation: NavigationItem[] = [
       { title: "Exams & Results", href: "exams" },
       { title: "Toppers", href: "toppers" },
       { title: "Failures", href: "failures" },
+      { title: "Student Follow-Ups", href: "student-follow-ups" },
     ],
   },
   {

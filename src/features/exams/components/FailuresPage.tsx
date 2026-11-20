@@ -37,6 +37,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { StudentFollowUpLink, useCanCreateStudentFollowUp } from "@/features/student-follow-ups/components/StudentFollowUpLink";
 import { cn } from "@/lib/utils";
 
 type ExamOption = {
@@ -89,6 +90,7 @@ type ReportResult = { request: ReportRequest } & (
 );
 
 export function FailuresPage({ schoolSlug }: Props) {
+  const canCreateFollowUp = useCanCreateStudentFollowUp("EXAM_FAILURE");
   const [exams, setExams] = useState<ExamOption[]>([]);
   const [academicYearId, setAcademicYearId] = useState("");
   const [examId, setExamId] = useState("");
@@ -505,7 +507,7 @@ export function FailuresPage({ schoolSlug }: Props) {
                     <th className="px-5 py-3 text-center">Absent</th>
                     <th className="px-5 py-3 text-right">Marks</th>
                     <th className="px-5 py-3 text-right">Percentage</th>
-                    <th className="px-5 py-3 text-right">Profile</th>
+                    <th className="px-5 py-3 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -554,11 +556,24 @@ export function FailuresPage({ schoolSlug }: Props) {
                         </span>
                       </td>
                       <td className="px-5 py-4 text-right">
-                        <Button asChild variant="ghost" size="sm">
-                          <Link href={`/${schoolSlug}/students/${student.studentId}`}>
-                            View <ChevronRight className="size-4" />
-                          </Link>
-                        </Button>
+                        <div className="flex flex-wrap items-center justify-end gap-2">
+                          {canCreateFollowUp && (
+                            <StudentFollowUpLink
+                              schoolSlug={schoolSlug}
+                              origin={{
+                                studentId: student.studentId,
+                                examId: data.exam.id,
+                                academicYearId: data.exam.academicYear.id,
+                                source: "EXAM_FAILURE",
+                              }}
+                            />
+                          )}
+                          <Button asChild variant="ghost" size="sm">
+                            <Link href={`/${schoolSlug}/students/${student.studentId}`}>
+                              View <ChevronRight className="size-4" />
+                            </Link>
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   ))}

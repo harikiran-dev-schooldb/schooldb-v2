@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { subscribeTableRefresh } from "@/lib/table-event";
 
 import { TimetableGridItem } from "../types";
 
@@ -12,6 +13,11 @@ export function useClassTimetable(
   const [loading, setLoading] = useState(false);
 
   const [data, setData] = useState<TimetableGridItem[]>([]);
+  const [refreshCount, setRefreshCount] = useState(0);
+
+  useEffect(() => subscribeTableRefresh("timetables", () => {
+    setRefreshCount((count) => count + 1);
+  }), []);
 
   const canLoad = Boolean(
     academicYearId &&
@@ -65,6 +71,7 @@ export function useClassTimetable(
     canLoad,
     academicYearId,
     classId,
+    refreshCount,
     sectionId,
   ]);
 

@@ -44,6 +44,11 @@ export const updateExamSchema = z
       .enum(["DRAFT", "PUBLISHED", "COMPLETED", "CANCELLED"])
       .optional(),
 
+    publishOverride: z.object({
+      reason: z.string().trim().min(1, "Enter a reason for publishing incomplete results.").max(500),
+      reviewKey: z.string().regex(/^[a-f0-9]{64}$/, "Review the current publish checklist."),
+    }).optional(),
+
     startDate: z
       .string()
       .min(1, "Start date is required.")

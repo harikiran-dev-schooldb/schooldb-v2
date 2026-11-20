@@ -1,7 +1,7 @@
 "use client";
 
 import { CrudDialog } from "@/components/common/crud";
-import { TeacherAllocationForm } from "./TeacherAllocationForm";
+import { TeacherAllocationForm, type TeacherAllocationInitialSelection } from "./TeacherAllocationForm";
 
 type Props = {
   open: boolean;
@@ -9,6 +9,7 @@ type Props = {
   mode: "create" | "edit";
   allocationId?: string;
   onSuccess?: () => void;
+  initialSelection?: TeacherAllocationInitialSelection;
 };
 
 export function TeacherAllocationDialog({
@@ -17,6 +18,7 @@ export function TeacherAllocationDialog({
   mode,
   allocationId,
   onSuccess,
+  initialSelection,
 }: Props) {
   return (
     <CrudDialog
@@ -32,6 +34,7 @@ export function TeacherAllocationDialog({
       <TeacherAllocationForm
         mode={mode}
         allocationId={allocationId}
+        initialSelection={initialSelection}
         onSuccess={() => {
           onSuccess?.();
           onOpenChange(false);

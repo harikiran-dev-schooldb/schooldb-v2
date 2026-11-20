@@ -18,6 +18,7 @@ import { FormField, SubmitButton } from "@/components/common/forms";
 type Props = {
   mode: "create" | "edit";
   sectionId?: string;
+  initialClassId?: string;
   onSuccess: () => void;
 };
 
@@ -27,12 +28,12 @@ const defaultValues: SectionFormInput = {
   displayOrder: 0,
 };
 
-export function SectionForm({ mode, sectionId, onSuccess }: Props) {
+export function SectionForm({ mode, sectionId, initialClassId, onSuccess }: Props) {
   const [loading, setLoading] = useState(false);
 
   const form = useForm<SectionFormInput>({
     resolver: zodResolver(sectionSchema),
-    defaultValues,
+    defaultValues: { ...defaultValues, classId: initialClassId ?? "" },
   });
 
   const classId = useWatch({
@@ -117,7 +118,7 @@ export function SectionForm({ mode, sectionId, onSuccess }: Props) {
       );
 
       if (isCreate) {
-        form.reset(defaultValues);
+        form.reset({ ...defaultValues, classId: initialClassId ?? "" });
       }
 
       refreshTable("sections");

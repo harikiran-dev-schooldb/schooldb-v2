@@ -1,6 +1,7 @@
 import { apiHandler } from "@/lib/api";
 import { requireRole, requireTenant } from "@/lib/auth";
 import { ApiResponse } from "@/lib/response";
+import { NextResponse } from "next/server";
 
 import { examService } from "@/features/exams/services/exam.service";
 import { updateExamSchema } from "@/features/exams/schemas/exam.schema";
@@ -68,9 +69,9 @@ export async function PATCH(
       );
     }
 
-    const exam = await examService.update(
+    const update = await examService.update(
       examId,
-      tenant.schoolId,
+      tenant,
       {
         ...(parsed.data.name !== undefined && {
           name: parsed.data.name,
@@ -91,28 +92,44 @@ export async function PATCH(
         ...(parsed.data.status !== undefined && {
           status: parsed.data.status,
         }),
+
+        publishOverride: parsed.data.publishOverride,
       },
     );
 
-    if (!exam) {
+    if (update.kind === "not-found") {
       return ApiResponse.error(
         "Exam not found.",
         404,
       );
     }
 
+    if (update.kind === "checklist") {
+      return NextResponse.json({
+        success: false,
+        message: update.canOverride
+          ? "Review the current checklist before publishing incomplete results."
+          : "A school administrator must approve publishing incomplete results.",
+        checklist: update.checklist,
+      }, { status: 409 });
+    }
+
+    const { exam } = update;
+
     if (parsed.data.status === "COMPLETED") {
       await notifyExamResultsPublished(exam.id, tenant.schoolId, tenant.userId);
     }
 
-    await recordAuditLog({
-      actor: tenant,
-      module: "ACADEMICS",
-      action: parsed.data.status === "COMPLETED" ? "PUBLISH" : "UPDATE",
-      entityType: "EXAM",
-      entityId: exam.id,
-      summary: `${parsed.data.status === "COMPLETED" ? "Published results for" : "Updated"} exam: ${exam.name}.`,
-    });
+    if (!update.published && parsed.data.status !== "COMPLETED") {
+      await recordAuditLog({
+        actor: tenant,
+        module: "ACADEMICS",
+        action: "UPDATE",
+        entityType: "EXAM",
+        entityId: exam.id,
+        summary: `Updated exam: ${exam.name}.`,
+      });
+    }
 
     return ApiResponse.success(
       exam,

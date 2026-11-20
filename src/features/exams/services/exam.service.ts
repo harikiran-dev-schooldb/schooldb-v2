@@ -1,8 +1,12 @@
 import { prisma } from "@/lib/prisma";
+import { writeAuditLog, type AuditActor } from "@/lib/audit";
+import { runSerializableTransaction } from "@/lib/prisma-transaction";
 import {
   assignedExamScheduleFilter,
   type ExamTeacherAssignment,
 } from "../exam-teacher-scope";
+import { canOverrideExamPublish, requiresPublishOverride } from "../publish-checklist";
+import { getExamPublishChecklist } from "./exam-publish-checklist.service";
 
 function validateExamDates(
   startDate: Date | null | undefined,
@@ -241,107 +245,78 @@ export const examService = {
    */
   async update(
     examId: string,
-    schoolId: string,
+    actor: AuditActor,
     data: {
       name?: string;
       startDate?: Date;
       endDate?: Date;
       status?: "DRAFT" | "PUBLISHED" | "COMPLETED" | "CANCELLED";
+      publishOverride?: { reason: string; reviewKey: string };
     },
   ) {
-    /*
-     * Always locate the exam
-     * inside the current school.
-     */
-    const exam =
-      await prisma.exam.findFirst({
-        where: {
-          id: examId,
-          schoolId,
-        },
-      });
+    const { schoolId } = actor;
+    return runSerializableTransaction(async (tx) => {
+      const exam = await tx.exam.findFirst({ where: { id: examId, schoolId } });
+      if (!exam) return { kind: "not-found" } as const;
 
-    if (!exam) {
-      return null;
-    }
+      const name = data.name === undefined ? exam.name : validateExamName(data.name);
+      const startDate = data.startDate ?? exam.startDate;
+      const endDate = data.endDate ?? exam.endDate;
+      validateExamDates(startDate, endDate);
 
-    const name =
-      data.name !== undefined
-        ? validateExamName(data.name)
-        : exam.name;
-
-    const startDate =
-      data.startDate !== undefined
-        ? data.startDate
-        : exam.startDate;
-
-    const endDate =
-      data.endDate !== undefined
-        ? data.endDate
-        : exam.endDate;
-
-    /*
-     * Validate the complete resulting
-     * date range, not only the changed field.
-     */
-    validateExamDates(
-      startDate,
-      endDate,
-    );
-
-    /*
-     * Check duplicate name only when
-     * the name is being changed.
-     */
-    if (
-      data.name !== undefined &&
-      name.toLowerCase() !==
-        exam.name.toLowerCase()
-    ) {
-      const duplicate =
-        await prisma.exam.findFirst({
+      if (data.name !== undefined && name.toLowerCase() !== exam.name.toLowerCase()) {
+        const duplicate = await tx.exam.findFirst({
           where: {
             schoolId,
-            academicYearId:
-              exam.academicYearId,
+            academicYearId: exam.academicYearId,
             name,
-
-            NOT: {
-              id: exam.id,
-            },
+            NOT: { id: exam.id },
           },
+          select: { id: true },
+        });
+        if (duplicate) {
+          throw new Error("An exam with this name already exists for the selected academic year.");
+        }
+      }
 
-          select: {
-            id: true,
+      const publishing = data.status === "COMPLETED" && exam.status !== "COMPLETED";
+      const checklist = publishing ? await getExamPublishChecklist(tx, exam) : null;
+      const canOverride = canOverrideExamPublish(actor.role);
+      const override = data.publishOverride;
+      const overrideRequired = checklist !== null && requiresPublishOverride(checklist);
+      if (overrideRequired && (
+        !canOverride || !override?.reason.trim() || override.reviewKey !== checklist.reviewKey
+      )) {
+        return { kind: "checklist", checklist, canOverride } as const;
+      }
+
+      const updated = await tx.exam.update({
+        where: { id: exam.id, schoolId },
+        data: { name, startDate, endDate, status: data.status },
+        include: { academicYear: true },
+      });
+
+      if (checklist) {
+        // Persist the publication and any override reason together.
+        await writeAuditLog(tx, {
+          actor,
+          module: "ACADEMICS",
+          action: "PUBLISH",
+          entityType: "EXAM",
+          entityId: exam.id,
+          summary: overrideRequired
+            ? `Published incomplete results for ${name} with an administrator override.`
+            : `Published results for ${name}.`,
+          metadata: {
+            expectedCount: checklist.expectedCount,
+            missingCount: checklist.missingCount,
+            scheduleCount: checklist.scheduleCount,
+            ...(overrideRequired && override ? { overrideReason: override.reason } : {}),
           },
         });
-
-      if (duplicate) {
-        throw new Error(
-          "An exam with this name already exists for the selected academic year.",
-        );
       }
-    }
 
-    return prisma.exam.update({
-      where: {
-        id: exam.id,
-        schoolId,
-      },
-
-      data: {
-        name,
-
-        startDate,
-
-        endDate,
-
-        ...(data.status !== undefined ? { status: data.status } : {}),
-      },
-
-      include: {
-        academicYear: true,
-      },
+      return { kind: "updated", exam: updated, published: publishing } as const;
     });
   },
 

@@ -60,6 +60,9 @@ export function isMemberRouteAllowed(
   href?: string,
 ) {
   if (!href) return false;
+  if (href === "student-follow-ups" && !["SUPER_ADMIN", "SCHOOL_ADMIN", "TEACHER"].includes(membership.role)) {
+    return false;
+  }
   const roleOnlyAccess = isRoleOnlyMemberRouteAllowed(membership.role, href);
   if (roleOnlyAccess !== null) return roleOnlyAccess;
   if (["SUPER_ADMIN", "SCHOOL_ADMIN"].includes(membership.role)) {

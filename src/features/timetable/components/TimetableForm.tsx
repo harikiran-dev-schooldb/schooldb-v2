@@ -32,13 +32,16 @@ import { Switch } from "@/components/ui/switch";
 import { WEEKDAY_OPTIONS } from "../constants/weekdays";
 import { refreshTable } from "@/lib/table-event";
 
+export type TimetableInitialSelection = Pick<TimetableFormInput, "academicYearId" | "teacherAllocationId">;
+
 type Props = {
   mode: "create" | "edit";
   timetableId?: string;
   onSuccess: () => void;
+  initialSelection?: TimetableInitialSelection;
 };
 
-export function TimetableForm({ mode, timetableId, onSuccess }: Props) {
+export function TimetableForm({ mode, timetableId, onSuccess, initialSelection }: Props) {
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(mode === "edit");
 
@@ -51,6 +54,7 @@ export function TimetableForm({ mode, timetableId, onSuccess }: Props) {
       periodId: "",
       day: undefined,
       active: true,
+      ...initialSelection,
     },
   });
 

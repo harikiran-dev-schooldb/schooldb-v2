@@ -24,9 +24,15 @@ import {
   TeacherAllocationFormInput,
 } from "../schemas/teacher-allocation.schema";
 
+export type TeacherAllocationInitialSelection = Pick<
+  TeacherAllocationFormInput,
+  "academicYearId" | "classId" | "sectionId" | "subjectId"
+>;
+
 type Props = {
   mode: "create" | "edit";
   allocationId?: string;
+  initialSelection?: TeacherAllocationInitialSelection;
   onSuccess: () => void;
 };
 
@@ -43,13 +49,14 @@ const defaultValues: TeacherAllocationFormInput = {
 export function TeacherAllocationForm({
   mode,
   allocationId,
+  initialSelection,
   onSuccess,
 }: Props) {
   const [loading, setLoading] = useState(false);
 
   const form = useForm<TeacherAllocationFormInput>({
     resolver: zodResolver(teacherAllocationSchema),
-    defaultValues,
+    defaultValues: { ...defaultValues, ...initialSelection },
   });
 
   const academicYearId = useWatch({
@@ -258,7 +265,7 @@ export function TeacherAllocationForm({
       );
 
       if (mode === "create") {
-        form.reset(defaultValues);
+        form.reset({ ...defaultValues, ...initialSelection });
       }
 
       refreshTable("teacher-allocations");

@@ -6,8 +6,8 @@ import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SectionDialog } from "./SectionDialog";
 
-export function AddSectionButton() {
-  const [open, setOpen] = useState(false);
+export function AddSectionButton({ initialClassId }: { initialClassId?: string } = {}) {
+  const [open, setOpen] = useState(Boolean(initialClassId));
 
   return (
     <>
@@ -20,7 +20,7 @@ export function AddSectionButton() {
         Add Section
       </Button>
 
-      <SectionDialog open={open} onOpenChange={setOpen} mode="create" />
+      <SectionDialog open={open} onOpenChange={setOpen} mode="create" initialClassId={initialClassId} />
     </>
   );
 }

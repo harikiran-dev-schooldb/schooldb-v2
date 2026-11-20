@@ -9,8 +9,11 @@ import {
   UserRound,
 } from "lucide-react";
 
+import { TeacherFollowUpsPanel } from "@/features/student-follow-ups/components/TeacherFollowUpsPanel";
 import { requireCurrentTeacher, requireRole } from "@/lib/auth";
+import { isMemberRouteAllowed } from "@/lib/navigation-access";
 import { prisma } from "@/lib/prisma";
+import { isRouteAllowed } from "@/lib/route-access";
 
 export default async function TeacherDashboardPage({
   params,
@@ -20,6 +23,9 @@ export default async function TeacherDashboardPage({
   const { schoolSlug } = await params;
   const membership = await requireRole(["TEACHER"], schoolSlug);
   const teacher = await requireCurrentTeacher(membership.schoolId);
+  const showFollowUps = (teacher.resultAccess || teacher.attendanceAccess) &&
+    isRouteAllowed(membership.school, "student-follow-ups") &&
+    isMemberRouteAllowed(membership, "student-follow-ups");
 
   const academicYear = await prisma.academicYear.findFirst({
     where: { schoolId: membership.schoolId, active: true },
@@ -135,6 +141,8 @@ export default async function TeacherDashboardPage({
           </p>
         </div>
       </section>
+
+      {showFollowUps && <TeacherFollowUpsPanel schoolSlug={schoolSlug} />}
 
       {classAssignments.length > 0 && (
         <section className="rounded-3xl border border-indigo-200 bg-indigo-50/60 p-6 shadow-sm">

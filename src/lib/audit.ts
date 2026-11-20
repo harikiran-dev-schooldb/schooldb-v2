@@ -37,7 +37,7 @@ export const AUDIT_ACTIONS = [
 export type AuditModule = (typeof AUDIT_MODULES)[number];
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 
-type AuditActor = {
+export type AuditActor = {
   schoolId: string;
   userId: string;
   role: string;
@@ -68,27 +68,31 @@ function actorDisplayName(actor: AuditActor) {
   return name || actor.designation || actor.user.email || "SchoolDB user";
 }
 
+export function writeAuditLog(db: Pick<Prisma.TransactionClient, "auditLog">, input: AuditInput) {
+  return db.auditLog.create({
+    data: {
+      schoolId: input.actor.schoolId,
+      actorUserId: input.actor.userId,
+      actorName: actorDisplayName(input.actor),
+      actorRole: input.actor.role,
+      module: input.module,
+      action: input.action,
+      entityType: input.entityType,
+      entityId: input.entityId || null,
+      summary: input.summary,
+      ...(input.metadata === undefined ? {} : { metadata: input.metadata }),
+    },
+    select: { id: true },
+  });
+}
+
 /**
  * Audit logging must never turn a completed business operation into a failed
  * response. Database failures are reported to server logs for monitoring.
  */
 export async function recordAuditLog(input: AuditInput) {
   try {
-    await prisma.auditLog.create({
-      data: {
-        schoolId: input.actor.schoolId,
-        actorUserId: input.actor.userId,
-        actorName: actorDisplayName(input.actor),
-        actorRole: input.actor.role,
-        module: input.module,
-        action: input.action,
-        entityType: input.entityType,
-        entityId: input.entityId || null,
-        summary: input.summary,
-        ...(input.metadata === undefined ? {} : { metadata: input.metadata }),
-      },
-      select: { id: true },
-    });
+    await writeAuditLog(prisma, input);
   } catch (error) {
     console.error("AUDIT LOG WRITE FAILED", {
       schoolId: input.actor.schoolId,
