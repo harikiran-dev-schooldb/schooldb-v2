@@ -1,4 +1,4 @@
-import { hasModuleAccess, type StaffPermissionMembership } from "@/lib/staff-permissions";
+import { hasModuleAccess, type StaffPermissionMembership } from "../../lib/staff-permissions.ts";
 
 type WorkflowActor = StaffPermissionMembership & { userId: string };
 
