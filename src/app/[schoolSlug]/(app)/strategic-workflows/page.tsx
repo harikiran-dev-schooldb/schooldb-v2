@@ -101,9 +101,9 @@ export default async function StrategicWorkflowsPage({ params }: { params: Promi
       />
 
       <section className="grid gap-4 sm:grid-cols-3">
-        <Card><CardContent className="flex items-center gap-4 pt-5"><span className="rounded-2xl bg-indigo-50 p-3 text-indigo-700"><Workflow className="size-5" /></span><div><p className="text-2xl font-black">{openCount}</p><p className="text-sm text-muted-foreground">Open workflows</p></div></CardContent></Card>
-        <Card><CardContent className="flex items-center gap-4 pt-5"><span className="rounded-2xl bg-amber-50 p-3 text-amber-700"><Clock3 className="size-5" /></span><div><p className="text-2xl font-black">{overdueCount}</p><p className="text-sm text-muted-foreground">Overdue</p></div></CardContent></Card>
-        <Card><CardContent className="flex items-center gap-4 pt-5"><span className="rounded-2xl bg-rose-50 p-3 text-rose-700"><AlertTriangle className="size-5" /></span><div><p className="text-2xl font-black">{criticalCount}</p><p className="text-sm text-muted-foreground">Critical</p></div></CardContent></Card>
+        <Card><CardContent className="flex items-center gap-4 pt-5"><span className="rounded-2xl bg-indigo-50 p-3 text-indigo-700 dark:bg-indigo-500/12 dark:text-indigo-300"><Workflow className="size-5" /></span><div><p className="text-2xl font-black">{openCount}</p><p className="text-sm text-muted-foreground">Open workflows</p></div></CardContent></Card>
+        <Card><CardContent className="flex items-center gap-4 pt-5"><span className="rounded-2xl bg-amber-50 p-3 text-amber-700 dark:bg-amber-500/12 dark:text-amber-300"><Clock3 className="size-5" /></span><div><p className="text-2xl font-black">{overdueCount}</p><p className="text-sm text-muted-foreground">Overdue</p></div></CardContent></Card>
+        <Card><CardContent className="flex items-center gap-4 pt-5"><span className="rounded-2xl bg-rose-50 p-3 text-rose-700 dark:bg-rose-500/12 dark:text-rose-300"><AlertTriangle className="size-5" /></span><div><p className="text-2xl font-black">{criticalCount}</p><p className="text-sm text-muted-foreground">Critical</p></div></CardContent></Card>
       </section>
 
       <section className="grid gap-3 md:grid-cols-4">
@@ -129,7 +129,7 @@ export default async function StrategicWorkflowsPage({ params }: { params: Promi
           const student = workflow.studentEnrollment;
           const ownerName = workflow.owner ? [workflow.owner.firstName, workflow.owner.lastName].filter(Boolean).join(" ") || workflow.owner.email : "Unassigned";
           return (
-            <Card key={workflow.id} className={workflow.priority === "CRITICAL" ? "border-rose-200" : undefined}>
+            <Card key={workflow.id} className={workflow.priority === "CRITICAL" ? "border-rose-200 dark:border-rose-500/30" : undefined}>
               <CardHeader>
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge>{workflowLabel(workflow.type)}</Badge>

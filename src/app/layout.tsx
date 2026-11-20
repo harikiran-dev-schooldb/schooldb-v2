@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { Analytics } from "@vercel/analytics/next";
 import { PwaRegistration } from "@/components/pwa/PwaRegistration";
 import { AccountSwitchTransition } from "@/components/layout/AccountSwitchTransition";
+import { ThemeProvider } from "@/components/theme/ThemeProvider";
 
 export const metadata: Metadata = {
   title: {
@@ -55,22 +56,24 @@ export default function RootLayout({
       className="font-sans antialiased"
     >
       <body className="flex min-h-screen flex-col bg-background text-foreground">
-        <ClerkProvider proxyUrl={process.env.NEXT_PUBLIC_CLERK_PROXY_URL}>
-          <AccountSwitchTransition />
-          {children}
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+          <ClerkProvider proxyUrl={process.env.NEXT_PUBLIC_CLERK_PROXY_URL}>
+            <AccountSwitchTransition />
+            {children}
 
-          <PwaRegistration />
+            <PwaRegistration />
 
-          <Toaster
-            richColors
-            position="top-right"
-            toastOptions={{
-              className:
-                "rounded-2xl border-border/70 bg-card/95 shadow-2xl backdrop-blur-xl",
-            }}
-          />
-          <Analytics />
-        </ClerkProvider>
+            <Toaster
+              richColors
+              position="top-right"
+              toastOptions={{
+                className:
+                  "rounded-2xl border-border/70 bg-card/95 shadow-2xl backdrop-blur-xl",
+              }}
+            />
+            <Analytics />
+          </ClerkProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

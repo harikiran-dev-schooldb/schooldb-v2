@@ -269,6 +269,7 @@ export function SearchableStudentSelect({
             role="combobox"
             aria-label="Student"
             aria-expanded={open}
+            aria-controls={`student-options-${generatedId}`}
             aria-haspopup="listbox"
             disabled={isDisabled}
             className={cn(selectTriggerClasses, "h-10 cursor-pointer text-left")}
@@ -310,7 +311,7 @@ export function SearchableStudentSelect({
           >
             <CommandInput placeholder="Search student name or admission number..." />
 
-            <CommandList>
+            <CommandList id={`student-options-${generatedId}`}>
               <CommandEmpty>No student found.</CommandEmpty>
 
               <CommandGroup>

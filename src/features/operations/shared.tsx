@@ -251,6 +251,7 @@ export function EntityCombobox({
   empty?: string;
 }) {
   const [open, setOpen] = useState(false);
+  const listboxId = `entity-options-${useId().replaceAll(":", "")}`;
   const selected = useMemo(
     () => options.find((option) => option.value === value),
     [options, value],
@@ -263,6 +264,7 @@ export function EntityCombobox({
           id={id}
           role="combobox"
           aria-expanded={open}
+          aria-controls={listboxId}
           aria-haspopup="listbox"
           className={cn(selectTriggerClasses, "h-10 cursor-pointer text-left")}
         >
@@ -279,7 +281,7 @@ export function EntityCombobox({
       >
         <Command>
           <CommandInput placeholder={searchPlaceholder} />
-          <CommandList>
+          <CommandList id={listboxId}>
             <CommandEmpty>{empty}</CommandEmpty>
             <CommandGroup>
               {options.map((option) => (

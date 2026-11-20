@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 
 import { Check, ChevronDown, Loader2 } from "lucide-react";
 
@@ -57,6 +57,7 @@ export function RemoteCombobox({
   onChange,
 }: Props) {
   const [open, setOpen] = useState(false);
+  const listboxId = `remote-combobox-${useId().replaceAll(":", "")}`;
 
   const [loading, setLoading] = useState(true);
 
@@ -112,6 +113,7 @@ export function RemoteCombobox({
           type="button"
           role="combobox"
           aria-expanded={open}
+          aria-controls={listboxId}
           aria-haspopup="listbox"
           disabled={disabled}
           className={cn(selectTriggerClasses, "cursor-pointer text-left")}
@@ -136,7 +138,7 @@ export function RemoteCombobox({
         <Command shouldFilter>
           <CommandInput placeholder={searchPlaceholder} />
 
-          <CommandList>
+          <CommandList id={listboxId}>
             {isLoading ? (
               <div className="flex h-24 items-center justify-center">
                 <Loader2 className="h-5 w-5 animate-spin" />

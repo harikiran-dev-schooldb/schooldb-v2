@@ -10,12 +10,12 @@ import {
   PanelLeftOpen,
   Search,
   Settings,
-  UserCircle2,
   X,
 } from "lucide-react";
 
 import { useSchool } from "@/contexts/school-context";
 import { SchoolLogo } from "@/components/branding/SchoolLogo";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { navigation } from "@/lib/navigation";
 import { isRouteAllowed } from "@/lib/route-access";
 import { isMemberRouteAllowed } from "@/lib/navigation-access";
@@ -78,7 +78,7 @@ type Props = {
 
 export function AppSidebar({ mobile = false, onNavigate }: Props) {
   const pathname = usePathname();
-  const { school, membership, role, teacherAccess } = useSchool();
+  const { school, membership, role, teacherAccess, user } = useSchool();
 
   const storedCollapsed = useSidebarCollapsed();
   const collapsed = mobile ? false : storedCollapsed;
@@ -90,6 +90,9 @@ export function AppSidebar({ mobile = false, onNavigate }: Props) {
   const schoolLogo = school.logo
     ? `/api/v1/public/schools/${encodeURIComponent(school.slug)}/logo?v=${new Date(school.updatedAt).getTime()}`
     : null;
+  const userName = [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email;
+  const initials = `${user.firstName?.[0] ?? ""}${user.lastName?.[0] ?? ""}` || "U";
+  const roleLabel = role.toLowerCase().replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 
   useEffect(() => {
     if (!["SUPER_ADMIN", "SCHOOL_ADMIN", "TEACHER", "ACCOUNTANT", "RECEPTIONIST"].includes(role)) return;
@@ -238,8 +241,8 @@ export function AppSidebar({ mobile = false, onNavigate }: Props) {
           "flex h-full flex-col overflow-hidden",
           mobile ? "rounded-none" : "rounded-[20px]",
           "border border-sidebar-border",
-          "bg-sidebar",
-          "shadow-[0_12px_40px_rgba(15,23,42,0.07)]",
+          "bg-gradient-to-b from-sidebar via-sidebar to-muted/30",
+          "shadow-[0_18px_50px_rgba(15,23,42,0.09)]",
         )}
       >
         {/* ==================================================================
@@ -257,7 +260,7 @@ export function AppSidebar({ mobile = false, onNavigate }: Props) {
             href={`/${school.slug}/${workspaceHome}`}
             onClick={handleNavigation}
             className={cn(
-              "group flex min-w-0 items-center rounded-2xl border border-indigo-100 bg-gradient-to-br from-white via-indigo-50/60 to-violet-50/65 shadow-[0_9px_24px_rgba(79,70,229,.09)] transition hover:border-indigo-200 hover:shadow-[0_12px_30px_rgba(79,70,229,.13)]",
+              "group flex min-w-0 items-center rounded-2xl border border-indigo-100 bg-gradient-to-br from-white via-indigo-50/60 to-violet-50/65 shadow-[0_9px_24px_rgba(79,70,229,.09)] transition hover:border-indigo-200 hover:shadow-[0_12px_30px_rgba(79,70,229,.13)] dark:border-indigo-500/20 dark:from-slate-950 dark:via-indigo-950/45 dark:to-violet-950/35 dark:hover:border-indigo-400/35",
               collapsed ? "justify-center p-2" : "gap-3 p-3",
             )}
           >
@@ -272,7 +275,7 @@ export function AppSidebar({ mobile = false, onNavigate }: Props) {
               <div className="min-w-0 flex-1">
                 <p
                   title={school.name}
-                  className="line-clamp-2 break-words text-[14px] font-extrabold leading-[1.15] tracking-[-0.02em] text-slate-900"
+                  className="line-clamp-2 break-words text-[14px] font-extrabold leading-[1.15] tracking-[-0.02em] text-slate-900 dark:text-slate-100"
                 >
                   {school.name}
                 </p>
@@ -284,8 +287,8 @@ export function AppSidebar({ mobile = false, onNavigate }: Props) {
                     height={14}
                     className="size-3.5 shrink-0 rounded-[4px] object-cover opacity-75"
                   />
-                  <span className="truncate text-[8px] font-semibold uppercase tracking-[0.1em] text-slate-400">
-                    Powered by <span className="font-extrabold text-slate-600">SchoolDB</span>
+                  <span className="truncate text-[8px] font-semibold uppercase tracking-[0.1em] text-slate-400 dark:text-slate-500">
+                    Powered by <span className="font-extrabold text-slate-600 dark:text-slate-300">SchoolDB</span>
                   </span>
                 </div>
               </div>
@@ -303,18 +306,18 @@ export function AppSidebar({ mobile = false, onNavigate }: Props) {
               className={cn(
                 "group flex h-9 w-full items-center gap-2",
                 "rounded-lg",
-                "border border-slate-200",
-                "bg-slate-50/60",
+                "border border-slate-200 dark:border-slate-800",
+                "bg-slate-50/60 dark:bg-slate-900/55",
                 "px-3",
                 "text-[11px]",
                 "text-slate-400",
                 "transition-all duration-200",
                 "hover:border-indigo-200",
-                "hover:bg-white",
+                "hover:bg-white dark:hover:bg-slate-900",
                 "hover:text-slate-600",
               )}
             >
-              <Search className="size-3.5 text-slate-400 transition-colors group-hover:text-indigo-500" />
+              <Search className="size-3.5 text-slate-400 transition-colors group-hover:text-indigo-500 dark:text-slate-500 dark:group-hover:text-indigo-400" />
               <input
                 ref={searchInputRef}
                 type="search"
@@ -322,7 +325,7 @@ export function AppSidebar({ mobile = false, onNavigate }: Props) {
                 onChange={(event) => setSearchQuery(event.target.value)}
                 placeholder="Search navigation..."
                 aria-label="Search navigation"
-                className="h-full min-w-0 flex-1 bg-transparent text-slate-700 outline-none placeholder:text-slate-400 [&::-webkit-search-cancel-button]:hidden"
+                className="h-full min-w-0 flex-1 bg-transparent text-slate-700 outline-none placeholder:text-slate-400 dark:text-slate-200 dark:placeholder:text-slate-500 [&::-webkit-search-cancel-button]:hidden"
               />
               {searchQuery ? (
                 <button
@@ -331,7 +334,7 @@ export function AppSidebar({ mobile = false, onNavigate }: Props) {
                     setSearchQuery("");
                     searchInputRef.current?.focus();
                   }}
-                  className="rounded-md p-1 text-slate-400 transition hover:bg-white hover:text-slate-700"
+                  className="rounded-md p-1 text-slate-400 transition hover:bg-white hover:text-slate-700 dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-200"
                   aria-label="Clear navigation search"
                 >
                   <X className="size-3.5" />
@@ -340,8 +343,8 @@ export function AppSidebar({ mobile = false, onNavigate }: Props) {
                 <kbd
                   className={cn(
                     "rounded-md",
-                    "border border-slate-200",
-                    "bg-white",
+                    "border border-slate-200 dark:border-slate-700",
+                    "bg-white dark:bg-slate-900",
                     "px-1.5 py-0.5",
                     "text-[9px]",
                     "text-slate-400",
@@ -367,7 +370,7 @@ export function AppSidebar({ mobile = false, onNavigate }: Props) {
           )}
         >
           {!collapsed && (
-            <p className="mb-2 px-3 text-[9px] font-bold uppercase tracking-[0.2em] text-slate-400">
+            <p className="mb-2 px-3 text-[9px] font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">
               {normalizedSearch ? "Search results" : "Workspace"}
             </p>
           )}
@@ -415,14 +418,14 @@ export function AppSidebar({ mobile = false, onNavigate }: Props) {
                           "transition-all duration-200",
                           childIsActive
                             ? [
-                                "bg-indigo-50",
-                                "text-indigo-600",
-                                "ring-1 ring-indigo-100",
+                                "bg-indigo-50 dark:bg-indigo-500/12",
+                                "text-indigo-600 dark:text-indigo-300",
+                                "ring-1 ring-indigo-100 dark:ring-indigo-400/20",
                                 "shadow-[0_5px_16px_rgba(79,70,229,0.10)]",
                               ]
                             : [
                                 "text-slate-400",
-                                "hover:bg-slate-50",
+                                "hover:bg-slate-50 dark:hover:bg-slate-900/70",
                                 "hover:text-indigo-600",
                               ],
                         )}
@@ -436,10 +439,10 @@ export function AppSidebar({ mobile = false, onNavigate }: Props) {
                           "pointer-events-none absolute left-full top-1/2 z-[100]",
                           "ml-3 -translate-y-1/2 whitespace-nowrap",
                           "rounded-lg",
-                          "border border-slate-200",
-                          "bg-white",
+                          "border border-slate-200 dark:border-slate-700",
+                          "bg-white dark:bg-slate-900",
                           "px-3 py-2",
-                          "text-xs font-medium text-slate-800",
+                          "text-xs font-medium text-slate-800 dark:text-slate-100",
                           "opacity-0 shadow-xl",
                           "transition-opacity duration-150",
                           "group-hover:opacity-100",
@@ -467,11 +470,11 @@ export function AppSidebar({ mobile = false, onNavigate }: Props) {
                         "text-[13px] font-medium",
                         "transition-all duration-200",
                         childIsActive
-                          ? ["bg-indigo-50", "text-indigo-700"]
+                          ? ["bg-indigo-50 text-indigo-700 dark:bg-indigo-500/12 dark:text-indigo-300"]
                           : [
                               "text-slate-600",
-                              "hover:bg-slate-50",
-                              "hover:text-slate-900",
+                              "hover:bg-slate-50 dark:hover:bg-slate-900/70",
+                              "hover:text-slate-900 dark:hover:text-slate-100",
                             ],
                       )}
                     >
@@ -480,7 +483,7 @@ export function AppSidebar({ mobile = false, onNavigate }: Props) {
                           "size-[17px] shrink-0",
                           childIsActive
                             ? "text-indigo-600"
-                            : "text-slate-400 group-hover:text-slate-600",
+                            : "text-slate-400 group-hover:text-slate-600 dark:text-slate-500 dark:group-hover:text-slate-300",
                         )}
                         strokeWidth={2}
                       />
@@ -506,7 +509,7 @@ export function AppSidebar({ mobile = false, onNavigate }: Props) {
                       )}
                     >
                       <div className="min-h-0 overflow-hidden">
-                        <div className="ml-[21px] border-l border-slate-200 pl-3 pt-1">
+                        <div className="ml-[21px] border-l border-slate-200 pl-3 pt-1 dark:border-slate-800">
                           <div className="space-y-0.5">
                             {item.children!.map((child) => {
                               const href = `/${school.slug}/${child.href}`;
@@ -528,11 +531,11 @@ export function AppSidebar({ mobile = false, onNavigate }: Props) {
                                     "text-[12px] font-medium",
                                     "transition-all duration-200",
                                     active
-                                      ? ["bg-indigo-50", "text-indigo-700"]
+                                      ? ["bg-indigo-50 text-indigo-700 dark:bg-indigo-500/12 dark:text-indigo-300"]
                                       : [
                                           "text-slate-500",
-                                          "hover:bg-slate-50",
-                                          "hover:text-slate-800",
+                                          "hover:bg-slate-50 dark:hover:bg-slate-900/70",
+                                          "hover:text-slate-800 dark:hover:text-slate-100",
                                         ],
                                   )}
                                 >
@@ -545,7 +548,7 @@ export function AppSidebar({ mobile = false, onNavigate }: Props) {
                                       "size-1.5 shrink-0 rounded-full transition-all duration-200",
                                       active
                                         ? "bg-indigo-500 shadow-[0_0_7px_rgba(99,102,241,0.45)]"
-                                        : "bg-slate-300 group-hover:bg-slate-400",
+                                        : "bg-slate-300 group-hover:bg-slate-400 dark:bg-slate-700 dark:group-hover:bg-slate-500",
                                     )}
                                   />
 
@@ -554,7 +557,7 @@ export function AppSidebar({ mobile = false, onNavigate }: Props) {
                                   </span>
 
                                   {child.href === "queries" && unreadQueries > 0 && (
-                                    <span className="ml-auto min-w-5 rounded-full bg-rose-100 px-1.5 py-0.5 text-center text-[10px] font-bold text-rose-700">
+                                    <span className="ml-auto min-w-5 rounded-full bg-rose-100 px-1.5 py-0.5 text-center text-[10px] font-bold text-rose-700 dark:bg-rose-500/15 dark:text-rose-300">
                                       {unreadQueries > 99 ? "99+" : unreadQueries}
                                     </span>
                                   )}
@@ -593,14 +596,14 @@ export function AppSidebar({ mobile = false, onNavigate }: Props) {
                         "transition-all duration-200",
                         active
                           ? [
-                              "bg-indigo-50",
-                              "text-indigo-600",
-                              "ring-1 ring-indigo-100",
+                              "bg-indigo-50 dark:bg-indigo-500/12",
+                              "text-indigo-600 dark:text-indigo-300",
+                              "ring-1 ring-indigo-100 dark:ring-indigo-400/20",
                               "shadow-[0_5px_16px_rgba(79,70,229,0.10)]",
                             ]
                           : [
                               "text-slate-400",
-                              "hover:bg-slate-50",
+                              "hover:bg-slate-50 dark:hover:bg-slate-900/70",
                               "hover:text-indigo-600",
                             ],
                       )}
@@ -613,10 +616,10 @@ export function AppSidebar({ mobile = false, onNavigate }: Props) {
                         "pointer-events-none absolute left-full top-1/2 z-[100]",
                         "ml-3 -translate-y-1/2 whitespace-nowrap",
                         "rounded-lg",
-                        "border border-slate-200",
-                        "bg-white",
+                        "border border-slate-200 dark:border-slate-700",
+                        "bg-white dark:bg-slate-900",
                         "px-3 py-2",
-                        "text-xs font-medium text-slate-800",
+                        "text-xs font-medium text-slate-800 dark:text-slate-100",
                         "opacity-0 shadow-xl",
                         "transition-opacity duration-150",
                         "group-hover:opacity-100",
@@ -644,14 +647,14 @@ export function AppSidebar({ mobile = false, onNavigate }: Props) {
                     "transition-all duration-200",
                     active
                       ? [
-                          "bg-indigo-600",
+                          "bg-gradient-to-r from-indigo-600 to-violet-600",
                           "text-white",
-                          "shadow-[0_7px_20px_rgba(79,70,229,0.18)]",
+                          "shadow-[0_9px_24px_rgba(79,70,229,0.24)] ring-1 ring-indigo-500/20",
                         ]
                       : [
                           "text-slate-600",
-                          "hover:bg-slate-50",
-                          "hover:text-slate-900",
+                          "hover:bg-slate-50 dark:hover:bg-slate-900/70",
+                          "hover:text-slate-900 dark:hover:text-slate-100",
                         ],
                   )}
                 >
@@ -664,7 +667,7 @@ export function AppSidebar({ mobile = false, onNavigate }: Props) {
                       "size-[17px] shrink-0",
                       active
                         ? "text-white"
-                        : "text-slate-400 group-hover:text-slate-600",
+                        : "text-slate-400 group-hover:text-slate-600 dark:text-slate-500 dark:group-hover:text-slate-300",
                     )}
                     strokeWidth={2}
                   />
@@ -678,7 +681,7 @@ export function AppSidebar({ mobile = false, onNavigate }: Props) {
               );
             })}
             {!filteredNavigation.length && !collapsed && (
-              <div className="rounded-xl border border-dashed border-slate-200 px-3 py-6 text-center">
+              <div className="rounded-xl border border-dashed border-slate-200 px-3 py-6 text-center dark:border-slate-800">
                 <Search className="mx-auto size-5 text-slate-300" />
                 <p className="mt-2 text-xs font-semibold text-slate-600">
                   No navigation found
@@ -701,15 +704,15 @@ export function AppSidebar({ mobile = false, onNavigate }: Props) {
               className={cn(
                 "flex items-center gap-2",
                 "rounded-lg px-3 py-2",
-                "border border-emerald-100",
-                "bg-emerald-50/70",
+                "border border-emerald-100 dark:border-emerald-500/20",
+                "bg-emerald-50/70 dark:bg-emerald-500/10",
               )}
               role="status"
             >
               <span className="size-1.5 rounded-full bg-emerald-500" />
 
-              <span className="text-[10px] font-medium text-emerald-700/70">
-                Local workspace online
+              <span className="text-[10px] font-medium text-emerald-700/70 dark:text-emerald-300/80">
+                Workspace online
               </span>
             </div>
           </div>
@@ -732,8 +735,8 @@ export function AppSidebar({ mobile = false, onNavigate }: Props) {
                     "text-[11px]",
                     "text-slate-500",
                     "transition-all duration-200",
-                    "hover:bg-slate-50",
-                    "hover:text-slate-800",
+                    "hover:bg-slate-50 dark:hover:bg-slate-900/70",
+                    "hover:text-slate-800 dark:hover:text-slate-100",
                   )}
                 >
                   <Settings className="size-3.5" />
@@ -750,7 +753,7 @@ export function AppSidebar({ mobile = false, onNavigate }: Props) {
                     "rounded-lg px-2.5",
                     "text-slate-400",
                     "transition-all duration-200",
-                    "hover:bg-slate-50",
+                    "hover:bg-slate-50 dark:hover:bg-slate-900/70",
                     "hover:text-indigo-600",
                     !isRouteAllowed(school, "settings") && "flex-1 py-2",
                   )}
@@ -771,7 +774,7 @@ export function AppSidebar({ mobile = false, onNavigate }: Props) {
                 "rounded-xl",
                 "text-slate-400",
                 "transition-all duration-200",
-                "hover:bg-slate-50",
+                "hover:bg-slate-50 dark:hover:bg-slate-900/70",
                 "hover:text-indigo-600",
               )}
               title="Expand sidebar"
@@ -780,37 +783,30 @@ export function AppSidebar({ mobile = false, onNavigate }: Props) {
             </button>
           )}
 
-          {/* Administrator */}
+          {/* Signed-in user */}
           <div
             className={cn(
               "flex items-center rounded-xl",
-              "border border-slate-200",
-              "bg-slate-50/60",
+              "border border-slate-200 dark:border-slate-800",
+              "bg-slate-50/60 dark:bg-slate-900/55",
               "transition-colors duration-200",
-              "hover:bg-slate-50",
+              "hover:bg-slate-50 dark:hover:bg-slate-900/75",
               collapsed ? "justify-center p-2" : "gap-3 px-2.5 py-2.5",
             )}
           >
-            <div
-              className={cn(
-                "flex size-8 shrink-0 items-center justify-center",
-                "rounded-full",
-                "bg-indigo-50",
-                "text-indigo-600",
-                "ring-1 ring-indigo-100",
-              )}
-            >
-              <UserCircle2 className="size-4" />
-            </div>
+            <Avatar className="size-8 shrink-0 border border-indigo-100 shadow-sm dark:border-indigo-500/20">
+              <AvatarImage src={user.imageUrl ?? undefined} alt={`${userName} profile`} />
+              <AvatarFallback className="bg-indigo-50 text-[10px] font-extrabold text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-300">{initials}</AvatarFallback>
+            </Avatar>
 
             {!collapsed && (
               <div className="min-w-0">
-                <p className="truncate text-[11px] font-semibold text-slate-800">
-                  School Administrator
+                <p className="truncate text-[11px] font-semibold text-slate-800 dark:text-slate-100">
+                  {userName}
                 </p>
 
                 <p className="truncate text-[10px] text-slate-400">
-                  Administrator
+                  {roleLabel}
                 </p>
               </div>
             )}
