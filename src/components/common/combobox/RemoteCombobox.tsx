@@ -2,11 +2,11 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-import { Check, ChevronsUpDown, Loader2 } from "lucide-react";
+import { Check, ChevronDown, Loader2 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
-import { Button } from "@/components/ui/button";
+import { selectTriggerClasses } from "@/components/ui/select-styles";
 
 import {
   Command,
@@ -81,6 +81,8 @@ export function RemoteCombobox({
         if (result.success) {
           setOptions(result.data);
         }
+      } catch {
+        if (active) setOptions([]);
       } finally {
         if (active) {
           setLoading(false);
@@ -106,20 +108,31 @@ export function RemoteCombobox({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button
+        <button
           type="button"
-          variant="outline"
           role="combobox"
+          aria-expanded={open}
+          aria-haspopup="listbox"
           disabled={disabled}
-          className="w-full justify-between"
+          className={cn(selectTriggerClasses, "cursor-pointer text-left")}
         >
-          <span className="truncate">{selected?.label ?? placeholder}</span>
-
-          <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />
-        </Button>
+          <span className={cn("truncate", !selected && "text-muted-foreground/70")}>
+            {selected?.label ?? placeholder}
+          </span>
+          <ChevronDown
+            aria-hidden="true"
+            className={cn(
+              "ml-2 size-4 shrink-0 text-muted-foreground transition-transform duration-200",
+              open && "rotate-180",
+            )}
+          />
+        </button>
       </PopoverTrigger>
 
-      <PopoverContent className="w-[350px] p-0" align="start">
+      <PopoverContent
+        align="start"
+        className="w-[var(--radix-popover-trigger-width)] max-w-[calc(100vw-2rem)] rounded-xl p-1"
+      >
         <Command shouldFilter>
           <CommandInput placeholder={searchPlaceholder} />
 
