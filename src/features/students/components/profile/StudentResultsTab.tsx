@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Award, BookOpenCheck, Loader2 } from "lucide-react";
+import Link from "next/link";
+import { Award, BookOpenCheck, FileText, Loader2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Select,
@@ -12,6 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useSchool } from "@/contexts/school-context";
 
 type Props = { studentId: string };
 
@@ -52,6 +55,7 @@ function statusVariant(status: string) {
 }
 
 export function StudentResultsTab({ studentId }: Props) {
+  const { school } = useSchool();
   const [data, setData] = useState<ResultsResponse | null>(null);
   const [selectedExamId, setSelectedExamId] = useState("");
   const [loading, setLoading] = useState(true);
@@ -107,14 +111,21 @@ export function StudentResultsTab({ studentId }: Props) {
             <p className="text-sm font-semibold">Exam Results</p>
             <p className="mt-1 text-sm text-muted-foreground">Select an exam to view this student&apos;s subject-wise marks and overall result.</p>
           </div>
-          <div className="w-full sm:w-80">
-            <p className="mb-2 text-xs font-medium text-muted-foreground">Exam</p>
-            <Select value={selectedExamId || data.selectedExamId || undefined} onValueChange={setSelectedExamId}>
-              <SelectTrigger><SelectValue placeholder="Select exam" /></SelectTrigger>
-              <SelectContent>
-                {data.exams.map((exam) => <SelectItem key={exam.id} value={exam.id}>{exam.name} · {exam.academicYear.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
+          <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-end">
+            <div className="w-full sm:w-80">
+              <p className="mb-2 text-xs font-medium text-muted-foreground">Exam</p>
+              <Select value={selectedExamId || data.selectedExamId || undefined} onValueChange={setSelectedExamId}>
+                <SelectTrigger><SelectValue placeholder="Select exam" /></SelectTrigger>
+                <SelectContent>
+                  {data.exams.map((exam) => <SelectItem key={exam.id} value={exam.id}>{exam.name} · {exam.academicYear.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button asChild>
+              <Link href={`/${school.slug}/students/${studentId}/academic-performance`}>
+                <FileText className="size-4" />Year report card
+              </Link>
+            </Button>
           </div>
         </CardContent>
       </Card>
