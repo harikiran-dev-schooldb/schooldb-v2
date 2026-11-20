@@ -222,6 +222,45 @@
   }
 }
 
+/* Consistent dropdown affordance for legacy native <select> controls.
+   Tailwind utility classes retain control of custom widths/heights/layouts. */
+@layer base {
+  select:not([multiple]):not([size]) {
+    -webkit-appearance: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-position: right 0.75rem center;
+    background-repeat: no-repeat;
+    background-size: 1rem;
+    padding-right: 2.5rem;
+    border: 1px solid var(--input);
+    border-radius: 0.75rem;
+    background-color: var(--card);
+    color: var(--foreground);
+    box-shadow: 0 1px 2px rgb(15 23 42 / 0.04);
+    transition: border-color 200ms, box-shadow 200ms;
+  }
+
+  .dark select:not([multiple]):not([size]) {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23cbd5e1' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  }
+
+  select:not([multiple]):not([size]):not(:disabled):hover {
+    border-color: color-mix(in oklab, var(--primary) 25%, var(--input));
+  }
+
+  select:not([multiple]):not([size]):focus-visible {
+    outline: none;
+    border-color: color-mix(in oklab, var(--primary) 50%, var(--input));
+    box-shadow: 0 0 0 4px color-mix(in oklab, var(--primary) 10%, transparent);
+  }
+
+  select:not([multiple]):not([size]):disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+}
+
 ::selection {
   background: color-mix(in oklab, var(--primary) 18%, transparent);
   color: var(--foreground);
