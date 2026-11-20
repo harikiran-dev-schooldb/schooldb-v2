@@ -132,7 +132,9 @@ export function isRouteAllowed(config: RouteAccessConfig, href?: string) {
     );
   }
 
-  return config.allowedRoutes.includes(href);
+  if (config.allowedRoutes.includes(href)) return true;
+  const parentRoute = resolveConfiguredRoute(href);
+  return Boolean(parentRoute && parentRoute !== href && config.allowedRoutes.includes(parentRoute));
 }
 
 const knownRoutes = [

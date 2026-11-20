@@ -49,6 +49,9 @@ export function isTeacherRouteAllowed(
   href?: string,
 ) {
   if (!href) return true;
+  if (href === "exams/subject-performance" || href.startsWith("exams/subject-performance/")) {
+    return hasTeacherAccess(access, "RESULTS");
+  }
   if (href === "student-follow-ups" || href.startsWith("student-follow-ups/")) {
     return hasTeacherAccess(access, "RESULTS") || hasTeacherAccess(access, "ATTENDANCE");
   }

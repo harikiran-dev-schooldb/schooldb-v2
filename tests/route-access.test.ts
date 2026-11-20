@@ -121,3 +121,14 @@ test("presentation mode is an independently configurable school route", () => {
     false,
   );
 });
+
+test("nested exam reports inherit the exams route entitlement", () => {
+  assert.equal(isRouteAllowed({
+    routeAccessRestricted: true,
+    allowedRoutes: ["exams"],
+  }, "exams/subject-performance"), true);
+  assert.equal(isRouteAllowed({
+    routeAccessRestricted: true,
+    allowedRoutes: [],
+  }, "exams/subject-performance"), false);
+});
