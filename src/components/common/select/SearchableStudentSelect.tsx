@@ -2,11 +2,11 @@
 
 import { useEffect, useId, useMemo, useState } from "react";
 
-import { Check, ChevronsUpDown, Search } from "lucide-react";
+import { Check, ChevronDown, Search } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
-import { Button } from "@/components/ui/button";
+import { selectTriggerClasses } from "@/components/ui/select-styles";
 import {
   Command,
   CommandEmpty,
@@ -263,15 +263,15 @@ export function SearchableStudentSelect({
       </div>
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
-          <Button
+          <button
             id={id ?? `student-picker-${generatedId}`}
             type="button"
-            variant="outline"
             role="combobox"
             aria-label="Student"
             aria-expanded={open}
+            aria-haspopup="listbox"
             disabled={isDisabled}
-            className="h-10 w-full justify-between font-normal"
+            className={cn(selectTriggerClasses, "h-10 cursor-pointer text-left")}
           >
             <span className="flex min-w-0 items-center gap-2 truncate">
               <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
@@ -285,13 +285,19 @@ export function SearchableStudentSelect({
               </span>
             </span>
 
-            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-          </Button>
+            <ChevronDown
+              aria-hidden="true"
+              className={cn(
+                "ml-2 size-4 shrink-0 text-muted-foreground transition-transform duration-200",
+                open && "rotate-180",
+              )}
+            />
+          </button>
         </PopoverTrigger>
 
         <PopoverContent
           align="start"
-          className="w-[--radix-popover-trigger-width] p-0"
+          className="w-[var(--radix-popover-trigger-width)] max-w-[calc(100vw-2rem)] rounded-xl p-1"
         >
           <Command
             filter={(value, search) => {
