@@ -73,6 +73,20 @@ internal data class StudentParent(val name: String, val relationship: String, va
 internal data class StudentResult(
     val id: String, val exam: String, val subject: String, val obtained: Double?, val maximum: Double, val status: String,
 )
+internal data class AdminYearlySubject(
+    val id: String, val name: String, val percentage: Double?, val grade: String, val status: String,
+)
+internal data class AdminYearlyPerformance(
+    val academicYear: String,
+    val obtained: Double,
+    val maximum: Double,
+    val percentage: Double?,
+    val grade: String,
+    val status: String,
+    val attendancePercentage: Double?,
+    val observation: String,
+    val subjects: List<AdminYearlySubject>,
+)
 internal data class AdminStudent(
     val name: String,
     val admissionNo: String,
@@ -102,6 +116,7 @@ internal data class AdminStudent(
     val feeOutstanding: Double,
     val pendingInstallments: Int,
     val results: List<StudentResult>,
+    val yearlyPerformance: AdminYearlyPerformance?,
 )
 internal data class AdminStudentState(
     val student: AdminStudent? = null,
@@ -134,6 +149,7 @@ internal class AdminStudentViewModel : ViewModel() {
                 val fees = data.getJSONObject("fees")
                 val parentRows = data.getJSONArray("parents")
                 val resultRows = data.getJSONArray("recentResults")
+                val yearly = data.optJSONObject("yearlyPerformance")
                 val address = listOf(
                     profile.clean("address"), profile.clean("city"), profile.clean("state"), profile.clean("pincode"),
                 ).filter(String::isNotBlank).joinToString(", ")
@@ -180,6 +196,31 @@ internal class AdminStudentViewModel : ViewModel() {
                                     maximum = row.optDouble("maximum"), status = row.clean("status"),
                                 )
                             }
+                        },
+                        yearlyPerformance = yearly?.let { report ->
+                            val summary = report.getJSONObject("summary")
+                            val subjectRows = report.optJSONArray("subjects") ?: org.json.JSONArray()
+                            AdminYearlyPerformance(
+                                academicYear = report.clean("academicYearName"),
+                                obtained = summary.optDouble("obtained"),
+                                maximum = summary.optDouble("maximum"),
+                                percentage = if (summary.isNull("percentage")) null else summary.optDouble("percentage"),
+                                grade = summary.optString("grade", "—"),
+                                status = summary.optString("status", "PENDING"),
+                                attendancePercentage = if (report.isNull("attendancePercentage")) null else report.optDouble("attendancePercentage"),
+                                observation = report.clean("observation"),
+                                subjects = (0 until subjectRows.length()).map { subjectIndex ->
+                                    subjectRows.getJSONObject(subjectIndex).let { subject ->
+                                        AdminYearlySubject(
+                                            id = subject.getString("id"),
+                                            name = subject.clean("name"),
+                                            percentage = if (subject.isNull("percentage")) null else subject.optDouble("percentage"),
+                                            grade = subject.optString("grade", "—"),
+                                            status = subject.optString("status", "PENDING"),
+                                        )
+                                    }
+                                },
+                            )
                         },
                     ),
                     loading = false,
@@ -357,6 +398,9 @@ private fun StudentProfileContent(student: AdminStudent) {
                 }
             }
             AdminStudentTab.RESULTS -> {
+                student.yearlyPerformance?.let { report ->
+                    item { AdminYearlyPerformanceCard(report) }
+                }
                 if (student.results.isEmpty()) item { EmptyStudentCard("No exam results have been entered.") }
                 items(student.results, key = { it.id }) { result ->
                     Surface(color = Color.White, shape = RoundedCornerShape(20.dp), shadowElevation = 1.dp,
@@ -372,6 +416,50 @@ private fun StudentProfileContent(student: AdminStudent) {
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AdminYearlyPerformanceCard(report: AdminYearlyPerformance) {
+    Surface(
+        color = Color(0xFFF5F3FF),
+        shape = RoundedCornerShape(22.dp),
+        border = BorderStroke(1.dp, Color(0xFFDDD6FE)),
+    ) {
+        Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Surface(shape = RoundedCornerShape(14.dp), color = AdminWebIndigo) {
+                    Text(report.grade, Modifier.padding(horizontal = 13.dp, vertical = 10.dp), color = Color.White, fontWeight = FontWeight.ExtraBold)
+                }
+                Column(Modifier.weight(1f).padding(start = 12.dp)) {
+                    Text("Yearly academic performance", fontWeight = FontWeight.Bold, color = AdminWebNavy)
+                    Text(report.academicYear, style = MaterialTheme.typography.bodySmall, color = AdminWebSlate)
+                }
+                Text(report.status, color = if (report.status == "PASS") Color(0xFF059669) else Color(0xFFDC2626), fontWeight = FontWeight.Bold)
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text("Annual average", color = AdminWebSlate)
+                Text(report.percentage?.let { "${it.asMarks()}%" } ?: "—", fontWeight = FontWeight.ExtraBold, color = AdminWebNavy)
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text("Aggregate", color = AdminWebSlate)
+                Text("${report.obtained.asMarks()} / ${report.maximum.asMarks()}", fontWeight = FontWeight.Bold)
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text("Attendance", color = AdminWebSlate)
+                Text(report.attendancePercentage?.let { "${it.asMarks()}%" } ?: "—", fontWeight = FontWeight.Bold)
+            }
+            report.subjects.forEach { subject ->
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text(subject.name, Modifier.weight(1f), fontWeight = FontWeight.SemiBold)
+                    Text(subject.percentage?.let { "${it.asMarks()}%" } ?: subject.grade, fontWeight = FontWeight.Bold)
+                    Text(subject.status, Modifier.padding(start = 10.dp), color = if (subject.status == "PASS") Color(0xFF059669) else Color(0xFFDC2626), fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+            if (report.observation.isNotBlank()) {
+                Text(report.observation, color = AdminWebSlate, style = MaterialTheme.typography.bodySmall)
             }
         }
     }

@@ -3,6 +3,7 @@ import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ApiResponse } from "@/lib/response";
 import { hasModuleAccess } from "@/lib/staff-permissions";
+import { getStudentYearlyPerformance } from "@/features/exams/services/student-yearly-performance.service";
 
 export async function GET(
   _request: Request,
@@ -71,7 +72,7 @@ export async function GET(
     if (!student) return ApiResponse.error("Student not found.", 404);
     const enrollment = student.enrollments[0] ?? null;
 
-    const [attendance, installments, marks] = enrollment
+    const [attendance, installments, marks, yearlyPerformance] = enrollment
       ? await Promise.all([
           prisma.attendance.groupBy({
             by: ["status"],
@@ -112,8 +113,13 @@ export async function GET(
               },
             },
           }),
+          getStudentYearlyPerformance(
+            membership.schoolId,
+            studentId,
+            enrollment.academicYearId,
+          ),
         ])
-      : [[], [], []];
+      : [[], [], [], null];
 
     const attendanceCounts = Object.fromEntries(
       attendance.map((item) => [item.status.toLowerCase(), item._count._all]),
@@ -186,6 +192,18 @@ export async function GET(
         passMarks: mark.examSchedule.passMarks === null ? null : Number(mark.examSchedule.passMarks),
         status: mark.status,
       })),
+      yearlyPerformance: yearlyPerformance?.enrollment && yearlyPerformance.summary
+        ? {
+            academicYearId: yearlyPerformance.enrollment.academicYearId,
+            academicYearName: yearlyPerformance.enrollment.academicYear.name,
+            summary: yearlyPerformance.summary,
+            attendancePercentage:
+              yearlyPerformance.attendance?.attendancePercentage ?? null,
+            observation: yearlyPerformance.observation,
+            exams: yearlyPerformance.exams,
+            subjects: yearlyPerformance.subjects,
+          }
+        : null,
     });
   });
 }

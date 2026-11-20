@@ -267,6 +267,65 @@ class FamilyRepository(
             }
         }
 
+        val yearlyPerformance = data.optJSONObject("yearlyPerformance")?.let { yearly ->
+            val summary = yearly.getJSONObject("summary")
+            val examsJson = yearly.optJSONArray("exams") ?: JSONArray()
+            val subjectsJson = yearly.optJSONArray("subjects") ?: JSONArray()
+            FamilyYearlyPerformance(
+                academicYearId = yearly.getString("academicYearId"),
+                academicYearName = yearly.optString("academicYearName", "Academic year"),
+                className = yearly.optString("className"),
+                sectionName = yearly.optString("sectionName"),
+                rollNo = if (yearly.isNull("rollNo")) null else yearly.optInt("rollNo"),
+                obtained = summary.optDouble("obtained"),
+                maximum = summary.optDouble("maximum"),
+                percentage = if (summary.isNull("percentage")) null else summary.optDouble("percentage"),
+                grade = summary.optString("grade", "—"),
+                status = summary.optString("status", "PENDING"),
+                passedSubjects = summary.optInt("passedSubjects"),
+                failedSubjects = summary.optInt("failedSubjects"),
+                attendancePercentage = if (yearly.isNull("attendancePercentage")) null else yearly.optDouble("attendancePercentage"),
+                observation = yearly.optString("observation"),
+                exams = buildList {
+                    repeat(examsJson.length()) { index ->
+                        val exam = examsJson.getJSONObject(index)
+                        add(FamilyYearlyExam(
+                            id = exam.getString("id"),
+                            name = exam.optString("name", "Exam"),
+                            percentage = if (exam.isNull("percentage")) null else exam.optDouble("percentage"),
+                            status = exam.optString("status", "PENDING"),
+                        ))
+                    }
+                },
+                subjects = buildList {
+                    repeat(subjectsJson.length()) { index ->
+                        val subject = subjectsJson.getJSONObject(index)
+                        val rows = subject.optJSONArray("results") ?: JSONArray()
+                        add(FamilyYearlySubject(
+                            id = subject.getString("id"),
+                            name = subject.optString("name", "Subject"),
+                            percentage = if (subject.isNull("percentage")) null else subject.optDouble("percentage"),
+                            grade = subject.optString("grade", "—"),
+                            status = subject.optString("status", "PENDING"),
+                            results = buildList {
+                                repeat(rows.length()) { rowIndex ->
+                                    val row = rows.getJSONObject(rowIndex)
+                                    add(FamilyYearlySubjectResult(
+                                        examId = row.getString("examId"),
+                                        assessmentType = row.optString("assessmentType", "MARKS"),
+                                        marksObtained = if (row.isNull("marksObtained")) null else row.optDouble("marksObtained"),
+                                        maxMarks = row.optDouble("maxMarks"),
+                                        grade = row.optionalText("grade"),
+                                        status = row.optString("status", "PENDING"),
+                                    ))
+                                }
+                            },
+                        ))
+                    }
+                },
+            )
+        }
+
         val timetableJson = data.optJSONArray("timetable") ?: JSONArray()
         val timetable = buildList {
             repeat(timetableJson.length()) { index ->
@@ -401,6 +460,7 @@ class FamilyRepository(
             homework = homework,
             fees = fees,
             results = results,
+            yearlyPerformance = yearlyPerformance,
             timetable = timetable,
             leaveRequests = leaveRequests,
             calendarEvents = calendarEvents,

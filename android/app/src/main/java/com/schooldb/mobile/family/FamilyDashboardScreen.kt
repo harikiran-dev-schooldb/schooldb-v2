@@ -387,7 +387,15 @@ fun FamilyDashboardScreen(
                     viewModel::verifyPayment, viewModel::clearPayment,
                     Modifier.padding(padding),
                 )
-                FamilyTab.RESULTS -> ResultsTab(dashboard, student, state, viewModel::selectStudent, viewModel::refreshDetails, Modifier.padding(padding))
+                FamilyTab.RESULTS -> ResultsTab(
+                    dashboard,
+                    student,
+                    state,
+                    viewModel::selectStudent,
+                    viewModel::selectAttendanceAcademicYear,
+                    viewModel::refreshDetails,
+                    Modifier.padding(padding),
+                )
                 FamilyTab.MORE -> if (moreScreen == "FEES") {
                     FeesTab(
                         dashboard, student, state, viewModel::selectStudent,
@@ -1057,6 +1065,7 @@ private fun ResultsTab(
     student: FamilyStudent,
     state: FamilyUiState,
     onSelect: (String) -> Unit,
+    onAcademicYear: (String) -> Unit,
     onRefresh: () -> Unit,
     modifier: Modifier,
 ) {
@@ -1067,6 +1076,21 @@ private fun ResultsTab(
         if (details.results.isEmpty()) item { StudentEmptyState(Icons.Default.EmojiEvents, "Results are on the way", "Completed examination results will appear here.") }
         else {
             item {
+                if (details.attendanceAcademicYears.size > 1) {
+                    LazyRow(
+                        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        items(details.attendanceAcademicYears, key = { it.id }) { year ->
+                            FilterChip(
+                                selected = details.selectedAttendanceAcademicYearId == year.id,
+                                onClick = { onAcademicYear(year.id) },
+                                label = { Text(year.name) },
+                            )
+                        }
+                    }
+                }
+                details.yearlyPerformance?.let { YearlyPerformanceCard(it, student.fullName) }
                 StudentResultsSummary(details.results)
                 LazyRow(contentPadding = PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     item {
@@ -1078,6 +1102,119 @@ private fun ResultsTab(
                 }
             }
             items(visible, key = { it.id }) { ResultCard(it, student.fullName) }
+        }
+    }
+}
+
+@Composable
+private fun YearlyPerformanceCard(item: FamilyYearlyPerformance, studentName: String) {
+    val context = LocalContext.current
+    val saveReport = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/pdf"),
+    ) { uri ->
+        if (uri != null) {
+            val saved = writeYearlyPerformancePdf(context, uri, studentName, item)
+            Toast.makeText(context, if (saved) "Year report saved" else "Could not save year report", Toast.LENGTH_SHORT).show()
+        }
+    }
+    Card(
+        Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = FamilyIndigo.copy(alpha = .07f)),
+        border = BorderStroke(1.dp, FamilyIndigo.copy(alpha = .2f)),
+    ) {
+        Column(Modifier.fillMaxWidth().padding(18.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    Modifier.size(48.dp).background(FamilyIndigo, RoundedCornerShape(15.dp)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(item.grade, color = Color.White, fontWeight = FontWeight.ExtraBold, fontSize = 16.sp)
+                }
+                Column(Modifier.weight(1f).padding(start = 13.dp)) {
+                    Text("Yearly academic performance", fontWeight = FontWeight.Bold, fontSize = 17.sp)
+                    Text("${item.academicYearName} · ${item.className} ${item.sectionName}", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+                }
+                StatusText(item.status)
+            }
+            Row(
+                Modifier.fillMaxWidth().padding(top = 17.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                StudentMetricCard(
+                    "Annual average",
+                    item.percentage?.let { "${number(it)}%" } ?: "—",
+                    "${number(item.obtained)} / ${number(item.maximum)}",
+                    Icons.Default.EmojiEvents,
+                    FamilyIndigo,
+                    Modifier.weight(1f),
+                )
+                StudentMetricCard(
+                    "Attendance",
+                    item.attendancePercentage?.let { "${number(it)}%" } ?: "—",
+                    "${item.passedSubjects} subjects passed",
+                    Icons.Outlined.CalendarMonth,
+                    FamilyGreen,
+                    Modifier.weight(1f),
+                )
+            }
+            if (item.subjects.isNotEmpty()) {
+                Text(
+                    "SUBJECT PERFORMANCE",
+                    Modifier.padding(top = 18.dp, bottom = 4.dp),
+                    color = FamilyIndigo,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 10.sp,
+                    letterSpacing = .7.sp,
+                )
+                item.subjects.forEach { subject ->
+                    Row(
+                        Modifier.fillMaxWidth().padding(vertical = 7.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text(subject.name, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                            Text(
+                                subject.results.joinToString(" · ") { result ->
+                                    val exam = item.exams.firstOrNull { it.id == result.examId }?.name ?: "Exam"
+                                    val value = when (result.status) {
+                                        "ABSENT" -> "AB"
+                                        "EXEMPTED" -> "EX"
+                                        "PENDING" -> "—"
+                                        else -> if (result.assessmentType == "GRADE") result.grade ?: "—"
+                                            else "${number(result.marksObtained ?: 0.0)}/${number(result.maxMarks)}"
+                                    }
+                                    "$exam $value"
+                                },
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontSize = 10.sp,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                        Column(horizontalAlignment = Alignment.End) {
+                            Text(subject.percentage?.let { "${number(it)}%" } ?: subject.grade, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                            Text(subject.status, color = statusColor(subject.status), fontWeight = FontWeight.SemiBold, fontSize = 9.sp)
+                        }
+                    }
+                }
+            }
+            if (item.observation.isNotBlank()) {
+                Text(
+                    item.observation,
+                    Modifier.fillMaxWidth().padding(top = 12.dp).background(FamilyAmber.copy(alpha = .09f), RoundedCornerShape(13.dp)).padding(13.dp),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = 12.sp,
+                    lineHeight = 18.sp,
+                )
+            }
+            TextButton(
+                onClick = { saveReport.launch("${studentName.replace(' ', '-')}-${item.academicYearName}-year-report.pdf") },
+                modifier = Modifier.align(Alignment.End).padding(top = 5.dp),
+            ) {
+                Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(16.dp))
+                Text("Save yearly report", Modifier.padding(start = 5.dp))
+            }
         }
     }
 }
@@ -2696,6 +2833,57 @@ private fun ResultCard(item: FamilyResult, studentName: String? = null) {
         }
     }
 }
+
+private fun writeYearlyPerformancePdf(
+    context: Context,
+    uri: Uri,
+    studentName: String,
+    report: FamilyYearlyPerformance,
+): Boolean = runCatching {
+    val document = PdfDocument()
+    val page = document.startPage(PdfDocument.PageInfo.Builder(595, 842, 1).create())
+    val canvas = page.canvas
+    val heading = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = android.graphics.Color.rgb(15, 23, 42)
+        textSize = 22f
+        typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+    }
+    val label = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = android.graphics.Color.rgb(100, 116, 139)
+        textSize = 10f
+    }
+    val value = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = android.graphics.Color.rgb(15, 23, 42)
+        textSize = 12f
+        typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+    }
+    canvas.drawText("YEARLY ACADEMIC PERFORMANCE", 42f, 52f, heading)
+    canvas.drawText(report.academicYearName, 42f, 76f, label)
+    canvas.drawText(studentName, 42f, 105f, value)
+    canvas.drawText("${report.className} ${report.sectionName}  ·  Roll ${report.rollNo ?: "—"}", 42f, 124f, label)
+    val average = report.percentage?.let { "${number(it)}%" } ?: "—"
+    canvas.drawText("Annual average $average  ·  Grade ${report.grade}  ·  ${report.status}", 42f, 154f, value)
+    canvas.drawText("Attendance ${report.attendancePercentage?.let { "${number(it)}%" } ?: "—"}", 42f, 174f, label)
+    canvas.drawLine(42f, 193f, 553f, 193f, label)
+    canvas.drawText("SUBJECT", 42f, 216f, label)
+    canvas.drawText("YEAR AVG.", 390f, 216f, label)
+    canvas.drawText("RESULT", 485f, 216f, label)
+    report.subjects.take(15).forEachIndexed { index, subject ->
+        val y = 247f + index * 32f
+        canvas.drawText(subject.name.take(43), 42f, y, value)
+        canvas.drawText(subject.percentage?.let { "${number(it)}%" } ?: subject.grade, 390f, y, value)
+        canvas.drawText(subject.status, 485f, y, label)
+    }
+    val observationY = (255f + report.subjects.take(15).size * 32f).coerceAtMost(748f)
+    canvas.drawLine(42f, observationY, 553f, observationY, label)
+    canvas.drawText("ACADEMIC OBSERVATION", 42f, observationY + 22f, label)
+    canvas.drawText(report.observation.take(82), 42f, observationY + 43f, value)
+    canvas.drawText("Generated securely by SchoolDB", 42f, 807f, label)
+    document.finishPage(page)
+    context.contentResolver.openOutputStream(uri)?.use(document::writeTo)
+        ?: error("Unable to open report destination")
+    document.close()
+}.isSuccess
 
 private fun writeResultPdf(
     context: Context,

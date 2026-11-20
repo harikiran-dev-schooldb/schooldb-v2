@@ -1,5 +1,6 @@
 import { attendanceService } from "@/features/attendance/services/attendance.service";
 import { studentExamService } from "@/features/exams/services/student-exam.service";
+import { getStudentYearlyPerformance } from "@/features/exams/services/student-yearly-performance.service";
 import { homeworkService } from "@/features/homework/services/homework.service";
 import { studentFeeLedgerService } from "@/features/student-fees/services/student-fee-ledger.service";
 import { studentFeeService } from "@/features/student-fees/services/student-fee.service";
@@ -73,6 +74,7 @@ export async function GET(
       transport,
       libraryLoans,
       documents,
+      yearlyPerformance,
     ] = await Promise.all([
       selectedAttendanceAcademicYear
         ? attendanceService.studentAttendanceReport(
@@ -211,6 +213,11 @@ export async function GET(
           createdAt: true,
         },
       }),
+      getStudentYearlyPerformance(
+        membership.schoolId,
+        studentId,
+        selectedAttendanceAcademicYear?.academicYearId,
+      ),
     ]);
 
     const ledgers = (
@@ -346,6 +353,21 @@ export async function GET(
           remarks: subject.remarks,
         })),
       })),
+      yearlyPerformance: yearlyPerformance?.enrollment && yearlyPerformance.summary
+        ? {
+            academicYearId: yearlyPerformance.enrollment.academicYearId,
+            academicYearName: yearlyPerformance.enrollment.academicYear.name,
+            className: yearlyPerformance.enrollment.class.name,
+            sectionName: yearlyPerformance.enrollment.section.name,
+            rollNo: yearlyPerformance.enrollment.rollNo,
+            summary: yearlyPerformance.summary,
+            attendancePercentage:
+              yearlyPerformance.attendance?.attendancePercentage ?? null,
+            observation: yearlyPerformance.observation,
+            exams: yearlyPerformance.exams,
+            subjects: yearlyPerformance.subjects,
+          }
+        : null,
       timetable: timetable
         .filter((entry) => entry.active && entry.teacherAllocation.active)
         .map((entry) => ({

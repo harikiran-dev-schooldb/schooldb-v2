@@ -140,6 +140,50 @@ data class FamilyResult(
     val subjects: List<FamilyResultSubject> = emptyList(),
 )
 
+data class FamilyYearlyExam(
+    val id: String,
+    val name: String,
+    val percentage: Double?,
+    val status: String,
+)
+
+data class FamilyYearlySubjectResult(
+    val examId: String,
+    val assessmentType: String,
+    val marksObtained: Double?,
+    val maxMarks: Double,
+    val grade: String?,
+    val status: String,
+)
+
+data class FamilyYearlySubject(
+    val id: String,
+    val name: String,
+    val percentage: Double?,
+    val grade: String,
+    val status: String,
+    val results: List<FamilyYearlySubjectResult>,
+)
+
+data class FamilyYearlyPerformance(
+    val academicYearId: String,
+    val academicYearName: String,
+    val className: String,
+    val sectionName: String,
+    val rollNo: Int?,
+    val obtained: Double,
+    val maximum: Double,
+    val percentage: Double?,
+    val grade: String,
+    val status: String,
+    val passedSubjects: Int,
+    val failedSubjects: Int,
+    val attendancePercentage: Double?,
+    val observation: String,
+    val exams: List<FamilyYearlyExam>,
+    val subjects: List<FamilyYearlySubject>,
+)
+
 data class FamilyTimetableEntry(
     val id: String,
     val day: String,
@@ -236,6 +280,7 @@ data class FamilyStudentDetails(
     val homework: List<FamilyHomeworkDetails>,
     val fees: FamilyFeeDetails,
     val results: List<FamilyResult>,
+    val yearlyPerformance: FamilyYearlyPerformance?,
     val timetable: List<FamilyTimetableEntry>,
     val leaveRequests: List<FamilyLeaveRequest>,
     val calendarEvents: List<FamilyCalendarEvent>,
