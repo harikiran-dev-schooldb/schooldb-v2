@@ -2,11 +2,10 @@
 
 import { cloneElement, FormEvent, isValidElement, ReactElement, ReactNode, useId, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Check, ChevronsUpDown } from "lucide-react";
+import { Check, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
   Command,
   CommandEmpty,
@@ -29,6 +28,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { selectTriggerClasses } from "@/components/ui/select-styles";
 
 export type TeacherOption = {
   id: string;
@@ -258,21 +258,24 @@ export function EntityCombobox({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button
+        <button
           type="button"
           id={id}
-          variant="outline"
           role="combobox"
           aria-expanded={open}
-          className="h-10 w-full justify-between font-normal"
+          aria-haspopup="listbox"
+          className={cn(selectTriggerClasses, "h-10 cursor-pointer text-left")}
         >
           <span className="truncate">{selected?.label ?? placeholder}</span>
-          <ChevronsUpDown className="size-4 opacity-50" />
-        </Button>
+          <ChevronDown
+            aria-hidden="true"
+            className={cn("size-4 shrink-0 text-muted-foreground transition-transform duration-200", open && "rotate-180")}
+          />
+        </button>
       </PopoverTrigger>
       <PopoverContent
         align="start"
-        className="w-[--radix-popover-trigger-width] p-0"
+        className="w-[var(--radix-popover-trigger-width)] max-w-[calc(100vw-2rem)] rounded-xl p-1"
       >
         <Command>
           <CommandInput placeholder={searchPlaceholder} />
