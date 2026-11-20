@@ -98,8 +98,11 @@ class AuthenticatedApiClient(
                 ApiResponseParser.parse(payload, status, connection.contentType)
                 throw ApiException("Unable to open this document.", status)
             }
+            if (connection.contentLengthLong > MAX_MOBILE_DOWNLOAD_BYTES) {
+                throw DownloadTooLargeException()
+            }
             DownloadedFile(
-                bytes = connection.inputStream.use { it.readBytes() },
+                bytes = connection.inputStream.use { it.readBytesWithLimit() },
                 contentType = connection.contentType?.substringBefore(';') ?: "application/octet-stream",
             )
         } finally {

@@ -44,21 +44,17 @@ export function parseStoredWebPushSubscription(value: unknown) {
 
 export function buildWebPushPayload(payload: SchoolWebPushPayload) {
   return JSON.stringify({
-    // Declarative Web Push is handled without service-worker code on newer
-    // Apple platforms and remains backwards compatible with existing workers.
-    web_push: 8030,
-    notification: {
+    // Keep delivery data-only so the service worker can reject stale messages
+    // after sign-out before anything becomes visible to the user.
+    data: {
+      ...payload.data,
       title: payload.title,
       body: payload.body,
-      navigate: payload.link,
+      link: payload.link,
       icon: payload.icon ?? "/pwa-192.png",
       badge: payload.badge ?? "/pwa-192.png",
       tag: payload.tag,
-      app_badge: payload.appBadge === undefined ? undefined : String(payload.appBadge),
-    },
-    data: {
-      ...payload.data,
-      link: payload.link,
+      appBadge: payload.appBadge === undefined ? undefined : String(payload.appBadge),
     },
   });
 }
@@ -78,7 +74,6 @@ export async function sendStandardWebPush(
       TTL: 24 * 60 * 60,
       urgency: payload.data?.priority === "URGENT" ? "high" : "normal",
       topic: payload.tag?.slice(0, 32),
-      headers: { "Content-Type": "application/notification+json" },
     },
   );
 }

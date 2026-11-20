@@ -33,6 +33,32 @@ function browserVapidKeyKey(schoolSlug: string) {
   return `schooldb:web-push-vapid:v1:${schoolSlug}`;
 }
 
+export async function setBrowserPushSession(
+  session: { schoolSlug: string; userId: string } | null,
+) {
+  if (!("serviceWorker" in navigator)) return;
+  const registration = await navigator.serviceWorker.getRegistration("/");
+  const message = {
+    type: "SCHOOLDB_PUSH_SESSION",
+    session: session
+      ? { active: true, schoolSlug: session.schoolSlug, userId: session.userId }
+      : { active: false },
+  };
+  const workers = new Set([
+    navigator.serviceWorker.controller,
+    registration?.active,
+    registration?.waiting,
+    registration?.installing,
+  ].filter((worker): worker is ServiceWorker => Boolean(worker)));
+  workers.forEach((worker) => worker.postMessage(message));
+
+  if (!session && registration) {
+    const notifications = await registration.getNotifications();
+    notifications.forEach((notification) => notification.close());
+    if ("clearAppBadge" in navigator) await navigator.clearAppBadge();
+  }
+}
+
 async function unsubscribeBrowserPush() {
   if (!("serviceWorker" in navigator)) return;
 
@@ -195,6 +221,10 @@ async function saveRegistration(schoolSlug: string, requestPermission: boolean) 
   if (isApplePlatform() && standardWebPushVapidKey) {
     localStorage.setItem(browserVapidKeyKey(schoolSlug), standardWebPushVapidKey);
   }
+  const userId = result.data?.userId;
+  if (typeof userId === "string" && userId) {
+    await setBrowserPushSession({ schoolSlug, userId });
+  }
   return true;
 }
 
@@ -203,6 +233,7 @@ export function enableBrowserPush(schoolSlug: string) {
 }
 
 export async function disableBrowserPush(schoolSlug: string) {
+  await setBrowserPushSession(null);
   const key = browserDeviceKey(schoolSlug);
   const installationId = localStorage.getItem(key);
   let serverDisabled = !installationId;

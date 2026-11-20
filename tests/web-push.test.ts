@@ -7,7 +7,7 @@ import {
   parseStoredWebPushSubscription,
 } from "../src/lib/web-push.ts";
 
-test("builds a declarative payload with a service-worker fallback", () => {
+test("builds a data-only payload so signed-out workers can reject it", () => {
   const payload = JSON.parse(buildWebPushPayload({
     title: "School closed",
     body: "Classes are closed tomorrow.",
@@ -17,9 +17,10 @@ test("builds a declarative payload with a service-worker fallback", () => {
     data: { announcementId: "announcement-1" },
   }));
 
-  assert.equal(payload.web_push, 8030);
-  assert.equal(payload.notification.navigate, "https://schooldb.co.in/demo/notifications/open");
-  assert.equal(payload.notification.app_badge, "3");
+  assert.equal(payload.web_push, undefined);
+  assert.equal(payload.notification, undefined);
+  assert.equal(payload.data.appBadge, "3");
+  assert.equal(payload.data.title, "School closed");
   assert.equal(payload.data.link, "https://schooldb.co.in/demo/notifications/open");
   assert.equal(payload.data.announcementId, "announcement-1");
 });

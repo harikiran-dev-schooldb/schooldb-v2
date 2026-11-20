@@ -12,7 +12,7 @@ import {
 import { mapWithConcurrency } from "./batch";
 import { notificationAudienceIncludesAdmins } from "./audience";
 import { notificationEnabled } from "./preferences";
-import { SCHOOLDB_PUSH_APP } from "./routing";
+import { schoolDbFirebaseMessage, SCHOOLDB_PUSH_APP } from "./routing";
 
 type PushAnnouncement = {
   id: string;
@@ -296,7 +296,7 @@ export async function sendAnnouncementPush(announcement: PushAnnouncement) {
               link,
               tag: `announcement-${announcement.id}`,
               appBadge: 1,
-              data,
+              data: { ...data, recipientUserId: device.userId },
             });
             return { status: "fulfilled" as const };
           } catch (reason) {
@@ -331,43 +331,9 @@ export async function sendAnnouncementPush(announcement: PushAnnouncement) {
     if (firebaseDevices.length && messaging) {
       for (let offset = 0; offset < firebaseDevices.length; offset += 500) {
         const chunk = firebaseDevices.slice(offset, offset + 500);
-        const messages: Message[] = chunk.map((device) => {
-          if (device.platform === "WEB" && device.fcmToken) {
-            return {
-              token: device.fcmToken,
-              notification: { title: announcement.title, body: notificationBody },
-              data,
-              webpush: {
-                notification: {
-                  icon: "/pwa-192.png",
-                  badge: "/pwa-192.png",
-                  tag: `announcement-${announcement.id}`,
-                },
-                fcmOptions: { link: data.link },
-              },
-            };
-          }
-          const urgent = announcement.priority === "URGENT";
-          return {
-            fid: device.installationId,
-            notification: {
-              title: announcement.title,
-              body: notificationBody,
-            },
-            data,
-            android: {
-              priority: urgent ? "high" : "normal",
-              collapseKey: `announcement-${announcement.id}`,
-              notification: {
-                channelId: urgent ? "school_urgent_v2" : "school_updates_v2",
-                icon: "ic_schooldb",
-                color: "#4F46E5",
-                tag: `announcement-${announcement.id}`,
-                priority: urgent ? "high" : "default",
-              },
-            },
-          };
-        });
+        const messages: Message[] = chunk.map((device) =>
+          schoolDbFirebaseMessage(device, data),
+        );
         const result = await messaging.sendEach(messages);
         sent += result.successCount;
         failed += result.failureCount;

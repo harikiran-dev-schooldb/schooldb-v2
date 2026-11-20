@@ -58,7 +58,10 @@ export async function POST(request: Request) {
       },
       select: { id: true },
     });
-    return ApiResponse.success(device, "Browser notifications enabled.");
+    return ApiResponse.success(
+      { ...device, userId: membership.userId },
+      "Browser notifications enabled.",
+    );
   });
 }
 

@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import androidx.core.content.FileProvider
 import com.schooldb.mobile.network.ApiException
+import com.schooldb.mobile.network.DownloadTooLargeException
 import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -42,5 +43,8 @@ internal suspend fun openFamilyDocument(
             onFailure = { "No app can open this document type." },
         )
 } catch (error: Exception) {
-    if (error is ApiException) error.message else "Unable to open this document."
+    when (error) {
+        is ApiException, is DownloadTooLargeException -> error.message
+        else -> "Unable to open this document."
+    }
 }

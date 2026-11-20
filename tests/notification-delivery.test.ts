@@ -5,6 +5,7 @@ import { notificationDedupeKey } from "../src/features/notifications/dedupe.ts";
 import { notificationAudienceIncludesAdmins } from "../src/features/notifications/audience.ts";
 import {
   SCHOOLDB_PUSH_APP,
+  schoolDbFirebaseMessage,
   supportNotificationPriority,
 } from "../src/features/notifications/routing.ts";
 
@@ -44,4 +45,33 @@ test("announcement and support pushes use separate app routing", () => {
   assert.equal(supportNotificationPriority("URGENT"), "URGENT");
   assert.equal(supportNotificationPriority("HIGH"), "NORMAL");
   assert.equal(supportNotificationPriority("normal"), "NORMAL");
+});
+
+test("main Android and Firebase web pushes are data-only and recipient scoped", () => {
+  const data = {
+    announcementId: "announcement-1",
+    schoolSlug: "school-a",
+    title: "Notice",
+    body: "Updated",
+    priority: "URGENT",
+    link: "/school-a/notifications/open",
+  };
+  const android = schoolDbFirebaseMessage({
+    installationId: "fid-1",
+    fcmToken: null,
+    platform: "ANDROID",
+    userId: "user-1",
+  }, data);
+  const web = schoolDbFirebaseMessage({
+    installationId: "web-1",
+    fcmToken: "token-1",
+    platform: "WEB",
+    userId: "user-1",
+  }, data);
+
+  assert.equal("notification" in android, false);
+  assert.equal("notification" in (android.android ?? {}), false);
+  assert.equal(android.data?.recipientUserId, "user-1");
+  assert.equal("notification" in web, false);
+  assert.equal(web.data?.recipientUserId, "user-1");
 });

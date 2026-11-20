@@ -22,6 +22,7 @@ import {
   isAppleMobile,
   isStandalonePwa,
   refreshBrowserPush,
+  setBrowserPushSession,
   type BrowserPushState,
 } from "@/lib/browser-push";
 import { isSchoolDbProductionHost } from "@/lib/production-domain";
@@ -128,6 +129,11 @@ export function PwaRegistration() {
       window.removeEventListener("appinstalled", handleInstalled);
     };
   }, []);
+
+  useEffect(() => {
+    if (!isLoaded || isSignedIn) return;
+    void setBrowserPushSession(null);
+  }, [isLoaded, isSignedIn]);
 
   useEffect(() => {
     if (!isSchoolDbProductionHost(window.location.hostname)) return;

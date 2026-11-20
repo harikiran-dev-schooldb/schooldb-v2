@@ -1,6 +1,8 @@
 package com.schooldb.support
 
 import com.schooldb.support.tickets.TicketStatus
+import com.schooldb.support.tickets.supportReplyDraftKey
+import com.schooldb.support.tickets.supportReplyOwnerKey
 import com.schooldb.support.tickets.supportTicketCacheKey
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -38,6 +40,15 @@ class SupportPoliciesTest {
         assertFalse(firstUser == supportTicketCacheKey("user-2", "school-a"))
         assertFalse(firstUser == supportTicketCacheKey("user-1", "school-b"))
         assertEquals(firstUser, supportTicketCacheKey(" USER-1 ", " SCHOOL-A "))
+    }
+
+    @Test
+    fun offlineReplyDraftsAreIsolatedByUserAndSchool() {
+        val firstUser = supportReplyDraftKey("user-1", "school-a", "ticket-1")
+        assertFalse(firstUser == supportReplyDraftKey("user-2", "school-a", "ticket-1"))
+        assertFalse(firstUser == supportReplyDraftKey("user-1", "school-b", "ticket-1"))
+        assertFalse(firstUser == supportReplyDraftKey("user-1", "school-a", "ticket-2"))
+        assertEquals("user-1:school-a", supportReplyOwnerKey(" USER-1 ", " SCHOOL-A "))
     }
 
     @Test

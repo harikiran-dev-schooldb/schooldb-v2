@@ -149,7 +149,7 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
     var switchingAccountId by remember(school) { mutableStateOf<String?>(null) }
     var accountSwitchInProgress by remember(school) { mutableStateOf(false) }
     var ticketDraft by remember(school) { mutableStateOf(TicketDraft()) }
-    val replyDrafts = remember(school) { mutableStateMapOf<String, String>() }
+    val replyDrafts = remember(school, cacheUserId) { mutableStateMapOf<String, String>() }
     var resendSeconds by remember { mutableIntStateOf(0) }
     var resumeVersion by remember { mutableIntStateOf(0) }
     var secureReentry by remember {
@@ -403,7 +403,9 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
 
     suspend fun loadDetail(id: String) {
         ticketViewModel.loadDetail(school, id)
-        replyDrafts[id] = replyOutbox.draft(school, id)
+        replyDrafts[id] = cacheUserId.takeIf(String::isNotBlank)
+            ?.let { replyOutbox.draft(it, school, id) }
+            .orEmpty()
         page = SupportPage.TICKET_DETAIL
     }
 
@@ -461,9 +463,11 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
         lastOverdueReminderCount = overdue
     }
 
-    LaunchedEffect(sessionReady, school, resumeVersion) {
-        if (!sessionReady || school.isBlank()) return@LaunchedEffect
-        replyOutbox.pending().filter { it.school == school }.forEach { pending ->
+    LaunchedEffect(sessionReady, school, cacheUserId, resumeVersion) {
+        if (!sessionReady || school.isBlank() || cacheUserId.isBlank()) return@LaunchedEffect
+        replyOutbox.pending()
+            .filter { it.school == school && it.userId == cacheUserId }
+            .forEach { pending ->
             try {
                 api.reply(school, pending.ticketId, pending.body, pending.isInternal)
                 replyOutbox.remove(pending.key)
@@ -1007,16 +1011,16 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
                     reply = replyDrafts[ticket.id].orEmpty(),
                     onReplyChange = {
                         replyDrafts[ticket.id] = it
-                        replyOutbox.setDraft(school, ticket.id, it)
+                        replyOutbox.setDraft(cacheUserId, school, ticket.id, it)
                     },
                     onReply = { body, isInternal -> run {
                         try {
                             api.reply(school, ticket.id, body, isInternal)
                             replyDrafts.remove(ticket.id)
-                            replyOutbox.setDraft(school, ticket.id, "")
+                            replyOutbox.setDraft(cacheUserId, school, ticket.id, "")
                             refreshTicketAfterMutation(ticket.id)
                         } catch (network: SupportNetworkException) {
-                            replyOutbox.enqueue(school, ticket.id, body, isInternal)
+                            replyOutbox.enqueue(cacheUserId, school, ticket.id, body, isInternal)
                             replyDrafts.remove(ticket.id)
                             notice = "No connection. Reply saved and will send automatically."
                         }
