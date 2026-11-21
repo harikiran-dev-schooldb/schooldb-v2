@@ -618,7 +618,7 @@ export default function DashboardPage() {
             size="sm"
             onClick={() => void loadDashboard()}
             disabled={loading || refreshing}
-            className="h-9 rounded-xl border-slate-200 bg-white px-3 shadow-sm hover:bg-slate-50"
+            className="h-9 rounded-xl border-border bg-card px-3 shadow-sm hover:bg-muted"
           >
             <RefreshCw
               className={refreshing ? "size-4 animate-spin" : "size-4"}
@@ -629,17 +629,17 @@ export default function DashboardPage() {
       />
 
       {error && (
-        <Card className="rounded-2xl border-red-200 bg-red-50/70 shadow-none">
+        <Card className="rounded-2xl border-red-200 bg-red-50/70 shadow-none dark:border-red-500/25 dark:bg-red-500/10">
           <CardContent className="flex items-center justify-between gap-4 p-4">
             <div className="flex items-center gap-3">
-              <div className="flex size-9 items-center justify-center rounded-xl bg-red-100">
-                <CircleAlert className="size-4 text-red-600" />
+              <div className="flex size-9 items-center justify-center rounded-xl bg-red-100 dark:bg-red-500/15">
+                <CircleAlert className="size-4 text-red-600 dark:text-red-400" />
               </div>
               <div>
-                <p className="font-semibold text-slate-900">
+                <p className="font-semibold text-foreground">
                   Dashboard data could not be loaded
                 </p>
-                <p className="text-sm text-slate-500">{error}</p>
+                <p className="text-sm text-muted-foreground">{error}</p>
               </div>
             </div>
             <Button
@@ -647,7 +647,7 @@ export default function DashboardPage() {
               variant="outline"
               onClick={() => void loadDashboard()}
               disabled={refreshing}
-              className="bg-white"
+              className="bg-card"
             >
               Try again
             </Button>
@@ -655,7 +655,7 @@ export default function DashboardPage() {
         </Card>
       )}
 
-      <section className="relative overflow-hidden rounded-3xl border border-indigo-100 bg-gradient-to-br from-white via-indigo-50/60 to-violet-50/60 px-4 py-4 shadow-[0_16px_45px_rgba(15,23,42,0.06)] sm:px-5 sm:py-5 md:px-7">
+      <section className="relative overflow-hidden rounded-3xl border border-indigo-100 bg-gradient-to-br from-white via-indigo-50/60 to-violet-50/60 px-4 py-4 shadow-[0_16px_45px_rgba(15,23,42,0.06)] sm:px-5 sm:py-5 md:px-7 dark:border-indigo-400/20 dark:from-indigo-500/10 dark:via-card dark:to-violet-500/10 dark:shadow-[0_18px_55px_rgba(0,0,0,0.22)]">
         <div className="pointer-events-none absolute -right-20 -top-24 size-72 rounded-full bg-violet-400/10 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-24 left-1/3 size-64 rounded-full bg-blue-400/10 blur-3xl" />
         <div className="pointer-events-none absolute right-1/4 top-1/2 size-40 -translate-y-1/2 rounded-full bg-indigo-400/5 blur-3xl" />
@@ -668,14 +668,14 @@ export default function DashboardPage() {
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <Sparkles className="size-3 text-indigo-500" />
-                <p className="text-[10px] font-bold tracking-[0.2em] text-indigo-600 uppercase">
+                <p className="text-[10px] font-bold tracking-[0.2em] text-indigo-600 uppercase dark:text-indigo-400">
                   School Operations
                 </p>
               </div>
-              <h2 className="mt-1.5 text-xl font-bold tracking-[-0.025em] text-slate-950 md:text-2xl">
+              <h2 className="mt-1.5 text-xl font-bold tracking-[-0.025em] text-foreground md:text-2xl">
                 Today at {school.name ?? "your school"}
               </h2>
-              <p className="mt-1.5 max-w-xl text-sm leading-5 text-slate-500">
+              <p className="mt-1.5 max-w-xl text-sm leading-5 text-muted-foreground">
                 A live view of attendance, students, staff and collections for {data.academicYear?.name ?? "the current academic year"}.
               </p>
             </div>
@@ -716,12 +716,12 @@ export default function DashboardPage() {
         className={`grid gap-5 ${canReadAttendance ? "lg:grid-cols-[1.35fr_0.85fr]" : ""}`}
       >
         {canReadAttendance && (
-          <Card className="premium-card overflow-hidden rounded-3xl border-0 bg-white">
-            <CardHeader className="border-b border-slate-200/70 bg-white px-4 py-3.5 sm:px-5 sm:py-4 md:px-6">
+          <Card className="premium-card overflow-hidden rounded-3xl border-0 bg-card">
+            <CardHeader className="border-b border-border/70 bg-card px-4 py-3.5 sm:px-5 sm:py-4 md:px-6">
               <div className="flex items-center justify-between gap-4">
                 <div>
-                  <p className="text-[10px] font-bold tracking-[0.18em] text-indigo-600 uppercase">Attendance Today</p>
-                  <CardTitle className="mt-1 text-lg text-slate-950">Daily attendance position</CardTitle>
+                  <p className="text-[10px] font-bold tracking-[0.18em] text-indigo-600 uppercase dark:text-indigo-400">Attendance Today</p>
+                  <CardTitle className="mt-1 text-lg text-card-foreground">Daily attendance position</CardTitle>
                 </div>
                 <Button asChild variant="ghost" size="sm">
                   <Link href={`/${school.slug}/attendance`}>Open attendance <ArrowRight className="size-4" /></Link>
@@ -730,15 +730,15 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent className="p-3.5 sm:p-4 md:p-5">
               <div className="grid gap-3 sm:grid-cols-[140px_1fr] sm:items-center md:grid-cols-[150px_1fr] md:gap-4">
-                <div className="rounded-2xl bg-indigo-50/60 px-4 py-4 text-center ring-1 ring-indigo-100/70">
-                  <p className="text-3xl font-black tracking-[-0.04em] text-slate-950">
+                <div className="rounded-2xl bg-indigo-50/60 px-4 py-4 text-center ring-1 ring-indigo-100/70 dark:bg-indigo-500/10 dark:ring-indigo-400/20">
+                  <p className="text-3xl font-black tracking-[-0.04em] text-foreground">
                     {loading ? "—" : `${attendance?.summary.attendancePercentage ?? 0}%`}
                   </p>
-                  <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400">Overall</p>
-                  <p className="mt-1 text-[9px] leading-3 text-slate-400">
+                  <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Overall</p>
+                  <p className="mt-1 text-[9px] leading-3 text-muted-foreground">
                     {attendance?.alerts.countingRule ?? "Present and late records count as attended"}
                   </p>
-                  <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-indigo-100">
+                  <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-indigo-100 dark:bg-indigo-400/15">
                     <div className="h-full rounded-full bg-indigo-600" style={{ width: `${Math.min(100, attendance?.summary.attendancePercentage ?? 0)}%` }} />
                   </div>
                 </div>
@@ -751,22 +751,22 @@ export default function DashboardPage() {
               </div>
 
               {attendance?.topClasses?.length ? (
-                <div className="mt-4 border-t border-slate-100 pt-3">
+                <div className="mt-4 border-t border-border/70 pt-3">
                   <div className="mb-2 flex items-center justify-between">
-                    <p className="text-[10px] font-bold tracking-[0.16em] text-slate-400 uppercase">Top 3 classes today</p>
-                    <p className="text-[11px] text-slate-400">Highest attendance</p>
+                    <p className="text-[10px] font-bold tracking-[0.16em] text-muted-foreground uppercase">Top 3 classes today</p>
+                    <p className="text-[11px] text-muted-foreground">Highest attendance</p>
                   </div>
                   <div className="grid gap-2 md:grid-cols-3">
                     {attendance.topClasses.map((item, index) => (
-                      <div key={item.classId} className="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50/50 px-3 py-2">
-                        <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-[11px] font-black text-indigo-600 ring-1 ring-indigo-100">
+                      <div key={item.classId} className="flex items-center gap-3 rounded-xl border border-border/70 bg-muted/35 px-3 py-2">
+                        <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-[11px] font-black text-indigo-600 ring-1 ring-indigo-100 dark:bg-indigo-500/15 dark:text-indigo-300 dark:ring-indigo-400/20">
                           {index + 1}
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-xs font-semibold text-slate-700">{item.className}</p>
-                          <p className="mt-0.5 text-[10px] text-slate-400">{item.present} of {item.totalStudents} present</p>
+                          <p className="truncate text-xs font-semibold text-foreground">{item.className}</p>
+                          <p className="mt-0.5 text-[10px] text-muted-foreground">{item.present} of {item.totalStudents} present</p>
                         </div>
-                        <span className="shrink-0 rounded-lg bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
+                        <span className="shrink-0 rounded-lg bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">
                           {item.attendancePercentage}%
                         </span>
                       </div>
@@ -778,54 +778,54 @@ export default function DashboardPage() {
           </Card>
         )}
 
-        <Card className="premium-card overflow-hidden rounded-3xl border-0 bg-white">
-          <CardHeader className="border-b border-slate-200/70 bg-white px-4 py-3.5 sm:px-5 sm:py-4 md:px-6">
-            <p className="text-[10px] font-bold tracking-[0.18em] text-amber-600 uppercase">Needs Attention</p>
+        <Card className="premium-card overflow-hidden rounded-3xl border-0 bg-card">
+          <CardHeader className="border-b border-border/70 bg-card px-4 py-3.5 sm:px-5 sm:py-4 md:px-6">
+            <p className="text-[10px] font-bold tracking-[0.18em] text-amber-600 uppercase dark:text-amber-400">Needs Attention</p>
             <div className="mt-1 flex items-center justify-between gap-3">
-              <CardTitle className="text-lg text-slate-950">Action center</CardTitle>
-              <span className="rounded-full bg-amber-50 px-2.5 py-1 text-[10px] font-bold text-amber-700">{actionItems.length} items</span>
+              <CardTitle className="text-lg text-card-foreground">Action center</CardTitle>
+              <span className="rounded-full bg-amber-50 px-2.5 py-1 text-[10px] font-bold text-amber-700 dark:bg-amber-500/15 dark:text-amber-300">{actionItems.length} items</span>
             </div>
           </CardHeader>
           <CardContent className="p-2.5">
             {actionItems.map((item) => (
-              <Link key={item.title} href={item.href} className="group flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors hover:bg-slate-50">
+              <Link key={item.title} href={item.href} className="group flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors hover:bg-muted/60">
                 <div className={`flex size-8 shrink-0 items-center justify-center rounded-lg ${
-                  item.tone === "danger" ? "bg-red-50 text-red-600" :
-                  item.tone === "warning" ? "bg-amber-50 text-amber-600" :
-                  item.tone === "success" ? "bg-emerald-50 text-emerald-600" :
-                  "bg-blue-50 text-blue-600"
+                  item.tone === "danger" ? "bg-red-50 text-red-600 dark:bg-red-500/15 dark:text-red-300" :
+                  item.tone === "warning" ? "bg-amber-50 text-amber-600 dark:bg-amber-500/15 dark:text-amber-300" :
+                  item.tone === "success" ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-300" :
+                  "bg-blue-50 text-blue-600 dark:bg-blue-500/15 dark:text-blue-300"
                 }`}>
                   {item.tone === "success" ? <CheckCircle2 className="size-3.5" /> : <CircleAlert className="size-3.5" />}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-xs font-semibold text-slate-800">{item.title}</p>
-                  <p className="mt-0.5 truncate text-[10px] text-slate-400">{item.description}</p>
+                  <p className="truncate text-xs font-semibold text-foreground">{item.title}</p>
+                  <p className="mt-0.5 truncate text-[10px] text-muted-foreground">{item.description}</p>
                 </div>
-                <ArrowRight className="size-3.5 shrink-0 text-slate-300 transition-transform group-hover:translate-x-0.5" />
+                <ArrowRight className="size-3.5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
               </Link>
             ))}
           </CardContent>
         </Card>
       </section>
 
-      <section className="premium-card overflow-hidden rounded-3xl border-0 bg-white">
+      <section className="premium-card overflow-hidden rounded-3xl border-0 bg-card">
         <div className="flex flex-col gap-3 px-4 py-3.5 sm:px-5 sm:py-4 md:flex-row md:items-center md:justify-between md:px-6">
           <div>
-            <p className="text-[10px] font-bold tracking-[0.18em] text-indigo-600 uppercase">Today&apos;s Operations</p>
-            <h3 className="mt-0.5 text-base font-bold text-slate-950">Move directly into the work</h3>
+            <p className="text-[10px] font-bold tracking-[0.18em] text-indigo-600 uppercase dark:text-indigo-400">Today&apos;s Operations</p>
+            <h3 className="mt-0.5 text-base font-bold text-foreground">Move directly into the work</h3>
           </div>
           <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
             {quickActions.map((action) => {
               const Icon = action.icon;
               return (
-                <Button key={action.label} asChild variant="outline" size="sm" className="h-8 w-full justify-start rounded-xl bg-white text-xs sm:w-auto">
+                <Button key={action.label} asChild variant="outline" size="sm" className="h-8 w-full justify-start rounded-xl bg-background text-xs sm:w-auto">
                   <Link href={action.href}><Icon className="size-3.5" />{action.label}</Link>
                 </Button>
               );
             })}
           </div>
         </div>
-        <div className={`grid border-t border-slate-100 divide-y divide-slate-100 sm:grid-cols-2 sm:divide-x sm:divide-y-0 ${canReadFees ? "lg:grid-cols-4" : "lg:grid-cols-3"}`}>
+        <div className={`grid divide-y divide-border/70 border-t border-border/70 sm:grid-cols-2 sm:divide-x sm:divide-y-0 ${canReadFees ? "lg:grid-cols-4" : "lg:grid-cols-3"}`}>
           <OperationMetric label="Attendance sessions" value={attendance ? attendance.recentSessions.length.toString() : "—"} hint={`${incompleteSessions} need marking`} />
           <OperationMetric label="Low attendance" value={data.lowAttendanceCount.toLocaleString("en-IN")} hint={`Below ${attendance?.alerts.threshold ?? 75}%`} />
           {canReadFees && <OperationMetric label="Outstanding items" value={data.outstandingCount.toLocaleString("en-IN")} hint={formatCurrency(totalOutstanding)} />}
@@ -835,12 +835,12 @@ export default function DashboardPage() {
 
       {canReadFees && (
         <section className="grid gap-4 sm:gap-5 lg:grid-cols-[0.8fr_1.2fr]">
-          <Card className="premium-card overflow-hidden rounded-3xl border-0 bg-white">
+          <Card className="premium-card overflow-hidden rounded-3xl border-0 bg-card">
             <CardHeader className="px-4 py-4 sm:px-5 md:px-6">
-              <p className="text-[11px] font-bold tracking-[0.16em] text-indigo-600 uppercase">
+              <p className="text-[11px] font-bold tracking-[0.16em] text-indigo-600 uppercase dark:text-indigo-400">
                 Fee position
               </p>
-              <CardTitle className="mt-1.5 text-xl text-slate-950">
+              <CardTitle className="mt-1.5 text-xl text-card-foreground">
                 Collections
               </CardTitle>
             </CardHeader>
@@ -875,13 +875,13 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
 
-          <Card className="premium-card overflow-hidden rounded-3xl border-0 bg-white">
+          <Card className="premium-card overflow-hidden rounded-3xl border-0 bg-card">
             <CardHeader className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5 md:px-6">
               <div>
-                <p className="text-[11px] font-bold tracking-[0.16em] text-slate-500 uppercase">
+                <p className="text-[11px] font-bold tracking-[0.16em] text-muted-foreground uppercase">
                   Recent activity
                 </p>
-                <CardTitle className="mt-1.5 text-xl text-slate-950">
+                <CardTitle className="mt-1.5 text-xl text-card-foreground">
                   Latest fee receipts
                 </CardTitle>
               </div>
@@ -893,26 +893,26 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent className="px-5 pb-5">
               {fees?.recentPayments?.length ? (
-                <div className="divide-y divide-slate-100">
+                <div className="divide-y divide-border/70">
                   {fees.recentPayments.slice(0, 5).map((payment) => (
                     <div
                       key={payment.id}
                       className="flex items-center gap-4 py-3"
                     >
-                      <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
+                      <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">
                         <IndianRupee className="size-4" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-semibold text-slate-800">
+                        <p className="truncate text-sm font-semibold text-foreground">
                           {payment.studentEnrollment.student.fullName}
                         </p>
-                        <p className="mt-0.5 text-xs text-slate-400">
+                        <p className="mt-0.5 text-xs text-muted-foreground">
                           {payment.studentEnrollment.class.name} -{" "}
                           {payment.studentEnrollment.section.name} ·{" "}
                           {formatDate(payment.paymentDate)}
                         </p>
                       </div>
-                      <p className="text-sm font-bold text-slate-900">
+                      <p className="text-sm font-bold text-foreground">
                         {formatCurrency(payment.amount)}
                       </p>
                     </div>
@@ -930,7 +930,7 @@ export default function DashboardPage() {
         (data.birthdays.length > 0 || data.houses.length > 0) && (
           <section className="grid gap-6 lg:grid-cols-2">
             {data.birthdays.length > 0 && (
-              <Card className="premium-card overflow-hidden rounded-3xl border-0 bg-white">
+              <Card className="premium-card overflow-hidden rounded-3xl border-0 bg-card">
                 <CardHeader className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5 md:px-6">
                   <div>
                     <p className="text-[11px] font-bold tracking-[0.16em] text-violet-600 uppercase">
@@ -945,16 +945,16 @@ export default function DashboardPage() {
                     <Link
                       key={student.id}
                       href={`/${school.slug}/students/${student.id}`}
-                      className="flex items-center gap-3 rounded-xl p-2 hover:bg-slate-50"
+                      className="flex items-center gap-3 rounded-xl p-2 hover:bg-muted/60"
                     >
-                      <div className="flex size-9 items-center justify-center rounded-xl bg-violet-50 font-bold text-violet-600">
+                      <div className="flex size-9 items-center justify-center rounded-xl bg-violet-50 font-bold text-violet-600 dark:bg-violet-500/15 dark:text-violet-300">
                         {student.fullName?.charAt(0) || "S"}
                       </div>
                       <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold text-slate-800">
+                        <p className="truncate text-sm font-semibold text-foreground">
                           {student.fullName || "Unnamed Student"}
                         </p>
-                        <p className="text-xs text-slate-400">
+                        <p className="text-xs text-muted-foreground">
                           {student.admissionNo}
                         </p>
                       </div>
@@ -964,9 +964,9 @@ export default function DashboardPage() {
               </Card>
             )}
             {data.houses.length > 0 && (
-              <Card className="premium-card overflow-hidden rounded-3xl border-0 bg-white">
+              <Card className="premium-card overflow-hidden rounded-3xl border-0 bg-card">
                 <CardHeader className="px-4 py-4 sm:px-5 md:px-6">
-                  <p className="text-[11px] font-bold tracking-[0.16em] text-indigo-600 uppercase">
+                  <p className="text-[11px] font-bold tracking-[0.16em] text-indigo-600 uppercase dark:text-indigo-400">
                     Student houses
                   </p>
                   <CardTitle className="mt-1 text-lg">House strength</CardTitle>
@@ -976,12 +976,12 @@ export default function DashboardPage() {
                     <Link
                       key={house.id}
                       href={`/${school.slug}/student-houses?houseId=${encodeURIComponent(house.id)}`}
-                      className="rounded-2xl border border-slate-100 p-4 hover:bg-slate-50"
+                      className="rounded-2xl border border-border/70 p-4 hover:bg-muted/60"
                     >
-                      <p className="text-sm font-semibold text-slate-700">
+                      <p className="text-sm font-semibold text-foreground">
                         {house.name}
                       </p>
-                      <p className="mt-1 text-2xl font-black text-slate-950">
+                      <p className="mt-1 text-2xl font-black text-foreground">
                         {house._count.students.toLocaleString("en-IN")}
                       </p>
                     </Link>
@@ -997,14 +997,14 @@ export default function DashboardPage() {
 
 function HeroMetric({ icon: Icon, label, value, detail }: { icon: typeof GraduationCap; label: string; value: string; detail: string }) {
   return (
-    <div className="flex min-w-0 items-center gap-3 rounded-2xl border border-indigo-100 bg-white/85 px-3 py-2.5 sm:min-w-[160px] sm:px-4 sm:py-3 shadow-[0_10px_30px_rgba(79,70,229,0.06)] backdrop-blur-xl">
-      <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 ring-1 ring-indigo-100">
+    <div className="flex min-w-0 items-center gap-3 rounded-2xl border border-indigo-100 bg-white/85 px-3 py-2.5 shadow-[0_10px_30px_rgba(79,70,229,0.06)] backdrop-blur-xl sm:min-w-[160px] sm:px-4 sm:py-3 dark:border-indigo-400/20 dark:bg-background/75 dark:shadow-[0_12px_35px_rgba(0,0,0,0.18)]">
+      <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 ring-1 ring-indigo-100 dark:bg-indigo-500/15 dark:text-indigo-300 dark:ring-indigo-400/20">
         <Icon className="size-4" strokeWidth={2} />
       </div>
       <div className="min-w-0">
-        <p className="text-[10px] font-bold tracking-[0.14em] text-slate-400 uppercase">{label}</p>
-        <p className="mt-0.5 truncate text-base font-bold tracking-tight text-slate-900">{value}</p>
-        <p className="mt-0.5 truncate text-[10px] text-slate-400">{detail}</p>
+        <p className="text-[10px] font-bold tracking-[0.14em] text-muted-foreground uppercase">{label}</p>
+        <p className="mt-0.5 truncate text-base font-bold tracking-tight text-foreground">{value}</p>
+        <p className="mt-0.5 truncate text-[10px] text-muted-foreground">{detail}</p>
       </div>
     </div>
   );
@@ -1013,8 +1013,8 @@ function HeroMetric({ icon: Icon, label, value, detail }: { icon: typeof Graduat
 function AttendanceCount({ label, value }: { label: string; value: number }) {
   return (
     <div>
-      <p className="text-xs font-medium text-slate-400">{label}</p>
-      <p className="mt-1 text-2xl font-bold text-slate-900">
+      <p className="text-xs font-medium text-muted-foreground">{label}</p>
+      <p className="mt-1 text-2xl font-bold text-foreground">
         {value.toLocaleString("en-IN")}
       </p>
     </div>
@@ -1032,9 +1032,9 @@ function OperationMetric({
 }) {
   return (
     <div className="px-4 py-4 sm:px-5 md:px-6">
-      <p className="text-xs font-medium text-slate-400">{label}</p>
-      <p className="mt-1 text-xl font-bold text-slate-900">{value}</p>
-      <p className="mt-1 text-xs text-slate-400">{hint}</p>
+      <p className="text-xs font-medium text-muted-foreground">{label}</p>
+      <p className="mt-1 text-xl font-bold text-foreground">{value}</p>
+      <p className="mt-1 text-xs text-muted-foreground">{hint}</p>
     </div>
   );
 }
@@ -1053,14 +1053,14 @@ function Metric({
   hint: string;
 }) {
   return (
-    <div className="rounded-2xl border border-slate-200/80 bg-slate-50/60 p-4 transition-colors hover:border-indigo-100 hover:bg-indigo-50/30">
-      <p className="text-xs font-medium text-slate-400">{label}</p>
+    <div className="rounded-2xl border border-border/80 bg-muted/35 p-4 transition-colors hover:border-indigo-200 hover:bg-indigo-50/30 dark:hover:border-indigo-400/20 dark:hover:bg-indigo-500/10">
+      <p className="text-xs font-medium text-muted-foreground">{label}</p>
 
-      <p className="mt-2 text-xl font-bold tracking-tight text-slate-900">
+      <p className="mt-2 text-xl font-bold tracking-tight text-foreground">
         {value}
       </p>
 
-      <p className="mt-1 text-[11px] text-slate-400">{hint}</p>
+      <p className="mt-1 text-[11px] text-muted-foreground">{hint}</p>
     </div>
   );
 }
@@ -1071,12 +1071,12 @@ function Metric({
 
 function EmptyState({ text }: { text: string }) {
   return (
-    <div className="flex min-h-40 flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-6 text-center">
-      <div className="flex size-10 items-center justify-center rounded-xl bg-white text-slate-400 shadow-sm ring-1 ring-slate-100">
+    <div className="flex min-h-40 flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/25 p-6 text-center">
+      <div className="flex size-10 items-center justify-center rounded-xl bg-card text-muted-foreground shadow-sm ring-1 ring-border/70">
         <Clock3 className="size-5" />
       </div>
 
-      <p className="mt-3 text-sm text-slate-500">{text}</p>
+      <p className="mt-3 text-sm text-muted-foreground">{text}</p>
     </div>
   );
 }
