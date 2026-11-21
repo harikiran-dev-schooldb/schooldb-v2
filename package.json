@@ -14,7 +14,7 @@
     "test": "node --experimental-strip-types --test tests/*.test.ts",
     "test:e2e": "playwright test",
     "test:e2e:auth": "node scripts/regenerate-e2e-auth.mjs",
-    "test:e2e:public": "playwright test --project=desktop-chromium --project=iphone-16-webkit --project=iphone-17-webkit --project=android-chromium",
+    "test:e2e:public": "E2E_SKIP_AUTH_REFRESH=true playwright test --project=desktop-chromium --project=iphone-16-webkit --project=iphone-17-webkit --project=android-chromium --project=tablet-chromium",
     "test:e2e:ui": "playwright test --ui",
     "validate": "prisma validate",
     "load:test": "node scripts/load-test.mjs",

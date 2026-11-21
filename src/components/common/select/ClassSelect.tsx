@@ -70,7 +70,7 @@ export function ClassSelect({
         onChange(nextValue === "ALL" ? "" : nextValue)
       }
     >
-      <SelectTrigger className={triggerClassName}>
+      <SelectTrigger aria-label="Class" className={triggerClassName}>
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
 

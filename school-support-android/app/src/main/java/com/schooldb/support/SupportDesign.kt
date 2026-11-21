@@ -2,6 +2,7 @@ package com.schooldb.support
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -42,7 +43,7 @@ internal val SchoolGreen = Color(0xFF008B83)
 internal val SchoolGold = SchoolBrand.accent
 internal val SchoolRed = SchoolBrand.danger
 
-private val SupportColors = lightColorScheme(
+private val SupportLightColors = lightColorScheme(
     primary = Indigo,
     onPrimary = Color.White,
     primaryContainer = Color(0xFFEEF2FF),
@@ -63,6 +64,29 @@ private val SupportColors = lightColorScheme(
     outline = Line,
     outlineVariant = Color(0xFFEDF0F4),
     error = Color(0xFFC33D47),
+)
+
+private val SupportDarkColors = darkColorScheme(
+    primary = Color(0xFFA9B4FF),
+    onPrimary = Color(0xFF17205F),
+    primaryContainer = Color(0xFF27336F),
+    secondary = Color(0xFFD4BBFF),
+    secondaryContainer = Color(0xFF4A2D78),
+    tertiary = Color(0xFF6EDBD1),
+    background = Color(0xFF070B14),
+    onBackground = Color(0xFFE7EBF5),
+    surface = Color(0xFF0D1420),
+    onSurface = Color(0xFFE7EBF5),
+    surfaceContainerLowest = Color(0xFF080D16),
+    surfaceContainerLow = Color(0xFF0D1420),
+    surfaceContainer = Color(0xFF121B29),
+    surfaceContainerHigh = Color(0xFF172231),
+    surfaceContainerHighest = Color(0xFF1D2939),
+    surfaceVariant = Color(0xFF172231),
+    onSurfaceVariant = Color(0xFFA8B4C7),
+    outline = Color(0xFF536078),
+    outlineVariant = Color(0xFF273349),
+    error = Color(0xFFFFB4AB),
 )
 
 private val SupportTypography = Typography(
@@ -88,9 +112,12 @@ private val SupportShapes = Shapes(
 )
 
 @Composable
-internal fun SupportTheme(content: @Composable () -> Unit) {
+internal fun SupportTheme(
+    darkTheme: Boolean = isSystemInDarkTheme(),
+    content: @Composable () -> Unit,
+) {
     MaterialTheme(
-        colorScheme = SupportColors,
+        colorScheme = if (darkTheme) SupportDarkColors else SupportLightColors,
         typography = SupportTypography,
         shapes = SupportShapes,
         content = content,
@@ -102,8 +129,8 @@ internal fun BrandMark(modifier: Modifier = Modifier) {
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(25.dp),
-        color = Color.White,
-        border = BorderStroke(1.dp, Line.copy(alpha = 0.85f)),
+        color = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         shadowElevation = 0.dp,
     ) {
         Image(
@@ -117,8 +144,8 @@ internal fun BrandMark(modifier: Modifier = Modifier) {
 
 @Composable
 internal fun SurfaceCard(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
-    Surface(modifier, shape = MaterialTheme.shapes.large, color = Color.White,
-        border = BorderStroke(1.dp, Line.copy(alpha = 0.82f)), shadowElevation = 2.dp) {
+    Surface(modifier, shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant), shadowElevation = 2.dp) {
         Column(Modifier.padding(20.dp), content = content)
     }
 }
@@ -126,8 +153,8 @@ internal fun SurfaceCard(modifier: Modifier = Modifier, content: @Composable Col
 @Composable
 internal fun SectionTitle(title: String, subtitle: String?, modifier: Modifier = Modifier) {
     Column(modifier, verticalArrangement = Arrangement.spacedBy(3.dp)) {
-        Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = Ink)
-        if (subtitle != null) Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = Muted)
+        Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+        if (subtitle != null) Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
@@ -200,9 +227,9 @@ internal fun SupportPageHeading(title: String, subtitle: String, eyebrow: String
     Column(Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 4.dp)) {
         Text(eyebrow, color = Indigo, style = MaterialTheme.typography.labelSmall)
         Spacer(Modifier.height(6.dp))
-        Text(title, color = Ink, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.ExtraBold)
+        Text(title, color = MaterialTheme.colorScheme.onBackground, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.ExtraBold)
         Spacer(Modifier.height(6.dp))
-        Text(subtitle, color = Muted, style = MaterialTheme.typography.bodyMedium)
+        Text(subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
     }
 }
 
@@ -214,9 +241,9 @@ internal fun SupportEmptyState(title: String, message: String, icon: ImageVector
                 Icon(icon, null, Modifier.padding(16.dp).size(28.dp), tint = Indigo)
             }
             Spacer(Modifier.height(16.dp))
-            Text(title, style = MaterialTheme.typography.titleMedium, color = Ink)
+            Text(title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
             Spacer(Modifier.height(6.dp))
-            Text(message, style = MaterialTheme.typography.bodyMedium, color = Muted,
+            Text(message, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center)
         }
     }
@@ -227,20 +254,22 @@ internal fun SupportNavigationDock(selected: String, onSelect: (String) -> Unit)
     val shape = RoundedCornerShape(31.dp)
     Surface(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 7.dp)
         .shadow(18.dp, shape, ambientColor = Ink.copy(alpha = .10f), spotColor = Ink.copy(alpha = .14f)),
-        shape = shape, color = Color.Transparent, border = BorderStroke(1.dp, Color.White)) {
-        Row(Modifier.background(Brush.linearGradient(listOf(Color.White, Color(0xFFF4F6FF), Color.White)))
+        shape = shape, color = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
+        Row(Modifier.background(MaterialTheme.colorScheme.surface)
             .padding(5.dp)) {
             listOf("Overview" to Icons.Outlined.Dashboard, "Tickets" to Icons.Outlined.ConfirmationNumber,
                 "Analytics" to Icons.Outlined.BarChart, "Profile" to Icons.Outlined.Person).forEach { (tab, icon) ->
                 val active = selected == tab
                 Column(Modifier.weight(1f).clip(RoundedCornerShape(25.dp))
-                    .background(if (active) Color(0xFFE1E9FF) else Color.Transparent)
+                    .background(if (active) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
                     .selectable(selected = active, role = Role.Tab, onClick = { onSelect(tab) })
                     .padding(vertical = 12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(icon, null, Modifier.size(22.dp), tint = if (active) Color(0xFF3154D9) else Muted)
+                    Icon(icon, null, Modifier.size(22.dp), tint = if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(Modifier.height(4.dp))
                     Text(tab, style = MaterialTheme.typography.labelMedium,
-                        color = if (active) Ink else Muted, fontWeight = if (active) FontWeight.Bold else FontWeight.Medium)
+                        color = if (active) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontWeight = if (active) FontWeight.Bold else FontWeight.Medium)
                 }
             }
         }

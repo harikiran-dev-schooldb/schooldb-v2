@@ -4,8 +4,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.Typography
+import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -45,6 +47,32 @@ private val LightColors = lightColorScheme(
     error = Color(0xFFCF2D3A),
 )
 
+private val DarkColors = darkColorScheme(
+    primary = Color(0xFFA9B4FF),
+    onPrimary = Color(0xFF17205F),
+    primaryContainer = Color(0xFF27336F),
+    onPrimaryContainer = Color(0xFFE0E5FF),
+    secondary = Color(0xFFD4BBFF),
+    onSecondary = Color(0xFF38205F),
+    secondaryContainer = Color(0xFF4A2D78),
+    onSecondaryContainer = Color(0xFFF0E5FF),
+    tertiary = Color(0xFF6EDBD1),
+    background = Color(0xFF070B14),
+    onBackground = Color(0xFFE7EBF5),
+    surface = Color(0xFF0D1420),
+    onSurface = Color(0xFFE7EBF5),
+    surfaceContainerLowest = Color(0xFF080D16),
+    surfaceContainerLow = Color(0xFF0D1420),
+    surfaceContainer = Color(0xFF121B29),
+    surfaceContainerHigh = Color(0xFF172231),
+    surfaceContainerHighest = Color(0xFF1D2939),
+    surfaceVariant = Color(0xFF172231),
+    onSurfaceVariant = Color(0xFFA8B4C7),
+    outline = Color(0xFF536078),
+    outlineVariant = Color(0xFF273349),
+    error = Color(0xFFFFB4AB),
+)
+
 private val PremiumTypography = Typography(
     displaySmall = TextStyle(fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.Bold,
         fontSize = 36.sp, lineHeight = 42.sp, letterSpacing = (-0.6).sp),
@@ -82,10 +110,11 @@ private val PremiumShapes = Shapes(
 
 @Composable
 fun SchoolDbTheme(
+    darkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit,
 ) {
     MaterialTheme(
-        colorScheme = LightColors,
+        colorScheme = if (darkTheme) DarkColors else LightColors,
         typography = PremiumTypography,
         shapes = PremiumShapes,
         content = content,

@@ -80,7 +80,7 @@ export function SectionSelect({
       onValueChange={(value) => onChange(value === "ALL" ? "" : value)}
       disabled={disabled || !classId}
     >
-      <SelectTrigger className={triggerClassName}>
+      <SelectTrigger aria-label="Section" className={triggerClassName}>
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
 

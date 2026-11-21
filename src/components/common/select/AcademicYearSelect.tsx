@@ -65,6 +65,7 @@ export function AcademicYearSelect({
       onChange={onChange}
       disabled={disabled}
       placeholder="Academic Year"
+      ariaLabel="Academic year"
     />
   );
 }

@@ -20,7 +20,7 @@ async function activateTab(page: Page, name: RegExp) {
 async function expectEnabledWorkflowPage(
   page: Page,
   path: string,
-  heading: string,
+  heading: string | RegExp,
 ) {
   await expectUsablePage(page, `/${schoolSlug}/${path}`);
 
@@ -47,6 +47,21 @@ test.describe("authenticated school workflows", () => {
     await expectUsablePage(page, `/${schoolSlug}/attendance`);
     await expect(page).not.toHaveURL(/\/login/);
   });
+
+  for (const workflow of [
+    { path: "students", heading: /Students/i },
+    { path: "exams", heading: /Exams|Examinations/i },
+    { path: "failures", heading: /Failures|Failed Candidates/i },
+    { path: "fees/dashboard", heading: /Fees|Fee Dashboard/i },
+    { path: "student-follow-ups", heading: /Student Follow-Ups/i },
+    { path: "notification-inbox", heading: /Notifications|Notification Inbox/i },
+    { path: "reports", heading: /Reports/i },
+  ]) {
+    test(`${workflow.path} release workflow loads without mutation`, async ({ page }) => {
+      await expectEnabledWorkflowPage(page, workflow.path, workflow.heading);
+      await expect(page).not.toHaveURL(/\/login/);
+    });
+  }
 
   test("staff attendance is reachable when enabled", async ({ page }) => {
     await expectEnabledWorkflowPage(

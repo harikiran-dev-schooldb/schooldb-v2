@@ -39,6 +39,8 @@ type Props = OptionSource & {
 
   placeholder?: string;
 
+  ariaLabel?: string;
+
   searchPlaceholder?: string;
 
   emptyMessage?: string;
@@ -52,6 +54,7 @@ export function RemoteCombobox({
   value,
   disabled,
   placeholder = "Select...",
+  ariaLabel,
   searchPlaceholder = "Search...",
   emptyMessage = "No records found.",
   onChange,
@@ -112,6 +115,7 @@ export function RemoteCombobox({
         <button
           type="button"
           role="combobox"
+          aria-label={ariaLabel ?? placeholder}
           aria-expanded={open}
           aria-controls={listboxId}
           aria-haspopup="listbox"

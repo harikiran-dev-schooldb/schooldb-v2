@@ -68,6 +68,16 @@ export default defineConfig({
       testMatch: /public-smoke\.spec\.ts/,
       use: { ...devices["Pixel 7"] },
     },
+    {
+      name: "tablet-chromium",
+      testMatch: /public-smoke\.spec\.ts/,
+      use: {
+        ...devices["Desktop Chrome"],
+        viewport: { width: 820, height: 1180 },
+        isMobile: true,
+        hasTouch: true,
+      },
+    },
     ...(authState
       ? [
           {
@@ -84,6 +94,17 @@ export default defineConfig({
             use: {
               ...devices["iPhone 15 Pro"],
               viewport: { width: 393, height: 852 },
+              storageState: authState,
+            },
+          },
+          {
+            name: "authenticated-tablet",
+            testMatch: /(authenticated-workflows|financial-workflows)\.spec\.ts/,
+            use: {
+              ...devices["Desktop Chrome"],
+              viewport: { width: 820, height: 1180 },
+              isMobile: true,
+              hasTouch: true,
               storageState: authState,
             },
           },

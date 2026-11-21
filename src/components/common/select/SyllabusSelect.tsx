@@ -63,7 +63,7 @@ export function SyllabusSelect({
         );
       }}
     >
-      <SelectTrigger className={triggerClassName}>
+      <SelectTrigger aria-label="Syllabus" className={triggerClassName}>
         <SelectValue placeholder={allowAll ? "All syllabi" : "Select syllabus"} />
       </SelectTrigger>
       <SelectContent>

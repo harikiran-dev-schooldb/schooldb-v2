@@ -62,7 +62,7 @@ export function AcademicBranchSelect({
         );
       }}
     >
-      <SelectTrigger className={triggerClassName}>
+      <SelectTrigger aria-label="Academic branch" className={triggerClassName}>
         <SelectValue placeholder={syllabusId ? (allowAll ? "All branches" : "Select branch") : "Select syllabus first"} />
       </SelectTrigger>
       <SelectContent>

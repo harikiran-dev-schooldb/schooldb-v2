@@ -3,6 +3,11 @@ import { chromium, type FullConfig } from "@playwright/test";
 export default async function refreshAuthenticatedState(config: FullConfig) {
   if (process.env.E2E_SKIP_AUTH_REFRESH === "true") return;
 
+  // Configurations without authenticated projects must not depend on an
+  // administrator session. Public-only scripts also set the explicit skip
+  // above because Playwright retains every configured project after filtering.
+  if (!config.projects.some((project) => project.name.startsWith("authenticated-"))) return;
+
   const authState = process.env.E2E_AUTH_STATE?.trim();
   const schoolSlug = process.env.E2E_SCHOOL_SLUG?.trim();
   const baseURL = config.projects[0]?.use.baseURL;
