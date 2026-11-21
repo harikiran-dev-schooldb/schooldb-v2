@@ -160,7 +160,7 @@ export default async function StudentCertificatePage({ params, searchParams }: P
         <Button asChild variant="outline"><Link href={studentHref}><ArrowLeft className="size-4" /> Back to student</Link></Button>
         {issueType ? <CertificateIssueActions studentId={id} type={issueType} issueId={issue?.id} cancelled={issue?.status === "CANCELLED"} /> : null}
       </div>
-      <main className="certificate-print mx-auto min-h-[1050px] max-w-4xl border-[10px] border-double border-slate-900 bg-white px-16 py-14 text-slate-950 shadow-2xl print:min-h-screen print:shadow-none">
+      <main className="certificate-print theme-force-light mx-auto min-h-[1050px] max-w-4xl border-[10px] border-double border-slate-900 bg-white px-16 py-14 text-slate-950 shadow-2xl print:min-h-screen print:shadow-none">
         <header className="border-b-2 border-slate-900 pb-8 text-center"><p className="text-3xl font-black uppercase tracking-tight">{student.school.name}</p><p className="mt-2 text-xs font-bold uppercase tracking-[0.35em] text-slate-500">{setting.headerSubtitle}</p></header>
         <div className="mt-6 flex justify-between text-xs font-semibold"><span>Certificate No: {certificateNo}</span><span>Date: {dateLabel(issue?.issuedAt ?? new Date())}</span></div>
         <h1 className="mt-16 text-center text-2xl font-black uppercase tracking-[0.18em] underline decoration-2 underline-offset-8">{title}</h1>

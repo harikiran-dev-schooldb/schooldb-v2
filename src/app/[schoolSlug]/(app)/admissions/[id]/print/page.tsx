@@ -48,7 +48,7 @@ export default async function AdmissionPrintPage({
         </Button>
         <PrintDocumentButton />
       </div>
-      <main className="mx-auto min-h-[1050px] max-w-4xl border bg-white p-12 text-slate-950 shadow-xl print:min-h-screen print:border-0 print:shadow-none">
+      <main className="theme-force-light mx-auto min-h-[1050px] max-w-4xl border bg-white p-12 text-slate-950 shadow-xl print:min-h-screen print:border-0 print:shadow-none">
         <header className="border-b-2 border-slate-950 pb-6 text-center">
           <p className="text-3xl font-black uppercase">
             {application.school.name}

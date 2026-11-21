@@ -270,7 +270,7 @@ export function FeeReceipt({ paymentId }: Props) {
       <main className="min-h-screen bg-slate-50 px-4 py-8 md:px-6 md:py-10 print:bg-white print:p-0">
         <div
           id="fee-receipt"
-          className="mx-auto max-w-4xl overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-xl shadow-slate-200/50 print:max-w-none print:rounded-none print:border-0 print:shadow-none"
+          className="theme-force-light mx-auto max-w-4xl overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-xl shadow-slate-200/50 print:max-w-none print:rounded-none print:border-0 print:shadow-none"
         >
           {/* PREMIUM HEADER */}
           <div className="relative overflow-hidden bg-slate-950 px-6 py-7 text-white md:px-10 md:py-9">

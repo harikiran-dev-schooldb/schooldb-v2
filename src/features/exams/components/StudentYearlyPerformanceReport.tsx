@@ -76,7 +76,7 @@ export function StudentYearlyPerformanceReport({
           </CardContent>
         </Card>
       ) : (
-        <article className="yearly-performance-print mx-auto max-w-6xl overflow-hidden rounded-[28px] border bg-white text-slate-950 shadow-[0_24px_70px_rgba(15,23,42,0.09)] print:rounded-none print:border-black print:shadow-none">
+        <article className="yearly-performance-print theme-force-light mx-auto max-w-6xl overflow-hidden rounded-[28px] border bg-white text-slate-950 shadow-[0_24px_70px_rgba(15,23,42,0.09)] print:rounded-none print:border-black print:shadow-none">
           <header className="border-b border-indigo-100 bg-gradient-to-br from-white via-indigo-50/80 to-violet-100/70 px-6 py-7 print:border-b-2 print:border-black print:bg-white sm:px-10">
             <div className="flex flex-wrap items-center justify-between gap-5">
               <div className="flex items-center gap-4">

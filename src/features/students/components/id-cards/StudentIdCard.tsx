@@ -100,7 +100,7 @@ export function StudentIdCard({ school, student, setting = DEFAULT_SETTING }: Pr
   } as CSSProperties;
 
   return (
-    <article className={cn("id-card-pair flex flex-wrap justify-center gap-5", portrait ? "is-portrait" : "is-landscape")} style={dimensionStyle}>
+    <article className={cn("id-card-pair theme-force-light flex flex-wrap justify-center gap-5", portrait ? "is-portrait" : "is-landscape")} style={dimensionStyle}>
       <section className="id-card-side relative flex shrink-0 flex-col overflow-hidden border border-indigo-200 bg-white shadow-[0_18px_45px_rgba(15,23,42,0.16)] print:shadow-none">
         <div className="pointer-events-none absolute -right-10 top-8 size-32 rounded-full bg-violet-300/20 blur-2xl" />
         <div className="pointer-events-none absolute -left-10 bottom-2 size-28 rounded-full bg-cyan-300/15 blur-2xl" />

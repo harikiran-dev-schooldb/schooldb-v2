@@ -55,7 +55,7 @@ export default function RootLayout({
       suppressHydrationWarning
       className="font-sans antialiased"
     >
-      <body className="flex min-h-screen flex-col bg-background text-foreground">
+      <body className="schooldb-theme-scope flex min-h-screen flex-col bg-background text-foreground">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           <ClerkProvider proxyUrl={process.env.NEXT_PUBLIC_CLERK_PROXY_URL}>
             <AccountSwitchTransition />

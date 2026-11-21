@@ -264,7 +264,7 @@ export function StudentReportCardPage({
 
       <main
         className="
-    report-card-print
+    report-card-print theme-force-light
     mx-auto
     max-w-[1000px]
     bg-white
