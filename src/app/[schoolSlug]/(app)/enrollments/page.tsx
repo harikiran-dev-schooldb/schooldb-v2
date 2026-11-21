@@ -32,7 +32,7 @@ export default async function EnrollmentsPage({
         }
       />
 
-      <section className="premium-card overflow-hidden rounded-3xl bg-white p-3 md:p-5">
+      <section className="premium-card overflow-hidden rounded-3xl bg-card p-3 md:p-5">
         <StudentEnrollmentTable />{" "}
       </section>
     </div>

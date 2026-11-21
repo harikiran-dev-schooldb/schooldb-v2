@@ -52,3 +52,20 @@ test("printable school documents remain light in dark mode", () => {
     assert.match(read(path), /theme-force-light/, `${path} must opt out of dark surfaces`);
   }
 });
+
+test("shared workspace chrome and enrollment planning retain dark contrast", () => {
+  const header = read("src/components/layout/AppHeader.tsx");
+  const sidebar = read("src/components/layout/AppSidebar.tsx");
+  const css = read("src/app/globals.css");
+  const enrollment = read(
+    "src/features/student-enrollments/components/StudentEnrollmentTable.tsx",
+  );
+
+  assert.match(header, /dark:from-indigo-600/);
+  assert.match(header, /dark:border-white\/\[0\.08\]/);
+  assert.match(css, /\.dark \.schooldb-header-workspace-mark/);
+  assert.match(sidebar, /dark:text-slate-300/);
+  assert.match(sidebar, /dark:text-slate-400/);
+  assert.match(enrollment, /dark:bg-indigo-500\/10/);
+  assert.match(enrollment, /dark:bg-violet-500\/10/);
+});

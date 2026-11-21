@@ -287,7 +287,7 @@ export function AppSidebar({ mobile = false, onNavigate }: Props) {
                     height={14}
                     className="size-3.5 shrink-0 rounded-[4px] object-cover opacity-75"
                   />
-                  <span className="truncate text-[8px] font-semibold uppercase tracking-[0.1em] text-slate-400 dark:text-slate-500">
+                  <span className="truncate text-[8px] font-semibold uppercase tracking-[0.1em] text-slate-400 dark:text-slate-400">
                     Powered by <span className="font-extrabold text-slate-600 dark:text-slate-300">SchoolDB</span>
                   </span>
                 </div>
@@ -370,7 +370,7 @@ export function AppSidebar({ mobile = false, onNavigate }: Props) {
           )}
         >
           {!collapsed && (
-            <p className="mb-2 px-3 text-[9px] font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">
+            <p className="mb-2 px-3 text-[9px] font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-400">
               {normalizedSearch ? "Search results" : "Workspace"}
             </p>
           )}
@@ -472,7 +472,7 @@ export function AppSidebar({ mobile = false, onNavigate }: Props) {
                         childIsActive
                           ? ["bg-indigo-50 text-indigo-700 dark:bg-indigo-500/12 dark:text-indigo-300"]
                           : [
-                              "text-slate-600",
+                              "text-slate-600 dark:text-slate-300",
                               "hover:bg-slate-50 dark:hover:bg-slate-900/70",
                               "hover:text-slate-900 dark:hover:text-slate-100",
                             ],
@@ -483,7 +483,7 @@ export function AppSidebar({ mobile = false, onNavigate }: Props) {
                           "size-[17px] shrink-0",
                           childIsActive
                             ? "text-indigo-600"
-                            : "text-slate-400 group-hover:text-slate-600 dark:text-slate-500 dark:group-hover:text-slate-300",
+                            : "text-slate-400 group-hover:text-slate-600 dark:text-slate-400 dark:group-hover:text-slate-200",
                         )}
                         strokeWidth={2}
                       />
@@ -533,7 +533,7 @@ export function AppSidebar({ mobile = false, onNavigate }: Props) {
                                     active
                                       ? ["bg-indigo-50 text-indigo-700 dark:bg-indigo-500/12 dark:text-indigo-300"]
                                       : [
-                                          "text-slate-500",
+                                          "text-slate-500 dark:text-slate-400",
                                           "hover:bg-slate-50 dark:hover:bg-slate-900/70",
                                           "hover:text-slate-800 dark:hover:text-slate-100",
                                         ],
@@ -652,7 +652,7 @@ export function AppSidebar({ mobile = false, onNavigate }: Props) {
                           "shadow-[0_9px_24px_rgba(79,70,229,0.24)] ring-1 ring-indigo-500/20",
                         ]
                       : [
-                          "text-slate-600",
+                          "text-slate-600 dark:text-slate-300",
                           "hover:bg-slate-50 dark:hover:bg-slate-900/70",
                           "hover:text-slate-900 dark:hover:text-slate-100",
                         ],
@@ -667,7 +667,7 @@ export function AppSidebar({ mobile = false, onNavigate }: Props) {
                       "size-[17px] shrink-0",
                       active
                         ? "text-white"
-                        : "text-slate-400 group-hover:text-slate-600 dark:text-slate-500 dark:group-hover:text-slate-300",
+                        : "text-slate-400 group-hover:text-slate-600 dark:text-slate-400 dark:group-hover:text-slate-200",
                     )}
                     strokeWidth={2}
                   />
@@ -733,7 +733,7 @@ export function AppSidebar({ mobile = false, onNavigate }: Props) {
                     "flex flex-1 items-center gap-2",
                     "rounded-lg px-2.5 py-2",
                     "text-[11px]",
-                    "text-slate-500",
+                    "text-slate-500 dark:text-slate-400",
                     "transition-all duration-200",
                     "hover:bg-slate-50 dark:hover:bg-slate-900/70",
                     "hover:text-slate-800 dark:hover:text-slate-100",
@@ -788,7 +788,7 @@ export function AppSidebar({ mobile = false, onNavigate }: Props) {
             className={cn(
               "flex items-center rounded-xl",
               "border border-slate-200 dark:border-slate-800",
-              "bg-slate-50/60 dark:bg-slate-900/55",
+              "bg-slate-50/60 dark:bg-slate-900/70",
               "transition-colors duration-200",
               "hover:bg-slate-50 dark:hover:bg-slate-900/75",
               collapsed ? "justify-center p-2" : "gap-3 px-2.5 py-2.5",
@@ -805,7 +805,7 @@ export function AppSidebar({ mobile = false, onNavigate }: Props) {
                   {userName}
                 </p>
 
-                <p className="truncate text-[10px] text-slate-400">
+                <p className="truncate text-[10px] text-slate-400 dark:text-slate-400">
                   {roleLabel}
                 </p>
               </div>

@@ -88,7 +88,7 @@ export function AppHeader({ onMenuClick }: Props) {
           </Button>
 
           <div className="schooldb-header-context flex min-w-0 items-center gap-3">
-            <div className="schooldb-header-workspace-mark relative hidden size-10 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-indigo-200/70 bg-gradient-to-br from-indigo-600 via-indigo-600 to-violet-600 text-white shadow-[0_10px_24px_rgba(79,70,229,0.22)] min-[420px]:flex sm:size-11">
+            <div className="schooldb-header-workspace-mark relative hidden size-10 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-indigo-200/70 bg-gradient-to-br from-indigo-600 via-indigo-600 to-violet-600 text-white shadow-[0_10px_24px_rgba(79,70,229,0.22)] min-[420px]:flex sm:size-11 dark:border-indigo-400/25 dark:from-indigo-600 dark:via-indigo-600 dark:to-violet-600 dark:shadow-[0_10px_28px_rgba(79,70,229,0.28)]">
               <span className="absolute inset-x-1 top-0 h-px bg-white/70" />
               <Building2 className="relative z-10 size-5" />
               <span className="absolute right-1.5 top-1.5 size-1.5 rounded-full bg-emerald-300 ring-2 ring-indigo-600" />
@@ -108,7 +108,7 @@ export function AppHeader({ onMenuClick }: Props) {
         </div>
 
         {/* Actions */}
-        <div className="flex items-center gap-1.5 rounded-2xl border border-border/60 bg-card/55 p-1 shadow-[0_8px_24px_rgba(15,23,42,0.04)] sm:gap-2 sm:p-1.5">
+        <div className="flex items-center gap-1.5 rounded-2xl border border-border/60 bg-card/75 p-1 shadow-[0_8px_24px_rgba(15,23,42,0.04)] backdrop-blur-xl sm:gap-2 sm:p-1.5 dark:border-white/[0.08] dark:shadow-[0_10px_28px_rgba(0,0,0,0.2)]">
           <GlobalSearch schoolSlug={schoolSlug} />
 
           <ThemeToggle />
@@ -125,7 +125,7 @@ export function AppHeader({ onMenuClick }: Props) {
               <Button
                 type="button"
                 variant="ghost"
-                className="h-auto gap-2 rounded-xl px-1.5 py-1.5 hover:bg-background hover:shadow-sm sm:gap-3 sm:px-2"
+                className="h-auto gap-2 rounded-xl px-1.5 py-1.5 hover:bg-muted/70 hover:shadow-sm sm:gap-3 sm:px-2"
               >
                 <Avatar className="size-9 border border-border bg-muted">
                   <AvatarImage
@@ -210,7 +210,7 @@ export function AppHeader({ onMenuClick }: Props) {
 
               {/* Logout */}
               <DropdownMenuItem
-                className="cursor-pointer rounded-xl py-2.5 text-red-600 focus:bg-red-50 focus:text-red-600"
+                className="cursor-pointer rounded-xl py-2.5 text-red-600 focus:bg-red-50 focus:text-red-600 dark:text-red-400 dark:focus:bg-red-500/10 dark:focus:text-red-300"
                 onClick={handleLogout}
               >
                 <LogOut className="mr-2 size-4" />
