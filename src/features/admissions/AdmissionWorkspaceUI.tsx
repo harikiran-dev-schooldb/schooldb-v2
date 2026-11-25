@@ -11,7 +11,7 @@ export function AdmissionSelect({name,label,options,value,defaultValue,onChange,
  const current=value??local;
  return <><Select value={current||"__empty__"} onValueChange={next=>{const val=next==="__empty__"?"":next;setLocal(val);onChange?.(val);}}>
   <SelectTrigger aria-label={label} className={cn("h-11 w-full rounded-xl",className)}><SelectValue placeholder={placeholder}/></SelectTrigger>
-  <SelectContent>{!options.some(o=>o.id==="")&&<SelectItem value="__empty__" disabled>{placeholder}</SelectItem>}{options.map(o=><SelectItem key={o.id||"__empty__"} value={o.id||"__empty__"}>{o.name}</SelectItem>)}</SelectContent>
+  <SelectContent>{current&&!options.some(o=>o.id===current)&&<SelectItem value={current} disabled>Unavailable selection</SelectItem>}{!options.some(o=>o.id==="")&&<SelectItem value="__empty__" disabled>{placeholder}</SelectItem>}{options.map(o=><SelectItem key={o.id||"__empty__"} value={o.id||"__empty__"}>{o.name}</SelectItem>)}</SelectContent>
  </Select>{name&&<input type="hidden" name={name} value={current}/>}</>;
 }
 

@@ -211,8 +211,8 @@ export default async function AdmissionsPage({
             className="h-11 rounded-xl pl-9"
           />
         </div>
-        <AdmissionSelect name="status" label="Status" defaultValue={query.status||""} options={[{id:"",name:"All statuses"},...statuses.map(item=>({id:item,name:label(item)}))]}/>
-        <AdmissionSelect name="classId" label="Class" defaultValue={query.classId||""} options={[{id:"",name:"All classes"},...classes]}/>
+        <AdmissionSelect key={query.status||"all-statuses"} name="status" label="Status" defaultValue={query.status||""} options={[{id:"",name:"All statuses"},...statuses.map(item=>({id:item,name:label(item)}))]}/>
+        <AdmissionSelect key={query.classId||"all-classes"} name="classId" label="Class" defaultValue={query.classId||""} options={[{id:"",name:"All classes"},...classes]}/>
         <Button type="submit" className="h-11 rounded-xl">Apply filters</Button>
       </form>
       <section className="space-y-4">
@@ -231,7 +231,7 @@ export default async function AdmissionsPage({
             className="premium-card overflow-hidden rounded-3xl"
           >
             <div className="flex flex-col gap-5 p-5 lg:flex-row lg:items-start">
-              <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-indigo-50 text-lg font-black text-indigo-700">
+              <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-indigo-500/10 text-lg font-black text-indigo-700 dark:text-indigo-300">
                 {item.studentName.slice(0, 2).toUpperCase()}
               </div>
               <div className="min-w-0 flex-1">
@@ -300,7 +300,7 @@ export default async function AdmissionsPage({
                   </p>
                 )}
                 {item.medicalConditions && (
-                  <p className="mt-2 rounded-xl bg-amber-500/10 p-3 text-sm text-foreground">
+                  <p className="mt-2 rounded-xl bg-amber-500/100/10 p-3 text-sm text-foreground">
                     <span className="font-bold">Health note:</span>{" "}
                     {item.medicalConditions}
                   </p>
@@ -330,7 +330,7 @@ export default async function AdmissionsPage({
             </div>
             <div className="border-t border-border/60 bg-muted/20 p-4 sm:p-5">
               <div className="mb-3 grid gap-2 text-sm sm:grid-cols-2"><p>Entrance: <strong>{label(item.entranceStage)}</strong></p><p>Interview: <strong>{label(item.interviewStage)}</strong></p></div>
-              <AdmissionDetails title={item.studentName} description={item.applicationNo+" · Review stages and application actions"} label="Manage application">
+              <AdmissionDetails title={item.studentName} description={item.applicationNo+" · Review stages and application actions"} label={canManageAdmissions?"Manage application":"View details"}>
               {canManageAdmissions && ["DRAFT","SUBMITTED","UNDER_REVIEW","WAITLISTED"].includes(item.status) && <div className="mb-3 grid gap-3 sm:grid-cols-2">
                 <StageEditor key={item.id+":entrance:"+item.updatedAt.toISOString()} id={item.id} stage="ENTRANCE" status={item.entranceStage} at={item.entranceAt?.toISOString() ?? null} memberId={item.entranceMemberId} members={members} admin={admin}/>
                 <StageEditor key={item.id+":interview:"+item.updatedAt.toISOString()} id={item.id} stage="INTERVIEW" status={item.interviewStage} at={item.interviewAt?.toISOString() ?? null} memberId={item.interviewMemberId} members={members} admin={admin}/>
@@ -429,9 +429,9 @@ function Stat({
 }) {
   const styles = {
     indigo: "bg-primary/10 text-primary",
-    amber: "bg-amber-50 text-amber-700",
-    emerald: "bg-emerald-50 text-emerald-700",
-    violet: "bg-violet-50 text-violet-700",
+    amber: "bg-amber-50 text-amber-700 dark:text-amber-300",
+    emerald: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+    violet: "bg-violet-500/10 text-violet-700 dark:text-violet-300",
   };
   return (
     <div className="premium-card rounded-2xl p-5">
