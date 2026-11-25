@@ -977,7 +977,6 @@ model Section {
   active                  Boolean                  @default(true)
   displayOrder            Int                      @default(0)
   admissionApplications   AdmissionApplication[]
-  admissionEnquiries      AdmissionEnquiry[]
   attendanceSessions      AttendanceSession[]
   examSchedules           ExamSchedule[]
   homeworks               Homework[]
