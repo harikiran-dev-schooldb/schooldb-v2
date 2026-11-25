@@ -9,6 +9,7 @@ import { queueAdmissionWhatsappUpdate } from "@/features/whatsapp/service";
 
 import type { PublicAdmissionInput } from "./admission.schema";
 import { assessAge } from "./age-policy";
+import { stagesReady } from "./intake-policy";
 import { readAdmissionAgePolicy } from "./age-policy.schema";
 
 function applicationNumber() {
@@ -139,11 +140,12 @@ export async function changeAdmissionStatus(input: {
   note: string | null;
   changedBy: string;
 }) {
-  const current = await prisma.admissionApplication.findFirst({ where: { id: input.id, schoolId: input.schoolId }, select: { status: true } });
+  const current = await prisma.admissionApplication.findFirst({ where: { id: input.id, schoolId: input.schoolId }, select: { status: true, entranceStage: true, interviewStage: true, updatedAt: true } });
   if (!current) throw new ApiError(404, "Application not found.");
   if (!transitions[current.status].includes(input.status)) throw new ApiError(400, "This status change is not allowed.");
+  if (input.status === "APPROVED" && !stagesReady(current.entranceStage, current.interviewStage)) throw new ApiError(400, "Complete or waive required entrance and interview stages before approval.");
   const application = await prisma.admissionApplication.update({
-    where: { id: input.id },
+    where: { id: input.id, schoolId: input.schoolId, status: current.status, updatedAt: current.updatedAt },
     data: {
       status: input.status,
       notes: input.note,
@@ -172,6 +174,7 @@ export async function convertAdmission(input: {
   });
   if (!application) throw new ApiError(404, "Application not found.");
   if (application.status !== "APPROVED") throw new ApiError(400, "Approve the application before converting it.");
+  if (!stagesReady(application.entranceStage, application.interviewStage)) throw new ApiError(400, "Complete required review stages before conversion.");
 
   const [section, duplicateAadhar] = await Promise.all([
     prisma.section.findFirst({ where: { id: input.sectionId, classId: application.applyingClassId, active: true }, select: { id: true } }),
@@ -185,7 +188,7 @@ export async function convertAdmission(input: {
   const primaryPhone = application.fatherPhone || application.motherPhone || application.guardianPhone;
   const result = await prisma.$transaction(async (tx) => {
     const claimed = await tx.admissionApplication.updateMany({
-      where: { id: application.id, schoolId: input.schoolId, status: "APPROVED", studentId: null },
+      where: { id: application.id, schoolId: input.schoolId, status: "APPROVED", studentId: null, entranceStage: { in: ["NOT_REQUIRED","PASSED"] }, interviewStage: { in: ["NOT_REQUIRED","PASSED"] } },
       data: { status: "CONVERTED", convertedAt: new Date() },
     });
     if (claimed.count !== 1) throw new ApiError(409, "This application has already been converted.");

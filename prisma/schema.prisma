@@ -21,6 +21,7 @@ model AcademicYear {
   academicPeriods         AcademicPeriod[]
   school                  School                   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   admissionApplications   AdmissionApplication[]
+  admissionEnquiries      AdmissionEnquiry[]
   attendanceSessions      AttendanceSession[]
   classSubjects           ClassSubject[]
   exams                   Exam[]
@@ -72,6 +73,8 @@ model School {
   academicYears               AcademicYear[]
   academicBranches            AcademicBranch[]
   admissionApplications       AdmissionApplication[]
+  admissionEnquiries          AdmissionEnquiry[]
+  admissionContactTasks       AdmissionContactTask[]
   admissionDocuments          AdmissionDocument[]
   announcements               Announcement[]
   attendance                  Attendance[]
@@ -911,6 +914,7 @@ model Class {
   description             String?
   displayOrder            Int                      @default(0)
   admissionApplications   AdmissionApplication[]
+  admissionEnquiries      AdmissionEnquiry[]
   attendanceSessions      AttendanceSession[]
   school                  School                   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   branch                  AcademicBranch           @relation(fields: [branchId], references: [id], onDelete: Restrict)
@@ -973,6 +977,7 @@ model Section {
   active                  Boolean                  @default(true)
   displayOrder            Int                      @default(0)
   admissionApplications   AdmissionApplication[]
+  admissionEnquiries      AdmissionEnquiry[]
   attendanceSessions      AttendanceSession[]
   examSchedules           ExamSchedule[]
   homeworks               Homework[]
@@ -1016,6 +1021,14 @@ model AdmissionApplication {
   transportRequired  Boolean                    @default(false)
   whatsappOptIn      Boolean                    @default(false)
   status             AdmissionApplicationStatus @default(SUBMITTED)
+  entranceStage      AdmissionReviewStage @default(NOT_REQUIRED)
+  entranceAt         DateTime?
+  entranceMemberId   String?
+  interviewStage     AdmissionReviewStage @default(NOT_REQUIRED)
+  interviewAt        DateTime?
+  interviewMemberId  String?
+  enquiry            AdmissionEnquiry?
+  contactTasks       AdmissionContactTask[]
   notes              String?
   submittedAt        DateTime                   @default(now())
   reviewedAt         DateTime?
@@ -2778,4 +2791,65 @@ enum LibraryBorrowerType {
 enum IdCardOrientation {
   PORTRAIT
   LANDSCAPE
+}
+
+enum AdmissionReviewStage {
+  NOT_REQUIRED
+  PENDING
+  SCHEDULED
+  PASSED
+  FAILED
+}
+
+enum AdmissionEnquiryState {
+  OPEN
+  LINKED
+  CLOSED
+}
+
+model AdmissionEnquiry {
+  id              String @id @default(cuid())
+  schoolId        String
+  academicYearId  String
+  classId         String
+  studentName     String
+  parentName      String
+  mobile          String
+  dob             DateTime? @db.Date
+  source          String
+  notes           String?
+  state           AdmissionEnquiryState @default(OPEN)
+  applicationId   String? @unique
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  school          School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  academicYear    AcademicYear @relation(fields: [academicYearId], references: [id])
+  applyingClass   Class @relation(fields: [classId], references: [id])
+  application     AdmissionApplication? @relation(fields: [applicationId], references: [id], onDelete: Restrict)
+  contactTasks    AdmissionContactTask[]
+
+  @@index([schoolId, state, createdAt])
+  @@index([schoolId, academicYearId, mobile])
+}
+
+model AdmissionContactTask {
+  id                String @id @default(cuid())
+  schoolId          String
+  applicationId     String?
+  enquiryId         String?
+  assignedMemberId  String
+  assignedName      String
+  dueAt             DateTime
+  note              String
+  outcome           String?
+  completionNote    String?
+  completedAt       DateTime?
+  createdAt         DateTime @default(now())
+  school            School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  application       AdmissionApplication? @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  enquiry           AdmissionEnquiry? @relation(fields: [enquiryId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId, completedAt, dueAt])
+  @@index([applicationId, dueAt])
+  @@index([enquiryId, dueAt])
 }

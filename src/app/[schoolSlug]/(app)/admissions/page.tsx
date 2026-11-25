@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { AdmissionReviewActions } from "@/features/admissions/AdmissionReviewActions";
 import { AdmissionNumberSettings } from "@/features/admissions/AdmissionNumberSettings";
 import { AdmissionAgeSettings } from "@/features/admissions/AdmissionAgeSettings";
+import { StageEditor, ContactTaskForm } from "@/features/admissions/AdmissionIntakeControls";
 import { readAdmissionAgePolicy } from "@/features/admissions/age-policy.schema";
 import { requireRole } from "@/lib/auth";
 import { formatSchoolDateTime } from "@/lib/date-time";
@@ -134,6 +135,9 @@ export default async function AdmissionsPage({
     orderBy: { startDate: "desc" },
     select: { id: true, name: true, admissionAgePolicy: true },
   }) : [];
+  const staff = canManageAdmissions ? await prisma.membership.findMany({ where: { schoolId: actor.schoolId, isActive: true, role: { in: ["SUPER_ADMIN","SCHOOL_ADMIN","RECEPTIONIST","TEACHER"] } }, include: { user: { select: { firstName: true, lastName: true } } } }) : [];
+  const members = staff.map(member => ({ id: member.id, name: [member.user.firstName,member.user.lastName].filter(Boolean).join(" ") || member.designation || "School staff", contact: member.role !== "TEACHER" }));
+  const admin = ["SUPER_ADMIN","SCHOOL_ADMIN"].includes(actor.role);
   const counts = Object.fromEntries(
     statusCounts.map((item) => [item.status, item._count._all]),
   );
@@ -152,6 +156,7 @@ export default async function AdmissionsPage({
           </Button>
         }
       />
+      <div className="flex flex-wrap gap-2"><Button asChild variant="outline"><Link href={`/${schoolSlug}/admissions/intake`}>Enquiries &amp; follow-ups</Link></Button></div>
       <section className="premium-hero p-6 md:p-8">
         <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
           <div>
@@ -362,6 +367,12 @@ export default async function AdmissionsPage({
               </div>
             </div>
             <div className="border-t bg-slate-50/60 p-5">
+              <div className="mb-3 grid gap-2 text-sm sm:grid-cols-2"><p>Entrance: <strong>{label(item.entranceStage)}</strong></p><p>Interview: <strong>{label(item.interviewStage)}</strong></p></div>
+              {canManageAdmissions && ["DRAFT","SUBMITTED","UNDER_REVIEW","WAITLISTED"].includes(item.status) && <div className="mb-3 grid gap-3 sm:grid-cols-2">
+                <StageEditor key={item.id+":entrance:"+item.updatedAt.toISOString()} id={item.id} stage="ENTRANCE" status={item.entranceStage} at={item.entranceAt?.toISOString() ?? null} memberId={item.entranceMemberId} members={members} admin={admin}/>
+                <StageEditor key={item.id+":interview:"+item.updatedAt.toISOString()} id={item.id} stage="INTERVIEW" status={item.interviewStage} at={item.interviewAt?.toISOString() ?? null} memberId={item.interviewMemberId} members={members} admin={admin}/>
+              </div>}
+              {canManageAdmissions && item.status !== "CONVERTED" && <div className="mb-3"><ContactTaskForm target="APPLICATION" id={item.id} members={members}/></div>}
               {canManageAdmissions && (
                 <AdmissionReviewActions
                   id={item.id}
