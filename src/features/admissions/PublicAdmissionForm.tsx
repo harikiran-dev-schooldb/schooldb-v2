@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { AdmissionDocumentUpload } from "./AdmissionDocumentUpload";
-import { assessAge, type AdmissionAgePolicy } from "./age-policy";
+import { assessAge, calculateExactAge, eligibleClassIds, type AdmissionAgePolicy } from "./age-policy";
 
 type SchoolOption = {
   id: string;
@@ -58,6 +58,8 @@ export function PublicAdmissionForm({
   const academicYear = school.academicYears[0];
   const agePolicy = academicYear?.admissionAgePolicy;
   const eligibility = assessAge(dob, agePolicy, classId);
+  const exactAge = agePolicy && dob ? calculateExactAge(dob, agePolicy.ageAsOfDate) : null;
+  const eligibleClasses = school.classes.filter(c => eligibleClassIds(dob, agePolicy).includes(c.id));
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -187,6 +189,7 @@ export function PublicAdmissionForm({
           </Field>
           <Field label="Date of birth" required>
             <Input name="dob" type="date" value={dob} onChange={(event) => setDob(event.target.value)} required className="h-12 bg-white" />
+            {exactAge && <p className="text-xs text-slate-600">Age: {exactAge.years}y {exactAge.months}m {exactAge.days}d · Eligible classes: {eligibleClasses.map(c=>c.name).join(", ") || "No matching configured rule"}</p>}
             {dob && classId && agePolicy && eligibility.status !== "UNCONFIGURED" && (
               <p role="status" className={eligibility.status === "ELIGIBLE" ? "text-xs font-semibold text-emerald-700" : "text-xs font-semibold text-rose-700"}>
                 {eligibility.months !== null && `Age: ${Math.floor(eligibility.months / 12)}y ${eligibility.months % 12}m as of ${agePolicy.ageAsOfDate}. `}

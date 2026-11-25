@@ -104,6 +104,7 @@ export function CompleteTask({id}:{id:string}) {
 }
 
 export function EnquiryAdminAction({id,action}:{id:string;action:"ACCEPT"|"DISMISS"|"REOPEN"}) {
- const {busy,save}=useSave();
- return <Button size="sm" variant={action==="DISMISS"?"outline":"default"} disabled={busy} onClick={()=>{if(action==="DISMISS"&&!window.confirm("Dismiss and redact this parent enquiry?"))return;void save("/api/v1/admissions/intake/"+id,"PATCH",{action});}}>{action==="ACCEPT"?"Accept enquiry":action==="DISMISS"?"Dismiss & redact":"Restore closed enquiry"}</Button>;
+ const {busy,save}=useSave(); const [confirm,setConfirm]=useState(false);
+ if(action==="DISMISS"&&confirm)return <div className="space-y-2 rounded-lg border p-2"><p className="text-xs">Dismiss and redact personal details? This cannot be restored.</p><div className="flex gap-2"><Button size="sm" variant="destructive" disabled={busy} onClick={()=>void save("/api/v1/admissions/intake/"+id,"PATCH",{action})}>Confirm dismissal</Button><Button size="sm" variant="outline" onClick={()=>setConfirm(false)}>Cancel</Button></div></div>;
+ return <Button size="sm" variant={action==="DISMISS"?"outline":"default"} disabled={busy} onClick={()=>{if(action==="DISMISS"){setConfirm(true);return;}void save("/api/v1/admissions/intake/"+id,"PATCH",{action});}}>{action==="ACCEPT"?"Accept enquiry":action==="DISMISS"?"Dismiss & redact":"Restore closed enquiry"}</Button>;
 }

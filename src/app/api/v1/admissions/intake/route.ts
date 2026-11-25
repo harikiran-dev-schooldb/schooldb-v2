@@ -21,7 +21,7 @@ export async function POST(request: Request) {
       if (input.dob && input.dob > new Date().toISOString().slice(0,10)) throw new ApiError(400, "Birth date cannot be in the future.");
       const duplicate = await tx.admissionEnquiry.findFirst({ where: {
         schoolId: actor.schoolId, academicYearId: year.id, mobile: input.mobile,
-        studentName: { equals: input.studentName, mode: "insensitive" }, state: { not: "CLOSED" },
+        studentName: { equals: input.studentName, mode: "insensitive" }, state: { in: ["PENDING","OPEN","LINKED"] },
       }, select: { id: true } });
       if (duplicate) throw new ApiError(409, "An enquiry with this student and mobile already exists for the year.");
       const record = await tx.admissionEnquiry.create({ data: { ...input, schoolId: actor.schoolId, dob: input.dob ? new Date(input.dob + "T00:00:00Z") : null } });

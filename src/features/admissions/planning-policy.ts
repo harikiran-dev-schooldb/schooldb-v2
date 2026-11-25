@@ -5,6 +5,8 @@ export function readPlanning(value: unknown): AdmissionPlanning {
   if (!value || typeof value !== "object" || Array.isArray(value)) return {};
   const result: AdmissionPlanning = {};
   for (const [id, raw] of Object.entries(value)) {
+    if (!/^c[a-z0-9]{8,}$/i.test(id) && !/^[a-zA-Z0-9_-]{1,80}$/.test(id)) continue;
+    if (["__proto__","constructor","prototype"].includes(id)) continue;
     if (!raw || typeof raw !== "object" || Array.isArray(raw)) continue;
     const row: ClassPlanning = {};
     for (const key of ["termFee","annualFees","seatCapacity"] as const) {
