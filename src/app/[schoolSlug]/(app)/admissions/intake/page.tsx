@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { connection } from "next/server";
 import { PageContainer, PageHeader } from "@/components/common/layout";
 import { Button } from "@/components/ui/button";
 import { requireRole } from "@/lib/auth";
@@ -7,7 +8,12 @@ import { prisma } from "@/lib/prisma";
 import { formatSchoolDateTime } from "@/lib/date-time";
 import { EnquiryForm, EnquiryActions, ContactTaskForm, CompleteTask } from "@/features/admissions/AdmissionIntakeControls";
 
+async function requestTime() {
+  return new Date();
+}
+
 export default async function IntakePage({params,searchParams}:{params:Promise<{schoolSlug:string}>;searchParams:Promise<{page?:string;taskPage?:string}>}) {
+  await connection();
   const {schoolSlug}=await params; const query=await searchParams;
   const actor=await requireRole(["SUPER_ADMIN","SCHOOL_ADMIN","RECEPTIONIST"],schoolSlug);
   const manage=hasModuleAccess(actor,"ADMISSIONS","MANAGE");
@@ -24,6 +30,7 @@ export default async function IntakePage({params,searchParams}:{params:Promise<{
     prisma.admissionContactTask.findMany({where:scope,orderBy:[{completedAt:{sort:"asc",nulls:"first"}},{dueAt:"asc"},{id:"asc"}],skip:(taskPage-1)*20,take:20,include:{application:{select:{studentName:true,applicationNo:true}},enquiry:{select:{studentName:true,mobile:true}}}}),
     prisma.admissionContactTask.count({where:scope}),
   ]);
+  const overdueIds = new Set((await prisma.admissionContactTask.findMany({ where: { ...scope, id: { in: tasks.map(task => task.id) }, completedAt: null, dueAt: { lt: await requestTime() } }, select: { id: true } })).map(task => task.id));
   const members=staff.map(x=>({id:x.id,name:[x.user.firstName,x.user.lastName].filter(Boolean).join(" ")||x.designation||"School staff",contact:true}));
   return <PageContainer>
     <PageHeader title="Enquiries & follow-ups" description="Capture enquiries before application and manage parent contact." actions={<Button asChild variant="outline"><Link href={`/${schoolSlug}/admissions`}>Back to admissions</Link></Button>}/>
@@ -43,7 +50,7 @@ export default async function IntakePage({params,searchParams}:{params:Promise<{
     <section className="space-y-3"><h2 className="font-bold">Parent follow-ups ({taskCount})</h2>
       {!tasks.length&&<p className="text-sm text-muted-foreground">No follow-ups on this page.</p>}
       {tasks.map(x=><article key={x.id} className="space-y-2 rounded-2xl border bg-card p-4">
-        <div className="flex flex-wrap justify-between gap-2"><strong>{x.application?.studentName||x.enquiry?.studentName}</strong><span className="text-xs font-bold">{x.completedAt?"COMPLETED":x.dueAt.getTime()<Date.now()?"OVERDUE":"OPEN"}</span></div>
+        <div className="flex flex-wrap justify-between gap-2"><strong>{x.application?.studentName||x.enquiry?.studentName}</strong><span className="text-xs font-bold">{x.completedAt?"COMPLETED":overdueIds.has(x.id)?"OVERDUE":"OPEN"}</span></div>
         <p className="text-sm">{x.assignedName} · Due {formatSchoolDateTime(x.dueAt)}</p>
         <p className="text-sm">{x.note}</p>
         {x.completedAt&&<p className="text-sm">{x.outcome} · {x.completionNote}</p>}
