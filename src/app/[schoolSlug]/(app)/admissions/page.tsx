@@ -17,6 +17,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AdmissionReviewActions } from "@/features/admissions/AdmissionReviewActions";
 import { AdmissionNumberSettings } from "@/features/admissions/AdmissionNumberSettings";
+import { AdmissionAgeSettings } from "@/features/admissions/AdmissionAgeSettings";
+import { readAdmissionAgePolicy } from "@/features/admissions/age-policy.schema";
 import { requireRole } from "@/lib/auth";
 import { formatSchoolDateTime } from "@/lib/date-time";
 import { prisma } from "@/lib/prisma";
@@ -127,6 +129,11 @@ export default async function AdmissionsPage({
         update: {},
       }),
     ]);
+  const ageYears = ["SUPER_ADMIN", "SCHOOL_ADMIN"].includes(actor.role) ? await prisma.academicYear.findMany({
+    where: { schoolId: actor.schoolId, active: true },
+    orderBy: { startDate: "desc" },
+    select: { id: true, name: true, admissionAgePolicy: true },
+  }) : [];
   const counts = Object.fromEntries(
     statusCounts.map((item) => [item.status, item._count._all]),
   );
@@ -204,6 +211,7 @@ export default async function AdmissionsPage({
           }}
         />
       )}
+      {ageYears.length > 0 && <AdmissionAgeSettings years={ageYears.map((year) => ({ id: year.id, name: year.name, policy: readAdmissionAgePolicy(year.admissionAgePolicy) }))} classes={classes} />}
       <form className="grid gap-3 rounded-2xl border bg-card p-4 shadow-sm md:grid-cols-[minmax(240px,1fr)_220px_220px_auto]">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />

@@ -21,11 +21,12 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { AdmissionDocumentUpload } from "./AdmissionDocumentUpload";
+import { assessAge, type AdmissionAgePolicy } from "./age-policy";
 
 type SchoolOption = {
   id: string;
   name: string;
-  academicYears: { id: string; name: string }[];
+  academicYears: { id: string; name: string; admissionAgePolicy?: AdmissionAgePolicy | null }[];
   classes: {
     id: string;
     name: string;
@@ -41,6 +42,7 @@ export function PublicAdmissionForm({
   school: SchoolOption;
 }) {
   const [classId, setClassId] = useState("");
+  const [dob, setDob] = useState("");
   const [sectionId, setSectionId] = useState("");
   const [gender, setGender] = useState("MALE");
   const [transportRequired, setTransportRequired] = useState(false);
@@ -54,10 +56,16 @@ export function PublicAdmissionForm({
     [classId, school.classes],
   );
   const academicYear = school.academicYears[0];
+  const agePolicy = academicYear?.admissionAgePolicy;
+  const eligibility = assessAge(dob, agePolicy, classId);
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
+    if (eligibility.status === "INELIGIBLE" || eligibility.status === "INVALID_DATE") {
+      setError("Check the date of birth and selected class against the school age limits.");
+      return;
+    }
     setSubmitting(true);
     const form = new FormData(event.currentTarget);
     const body = Object.fromEntries(form);
@@ -178,7 +186,13 @@ export function PublicAdmissionForm({
             <Input name="studentName" required className="h-12 bg-white" />
           </Field>
           <Field label="Date of birth" required>
-            <Input name="dob" type="date" required className="h-12 bg-white" />
+            <Input name="dob" type="date" value={dob} onChange={(event) => setDob(event.target.value)} required className="h-12 bg-white" />
+            {dob && classId && agePolicy && eligibility.status !== "UNCONFIGURED" && (
+              <p role="status" className={eligibility.status === "ELIGIBLE" ? "text-xs font-semibold text-emerald-700" : "text-xs font-semibold text-rose-700"}>
+                {eligibility.months !== null && `Age: ${Math.floor(eligibility.months / 12)}y ${eligibility.months % 12}m as of ${agePolicy.ageAsOfDate}. `}
+                {eligibility.status === "ELIGIBLE" ? "Meets class age limits." : "Does not meet class age limits. Contact the school."}
+              </p>
+            )}
           </Field>
           <Field label="Gender" required>
             <Select value={gender} onValueChange={setGender}>

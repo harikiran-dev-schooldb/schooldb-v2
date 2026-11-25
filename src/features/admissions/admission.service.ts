@@ -8,6 +8,8 @@ import { publicSchoolLogoUrl } from "@/lib/school-branding";
 import { queueAdmissionWhatsappUpdate } from "@/features/whatsapp/service";
 
 import type { PublicAdmissionInput } from "./admission.schema";
+import { assessAge } from "./age-policy";
+import { readAdmissionAgePolicy } from "./age-policy.schema";
 
 function applicationNumber() {
   return `APP-${new Date().getFullYear()}-${randomBytes(3).toString("hex").toUpperCase()}`;
@@ -30,7 +32,7 @@ export async function admissionPublicOptions(schoolSlug: string) {
         where: { active: true },
         orderBy: { startDate: "desc" },
         take: 1,
-        select: { id: true, name: true },
+        select: { id: true, name: true, admissionAgePolicy: true },
       },
       classes: {
         where: { active: true },
@@ -50,6 +52,7 @@ export async function admissionPublicOptions(schoolSlug: string) {
   if (!school) throw new ApiError(404, "School not found.");
   return {
     ...school,
+    academicYears: school.academicYears.map((year) => ({ ...year, admissionAgePolicy: readAdmissionAgePolicy(year.admissionAgePolicy) })),
     logo: publicSchoolLogoUrl(schoolSlug, school.logo),
   };
 }
@@ -59,7 +62,7 @@ export async function submitAdmission(schoolSlug: string, input: PublicAdmission
   if (!school) throw new ApiError(404, "School not found.");
 
   const [academicYear, applyingClass, preferredSection] = await Promise.all([
-    prisma.academicYear.findFirst({ where: { id: input.academicYearId, schoolId: school.id, active: true }, select: { id: true } }),
+    prisma.academicYear.findFirst({ where: { id: input.academicYearId, schoolId: school.id, active: true }, select: { id: true, admissionAgePolicy: true } }),
     prisma.class.findFirst({ where: { id: input.applyingClassId, schoolId: school.id, active: true }, select: { id: true } }),
     input.preferredSectionId
       ? prisma.section.findFirst({ where: { id: input.preferredSectionId, classId: input.applyingClassId, active: true }, select: { id: true } })
@@ -67,6 +70,13 @@ export async function submitAdmission(schoolSlug: string, input: PublicAdmission
   ]);
   if (!academicYear || !applyingClass || (input.preferredSectionId && !preferredSection)) {
     throw new ApiError(400, "Choose a valid academic year, class, and section.");
+  }
+
+  const agePolicy = readAdmissionAgePolicy(academicYear.admissionAgePolicy);
+  if (academicYear.admissionAgePolicy !== null && !agePolicy) throw new ApiError(503, "Age eligibility policy needs school administrator review.");
+  const age = assessAge(input.dob, agePolicy, applyingClass.id);
+  if (age.status === "INVALID_DATE" || age.status === "INELIGIBLE") {
+    throw new ApiError(400, "The date of birth does not meet the selected class's age limits. Contact the school for guidance.");
   }
 
   const phones = contactNumbers(input);
