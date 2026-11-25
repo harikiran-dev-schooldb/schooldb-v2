@@ -14,6 +14,19 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const { id } = await params;
     const input = await enquiryActionSchema.parseAsync(await request.json());
     await prisma.$transaction(async (tx) => {
+      if(input.action==="ACCEPT"||input.action==="DISMISS"||input.action==="REOPEN") {
+        if(!["SUPER_ADMIN","SCHOOL_ADMIN"].includes(actor.role))throw new ApiError(403,"Administrator review required.");
+        const record=await tx.admissionEnquiry.findFirst({where:{id,schoolId:actor.schoolId,state:input.action==="REOPEN"?"CLOSED":"PENDING"}});
+        if(!record)throw new ApiError(404,"Enquiry not found for this action.");
+        if(input.action!=="DISMISS") {
+          const duplicate=await tx.admissionEnquiry.findFirst({where:{schoolId:actor.schoolId,id:{not:id},academicYearId:record.academicYearId,mobile:record.mobile,studentName:{equals:record.studentName,mode:"insensitive"},state:{in:["OPEN","LINKED"]}}});
+          if(duplicate)throw new ApiError(409,"An active matching enquiry already exists.");
+        }
+        const changed=await tx.admissionEnquiry.updateMany({where:{id,schoolId:actor.schoolId,state:record.state},data:input.action==="DISMISS"?{state:"DISMISSED",studentName:"",parentName:"",mobile:"",dob:null,notes:null}:{state:"OPEN"}});
+        if(changed.count!==1)throw new ApiError(409,"Enquiry was already updated.");
+        await writeAuditLog(tx,{actor,module:"ADMISSIONS",action:"UPDATE",entityType:"ADMISSION_ENQUIRY",entityId:id,summary:"Admission enquiry "+input.action.toLowerCase()});
+        return;
+      }
       const enquiry = await tx.admissionEnquiry.findFirst({ where: { id, schoolId: actor.schoolId, state: "OPEN" } });
       if (!enquiry) throw new ApiError(404, "Open enquiry not found.");
       let applicationId: string | undefined;
@@ -33,6 +46,6 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       if (changed.count !== 1) throw new ApiError(409, "Enquiry was already updated.");
       await writeAuditLog(tx, { actor, module: "ADMISSIONS", action: "UPDATE", entityType: "ADMISSION_ENQUIRY", entityId: id, summary: input.action === "LINK" ? "Linked enquiry to a verified application." : "Closed enquiry.", metadata: { ...(applicationId ? { applicationId } : {}) } });
     }, { isolationLevel: "Serializable" });
-    return ApiResponse.success(null, input.action === "LINK" ? "Enquiry linked." : "Enquiry closed.");
+    return ApiResponse.success(null, "Enquiry updated.");
   });
 }

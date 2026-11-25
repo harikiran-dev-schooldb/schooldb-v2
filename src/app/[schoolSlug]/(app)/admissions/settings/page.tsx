@@ -1,0 +1,9 @@
+import { PageContainer,PageHeader } from "@/components/common/layout";
+import { requireRole } from "@/lib/auth";
+import { ApiError } from "@/lib/errors";
+import { prisma } from "@/lib/prisma";
+import { admissionWorkspaceOptions } from "@/features/admissions/workspace.service";
+import { AdmissionAgeSettings } from "@/features/admissions/AdmissionAgeSettings";
+import { AdmissionNumberSettings } from "@/features/admissions/AdmissionNumberSettings";
+import { PublicEnquirySetting } from "@/features/admissions/AdmissionPlanningEditor";
+export default async function Page({params}:{params:Promise<{schoolSlug:string}>}){const {schoolSlug}=await params;const actor=await requireRole(["SUPER_ADMIN","SCHOOL_ADMIN"],schoolSlug);if(!["SUPER_ADMIN","SCHOOL_ADMIN"].includes(actor.role))throw new ApiError(403,"Administrator required.");const [options,setting]=await Promise.all([admissionWorkspaceOptions(actor.schoolId),prisma.schoolAdmissionSetting.findUnique({where:{schoolId:actor.schoolId}})]);return <PageContainer><PageHeader title="Admission Settings" description="Approved school-specific admission rules."/><AdmissionAgeSettings {...options}/><AdmissionNumberSettings initial={{automaticNumbering:setting?.automaticNumbering??false,admissionPrefix:setting?.admissionPrefix??"",nextNumber:setting?.nextNumber??1,numberPadding:setting?.numberPadding??4}}/><PublicEnquirySetting years={options.years}/></PageContainer>;}

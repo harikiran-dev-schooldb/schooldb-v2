@@ -17,6 +17,8 @@ model AcademicYear {
   createdAt               DateTime                 @default(now())
   updatedAt               DateTime                 @updatedAt
   admissionAgePolicy      Json?
+  admissionPlanning       Json?
+  admissionPublicEnquiriesEnabled Boolean @default(false)
   attendanceMode          AttendanceMode           @default(ONCE_DAILY)
   academicPeriods         AcademicPeriod[]
   school                  School                   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
@@ -2801,6 +2803,8 @@ enum AdmissionReviewStage {
 }
 
 enum AdmissionEnquiryState {
+  PENDING
+  DISMISSED
   OPEN
   LINKED
   CLOSED
@@ -2819,6 +2823,7 @@ model AdmissionEnquiry {
   notes           String?
   state           AdmissionEnquiryState @default(OPEN)
   applicationId   String? @unique
+  consentAt       DateTime?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
   school          School @relation(fields: [schoolId], references: [id], onDelete: Cascade)

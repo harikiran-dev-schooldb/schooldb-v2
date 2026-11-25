@@ -45,6 +45,7 @@ export default async function AdmissionsPage({
     status?: string;
     classId?: string;
     page?: string;
+    review?: string;
   }>;
 }) {
   const { schoolSlug } = await params;
@@ -61,7 +62,7 @@ export default async function AdmissionsPage({
   const pageSize = 20;
   const where = {
     schoolId: actor.schoolId,
-    ...(status ? { status } : {}),
+    ...(status ? { status } : query.review==="1" ? {status:{in:["SUBMITTED","UNDER_REVIEW","WAITLISTED"] as AdmissionStatus[]}} : {}),
     ...(query.classId ? { applyingClassId: query.classId } : {}),
     ...(query.search
       ? {
@@ -146,7 +147,7 @@ export default async function AdmissionsPage({
   return (
     <PageContainer>
       <PageHeader
-        title="Online Admissions"
+        title={query.review==="1"?"Entrance & Interviews":"Online Admissions"}
         description="Review applications, record decisions, and convert approved applicants into enrolled students."
         actions={
           <Button asChild>
@@ -156,7 +157,7 @@ export default async function AdmissionsPage({
           </Button>
         }
       />
-      <div className="flex flex-wrap gap-2"><Button asChild variant="outline"><Link href={`/${schoolSlug}/admissions/intake`}>Enquiries &amp; follow-ups</Link></Button></div>
+      <div className="flex flex-wrap gap-2"><Button asChild variant="outline"><Link href={`/${schoolSlug}/admissions/intake`}>Enquiries &amp; follow-ups</Link></Button><Button asChild variant="outline"><Link href={`/${schoolSlug}/admissions/age-calculator`}>Age Calculator</Link></Button><Button asChild variant="outline"><Link href={`/${schoolSlug}/admissions/fees`}>Fee Structure</Link></Button></div>
       <section className="premium-hero p-6 md:p-8">
         <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
           <div>
@@ -180,7 +181,7 @@ export default async function AdmissionsPage({
           </div>
         </div>
       </section>
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      {admin&&<section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Stat
           icon={ClipboardList}
           label="Total applications"
@@ -205,8 +206,8 @@ export default async function AdmissionsPage({
           value={counts.CONVERTED || 0}
           tone="violet"
         />
-      </section>
-      {canManageAdmissions && (
+      </section>}
+      {admin && (
         <AdmissionNumberSettings
           initial={{
             automaticNumbering: admissionSetting.automaticNumbering,
@@ -218,6 +219,7 @@ export default async function AdmissionsPage({
       )}
       {ageYears.length > 0 && <AdmissionAgeSettings years={ageYears.map((year) => ({ id: year.id, name: year.name, policy: readAdmissionAgePolicy(year.admissionAgePolicy) }))} classes={classes} />}
       <form className="grid gap-3 rounded-2xl border bg-card p-4 shadow-sm md:grid-cols-[minmax(240px,1fr)_220px_220px_auto]">
+        {query.review==="1"&&<input type="hidden" name="review" value="1"/>}
         <div className="relative">
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -482,10 +484,11 @@ function Stat({
   );
 }
 function pageHref(
-  query: { search?: string; status?: string; classId?: string },
+  query: { search?: string; status?: string; classId?: string; review?: string },
   page: number,
 ) {
   const params = new URLSearchParams();
+  if (query.review) params.set("review", query.review);
   if (query.search) params.set("search", query.search);
   if (query.status) params.set("status", query.status);
   if (query.classId) params.set("classId", query.classId);

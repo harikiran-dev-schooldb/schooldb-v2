@@ -13,6 +13,7 @@ export const enquirySchema = z.object({
 }).strict();
 export const enquiryActionSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("CLOSE") }).strict(),
+  z.object({ action: z.enum(["ACCEPT","DISMISS","REOPEN"]) }).strict(),
   z.object({ action: z.literal("LINK"), applicationNo: z.string().trim().min(6).max(50) }).strict(),
 ]);
 export const stageSchema = z.object({
