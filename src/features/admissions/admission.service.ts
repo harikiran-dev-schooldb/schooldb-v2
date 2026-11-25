@@ -8,6 +8,9 @@ import { publicSchoolLogoUrl } from "@/lib/school-branding";
 import { queueAdmissionWhatsappUpdate } from "@/features/whatsapp/service";
 
 import type { PublicAdmissionInput } from "./admission.schema";
+import { assessAge } from "./age-policy";
+import { stagesReady } from "./intake-policy";
+import { readAdmissionAgePolicy } from "./age-policy.schema";
 
 function applicationNumber() {
   return `APP-${new Date().getFullYear()}-${randomBytes(3).toString("hex").toUpperCase()}`;
@@ -30,7 +33,7 @@ export async function admissionPublicOptions(schoolSlug: string) {
         where: { active: true },
         orderBy: { startDate: "desc" },
         take: 1,
-        select: { id: true, name: true },
+        select: { id: true, name: true, admissionAgePolicy: true },
       },
       classes: {
         where: { active: true },
@@ -50,6 +53,7 @@ export async function admissionPublicOptions(schoolSlug: string) {
   if (!school) throw new ApiError(404, "School not found.");
   return {
     ...school,
+    academicYears: school.academicYears.map((year) => ({ ...year, admissionAgePolicy: readAdmissionAgePolicy(year.admissionAgePolicy) })),
     logo: publicSchoolLogoUrl(schoolSlug, school.logo),
   };
 }
@@ -59,7 +63,7 @@ export async function submitAdmission(schoolSlug: string, input: PublicAdmission
   if (!school) throw new ApiError(404, "School not found.");
 
   const [academicYear, applyingClass, preferredSection] = await Promise.all([
-    prisma.academicYear.findFirst({ where: { id: input.academicYearId, schoolId: school.id, active: true }, select: { id: true } }),
+    prisma.academicYear.findFirst({ where: { id: input.academicYearId, schoolId: school.id, active: true }, select: { id: true, admissionAgePolicy: true } }),
     prisma.class.findFirst({ where: { id: input.applyingClassId, schoolId: school.id, active: true }, select: { id: true } }),
     input.preferredSectionId
       ? prisma.section.findFirst({ where: { id: input.preferredSectionId, classId: input.applyingClassId, active: true }, select: { id: true } })
@@ -67,6 +71,13 @@ export async function submitAdmission(schoolSlug: string, input: PublicAdmission
   ]);
   if (!academicYear || !applyingClass || (input.preferredSectionId && !preferredSection)) {
     throw new ApiError(400, "Choose a valid academic year, class, and section.");
+  }
+
+  const agePolicy = readAdmissionAgePolicy(academicYear.admissionAgePolicy);
+  if (academicYear.admissionAgePolicy !== null && !agePolicy) throw new ApiError(503, "Age eligibility policy needs school administrator review.");
+  const age = assessAge(input.dob, agePolicy, applyingClass.id);
+  if (age.status === "INVALID_DATE" || age.status === "INELIGIBLE") {
+    throw new ApiError(400, "The date of birth does not meet the selected class's age limits. Contact the school for guidance.");
   }
 
   const phones = contactNumbers(input);
@@ -129,11 +140,12 @@ export async function changeAdmissionStatus(input: {
   note: string | null;
   changedBy: string;
 }) {
-  const current = await prisma.admissionApplication.findFirst({ where: { id: input.id, schoolId: input.schoolId }, select: { status: true } });
+  const current = await prisma.admissionApplication.findFirst({ where: { id: input.id, schoolId: input.schoolId }, select: { status: true, entranceStage: true, interviewStage: true, updatedAt: true } });
   if (!current) throw new ApiError(404, "Application not found.");
   if (!transitions[current.status].includes(input.status)) throw new ApiError(400, "This status change is not allowed.");
+  if (input.status === "APPROVED" && !stagesReady(current.entranceStage, current.interviewStage)) throw new ApiError(400, "Complete or waive required entrance and interview stages before approval.");
   const application = await prisma.admissionApplication.update({
-    where: { id: input.id },
+    where: { id: input.id, schoolId: input.schoolId, status: current.status, updatedAt: current.updatedAt },
     data: {
       status: input.status,
       notes: input.note,
@@ -162,6 +174,7 @@ export async function convertAdmission(input: {
   });
   if (!application) throw new ApiError(404, "Application not found.");
   if (application.status !== "APPROVED") throw new ApiError(400, "Approve the application before converting it.");
+  if (!stagesReady(application.entranceStage, application.interviewStage)) throw new ApiError(400, "Complete required review stages before conversion.");
 
   const [section, duplicateAadhar] = await Promise.all([
     prisma.section.findFirst({ where: { id: input.sectionId, classId: application.applyingClassId, active: true }, select: { id: true } }),
@@ -175,7 +188,7 @@ export async function convertAdmission(input: {
   const primaryPhone = application.fatherPhone || application.motherPhone || application.guardianPhone;
   const result = await prisma.$transaction(async (tx) => {
     const claimed = await tx.admissionApplication.updateMany({
-      where: { id: application.id, schoolId: input.schoolId, status: "APPROVED", studentId: null },
+      where: { id: application.id, schoolId: input.schoolId, status: "APPROVED", studentId: null, entranceStage: { in: ["NOT_REQUIRED","PASSED"] }, interviewStage: { in: ["NOT_REQUIRED","PASSED"] } },
       data: { status: "CONVERTED", convertedAt: new Date() },
     });
     if (claimed.count !== 1) throw new ApiError(409, "This application has already been converted.");
