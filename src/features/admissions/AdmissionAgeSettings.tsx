@@ -6,6 +6,9 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { AdmissionAgePolicy } from "./age-policy";
+import { AdmissionPanel, AdmissionSelect } from "./AdmissionWorkspaceUI";
+import { CalendarCheck } from "lucide-react";
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 
 type Year = { id: string; name: string; policy: AdmissionAgePolicy | null };
 type ClassOption = { id: string; name: string };
@@ -14,18 +17,15 @@ export function AdmissionAgeSettings({ years, classes }: { years: Year[]; classe
   const [yearId, setYearId] = useState(years[0]?.id ?? "");
   const year = years.find((item) => item.id === yearId);
   if (!year) return null;
-  return <section className="rounded-2xl border bg-card p-5 shadow-sm space-y-4">
+  return <AdmissionPanel title="Admission age eligibility" icon={CalendarCheck}>
     <div>
-      <h2 className="font-black">Admission age eligibility</h2>
       <p className="text-sm text-muted-foreground">Configure inclusive minimum and maximum completed months for this school and academic year. Leave both blank for an unconfigured class. Rules are enforced on public applications only after saving.</p>
     </div>
     <label className="block text-sm font-medium">Academic year
-      <select className="mt-1 block w-full rounded-md border bg-background p-2" value={yearId} onChange={(event) => setYearId(event.target.value)}>
-        {years.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
-      </select>
+      <AdmissionSelect label="Academic year" options={years} value={yearId} onChange={setYearId}/>
     </label>
     <AgeRuleEditor key={year.id} year={year} classes={classes} />
-  </section>;
+  </AdmissionPanel>;
 }
 
 function AgeRuleEditor({ year, classes }: { year: Year; classes: ClassOption[] }) {
@@ -62,14 +62,13 @@ function AgeRuleEditor({ year, classes }: { year: Year; classes: ClassOption[] }
     <label className="block max-w-xs text-sm font-medium">Age as of date
       <Input type="date" required value={date} onChange={(event) => setDate(event.target.value)} />
     </label>
-    <div className="grid gap-2">
-      <div className="grid grid-cols-3 gap-2 text-xs font-bold text-muted-foreground"><span>Class</span><span>Min months</span><span>Max months</span></div>
-      {classes.map((item) => <div key={item.id} className="grid grid-cols-3 gap-2 items-center">
-        <span className="text-sm">{item.name}</span>
-        <Input aria-label={item.name + " minimum months"} type="number" min={0} max={240} step={1} value={rules[item.id]?.min ?? ""} onChange={(event) => change(item.id, "min", event.target.value)} />
-        <Input aria-label={item.name + " maximum months"} type="number" min={0} max={240} step={1} value={rules[item.id]?.max ?? ""} onChange={(event) => change(item.id, "max", event.target.value)} />
-      </div>)}
-    </div>
+    <div className="overflow-hidden rounded-xl border border-border/60"><Table><TableHeader><TableRow><TableHead>Class</TableHead><TableHead>Min months</TableHead><TableHead>Max months</TableHead></TableRow></TableHeader><TableBody>
+      {classes.map((item) => <TableRow key={item.id}>
+        <TableCell className="font-semibold">{item.name}</TableCell>
+        <TableCell><Input aria-label={item.name + " minimum months"} type="number" min={0} max={240} step={1} value={rules[item.id]?.min ?? ""} onChange={(event) => change(item.id, "min", event.target.value)} /></TableCell>
+        <TableCell><Input aria-label={item.name + " maximum months"} type="number" min={0} max={240} step={1} value={rules[item.id]?.max ?? ""} onChange={(event) => change(item.id, "max", event.target.value)} /></TableCell>
+      </TableRow>)}
+    </TableBody></Table></div>
     <Button type="submit" disabled={busy}>{busy ? "Saving…" : "Save age rules"}</Button>
   </form>;
 }
