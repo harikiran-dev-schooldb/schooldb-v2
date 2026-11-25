@@ -11,6 +11,8 @@ import { EnquiryForm, EnquiryActions, ContactTaskForm, CompleteTask, EnquiryAdmi
 import { admissionWorkspaceOptions } from "@/features/admissions/workspace.service";
 import { calculateExactAge, eligibleClassIds } from "@/features/admissions/age-policy";
 import { ApiError } from "@/lib/errors";
+import { AdmissionDetails, AdmissionPanel } from "@/features/admissions/AdmissionWorkspaceUI";
+import { Badge } from "@/components/ui/badge";
 
 async function requestTime() {
   return new Date();
@@ -43,31 +45,31 @@ export default async function IntakePage({params,searchParams}:{params:Promise<{
     <PageHeader title={view==="parent-inbox"?"Parent enquiry inbox":view==="recovery"?"Admission recovery":view==="follow-ups"?"Parent follow-ups":"Admission enquiries"} description="Capture enquiries before application and manage parent contact." actions={<Button asChild variant="outline"><Link href={`/${schoolSlug}/admissions`}>Back to admissions</Link></Button>}/>
     {view==="parent-inbox"&&<p className="rounded-xl border p-4 text-sm">Parent enquiry portal: <Link className="underline" href={`/${schoolSlug}/apply/enquire`} target="_blank">Open public enquiry form</Link>. Enable it in Admission Settings for the intended year.</p>}
     {manage && view==="enquiries" && <EnquiryForm years={years} classes={classes}/>}
-    {view!=="follow-ups"&&<section className="space-y-3"><h2 className="font-bold">Enquiries ({enquiryCount})</h2>
+    {view!=="follow-ups"&&<AdmissionPanel title={view==="parent-inbox"?"Pending parent enquiries":view==="recovery"?"Closed enquiries":"Enquiry directory"} description={enquiryCount+" records"}>
       {!enquiries.length && <p className="text-sm text-muted-foreground">No enquiries on this page.</p>}
-      {enquiries.map(x=><article key={x.id} className="space-y-3 rounded-2xl border bg-card p-4">
-        <div className="flex flex-wrap justify-between gap-2"><strong>{x.studentName}</strong><span className="text-xs font-bold">{x.state}</span></div>
+      {enquiries.map(x=><article key={x.id} className="premium-card space-y-3 rounded-2xl p-4">
+        <div className="flex flex-wrap justify-between gap-2"><strong>{x.studentName}</strong><Badge variant={x.state==="LINKED"?"success":x.state==="PENDING"?"warning":"outline"} className="dark:text-foreground">{x.state}</Badge></div>
         <p className="text-sm">{x.academicYear.name} · {x.applyingClass.name} · {x.parentName} · {x.mobile}</p>
         <p className="text-xs text-muted-foreground">{x.source} · {formatSchoolDateTime(x.createdAt)}{x.dob ? " · DOB "+x.dob.toISOString().slice(0,10):""}</p>
         {x.dob&&(()=>{const policy=years.find(y=>y.id===x.academicYearId)?.policy;const dob=x.dob.toISOString().slice(0,10);const age=policy?calculateExactAge(dob,policy.ageAsOfDate):null;return age?<p className="text-sm">Age: {age.years}y {age.months}m {age.days}d · Eligible: {classes.filter(c=>eligibleClassIds(dob,policy).includes(c.id)).map(c=>c.name).join(", ")||"No matching configured rule"}</p>:null;})()}
         {view==="parent-inbox"&&<div className="flex gap-2"><EnquiryAdminAction id={x.id} action="ACCEPT"/><EnquiryAdminAction id={x.id} action="DISMISS"/></div>}
         {view==="recovery"&&<EnquiryAdminAction id={x.id} action="REOPEN"/>}
         {x.notes && <p className="text-sm">{x.notes}</p>}{x.application && <p className="text-sm">Application: {x.application.applicationNo}</p>}
-        {manage && x.state==="OPEN" && <EnquiryActions id={x.id}/>}
+        {manage && x.state==="OPEN" && <AdmissionDetails title={x.studentName} description="Link or close this enquiry." label="Manage enquiry"><EnquiryActions id={x.id}/></AdmissionDetails>}
         {manage && (x.state==="OPEN"||x.state==="LINKED") && <ContactTaskForm target="ENQUIRY" id={x.id} members={members}/>}
       </article>)}
       <nav className="flex gap-3 text-sm">{page>1&&<Link href={`?view=${view}&page=${page-1}&taskPage=${taskPage}`}>Previous enquiries</Link>}{page*20<enquiryCount&&<Link href={`?view=${view}&page=${page+1}&taskPage=${taskPage}`}>Next enquiries</Link>}</nav>
-    </section>}
-    {(view==="follow-ups"||view==="enquiries")&&<section className="space-y-3"><h2 className="font-bold">Parent follow-ups ({taskCount})</h2>
+    </AdmissionPanel>}
+    {(view==="follow-ups"||view==="enquiries")&&<AdmissionPanel title="Parent follow-ups" description={taskCount+" records"}>
       {!tasks.length&&<p className="text-sm text-muted-foreground">No follow-ups on this page.</p>}
-      {tasks.map(x=><article key={x.id} className="space-y-2 rounded-2xl border bg-card p-4">
-        <div className="flex flex-wrap justify-between gap-2"><strong>{x.application?.studentName||x.enquiry?.studentName}</strong><span className="text-xs font-bold">{x.completedAt?"COMPLETED":overdueIds.has(x.id)?"OVERDUE":"OPEN"}</span></div>
+      {tasks.map(x=><article key={x.id} className="premium-card space-y-2 rounded-2xl p-4">
+        <div className="flex flex-wrap justify-between gap-2"><strong>{x.application?.studentName||x.enquiry?.studentName}</strong><Badge variant={x.completedAt?"success":overdueIds.has(x.id)?"destructive":"outline"} className="dark:text-foreground">{x.completedAt?"COMPLETED":overdueIds.has(x.id)?"OVERDUE":"OPEN"}</Badge></div>
         <p className="text-sm">{x.assignedName} · Due {formatSchoolDateTime(x.dueAt)}</p>
         <p className="text-sm">{x.note}</p>
         {x.completedAt&&<p className="text-sm">{x.outcome} · {x.completionNote}</p>}
         {manage&&!x.completedAt&&(admin||actor.id===x.assignedMemberId)&&<CompleteTask id={x.id}/>}
       </article>)}
       <nav className="flex gap-3 text-sm">{taskPage>1&&<Link href={`?view=${view}&page=${page}&taskPage=${taskPage-1}`}>Previous follow-ups</Link>}{taskPage*20<taskCount&&<Link href={`?view=${view}&page=${page}&taskPage=${taskPage+1}`}>Next follow-ups</Link>}</nav>
-    </section>}
+    </AdmissionPanel>}
   </PageContainer>;
 }

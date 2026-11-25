@@ -16,10 +16,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AdmissionReviewActions } from "@/features/admissions/AdmissionReviewActions";
-import { AdmissionNumberSettings } from "@/features/admissions/AdmissionNumberSettings";
-import { AdmissionAgeSettings } from "@/features/admissions/AdmissionAgeSettings";
+import { AdmissionDetails, AdmissionSelect } from "@/features/admissions/AdmissionWorkspaceUI";
 import { StageEditor, ContactTaskForm } from "@/features/admissions/AdmissionIntakeControls";
-import { readAdmissionAgePolicy } from "@/features/admissions/age-policy.schema";
 import { requireRole } from "@/lib/auth";
 import { formatSchoolDateTime } from "@/lib/date-time";
 import { prisma } from "@/lib/prisma";
@@ -131,11 +129,6 @@ export default async function AdmissionsPage({
         update: {},
       }),
     ]);
-  const ageYears = ["SUPER_ADMIN", "SCHOOL_ADMIN"].includes(actor.role) ? await prisma.academicYear.findMany({
-    where: { schoolId: actor.schoolId, active: true },
-    orderBy: { startDate: "desc" },
-    select: { id: true, name: true, admissionAgePolicy: true },
-  }) : [];
   const staff = canManageAdmissions ? await prisma.membership.findMany({ where: { schoolId: actor.schoolId, isActive: true, role: { in: ["SUPER_ADMIN","SCHOOL_ADMIN","RECEPTIONIST","TEACHER"] } }, include: { user: { select: { firstName: true, lastName: true } } } }) : [];
   const members = staff.map(member => ({ id: member.id, name: [member.user.firstName,member.user.lastName].filter(Boolean).join(" ") || member.designation || "School staff", contact: member.role !== "TEACHER" }));
   const admin = ["SUPER_ADMIN","SCHOOL_ADMIN"].includes(actor.role);
@@ -172,8 +165,8 @@ export default async function AdmissionsPage({
               without retyping family or contact details.
             </p>
           </div>
-          <div className="flex items-center gap-3 rounded-2xl border border-emerald-200/70 bg-white/85 p-4 shadow-sm">
-            <ShieldCheck className="size-7 text-emerald-600" />
+          <div className="flex items-center gap-3 rounded-2xl border border-emerald-200/70 bg-card p-4 shadow-sm">
+            <ShieldCheck className="size-7 text-emerald-600 dark:text-emerald-300" />
             <div>
               <p className="text-xs text-muted-foreground">Secure intake</p>
               <p className="font-bold">Duplicate checks enabled</p>
@@ -207,18 +200,7 @@ export default async function AdmissionsPage({
           tone="violet"
         />
       </section>}
-      {admin && (
-        <AdmissionNumberSettings
-          initial={{
-            automaticNumbering: admissionSetting.automaticNumbering,
-            admissionPrefix: admissionSetting.admissionPrefix,
-            nextNumber: admissionSetting.nextNumber,
-            numberPadding: admissionSetting.numberPadding,
-          }}
-        />
-      )}
-      {ageYears.length > 0 && <AdmissionAgeSettings years={ageYears.map((year) => ({ id: year.id, name: year.name, policy: readAdmissionAgePolicy(year.admissionAgePolicy) }))} classes={classes} />}
-      <form className="grid gap-3 rounded-2xl border bg-card p-4 shadow-sm md:grid-cols-[minmax(240px,1fr)_220px_220px_auto]">
+      <form className="premium-card grid gap-3 rounded-2xl p-4 md:grid-cols-[minmax(180px,1fr)_minmax(140px,200px)_minmax(140px,200px)_auto]">
         {query.review==="1"&&<input type="hidden" name="review" value="1"/>}
         <div className="relative">
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -226,34 +208,12 @@ export default async function AdmissionsPage({
             name="search"
             defaultValue={query.search}
             placeholder="Search name, number or mobile"
-            className="pl-9"
+            className="h-11 rounded-xl pl-9"
           />
         </div>
-        <select
-          name="status"
-          defaultValue={query.status || ""}
-          className="h-9 rounded-md border bg-background px-3 text-sm"
-        >
-          <option value="">All statuses</option>
-          {statuses.map((item) => (
-            <option key={item} value={item}>
-              {label(item)}
-            </option>
-          ))}
-        </select>
-        <select
-          name="classId"
-          defaultValue={query.classId || ""}
-          className="h-9 rounded-md border bg-background px-3 text-sm"
-        >
-          <option value="">All classes</option>
-          {classes.map((item) => (
-            <option key={item.id} value={item.id}>
-              {item.name}
-            </option>
-          ))}
-        </select>
-        <Button type="submit">Apply filters</Button>
+        <AdmissionSelect key={query.status||"all-statuses"} name="status" label="Status" defaultValue={query.status||""} options={[{id:"",name:"All statuses"},...statuses.map(item=>({id:item,name:label(item)}))]}/>
+        <AdmissionSelect key={query.classId||"all-classes"} name="classId" label="Class" defaultValue={query.classId||""} options={[{id:"",name:"All classes"},...classes]}/>
+        <Button type="submit" className="h-11 rounded-xl">Apply filters</Button>
       </form>
       <section className="space-y-4">
         {applications.length === 0 && (
@@ -268,10 +228,10 @@ export default async function AdmissionsPage({
         {applications.map((item) => (
           <article
             key={item.id}
-            className="overflow-hidden rounded-3xl border bg-card shadow-sm"
+            className="premium-card overflow-hidden rounded-3xl"
           >
             <div className="flex flex-col gap-5 p-5 lg:flex-row lg:items-start">
-              <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-indigo-50 text-lg font-black text-indigo-700">
+              <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-indigo-500/10 text-lg font-black text-indigo-700 dark:text-indigo-300">
                 {item.studentName.slice(0, 2).toUpperCase()}
               </div>
               <div className="min-w-0 flex-1">
@@ -340,7 +300,7 @@ export default async function AdmissionsPage({
                   </p>
                 )}
                 {item.medicalConditions && (
-                  <p className="mt-2 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">
+                  <p className="mt-2 rounded-xl bg-amber-500/100/10 p-3 text-sm text-foreground">
                     <span className="font-bold">Health note:</span>{" "}
                     {item.medicalConditions}
                   </p>
@@ -368,8 +328,9 @@ export default async function AdmissionsPage({
                 )}
               </div>
             </div>
-            <div className="border-t bg-slate-50/60 p-5">
+            <div className="border-t border-border/60 bg-muted/20 p-4 sm:p-5">
               <div className="mb-3 grid gap-2 text-sm sm:grid-cols-2"><p>Entrance: <strong>{label(item.entranceStage)}</strong></p><p>Interview: <strong>{label(item.interviewStage)}</strong></p></div>
+              <AdmissionDetails title={item.studentName} description={item.applicationNo+" · Review stages and application actions"} label={canManageAdmissions?"Manage application":"View details"}>
               {canManageAdmissions && ["DRAFT","SUBMITTED","UNDER_REVIEW","WAITLISTED"].includes(item.status) && <div className="mb-3 grid gap-3 sm:grid-cols-2">
                 <StageEditor key={item.id+":entrance:"+item.updatedAt.toISOString()} id={item.id} stage="ENTRANCE" status={item.entranceStage} at={item.entranceAt?.toISOString() ?? null} memberId={item.entranceMemberId} members={members} admin={admin}/>
                 <StageEditor key={item.id+":interview:"+item.updatedAt.toISOString()} id={item.id} stage="INTERVIEW" status={item.interviewStage} at={item.interviewAt?.toISOString() ?? null} memberId={item.interviewMemberId} members={members} admin={admin}/>
@@ -403,12 +364,13 @@ export default async function AdmissionsPage({
                   </div>
                 </div>
               )}
+              </AdmissionDetails>
             </div>
           </article>
         ))}
       </section>
       {pages > 1 && (
-        <nav className="flex items-center justify-between rounded-2xl border bg-card p-4 text-sm">
+        <nav className="premium-card flex flex-wrap items-center justify-between gap-3 rounded-2xl p-4 text-sm">
           <p>
             Page {page} of {pages} · {total} results
           </p>
@@ -466,13 +428,13 @@ function Stat({
   tone: "indigo" | "amber" | "emerald" | "violet";
 }) {
   const styles = {
-    indigo: "bg-indigo-50 text-indigo-700",
-    amber: "bg-amber-50 text-amber-700",
-    emerald: "bg-emerald-50 text-emerald-700",
-    violet: "bg-violet-50 text-violet-700",
+    indigo: "bg-primary/10 text-primary",
+    amber: "bg-amber-50 text-amber-700 dark:text-amber-300",
+    emerald: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+    violet: "bg-violet-500/10 text-violet-700 dark:text-violet-300",
   };
   return (
-    <div className="rounded-2xl border bg-card p-5 shadow-sm">
+    <div className="premium-card rounded-2xl p-5">
       <div
         className={`flex size-10 items-center justify-center rounded-xl ${styles[tone]}`}
       >
