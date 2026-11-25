@@ -24,3 +24,18 @@ export function assessAge(dob: string, policy: AdmissionAgePolicy | null | undef
   if (months === null) return { status: "INVALID_DATE" as const, months };
   return { status: months >= rule.minMonths && months <= rule.maxMonths ? "ELIGIBLE" as const : "INELIGIBLE" as const, months };
 }
+
+export function calculateExactAge(dob: string, cutoff: string) {
+  const totalMonths = completedAgeMonths(dob, cutoff);
+  if (totalMonths === null) return null;
+  const birth = new Date(dob + "T00:00:00Z");
+  const anchor = new Date(Date.UTC(birth.getUTCFullYear(), birth.getUTCMonth() + totalMonths, 1));
+  const lastDay = new Date(Date.UTC(anchor.getUTCFullYear(), anchor.getUTCMonth() + 1, 0)).getUTCDate();
+  anchor.setUTCDate(Math.min(birth.getUTCDate(), lastDay));
+  const days = Math.round((new Date(cutoff + "T00:00:00Z").getTime() - anchor.getTime()) / 86400000);
+  return { years: Math.floor(totalMonths / 12), months: totalMonths % 12, days, totalMonths };
+}
+export function eligibleClassIds(dob: string, policy: AdmissionAgePolicy | null | undefined) {
+  if (!policy) return [];
+  return Object.keys(policy.rules).filter(id => assessAge(dob, policy, id).status === "ELIGIBLE");
+}

@@ -16,7 +16,7 @@ export async function POST(request: Request) {
       if (input.action === "CREATE") {
         const [member, target] = await Promise.all([
           tx.membership.findFirst({ where: { id: input.assignedMemberId, schoolId: actor.schoolId, isActive: true, role: { in: ["SUPER_ADMIN","SCHOOL_ADMIN","RECEPTIONIST"] } }, include: { user: true } }),
-          input.target === "ENQUIRY" ? tx.admissionEnquiry.findFirst({ where: { id: input.targetId, schoolId: actor.schoolId, state: { not: "CLOSED" } }, select: { id: true } }) : tx.admissionApplication.findFirst({ where: { id: input.targetId, schoolId: actor.schoolId, status: { not: "CONVERTED" } }, select: { id: true } }),
+          input.target === "ENQUIRY" ? tx.admissionEnquiry.findFirst({ where: { id: input.targetId, schoolId: actor.schoolId, state: { in: ["OPEN","LINKED"] } }, select: { id: true } }) : tx.admissionApplication.findFirst({ where: { id: input.targetId, schoolId: actor.schoolId, status: { not: "CONVERTED" } }, select: { id: true } }),
         ]);
         if (!member || !target) throw new ApiError(400, "Choose a valid school staff member and admission record.");
         const task = await tx.admissionContactTask.create({ data: {

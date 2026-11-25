@@ -49,6 +49,7 @@ export default async function OnlineAdmissionPage({
             Start your child&apos;s admission application in a few minutes.
           </div>
         </header>
+        <p className="mt-4 text-center text-sm"><Link className="font-bold text-indigo-700 underline" href={`/${schoolSlug}/apply/enquire`}>Send a parent enquiry instead</Link></p>
         <section className="mt-6 rounded-[2rem] border border-white bg-white/95 p-5 shadow-xl shadow-slate-900/5 backdrop-blur sm:p-8">
           <PublicAdmissionForm schoolSlug={schoolSlug} school={school} />
         </section>
