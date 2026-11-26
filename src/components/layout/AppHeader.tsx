@@ -25,7 +25,6 @@ import { NotificationMenu } from "@/features/notifications/NotificationMenu";
 import { GlobalSearch } from "@/features/search/GlobalSearch";
 import { navigation } from "@/lib/navigation";
 import { isRouteAllowed } from "@/lib/route-access";
-import { ThemeToggle } from "@/components/theme/ThemeToggle";
 
 function currentPageTitle(pathname: string, schoolSlug: string) {
   const route = pathname.replace(new RegExp(`^/${schoolSlug}/?`), "").replace(/\/$/, "");
@@ -111,7 +110,6 @@ export function AppHeader({ onMenuClick }: Props) {
         <div className="flex items-center gap-1.5 rounded-2xl border border-border/60 bg-card/75 p-1 shadow-[0_8px_24px_rgba(15,23,42,0.04)] backdrop-blur-xl sm:gap-2 sm:p-1.5 dark:border-white/[0.08] dark:shadow-[0_10px_28px_rgba(0,0,0,0.2)]">
           <GlobalSearch schoolSlug={schoolSlug} />
 
-          <ThemeToggle />
 
           {isRouteAllowed(school, "notification-inbox") && (
             <NotificationMenu schoolSlug={schoolSlug} />

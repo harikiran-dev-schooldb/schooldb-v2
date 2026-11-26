@@ -6,7 +6,6 @@ import { Toaster } from "@/components/ui/sonner";
 import { Analytics } from "@vercel/analytics/next";
 import { PwaRegistration } from "@/components/pwa/PwaRegistration";
 import { AccountSwitchTransition } from "@/components/layout/AccountSwitchTransition";
-import { ThemeProvider } from "@/components/theme/ThemeProvider";
 
 export const metadata: Metadata = {
   title: {
@@ -37,10 +36,8 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f5f7ff" },
-    { media: "(prefers-color-scheme: dark)", color: "#111827" },
-  ],
+  themeColor: "#f5f7ff",
+  colorScheme: "light",
 };
 
 export default function RootLayout({
@@ -52,11 +49,9 @@ export default function RootLayout({
     <html
       lang="en"
       data-scroll-behavior="smooth"
-      suppressHydrationWarning
-      className="font-sans antialiased"
+      className="light font-sans antialiased"
     >
       <body className="schooldb-theme-scope flex min-h-screen flex-col bg-background text-foreground">
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           <ClerkProvider proxyUrl={process.env.NEXT_PUBLIC_CLERK_PROXY_URL}>
             <AccountSwitchTransition />
             {children}
@@ -73,7 +68,6 @@ export default function RootLayout({
             />
             <Analytics />
           </ClerkProvider>
-        </ThemeProvider>
       </body>
     </html>
   );

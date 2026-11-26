@@ -2,7 +2,8 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
-@custom-variant dark (&:is(.dark *));
+/* Retired dark utilities are deliberately inert even if a legacy class is present. */
+@custom-variant dark (&:where(:not(*)));
 
 @theme inline {
   --color-background: var(--background);
@@ -65,6 +66,7 @@
    ========================================================================== */
 
 :root {
+  color-scheme: only light;
   --radius: 0.9rem;
 
   /* ------------------------------------------------------------------------
@@ -138,57 +140,6 @@
 }
 
 /* ==========================================================================
-   DARK MODE
-   ========================================================================== */
-
-.dark {
-  --background: oklch(0.125 0.018 255);
-  --foreground: oklch(0.965 0.006 255);
-
-  --card: oklch(0.165 0.022 255);
-  --card-foreground: oklch(0.965 0.006 255);
-
-  --popover: oklch(0.17 0.024 255);
-  --popover-foreground: oklch(0.965 0.006 255);
-
-  --primary: oklch(0.68 0.20 274);
-  --primary-foreground: oklch(0.14 0.025 265);
-
-  --secondary: oklch(0.225 0.035 265);
-  --secondary-foreground: oklch(0.96 0.006 255);
-
-  --muted: oklch(0.225 0.025 255);
-  --muted-foreground: oklch(0.70 0.015 255);
-
-  --accent: oklch(0.235 0.045 290);
-  --accent-foreground: oklch(0.97 0.005 255);
-
-  --destructive: oklch(0.68 0.19 22);
-
-  --border: oklch(1 0 0 / 9%);
-  --input: oklch(1 0 0 / 11%);
-  --ring: oklch(0.68 0.20 274);
-
-  --chart-1: oklch(0.68 0.20 274);
-  --chart-2: oklch(0.70 0.18 303);
-  --chart-3: oklch(0.70 0.16 225);
-  --chart-4: oklch(0.72 0.16 155);
-  --chart-5: oklch(0.75 0.17 65);
-
-  --sidebar: oklch(0.105 0.018 265);
-  --sidebar-foreground: oklch(0.94 0.008 255);
-
-  --sidebar-primary: oklch(0.68 0.20 274);
-  --sidebar-primary-foreground: oklch(0.98 0.004 255);
-
-  --sidebar-accent: oklch(0.19 0.032 270);
-  --sidebar-accent-foreground: oklch(0.98 0.004 255);
-
-  --sidebar-border: oklch(1 0 0 / 8%);
-  --sidebar-ring: oklch(0.68 0.20 274);
-}
-
-/* ==========================================================================
    BASE
    ========================================================================== */
 
@@ -222,113 +173,6 @@
   }
 }
 
-/* ==========================================================================
-   LEGACY PAGE THEME BRIDGE
-
-   Older feature screens predate the semantic surface tokens and still use
-   literal white/Slate utilities. Keep those screens readable in dark mode
-   while they are progressively migrated. Printable documents opt out with
-   `.theme-force-light` so receipts and report cards remain paper-white.
-   ========================================================================== */
-
-@media screen {
-  .dark .schooldb-theme-scope .bg-white {
-    background-color: var(--card);
-  }
-
-  .dark .schooldb-theme-scope .bg-white\/50 {
-    background-color: color-mix(in oklab, var(--card) 50%, transparent);
-  }
-
-  .dark .schooldb-theme-scope .bg-white\/70,
-  .dark .schooldb-theme-scope .bg-white\/75,
-  .dark .schooldb-theme-scope .bg-white\/80,
-  .dark .schooldb-theme-scope .bg-white\/82,
-  .dark .schooldb-theme-scope .bg-white\/85,
-  .dark .schooldb-theme-scope .bg-white\/88,
-  .dark .schooldb-theme-scope .bg-white\/90,
-  .dark .schooldb-theme-scope .bg-white\/95 {
-    background-color: color-mix(in oklab, var(--card) 88%, transparent);
-  }
-
-  .dark .schooldb-theme-scope .bg-slate-50,
-  .dark .schooldb-theme-scope .bg-slate-50\/40,
-  .dark .schooldb-theme-scope .bg-slate-50\/45,
-  .dark .schooldb-theme-scope .bg-slate-50\/50,
-  .dark .schooldb-theme-scope .bg-slate-50\/55,
-  .dark .schooldb-theme-scope .bg-slate-50\/60,
-  .dark .schooldb-theme-scope .bg-slate-50\/70,
-  .dark .schooldb-theme-scope .bg-slate-50\/80,
-  .dark .schooldb-theme-scope .bg-slate-100,
-  .dark .schooldb-theme-scope .bg-slate-100\/70,
-  .dark .schooldb-theme-scope .bg-slate-100\/80,
-  .dark .schooldb-theme-scope .bg-slate-100\/90 {
-    background-color: var(--muted);
-  }
-
-  .dark .schooldb-theme-scope .text-slate-950,
-  .dark .schooldb-theme-scope .text-slate-900,
-  .dark .schooldb-theme-scope .text-slate-800,
-  .dark .schooldb-theme-scope .text-slate-700 {
-    color: var(--foreground);
-  }
-
-  .dark .schooldb-theme-scope .text-slate-600,
-  .dark .schooldb-theme-scope .text-slate-500,
-  .dark .schooldb-theme-scope .text-slate-400 {
-    color: var(--muted-foreground);
-  }
-
-  .dark .schooldb-theme-scope .border-slate-100,
-  .dark .schooldb-theme-scope .border-slate-200,
-  .dark .schooldb-theme-scope .border-slate-200\/60,
-  .dark .schooldb-theme-scope .border-slate-200\/70,
-  .dark .schooldb-theme-scope .border-slate-200\/80,
-  .dark .schooldb-theme-scope .border-slate-200\/90,
-  .dark .schooldb-theme-scope .border-slate-300,
-  .dark .schooldb-theme-scope .divide-slate-100 > :not(:last-child),
-  .dark .schooldb-theme-scope .divide-slate-200 > :not(:last-child) {
-    border-color: var(--border);
-  }
-
-  .dark .schooldb-theme-scope .ring-slate-100,
-  .dark .schooldb-theme-scope .ring-slate-200,
-  .dark .schooldb-theme-scope .ring-slate-200\/70,
-  .dark .schooldb-theme-scope .ring-slate-200\/80 {
-    --tw-ring-color: var(--border);
-  }
-
-  .dark .schooldb-theme-scope .hover\:bg-slate-50:hover {
-    background-color: var(--muted);
-  }
-
-  .dark .schooldb-theme-scope .from-white {
-    --tw-gradient-from: var(--card) var(--tw-gradient-from-position);
-    --tw-gradient-to: color-mix(in oklab, var(--card) 0%, transparent) var(--tw-gradient-to-position);
-    --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to);
-  }
-
-  .dark .schooldb-theme-scope .via-white,
-  .dark .schooldb-theme-scope .via-white\/90 {
-    --tw-gradient-via: var(--card) var(--tw-gradient-via-position);
-    --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-via), var(--tw-gradient-to);
-  }
-
-  .dark .schooldb-theme-scope .to-white {
-    --tw-gradient-to: var(--card) var(--tw-gradient-to-position);
-  }
-
-  .dark .schooldb-theme-scope .theme-force-light {
-    --card: oklch(1 0 0);
-    --foreground: oklch(0.19 0.025 255);
-    --muted: oklch(0.955 0.008 255);
-    --muted-foreground: oklch(0.49 0.025 255);
-    --border: oklch(0.90 0.012 255);
-    color: var(--foreground);
-    color-scheme: light;
-  }
-}
-
 /* Consistent dropdown affordance for legacy native <select> controls.
    Tailwind utility classes retain control of custom widths/heights/layouts. */
 @layer base {
@@ -348,9 +192,6 @@
     transition: border-color 200ms, box-shadow 200ms;
   }
 
-  .dark select:not([multiple]):not([size]) {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23cbd5e1' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
-  }
 
   select:not([multiple]):not([size]):not(:disabled):hover {
     border-color: color-mix(in oklab, var(--primary) 25%, var(--input));
@@ -816,10 +657,6 @@
   box-shadow: 0 8px 24px rgb(79 70 229 / 0.24);
 }
 
-.dark .schooldb-header-workspace-mark {
-  background: linear-gradient(135deg, #6366f1, #4f46e5 52%, #7c3aed);
-  box-shadow: 0 10px 28px rgb(79 70 229 / 0.3);
-}
 
 .schooldb-auth-stars {
   opacity: 0.42;
