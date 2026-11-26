@@ -55,6 +55,8 @@ data class TicketDetail(
 data class TicketMessage(val body: String, val author: String, val isInternal: Boolean, val createdAt: String, val authorId: String = "")
 data class SupportUpdate(val id: String, val ticketNo: String, val subject: String, val status: String, val priority: String, val updatedAt: String, val unread: Boolean)
 data class SupportUpdates(val unreadCount: Int, val items: List<SupportUpdate>)
+data class WorkTicket(val id: String, val ticketNo: String, val subject: String, val priority: String, val status: String)
+data class PersonalWorkspace(val assigned: Int, val overdue: Int, val raised: Int, val tickets: List<WorkTicket>)
 data class TicketActivity(val action: String, val detail: String, val actor: String, val createdAt: String)
 data class ParentDelivery(val campaignId: String, val status: String, val error: String?, val updatedAt: String)
 data class StaffOption(val id: String, val name: String, val role: String)
@@ -232,6 +234,17 @@ class SupportRepository {
             data.getJSONObject("pagination").optInt("total"),
             data.getJSONObject("pagination").optInt("totalPages", 1),
             data.getJSONObject("pagination").optBoolean("hasMore"))
+    }
+
+    suspend fun workspace(school: String): PersonalWorkspace = withContext(Dispatchers.IO) {
+        val data = request("GET", "api/v1/support/tickets/workspace", school).getJSONObject("data")
+        val items = data.getJSONArray("tickets")
+        PersonalWorkspace(data.getInt("assigned"), data.getInt("overdue"), data.getInt("raised"),
+            (0 until items.length()).map { index ->
+                val item = items.getJSONObject(index)
+                WorkTicket(item.getString("id"), item.getString("ticketNo"), item.getString("subject"),
+                    item.getString("priority"), item.getString("status"))
+            })
     }
 
     suspend fun updates(school: String): SupportUpdates = withContext(Dispatchers.IO) {

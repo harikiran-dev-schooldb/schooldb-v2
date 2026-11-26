@@ -13,6 +13,7 @@ import androidx.compose.material.icons.outlined.Dashboard
 import androidx.compose.material.icons.outlined.ConfirmationNumber
 import androidx.compose.material.icons.outlined.BarChart
 import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.layout.*
@@ -33,10 +34,10 @@ import androidx.compose.ui.unit.sp
 
 internal val Ink = Color(0xFF0F172A)
 internal val Muted = Color(0xFF64748B)
-internal val Canvas = Color(0xFFF5F7FB)
+internal val Canvas = Color(0xFFF4F6FA)
 internal val Indigo = SchoolBrand.primary
-internal val Line = Color(0xFFDDE3EE)
-internal val Navy = Color(0xFF312E81)
+internal val Line = Color(0xFFE1E6EF)
+internal val Navy = Color(0xFF172554)
 internal val Violet = SchoolBrand.secondary
 internal val SchoolGreen = Color(0xFF008B83)
 internal val SchoolGold = SchoolBrand.accent
@@ -61,7 +62,7 @@ private val SupportLightColors = lightColorScheme(
     surfaceVariant = Color(0xFFF0F3F7),
     onSurfaceVariant = Muted,
     outline = Line,
-    outlineVariant = Color(0xFFEDF0F4),
+    outlineVariant = Color(0xFFE3E8F1),
     error = Color(0xFFC33D47),
 )
 
@@ -92,14 +93,14 @@ private val SupportTypography = Typography(
     headlineLarge = TextStyle(fontSize = 31.sp, lineHeight = 38.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.4).sp),
     headlineMedium = TextStyle(fontSize = 27.sp, lineHeight = 34.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.25).sp),
     headlineSmall = TextStyle(fontSize = 23.sp, lineHeight = 30.sp, fontWeight = FontWeight.Bold),
-    titleLarge = TextStyle(fontSize = 20.sp, lineHeight = 27.sp, fontWeight = FontWeight.SemiBold),
-    titleMedium = TextStyle(fontSize = 16.sp, lineHeight = 23.sp, fontWeight = FontWeight.SemiBold),
+    titleLarge = TextStyle(fontSize = 20.sp, lineHeight = 26.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.3).sp),
+    titleMedium = TextStyle(fontSize = 16.sp, lineHeight = 22.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.15).sp),
     bodyLarge = TextStyle(fontSize = 16.sp, lineHeight = 24.sp),
     bodyMedium = TextStyle(fontSize = 14.sp, lineHeight = 21.sp),
     bodySmall = TextStyle(fontSize = 12.sp, lineHeight = 18.sp),
     labelLarge = TextStyle(fontSize = 14.sp, lineHeight = 20.sp, fontWeight = FontWeight.SemiBold),
     labelMedium = TextStyle(fontSize = 12.sp, lineHeight = 17.sp, fontWeight = FontWeight.SemiBold),
-    labelSmall = TextStyle(fontSize = 11.sp, lineHeight = 15.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.7.sp),
+    labelSmall = TextStyle(fontSize = 11.sp, lineHeight = 15.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 0.35.sp),
 )
 
 private val SupportShapes = Shapes(
@@ -107,7 +108,7 @@ private val SupportShapes = Shapes(
     small = RoundedCornerShape(16.dp),
     medium = RoundedCornerShape(20.dp),
     large = RoundedCornerShape(20.dp),
-    extraLarge = RoundedCornerShape(36.dp),
+    extraLarge = RoundedCornerShape(24.dp),
 )
 
 @Composable
@@ -152,17 +153,17 @@ internal fun SurfaceCard(modifier: Modifier = Modifier, content: @Composable Col
 @Composable
 internal fun SectionTitle(title: String, subtitle: String?, modifier: Modifier = Modifier) {
     Column(modifier, verticalArrangement = Arrangement.spacedBy(3.dp)) {
-        Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+        Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
         if (subtitle != null) Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
 @Composable
 internal fun Pill(label: String, tint: Color, modifier: Modifier = Modifier) {
-    Row(modifier.background(tint.copy(alpha = 0.11f), CircleShape).padding(horizontal = 11.dp, vertical = 6.dp),
+    Row(modifier.background(tint.copy(alpha = 0.09f), RoundedCornerShape(8.dp)).padding(horizontal = 8.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.size(6.dp).background(tint, CircleShape))
-        Spacer(Modifier.width(7.dp))
+        Spacer(Modifier.width(5.dp))
         Text(label, color = tint, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
     }
 }
@@ -203,11 +204,11 @@ internal fun SupportHeaderAction(
 ) {
     Surface(
         onClick = onClick,
-        modifier = modifier.size(42.dp),
-        shape = CircleShape,
-        color = Color.White.copy(alpha = .88f),
-        border = BorderStroke(1.dp, Color(0xFFD8E0FF)),
-        shadowElevation = 2.dp,
+        modifier = modifier.size(48.dp),
+        shape = RoundedCornerShape(14.dp),
+        color = Color(0xFFF3F5FA),
+        border = BorderStroke(1.dp, Line),
+        shadowElevation = 0.dp,
     ) {
         Box(contentAlignment = Alignment.Center, content = content)
     }
@@ -241,10 +242,11 @@ internal fun SupportEmptyState(title: String, message: String, icon: ImageVector
 }
 
 @Composable
-internal fun SupportNavigationDock(selected: String, onSelect: (String) -> Unit) {
+internal fun SupportNavigationDock(selected: String, admin: Boolean, unread: Int, onSelect: (String) -> Unit) {
     Column {
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         NavigationBar(
+            modifier = Modifier.heightIn(min = 68.dp),
             containerColor = MaterialTheme.colorScheme.surface,
             tonalElevation = 0.dp,
             windowInsets = WindowInsets(0, 0, 0, 0),
@@ -252,14 +254,18 @@ internal fun SupportNavigationDock(selected: String, onSelect: (String) -> Unit)
             listOf(
                 "Overview" to Icons.Outlined.Dashboard,
                 "Tickets" to Icons.Outlined.ConfirmationNumber,
-                "Analytics" to Icons.Outlined.BarChart,
+                if (admin) "Analytics" to Icons.Outlined.BarChart else "Updates" to Icons.Outlined.Notifications,
                 "Profile" to Icons.Outlined.Person,
             ).forEach { (tab, icon) ->
                 NavigationBarItem(
                     selected = selected == tab,
                     onClick = { onSelect(tab) },
-                    icon = { Icon(icon, contentDescription = null) },
-                    label = { Text(if (tab == "Overview") "Home" else tab, maxLines = 1) },
+                    icon = {
+                        BadgedBox(badge = { if (tab == "Updates" && unread > 0) Badge { Text(if (unread > 99) "99+" else unread.toString()) } }) {
+                            Icon(icon, contentDescription = null)
+                        }
+                    },
+                    label = { Text(if (tab == "Overview") "Home" else tab, maxLines = 1, fontWeight = if (selected == tab) FontWeight.Bold else FontWeight.Medium) },
                     alwaysShowLabel = true,
                     colors = NavigationBarItemDefaults.colors(
                         indicatorColor = MaterialTheme.colorScheme.primaryContainer,

@@ -55,8 +55,8 @@ internal fun SupportProfileScreen(
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 12.dp, bottom = 28.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item {
             SupportPageHeading(
@@ -274,11 +274,11 @@ internal fun SupportProfileScreen(
 private fun ProfileHero(profile: SupportAccountProfile, schoolIdentity: SchoolIdentity?) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(28.dp),
-        color = Indigo,
-        shadowElevation = 6.dp,
+        shape = RoundedCornerShape(24.dp),
+        color = Navy,
+        shadowElevation = 0.dp,
     ) {
-        Row(Modifier.padding(20.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.fillMaxWidth().background(androidx.compose.ui.graphics.Brush.linearGradient(listOf(Navy, Color(0xFF263D83)))).padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
             Surface(shape = CircleShape, color = Color.White.copy(alpha = .16f)) {
                 Box(Modifier.size(62.dp), contentAlignment = Alignment.Center) {
                     Text(profile.userName.initials(), color = Color.White, style = MaterialTheme.typography.titleLarge,

@@ -450,6 +450,31 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
             updatesLoading = false
         }
     }
+    var personalWork by remember(school, cacheUserId) { mutableStateOf<PersonalWorkspace?>(null) }
+    var workLoading by remember(school, cacheUserId) { mutableStateOf(false) }
+    var workError by remember(school, cacheUserId) { mutableStateOf<String?>(null) }
+    var workRefresh by remember(school, cacheUserId) { mutableIntStateOf(0) }
+    LaunchedEffect(school, cacheUserId, sessionReady, page, dashboardTab, resumeVersion, pushUpdate, workRefresh) {
+        if (!sessionReady || school.isBlank() || cacheUserId.isBlank() || page != SupportPage.DASHBOARD || dashboardTab != DashboardTab.OVERVIEW) return@LaunchedEffect
+        workLoading = true
+        workError = null
+        try {
+            personalWork = api.workspace(school)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: SupportSessionExpiredException) {
+            handleSessionExpired()
+        } catch (e: Exception) {
+            workError = e.message ?: "Could not load your work."
+        } finally {
+            workLoading = false
+        }
+    }
+    LaunchedEffect(ticketState.ticketsLoaded, ticketState.isAdmin, dashboardTab) {
+        if (ticketState.ticketsLoaded && !ticketState.isAdmin && dashboardTab == DashboardTab.ANALYTICS) {
+            dashboardTab = DashboardTab.OVERVIEW
+        }
+    }
     var refreshedEvent by remember(school) { mutableStateOf(resumeVersion to pushUpdate.second) }
     LaunchedEffect(resumeVersion, pushUpdate, page, busy, ticketState.ticketsLoading) {
         val event = resumeVersion to pushUpdate.second
@@ -629,7 +654,7 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
             contentWindowInsets = WindowInsets(0, 0, 0, 0),
             bottomBar = {
                 if (page == SupportPage.DASHBOARD) {
-                    SupportNavigationDock(dashboardTab.label) { label ->
+                    SupportNavigationDock(dashboardTab.label, ticketState.isAdmin, supportUpdates?.unreadCount ?: 0) { label ->
                         dashboardTab = DashboardTab.entries.first { it.label == label }
                     }
                 }
@@ -637,7 +662,7 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
             topBar = {
                 if (page in listOf(SupportPage.DASHBOARD, SupportPage.CREATE_TICKET, SupportPage.TICKET_DETAIL, SupportPage.ADMINS, SupportPage.ADMIN_FORM)) {
                     SupportHeaderSurface {
-                        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
                             horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                             Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                                 if (page == SupportPage.DASHBOARD) SchoolIdentityMark(identity, Modifier.size(42.dp), loading = !identityCacheLoaded)
@@ -647,8 +672,8 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
                                     Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Back", tint = Indigo)
                                 }
                                 Column {
-                                    Text((identity?.name ?: school).uppercase(), maxLines = 1, overflow = TextOverflow.Ellipsis,
-                                        style = MaterialTheme.typography.labelSmall, color = Indigo, fontWeight = FontWeight.ExtraBold)
+                                    Text(identity?.name ?: school, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                                        style = MaterialTheme.typography.labelMedium, color = Muted, fontWeight = FontWeight.Medium)
                                     Text(when (page) {
                                         SupportPage.DASHBOARD -> when (dashboardTab) {
                                             DashboardTab.OVERVIEW -> "Support Desk"
@@ -662,7 +687,7 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
                                         SupportPage.ADMINS -> "Administrators"
                                         else -> if (adminState.selected == null) "Add administrator" else "Edit administrator"
                                     },
-                                        fontSize = 18.sp, lineHeight = 23.sp, color = Ink, fontWeight = FontWeight.ExtraBold)
+                                        fontSize = 19.sp, lineHeight = 24.sp, color = Ink, fontWeight = FontWeight.Bold)
                                 }
                             }
                             if (page == SupportPage.DASHBOARD) SupportHeaderAction(
@@ -938,6 +963,8 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
                     ticketState.analyticsLoading, ticketState.analyticsError, busy, ticketState.ticketsLoading, ticketState.ticketsLoaded,
                     showingCachedData = ticketState.showingCachedData,
                     manualRefreshing = manualRefreshing,
+                    personalWork = personalWork, workLoading = workLoading, workError = workError,
+                    onWorkRefresh = { workRefresh++ },
                     selectedTab = dashboardTab.label,
                     query = ticketState.query,
                     queueFilter = ticketState.filter,
@@ -987,9 +1014,10 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
                             "New today" -> "NEW_TODAY"
                             else -> filter.uppercase().replace(' ', '_')
                         }
-                        ticketViewModel.setFilter(apiFilter)
+                        ticketViewModel.setQuery("")
+                        ticketViewModel.setInboxFilters(apiFilter, "ALL", "ALL", "ALL")
                         dashboardTab = DashboardTab.TICKETS
-                        run { loadTickets(apiFilter, ticketState.query, 1) }
+                        run { loadTickets(apiFilter, "", 1, "ALL", "ALL", "ALL") }
                     },
                     onCreate = { page = SupportPage.CREATE_TICKET },
                     onManageAdmins = { run {
@@ -1003,6 +1031,7 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
                         page = SupportPage.ADMINS
                     } },
                     onRefresh = {
+                        if (dashboardTab == DashboardTab.OVERVIEW) workRefresh++
                         if (!ticketState.ticketsLoading && !busy) run {
                             manualRefreshing = true
                             try {
