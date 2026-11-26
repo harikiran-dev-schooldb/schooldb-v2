@@ -228,9 +228,9 @@ export function usesStrictModuleAccess(config:RouteAccessConfig){
 }
 /** Add or remove a module without resetting the other selected routes. */
 export function toggleSchoolModule(routes:string[],key:string,checked:boolean){
- const module=SCHOOL_MODULES.find(m=>m.key===key);
- if(!module)return routes;
- const group:readonly string[]=module.routes;
+ const selectedModule=SCHOOL_MODULES.find(m=>m.key===key);
+ if(!selectedModule)return routes;
+ const group:readonly string[]=selectedModule.routes;
  return normalizeAllowedRoutes(checked?[...routes,...group]:routes.filter(r=>!group.includes(r)));
 }
 export function isAdmissionsPackageApiAllowed(config:RouteAccessConfig,pathname:string,role:string,method:string|null){
