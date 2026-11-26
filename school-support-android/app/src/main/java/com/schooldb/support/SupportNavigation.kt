@@ -19,6 +19,7 @@ enum class DashboardTab(val label: String) {
     TICKETS("Tickets"),
     ANALYTICS("Analytics"),
     PROFILE("Profile"),
+    UPDATES("Updates"),
 }
 
 internal fun shouldLockSupportApp(isAuthenticated: Boolean, secureReentry: Boolean): Boolean =

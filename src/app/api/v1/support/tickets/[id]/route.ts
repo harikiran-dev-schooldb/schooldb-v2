@@ -21,7 +21,7 @@ const updateInput = z.object({
   duplicateOfId: z.string().min(1).nullable().optional(),
 }).refine((value) => Object.keys(value).length > 0);
 
-export async function GET(_request: Request, context: Context) {
+export async function GET(request: Request, context: Context) {
   return apiHandler(async () => {
     const actor = await supportActor();
     const ticket = await visibleTicket((await context.params).id, actor);
@@ -37,8 +37,16 @@ export async function GET(_request: Request, context: Context) {
           },
         })
       : null;
+    if (new URL(request.url).searchParams.get("markRead") === "1") {
+      await prisma.supportTicketRead.upsert({
+        where: { ticketId_userId: { ticketId: ticket.id, userId: actor.userId } },
+        create: { ticketId: ticket.id, schoolId: actor.schoolId, userId: actor.userId, readAt: ticket.updatedAt },
+        update: { readAt: ticket.updatedAt },
+      });
+    }
     return ApiResponse.success({
       ...ticket,
+      currentUserId: actor.userId,
       sla: supportSla({
         createdAt: ticket.createdAt,
         priority: ticket.priority,
