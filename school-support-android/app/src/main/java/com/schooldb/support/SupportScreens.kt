@@ -1174,6 +1174,7 @@ internal fun TicketDetails(ticket: TicketDetail, admin: Boolean, busy: Boolean, 
     reply: String, onReplyChange: (String) -> Unit,
     onReply: (String, Boolean) -> Unit, onStatus: (TicketStatus) -> Unit,
     onPriority: (TicketPriority) -> Unit, onAssign: (String?) -> Unit,
+    onScheduleFollowUp: (String?) -> Unit,
     onLabels: (List<String>) -> Unit, onDuplicate: (String?) -> Unit,
     onRetryDelivery: () -> Unit,
     onOpenAttachment: (TicketAttachment) -> Unit,
@@ -1403,7 +1404,24 @@ internal fun TicketDetails(ticket: TicketDetail, admin: Boolean, busy: Boolean, 
             }
         }
         if (ticket.status !in listOf("RESOLVED", "CLOSED")) SurfaceCard(Modifier.fillMaxWidth()) {
-            SectionTitle("Follow-up", "Add a private calendar reminder on this device.")
+            SectionTitle("Follow-up", if (admin) "Schedule a school reminder or add to your calendar." else "Add a private calendar reminder on this device.")
+            if (ticket.followUpAt != null) {
+                Text("Scheduled: " + formatSupportTimestamp(ticket.followUpAt), color = Indigo, style = MaterialTheme.typography.bodyMedium)
+            }
+            if (admin) {
+                TextButton(onClick = {
+                    val zone = java.time.ZoneId.of("Asia/Kolkata")
+                    val tomorrow = java.time.LocalDate.now(zone).plusDays(1)
+                    android.app.DatePickerDialog(context, { _, year, month, day ->
+                        val due = java.time.LocalDate.of(year, month + 1, day).atStartOfDay(zone).toInstant().toString()
+                        onScheduleFollowUp(due)
+                    }, tomorrow.year, tomorrow.monthValue - 1, tomorrow.dayOfMonth).apply {
+                        datePicker.minDate = tomorrow.atStartOfDay(zone).toInstant().toEpochMilli()
+                    }.show()
+                }, enabled = !busy) { Text(if (ticket.followUpAt == null) "Schedule school reminder" else "Reschedule school reminder") }
+                if (ticket.followUpAt != null) TextButton(onClick = { onScheduleFollowUp(null) }, enabled = !busy) { Text("Clear scheduled reminder") }
+                Text("Reminders are processed by the daily server job, not at an exact alarm time.", color = Muted, style = MaterialTheme.typography.bodySmall)
+            }
             TextButton(onClick = {
                 val start = System.currentTimeMillis() + 24 * 60 * 60 * 1000L
                 val intent = Intent(Intent.ACTION_INSERT, android.provider.CalendarContract.Events.CONTENT_URI).apply {

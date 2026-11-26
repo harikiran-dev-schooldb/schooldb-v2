@@ -19,6 +19,7 @@ const updateInput = z.object({
   assignedToId: z.string().min(1).nullable().optional(),
   labels: z.array(z.string().trim().min(1).max(24)).max(8).optional(),
   duplicateOfId: z.string().min(1).nullable().optional(),
+  followUpAt: z.string().datetime().nullable().optional(),
 }).refine((value) => Object.keys(value).length > 0);
 
 export async function GET(request: Request, context: Context) {
@@ -73,6 +74,9 @@ export async function PATCH(request: Request, context: Context) {
     const input = updateInput.safeParse(await request.json());
     if (!input.success) throw new ApiError(400, "Invalid ticket update.");
 
+    if (input.data.followUpAt && (new Date(input.data.followUpAt) <= new Date() || ["RESOLVED", "CLOSED"].includes(input.data.status ?? current.status))) {
+      throw new ApiError(400, "Choose a future follow-up date for an unresolved ticket.");
+    }
     const requestedStatus =
       input.data.status ??
       (input.data.assignedToId && !current.assignedToId && current.status === "OPEN"
@@ -122,6 +126,7 @@ export async function PATCH(request: Request, context: Context) {
       if (!duplicateTarget) throw new ApiError(400, "Duplicate target was not found in this school.");
     }
     const changes: Array<{ action: string; detail: string }> = [];
+    if (input.data.followUpAt !== undefined) changes.push({ action: "FOLLOW_UP_CHANGED", detail: input.data.followUpAt ? "Scheduled a follow-up" : "Cleared follow-up" });
     if (requestedStatus && requestedStatus !== current.status)
       changes.push({ action: "STATUS_CHANGED", detail: `Status changed from ${current.status} to ${requestedStatus}` });
     if (input.data.priority && input.data.priority !== current.priority)
@@ -141,6 +146,8 @@ export async function PATCH(request: Request, context: Context) {
           ...input.data,
           labels: input.data.labels ? [...new Set(input.data.labels.map((label) => label.toLowerCase()))] : undefined,
           status: requestedStatus,
+          followUpAt: requestedStatus === "RESOLVED" || requestedStatus === "CLOSED" ? null : input.data.followUpAt === undefined ? undefined : input.data.followUpAt ? new Date(input.data.followUpAt) : null,
+          followUpNotifiedAt: input.data.followUpAt !== undefined || requestedStatus === "RESOLVED" || requestedStatus === "CLOSED" ? null : undefined,
           parentConfirmedAt: requestedStatus && requestedStatus !== "RESOLVED" && requestedStatus !== "CLOSED" ? null : undefined,
           resolvedAt: requestedStatus === "RESOLVED" || requestedStatus === "CLOSED"
             ? current.resolvedAt ?? new Date()

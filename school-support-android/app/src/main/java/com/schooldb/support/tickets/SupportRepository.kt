@@ -51,6 +51,7 @@ data class TicketDetail(
     val parentDelivery: ParentDelivery?,
     val currentUserId: String = "",
     val parentConfirmedAt: String? = null,
+    val followUpAt: String? = null,
 )
 
 data class TicketMessage(val body: String, val author: String, val isInternal: Boolean, val createdAt: String, val authorId: String = "")
@@ -343,6 +344,7 @@ class SupportRepository {
             resolutionDueAt = sla?.optString("resolutionDueAt").orEmpty(),
             currentUserId = item.optString("currentUserId"),
             parentConfirmedAt = item.optString("parentConfirmedAt").takeUnless { it.isBlank() || it == "null" },
+            followUpAt = item.optString("followUpAt").takeUnless { it.isBlank() || it == "null" },
             parentDelivery = delivery?.let {
                 ParentDelivery(
                     campaignId = it.optString("campaignId"),
@@ -448,6 +450,10 @@ class SupportRepository {
 
     suspend fun updateStatus(school: String, id: String, status: TicketStatus) = withContext(Dispatchers.IO) {
         request("POST", "api/v1/support/tickets/$id", school, JSONObject().put("status", status.name))
+    }
+
+    suspend fun scheduleFollowUp(school: String, id: String, due: String?) = withContext(Dispatchers.IO) {
+        request("POST", "api/v1/support/tickets/$id", school, JSONObject().put("followUpAt", due ?: JSONObject.NULL))
     }
 
     suspend fun updatePriority(school: String, id: String, priority: TicketPriority) = withContext(Dispatchers.IO) {
