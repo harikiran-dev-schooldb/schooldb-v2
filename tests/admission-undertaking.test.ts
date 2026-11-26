@@ -1,0 +1,2 @@
+import test from "node:test";import assert from "node:assert/strict";import { ageExceptionAllowed } from "../src/features/admissions/undertaking-policy.ts";
+test("age undertaking only for an actual mismatch with authorized confirmation",()=>{assert.equal(ageExceptionAllowed("INELIGIBLE",true,true),true);assert.equal(ageExceptionAllowed("INELIGIBLE",false,true),false);assert.equal(ageExceptionAllowed("INELIGIBLE",true,false),false);assert.equal(ageExceptionAllowed("INVALID_DATE",true,true),false);assert.equal(ageExceptionAllowed("ELIGIBLE",true,true),false);});

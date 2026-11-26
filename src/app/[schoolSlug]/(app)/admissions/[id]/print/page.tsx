@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { PrintDocumentButton } from "@/features/students/components/profile/PrintDocumentButton";
 import { requireRole } from "@/lib/auth";
 import { formatSchoolDateTime } from "@/lib/date-time";
+import { readUndertaking } from "@/features/admissions/undertaking-policy";
 import { prisma } from "@/lib/prisma";
 
 const show = (value: string | null | undefined) => value || "—";
@@ -37,6 +38,7 @@ export default async function AdmissionPrintPage({
     },
   });
   if (!application) notFound();
+  const undertaking=readUndertaking(application.ageUndertaking);
   return (
     <div className="min-h-screen bg-slate-100 p-5 print:bg-white print:p-0">
       <div className="mx-auto mb-5 flex max-w-4xl justify-between print:hidden">
@@ -112,6 +114,7 @@ export default async function AdmissionPrintPage({
             ]}
           />
         </Section>
+        {undertaking&&<Section title="Parent age undertaking"><Grid rows={[["Requested class",undertaking.appliedClassName],["Calculated eligible class",undertaking.eligibleClasses.join(", ")||"No matching rule"],["Completed age in months",String(undertaking.completedMonths)],["Configured age limits",undertaking.minMonths+"–"+undertaking.maxMonths+" months"],["Age cutoff",undertaking.cutoff],["Signed by",undertaking.signedBy],["Signed date",undertaking.signedDate],["Original document reference",undertaking.reference],["Authorized by",undertaking.approvedByName],["Reason",undertaking.reason]]}/></Section>}
         <Section title="Documents received">
           {application.documents.length ? (
             <ul className="grid gap-2 sm:grid-cols-2">
