@@ -2,7 +2,6 @@ package com.schooldb.support
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -34,9 +33,9 @@ import androidx.compose.ui.unit.sp
 
 internal val Ink = Color(0xFF0F172A)
 internal val Muted = Color(0xFF64748B)
-internal val Canvas = Color(0xFFF5F7FC)
+internal val Canvas = Color(0xFFF5F7FB)
 internal val Indigo = SchoolBrand.primary
-internal val Line = Color(0xFFE0E7FF)
+internal val Line = Color(0xFFDDE3EE)
 internal val Navy = Color(0xFF312E81)
 internal val Violet = SchoolBrand.secondary
 internal val SchoolGreen = Color(0xFF008B83)
@@ -107,13 +106,13 @@ private val SupportShapes = Shapes(
     extraSmall = RoundedCornerShape(14.dp),
     small = RoundedCornerShape(16.dp),
     medium = RoundedCornerShape(20.dp),
-    large = RoundedCornerShape(28.dp),
+    large = RoundedCornerShape(20.dp),
     extraLarge = RoundedCornerShape(36.dp),
 )
 
 @Composable
 internal fun SupportTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
+    darkTheme: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     MaterialTheme(
@@ -145,8 +144,8 @@ internal fun BrandMark(modifier: Modifier = Modifier) {
 @Composable
 internal fun SurfaceCard(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
     Surface(modifier, shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surface,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant), shadowElevation = 2.dp) {
-        Column(Modifier.padding(20.dp), content = content)
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant), shadowElevation = 0.dp) {
+        Column(Modifier.padding(16.dp), content = content)
     }
 }
 
@@ -184,23 +183,15 @@ internal fun priorityTint(priority: String): Color = when (priority) {
 /** Matches the main Android app's rounded, light gradient page headers. */
 @Composable
 internal fun SupportHeaderSurface(content: @Composable BoxScope.() -> Unit) {
-    val shape = RoundedCornerShape(bottomStart = 30.dp, bottomEnd = 30.dp)
-    Box(Modifier.fillMaxWidth().shadow(14.dp, shape,
-        ambientColor = Ink.copy(alpha = .07f), spotColor = Ink.copy(alpha = .10f))
-        .clip(shape).background(Brush.linearGradient(listOf(
-            Color.White, Color(0xFFF7F8FF), Color(0xFFEEF2FF), Color(0xFFF7F3FF),
-        )))
-        .border(1.dp, Line, shape)) {
-        // Keep the decorative circles out of this Box's intrinsic measurement. A
-        // direct 172.dp child made every header at least that tall, leaving a large
-        // empty gap below the title row on phones.
-        Box(Modifier.matchParentSize()) {
-            Box(Modifier.size(172.dp).align(Alignment.TopEnd)
-                .background(Color(0xFF818CF8).copy(alpha = .075f), CircleShape))
-            Box(Modifier.size(92.dp).align(Alignment.BottomStart)
-                .background(Color(0xFFA78BFA).copy(alpha = .07f), CircleShape))
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surface,
+        shadowElevation = 0.dp,
+    ) {
+        Column {
+            Box(Modifier.fillMaxWidth(), content = content)
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         }
-        content()
     }
 }
 
@@ -251,26 +242,33 @@ internal fun SupportEmptyState(title: String, message: String, icon: ImageVector
 
 @Composable
 internal fun SupportNavigationDock(selected: String, onSelect: (String) -> Unit) {
-    val shape = RoundedCornerShape(31.dp)
-    Surface(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 7.dp)
-        .shadow(18.dp, shape, ambientColor = Ink.copy(alpha = .10f), spotColor = Ink.copy(alpha = .14f)),
-        shape = shape, color = MaterialTheme.colorScheme.surface,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
-        Row(Modifier.background(MaterialTheme.colorScheme.surface)
-            .padding(5.dp)) {
-            listOf("Overview" to Icons.Outlined.Dashboard, "Tickets" to Icons.Outlined.ConfirmationNumber,
-                "Analytics" to Icons.Outlined.BarChart, "Profile" to Icons.Outlined.Person).forEach { (tab, icon) ->
-                val active = selected == tab
-                Column(Modifier.weight(1f).clip(RoundedCornerShape(25.dp))
-                    .background(if (active) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
-                    .selectable(selected = active, role = Role.Tab, onClick = { onSelect(tab) })
-                    .padding(vertical = 12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(icon, null, Modifier.size(22.dp), tint = if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
-                    Spacer(Modifier.height(4.dp))
-                    Text(tab, style = MaterialTheme.typography.labelMedium,
-                        color = if (active) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontWeight = if (active) FontWeight.Bold else FontWeight.Medium)
-                }
+    Column {
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        NavigationBar(
+            containerColor = MaterialTheme.colorScheme.surface,
+            tonalElevation = 0.dp,
+            windowInsets = WindowInsets(0, 0, 0, 0),
+        ) {
+            listOf(
+                "Overview" to Icons.Outlined.Dashboard,
+                "Tickets" to Icons.Outlined.ConfirmationNumber,
+                "Analytics" to Icons.Outlined.BarChart,
+                "Profile" to Icons.Outlined.Person,
+            ).forEach { (tab, icon) ->
+                NavigationBarItem(
+                    selected = selected == tab,
+                    onClick = { onSelect(tab) },
+                    icon = { Icon(icon, contentDescription = null) },
+                    label = { Text(if (tab == "Overview") "Home" else tab, maxLines = 1) },
+                    alwaysShowLabel = true,
+                    colors = NavigationBarItemDefaults.colors(
+                        indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+                        selectedIconColor = MaterialTheme.colorScheme.primary,
+                        selectedTextColor = MaterialTheme.colorScheme.primary,
+                        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    ),
+                )
             }
         }
     }

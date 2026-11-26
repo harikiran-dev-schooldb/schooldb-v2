@@ -162,6 +162,8 @@ internal fun TicketDashboard(school: String, tickets: List<TicketSummary>, summa
     val analyticsScroll = rememberLazyListState()
     val keyboard = LocalSoftwareKeyboardController.current
     var selectionMode by remember { mutableStateOf(false) }
+    var showAdvancedFilters by remember { mutableStateOf(false) }
+    val hasAdvancedFilters = priorityFilter != "ALL" || typeFilter != "ALL" || sourceFilter != "ALL"
     val selectedTicketIds = remember { mutableStateListOf<String>() }
     LaunchedEffect(requestedFilter) {
         requestedFilter?.let {
@@ -181,8 +183,8 @@ internal fun TicketDashboard(school: String, tickets: List<TicketSummary>, summa
             "Analytics" -> analyticsScroll
             else -> overviewScroll
         },
-        contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 28.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)) {
         if (showingCachedData) item(contentType = "offline-banner") {
             Surface(
                 modifier = Modifier.fillMaxWidth().clickable(enabled = !busy, onClick = onRefresh),
@@ -205,29 +207,34 @@ internal fun TicketDashboard(school: String, tickets: List<TicketSummary>, summa
         if (selectedTab == "Overview") {
 
             item {
-            SupportPageHeading("Stay ahead of every issue.", "Your school support desk, all in one place.", "OVERVIEW")
+            SupportPageHeading("Support overview", "Manage requests, follow-ups and resolutions.", "WORKSPACE")
         }
         item {
-            Surface(shape = RoundedCornerShape(28.dp), shadowElevation = 8.dp,
-                color = Color.White, modifier = Modifier.fillMaxWidth()) {
+            Surface(shape = RoundedCornerShape(22.dp), shadowElevation = 0.dp,
+                color = Navy, modifier = Modifier.fillMaxWidth()) {
             Box(Modifier.fillMaxWidth().background(
-                Brush.linearGradient(listOf(Color.White, Color(0xFFF6F6F8))), RoundedCornerShape(28.dp))) {
-                Column(Modifier.padding(22.dp)) {
-                    Pill(SchoolBrand.supportLabel, Indigo)
-                    Spacer(Modifier.height(18.dp))
+                Brush.linearGradient(listOf(Navy, Indigo)), RoundedCornerShape(22.dp))) {
+                Column(Modifier.padding(20.dp)) {
+                    Text("SUPPORT INBOX", color = Color.White.copy(alpha = .8f), style = MaterialTheme.typography.labelSmall)
+                    Spacer(Modifier.height(10.dp))
                     val activeTickets = summary[0] + summary[1]
                     Text(if (!ticketsLoaded) "Loading your support desk…" else
                         "$activeTickets ${if (activeTickets == 1) "ticket needs" else "tickets need"} attention",
-                        style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = Ink)
+                        style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = Color.White)
                     Spacer(Modifier.height(5.dp))
-                    Text("Capture a concern and keep the right people in the loop.",
-                        style = MaterialTheme.typography.bodyMedium, color = Muted)
-                    Spacer(Modifier.height(18.dp))
+                    Text("Create a request or open your active queue.",
+                        style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = .85f))
+                    Spacer(Modifier.height(14.dp))
                     Button(onClick = onCreate, shape = RoundedCornerShape(13.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Indigo, contentColor = Color.White)) {
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Navy)) {
                         Icon(Icons.Outlined.Add, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(6.dp))
-                        Text("Raise a ticket", fontWeight = FontWeight.SemiBold)
+                        Text("New ticket", fontWeight = FontWeight.SemiBold)
+                    }
+                    TextButton(onClick = { onOpenQueue("Active") }, enabled = !busy,
+                        colors = ButtonDefaults.textButtonColors(contentColor = Color.White)) {
+                        Text("View active tickets")
+                        Icon(Icons.Outlined.ChevronRight, contentDescription = null, modifier = Modifier.size(18.dp))
                     }
                     if (admin) {
                         Spacer(Modifier.height(8.dp))
@@ -235,9 +242,9 @@ internal fun TicketDashboard(school: String, tickets: List<TicketSummary>, summa
                             val url = BuildConfig.API_BASE_URL.trimEnd('/') + "/$school/parent-query/qr"
                             context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
                         }) {
-                            Icon(Icons.Outlined.QrCode2, contentDescription = null, tint = Indigo)
+                            Icon(Icons.Outlined.QrCode2, contentDescription = null, tint = Color.White)
                             Spacer(Modifier.width(8.dp))
-                            Text("Parent query QR", color = Indigo, fontWeight = FontWeight.SemiBold)
+                            Text("Parent query QR", color = Color.White, fontWeight = FontWeight.SemiBold)
                         }
                     }
                 }
@@ -250,12 +257,12 @@ internal fun TicketDashboard(school: String, tickets: List<TicketSummary>, summa
         if (ticketsLoaded) item {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    MetricCard("Open", summary[0], Indigo, Modifier.weight(1f))
+                    MetricCard("Open", summary[0], Indigo, Modifier.weight(1f)) { onOpenQueue("Open") }
                     MetricCard("In progress", summary[1], Color(0xFF3D71C9), Modifier.weight(1f))
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    MetricCard("Urgent", summary[2], Color(0xFFD05F50), Modifier.weight(1f))
-                    MetricCard("Resolved", summary[3], Color(0xFF1D9D73), Modifier.weight(1f))
+                    MetricCard("Urgent", summary[2], Color(0xFFD05F50), Modifier.weight(1f)) { onOpenQueue("Urgent") }
+                    MetricCard("Resolved", summary[3], Color(0xFF1D9D73), Modifier.weight(1f)) { onOpenQueue("Resolved") }
                 }
             }
         }
@@ -410,7 +417,7 @@ internal fun TicketDashboard(school: String, tickets: List<TicketSummary>, summa
                     }
                 }
                 item {
-                    SectionTitle("Attention queue", "Current school-wide workload")
+                    SectionTitle("Escalations", "Open a queue to assign or follow up")
                 }
                 item {
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -439,10 +446,13 @@ internal fun TicketDashboard(school: String, tickets: List<TicketSummary>, summa
                 if (analytics.staffWorkload.isNotEmpty()) {
                     item {
                         SurfaceCard(Modifier.fillMaxWidth()) {
-                            SectionTitle("Staff workload", "Active assigned tickets")
+                            SectionTitle("Staff workload", "Active assignments, highest first")
                             Spacer(Modifier.height(12.dp))
-                            analytics.staffWorkload.forEach { person ->
+                            val maxActive = analytics.staffWorkload.maxOf { it.active }.coerceAtLeast(1)
+                            analytics.staffWorkload.sortedByDescending { it.active }.forEach { person ->
                                 AnalyticsRow(person.name, person.active.toString() + " active")
+                                LinearProgressIndicator(progress = { person.active.toFloat() / maxActive }, modifier = Modifier.fillMaxWidth().height(5.dp).clip(CircleShape), color = Indigo, trackColor = Line)
+                                Spacer(Modifier.height(8.dp))
                             }
                         }
                     }
@@ -455,22 +465,23 @@ internal fun TicketDashboard(school: String, tickets: List<TicketSummary>, summa
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween) {
                 Box(Modifier.weight(1f)) { SupportPageHeading("Tickets", "Follow progress and respond quickly", "SUPPORT QUEUE") }
+                FilledTonalIconButton(onClick = onCreate, enabled = !busy) {
+                    Icon(Icons.Outlined.Add, contentDescription = "New ticket")
+                }
                 IconButton(onClick = onRefresh, enabled = !busy) {
                     Icon(Icons.Outlined.Refresh, contentDescription = "Refresh tickets", tint = Indigo)
                 }
             }
         }
         item {
-            SurfaceCard(Modifier.fillMaxWidth()) {
-                Text("Search tickets", style = MaterialTheme.typography.labelLarge,
-                    color = Ink, fontWeight = FontWeight.SemiBold)
-                Spacer(Modifier.height(8.dp))
+            Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
                     value = query,
                     onValueChange = onQueryChange,
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
-                    placeholder = { Text("Ticket, student, parent or phone...") },
+                    placeholder = { Text("Search tickets or students") },
+                    leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null, tint = Muted) },
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                     keyboardActions = KeyboardActions(onSearch = {
                         if (!busy && !ticketsLoading) {
@@ -491,9 +502,28 @@ internal fun TicketDashboard(school: String, tickets: List<TicketSummary>, summa
                 )
                 Text(if (ticketsLoaded) "$total tickets" else "Tickets are loading…",
                     style = MaterialTheme.typography.bodySmall, color = Muted)
+                Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf("ALL" to "All", "OPEN" to "Open", "ACTIVE" to "Active", "WAITING" to "Waiting",
+                        "URGENT" to "Urgent", "MY" to "Mine", "RESOLVED" to "Resolved").forEach { (value, label) ->
+                        FilterChip(selected = queueFilter == value,
+                            onClick = { onFiltersChange(value, priorityFilter, typeFilter, sourceFilter) },
+                            label = { Text(label) }, enabled = !busy && !ticketsLoading)
+                    }
+                }
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween) {
+                    TextButton(onClick = { showAdvancedFilters = !showAdvancedFilters }) {
+                        Text(if (showAdvancedFilters) "Hide filters" else if (hasAdvancedFilters) "Filters applied · Edit" else "More filters")
+                        Icon(Icons.Outlined.KeyboardArrowDown, contentDescription = null)
+                    }
+                    if (queueFilter != "ALL" || hasAdvancedFilters) {
+                        TextButton(onClick = { onFiltersChange("ALL", "ALL", "ALL", "ALL") }, enabled = !busy && !ticketsLoading) { Text("Clear all") }
+                    }
+                }
             }
         }
-        item {
+        if (showAdvancedFilters) item {
             SurfaceCard(Modifier.fillMaxWidth()) {
                 Row(
                     Modifier.fillMaxWidth(),
@@ -503,7 +533,7 @@ internal fun TicketDashboard(school: String, tickets: List<TicketSummary>, summa
                     Column {
                         Text("Filter queue", style = MaterialTheme.typography.titleMedium,
                             color = Ink, fontWeight = FontWeight.Bold)
-                        Text("Narrow tickets without losing your place", style = MaterialTheme.typography.bodySmall, color = Muted)
+                        Text("Queue, priority, category and source", style = MaterialTheme.typography.bodySmall, color = Muted)
                     }
                     if (listOf(queueFilter, priorityFilter, typeFilter, sourceFilter).any { it != "ALL" }) {
                         TextButton(onClick = { onFiltersChange("ALL", "ALL", "ALL", "ALL") }, enabled = !ticketsLoading) {
@@ -691,7 +721,8 @@ private fun MetricCard(label: String, value: Int, tint: Color, modifier: Modifie
             Text(value.toString(), style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold, color = Ink)
             Box(Modifier.size(30.dp).background(tint.copy(alpha = 0.11f), CircleShape), contentAlignment = Alignment.Center) {
-                Box(Modifier.size(8.dp).background(tint, CircleShape))
+                if (onClick != null) Icon(Icons.Outlined.ChevronRight, contentDescription = null, modifier = Modifier.size(18.dp), tint = tint)
+                else Box(Modifier.size(8.dp).background(tint, CircleShape))
             }
         }
         Spacer(Modifier.height(6.dp))
@@ -750,7 +781,14 @@ private fun TicketCard(
     onSelect: () -> Unit = {},
     onClick: () -> Unit,
 ) {
-    SurfaceCard(Modifier.fillMaxWidth().clickable(onClick = if (selectable) onSelect else onClick)) {
+    Surface(
+        onClick = if (selectable) onSelect else onClick,
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
+        border = BorderStroke(1.dp, if (selected) Indigo else MaterialTheme.colorScheme.outlineVariant),
+    ) {
+      Column(Modifier.padding(14.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
             if (selectable) {
                 Checkbox(checked = selected, onCheckedChange = { onSelect() })
@@ -778,8 +816,8 @@ private fun TicketCard(
             Spacer(Modifier.height(4.dp))
             Text("Assigned to $it", style = MaterialTheme.typography.bodySmall, color = Muted)
         }
-        Spacer(Modifier.height(16.dp))
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Spacer(Modifier.height(10.dp))
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Pill(ticket.status.name.replace('_', ' '), statusTint(ticket.status.name))
             if (ticket.source == "PARENT_QR") Pill("PARENT QUERY", Indigo)
             if (ticket.priority == TicketPriority.URGENT || ticket.priority == TicketPriority.HIGH)
@@ -788,6 +826,7 @@ private fun TicketCard(
                 Pill("SLA OVERDUE", Color(0xFFD05F50))
             ticket.labels.take(2).forEach { Pill(it.uppercase(), Color(0xFF6B7280)) }
         }
+      }
     }
 }
 
@@ -1073,16 +1112,8 @@ internal fun TicketDetails(ticket: TicketDetail, admin: Boolean, busy: Boolean, 
     var replyVisibility by remember(ticket.id, admin) { mutableStateOf(if (admin) "INTERNAL_ONLY" else "SHOW_TO_PARENT") }
     var pendingStatus by remember(ticket.id) { mutableStateOf<TicketStatus?>(null) }
     var labelsText by remember(ticket.id, ticket.labels) { mutableStateOf(ticket.labels.joinToString(", ")) }
-    val timeline = remember(ticket.messages, ticket.activities) {
-        buildList {
-            ticket.messages.forEach { message ->
-                add(SupportTimelineEntry(message.createdAt, message.author, message.body, message.isInternal, false))
-            }
-            ticket.activities.forEach { activity ->
-                add(SupportTimelineEntry(activity.createdAt, activity.actor, activity.detail, false, true))
-            }
-        }.sortedByDescending { it.createdAt }
-    }
+    var detailTab by remember(ticket.id) { mutableStateOf("Conversation") }
+    var templatesOpen by remember(ticket.id) { mutableStateOf(false) }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Spacer(Modifier.height(2.dp))
@@ -1094,6 +1125,104 @@ internal fun TicketDetails(ticket: TicketDetail, admin: Boolean, busy: Boolean, 
                 if (ticket.source == "PARENT_QR") Pill("PARENT QUERY", Indigo)
             }
         }
+        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf("Conversation", "Activity", "Details").forEach { tab ->
+                FilterChip(selected = detailTab == tab, onClick = { detailTab = tab }, label = { Text(tab) })
+            }
+        }
+        if (detailTab == "Conversation") {
+            SurfaceCard(Modifier.fillMaxWidth()) {
+                SectionTitle("Original request", ticket.type.replace('_', ' ').lowercase().replaceFirstChar { it.uppercase() })
+                Spacer(Modifier.height(8.dp))
+                Text(ticket.description, color = Ink, style = MaterialTheme.typography.bodyMedium)
+            }
+            if (ticket.messages.isEmpty()) SupportEmptyState("No replies yet", "Use the reply box to start the conversation.")
+            ticket.messages.sortedBy { it.createdAt }.forEach { message ->
+                val mine = message.authorId.isNotBlank() && message.authorId == ticket.currentUserId
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = if (mine) Arrangement.End else Arrangement.Start) {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(.86f),
+                        shape = RoundedCornerShape(16.dp),
+                        color = if (message.isInternal) Color(0xFFFFF4DB) else if (mine) Color(0xFFDCFCE7) else Color.White,
+                        border = BorderStroke(1.dp, Line),
+                    ) {
+                        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(if (mine) "You" else message.author, color = Indigo, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
+                            if (message.isInternal) Text("Internal note · staff only", color = Color(0xFF92400E), style = MaterialTheme.typography.labelSmall)
+                            else if (ticket.source == "PARENT_QR") Text("Parent-visible", color = SchoolGreen, style = MaterialTheme.typography.labelSmall)
+                            Text(message.body, color = Ink, style = MaterialTheme.typography.bodyMedium)
+                            if (message.createdAt.isNotBlank()) Text(formatSupportTimestamp(message.createdAt), color = Muted, style = MaterialTheme.typography.bodySmall, modifier = Modifier.align(Alignment.End))
+                        }
+                    }
+                }
+            }
+            SurfaceCard(Modifier.fillMaxWidth()) {
+                SectionTitle("Reply", if (ticket.status == "CLOSED") "This ticket is closed." else "Write a message or choose a template.")
+            if (ticket.status != "CLOSED") {
+                Spacer(Modifier.height(8.dp))
+                TextButton(onClick = { templatesOpen = true }, enabled = !busy) { Text("Quick replies") }
+                SupportField(
+                    reply,
+                    onReplyChange,
+                    if (ticket.source == "PARENT_QR") "Write a message" else "Write a reply",
+                    minLines = 3,
+                )
+                if (ticket.source == "PARENT_QR" && admin) {
+                    Spacer(Modifier.height(12.dp))
+                    Text(
+                        "MESSAGE VISIBILITY",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Muted,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    OptionMenu(
+                        replyVisibility,
+                        listOf("INTERNAL_ONLY", "SHOW_TO_PARENT"),
+                        "Message visibility",
+                    ) { replyVisibility = it }
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        if (replyVisibility == "INTERNAL_ONLY")
+                            "This note stays inside School Support and is not sent to the parent."
+                        else
+                            "This reply will be sent to the parent through the parent support channel.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Muted,
+                    )
+                }
+                Spacer(Modifier.height(10.dp))
+                PrimaryAction(
+                    if (ticket.source == "PARENT_QR")
+                        if (replyVisibility == "INTERNAL_ONLY") "Save internal note" else "Send to parent"
+                    else "Send reply",
+                    !busy && reply.isNotBlank(),
+                    onClick = {
+                        onReply(
+                            reply.trim(),
+                            ticket.source == "PARENT_QR" && admin && replyVisibility == "INTERNAL_ONLY",
+                        )
+                    },
+                )
+            }
+        }
+
+        } else if (detailTab == "Activity") {
+            SectionTitle("Activity history", "Status, assignment and other recorded changes · newest first")
+            if (ticket.activities.isEmpty()) SupportEmptyState("No activity recorded", "Changes will appear here.")
+            ticket.activities.sortedByDescending { it.createdAt }.forEach { activity ->
+                SurfaceCard(Modifier.fillMaxWidth()) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top) {
+                        Box(Modifier.size(12.dp).background(Indigo, CircleShape))
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(activity.action.replace('_', ' ').lowercase().replaceFirstChar { it.uppercase() }, color = Ink, fontWeight = FontWeight.Bold)
+                            Text(activity.detail, color = Ink, style = MaterialTheme.typography.bodyMedium)
+                            Text(activity.actor + " · " + formatSupportTimestamp(activity.createdAt), color = Muted, style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                }
+            }
+        } else {
         if (ticket.source == "PARENT_QR") SurfaceCard(Modifier.fillMaxWidth()) {
             SectionTitle("Submitted by parent", "Received from the school's QR form")
             ticket.parentName?.let { Text(it, color = Ink) }
@@ -1276,102 +1405,31 @@ internal fun TicketDetails(ticket: TicketDetail, admin: Boolean, busy: Boolean, 
                 modifier = Modifier.fillMaxWidth(),
             ) { onDuplicate(it.takeUnless { value -> value == "NONE" }) }
         }
-        SurfaceCard(Modifier.fillMaxWidth()) {
-            SectionTitle("Timeline", timeline.size.toString() + " updates · newest first")
-            Spacer(Modifier.height(14.dp))
-            if (timeline.isEmpty()) Text(if (ticket.source == "PARENT_QR")
-                "No messages yet. Internal notes stay with school staff; parent-visible replies are sent to the parent."
-                else "No replies yet. Start the conversation below.",
-                style = MaterialTheme.typography.bodyMedium, color = Muted)
-            timeline.forEach { entry ->
-                Row(Modifier.fillMaxWidth().padding(bottom = 12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    val entryTint = if (entry.isActivity) Muted else if (entry.isInternal) SchoolGold else Indigo
-                    Box(Modifier.size(30.dp).background(entryTint.copy(alpha = 0.12f), CircleShape),
-                        contentAlignment = Alignment.Center) {
-                        Text(if (entry.isActivity) "•" else entry.author.take(1).uppercase(), color = entryTint, fontWeight = FontWeight.Bold)
-                    }
-                    Column(Modifier.weight(1f).background(
-                        if (entry.isActivity) Color(0xFFF7F7F9) else if (entry.isInternal) SchoolGold.copy(alpha = 0.09f) else Color(0xFFF1F3FF),
-                        RoundedCornerShape(18.dp),
-                    ).padding(14.dp)) {
-                        Row(
-                            Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text(
-                                entry.author,
-                                modifier = Modifier.weight(1f),
-                                style = MaterialTheme.typography.labelMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = Ink,
-                            )
-                            if (entry.isActivity) {
-                                Pill("ACTIVITY", Muted)
-                            } else if (ticket.source == "PARENT_QR") {
-                                Pill(
-                                    if (entry.isInternal) "INTERNAL ONLY" else "SHOWN TO PARENT",
-                                    if (entry.isInternal) SchoolGold else SchoolGreen,
-                                )
-                            }
-                        }
-                        Spacer(Modifier.height(4.dp))
-                        Text(entry.body, style = MaterialTheme.typography.bodyMedium, color = Ink)
-                        if (entry.createdAt.isNotBlank()) {
-                            Spacer(Modifier.height(4.dp))
-                            Text(formatSupportTimestamp(entry.createdAt), style = MaterialTheme.typography.bodySmall, color = Muted)
-                        }
-                    }
-                }
-            }
-            if (ticket.status != "CLOSED") {
-                Spacer(Modifier.height(8.dp))
-                SupportField(
-                    reply,
-                    onReplyChange,
-                    if (ticket.source == "PARENT_QR") "Write a message" else "Write a reply",
-                    minLines = 3,
-                )
-                if (ticket.source == "PARENT_QR" && admin) {
-                    Spacer(Modifier.height(12.dp))
-                    Text(
-                        "MESSAGE VISIBILITY",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = Muted,
-                        fontWeight = FontWeight.Bold,
-                    )
-                    Spacer(Modifier.height(6.dp))
-                    OptionMenu(
-                        replyVisibility,
-                        listOf("INTERNAL_ONLY", "SHOW_TO_PARENT"),
-                        "Message visibility",
-                    ) { replyVisibility = it }
-                    Spacer(Modifier.height(6.dp))
-                    Text(
-                        if (replyVisibility == "INTERNAL_ONLY")
-                            "This note stays inside School Support and is not sent to the parent."
-                        else
-                            "This reply will be sent to the parent through the parent support channel.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Muted,
-                    )
-                }
-                Spacer(Modifier.height(10.dp))
-                PrimaryAction(
-                    if (ticket.source == "PARENT_QR")
-                        if (replyVisibility == "INTERNAL_ONLY") "Save internal note" else "Send to parent"
-                    else "Send reply",
-                    !busy && reply.isNotBlank(),
-                    onClick = {
-                        onReply(
-                            reply.trim(),
-                            ticket.source == "PARENT_QR" && admin && replyVisibility == "INTERNAL_ONLY",
-                        )
-                    },
-                )
-            }
         }
         Spacer(Modifier.height(20.dp))
+    }
+    if (templatesOpen) {
+        AlertDialog(
+            onDismissRequest = { templatesOpen = false },
+            title = { Text("Quick replies") },
+            text = {
+                Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf(
+                        "Acknowledgement" to "Thank you for bringing this to our attention. We will review your request.",
+                        "Investigating" to "We are looking into this issue and will share an update when available.",
+                        "More information" to "Could you please share a few more details so we can look into this?",
+                        "Follow-up" to "We are following up on your request and will keep you informed.",
+                        "Resolution check" to "Please confirm whether the issue has been resolved.",
+                    ).forEach { (label, message) ->
+                        OutlinedButton(onClick = {
+                            onReplyChange(if (reply.isBlank()) message else reply.trimEnd() + "\n\n" + message)
+                            templatesOpen = false
+                        }, modifier = Modifier.fillMaxWidth()) { Text(label) }
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { templatesOpen = false }) { Text("Cancel") } },
+        )
     }
     pendingStatus?.let { nextStatus ->
         AlertDialog(
@@ -1554,10 +1612,6 @@ internal fun AuthShell(title: String, subtitle: String, content: @Composable Col
     Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(
         Color(0xFFF8FAFF), Color(0xFFF3F5FF), Color(0xFFF8FAFC),
     ))).imePadding()) {
-        Box(Modifier.size(280.dp).offset(x = 205.dp, y = (-120).dp).clip(CircleShape)
-            .background(Violet.copy(alpha = .12f)))
-        Box(Modifier.size(210.dp).offset(x = (-120).dp, y = 520.dp).clip(CircleShape)
-            .background(Indigo.copy(alpha = .09f)))
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally) {
             Spacer(Modifier.height(24.dp))
@@ -1592,22 +1646,10 @@ internal fun AuthShell(title: String, subtitle: String, content: @Composable Col
                 Text(subtitle, style = MaterialTheme.typography.bodyLarge, color = Muted)
             }
             Spacer(Modifier.height(18.dp))
-            Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf("Tickets", "Fast replies", "Secure").forEach { label ->
-                    Surface(Modifier.weight(1f), shape = RoundedCornerShape(14.dp),
-                        color = Color.White.copy(alpha = .78f), border = BorderStroke(1.dp, Line)) {
-                        Text(label, Modifier.padding(vertical = 9.dp), textAlign = TextAlign.Center,
-                            style = MaterialTheme.typography.labelSmall, color = Indigo,
-                            fontWeight = FontWeight.Bold)
-                    }
-                }
-            }
-            Spacer(Modifier.height(16.dp))
             Card(Modifier.fillMaxWidth().padding(horizontal = 20.dp),
-                shape = RoundedCornerShape(30.dp), border = BorderStroke(1.dp, Color.White),
-                colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = .94f)),
-                elevation = CardDefaults.cardElevation(defaultElevation = 12.dp)) {
+                shape = RoundedCornerShape(20.dp), border = BorderStroke(1.dp, Line),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)) {
                 Column(Modifier.padding(horizontal = 22.dp, vertical = 24.dp)) {
                     Text("SECURE ACCESS", color = Indigo, style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Bold)

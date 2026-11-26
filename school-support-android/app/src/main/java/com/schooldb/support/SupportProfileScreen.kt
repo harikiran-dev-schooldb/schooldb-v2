@@ -60,8 +60,8 @@ internal fun SupportProfileScreen(
     ) {
         item {
             SupportPageHeading(
-                title = "Your support profile",
-                subtitle = "Account, school, alerts and device information.",
+                title = "My account",
+                subtitle = "Manage your school account, alerts and security.",
                 eyebrow = "PROFILE",
             )
         }
@@ -190,6 +190,19 @@ internal fun SupportProfileScreen(
                 }
             }
 
+            item {
+                SurfaceCard(Modifier.fillMaxWidth()) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        ProfileIcon(Icons.Outlined.Notifications, SchoolGold)
+                        Spacer(Modifier.width(12.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text("Overdue reminders", fontWeight = FontWeight.SemiBold, color = Ink)
+                            Text("Show reminders for tickets waiting over two days", color = Muted, style = MaterialTheme.typography.bodySmall)
+                        }
+                        Switch(checked = overdueRemindersEnabled, onCheckedChange = onOverdueRemindersChange)
+                    }
+                }
+            }
             item { ProfileSectionLabel("APP & DEVICE") }
             item {
                 SurfaceCard(Modifier.fillMaxWidth()) {
@@ -232,7 +245,7 @@ internal fun SupportProfileScreen(
                         Icon(Icons.Outlined.Security, null, tint = Indigo, modifier = Modifier.size(20.dp))
                         Spacer(Modifier.width(11.dp))
                         Text(
-                            "Your session is protected by WhatsApp verification. Contact a SchoolDB administrator to change account details or permissions.",
+                            "Your account uses secure verification. Contact your school administrator to change account details or permissions.",
                             style = MaterialTheme.typography.bodySmall,
                             color = Muted,
                         )

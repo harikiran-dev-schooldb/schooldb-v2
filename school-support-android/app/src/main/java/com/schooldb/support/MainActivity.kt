@@ -41,6 +41,7 @@ import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.outlined.ConfirmationNumber
 import androidx.compose.material.icons.outlined.BarChart
 import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.QrCode2
 import androidx.compose.material.icons.outlined.Search
@@ -429,6 +430,26 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
     }
 
     val pushUpdate by com.schooldb.support.notifications.SupportMessagingService.updates.collectAsStateWithLifecycle()
+    var supportUpdates by remember(school, cacheUserId) { mutableStateOf<SupportUpdates?>(null) }
+    var updatesError by remember(school, cacheUserId) { mutableStateOf<String?>(null) }
+    var updatesLoading by remember(school, cacheUserId) { mutableStateOf(false) }
+    var updatesRefresh by remember(school, cacheUserId) { mutableIntStateOf(0) }
+    LaunchedEffect(school, cacheUserId, sessionReady, page, resumeVersion, pushUpdate, updatesRefresh, dashboardTab) {
+        if (!sessionReady || school.isBlank() || cacheUserId.isBlank() || page != SupportPage.DASHBOARD) return@LaunchedEffect
+        updatesLoading = true
+        updatesError = null
+        try {
+            supportUpdates = api.updates(school)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: SupportSessionExpiredException) {
+            handleSessionExpired()
+        } catch (e: Exception) {
+            updatesError = e.message ?: "Could not load updates. Try again."
+        } finally {
+            updatesLoading = false
+        }
+    }
     var refreshedEvent by remember(school) { mutableStateOf(resumeVersion to pushUpdate.second) }
     LaunchedEffect(resumeVersion, pushUpdate, page, busy, ticketState.ticketsLoading) {
         val event = resumeVersion to pushUpdate.second
@@ -616,7 +637,7 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
             topBar = {
                 if (page in listOf(SupportPage.DASHBOARD, SupportPage.CREATE_TICKET, SupportPage.TICKET_DETAIL, SupportPage.ADMINS, SupportPage.ADMIN_FORM)) {
                     SupportHeaderSurface {
-                        Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp),
+                        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
                             horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                             Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                                 if (page == SupportPage.DASHBOARD) SchoolIdentityMark(identity, Modifier.size(42.dp), loading = !identityCacheLoaded)
@@ -629,7 +650,13 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
                                     Text((identity?.name ?: school).uppercase(), maxLines = 1, overflow = TextOverflow.Ellipsis,
                                         style = MaterialTheme.typography.labelSmall, color = Indigo, fontWeight = FontWeight.ExtraBold)
                                     Text(when (page) {
-                                        SupportPage.DASHBOARD -> if (dashboardTab == DashboardTab.PROFILE) "My Profile" else "Support Desk"
+                                        SupportPage.DASHBOARD -> when (dashboardTab) {
+                                            DashboardTab.OVERVIEW -> "Support Desk"
+                                            DashboardTab.TICKETS -> "Ticket inbox"
+                                            DashboardTab.ANALYTICS -> "Analytics"
+                                            DashboardTab.PROFILE -> "My Profile"
+                                            DashboardTab.UPDATES -> "Updates"
+                                        }
                                         SupportPage.CREATE_TICKET -> "New ticket"
                                         SupportPage.TICKET_DETAIL -> "Ticket details"
                                         SupportPage.ADMINS -> "Administrators"
@@ -639,8 +666,13 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
                                 }
                             }
                             if (page == SupportPage.DASHBOARD) SupportHeaderAction(
-                                onClick = { dashboardTab = DashboardTab.PROFILE },
-                            ) { Icon(Icons.Outlined.Person, contentDescription = "Open profile", tint = Indigo) }
+                                onClick = { dashboardTab = DashboardTab.UPDATES },
+                            ) {
+                                val unread = supportUpdates?.unreadCount ?: 0
+                                BadgedBox(badge = { if (unread > 0) Badge { Text(if (unread > 99) "99+" else unread.toString()) } }) {
+                                    Icon(Icons.Outlined.Notifications, contentDescription = "Updates, $unread unread", tint = Indigo)
+                                }
+                            }
                         }
                     }
                 }
@@ -827,7 +859,10 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
                         }
                     }
                 }
-                SupportPage.DASHBOARD -> if (dashboardTab == DashboardTab.PROFILE) {
+                SupportPage.DASHBOARD -> if (dashboardTab == DashboardTab.UPDATES) {
+                    SupportUpdatesScreen(supportUpdates, updatesLoading, updatesError,
+                        onRefresh = { updatesRefresh++ }, onOpen = { id -> run { loadDetail(id) } })
+                } else if (dashboardTab == DashboardTab.PROFILE) {
                     SupportProfileScreen(
                         profile = accountProfile,
                         schoolIdentity = identity,

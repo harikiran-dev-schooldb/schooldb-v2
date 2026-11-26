@@ -49,9 +49,12 @@ data class TicketDetail(
     val responseDueAt: String,
     val resolutionDueAt: String,
     val parentDelivery: ParentDelivery?,
+    val currentUserId: String = "",
 )
 
-data class TicketMessage(val body: String, val author: String, val isInternal: Boolean, val createdAt: String)
+data class TicketMessage(val body: String, val author: String, val isInternal: Boolean, val createdAt: String, val authorId: String = "")
+data class SupportUpdate(val id: String, val ticketNo: String, val subject: String, val status: String, val priority: String, val updatedAt: String, val unread: Boolean)
+data class SupportUpdates(val unreadCount: Int, val items: List<SupportUpdate>)
 data class TicketActivity(val action: String, val detail: String, val actor: String, val createdAt: String)
 data class ParentDelivery(val campaignId: String, val status: String, val error: String?, val updatedAt: String)
 data class StaffOption(val id: String, val name: String, val role: String)
@@ -231,8 +234,18 @@ class SupportRepository {
             data.getJSONObject("pagination").optBoolean("hasMore"))
     }
 
+    suspend fun updates(school: String): SupportUpdates = withContext(Dispatchers.IO) {
+        val data = request("GET", "api/v1/support/tickets/updates", school).getJSONObject("data")
+        val items = data.getJSONArray("items")
+        SupportUpdates(data.getInt("unreadCount"), (0 until items.length()).map { index ->
+            val item = items.getJSONObject(index)
+            SupportUpdate(item.getString("id"), item.getString("ticketNo"), item.getString("subject"),
+                item.getString("status"), item.getString("priority"), item.getString("updatedAt"), item.getBoolean("unread"))
+        })
+    }
+
     suspend fun detail(school: String, id: String): TicketDetail = withContext(Dispatchers.IO) {
-        val item = request("GET", "api/v1/support/tickets/$id", school).getJSONObject("data")
+        val item = request("GET", "api/v1/support/tickets/$id?markRead=1", school).getJSONObject("data")
         val messages = item.getJSONArray("messages")
         val activities = item.optJSONArray("activities") ?: JSONArray()
         val attachments = item.optJSONArray("attachments") ?: JSONArray()
@@ -289,6 +302,7 @@ class SupportRepository {
                         .filter { it.isNotBlank() }
                         .joinToString(" ")
                         .ifBlank { "Staff" },
+                    authorId = author.optString("id"),
                     isInternal = message.optBoolean("isInternal", false),
                     createdAt = message.optString("createdAt"),
                 )
@@ -313,6 +327,7 @@ class SupportRepository {
             resolutionSlaState = sla?.optString("resolutionState", "DUE") ?: "DUE",
             responseDueAt = sla?.optString("responseDueAt").orEmpty(),
             resolutionDueAt = sla?.optString("resolutionDueAt").orEmpty(),
+            currentUserId = item.optString("currentUserId"),
             parentDelivery = delivery?.let {
                 ParentDelivery(
                     campaignId = it.optString("campaignId"),
