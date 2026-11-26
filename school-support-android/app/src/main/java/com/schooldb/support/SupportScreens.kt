@@ -350,6 +350,28 @@ internal fun TicketDashboard(school: String, tickets: List<TicketSummary>, summa
                     }
                 }
                 item {
+                    OutlinedButton(onClick = {
+                        val report = buildString {
+                            appendLine("SchoolDB monthly support summary")
+                            appendLine("School: " + school)
+                            appendLine("Month to date")
+                            appendLine("Created: " + analytics.month.total)
+                            appendLine("Resolved from this month's requests: " + analytics.month.resolved)
+                            appendLine("Pending from this month's requests: " + analytics.month.pending)
+                            appendLine("Resolution rate: " + formatPercent(analytics.month.resolutionRate))
+                            appendLine("Average response: " + formatResolutionTime(analytics.month.averageResponseHours))
+                            appendLine("Average resolution: " + formatResolutionTime(analytics.month.averageResolutionHours))
+                            appendLine("Categories")
+                            analytics.byType.forEach { category -> appendLine(category.type + ": " + category.count) }
+                        }
+                        val share = Intent(Intent.ACTION_SEND).apply {
+                            type = "text/plain"
+                            putExtra(Intent.EXTRA_TEXT, report)
+                        }
+                        context.startActivity(Intent.createChooser(share, "Share monthly summary"))
+                    }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) { Text("Share monthly summary") }
+                }
+                item {
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         MetricCard("Total this month", analytics.month.total, Indigo, Modifier.weight(1f))
                         MetricCard("Pending", analytics.month.pending, Color(0xFFE58B2A), Modifier.weight(1f))
@@ -1166,6 +1188,14 @@ internal fun TicketDetails(ticket: TicketDetail, admin: Boolean, busy: Boolean, 
                 FilterChip(selected = detailTab == tab, onClick = { detailTab = tab }, label = { Text(tab) })
             }
         }
+        if (admin) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Next: " + guided.description, style = MaterialTheme.typography.bodySmall, color = Muted, modifier = Modifier.weight(1f))
+                FilledTonalButton(onClick = {
+                    if (guided.assign) assignmentOpen = true else pendingStatus = guided.nextStatus
+                }, enabled = !busy, shape = RoundedCornerShape(12.dp)) { Text(guided.title) }
+            }
+        }
         val contentScroll = when (detailTab) {
             "Conversation" -> conversationScroll
             "Activity" -> activityScroll
@@ -1173,14 +1203,7 @@ internal fun TicketDetails(ticket: TicketDetail, admin: Boolean, busy: Boolean, 
         }
         Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(contentScroll), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         if (detailTab == "Conversation") {
-            if (admin && ticket.status != "CLOSED") SurfaceCard(Modifier.fillMaxWidth()) {
-                SectionTitle("Next action", guided.description)
-                Spacer(Modifier.height(8.dp))
-                Button(onClick = {
-                    if (guided.assign) assignmentOpen = true else pendingStatus = guided.nextStatus
-                }, enabled = !busy, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) { Text(guided.title) }
-            }
-            SurfaceCard(Modifier.fillMaxWidth()) {
+             SurfaceCard(Modifier.fillMaxWidth()) {
                 SectionTitle("Original request", ticket.type.replace('_', ' ').lowercase().replaceFirstChar { it.uppercase() })
                 Spacer(Modifier.height(8.dp))
                 Text(ticket.description, color = Ink, style = MaterialTheme.typography.bodyMedium)
