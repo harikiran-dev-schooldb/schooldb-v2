@@ -59,7 +59,7 @@ data class WorkTicket(val id: String, val ticketNo: String, val subject: String,
 data class PersonalWorkspace(val assigned: Int, val overdue: Int, val raised: Int, val tickets: List<WorkTicket>)
 data class TicketActivity(val action: String, val detail: String, val actor: String, val createdAt: String)
 data class ParentDelivery(val campaignId: String, val status: String, val error: String?, val updatedAt: String)
-data class StaffOption(val id: String, val name: String, val role: String)
+data class StaffOption(val id: String, val name: String, val role: String, val activeTickets: Int? = null)
 data class AdminAccount(val id: String, val userId: String, val fullName: String,
     val phone: String, val role: String, val designation: String, val isActive: Boolean)
 data class AdminAccounts(val accounts: List<AdminAccount>, val actorUserId: String)
@@ -537,7 +537,7 @@ class SupportRepository {
         val items = request("GET", "api/v1/support/staff", school).getJSONArray("data")
         (0 until items.length()).map { index ->
             val item = items.getJSONObject(index)
-            StaffOption(item.getString("id"), item.getString("name"), item.getString("role"))
+            StaffOption(item.getString("id"), item.getString("name"), item.getString("role"), item.optInt("activeTickets", -1).takeIf { it >= 0 })
         }
     }
 

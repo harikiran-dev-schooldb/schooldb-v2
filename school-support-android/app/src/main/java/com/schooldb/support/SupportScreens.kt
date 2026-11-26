@@ -1128,6 +1128,10 @@ internal fun TicketDetails(ticket: TicketDetail, admin: Boolean, busy: Boolean, 
     var labelsText by remember(ticket.id, ticket.labels) { mutableStateOf(ticket.labels.joinToString(", ")) }
     var detailTab by remember(ticket.id) { mutableStateOf("Conversation") }
     var templatesOpen by remember(ticket.id) { mutableStateOf(false) }
+    var assignmentOpen by remember(ticket.id) { mutableStateOf(false) }
+    var assignmentCandidate by remember(ticket.id) { mutableStateOf<StaffOption?>(null) }
+    val rankedStaff = remember(ticket.type, staff) { rankStaff(ticket.type, staff) }
+    val guided = guidedAction(ticketStatusOrDefault(ticket.status), ticket.assignedToName != null)
     val conversationScroll = rememberScrollState()
     val detailsScroll = rememberScrollState()
     val activityScroll = rememberScrollState()
@@ -1168,6 +1172,13 @@ internal fun TicketDetails(ticket: TicketDetail, admin: Boolean, busy: Boolean, 
         }
         Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(contentScroll), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         if (detailTab == "Conversation") {
+            if (admin && ticket.status != "CLOSED") SurfaceCard(Modifier.fillMaxWidth()) {
+                SectionTitle("Next action", guided.description)
+                Spacer(Modifier.height(8.dp))
+                Button(onClick = {
+                    if (guided.assign) assignmentOpen = true else pendingStatus = guided.nextStatus
+                }, enabled = !busy, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) { Text(guided.title) }
+            }
             SurfaceCard(Modifier.fillMaxWidth()) {
                 SectionTitle("Original request", ticket.type.replace('_', ' ').lowercase().replaceFirstChar { it.uppercase() })
                 Spacer(Modifier.height(8.dp))
@@ -1351,6 +1362,11 @@ internal fun TicketDetails(ticket: TicketDetail, admin: Boolean, busy: Boolean, 
             Spacer(Modifier.height(12.dp))
             Text("ASSIGNED TO", style = MaterialTheme.typography.labelSmall, color = Muted, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(6.dp))
+            if (rankedStaff.isNotEmpty()) {
+                val suggested = rankedStaff.first()
+                Text("Suggested: " + suggested.name + (suggested.activeTickets?.let { " · $it active" } ?: ""), color = Indigo, style = MaterialTheme.typography.bodySmall)
+                TextButton(onClick = { assignmentCandidate = suggested }, enabled = !busy) { Text("Review suggestion") }
+            }
             var staffMenu by remember { mutableStateOf(false) }
             Box {
                 OutlinedButton(onClick = { staffMenu = true }, enabled = !busy,
@@ -1360,9 +1376,9 @@ internal fun TicketDetails(ticket: TicketDetail, admin: Boolean, busy: Boolean, 
                 }
                 DropdownMenu(expanded = staffMenu, onDismissRequest = { staffMenu = false }) {
                     DropdownMenuItem(text = { Text("Unassigned") }, onClick = { staffMenu = false; onAssign(null) })
-                    staff.forEach { person ->
-                        DropdownMenuItem(text = { Text(person.name + " · " + person.role) },
-                            onClick = { staffMenu = false; onAssign(person.id) })
+                    rankedStaff.forEach { person ->
+                        DropdownMenuItem(text = { Text(person.name + " · " + person.role + (person.activeTickets?.let { " · $it active" } ?: "")) },
+                            onClick = { staffMenu = false; assignmentCandidate = person })
                     }
                 }
             }
@@ -1429,6 +1445,25 @@ internal fun TicketDetails(ticket: TicketDetail, admin: Boolean, busy: Boolean, 
             Text("This ticket is closed.", color = Muted, style = MaterialTheme.typography.bodySmall)
         }
         Spacer(Modifier.height(4.dp))
+    }
+    if (assignmentOpen) {
+        AlertDialog(onDismissRequest = { assignmentOpen = false }, title = { Text("Choose ticket owner") }, text = {
+            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("Suggestions use role and active ticket workload. Review before assigning.", color = Muted, style = MaterialTheme.typography.bodySmall)
+                if (rankedStaff.isEmpty()) Text("Staff options are not available. Return to the inbox and refresh.")
+                rankedStaff.forEach { person ->
+                    OutlinedButton(onClick = { assignmentOpen = false; assignmentCandidate = person }, modifier = Modifier.fillMaxWidth()) {
+                        Text(person.name + (person.activeTickets?.let { " · $it active" } ?: ""))
+                    }
+                }
+            }
+        }, confirmButton = { TextButton(onClick = { assignmentOpen = false }) { Text("Cancel") } })
+    }
+    assignmentCandidate?.let { person ->
+        AlertDialog(onDismissRequest = { assignmentCandidate = null }, title = { Text("Assign ticket?") },
+            text = { Text("Assign " + ticket.ticketNo + " to " + person.name + "?") },
+            confirmButton = { Button(onClick = { assignmentCandidate = null; onAssign(person.id) }, enabled = !busy) { Text("Assign") } },
+            dismissButton = { TextButton(onClick = { assignmentCandidate = null }) { Text("Cancel") } })
     }
     if (templatesOpen) {
         AlertDialog(
