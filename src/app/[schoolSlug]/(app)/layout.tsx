@@ -64,6 +64,7 @@ export default async function SchoolAppLayout({
           pathname.slice(`/${schoolSlug}/`.length).replace(/\/+$/, ""),
         )))
   ) {
+    if(pathname===`/${schoolSlug}/dashboard`||pathname===`/${schoolSlug}/teacher/dashboard`)redirect(`/${schoolSlug}`);
     notFound();
   }
 

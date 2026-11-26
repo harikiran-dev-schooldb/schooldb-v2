@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import { cache } from "react";
 
 import { ApiError } from "./errors";
+import { isAdmissionsPackageApiAllowed } from "./route-access";
 import { prisma } from "./prisma";
 import { requireSchoolSlug } from "./tenant-context";
 import { hasPermission, isOperationalRole, PERMISSIONS, type Permission } from "./access-control";
@@ -80,6 +81,9 @@ export async function requireTenant(schoolSlug?: string) {
   }
 
   const requestHeaders = await headers();
+  if(!isAdmissionsPackageApiAllowed(membership.school,requestHeaders.get("x-school-pathname")??"",membership.role,requestHeaders.get("x-school-method"))){
+    throw new ApiError(403,"This operation is not enabled in the Admissions package");
+  }
   const policy = permissionPolicyForRequest(
     requestHeaders.get("x-school-pathname"),
     membership.school.slug,

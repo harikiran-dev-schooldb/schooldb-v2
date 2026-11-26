@@ -24,6 +24,7 @@ const ALWAYS_VISIBLE_MEMBER_ROUTES = new Set([
 
 const ROLE_ONLY_MEMBER_ROUTES = new Map<string, Set<string>>([
   ["teacher/profile", new Set(["TEACHER"])],
+  ["schools/route-access", new Set(["SUPER_ADMIN"])],
 ]);
 
 function isRoleOnlyMemberRouteAllowed(role: string, href: string) {
