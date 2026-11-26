@@ -1023,6 +1023,7 @@ model AdmissionApplication {
   transportRequired  Boolean                    @default(false)
   whatsappOptIn      Boolean                    @default(false)
   status             AdmissionApplicationStatus @default(SUBMITTED)
+  documentReviewRequired Boolean @default(false)
   entranceStage      AdmissionReviewStage @default(NOT_REQUIRED)
   entranceAt         DateTime?
   entranceMemberId   String?
@@ -1063,6 +1064,10 @@ model AdmissionDocument {
   mimeType      String
   sizeBytes     Int
   storageKey    String                @unique
+  reviewStatus  String @default("PENDING")
+  reviewedAt    DateTime?
+  reviewedBy    String?
+  reviewNote    String?
   createdAt     DateTime              @default(now())
   application   AdmissionApplication  @relation(fields: [applicationId], references: [id], onDelete: Cascade)
   school        School                @relation(fields: [schoolId], references: [id], onDelete: Cascade)
@@ -1074,6 +1079,7 @@ model SchoolAdmissionSetting {
   id                 String   @id @default(cuid())
   schoolId           String   @unique
   automaticNumbering Boolean  @default(false)
+  admissionRemindersEnabled Boolean @default(false)
   admissionPrefix    String   @default("")
   nextNumber         Int      @default(1)
   numberPadding      Int      @default(4)

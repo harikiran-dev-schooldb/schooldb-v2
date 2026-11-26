@@ -3,6 +3,7 @@ import { convertAdmission } from "@/features/admissions/admission.service";
 import { apiHandler } from "@/lib/api";
 import { recordAuditLog } from "@/lib/audit";
 import { requireRole } from "@/lib/auth";
+import { ApiError } from "@/lib/errors";
 import { ApiResponse } from "@/lib/response";
 
 export async function POST(
@@ -11,6 +12,7 @@ export async function POST(
 ) {
   return apiHandler(async () => {
     const actor = await requireRole(["SUPER_ADMIN", "SCHOOL_ADMIN"]);
+    if(!["SUPER_ADMIN","SCHOOL_ADMIN"].includes(actor.role))throw new ApiError(403,"Administrator required for enrollment and fee assignment.");
     const { id } = await params;
     const input = await convertAdmissionSchema.parseAsync(await request.json());
     const changedBy =

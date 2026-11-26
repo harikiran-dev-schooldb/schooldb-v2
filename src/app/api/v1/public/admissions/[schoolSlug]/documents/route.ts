@@ -28,13 +28,17 @@ export async function POST(request: Request, { params }: { params: Promise<{ sch
       select: { id: true, schoolId: true, status: true },
     });
     if (!application) throw new ApiError(404, "Application number and mobile number do not match.");
-    if (["REJECTED", "CONVERTED"].includes(application.status)) throw new ApiError(400, "Documents can no longer be added to this application.");
+    if (["APPROVED", "REJECTED", "CONVERTED"].includes(application.status)) throw new ApiError(400, "Documents can no longer be added to this application.");
 
     storageKey = await saveAdmissionDocument(file);
-    const document = await prisma.admissionDocument.create({
+    const document = await prisma.$transaction(async tx=>{
+      const claimed=await tx.admissionApplication.updateMany({where:{id:application.id,schoolId:application.schoolId,status:{in:["DRAFT","SUBMITTED","UNDER_REVIEW","WAITLISTED"]}},data:{updatedAt:new Date()}});
+      if(claimed.count!==1)throw new ApiError(409,"Application status changed. Documents cannot be added.");
+      return tx.admissionDocument.create({
       data: { schoolId: application.schoolId, applicationId: application.id, type: type as AdmissionDocumentType, originalName: file.name.slice(0, 255), mimeType: file.type, sizeBytes: file.size, storageKey },
       select: { id: true, type: true, originalName: true, createdAt: true },
-    });
+      });
+    },{isolationLevel:"Serializable"});
     return Response.json({ success: true, data: document, message: "Document uploaded securely." }, { status: 201 });
   } catch (error) {
     if (storageKey) await deleteAdmissionDocumentFile(storageKey);

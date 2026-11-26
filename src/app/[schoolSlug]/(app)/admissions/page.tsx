@@ -15,6 +15,8 @@ import { PageContainer, PageHeader } from "@/components/common/layout";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DocumentVerification } from "@/features/admissions/AdmissionLifecycleControls";
+import { documentsReady, usableFeePlan } from "@/features/admissions/lifecycle-policy";
 import { AdmissionReviewActions } from "@/features/admissions/AdmissionReviewActions";
 import { AdmissionDetails, AdmissionSelect } from "@/features/admissions/AdmissionWorkspaceUI";
 import { StageEditor, ContactTaskForm } from "@/features/admissions/AdmissionIntakeControls";
@@ -112,7 +114,7 @@ export default async function AdmissionsPage({
           history: { orderBy: { createdAt: "desc" }, take: 3 },
           documents: {
             orderBy: { createdAt: "desc" },
-            select: { id: true, type: true, originalName: true },
+            select: { id: true, type: true, originalName: true, reviewStatus:true, reviewNote:true },
           },
         },
       }),
@@ -136,6 +138,7 @@ export default async function AdmissionsPage({
   const staff = canManageAdmissions ? await prisma.membership.findMany({ where: { schoolId: actor.schoolId, isActive: true, role: { in: ["SUPER_ADMIN","SCHOOL_ADMIN","RECEPTIONIST","TEACHER"] } }, include: { user: { select: { firstName: true, lastName: true } } } }) : [];
   const members = staff.map(member => ({ id: member.id, name: [member.user.firstName,member.user.lastName].filter(Boolean).join(" ") || member.designation || "School staff", contact: member.role !== "TEACHER" }));
   const admin = ["SUPER_ADMIN","SCHOOL_ADMIN"].includes(actor.role);
+  const feePlans=admin&&yearId?await prisma.feePlan.findMany({where:{schoolId:actor.schoolId,academicYearId:yearId,active:true},select:{id:true,name:true,appliesToAllClasses:true,classes:{select:{classId:true}},items:{select:{installments:{select:{id:true}}}}}}):[];
   const counts = Object.fromEntries(
     statusCounts.map((item) => [item.status, item._count._all]),
   );
@@ -305,7 +308,7 @@ export default async function AdmissionsPage({
                   </p>
                 )}
                 {item.medicalConditions && (
-                  <p className="mt-2 rounded-xl bg-amber-500/100/10 p-3 text-sm text-foreground">
+                  <p className="mt-2 rounded-xl bg-amber-500/10 p-3 text-sm text-foreground">
                     <span className="font-bold">Health note:</span>{" "}
                     {item.medicalConditions}
                   </p>
@@ -336,6 +339,7 @@ export default async function AdmissionsPage({
             <div className="border-t border-border/60 bg-muted/20 p-4 sm:p-5">
               <div className="mb-3 grid gap-2 text-sm sm:grid-cols-2"><p>Entrance: <strong>{label(item.entranceStage)}</strong></p><p>Interview: <strong>{label(item.interviewStage)}</strong></p></div>
               <AdmissionDetails title={item.studentName} description={item.applicationNo+" · Review stages and application actions"} label={canManageAdmissions?"Manage application":"View details"}>
+              <DocumentVerification key={item.id+":"+item.updatedAt.toISOString()} id={item.id} required={item.documentReviewRequired} documents={item.documents} editable={admin&&["DRAFT","SUBMITTED","UNDER_REVIEW","WAITLISTED"].includes(item.status)}/>
               {canManageAdmissions && ["DRAFT","SUBMITTED","UNDER_REVIEW","WAITLISTED"].includes(item.status) && <div className="mb-3 grid gap-3 sm:grid-cols-2">
                 <StageEditor key={item.id+":entrance:"+item.updatedAt.toISOString()} id={item.id} stage="ENTRANCE" status={item.entranceStage} at={item.entranceAt?.toISOString() ?? null} memberId={item.entranceMemberId} members={members} admin={admin}/>
                 <StageEditor key={item.id+":interview:"+item.updatedAt.toISOString()} id={item.id} stage="INTERVIEW" status={item.interviewStage} at={item.interviewAt?.toISOString() ?? null} memberId={item.interviewMemberId} members={members} admin={admin}/>
@@ -345,6 +349,9 @@ export default async function AdmissionsPage({
                 <AdmissionReviewActions
                   id={item.id}
                   status={item.status}
+                  admin={admin}
+                  docsReady={documentsReady(item.documentReviewRequired,item.documents)}
+                  feePlans={feePlans.filter(p=>usableFeePlan(p)&&(p.appliesToAllClasses||p.classes.some(c=>c.classId===item.applyingClassId))).map(p=>({id:p.id,name:p.name}))}
                   sections={item.applyingClass.sections}
                   automaticNumbering={admissionSetting.automaticNumbering}
                   nextAdmissionNo={`${admissionSetting.admissionPrefix}${String(admissionSetting.nextNumber).padStart(admissionSetting.numberPadding, "0")}`}
