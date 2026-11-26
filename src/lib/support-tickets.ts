@@ -2,10 +2,12 @@ import { ApiError } from "@/lib/errors";
 import { requireTenant } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import type { SupportTicketStatus } from "@/generated/prisma/enums";
+import { isRouteAllowed } from "@/lib/route-access";
 import { hasModuleAccess } from "@/lib/staff-permissions";
 
 export async function supportActor() {
   const membership = await requireTenant();
+  if(!isRouteAllowed(membership.school,"queries"))throw new ApiError(403,"Support is not enabled for this school.");
   return {
     schoolId: membership.schoolId,
     userId: membership.userId,

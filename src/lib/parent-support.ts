@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { Prisma } from "@/generated/prisma/client";
 import { normalizeIndianMobile } from "@/features/auth/otp";
 import { prisma } from "@/lib/prisma";
+import { isRouteAllowed,usesStrictModuleAccess } from "@/lib/route-access";
 import { ApiError } from "@/lib/errors";
 import { sendSupportPush, supportAdminUserIds } from "@/lib/support-push";
 import { queueParentQueryWhatsappUpdate } from "@/features/whatsapp/service";
@@ -16,9 +17,10 @@ export async function parentSupportSchool(schoolSlug: string) {
     select: {
       id: true,
       name: true,
+      routeAccessRestricted:true,allowedRoutes:true,moduleAccessRestricted:true,
     },
   });
-  if (!school) throw new ApiError(404, "School not found.");
+  if (!school|| (usesStrictModuleAccess(school)&&!isRouteAllowed(school,"queries"))) throw new ApiError(404, "Parent support is unavailable.");
   return school;
 }
 
@@ -27,9 +29,9 @@ export async function searchParentSupportStudents(input: {
   mobile: string;
 }) {
   const school = await prisma.school.findUnique({
-    where: { slug: input.schoolSlug }, select: { id: true },
+    where: { slug: input.schoolSlug }, select: { id: true,routeAccessRestricted:true,allowedRoutes:true,moduleAccessRestricted:true },
   });
-  if (!school) throw new ApiError(404, "School not found.");
+  if (!school|| (usesStrictModuleAccess(school)&&!isRouteAllowed(school,"queries"))) throw new ApiError(404, "Parent support is unavailable.");
 
   const matches = await prisma.$queryRaw<{ id: string }[]>(Prisma.sql`
     SELECT s.id
@@ -91,9 +93,9 @@ export async function submitParentSupport(input: {
   parentPhone: string;
 }) {
   const school = await prisma.school.findUnique({
-    where: { slug: input.schoolSlug }, select: { id: true },
+    where: { slug: input.schoolSlug }, select: { id: true,routeAccessRestricted:true,allowedRoutes:true,moduleAccessRestricted:true },
   });
-  if (!school) throw new ApiError(404, "School not found.");
+  if (!school|| (usesStrictModuleAccess(school)&&!isRouteAllowed(school,"queries"))) throw new ApiError(404, "Parent support is unavailable.");
 
   const enrollment = await prisma.studentEnrollment.findFirst({
     where: {

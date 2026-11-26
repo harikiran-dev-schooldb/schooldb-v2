@@ -4,6 +4,7 @@ import { apiHandler } from "@/lib/api";
 import { recordAuditLog } from "@/lib/audit";
 import { requireRole } from "@/lib/auth";
 import { ApiError } from "@/lib/errors";
+import { isRouteAllowed,usesStrictModuleAccess } from "@/lib/route-access";
 import { ApiResponse } from "@/lib/response";
 
 export async function POST(
@@ -15,6 +16,7 @@ export async function POST(
     if(!["SUPER_ADMIN","SCHOOL_ADMIN"].includes(actor.role))throw new ApiError(403,"Administrator required for enrollment and fee assignment.");
     const { id } = await params;
     const input = await convertAdmissionSchema.parseAsync(await request.json());
+    if(input.feePlanId&&usesStrictModuleAccess(actor.school)&&!isRouteAllowed(actor.school,"fees/plans"))throw new ApiError(403,"ERP fee assignment is not enabled for this school.");
     const changedBy =
       [actor.user.firstName, actor.user.lastName].filter(Boolean).join(" ") ||
       actor.designation ||

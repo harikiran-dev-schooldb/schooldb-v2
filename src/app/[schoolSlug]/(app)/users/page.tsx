@@ -18,7 +18,7 @@ import {
   type StaffUserRow,
 } from "@/features/users/StaffUsersDirectory";
 import { requireRole } from "@/lib/auth";
-import { isAdmissionsOnlySchool } from "@/lib/route-access";
+import { isAdmissionsSupportWorkspace } from "@/lib/route-access";
 import { prisma } from "@/lib/prisma";
 
 type Props = { params: Promise<{ schoolSlug: string }> };
@@ -96,7 +96,7 @@ export default async function StaffUsersPage({ params }: Props) {
         action={
           <CreateStaffAccountButton
             canCreateAdministrators={actor.role === "SUPER_ADMIN"}
-            admissionsOnly={isAdmissionsOnlySchool(actor.school)}
+            admissionsOnly={isAdmissionsSupportWorkspace(actor.school)}
           />
         }
       />

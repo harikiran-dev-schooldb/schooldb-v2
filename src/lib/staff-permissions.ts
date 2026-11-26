@@ -130,6 +130,7 @@ export const ROUTE_MODULES: Partial<Record<string, StaffPermissionModule>> = {
   calendar: "CALENDAR",
   "leave-requests": "CALENDAR",
   notifications: "COMMUNICATION",
+  "notification-inbox": "COMMUNICATION",
   whatsapp: "COMMUNICATION",
   queries: "SUPPORT",
   "parent-queries": "SUPPORT",

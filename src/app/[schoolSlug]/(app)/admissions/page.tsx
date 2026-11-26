@@ -1,3 +1,4 @@
+import { isRouteAllowed,usesStrictModuleAccess } from "@/lib/route-access";
 import {
   ArrowUpRight,
   ClipboardList,
@@ -139,7 +140,7 @@ export default async function AdmissionsPage({
   const staff = canManageAdmissions ? await prisma.membership.findMany({ where: { schoolId: actor.schoolId, isActive: true, role: { in: ["SUPER_ADMIN","SCHOOL_ADMIN","RECEPTIONIST","TEACHER"] } }, include: { user: { select: { firstName: true, lastName: true } } } }) : [];
   const members = staff.map(member => ({ id: member.id, name: [member.user.firstName,member.user.lastName].filter(Boolean).join(" ") || member.designation || "School staff", contact: member.role !== "TEACHER" }));
   const admin = ["SUPER_ADMIN","SCHOOL_ADMIN"].includes(actor.role);
-  const feePlans=admin&&yearId?await prisma.feePlan.findMany({where:{schoolId:actor.schoolId,academicYearId:yearId,active:true},select:{id:true,name:true,appliesToAllClasses:true,classes:{select:{classId:true}},items:{select:{installments:{select:{id:true}}}}}}):[];
+  const feePlans=admin&&yearId&&(!usesStrictModuleAccess(actor.school)||isRouteAllowed(actor.school,"fees/plans"))?await prisma.feePlan.findMany({where:{schoolId:actor.schoolId,academicYearId:yearId,active:true},select:{id:true,name:true,appliesToAllClasses:true,classes:{select:{classId:true}},items:{select:{installments:{select:{id:true}}}}}}):[];
   const counts = Object.fromEntries(
     statusCounts.map((item) => [item.status, item._count._all]),
   );

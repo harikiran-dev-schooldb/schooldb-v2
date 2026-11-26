@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 
 import { requireMembership } from "@/lib/auth";
+import { isRouteAllowed } from "@/lib/route-access";
+import { isMemberRouteAllowed } from "@/lib/navigation-access";
 import { prisma } from "@/lib/prisma";
 
 const VIEW_ROLES = new Set([
@@ -20,7 +22,7 @@ export async function GET(request: Request) {
 
   const membership = await requireMembership(schoolSlug);
 
-  if (!VIEW_ROLES.has(membership.role)) {
+  if (!VIEW_ROLES.has(membership.role)||!isRouteAllowed(membership.school,"queries")||!isMemberRouteAllowed(membership,"queries")) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
