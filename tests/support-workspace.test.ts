@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { personalSupportFilters, unresolvedSupport } from "../src/lib/support-workspace";
+import { personalSupportFilters, unresolvedSupport } from "../src/lib/support-workspace.ts";
 
 test("personal queues scope assignments and raised requests to the current user", () => {
   const now = new Date("2026-11-26T12:00:00Z");

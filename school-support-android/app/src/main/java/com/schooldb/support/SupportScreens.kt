@@ -1128,11 +1128,18 @@ internal fun TicketDetails(ticket: TicketDetail, admin: Boolean, busy: Boolean, 
     val conversationScroll = rememberScrollState()
     val detailsScroll = rememberScrollState()
     val activityScroll = rememberScrollState()
-    var initialConversation by remember(ticket.id) { mutableStateOf(true) }
+    var lastSeenMessageCount by remember(ticket.id) { mutableStateOf(-1) }
+    var lastConversationHeight by remember(ticket.id) { mutableStateOf(0) }
     LaunchedEffect(ticket.id, detailTab, ticket.messages.size, conversationScroll.maxValue) {
-        if (detailTab == "Conversation" && conversationScroll.maxValue != Int.MAX_VALUE && initialConversation) {
-            conversationScroll.scrollTo(conversationScroll.maxValue)
-            initialConversation = false
+        if (detailTab == "Conversation" && conversationScroll.maxValue != Int.MAX_VALUE) {
+            val newMessages = ticket.messages.size > lastSeenMessageCount
+            val lastIsMine = ticket.messages.lastOrNull()?.let { it.authorId.isNotBlank() && it.authorId == ticket.currentUserId } == true
+            val nearBottom = conversationScroll.value >= (lastConversationHeight - 120).coerceAtLeast(0)
+            if (lastSeenMessageCount < 0 || (newMessages && (nearBottom || lastIsMine))) {
+                conversationScroll.scrollTo(conversationScroll.maxValue)
+            }
+            lastSeenMessageCount = ticket.messages.size
+            lastConversationHeight = conversationScroll.maxValue
         }
     }
     Column(Modifier.fillMaxSize().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
