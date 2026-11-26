@@ -66,6 +66,12 @@ export async function processPushDeliveryJob(jobId: string) {
   if (!job) return null;
 
   try {
+    if(job.announcement.sourceType==="ADMISSION_REMINDER"||job.announcement.sourceType==="ADMISSION_STAFF_REMINDER") {
+      const enabled=await prisma.schoolAdmissionSetting.findUnique({where:{schoolId:job.schoolId},select:{admissionRemindersEnabled:true}});
+      if(!enabled?.admissionRemindersEnabled||job.announcement.archived||(job.announcement.expiresAt&&job.announcement.expiresAt<=now)){
+        await prisma.pushDeliveryJob.update({where:{id:job.id},data:{status:"COMPLETED",completedAt:now,lastError:"Admission reminder expired or disabled."}});return null;
+      }
+    }
     const delivery = await sendAnnouncementPush(job.announcement);
     if (delivery.skipped) {
       throw new Error("Push provider delivery did not complete.");
