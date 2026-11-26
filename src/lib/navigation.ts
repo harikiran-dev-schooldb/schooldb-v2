@@ -113,6 +113,7 @@ export const navigation: NavigationItem[] = [
     icon: ClipboardList,
     roles: [...ADMIN_ROLES, "RECEPTIONIST"],
     children: [
+      { title: "Overview", href: "admissions/dashboard" },
       { title: "Applications", href: "admissions", exact: true },
       { title: "Enquiries", href: "admissions/intake" },
       { title: "Age Calculator", href: "admissions/age-calculator" },
@@ -123,6 +124,7 @@ export const navigation: NavigationItem[] = [
       { title: "Parent Inbox", href: "admissions/parent-inbox", roles: ADMIN_ROLES },
       { title: "Analytics", href: "admissions/analytics", roles: ADMIN_ROLES },
       { title: "Recovery", href: "admissions/recovery", roles: ADMIN_ROLES },
+      { title: "Setup checklist", href: "admissions/setup", roles: ADMIN_ROLES },
       { title: "Settings", href: "admissions/settings", roles: ADMIN_ROLES },
     ],
   },

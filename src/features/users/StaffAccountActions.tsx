@@ -37,13 +37,15 @@ import {
 
 export function CreateStaffAccountButton({
   canCreateAdministrators,
+  admissionsOnly=false,
 }: {
   canCreateAdministrators: boolean;
+  admissionsOnly?:boolean;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
-  const [preset, setPreset] = useState("RECEPTIONIST");
+  const [preset, setPreset] = useState(admissionsOnly?"ADMISSIONS_OFFICER":"RECEPTIONIST");
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -140,15 +142,14 @@ export function CreateStaffAccountButton({
                       Vice Principal
                     </SelectItem>
                   ) : null}
-                  <SelectItem value="ACCOUNTANT">Accountant</SelectItem>
+                  {admissionsOnly?<SelectItem value="ADMISSIONS_OFFICER">Admissions Officer</SelectItem>:<SelectItem value="ACCOUNTANT">Accountant</SelectItem>}
                   <SelectItem value="RECEPTIONIST">Receptionist</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <p className="rounded-xl bg-muted p-3 text-xs leading-5 text-muted-foreground">
-              Teachers are created from the Teachers page so their login stays
-              linked to allocations, attendance, and homework.
+              {admissionsOnly?"Admissions Officers use the Receptionist role with school-package restrictions. School administrators manage settings and final approvals.":"Teachers are created from the Teachers page so their login stays linked to allocations, attendance, and homework."}
             </p>
           </div>
 

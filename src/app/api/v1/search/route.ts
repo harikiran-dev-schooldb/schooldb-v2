@@ -1,5 +1,6 @@
 import { apiHandler } from "@/lib/api";
 import { requireTenant, teacherClassScope } from "@/lib/auth";
+import { isRouteAllowed } from "@/lib/route-access";
 import { isMemberRouteAllowed } from "@/lib/navigation-access";
 import { prisma } from "@/lib/prisma";
 import { ApiResponse } from "@/lib/response";
@@ -41,11 +42,11 @@ export async function GET(request: Request) {
           },
         ]
       : [];
-    const canSearchStudents = isMemberRouteAllowed(membership, "students");
-    const canSearchTeachers = isMemberRouteAllowed(membership, "teachers");
-    const canSearchAdmissions = isMemberRouteAllowed(membership, "admissions");
-    const canSearchFees = isMemberRouteAllowed(membership, "fees/payments");
-    const canSearchQueries = isMemberRouteAllowed(membership, "queries");
+    const canSearchStudents = isRouteAllowed(membership.school,"students") && isMemberRouteAllowed(membership, "students");
+    const canSearchTeachers = isRouteAllowed(membership.school,"teachers") && isMemberRouteAllowed(membership, "teachers");
+    const canSearchAdmissions = isRouteAllowed(membership.school,"admissions") && isMemberRouteAllowed(membership, "admissions");
+    const canSearchFees = isRouteAllowed(membership.school,"fees/payments") && isMemberRouteAllowed(membership, "fees/payments");
+    const canSearchQueries = isRouteAllowed(membership.school,"queries") && isMemberRouteAllowed(membership, "queries");
     const teacherScope = membership.role === "TEACHER" && canSearchStudents
       ? await teacherClassScope(schoolId)
       : [];

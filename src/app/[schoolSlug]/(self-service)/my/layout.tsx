@@ -18,7 +18,7 @@ export default async function SelfServiceLayout({
 }) {
   const { schoolSlug } = await params;
   const routeMembership = await requireMembership(schoolSlug);
-  if (isOperationalRole(routeMembership.role)) redirect(`/${schoolSlug}/dashboard`);
+  if (isOperationalRole(routeMembership.role)) redirect(`/${schoolSlug}`);
   if (!isSelfServiceRole(routeMembership.role)) redirect("/");
 
   const { membership, students } = await listAccessibleStudents(schoolSlug);

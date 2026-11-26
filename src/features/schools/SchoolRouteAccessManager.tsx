@@ -11,6 +11,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { navigation } from "@/lib/navigation";
 import {
+  ADMISSIONS_ONLY_ROUTES,
+  isRouteAllowed,
   ALWAYS_AVAILABLE_ROUTES,
   BULK_OPERATION_ROUTES,
   CONFIGURABLE_ROUTES,
@@ -23,6 +25,7 @@ type SchoolRouteAccess = {
   slug: string;
   routeAccessRestricted: boolean;
   allowedRoutes: string[];
+  defaultLandingRoute?: string|null;
 };
 
 type RouteOption = { title: string; href: string };
@@ -115,6 +118,7 @@ export function SchoolRouteAccessManager() {
           setDraft({
             routeAccessRestricted: firstSchool.routeAccessRestricted,
             allowedRoutes: firstSchool.allowedRoutes,
+            defaultLandingRoute:firstSchool.defaultLandingRoute,
           });
         }
       })
@@ -161,6 +165,7 @@ export function SchoolRouteAccessManager() {
           schoolId: selectedSchool.id,
           routeAccessRestricted: draft.routeAccessRestricted,
           allowedRoutes: draft.allowedRoutes,
+          defaultLandingRoute:draft.defaultLandingRoute&&isRouteAllowed(draft,draft.defaultLandingRoute)?draft.defaultLandingRoute:null,
         }),
       });
       const payload = await response.json();
@@ -175,6 +180,7 @@ export function SchoolRouteAccessManager() {
       setDraft({
         routeAccessRestricted: updated.routeAccessRestricted,
         allowedRoutes: updated.allowedRoutes,
+        defaultLandingRoute:updated.defaultLandingRoute,
       });
       toast.success(payload.message ?? "Route access saved.");
     } catch (error) {
@@ -221,6 +227,7 @@ export function SchoolRouteAccessManager() {
                     setDraft({
                       routeAccessRestricted: nextSchool.routeAccessRestricted,
                       allowedRoutes: nextSchool.allowedRoutes,
+                      defaultLandingRoute:nextSchool.defaultLandingRoute,
                     });
                   }
                 }}
@@ -259,18 +266,20 @@ export function SchoolRouteAccessManager() {
             />
           </div>
 
+          <div className="space-y-2"><label htmlFor="landing-route" className="text-xs font-semibold">Default landing page</label><select id="landing-route" value={draft.defaultLandingRoute&&isRouteAllowed(draft,draft.defaultLandingRoute)?draft.defaultLandingRoute:""} onChange={event=>setDraft(current=>({...current,defaultLandingRoute:event.target.value||null}))} className="h-11 w-full rounded-xl border bg-background px-3 text-sm"><option value="">Automatic (first permitted workspace)</option>{["admissions/dashboard",...ALL_ROUTES.filter(r=>!r.startsWith("bulk-operations/"))].filter(r=>isRouteAllowed(draft,r)).map(r=><option key={r} value={r}>{r==="admissions/dashboard"?"Admissions dashboard":r}</option>)}</select><p className="text-xs text-muted-foreground">A user without permission for this page is sent to another permitted page.</p></div>
           {draft.routeAccessRestricted && (
             <div className="flex flex-wrap gap-2">
-              <Button type="button" variant="outline" size="sm" onClick={() => setDraft((current) => ({ ...current, allowedRoutes: ACADEMIC_ONLY_ROUTES }))}>
+              <Button type="button" variant="outline" size="sm" onClick={() => setDraft({routeAccessRestricted:true,allowedRoutes:[...ADMISSIONS_ONLY_ROUTES],defaultLandingRoute:"admissions/dashboard"})}>Admissions only</Button>
+              <Button type="button" variant="outline" size="sm" onClick={() => setDraft((current) => ({ ...current, defaultLandingRoute:null, allowedRoutes: ACADEMIC_ONLY_ROUTES }))}>
                 Academic only
               </Button>
-              <Button type="button" variant="outline" size="sm" onClick={() => setDraft((current) => ({ ...current, allowedRoutes: CORE_SCHOOL_ROUTES }))}>
+              <Button type="button" variant="outline" size="sm" onClick={() => setDraft((current) => ({ ...current, defaultLandingRoute:null, allowedRoutes: CORE_SCHOOL_ROUTES }))}>
                 Core school
               </Button>
-              <Button type="button" variant="outline" size="sm" onClick={() => setDraft((current) => ({ ...current, allowedRoutes: ALL_ROUTES }))}>
+              <Button type="button" variant="outline" size="sm" onClick={() => setDraft((current) => ({ ...current, defaultLandingRoute:null, allowedRoutes: ALL_ROUTES }))}>
                 Full campus
               </Button>
-              <Button type="button" variant="outline" size="sm" onClick={() => setDraft((current) => ({ ...current, allowedRoutes: [] }))}>
+              <Button type="button" variant="outline" size="sm" onClick={() => setDraft((current) => ({ ...current, defaultLandingRoute:null, allowedRoutes: [] }))}>
                 Clear all
               </Button>
               <span className="self-center text-xs text-muted-foreground">

@@ -6,6 +6,7 @@ import {
   canSubmitOwnProfileImage,
 } from "@/features/settings/profile-image-policy";
 import { requireCurrentTeacher, requireMembership } from "@/lib/auth";
+import { isRouteAllowed } from "@/lib/route-access";
 import { prisma } from "@/lib/prisma";
 
 function displayRole(role: string, designation: string | null) {
@@ -26,8 +27,8 @@ export default async function SettingsPage({
 }) {
   const { schoolSlug } = await params;
   const membership = await requireMembership(schoolSlug);
-  const canApproveImages = canReviewStudentProfileImages(membership.role);
-  const canManagePayments = ["SUPER_ADMIN", "SCHOOL_ADMIN"].includes(membership.role);
+  const canApproveImages = isRouteAllowed(membership.school,"students")&&canReviewStudentProfileImages(membership.role);
+  const canManagePayments = isRouteAllowed(membership.school,"fees/plans")&&["SUPER_ADMIN", "SCHOOL_ADMIN"].includes(membership.role);
   const [teacher, pendingImageRequests] = await Promise.all([
     membership.role === "TEACHER"
       ? requireCurrentTeacher(membership.schoolId)

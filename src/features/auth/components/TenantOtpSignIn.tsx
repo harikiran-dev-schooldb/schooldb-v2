@@ -24,7 +24,7 @@ import {
 import { toast } from "sonner";
 
 import { SchoolLogo } from "@/components/branding/SchoolLogo";
-import { isOperationalRole, isSelfServiceRole } from "@/lib/access-control";
+import { isSelfServiceRole } from "@/lib/access-control";
 import { applySchoolLogoBrandColor } from "@/lib/logo-brand-color";
 
 import OTPLogin from "./OTPLogin";
@@ -73,8 +73,7 @@ type AccountChoice = { id: string; role: string; name: string };
 
 function destinationForRole(schoolSlug: string, role?: string) {
   if (role && isSelfServiceRole(role)) return `/${schoolSlug}/my`;
-  if (role === "TEACHER") return `/${schoolSlug}/teacher/dashboard`;
-  if (role && isOperationalRole(role)) return `/${schoolSlug}/dashboard`;
+  // Resolve operational landing on the authenticated school entry.
   return `/${schoolSlug}`;
 }
 

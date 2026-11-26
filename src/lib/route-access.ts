@@ -1,6 +1,7 @@
 export type RouteAccessConfig = {
   routeAccessRestricted: boolean;
   allowedRoutes: string[];
+  defaultLandingRoute?: string | null;
 };
 
 export const ALWAYS_AVAILABLE_ROUTES = new Set([
@@ -182,4 +183,30 @@ export function normalizeAllowedRoutes(routes: unknown) {
     (route): route is string =>
       typeof route === "string" && CONFIGURABLE_ROUTES.has(route),
   );
+}
+
+export const ADMISSIONS_ONLY_ROUTES=["admissions","academic-year","setup/academic-structure","classes","sections","users","settings","notification-inbox"] as const;
+export function isAdmissionsOnlySchool(config:RouteAccessConfig){
+ return config.routeAccessRestricted&&config.allowedRoutes.includes("admissions")&&config.allowedRoutes.every(r=>(ADMISSIONS_ONLY_ROUTES as readonly string[]).includes(r));
+}
+export function validLandingRoute(config:RouteAccessConfig,route:unknown){
+ if(typeof route!=="string"||!route||route.length>100)return null;
+ if(route!=="admissions/dashboard"&&!CONFIGURABLE_ROUTES.has(route))return null;
+ return isRouteAllowed(config,route)?route:null;
+}
+
+/** Extra boundary for admissions-only operational APIs. Shared setup is scoped to
+ * the selected routes, not the entire academic module. Existing role checks still apply. */
+export function isAdmissionsPackageApiAllowed(config:RouteAccessConfig,pathname:string,role:string,method:string|null){
+ if(!isAdmissionsOnlySchool(config)||!pathname.startsWith("/api/v1/"))return true;
+ const matches=(prefix:string)=>pathname===prefix||pathname.startsWith(prefix+"/");
+ if(role==="SUPER_ADMIN"&&matches("/api/v1/schools"))return true;
+ if(matches("/api/v1/admissions")||matches("/api/v1/search"))return true;
+ const references=[["/api/v1/academic-years","academic-year"],["/api/v1/academic-branches","setup/academic-structure"],["/api/v1/syllabi","setup/academic-structure"],["/api/v1/classes","classes"],["/api/v1/sections","sections"]];
+ if(references.some(([prefix,route])=>matches(prefix)&&(method==="GET"||method==="HEAD"||isRouteAllowed(config,route))))return true;
+ // Student directory options contain student records; admissions does not need this endpoint.
+ if(matches("/api/v1/staff-accounts")&&isRouteAllowed(config,"users"))return true;
+ if(["/api/v1/account-switch","/api/v1/mobile/context","/api/v1/notification-preferences","/api/v1/pwa","/api/v1/web-push/devices","/api/v1/mobile/push/devices","/api/v1/settings/profile-image"].some(matches))return true;
+ if(matches("/api/v1/notifications")&&isRouteAllowed(config,"notification-inbox"))return true;
+ return false;
 }
