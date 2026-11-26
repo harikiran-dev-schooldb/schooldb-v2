@@ -63,6 +63,24 @@ test.describe("authenticated school workflows", () => {
     });
   }
 
+  for (const workflow of [
+    { path: "admissions/dashboard", heading: "Admissions dashboard" },
+    { path: "admissions/pipeline", heading: "Smart Admissions" },
+    { path: "admissions", heading: "Online Admissions" },
+    { path: "admissions/intake", heading: "Admission enquiries" },
+    { path: "admissions/age-calculator", heading: "Age Calculator" },
+    { path: "admissions/fees", heading: "Admission Fee Structure" },
+    { path: "admissions/planning", heading: "Seat Capacity" },
+    { path: "admissions/analytics", heading: "Admissions Analytics" },
+    { path: "admissions/setup", heading: "Admissions setup" },
+    { path: "admissions/settings", heading: "Admission Settings" },
+  ]) {
+    test(`${workflow.path} admissions workflow loads without mutation`, async ({ page }) => {
+      await expectEnabledWorkflowPage(page, workflow.path, workflow.heading);
+      await expect(page).not.toHaveURL(/\/login/);
+    });
+  }
+
   test("staff attendance is reachable when enabled", async ({ page }) => {
     await expectEnabledWorkflowPage(
       page,

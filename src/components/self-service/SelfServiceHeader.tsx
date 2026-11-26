@@ -4,6 +4,7 @@ import { Building2, CalendarDays, CircleHelp, LogOut, Repeat2, Settings, Users }
 import { SchoolLogo } from "@/components/branding/SchoolLogo";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { NotificationMenu } from "@/features/notifications/NotificationMenu";
 
 export function SelfServiceHeader({
@@ -67,6 +68,7 @@ export function SelfServiceHeader({
               <CalendarDays className="size-4" />
             </Link>
           </Button>
+          <ThemeToggle />
           <NotificationMenu
             schoolSlug={schoolSlug}
             notificationsHref={`/${schoolSlug}/my/notifications`}
