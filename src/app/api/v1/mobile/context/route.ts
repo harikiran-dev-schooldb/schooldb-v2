@@ -5,6 +5,7 @@ import { canUnlockAttendance } from "@/features/attendance/policy";
 import { publicSchoolLogoUrl } from "@/lib/school-branding";
 import {
   hasModuleAccess,
+  isModuleEnabledForSchool,
   STAFF_PERMISSION_MODULES,
 } from "@/lib/staff-permissions";
 
@@ -54,10 +55,10 @@ export async function GET(request: Request) {
           }
         : null,
       staffModules: STAFF_PERMISSION_MODULES
-        .filter((module) => hasModuleAccess(membership, module.key, "VIEW"))
+        .filter((module) => isModuleEnabledForSchool(membership.school,module.key)&&hasModuleAccess(membership, module.key, "VIEW"))
         .map((module) => module.key),
       staffManagedModules: STAFF_PERMISSION_MODULES
-        .filter((module) => hasModuleAccess(membership, module.key, "MANAGE"))
+        .filter((module) => isModuleEnabledForSchool(membership.school,module.key)&&hasModuleAccess(membership, module.key, "MANAGE"))
         .map((module) => module.key),
     });
   });

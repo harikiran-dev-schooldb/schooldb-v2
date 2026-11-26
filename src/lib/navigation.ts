@@ -292,13 +292,18 @@ export const navigation: NavigationItem[] = [
     ],
   },
   {
+    title: "Support & Parent Queries",
+    href: "queries",
+    icon: Megaphone,
+    roles: STAFF_ROLES,
+  },
+  {
     title: "Communication",
     icon: Megaphone,
     roles: STAFF_ROLES,
     children: [
       { title: "Create Announcements", href: "notifications", roles: TEACHING_ROLES },
       { title: "My Inbox", href: "notification-inbox", roles: STAFF_ROLES },
-      { title: "Support & Parent Queries", href: "queries", roles: STAFF_ROLES },
       { title: "WhatsApp Messages", href: "whatsapp", roles: ADMIN_ROLES },
     ],
   },

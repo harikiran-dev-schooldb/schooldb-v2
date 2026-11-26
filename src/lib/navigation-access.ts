@@ -38,7 +38,7 @@ export function isDefaultRoleRouteAllowed(role: string, href?: string) {
   if (roleOnlyAccess !== null) return roleOnlyAccess;
   if (ALWAYS_VISIBLE_MEMBER_ROUTES.has(href)) return true;
 
-  const navigationHref = BULK_OPERATION_ROUTES.some((route) => route.href === href)
+  const navigationHref = href==="parent-queries"?"queries":BULK_OPERATION_ROUTES.some((route) => route.href === href)
     ? "bulk-operations"
     : href;
 

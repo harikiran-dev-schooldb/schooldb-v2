@@ -19,6 +19,7 @@ export async function GET() {
         routeAccessRestricted: true,
         allowedRoutes: true,
         defaultLandingRoute: true,
+        moduleAccessRestricted: true,
       },
     });
 
@@ -45,6 +46,7 @@ export async function PATCH(request: Request) {
         routeAccessRestricted,
         allowedRoutes,
         defaultLandingRoute,
+        moduleAccessRestricted:routeAccessRestricted&&body.moduleAccessRestricted===true,
       },
       select: {
         id: true,
@@ -53,6 +55,7 @@ export async function PATCH(request: Request) {
         routeAccessRestricted: true,
         allowedRoutes: true,
         defaultLandingRoute: true,
+        moduleAccessRestricted: true,
       },
     });
 

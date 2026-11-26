@@ -82,7 +82,7 @@ export async function requireTenant(schoolSlug?: string) {
 
   const requestHeaders = await headers();
   if(!isAdmissionsPackageApiAllowed(membership.school,requestHeaders.get("x-school-pathname")??"",membership.role,requestHeaders.get("x-school-method"))){
-    throw new ApiError(403,"This operation is not enabled in the Admissions package");
+    throw new ApiError(403,"This operation is not enabled in this school package");
   }
   const policy = permissionPolicyForRequest(
     requestHeaders.get("x-school-pathname"),

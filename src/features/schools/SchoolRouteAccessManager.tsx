@@ -12,6 +12,9 @@ import { Switch } from "@/components/ui/switch";
 import { navigation } from "@/lib/navigation";
 import {
   ADMISSIONS_ONLY_ROUTES,
+  ADMISSIONS_SUPPORT_DEMO_ROUTES,
+  SCHOOL_MODULES,
+  toggleSchoolModule,
   isRouteAllowed,
   ALWAYS_AVAILABLE_ROUTES,
   BULK_OPERATION_ROUTES,
@@ -26,6 +29,7 @@ type SchoolRouteAccess = {
   routeAccessRestricted: boolean;
   allowedRoutes: string[];
   defaultLandingRoute?: string|null;
+  moduleAccessRestricted?:boolean;
 };
 
 type RouteOption = { title: string; href: string };
@@ -119,6 +123,7 @@ export function SchoolRouteAccessManager() {
             routeAccessRestricted: firstSchool.routeAccessRestricted,
             allowedRoutes: firstSchool.allowedRoutes,
             defaultLandingRoute:firstSchool.defaultLandingRoute,
+            moduleAccessRestricted:firstSchool.moduleAccessRestricted,
           });
         }
       })
@@ -136,6 +141,7 @@ export function SchoolRouteAccessManager() {
 
   function toggleRestricted(checked: boolean) {
     setDraft((current) => ({
+      ...current,
       routeAccessRestricted: checked,
       allowedRoutes:
         checked && current.allowedRoutes.length === 0
@@ -165,6 +171,7 @@ export function SchoolRouteAccessManager() {
           schoolId: selectedSchool.id,
           routeAccessRestricted: draft.routeAccessRestricted,
           allowedRoutes: draft.allowedRoutes,
+          moduleAccessRestricted:draft.moduleAccessRestricted===true,
           defaultLandingRoute:draft.defaultLandingRoute&&isRouteAllowed(draft,draft.defaultLandingRoute)?draft.defaultLandingRoute:null,
         }),
       });
@@ -181,6 +188,7 @@ export function SchoolRouteAccessManager() {
         routeAccessRestricted: updated.routeAccessRestricted,
         allowedRoutes: updated.allowedRoutes,
         defaultLandingRoute:updated.defaultLandingRoute,
+            moduleAccessRestricted:updated.moduleAccessRestricted,
       });
       toast.success(payload.message ?? "Route access saved.");
     } catch (error) {
@@ -228,6 +236,7 @@ export function SchoolRouteAccessManager() {
                       routeAccessRestricted: nextSchool.routeAccessRestricted,
                       allowedRoutes: nextSchool.allowedRoutes,
                       defaultLandingRoute:nextSchool.defaultLandingRoute,
+            moduleAccessRestricted:nextSchool.moduleAccessRestricted,
                     });
                   }
                 }}
@@ -269,17 +278,18 @@ export function SchoolRouteAccessManager() {
           <div className="space-y-2"><label htmlFor="landing-route" className="text-xs font-semibold">Default landing page</label><select id="landing-route" value={draft.defaultLandingRoute&&isRouteAllowed(draft,draft.defaultLandingRoute)?draft.defaultLandingRoute:""} onChange={event=>setDraft(current=>({...current,defaultLandingRoute:event.target.value||null}))} className="h-11 w-full rounded-xl border bg-background px-3 text-sm"><option value="">Automatic (first permitted workspace)</option>{["admissions/dashboard",...ALL_ROUTES.filter(r=>!r.startsWith("bulk-operations/"))].filter(r=>isRouteAllowed(draft,r)).map(r=><option key={r} value={r}>{r==="admissions/dashboard"?"Admissions dashboard":r}</option>)}</select><p className="text-xs text-muted-foreground">A user without permission for this page is sent to another permitted page.</p></div>
           {draft.routeAccessRestricted && (
             <div className="flex flex-wrap gap-2">
-              <Button type="button" variant="outline" size="sm" onClick={() => setDraft({routeAccessRestricted:true,allowedRoutes:[...ADMISSIONS_ONLY_ROUTES],defaultLandingRoute:"admissions/dashboard"})}>Admissions only</Button>
-              <Button type="button" variant="outline" size="sm" onClick={() => setDraft((current) => ({ ...current, defaultLandingRoute:null, allowedRoutes: ACADEMIC_ONLY_ROUTES }))}>
+              <Button type="button" variant="outline" size="sm" onClick={() => setDraft({routeAccessRestricted:true,allowedRoutes:[...ADMISSIONS_ONLY_ROUTES],defaultLandingRoute:"admissions/dashboard",moduleAccessRestricted:true})}>Admissions only</Button>
+              <Button type="button" variant="outline" size="sm" onClick={()=>setDraft({routeAccessRestricted:true,moduleAccessRestricted:true,allowedRoutes:[...ADMISSIONS_SUPPORT_DEMO_ROUTES],defaultLandingRoute:"admissions/dashboard"})}>Admissions + Support demo</Button>
+              <Button type="button" variant="outline" size="sm" onClick={() => setDraft((current) => ({ ...current, moduleAccessRestricted:false, defaultLandingRoute:null, allowedRoutes: ACADEMIC_ONLY_ROUTES }))}>
                 Academic only
               </Button>
-              <Button type="button" variant="outline" size="sm" onClick={() => setDraft((current) => ({ ...current, defaultLandingRoute:null, allowedRoutes: CORE_SCHOOL_ROUTES }))}>
+              <Button type="button" variant="outline" size="sm" onClick={() => setDraft((current) => ({ ...current, moduleAccessRestricted:false, defaultLandingRoute:null, allowedRoutes: CORE_SCHOOL_ROUTES }))}>
                 Core school
               </Button>
-              <Button type="button" variant="outline" size="sm" onClick={() => setDraft((current) => ({ ...current, defaultLandingRoute:null, allowedRoutes: ALL_ROUTES }))}>
+              <Button type="button" variant="outline" size="sm" onClick={() => setDraft((current) => ({ ...current, moduleAccessRestricted:false, defaultLandingRoute:null, allowedRoutes: ALL_ROUTES }))}>
                 Full campus
               </Button>
-              <Button type="button" variant="outline" size="sm" onClick={() => setDraft((current) => ({ ...current, defaultLandingRoute:null, allowedRoutes: [] }))}>
+              <Button type="button" variant="outline" size="sm" onClick={() => setDraft((current) => ({ ...current, moduleAccessRestricted:false, defaultLandingRoute:null, allowedRoutes: [] }))}>
                 Clear all
               </Button>
               <span className="self-center text-xs text-muted-foreground">
@@ -290,6 +300,7 @@ export function SchoolRouteAccessManager() {
         </CardContent>
       </Card>
 
+      {draft.routeAccessRestricted&&<Card className="premium-card rounded-3xl border-0"><CardContent className="space-y-4 p-5"><div><h2 className="text-lg font-bold">School subscription modules</h2><p className="text-sm text-muted-foreground">Select multiple modules. Changes apply only after Save route access. Module selection enables strict operational API filtering; individual staff permissions still apply.</p></div><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{SCHOOL_MODULES.map(module=>{const selected=module.routes.every(route=>draft.allowedRoutes.includes(route));const partial=!selected&&module.routes.some(route=>draft.allowedRoutes.includes(route));return <label key={module.key} className={"flex cursor-pointer items-start gap-3 rounded-2xl border p-4 "+(selected?"border-primary bg-primary/5":"border-border")}><Checkbox checked={selected?true:partial?"indeterminate":false} onCheckedChange={value=>setDraft(current=>({...current,moduleAccessRestricted:true,allowedRoutes:toggleSchoolModule(current.allowedRoutes,module.key,value===true)}))}/><span className="min-w-0"><span className="block text-sm font-semibold">{module.label}</span><span className="block text-xs text-muted-foreground">{module.description}</span></span></label>})}</div><p className="text-xs text-muted-foreground">Advanced routes remain below. Some wider ERP modules require additional endpoint verification; unclassified operational APIs are blocked in strict mode.</p></CardContent></Card>}
       {!draft.routeAccessRestricted ? (
         <div className="flex min-h-40 items-center justify-center rounded-3xl border border-dashed bg-muted/20 p-8 text-center">
           <div>

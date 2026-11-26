@@ -5,7 +5,7 @@ import { normalizeIndianMobile } from "@/features/auth/otp";
 import { STAFF_ACCOUNT_ROLES } from "@/features/users/staff-account-policy";
 import { ApiError } from "@/lib/errors";
 import { prisma } from "@/lib/prisma";
-import { isAdmissionsOnlySchool } from "@/lib/route-access";
+import { isAdmissionsSupportWorkspace } from "@/lib/route-access";
 import { normalizeStaffPermissions } from "@/lib/staff-permissions";
 
 const presetSchema = z.enum([
@@ -97,7 +97,7 @@ export async function createStaffAccount(
   const access = presetAccess[input.preset];
   if(input.preset==="ADMISSIONS_OFFICER"){
     const school=await prisma.school.findUnique({where:{id:schoolId},select:{routeAccessRestricted:true,allowedRoutes:true}});
-    if(!school||!isAdmissionsOnlySchool(school))throw new ApiError(400,"Admissions Officer preset requires the Admissions-only school package.");
+    if(!school||!isAdmissionsSupportWorkspace(school))throw new ApiError(400,"Admissions Officer preset requires the Admissions or Admissions + Support package.");
   }
 
   if (actorRole !== "SUPER_ADMIN" && access.role === "SCHOOL_ADMIN") {

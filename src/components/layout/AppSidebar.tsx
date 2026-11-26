@@ -96,7 +96,7 @@ export function AppSidebar({ mobile = false, onNavigate }: Props) {
   const roleLabel = role.toLowerCase().replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 
   useEffect(() => {
-    if (!["SUPER_ADMIN", "SCHOOL_ADMIN", "TEACHER", "ACCOUNTANT", "RECEPTIONIST"].includes(role)) return;
+    if (!isRouteAllowed(school,"queries")||!isMemberRouteAllowed(membership,"queries")) return;
 
     const controller = new AbortController();
 
@@ -115,7 +115,7 @@ export function AppSidebar({ mobile = false, onNavigate }: Props) {
       });
 
     return () => controller.abort();
-  }, [pathname, role, school.slug]);
+  }, [pathname, role, school, membership]);
 
   const visibleNavigation = useMemo(() => {
     const routeAccess = {

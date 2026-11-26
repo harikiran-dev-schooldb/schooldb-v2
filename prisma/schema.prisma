@@ -70,6 +70,7 @@ model School {
   directUpiEnabled            Boolean                      @default(false)
   directUpiId                 String?                      @db.VarChar(120)
   directUpiPayeeName          String?                      @db.VarChar(160)
+  moduleAccessRestricted      Boolean                      @default(false)
   defaultLandingRoute         String?
   routeAccessRestricted       Boolean                      @default(false)
   allowedRoutes               String[]                     @default([])
