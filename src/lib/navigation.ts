@@ -114,6 +114,7 @@ export const navigation: NavigationItem[] = [
     roles: [...ADMIN_ROLES, "RECEPTIONIST"],
     children: [
       { title: "Overview", href: "admissions/dashboard" },
+      { title: "Smart Pipeline", href: "admissions/pipeline" },
       { title: "Applications", href: "admissions", exact: true },
       { title: "Enquiries", href: "admissions/intake" },
       { title: "Age Calculator", href: "admissions/age-calculator" },

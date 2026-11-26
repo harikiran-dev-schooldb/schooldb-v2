@@ -75,6 +75,7 @@ export const ROUTE_MODULES: Partial<Record<string, StaffPermissionModule>> = {
   certificates: "CERTIFICATES",
   admissions: "ADMISSIONS",
   "admissions/dashboard": "ADMISSIONS",
+  "admissions/pipeline": "ADMISSIONS",
   "admissions/intake": "ADMISSIONS",
   "admissions/age-calculator": "ADMISSIONS",
   "admissions/fees": "ADMISSIONS",
