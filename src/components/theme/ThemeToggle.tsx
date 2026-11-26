@@ -20,7 +20,7 @@ const choices = [
 ] as const;
 
 export function ThemeToggle() {
-  const { resolvedTheme, setTheme, theme = "system" } = useTheme();
+  const { resolvedTheme, setTheme, theme = "light" } = useTheme();
   const Icon = resolvedTheme === "dark" ? Moon : Sun;
 
   return (

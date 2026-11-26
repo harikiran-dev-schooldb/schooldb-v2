@@ -21,7 +21,10 @@ test("every web page inherits the application theme scope", () => {
   assert.ok(pages.length >= 170, `expected the full route set, found ${pages.length}`);
   assert.match(rootLayout, /<body className="schooldb-theme-scope /);
   assert.match(rootLayout, /ThemeProvider/);
-  assert.match(rootLayout, /defaultTheme="system"/);
+  assert.match(rootLayout, /defaultTheme="light"/);
+  assert.match(rootLayout, /enableSystem/);
+  assert.match(read("src/components/theme/ThemeToggle.tsx"), /theme = "light"/);
+  assert.match(read("src/components/ui/sonner.tsx"), /theme = "light"/);
   assert.match(rootLayout, /prefers-color-scheme: dark/);
 });
 

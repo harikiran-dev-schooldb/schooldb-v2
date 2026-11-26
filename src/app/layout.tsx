@@ -56,7 +56,7 @@ export default function RootLayout({
       className="font-sans antialiased"
     >
       <body className="schooldb-theme-scope flex min-h-screen flex-col bg-background text-foreground">
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+        <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
           <ClerkProvider proxyUrl={process.env.NEXT_PUBLIC_CLERK_PROXY_URL}>
             <AccountSwitchTransition />
             {children}
