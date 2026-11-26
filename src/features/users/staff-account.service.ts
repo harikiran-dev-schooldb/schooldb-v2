@@ -5,6 +5,7 @@ import { normalizeIndianMobile } from "@/features/auth/otp";
 import { STAFF_ACCOUNT_ROLES } from "@/features/users/staff-account-policy";
 import { ApiError } from "@/lib/errors";
 import { prisma } from "@/lib/prisma";
+import { isAdmissionsOnlySchool } from "@/lib/route-access";
 import { normalizeStaffPermissions } from "@/lib/staff-permissions";
 
 const presetSchema = z.enum([
@@ -13,6 +14,7 @@ const presetSchema = z.enum([
   "VICE_PRINCIPAL",
   "ACCOUNTANT",
   "RECEPTIONIST",
+  "ADMISSIONS_OFFICER",
 ]);
 
 const editableRoleSchema = z.enum([
@@ -54,6 +56,7 @@ const presetAccess = {
   VICE_PRINCIPAL: { role: "SCHOOL_ADMIN", designation: "Vice Principal" },
   ACCOUNTANT: { role: "ACCOUNTANT", designation: "Accountant" },
   RECEPTIONIST: { role: "RECEPTIONIST", designation: "Receptionist" },
+  ADMISSIONS_OFFICER: { role: "RECEPTIONIST", designation: "Admissions Officer" },
 } as const;
 
 async function assertPhoneAvailable(
@@ -92,6 +95,10 @@ export async function createStaffAccount(
 ) {
   const input = createStaffAccountSchema.parse(value);
   const access = presetAccess[input.preset];
+  if(input.preset==="ADMISSIONS_OFFICER"){
+    const school=await prisma.school.findUnique({where:{id:schoolId},select:{routeAccessRestricted:true,allowedRoutes:true}});
+    if(!school||!isAdmissionsOnlySchool(school))throw new ApiError(400,"Admissions Officer preset requires the Admissions-only school package.");
+  }
 
   if (actorRole !== "SUPER_ADMIN" && access.role === "SCHOOL_ADMIN") {
     throw new ApiError(

@@ -204,7 +204,7 @@ export function isAdmissionsPackageApiAllowed(config:RouteAccessConfig,pathname:
  if(matches("/api/v1/admissions")||matches("/api/v1/search"))return true;
  const references=[["/api/v1/academic-years","academic-year"],["/api/v1/academic-branches","setup/academic-structure"],["/api/v1/syllabi","setup/academic-structure"],["/api/v1/classes","classes"],["/api/v1/sections","sections"]];
  if(references.some(([prefix,route])=>matches(prefix)&&(method==="GET"||method==="HEAD"||isRouteAllowed(config,route))))return true;
- if(matches("/api/v1/students/options")&&(method==="GET"||method==="HEAD"))return true;
+ // Student directory options contain student records; admissions does not need this endpoint.
  if(matches("/api/v1/staff-accounts")&&isRouteAllowed(config,"users"))return true;
  if(["/api/v1/account-switch","/api/v1/mobile/context","/api/v1/notification-preferences","/api/v1/pwa","/api/v1/web-push/devices","/api/v1/mobile/push/devices","/api/v1/settings/profile-image"].some(matches))return true;
  if(matches("/api/v1/notifications")&&isRouteAllowed(config,"notification-inbox"))return true;
