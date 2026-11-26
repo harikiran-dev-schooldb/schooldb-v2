@@ -44,6 +44,7 @@ export default async function AdmissionsPage({
     classId?: string;
     page?: string;
     review?: string;
+    year?: string;
   }>;
 }) {
   const { schoolSlug } = await params;
@@ -58,8 +59,11 @@ export default async function AdmissionsPage({
     : undefined;
   const page = Math.max(1, Number.parseInt(query.page || "1", 10) || 1);
   const pageSize = 20;
+  const years = await prisma.academicYear.findMany({where:{schoolId:actor.schoolId,admissionsEnabled:true},orderBy:{startDate:"desc"},select:{id:true,name:true}});
+  const yearId=years.find(y=>y.id===query.year)?.id??years[0]?.id??"";
   const where = {
     schoolId: actor.schoolId,
+    academicYearId: yearId,
     ...(status ? { status } : query.review==="1" ? {status:{in:["SUBMITTED","UNDER_REVIEW","WAITLISTED"] as AdmissionStatus[]}} : {}),
     ...(query.classId ? { applyingClassId: query.classId } : {}),
     ...(query.search
@@ -120,7 +124,7 @@ export default async function AdmissionsPage({
       }),
       prisma.admissionApplication.groupBy({
         by: ["status"],
-        where: { schoolId: actor.schoolId },
+        where,
         _count: { _all: true },
       }),
       prisma.schoolAdmissionSetting.upsert({
@@ -200,7 +204,7 @@ export default async function AdmissionsPage({
           tone="violet"
         />
       </section>}
-      <form className="premium-card grid gap-3 rounded-2xl p-4 md:grid-cols-[minmax(180px,1fr)_minmax(140px,200px)_minmax(140px,200px)_auto]">
+      <form className="premium-card grid gap-3 rounded-2xl p-4 md:grid-cols-2 xl:grid-cols-[minmax(160px,1fr)_repeat(3,minmax(130px,180px))_auto]">
         {query.review==="1"&&<input type="hidden" name="review" value="1"/>}
         <div className="relative">
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -211,6 +215,7 @@ export default async function AdmissionsPage({
             className="h-11 rounded-xl pl-9"
           />
         </div>
+        <AdmissionSelect key={yearId||"no-year"} name="year" label="Academic year" defaultValue={yearId} options={years}/>
         <AdmissionSelect key={query.status||"all-statuses"} name="status" label="Status" defaultValue={query.status||""} options={[{id:"",name:"All statuses"},...statuses.map(item=>({id:item,name:label(item)}))]}/>
         <AdmissionSelect key={query.classId||"all-classes"} name="classId" label="Class" defaultValue={query.classId||""} options={[{id:"",name:"All classes"},...classes]}/>
         <Button type="submit" className="h-11 rounded-xl">Apply filters</Button>
@@ -377,12 +382,12 @@ export default async function AdmissionsPage({
           <div className="flex gap-2">
             {page > 1 && (
               <Button asChild variant="outline" size="sm">
-                <Link href={pageHref(query, page - 1)}>Previous</Link>
+                <Link href={pageHref({...query,year:yearId}, page - 1)}>Previous</Link>
               </Button>
             )}
             {page < pages && (
               <Button asChild variant="outline" size="sm">
-                <Link href={pageHref(query, page + 1)}>Next</Link>
+                <Link href={pageHref({...query,year:yearId}, page + 1)}>Next</Link>
               </Button>
             )}
           </div>
@@ -446,10 +451,11 @@ function Stat({
   );
 }
 function pageHref(
-  query: { search?: string; status?: string; classId?: string; review?: string },
+  query: { search?: string; status?: string; classId?: string; review?: string; year?: string },
   page: number,
 ) {
   const params = new URLSearchParams();
+  if (query.year) params.set("year", query.year);
   if (query.review) params.set("review", query.review);
   if (query.search) params.set("search", query.search);
   if (query.status) params.set("status", query.status);

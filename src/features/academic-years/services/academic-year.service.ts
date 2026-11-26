@@ -76,6 +76,7 @@ export const academicYearService = {
       endDate: new Date(input.endDate),
       attendanceMode:input.attendanceMode,
       active: false,
+      admissionsEnabled: true,
 
       school: {
         connect: {

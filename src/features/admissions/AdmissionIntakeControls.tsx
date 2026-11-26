@@ -35,9 +35,9 @@ function useSave() {
   }
   return { busy, save };
 }
-export function EnquiryForm({ years, classes }: { years: AdmissionYearChoice[]; classes: Choice[] }) {
+export function EnquiryForm({ years, classes, defaultYearId }: { years: AdmissionYearChoice[]; classes: Choice[]; defaultYearId?: string }) {
   const {busy,save} = useSave();
-  const [yearId,setYearId]=useState(years[0]?.id??"");
+  const [yearId,setYearId]=useState(defaultYearId??years[0]?.id??"");
   const [classId,setClassId]=useState(classes[0]?.id??"");
   const [dob,setDob]=useState("");
   const [open,setOpen]=useState(false);

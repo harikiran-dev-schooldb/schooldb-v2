@@ -15,8 +15,8 @@ export async function PATCH(request:Request) {
   const body=await request.json();
   const input=typeof body?.publicEnabled==="boolean"?toggle.parse(body):schema.parse(body);
   await prisma.$transaction(async tx=>{
-   const year=await tx.academicYear.findFirst({where:{id:input.yearId,schoolId:actor.schoolId,active:true},select:{id:true,admissionPlanning:true}});
-   if(!year)throw new ApiError(404,"Active academic year not found.");
+   const year=await tx.academicYear.findFirst({where:{id:input.yearId,schoolId:actor.schoolId,admissionsEnabled:true},select:{id:true,admissionPlanning:true}});
+   if(!year)throw new ApiError(404,"Academic year is not enabled for admissions.");
    if("publicEnabled" in input){
     await tx.academicYear.update({where:{id:year.id,schoolId:actor.schoolId},data:{admissionPublicEnquiriesEnabled:input.publicEnabled}});
    }else{

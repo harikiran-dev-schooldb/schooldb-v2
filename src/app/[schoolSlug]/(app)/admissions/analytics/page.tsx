@@ -6,9 +6,9 @@ import { AdmissionPanel, AdmissionSelect } from "@/features/admissions/Admission
 import { Button } from "@/components/ui/button";
 export default async function Page({params,searchParams}:{params:Promise<{schoolSlug:string}>;searchParams:Promise<{year?:string}>}){
  const {schoolSlug}=await params;const query=await searchParams;const actor=await requireRole(["SUPER_ADMIN","SCHOOL_ADMIN"],schoolSlug);if(!["SUPER_ADMIN","SCHOOL_ADMIN"].includes(actor.role))throw new ApiError(403,"Administrator required.");
- const years=await prisma.academicYear.findMany({where:{schoolId:actor.schoolId,active:true},orderBy:{startDate:"desc"},select:{id:true,name:true}});
+ const years=await prisma.academicYear.findMany({where:{schoolId:actor.schoolId,admissionsEnabled:true},orderBy:{startDate:"desc"},select:{id:true,name:true}});
  const year=years.find(y=>y.id===query.year)??years[0];
- if(!year)return <PageContainer><PageHeader title="Admissions Analytics" description="No active academic year."/></PageContainer>;
+ if(!year)return <PageContainer><PageHeader title="Admissions Analytics" description="No academic year enabled for admissions."/></PageContainer>;
  const scope={schoolId:actor.schoolId,academicYearId:year.id};
  const [enquiries,applications,classes,sources]=await Promise.all([prisma.admissionEnquiry.groupBy({by:["state"],where:scope,_count:{_all:true}}),prisma.admissionApplication.groupBy({by:["status","applyingClassId"],where:scope,_count:{_all:true}}),prisma.class.findMany({where:{schoolId:actor.schoolId},select:{id:true,name:true},orderBy:{displayOrder:"asc"}}),prisma.admissionEnquiry.groupBy({by:["source"],where:{...scope,state:{in:["OPEN","LINKED","CLOSED"]}},_count:{_all:true}})]);
  const total=applications.reduce((n,x)=>n+x._count._all,0);const converted=applications.filter(x=>x.status==="CONVERTED").reduce((n,x)=>n+x._count._all,0);const accepted=enquiries.filter(x=>["OPEN","LINKED","CLOSED"].includes(x.state)).reduce((n,x)=>n+x._count._all,0);
