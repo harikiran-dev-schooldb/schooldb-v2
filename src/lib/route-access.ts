@@ -1,6 +1,7 @@
 export type RouteAccessConfig = {
   routeAccessRestricted: boolean;
   allowedRoutes: string[];
+  defaultLandingRoute?: string | null;
 };
 
 export const ALWAYS_AVAILABLE_ROUTES = new Set([
@@ -182,4 +183,14 @@ export function normalizeAllowedRoutes(routes: unknown) {
     (route): route is string =>
       typeof route === "string" && CONFIGURABLE_ROUTES.has(route),
   );
+}
+
+export const ADMISSIONS_ONLY_ROUTES=["admissions","academic-year","setup/academic-structure","classes","sections","users","settings","notification-inbox"] as const;
+export function isAdmissionsOnlySchool(config:RouteAccessConfig){
+ return config.routeAccessRestricted&&config.allowedRoutes.includes("admissions")&&config.allowedRoutes.every(r=>(ADMISSIONS_ONLY_ROUTES as readonly string[]).includes(r));
+}
+export function validLandingRoute(config:RouteAccessConfig,route:unknown){
+ if(typeof route!=="string"||!route||route.length>100)return null;
+ if(route!=="admissions/dashboard"&&!CONFIGURABLE_ROUTES.has(route))return null;
+ return isRouteAllowed(config,route)?route:null;
 }

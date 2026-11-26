@@ -18,6 +18,7 @@ import { SchoolLogo } from "@/components/branding/SchoolLogo";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { navigation } from "@/lib/navigation";
 import { isRouteAllowed } from "@/lib/route-access";
+import { isAdmissionsOnlySchool } from "@/lib/route-access";
 import { isMemberRouteAllowed } from "@/lib/navigation-access";
 import { cn } from "@/lib/utils";
 import { isTeacherRouteAllowed } from "@/lib/teacher-access";
@@ -154,11 +155,6 @@ export function AppSidebar({ mobile = false, onNavigate }: Props) {
     });
   }, [membership.customPermissionsEnabled, membership.permissions, role, school.allowedRoutes, school.routeAccessRestricted, teacherAccess]);
 
-  const workspaceHome =
-    visibleNavigation.find((item) => item.href)?.href ??
-    visibleNavigation.find((item) => item.children?.length)?.children?.[0]?.href ??
-    "schools/route-access";
-
   const normalizedSearch = searchQuery.trim().toLowerCase();
   const filteredNavigation = useMemo(() => {
     if (!normalizedSearch) return visibleNavigation;
@@ -257,7 +253,7 @@ export function AppSidebar({ mobile = false, onNavigate }: Props) {
           )}
         >
           <Link
-            href={`/${school.slug}/${workspaceHome}`}
+            href={`/${school.slug}`}
             onClick={handleNavigation}
             className={cn(
               "group flex min-w-0 items-center rounded-2xl border border-indigo-100 bg-gradient-to-br from-white via-indigo-50/60 to-violet-50/65 shadow-[0_9px_24px_rgba(79,70,229,.09)] transition hover:border-indigo-200 hover:shadow-[0_12px_30px_rgba(79,70,229,.13)] dark:border-indigo-500/20 dark:from-slate-950 dark:via-indigo-950/45 dark:to-violet-950/35 dark:hover:border-indigo-400/35",
@@ -288,7 +284,7 @@ export function AppSidebar({ mobile = false, onNavigate }: Props) {
                     className="size-3.5 shrink-0 rounded-[4px] object-cover opacity-75"
                   />
                   <span className="truncate text-[8px] font-semibold uppercase tracking-[0.1em] text-slate-400 dark:text-slate-400">
-                    Powered by <span className="font-extrabold text-slate-600 dark:text-slate-300">SchoolDB</span>
+                    Powered by <span className="font-extrabold text-slate-600 dark:text-slate-300">{isAdmissionsOnlySchool(school)?"SchoolDB Admissions":"SchoolDB"}</span>
                   </span>
                 </div>
               </div>

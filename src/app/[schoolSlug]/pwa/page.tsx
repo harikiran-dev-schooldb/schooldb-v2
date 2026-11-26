@@ -10,7 +10,7 @@ import { requireMembership } from "@/lib/auth";
 export default async function PwaSettingsPage({ params }: { params: Promise<{ schoolSlug: string }> }) {
   const { schoolSlug } = await params;
   const membership = await requireMembership(schoolSlug);
-  const backHref = isSelfServiceRole(membership.role) ? `/${schoolSlug}/my` : `/${schoolSlug}/dashboard`;
+  const backHref = isSelfServiceRole(membership.role) ? `/${schoolSlug}/my` : `/${schoolSlug}`;
 
   return (
     <PageContainer>
