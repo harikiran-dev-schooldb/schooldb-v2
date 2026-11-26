@@ -14,7 +14,15 @@ export async function queueAdmissionReminders(now=new Date()) {
    prisma.membership.findFirst({where:{schoolId,isActive:true,role:{in:["SUPER_ADMIN","SCHOOL_ADMIN"]}},select:{userId:true}}),
    prisma.admissionApplication.count({where:{schoolId,academicYear:{admissionsEnabled:true},status:{in:["DRAFT","SUBMITTED","UNDER_REVIEW","WAITLISTED"]},documentReviewRequired:true,OR:[{documents:{none:{}}},{documents:{some:{reviewStatus:{not:"VERIFIED"}}}}]}}),
    prisma.admissionApplication.count({where:{schoolId,academicYear:{admissionsEnabled:true},status:"DRAFT"}}),
-   prisma.admissionApplication.count({where:{schoolId,status:"CONVERTED",academicYear:{admissionsEnabled:true},student:{enrollments:{some:{schoolId,active:true,academicYear:{admissionsEnabled:true},studentFees:{some:{schoolId,active:true,items:{some:{installments:{some:{status:{in:["PENDING","PARTIAL"]},dueDate:{lte:now}}}}}}}}}}}}),
+   prisma.$queryRaw<{count:number}[]>`SELECT COUNT(DISTINCT a.id)::int AS count
+     FROM "AdmissionApplication" a
+     JOIN "AcademicYear" y ON y.id=a."academicYearId" AND y."schoolId"=a."schoolId"
+     JOIN "StudentEnrollment" e ON e."studentId"=a."studentId" AND e."academicYearId"=a."academicYearId" AND e."schoolId"=a."schoolId"
+     JOIN "StudentFee" f ON f."studentEnrollmentId"=e.id AND f."schoolId"=a."schoolId"
+     JOIN "StudentFeeItem" i ON i."studentFeeId"=f.id
+     JOIN "StudentFeeInstallment" t ON t."studentFeeItemId"=i.id
+     WHERE a."schoolId"=${schoolId} AND a.status='CONVERTED' AND y."admissionsEnabled"=true AND e.active=true AND f.active=true
+       AND t.status IN ('PENDING','PARTIAL') AND t."dueDate"<=${now}::date AND t."payableAmount">t."paidAmount"`.then(rows=>rows[0]?.count??0),
   ]);
   if(!admin||!(followUps+entrance+interviews+documents+drafts+fees))continue;
   const key="admission-reminder:"+schoolId+":"+day;

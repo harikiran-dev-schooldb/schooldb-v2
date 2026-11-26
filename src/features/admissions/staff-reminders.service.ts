@@ -2,13 +2,13 @@ import { prisma } from "@/lib/prisma";
 import { appointmentKey, appointmentWindow, indiaDay } from "./reminder-policy";
 import type { Prisma } from "@/generated/prisma/client";
 
-type Notice={schoolId:string;memberId:string;key:string;title:string;body:string;expiresAt:Date};
+type Notice={schoolId:string;memberId:string;key:string;applicationId?:string;title:string;body:string;expiresAt:Date};
 async function enqueue(notice:Notice,now:Date){
  return prisma.$transaction(async tx=>{
   const member=await tx.membership.findFirst({where:{id:notice.memberId,schoolId:notice.schoolId,isActive:true,role:{in:["SUPER_ADMIN","SCHOOL_ADMIN","RECEPTIONIST","TEACHER"]}},select:{id:true}});
   const setting=await tx.schoolAdmissionSetting.findUnique({where:{schoolId:notice.schoolId},select:{admissionRemindersEnabled:true}});
   if(!member||!setting?.admissionRemindersEnabled)return false;
-  const announcement=await tx.announcement.upsert({where:{dedupeKey:notice.key},create:{schoolId:notice.schoolId,title:notice.title,body:notice.body,category:"GENERAL",priority:"NORMAL",targetType:"ADMISSION_STAFF",targetId:notice.memberId,targetLabel:"Assigned admissions staff",sourceType:"ADMISSION_STAFF_REMINDER",dedupeKey:notice.key,createdBy:"SYSTEM",publishedAt:now,expiresAt:notice.expiresAt},update:{},select:{id:true}});
+  const announcement=await tx.announcement.upsert({where:{dedupeKey:notice.key},create:{schoolId:notice.schoolId,title:notice.title,body:notice.body,category:"GENERAL",priority:"NORMAL",targetType:"ADMISSION_STAFF",targetId:notice.memberId,targetLabel:"Assigned admissions staff",sourceType:"ADMISSION_STAFF_REMINDER",sourceId:notice.applicationId,dedupeKey:notice.key,createdBy:"SYSTEM",publishedAt:now,expiresAt:notice.expiresAt},update:{},select:{id:true}});
   await tx.pushDeliveryJob.upsert({where:{announcementId:announcement.id},create:{schoolId:notice.schoolId,announcementId:announcement.id,nextAttemptAt:now},update:{}});
   return true;
  });
@@ -31,7 +31,7 @@ export async function queueStaffAdmissionReminders(now=new Date(),mode:"daily"|"
   const appointments=[...entrance.map(a=>({id:a.id,at:a.entranceAt,member:a.entranceMemberId,stage:"entrance"})),...interviews.map(a=>({id:a.id,at:a.interviewAt,member:a.interviewMemberId,stage:"interview"}))];
   for(const a of appointments){if(!a.at||!a.member)continue;if(mode==="daily"){if(a.stage==="entrance")get(a.member).entrance++;else get(a.member).interviews++;continue;}
    const at=new Intl.DateTimeFormat("en-IN",{timeZone:"Asia/Kolkata",hour:"numeric",minute:"2-digit",hour12:true}).format(a.at);
-   if(await enqueue({schoolId,memberId:a.member,key:appointmentKey(schoolId,a.id,a.stage,a.member,a.at),title:a.stage==="entrance"?"Upcoming entrance examination":"Upcoming admission interview",body:"An assigned admission appointment is scheduled at "+at+" IST within 30 minutes. Check Admissions for the latest details.",expiresAt:a.at},now))queued++;
+   if(await enqueue({schoolId,memberId:a.member,key:appointmentKey(schoolId,a.id,a.stage,a.member,a.at),applicationId:a.id,title:a.stage==="entrance"?"Upcoming entrance examination":"Upcoming admission interview",body:"An assigned admission appointment is scheduled at "+at+" IST within 30 minutes. Check Admissions for the latest details.",expiresAt:a.at},now))queued++;
   }
   if(mode==="daily")for(const [memberId,n] of counts){
    if(await enqueue({schoolId,memberId,key:"admission-staff-daily:"+schoolId+":"+memberId+":"+indiaDay(now),title:"Your admissions tasks",body:`Due or overdue in the next 24 hours: ${n.followups} follow-ups, ${n.entrance} entrance examinations, ${n.interviews} interviews. Review your assigned tasks in SchoolDB.`,expiresAt:next},now))queued++;
