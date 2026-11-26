@@ -431,7 +431,7 @@ class SupportRepository {
         )
     }
 
-    suspend fun reply(school: String, id: String, body: String, isInternal: Boolean = false) =
+    suspend fun reply(school: String, id: String, body: String, isInternal: Boolean = false, clientRequestId: String? = null) =
         withContext(Dispatchers.IO) {
             request(
                 "POST",
@@ -439,7 +439,8 @@ class SupportRepository {
                 school,
                 JSONObject()
                     .put("body", body)
-                    .put("isInternal", isInternal),
+                    .put("isInternal", isInternal)
+                    .apply { if (clientRequestId != null) put("clientRequestId", clientRequestId) },
             )
         }
 

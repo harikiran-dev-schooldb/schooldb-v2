@@ -1129,6 +1129,7 @@ internal fun TicketDetails(ticket: TicketDetail, admin: Boolean, busy: Boolean, 
     var detailTab by remember(ticket.id) { mutableStateOf("Conversation") }
     var templatesOpen by remember(ticket.id) { mutableStateOf(false) }
     var assignmentOpen by remember(ticket.id) { mutableStateOf(false) }
+    var followUpError by remember(ticket.id) { mutableStateOf(false) }
     var assignmentCandidate by remember(ticket.id) { mutableStateOf<StaffOption?>(null) }
     val rankedStaff = remember(ticket.type, staff) { rankStaff(ticket.type, staff) }
     val guided = guidedAction(ticketStatusOrDefault(ticket.status), ticket.assignedToName != null)
@@ -1342,6 +1343,20 @@ internal fun TicketDetails(ticket: TicketDetail, admin: Boolean, busy: Boolean, 
                 Spacer(Modifier.height(8.dp))
                 AttachmentPicker(enabled = !busy, label = "Add attachment", onAttachment = onAddAttachment)
             }
+        }
+        if (ticket.status !in listOf("RESOLVED", "CLOSED")) SurfaceCard(Modifier.fillMaxWidth()) {
+            SectionTitle("Follow-up", "Add a private calendar reminder on this device.")
+            TextButton(onClick = {
+                val start = System.currentTimeMillis() + 24 * 60 * 60 * 1000L
+                val intent = Intent(Intent.ACTION_INSERT, android.provider.CalendarContract.Events.CONTENT_URI).apply {
+                    putExtra(android.provider.CalendarContract.Events.TITLE, "SchoolDB support follow-up")
+                    putExtra(android.provider.CalendarContract.EXTRA_EVENT_BEGIN_TIME, start)
+                    putExtra(android.provider.CalendarContract.EXTRA_EVENT_END_TIME, start + 15 * 60 * 1000L)
+                }
+                try { context.startActivity(intent); followUpError = false }
+                catch (_: android.content.ActivityNotFoundException) { followUpError = true }
+            }, enabled = !busy) { Text("Add to calendar") }
+            if (followUpError) Text("No calendar app is available.", color = MaterialTheme.colorScheme.error)
         }
         if (admin) SurfaceCard(Modifier.fillMaxWidth()) {
             SectionTitle("Manage ticket", "Keep ownership and progress clear")

@@ -27,10 +27,10 @@ class SupportReplyOutbox(context: Context) {
         }.apply()
     }
 
-    fun enqueue(userId: String, school: String, ticketId: String, body: String, isInternal: Boolean) {
+    fun enqueue(userId: String, school: String, ticketId: String, body: String, isInternal: Boolean, requestId: String = UUID.randomUUID().toString()) {
         require(userId.isNotBlank()) { "A signed-in user is required to queue a reply." }
         val items = pending().toMutableList()
-        val key = "${supportReplyOwnerKey(userId, school)}:$ticketId:${UUID.randomUUID()}"
+        val key = "${supportReplyOwnerKey(userId, school)}:$ticketId:$requestId"
         items += PendingSupportReply(key, userId, school, ticketId, body, isInternal)
         save(items)
         setDraft(userId, school, ticketId, "")

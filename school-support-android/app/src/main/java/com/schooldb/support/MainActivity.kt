@@ -517,7 +517,7 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
         outboxCount = queued.size
         queued.forEach { pending ->
             try {
-                api.reply(school, pending.ticketId, pending.body, pending.isInternal)
+                api.reply(school, pending.ticketId, pending.body, pending.isInternal, pending.key.substringAfterLast(':'))
                 replyOutbox.remove(pending.key)
                 outboxCount = (outboxCount - 1).coerceAtLeast(0)
                 if (ticketState.detail?.id == pending.ticketId) ticketViewModel.loadDetail(school, pending.ticketId)
@@ -1098,13 +1098,14 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
                         replyOutbox.setDraft(cacheUserId, school, ticket.id, it)
                     },
                     onReply = { body, isInternal -> run {
+                        val requestId = java.util.UUID.randomUUID().toString()
                         try {
-                            api.reply(school, ticket.id, body, isInternal)
+                            api.reply(school, ticket.id, body, isInternal, requestId)
                             replyDrafts.remove(ticket.id)
                             replyOutbox.setDraft(cacheUserId, school, ticket.id, "")
                             refreshTicketAfterMutation(ticket.id)
                         } catch (network: SupportNetworkException) {
-                            replyOutbox.enqueue(cacheUserId, school, ticket.id, body, isInternal)
+                            replyOutbox.enqueue(cacheUserId, school, ticket.id, body, isInternal, requestId)
                             outboxCount = replyOutbox.pending().count { it.school == school && it.userId == cacheUserId }
                             replyDrafts.remove(ticket.id)
                             notice = "No connection. Reply saved and will send automatically."
