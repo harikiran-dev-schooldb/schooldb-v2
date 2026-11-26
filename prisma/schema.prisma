@@ -18,6 +18,7 @@ model AcademicYear {
   updatedAt               DateTime                 @updatedAt
   admissionAgePolicy      Json?
   admissionPlanning       Json?
+  admissionsEnabled       Boolean @default(false)
   admissionPublicEnquiriesEnabled Boolean @default(false)
   attendanceMode          AttendanceMode           @default(ONCE_DAILY)
   academicPeriods         AcademicPeriod[]

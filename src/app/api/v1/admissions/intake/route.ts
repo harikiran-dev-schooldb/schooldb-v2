@@ -14,10 +14,10 @@ export async function POST(request: Request) {
     const input = await enquirySchema.parseAsync(await request.json());
     const result = await prisma.$transaction(async (tx) => {
       const [year, cls] = await Promise.all([
-        tx.academicYear.findFirst({ where: { id: input.academicYearId, schoolId: actor.schoolId, active: true } }),
+        tx.academicYear.findFirst({ where: { id: input.academicYearId, schoolId: actor.schoolId, admissionsEnabled: true } }),
         tx.class.findFirst({ where: { id: input.classId, schoolId: actor.schoolId, active: true } }),
       ]);
-      if (!year || !cls) throw new ApiError(400, "Choose an active year and class in this school.");
+      if (!year || !cls) throw new ApiError(400, "Choose an admissions-enabled year and active class in this school.");
       if (input.dob && input.dob > new Date().toISOString().slice(0,10)) throw new ApiError(400, "Birth date cannot be in the future.");
       const duplicate = await tx.admissionEnquiry.findFirst({ where: {
         schoolId: actor.schoolId, academicYearId: year.id, mobile: input.mobile,

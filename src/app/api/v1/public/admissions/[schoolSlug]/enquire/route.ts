@@ -17,7 +17,7 @@ export async function POST(request:Request,{params}:{params:Promise<{schoolSlug:
   await prisma.$transaction(async tx=>{
    const school=await tx.school.findUnique({where:{slug},select:{id:true}});
    if(!school)throw new ApiError(404,"School not found.");
-   const [year,cls]=await Promise.all([tx.academicYear.findFirst({where:{id:input.yearId,schoolId:school.id,active:true,admissionPublicEnquiriesEnabled:true},select:{id:true}}),tx.class.findFirst({where:{id:input.classId,schoolId:school.id,active:true},select:{id:true}})]);
+   const [year,cls]=await Promise.all([tx.academicYear.findFirst({where:{id:input.yearId,schoolId:school.id,admissionsEnabled:true,admissionPublicEnquiriesEnabled:true},select:{id:true}}),tx.class.findFirst({where:{id:input.classId,schoolId:school.id,active:true},select:{id:true}})]);
    if(!year||!cls)throw new ApiError(400,"Public enquiries are not available for this selection.");
    const duplicate=await tx.admissionEnquiry.findFirst({where:{schoolId:school.id,academicYearId:year.id,mobile:input.mobile,studentName:{equals:input.studentName,mode:"insensitive"},state:{in:["PENDING","OPEN","LINKED"]}}});
    if(!duplicate)await tx.admissionEnquiry.create({data:{schoolId:school.id,academicYearId:year.id,classId:cls.id,studentName:input.studentName,parentName:input.parentName,mobile:input.mobile,dob:new Date(input.dob+"T00:00:00Z"),source:"PARENT_PORTAL",state:"PENDING",consentAt:new Date()}});
