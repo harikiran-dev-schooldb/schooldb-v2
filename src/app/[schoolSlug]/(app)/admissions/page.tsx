@@ -28,6 +28,7 @@ import { prisma } from "@/lib/prisma";
 import { hasModuleAccess } from "@/lib/staff-permissions";
 
 const statuses = [
+  "DRAFT",
   "SUBMITTED",
   "UNDER_REVIEW",
   "APPROVED",

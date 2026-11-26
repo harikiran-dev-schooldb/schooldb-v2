@@ -1,0 +1,37 @@
+import Link from "next/link";
+import { connection } from "next/server";
+import { PageContainer,PageHeader } from "@/components/common/layout";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { AdmissionPanel,AdmissionSelect } from "@/features/admissions/AdmissionWorkspaceUI";
+import { admissionWorkspaceOptions } from "@/features/admissions/workspace.service";
+import { PIPELINE_STAGES,seatSummary } from "@/features/admissions/pipeline-policy";
+import { requireRole } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { formatSchoolDateTime } from "@/lib/date-time";
+export default async function PipelinePage({params,searchParams}:{params:Promise<{schoolSlug:string}>;searchParams:Promise<{year?:string;classId?:string}>}){
+ await connection();
+ const {schoolSlug}=await params;const query=await searchParams;
+ const actor=await requireRole(["SUPER_ADMIN","SCHOOL_ADMIN","RECEPTIONIST"],schoolSlug);
+ const admin=["SUPER_ADMIN","SCHOOL_ADMIN"].includes(actor.role);
+ const {years,classes}=await admissionWorkspaceOptions(actor.schoolId);
+ const year=years.find(y=>y.id===query.year)??years[0];
+ const classId=classes.some(c=>c.id===query.classId)?query.classId:undefined;
+ const scope={schoolId:actor.schoolId,academicYearId:year?.id??"",...(classId?{applyingClassId:classId}:{})};
+ const root="/"+schoolSlug+"/admissions";
+ const href=(path:string,extra:Record<string,string>={})=>root+path+"?"+new URLSearchParams({year:year?.id??"",...(classId?{classId}:{}),...extra}).toString();
+ const now=new Date();
+ const [columns,openEnquiries,groups,dueTasks]=await Promise.all([
+ Promise.all(PIPELINE_STAGES.map(async stage=>{const where={...scope,status:stage.status};const [count,items]=await Promise.all([admin?prisma.admissionApplication.count({where}):Promise.resolve(null),prisma.admissionApplication.findMany({where,orderBy:[{submittedAt:"desc"},{id:"desc"}],take:10,select:{id:true,applicationNo:true,studentName:true,applyingClass:{select:{name:true}},entranceStage:true,interviewStage:true,submittedAt:true,contactTasks:{where:{schoolId:actor.schoolId,completedAt:null},orderBy:{dueAt:"asc"},take:1,select:{dueAt:true,assignedName:true}}}})]);return {...stage,count,items};})),
+ admin?prisma.admissionEnquiry.count({where:{schoolId:actor.schoolId,academicYearId:year?.id??"",...(classId?{classId}:{}),state:"OPEN"}}):Promise.resolve(null),
+ admin?prisma.admissionApplication.groupBy({by:["applyingClassId","status"],where:scope,_count:{_all:true}}):Promise.resolve([]),
+ prisma.admissionContactTask.findMany({where:{schoolId:actor.schoolId,completedAt:null,dueAt:{lte:now},...(!admin?{assignedMemberId:actor.id}:{}),OR:[{application:{...scope,status:{in:["DRAFT","SUBMITTED","UNDER_REVIEW","WAITLISTED","APPROVED"]}}},{enquiry:{schoolId:actor.schoolId,academicYearId:year?.id??"",...(classId?{classId}:{}),state:{in:["OPEN","LINKED"]}}}]},orderBy:[{dueAt:"asc"},{id:"asc"}],take:10,select:{id:true,assignedName:true,dueAt:true,application:{select:{studentName:true,applicationNo:true}},enquiry:{select:{studentName:true}}}})
+ ]);
+ return <PageContainer><PageHeader title="Smart Admissions" description="One workspace for applications, seats and next actions." actions={<Button asChild variant="outline"><Link href={href("")}>Application register</Link></Button>}/>
+ <form className="premium-card grid gap-3 rounded-2xl p-4 sm:grid-cols-[1fr_1fr_auto]"><AdmissionSelect key={year?.id??"none"} name="year" label="Academic year" defaultValue={year?.id??""} options={years}/><AdmissionSelect key={classId??"all"} name="classId" label="Class" defaultValue={classId??""} options={[{id:"",name:"All classes"},...classes]}/><Button type="submit">Apply filters</Button></form>
+ {!year?<p>No admissions year enabled.</p>:<>
+ <AdmissionPanel title="Intake & overdue follow-ups" description="Open the original record to complete actions." action={<Button asChild size="sm" variant="outline"><Link href={href("/intake",{view:"follow-ups",taskFilter:"overdue"})}>Follow-up queue</Link></Button>}><div className="flex flex-wrap gap-2"><Button asChild variant="outline"><Link href={href("/intake",{state:"OPEN"})}>Open enquiries{openEnquiries!==null?" · "+openEnquiries:""}</Link></Button></div>{dueTasks.length===0?<p className="text-sm text-muted-foreground">No overdue follow-ups in this preview.</p>:<div className="divide-y">{dueTasks.map(t=><div key={t.id} className="flex flex-wrap items-center justify-between gap-2 py-3 text-sm"><div><strong>{t.application?.studentName??t.enquiry?.studentName??"Follow-up"}</strong><p className="text-xs text-muted-foreground">{t.assignedName} · {formatSchoolDateTime(t.dueAt)}</p></div><Button asChild size="sm" variant="outline"><Link href={t.application?href("",{search:t.application.applicationNo}):href("/intake",{view:"follow-ups",taskFilter:"overdue"})}>Open</Link></Button></div>)}</div>}</AdmissionPanel>
+ <section aria-label="Application pipeline" className="grid min-w-0 gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">{columns.map(col=><section key={col.status} className="premium-card min-w-0 rounded-2xl p-3"><header className="mb-3 flex flex-wrap items-center justify-between gap-2"><h2 className="font-bold">{col.label}</h2>{col.count!==null&&<Badge variant="outline">{col.count}</Badge>}</header>{col.items.length===0&&<p className="p-3 text-sm text-muted-foreground">No applications</p>}<div className="space-y-2">{col.items.map(item=><Link key={item.id} href={href("",{status:col.status,search:item.applicationNo})} className="block rounded-xl border bg-card p-3 hover:border-primary"><p className="break-words text-sm font-semibold">{item.studentName}</p><p className="text-xs text-muted-foreground">{item.applicationNo} · {item.applyingClass.name}</p><p className="mt-2 text-xs">Entrance: {item.entranceStage.replaceAll("_"," ")} · Interview: {item.interviewStage.replaceAll("_"," ")}</p>{item.contactTasks[0]&&<p className="mt-1 text-xs text-muted-foreground">Follow-up: {item.contactTasks[0].assignedName} · {formatSchoolDateTime(item.contactTasks[0].dueAt)}</p>}</Link>)}</div><Button asChild variant="ghost" size="sm" className="mt-2 w-full"><Link href={href("",{status:col.status})}>View all {col.label.toLowerCase()}</Link></Button></section>)}</section>
+ {admin&&<AdmissionPanel title="Class seat commitments" description="Approved applications are reserved; admitted applications are converted. Targets do not include promotions or existing students." action={<Button asChild variant="outline" size="sm"><Link href={href("/planning")}>Seat planning</Link></Button>}><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{classes.filter(c=>!classId||c.id===classId).map(c=>{const rows=groups.filter(g=>g.applyingClassId===c.id);const reserved=rows.find(g=>g.status==="APPROVED")?._count._all??0;const admitted=rows.find(g=>g.status==="CONVERTED")?._count._all??0;const plan=year.planning[c.id];const s=seatSummary(plan?.seatCapacity,reserved,admitted);return <div key={c.id} className="rounded-xl border p-3"><strong>{c.name}</strong><p className="text-sm">Target: {plan?.seatCapacity??"Not configured"} · Reserved: {reserved} · Admitted: {admitted}</p><p className="mt-1 text-sm font-semibold">Available: {s.available??"—"}</p><p className="text-xs text-muted-foreground">{plan?.enforceCapacity?"Limit enforced":"Planning only"}</p></div>})}</div></AdmissionPanel>}
+ </>}</PageContainer>;
+}

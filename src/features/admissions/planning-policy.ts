@@ -1,4 +1,4 @@
-export type ClassPlanning = { termFee?: number; annualFees?: number; seatCapacity?: number };
+export type ClassPlanning = { termFee?: number; annualFees?: number; seatCapacity?: number; enforceCapacity?: boolean };
 export type AdmissionPlanning = Record<string, ClassPlanning>;
 export function seatBalance(capacity: number | undefined, admitted: number) { return capacity === undefined ? null : capacity - admitted; }
 export function readPlanning(value: unknown): AdmissionPlanning {
@@ -13,6 +13,7 @@ export function readPlanning(value: unknown): AdmissionPlanning {
       const n = (raw as Record<string, unknown>)[key];
       if (typeof n === "number" && Number.isSafeInteger(n) && n >= 0 && n <= (key === "seatCapacity" ? 100000 : 100000000)) row[key] = n;
     }
+    if ((raw as Record<string, unknown>).enforceCapacity === true && row.seatCapacity !== undefined) row.enforceCapacity = true;
     result[id] = row;
   }
   return result;

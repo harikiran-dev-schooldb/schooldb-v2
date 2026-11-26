@@ -12,6 +12,8 @@ import { assessAge } from "./age-policy";
 import { stagesReady } from "./intake-policy";
 import { documentsReady, usableFeePlan } from "./lifecycle-policy";
 import { readAdmissionAgePolicy } from "./age-policy.schema";
+import { readPlanning } from "./planning-policy";
+import { requiresSeatWaitlist } from "./pipeline-policy";
 
 function applicationNumber() {
   return `APP-${new Date().getFullYear()}-${randomBytes(3).toString("hex").toUpperCase()}`;
@@ -141,12 +143,19 @@ export async function changeAdmissionStatus(input: {
   note: string | null;
   changedBy: string;
 }) {
-  const current = await prisma.admissionApplication.findFirst({ where: { id: input.id, schoolId: input.schoolId }, select: { status: true, entranceStage: true, interviewStage: true, updatedAt: true, documentReviewRequired:true, documents:{select:{reviewStatus:true}} } });
+  const application = await prisma.$transaction(async tx=>{
+  const current = await tx.admissionApplication.findFirst({ where: { id: input.id, schoolId: input.schoolId }, select: { status: true, academicYearId:true, applyingClassId:true, entranceStage: true, interviewStage: true, updatedAt: true, documentReviewRequired:true, documents:{select:{reviewStatus:true}} } });
   if (!current) throw new ApiError(404, "Application not found.");
   if (!transitions[current.status].includes(input.status)) throw new ApiError(400, "This status change is not allowed.");
   if (input.status === "APPROVED" && !stagesReady(current.entranceStage, current.interviewStage)) throw new ApiError(400, "Complete or waive required entrance and interview stages before approval.");
   if (input.status === "APPROVED" && !documentsReady(current.documentReviewRequired,current.documents)) throw new ApiError(400,"Complete required document verification before approval.");
-  const application = await prisma.admissionApplication.update({
+  if(input.status==="APPROVED"){
+    const year=await tx.academicYear.findFirst({where:{id:current.academicYearId,schoolId:input.schoolId},select:{admissionPlanning:true,admissionsEnabled:true}});
+    if(!year?.admissionsEnabled)throw new ApiError(400,"Admissions are not enabled for this academic year.");
+    const plan=readPlanning(year.admissionPlanning)[current.applyingClassId];
+    if(plan?.enforceCapacity){const scope={schoolId:input.schoolId,academicYearId:current.academicYearId,applyingClassId:current.applyingClassId};const occupied=await tx.admissionApplication.count({where:{...scope,status:{in:["APPROVED","CONVERTED"]}}});if(requiresSeatWaitlist(plan.seatCapacity,true,occupied,0))throw new ApiError(409,"Class admission limit reached. Move this application to the waitlist.");}
+  }
+  return tx.admissionApplication.update({
     where: { id: input.id, schoolId: input.schoolId, status: current.status, updatedAt: current.updatedAt },
     data: {
       status: input.status,
@@ -156,6 +165,7 @@ export async function changeAdmissionStatus(input: {
     },
     select: { id: true, applicationNo: true, studentName: true, status: true },
   });
+  },{isolationLevel:"Serializable"});
   const details = await prisma.admissionApplication.findUnique({ where: { id: application.id }, select: { fatherPhone: true, motherPhone: true, guardianPhone: true, whatsappOptIn: true, school: { select: { name: true } } } });
   if (details?.whatsappOptIn) await queueAdmissionWhatsappUpdate({ schoolId: input.schoolId, applicationId: application.id, applicationNo: application.applicationNo, studentName: application.studentName, phone: details.fatherPhone || details.motherPhone || details.guardianPhone, status: application.status, schoolName: details.school.name });
   return application;
