@@ -1175,6 +1175,7 @@ internal fun TicketDetails(ticket: TicketDetail, admin: Boolean, busy: Boolean, 
     onReply: (String, Boolean) -> Unit, onStatus: (TicketStatus) -> Unit,
     onPriority: (TicketPriority) -> Unit, onAssign: (String?) -> Unit,
     onScheduleFollowUp: (String?) -> Unit,
+    onAiDraft: suspend () -> String,
     onLabels: (List<String>) -> Unit, onDuplicate: (String?) -> Unit,
     onRetryDelivery: () -> Unit,
     onOpenAttachment: (TicketAttachment) -> Unit,
@@ -1185,6 +1186,11 @@ internal fun TicketDetails(ticket: TicketDetail, admin: Boolean, busy: Boolean, 
     var labelsText by remember(ticket.id, ticket.labels) { mutableStateOf(ticket.labels.joinToString(", ")) }
     var detailTab by remember(ticket.id) { mutableStateOf("Conversation") }
     var templatesOpen by remember(ticket.id) { mutableStateOf(false) }
+    val draftScope = rememberCoroutineScope()
+    var aiDraftLoading by remember(ticket.id) { mutableStateOf(false) }
+    var aiDraft by remember(ticket.id) { mutableStateOf<String?>(null) }
+    var aiDraftError by remember(ticket.id) { mutableStateOf<String?>(null) }
+    var summaryOpen by remember(ticket.id) { mutableStateOf(false) }
     var assignmentOpen by remember(ticket.id) { mutableStateOf(false) }
     var followUpError by remember(ticket.id) { mutableStateOf(false) }
     var assignmentCandidate by remember(ticket.id) { mutableStateOf<StaffOption?>(null) }
@@ -1527,7 +1533,7 @@ internal fun TicketDetails(ticket: TicketDetail, admin: Boolean, busy: Boolean, 
                         }
                     }
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                        TextButton(onClick = { templatesOpen = true }, enabled = !busy) { Text("Quick replies") }
+                        TextButton(onClick = { templatesOpen = true }, enabled = !busy) { Text("Reply tools") }
                         TextButton(onClick = { detailTab = "Details" }, enabled = !busy) { Text("Attachments & actions") }
                     }
                 }
@@ -1559,9 +1565,27 @@ internal fun TicketDetails(ticket: TicketDetail, admin: Boolean, busy: Boolean, 
     if (templatesOpen) {
         AlertDialog(
             onDismissRequest = { templatesOpen = false },
-            title = { Text("Quick replies") },
+            title = { Text("Reply tools") },
             text = {
                 Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("AI drafts use only the ticket category and status, never conversation text. Review before sending.", style = MaterialTheme.typography.bodySmall, color = Muted)
+                    OutlinedButton(onClick = {
+                        aiDraftLoading = true; aiDraftError = null; aiDraft = null
+                        draftScope.launch {
+                            try { aiDraft = onAiDraft() }
+                            catch (e: kotlinx.coroutines.CancellationException) { throw e }
+                            catch (e: Exception) { aiDraftError = e.message ?: "Draft unavailable." }
+                            finally { aiDraftLoading = false }
+                        }
+                    }, enabled = !aiDraftLoading && !busy, modifier = Modifier.fillMaxWidth()) { Text(if (aiDraftLoading) "Generating draft…" else "Generate AI draft") }
+                    aiDraftError?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+                    aiDraft?.let { draft ->
+                        Text(draft, style = MaterialTheme.typography.bodyMedium)
+                        Button(onClick = { onReplyChange(if (reply.isBlank()) draft else reply.trimEnd() + "\n\n" + draft); templatesOpen = false }, modifier = Modifier.fillMaxWidth()) { Text("Use editable draft") }
+                    }
+                    TextButton(onClick = { templatesOpen = false; summaryOpen = true }) { Text("Conversation overview") }
+                    HorizontalDivider(color = Line)
+                    Text("Quick reply templates", fontWeight = FontWeight.SemiBold)
                     listOf(
                         "Acknowledgement" to "Thank you for bringing this to our attention. We will review your request.",
                         "Investigating" to "We are looking into this issue and will share an update when available.",
@@ -1579,6 +1603,20 @@ internal fun TicketDetails(ticket: TicketDetail, admin: Boolean, busy: Boolean, 
             confirmButton = { TextButton(onClick = { templatesOpen = false }) { Text("Cancel") } },
         )
     }
+    if (summaryOpen) AlertDialog(onDismissRequest = { summaryOpen = false }, title = { Text("Conversation overview") }, text = {
+        Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Status: " + ticket.status.replace('_', ' '))
+            Text("Assigned to: " + (ticket.assignedToName ?: "Unassigned"))
+            Text("Replies: " + ticket.messages.count { !it.isInternal })
+            if (admin) Text("Internal notes: " + ticket.messages.count { it.isInternal })
+            ticket.messages.filter { !it.isInternal }.maxByOrNull { it.createdAt }?.let { last ->
+                Text("Latest parent-visible reply", fontWeight = FontWeight.Bold)
+                Text(last.body, maxLines = 8, overflow = TextOverflow.Ellipsis)
+                Text(formatSupportTimestamp(last.createdAt), style = MaterialTheme.typography.bodySmall, color = Muted)
+            }
+            Text("Next: " + guided.description, style = MaterialTheme.typography.bodySmall)
+        }
+    }, confirmButton = { TextButton(onClick = { summaryOpen = false }) { Text("Done") } })
     pendingStatus?.let { nextStatus ->
         AlertDialog(
             onDismissRequest = { pendingStatus = null },

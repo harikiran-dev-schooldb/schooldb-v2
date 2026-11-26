@@ -1115,6 +1115,7 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
                     onPriority = { priority -> run { api.updatePriority(school, ticket.id, priority); refreshTicketAfterMutation(ticket.id) } },
                     onAssign = { userId -> run { api.assign(school, ticket.id, userId); refreshTicketAfterMutation(ticket.id) } },
                     onScheduleFollowUp = { due -> run { api.scheduleFollowUp(school, ticket.id, due); refreshTicketAfterMutation(ticket.id) } },
+                    onAiDraft = { api.aiDraft(school, ticket.id) },
                     onLabels = { labels -> run { api.updateLabels(school, ticket.id, labels); refreshTicketAfterMutation(ticket.id) } },
                     onDuplicate = { duplicateOfId -> run { api.linkDuplicate(school, ticket.id, duplicateOfId); refreshTicketAfterMutation(ticket.id) } },
                     onRetryDelivery = { run { api.retryParentDelivery(school, ticket.id); refreshTicketAfterMutation(ticket.id) } },

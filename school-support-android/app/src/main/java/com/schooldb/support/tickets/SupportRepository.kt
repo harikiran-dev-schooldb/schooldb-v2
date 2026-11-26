@@ -452,6 +452,10 @@ class SupportRepository {
         request("POST", "api/v1/support/tickets/$id", school, JSONObject().put("status", status.name))
     }
 
+    suspend fun aiDraft(school: String, id: String): String = withContext(Dispatchers.IO) {
+        request("POST", "api/v1/support/tickets/$id/draft", school, JSONObject()).getJSONObject("data").getString("draft")
+    }
+
     suspend fun scheduleFollowUp(school: String, id: String, due: String?) = withContext(Dispatchers.IO) {
         request("POST", "api/v1/support/tickets/$id", school, JSONObject().put("followUpAt", due ?: JSONObject.NULL))
     }
