@@ -61,6 +61,8 @@ export const admissionStatusSchema = z.object({
 export const convertAdmissionSchema = z.object({
   admissionNo: z.string().trim().max(50),
   sectionId: z.string().cuid(),
+  feePlanId: z.string().cuid().optional(),
+  isRte: z.boolean().optional(),
   rollNo: z.preprocess(
     (value) => (value === "" || value === undefined ? null : value),
     z.coerce.number().int().positive().nullable(),

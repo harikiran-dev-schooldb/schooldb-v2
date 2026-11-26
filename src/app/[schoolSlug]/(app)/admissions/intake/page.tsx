@@ -13,6 +13,7 @@ import { calculateExactAge, eligibleClassIds } from "@/features/admissions/age-p
 import { ApiError } from "@/lib/errors";
 import { AdmissionDetails, AdmissionPanel, AdmissionSelect } from "@/features/admissions/AdmissionWorkspaceUI";
 import { Badge } from "@/components/ui/badge";
+import { CreateApplicationFromEnquiry } from "@/features/admissions/AdmissionLifecycleControls";
 
 async function requestTime() {
   return new Date();
@@ -59,6 +60,7 @@ export default async function IntakePage({params,searchParams}:{params:Promise<{
         {view==="parent-inbox"&&<div className="flex gap-2"><EnquiryAdminAction id={x.id} action="ACCEPT"/><EnquiryAdminAction id={x.id} action="DISMISS"/></div>}
         {view==="recovery"&&<EnquiryAdminAction id={x.id} action="REOPEN"/>}
         {x.notes && <p className="text-sm">{x.notes}</p>}{x.application && <p className="text-sm">Application: {x.application.applicationNo}</p>}
+        {manage && x.state==="OPEN" && <CreateApplicationFromEnquiry id={x.id} dob={x.dob?.toISOString().slice(0,10)??null}/>}
         {manage && x.state==="OPEN" && <AdmissionDetails title={x.studentName} description="Link or close this enquiry." label="Manage enquiry"><EnquiryActions id={x.id}/></AdmissionDetails>}
         {manage && (x.state==="OPEN"||x.state==="LINKED") && <ContactTaskForm target="ENQUIRY" id={x.id} members={members}/>}
       </article>)}

@@ -10,6 +10,7 @@ import { queueAdmissionWhatsappUpdate } from "@/features/whatsapp/service";
 import type { PublicAdmissionInput } from "./admission.schema";
 import { assessAge } from "./age-policy";
 import { stagesReady } from "./intake-policy";
+import { documentsReady, usableFeePlan } from "./lifecycle-policy";
 import { readAdmissionAgePolicy } from "./age-policy.schema";
 
 function applicationNumber() {
@@ -140,10 +141,11 @@ export async function changeAdmissionStatus(input: {
   note: string | null;
   changedBy: string;
 }) {
-  const current = await prisma.admissionApplication.findFirst({ where: { id: input.id, schoolId: input.schoolId }, select: { status: true, entranceStage: true, interviewStage: true, updatedAt: true } });
+  const current = await prisma.admissionApplication.findFirst({ where: { id: input.id, schoolId: input.schoolId }, select: { status: true, entranceStage: true, interviewStage: true, updatedAt: true, documentReviewRequired:true, documents:{select:{reviewStatus:true}} } });
   if (!current) throw new ApiError(404, "Application not found.");
   if (!transitions[current.status].includes(input.status)) throw new ApiError(400, "This status change is not allowed.");
   if (input.status === "APPROVED" && !stagesReady(current.entranceStage, current.interviewStage)) throw new ApiError(400, "Complete or waive required entrance and interview stages before approval.");
+  if (input.status === "APPROVED" && !documentsReady(current.documentReviewRequired,current.documents)) throw new ApiError(400,"Complete required document verification before approval.");
   const application = await prisma.admissionApplication.update({
     where: { id: input.id, schoolId: input.schoolId, status: current.status, updatedAt: current.updatedAt },
     data: {
@@ -165,17 +167,20 @@ export async function convertAdmission(input: {
   admissionNo: string;
   sectionId: string;
   rollNo: number | null;
+  feePlanId?: string;
+  isRte?: boolean;
   changedBy: string;
   performedByUserId: string;
 }) {
   const application = await prisma.admissionApplication.findFirst({
     where: { id: input.id, schoolId: input.schoolId },
-    include: { school: { select: { name: true } } },
+    include: { school: { select: { name: true } }, documents:{select:{reviewStatus:true}} },
   });
   if (!application) throw new ApiError(404, "Application not found.");
   if (application.status !== "APPROVED") throw new ApiError(400, "Approve the application before converting it.");
   if (!stagesReady(application.entranceStage, application.interviewStage)) throw new ApiError(400, "Complete required review stages before conversion.");
 
+  if (!documentsReady(application.documentReviewRequired,application.documents)) throw new ApiError(400,"Complete required document verification before conversion.");
   const [section, duplicateAadhar] = await Promise.all([
     prisma.section.findFirst({ where: { id: input.sectionId, classId: application.applyingClassId, active: true }, select: { id: true } }),
     application.studentAadhar
@@ -188,10 +193,13 @@ export async function convertAdmission(input: {
   const primaryPhone = application.fatherPhone || application.motherPhone || application.guardianPhone;
   const result = await prisma.$transaction(async (tx) => {
     const claimed = await tx.admissionApplication.updateMany({
-      where: { id: application.id, schoolId: input.schoolId, status: "APPROVED", studentId: null, entranceStage: { in: ["NOT_REQUIRED","PASSED"] }, interviewStage: { in: ["NOT_REQUIRED","PASSED"] } },
+      where: { id: application.id, schoolId: input.schoolId, status: "APPROVED", updatedAt:application.updatedAt, studentId: null, entranceStage: { in: ["NOT_REQUIRED","PASSED"] }, interviewStage: { in: ["NOT_REQUIRED","PASSED"] } },
       data: { status: "CONVERTED", convertedAt: new Date() },
     });
     if (claimed.count !== 1) throw new ApiError(409, "This application has already been converted.");
+    if(application.documentReviewRequired){const docs=await tx.admissionDocument.findMany({where:{applicationId:application.id,schoolId:input.schoolId},select:{reviewStatus:true}});if(!documentsReady(true,docs))throw new ApiError(409,"Document verification changed.");}
+    const plan=input.feePlanId?await tx.feePlan.findFirst({where:{id:input.feePlanId,schoolId:input.schoolId,academicYearId:application.academicYearId,active:true,OR:[{appliesToAllClasses:true},{classes:{some:{classId:application.applyingClassId}}}]},include:{items:{include:{installments:true}}}}):null;
+    if(input.feePlanId&&(!plan||!usableFeePlan(plan)))throw new ApiError(400,"Choose an active fee plan for this year and class with all installments generated.");
     const setting = await tx.schoolAdmissionSetting.upsert({
       where: { schoolId: input.schoolId },
       create: { schoolId: input.schoolId },
@@ -213,6 +221,7 @@ export async function convertAdmission(input: {
         fullName: application.studentName,
         gender: application.gender,
         dob: application.dob,
+        isRte: input.isRte ?? false,
         joinedDate: new Date(),
         phone: primaryPhone,
         email: application.email,
@@ -237,7 +246,7 @@ export async function convertAdmission(input: {
       },
       select: { id: true, admissionNo: true, fullName: true },
     });
-    await tx.studentEnrollment.create({
+    const enrollment=await tx.studentEnrollment.create({
       data: {
         schoolId: input.schoolId,
         studentId: student.id,
@@ -248,6 +257,7 @@ export async function convertAdmission(input: {
         admissionDate: new Date(),
       },
     });
+    if(plan){const rte=input.isRte??false;const fee=await tx.studentFee.create({data:{schoolId:input.schoolId,studentEnrollmentId:enrollment.id,feePlanId:plan.id,items:{create:plan.items.map(item=>({feePlanItemId:item.id,feeCategoryId:item.feeCategoryId,amount:item.amount,rteWaiver:rte?item.amount:0,concession:0,finalAmount:rte?0:item.amount,installments:{create:item.installments.map(i=>({feeInstallmentId:i.id,name:i.name,amount:i.amount,rteWaiver:rte?i.amount:0,concession:0,payableAmount:rte?0:i.amount,paidAmount:0,dueDate:i.dueDate,status:rte?"WAIVED":"PENDING",sequence:i.sequence,periodStart:i.periodStart,periodEnd:i.periodEnd}))}}))}},select:{id:true}});await tx.studentActivity.create({data:{schoolId:input.schoolId,studentId:student.id,enrollmentId:enrollment.id,type:"FEE_ASSIGNED",title:"Fee plan assigned at admission",description:plan.name,sourceType:"STUDENT_FEE",sourceId:fee.id,performedByUserId:input.performedByUserId}});}
     await tx.studentActivity.create({
       data: { schoolId: input.schoolId, studentId: student.id, type: "STUDENT_CREATED", title: "Converted from online admission", description: `Application ${application.applicationNo} was approved and converted into a student profile.`, performedByUserId: input.performedByUserId },
     });
@@ -259,7 +269,7 @@ export async function convertAdmission(input: {
       },
     });
     return student;
-  });
+  },{isolationLevel:"Serializable"});
 
   const loginAccess = await safelyProvisionStudentLogin(result.id, input.schoolId);
   if (application.whatsappOptIn) {
