@@ -8,7 +8,7 @@ export async function queueAdmissionReminders(now=new Date()) {
  let queued=0;
  for(const {schoolId} of schools){
   const [followUps,entrance,interviews,admin]=await Promise.all([
-   prisma.admissionContactTask.count({where:{schoolId,completedAt:null,dueAt:{lte:next},OR:[{application:{academicYear:{admissionsEnabled:true},status:{in:["DRAFT","SUBMITTED","UNDER_REVIEW","APPROVED","WAITLISTED"]}}},{enquiry:{academicYear:{admissionsEnabled:true},state:{in:["OPEN","LINKED"]}}}]}),
+   prisma.admissionContactTask.count({where:{schoolId,completedAt:null,dueAt:{lte:next},OR:[{application:{academicYear:{admissionsEnabled:true},status:{in:["DRAFT","SUBMITTED","UNDER_REVIEW","APPROVED","WAITLISTED"]}}},{enquiry:{academicYear:{admissionsEnabled:true},state:{in:["OPEN","LINKED"]}}}]}}),
    prisma.admissionApplication.count({where:{schoolId,academicYear:{admissionsEnabled:true},status:{in:["SUBMITTED","UNDER_REVIEW","WAITLISTED"]},entranceStage:"SCHEDULED",entranceAt:{lte:next}}}),
    prisma.admissionApplication.count({where:{schoolId,academicYear:{admissionsEnabled:true},status:{in:["SUBMITTED","UNDER_REVIEW","WAITLISTED"]},interviewStage:"SCHEDULED",interviewAt:{lte:next}}}),
    prisma.membership.findFirst({where:{schoolId,isActive:true,role:{in:["SUPER_ADMIN","SCHOOL_ADMIN"]}},select:{userId:true}}),
