@@ -15,7 +15,7 @@ import { refreshTable } from "@/lib/table-event";
 
 type Status = "SUBMITTED" | "UNDER_REVIEW" | "APPROVED" | "WAITLISTED" | "REJECTED" | "CONVERTED" | "DRAFT";
 
-export function AdmissionReviewActions({ id, status, sections, automaticNumbering, nextAdmissionNo, feePlans=[], admin=false, docsReady=true }: { id: string; status: Status; sections: { id: string; name: string }[]; automaticNumbering: boolean; nextAdmissionNo: string; feePlans?:{id:string;name:string}[]; admin?:boolean; docsReady?:boolean }) {
+export function AdmissionReviewActions({ id, status, sections, automaticNumbering, nextAdmissionNo, feePlans=[], admin=false, docsReady=true, ageException=false }: { id: string; status: Status; sections: { id: string; name: string }[]; automaticNumbering: boolean; nextAdmissionNo: string; feePlans?:{id:string;name:string}[]; admin?:boolean; docsReady?:boolean; ageException?:boolean }) {
   const router = useRouter();
   const [nextStatus, setNextStatus] = useState<"UNDER_REVIEW" | "APPROVED" | "WAITLISTED" | "REJECTED">(status === "SUBMITTED" ? "UNDER_REVIEW" : "APPROVED");
   const [note, setNote] = useState("");
@@ -54,7 +54,7 @@ export function AdmissionReviewActions({ id, status, sections, automaticNumberin
   </div>;
 
   return <div className="space-y-3 rounded-2xl border bg-muted/30 p-4">
-    <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_2fr]"><Select value={nextStatus} onValueChange={(value) => setNextStatus(value as typeof nextStatus)}><SelectTrigger className="bg-card"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="UNDER_REVIEW">Under review</SelectItem><SelectItem value="APPROVED">Approve</SelectItem><SelectItem value="WAITLISTED">Waitlist</SelectItem><SelectItem value="REJECTED">Reject</SelectItem></SelectContent></Select><Textarea value={note} onChange={(event) => setNote(event.target.value)} placeholder="Review note (optional)" className="min-h-10 bg-card" /></div>
-    <Button disabled={busy || (nextStatus==="APPROVED"&&!docsReady)} onClick={() => request(`/api/v1/admissions/${id}`, "PATCH", { status: nextStatus, note })}>{busy && <LoaderCircle className="animate-spin" />}Update application</Button>
+    <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_2fr]"><Select value={nextStatus} onValueChange={(value) => setNextStatus(value as typeof nextStatus)}><SelectTrigger className="bg-card"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="UNDER_REVIEW">Under review</SelectItem><SelectItem value="APPROVED" disabled={ageException&&!admin}>Approve</SelectItem><SelectItem value="WAITLISTED">Waitlist</SelectItem><SelectItem value="REJECTED">Reject</SelectItem></SelectContent></Select><Textarea value={note} onChange={(event) => setNote(event.target.value)} placeholder="Review note (optional)" className="min-h-10 bg-card" /></div>
+    <Button disabled={busy || (nextStatus==="APPROVED"&&(!docsReady||(ageException&&!admin)))} onClick={() => request(`/api/v1/admissions/${id}`, "PATCH", { status: nextStatus, note })}>{busy && <LoaderCircle className="animate-spin" />}Update application</Button>
   </div>;
 }

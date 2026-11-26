@@ -15,6 +15,7 @@ import { PageContainer, PageHeader } from "@/components/common/layout";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { readUndertaking } from "@/features/admissions/undertaking-policy";
 import { DocumentVerification } from "@/features/admissions/AdmissionLifecycleControls";
 import { documentsReady, usableFeePlan } from "@/features/admissions/lifecycle-policy";
 import { AdmissionReviewActions } from "@/features/admissions/AdmissionReviewActions";
@@ -245,6 +246,7 @@ export default async function AdmissionsPage({
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <h2 className="text-lg font-black">{item.studentName}</h2>
+                  {item.ageUndertaking&&<Badge variant="warning" className="dark:text-foreground">Age undertaking</Badge>}
                   <Badge variant={badgeVariant(item.status)}>
                     {label(item.status)}
                   </Badge>
@@ -339,6 +341,7 @@ export default async function AdmissionsPage({
             <div className="border-t border-border/60 bg-muted/20 p-4 sm:p-5">
               <div className="mb-3 grid gap-2 text-sm sm:grid-cols-2"><p>Entrance: <strong>{label(item.entranceStage)}</strong></p><p>Interview: <strong>{label(item.interviewStage)}</strong></p></div>
               <AdmissionDetails title={item.studentName} description={item.applicationNo+" · Review stages and application actions"} label={canManageAdmissions?"Manage application":"View details"}>
+              {(()=>{const u=readUndertaking(item.ageUndertaking);return u?<section className="space-y-2 rounded-2xl border border-amber-500/30 bg-amber-500/5 p-4 text-sm"><h3 className="font-bold">Recorded parent undertaking</h3><p>Applied: {u.appliedClassName} · Eligible: {u.eligibleClasses.join(", ")||"No matching rule"}</p><p>Signed by {u.signedBy} on {u.signedDate} · Reference: {u.reference}</p><p>Authorized by {u.approvedByName} · {u.reason}</p><p className="text-xs text-muted-foreground">Age rule snapshot: {u.completedMonths} completed months; allowed {u.minMonths}–{u.maxMonths} months as on {u.cutoff}.</p></section>:null;})()}
               <DocumentVerification key={item.id+":"+item.updatedAt.toISOString()} id={item.id} required={item.documentReviewRequired} documents={item.documents} editable={admin&&["DRAFT","SUBMITTED","UNDER_REVIEW","WAITLISTED"].includes(item.status)}/>
               {canManageAdmissions && ["DRAFT","SUBMITTED","UNDER_REVIEW","WAITLISTED"].includes(item.status) && <div className="mb-3 grid gap-3 sm:grid-cols-2">
                 <StageEditor key={item.id+":entrance:"+item.updatedAt.toISOString()} id={item.id} stage="ENTRANCE" status={item.entranceStage} at={item.entranceAt?.toISOString() ?? null} memberId={item.entranceMemberId} members={members} admin={admin}/>
@@ -350,6 +353,7 @@ export default async function AdmissionsPage({
                   id={item.id}
                   status={item.status}
                   admin={admin}
+                  ageException={Boolean(item.ageUndertaking)}
                   docsReady={documentsReady(item.documentReviewRequired,item.documents)}
                   feePlans={feePlans.filter(p=>usableFeePlan(p)&&(p.appliesToAllClasses||p.classes.some(c=>c.classId===item.applyingClassId))).map(p=>({id:p.id,name:p.name}))}
                   sections={item.applyingClass.sections}

@@ -4,14 +4,36 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { assessAge,eligibleClassIds } from "./age-policy";
+import { AgeFeePreview,type AdmissionYearChoice,type AdmissionClassChoice } from "./AdmissionCalculator";
 import { Badge } from "@/components/ui/badge";
 import { AdmissionSelect, AdmissionDetails } from "./AdmissionWorkspaceUI";
 import { documentsReady } from "./lifecycle-policy";
 function useSave(){const [busy,setBusy]=useState(false);const router=useRouter();async function save(path:string,method:string,body:object){setBusy(true);try{const r=await fetch(path,{method,headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});const b=await r.json();if(!r.ok||!b.success)throw Error(b.message||"Unable to save.");toast.success(b.message);router.refresh();return true;}catch(e){toast.error(e instanceof Error?e.message:"Unable to save.");return false;}finally{setBusy(false);}}return {busy,save};}
-export function CreateApplicationFromEnquiry({id,dob}:{id:string;dob:string|null}){
- const {busy,save}=useSave();const [gender,setGender]=useState("");
- return <AdmissionDetails title="Create application" description="Use the existing enquiry details. Confirm the missing information; no WhatsApp consent is assumed." label="Create application"><form className="grid gap-3 sm:grid-cols-2" onSubmit={(event:FormEvent<HTMLFormElement>)=>{event.preventDefault();const data=new FormData(event.currentTarget);void save("/api/v1/admissions/intake/"+id+"/application","POST",{...Object.fromEntries(data),gender});}}><label className="text-sm font-medium">Date of birth<Input type="date" name="dob" defaultValue={dob??""} readOnly={Boolean(dob)} required/></label><label className="text-sm font-medium">Gender<AdmissionSelect label="Gender" options={["MALE","FEMALE","OTHER"].map(x=>({id:x,name:x}))} value={gender} onChange={setGender}/></label><label className="text-sm font-medium">Guardian relationship<Input name="guardianRelation" maxLength={100}/></label><label className="text-sm font-medium">Previous school<Input name="previousSchool" maxLength={255}/></label><Button disabled={busy||!gender} type="submit">Create and link application</Button></form></AdmissionDetails>;
+export function CreateApplicationFromEnquiry({id,dob,year,classes,classId,admin,studentName,parentName,undertakingHref}:{id:string;dob:string|null;year:AdmissionYearChoice|undefined;classes:AdmissionClassChoice[];classId:string;admin:boolean;studentName:string;parentName:string;undertakingHref:string}){
+ const {busy,save}=useSave();
+ const [gender,setGender]=useState("");
+ const [date,setDate]=useState(dob??"");
+ const [confirmed,setConfirmed]=useState(false);
+ const [signedBy,setSignedBy]=useState(parentName);
+ const [reference,setReference]=useState("");
+ const [reason,setReason]=useState("");
+ const [signedDate,setSignedDate]=useState("");
+ const status=date?assessAge(date,year?.policy,classId).status:null;
+ const mismatch=status==="INELIGIBLE";
+ const eligible=classes.filter(c=>eligibleClassIds(date,year?.policy).includes(c.id));
+ const selected=classes.find(c=>c.id===classId)?.name??"Selected class";
+ const ready=Boolean(gender&&date&&status!=="INVALID_DATE"&&(!mismatch||(admin&&confirmed&&signedBy.trim().length>=2&&reference.trim().length>=2&&reason.trim().length>=10&&signedDate)));
+ return <AdmissionDetails title="Create application" description="Review eligibility and complete the missing student information." label="Create application"><form className="space-y-5" onSubmit={(event:FormEvent<HTMLFormElement>)=>{event.preventDefault();if(!ready)return;const data=new FormData(event.currentTarget);void save("/api/v1/admissions/intake/"+id+"/application","POST",{...Object.fromEntries(data),gender,...(mismatch?{undertaking:{signedBy,reference,reason,signedDate,confirmed}}:{})});}}>
+ <div className="rounded-2xl border border-border/60 bg-muted/30 p-4"><p className="font-bold">{studentName}</p><p className="text-sm text-muted-foreground">{year?.name??"Academic year"} · Applying for {selected} · {parentName}</p></div>
+ <div className="grid gap-4 sm:grid-cols-2"><label className="space-y-1 text-sm font-medium">Date of birth<Input type="date" name="dob" value={date} onChange={e=>setDate(e.target.value)} readOnly={Boolean(dob)} required/></label><label className="space-y-1 text-sm font-medium">Gender<AdmissionSelect label="Gender" options={["MALE","FEMALE","OTHER"].map(x=>({id:x,name:x}))} value={gender} onChange={setGender}/></label><label className="space-y-1 text-sm font-medium">Guardian relationship<Input name="guardianRelation" maxLength={100}/></label><label className="space-y-1 text-sm font-medium">Previous school<Input name="previousSchool" maxLength={255}/></label></div>
+ <AgeFeePreview dob={date} year={year} classes={classes} classId={classId}/>
+ {mismatch&&<section className="space-y-4 rounded-2xl border border-amber-500/30 bg-amber-500/5 p-4"><div className="flex flex-wrap items-center justify-between gap-2"><h3 className="font-bold">Parent undertaking required</h3><Badge variant="warning" className="dark:text-foreground">Age exception</Badge></div><p className="text-sm">Applied class: <strong>{selected}</strong> · Eligible class: <strong>{eligible.map(c=>c.name).join(", ")||"No matching rule"}</strong>.</p><p className="text-xs text-muted-foreground">Only proceed if this exception is permitted by applicable admission rules and approved by the school. A parent undertaking does not waive mandatory age requirements.</p><Button variant="outline" size="sm" asChild><a href={undertakingHref} target="_blank" rel="noreferrer">Print parent undertaking</a></Button>{admin?<><div className="grid gap-3 sm:grid-cols-2"><label className="space-y-1 text-sm">Signed by<Input value={signedBy} onChange={e=>setSignedBy(e.target.value)} maxLength={255} required/></label><label className="space-y-1 text-sm">Signed date<Input type="date" value={signedDate} onChange={e=>setSignedDate(e.target.value)} required/></label><label className="space-y-1 text-sm sm:col-span-2">Signed document reference<Input placeholder="Physical file / undertaking register reference" value={reference} onChange={e=>setReference(e.target.value)} maxLength={150} required/></label><label className="space-y-1 text-sm sm:col-span-2">Reason for exception<Textarea value={reason} onChange={e=>setReason(e.target.value)} minLength={10} maxLength={1000} required/></label></div><label className="flex items-start gap-3 rounded-xl border border-border bg-card p-3 text-sm"><input type="checkbox" checked={confirmed} onChange={e=>setConfirmed(e.target.checked)} className="mt-1 size-4"/><span>I confirm the signed parent undertaking has been received, the school has authorized this exception and it is permitted under applicable rules.</span></label></>:<p className="text-sm font-medium">Ask a school administrator to record and approve the signed undertaking.</p>}</section>}
+ <div className="flex justify-end border-t border-border/60 pt-4"><Button disabled={busy||!ready} type="submit">{mismatch?"Create with undertaking":"Create and link application"}</Button></div>
+ </form></AdmissionDetails>;
 }
+
 type Doc={id:string;type:string;originalName:string;reviewStatus:string;reviewNote:string|null};
 export function DocumentVerification({id,required,documents,editable}:{id:string;required:boolean;documents:Doc[];editable:boolean}){
  const {busy,save}=useSave();const path="/api/v1/admissions/"+id+"/document-review";

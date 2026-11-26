@@ -3,6 +3,9 @@ import { changeAdmissionStatus } from "@/features/admissions/admission.service";
 import { apiHandler } from "@/lib/api";
 import { recordAuditLog } from "@/lib/audit";
 import { requireRole } from "@/lib/auth";
+import { ApiError } from "@/lib/errors";
+import { prisma } from "@/lib/prisma";
+import { hasModuleAccess } from "@/lib/staff-permissions";
 import { ApiResponse } from "@/lib/response";
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -10,6 +13,11 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const actor = await requireRole(["SUPER_ADMIN", "SCHOOL_ADMIN", "RECEPTIONIST"]);
     const { id } = await params;
     const input = await admissionStatusSchema.parseAsync(await request.json());
+    if(!hasModuleAccess(actor,"ADMISSIONS","MANAGE"))throw new ApiError(403,"Admissions management access required.");
+    if(input.status==="APPROVED"&&!["SUPER_ADMIN","SCHOOL_ADMIN"].includes(actor.role)){
+      const app=await prisma.admissionApplication.findFirst({where:{id,schoolId:actor.schoolId},select:{ageUndertaking:true}});
+      if(app?.ageUndertaking!==null&&app?.ageUndertaking!==undefined)throw new ApiError(403,"Administrator approval is required for an age-undertaking application.");
+    }
     const changedBy = [actor.user.firstName, actor.user.lastName].filter(Boolean).join(" ") || actor.designation || "School staff";
     const application = await changeAdmissionStatus({ id, schoolId: actor.schoolId, status: input.status, note: input.note, changedBy });
     await recordAuditLog({ actor, module: "ADMISSIONS", action: "UPDATE", entityType: "ADMISSION_APPLICATION", entityId: application.id, summary: `Changed ${application.applicationNo} (${application.studentName}) to ${application.status.replaceAll("_", " ")}.` });

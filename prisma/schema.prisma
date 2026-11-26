@@ -1023,6 +1023,7 @@ model AdmissionApplication {
   transportRequired  Boolean                    @default(false)
   whatsappOptIn      Boolean                    @default(false)
   status             AdmissionApplicationStatus @default(SUBMITTED)
+  ageUndertaking Json?
   documentReviewRequired Boolean @default(false)
   entranceStage      AdmissionReviewStage @default(NOT_REQUIRED)
   entranceAt         DateTime?
