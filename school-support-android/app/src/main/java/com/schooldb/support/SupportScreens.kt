@@ -168,6 +168,32 @@ internal fun TicketDashboard(school: String, tickets: List<TicketSummary>, summa
     val context = LocalContext.current
     val overviewScroll = rememberLazyListState()
     val ticketsScroll = rememberLazyListState()
+    val exportScope = rememberCoroutineScope()
+    var reportMessage by remember(school) { mutableStateOf<String?>(null) }
+    var reportSaving by remember(school) { mutableStateOf(false) }
+    var pendingReport by remember(school) { mutableStateOf<String?>(null) }
+    val reportDocument = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/csv")) { uri ->
+        val csv = pendingReport
+        pendingReport = null
+        if (uri != null && csv != null && admin) {
+            exportScope.launch {
+                reportSaving = true
+                try {
+                    withContext(Dispatchers.IO) {
+                        val stream = context.contentResolver.openOutputStream(uri) ?: error("Could not open file")
+                        stream.bufferedWriter(Charsets.UTF_8).use { it.write(csv) }
+                    }
+                    reportMessage = "Monthly CSV saved."
+                } catch (e: kotlinx.coroutines.CancellationException) {
+                    throw e
+                } catch (_: Exception) {
+                    reportMessage = "Could not save the monthly report. Try again."
+                } finally {
+                    reportSaving = false
+                }
+            }
+        }
+    }
     val analyticsScroll = rememberLazyListState()
     val keyboard = LocalSoftwareKeyboardController.current
     var selectionMode by remember { mutableStateOf(false) }
@@ -370,6 +396,14 @@ internal fun TicketDashboard(school: String, tickets: List<TicketSummary>, summa
                         }
                         context.startActivity(Intent.createChooser(share, "Share monthly summary"))
                     }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) { Text("Share monthly summary") }
+                    OutlinedButton(onClick = {
+                        pendingReport = supportMonthlyCsv(school, analytics)
+                        reportMessage = null
+                        reportDocument.launch("schooldb-support-monthly.csv")
+                    }, enabled = !reportSaving && pendingReport == null, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) {
+                        Text(if (reportSaving) "Saving CSV…" else "Download monthly CSV")
+                    }
+                    reportMessage?.let { Text(it, color = Muted, style = MaterialTheme.typography.bodySmall) }
                 }
                 item {
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
