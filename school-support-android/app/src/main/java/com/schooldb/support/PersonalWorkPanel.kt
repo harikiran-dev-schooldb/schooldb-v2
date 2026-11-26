@@ -37,12 +37,10 @@ internal fun PersonalWorkPanel(work: PersonalWorkspace?, loading: Boolean, error
         WorkQueueRow("Overdue resolution", work?.overdue, SchoolRed, !busy) { onQueue("MY_OVERDUE") }
         HorizontalDivider(color = Line)
         WorkQueueRow("Requests I raised", work?.raised, SchoolGreen, !busy) { onQueue("MY_RAISED") }
-        if (work != null) {
-            Spacer(Modifier.height(16.dp))
+        if (work != null && work.tickets.isNotEmpty()) {
+            Spacer(Modifier.height(12.dp))
             Text("Priority assignments", fontWeight = FontWeight.Bold, color = Ink)
-            if (work.tickets.isEmpty()) {
-                Text("No unresolved assignments. You're all caught up.", color = Muted, style = MaterialTheme.typography.bodySmall)
-            } else {
+            run {
                 Spacer(Modifier.height(8.dp))
                 work.tickets.forEach { ticket ->
                     Surface(onClick = { onTicket(ticket.id) }, enabled = !busy, modifier = Modifier.fillMaxWidth(),

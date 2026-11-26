@@ -211,176 +211,81 @@ internal fun TicketDashboard(school: String, tickets: List<TicketSummary>, summa
             }
         }
         if (selectedTab == "Overview") {
-
             item {
-            SupportPageHeading(if (admin) "Support command centre" else "My support desk",
-                if (admin) "See your own work and school-wide priorities." else "Find your requests, assignments and next actions.", "WORKSPACE")
-        }
-        item {
-            Surface(shape = RoundedCornerShape(22.dp), shadowElevation = 0.dp,
-                color = Navy, modifier = Modifier.fillMaxWidth()) {
-            Box(Modifier.fillMaxWidth().background(
-                Brush.linearGradient(listOf(Navy, Indigo)), RoundedCornerShape(22.dp))) {
-                Column(Modifier.padding(20.dp)) {
-                    Text("SUPPORT INBOX", color = Color.White.copy(alpha = .8f), style = MaterialTheme.typography.labelSmall)
-                    Spacer(Modifier.height(10.dp))
-                    val activeTickets = summary[0] + summary[1]
-                    Text(if (!ticketsLoaded) "Loading your support desk…" else
-                        "$activeTickets ${if (activeTickets == 1) "ticket needs" else "tickets need"} attention",
-                        style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = Color.White)
-                    Spacer(Modifier.height(5.dp))
-                    Text("Create a request or open your active queue.",
-                        style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = .85f))
-                    Spacer(Modifier.height(14.dp))
-                    Button(onClick = onCreate, shape = RoundedCornerShape(13.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Navy)) {
-                        Icon(Icons.Outlined.Add, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text("New ticket", fontWeight = FontWeight.SemiBold)
-                    }
-                    TextButton(onClick = { onOpenQueue("Unresolved") }, enabled = !busy,
-                        colors = ButtonDefaults.textButtonColors(contentColor = Color.White)) {
-                        Text("View all unresolved tickets")
-                        Icon(Icons.Outlined.ChevronRight, contentDescription = null, modifier = Modifier.size(18.dp))
-                    }
-                    if (admin) {
-                        Spacer(Modifier.height(8.dp))
-                        TextButton(onClick = {
-                            val url = BuildConfig.API_BASE_URL.trimEnd('/') + "/$school/parent-query/qr"
-                            context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
-                        }) {
-                            Icon(Icons.Outlined.QrCode2, contentDescription = null, tint = Color.White)
-                            Spacer(Modifier.width(8.dp))
-                            Text("Parent query QR", color = Color.White, fontWeight = FontWeight.SemiBold)
-                        }
-                    }
-                }
-            }
-        }
-        }
-        if (selectedTab == "Overview") item {
-            PersonalWorkPanel(personalWork, workLoading, workError, busy, onWorkRefresh, onOpenQueue, onTicket)
-        }
-        if (!ticketsLoaded) item(contentType = "dashboard-loading") {
-            LoadingTicketCard()
-        }
-        if (ticketsLoaded) item {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    MetricCard("Open", summary[0], Indigo, Modifier.weight(1f)) { onOpenQueue("Open") }
-                    MetricCard("In progress", summary[1], Color(0xFF3D71C9), Modifier.weight(1f)) { onOpenQueue("Active") }
-                }
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    MetricCard("Urgent", summary[2], Color(0xFFD05F50), Modifier.weight(1f)) { onOpenQueue("Urgent") }
-                    MetricCard("Resolved", summary[3], Color(0xFF1D9D73), Modifier.weight(1f)) { onOpenQueue("Resolved") }
-                }
-            }
-        }
-        if (canManageAdmins) item {
-            SurfaceCard(Modifier.fillMaxWidth().clickable(onClick = onManageAdmins)) {
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        Text("Manage administrators", style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold, color = Ink)
-                        Spacer(Modifier.height(4.dp))
-                        Text("Create and update school admin access", style = MaterialTheme.typography.bodySmall,
-                            color = Muted)
-                    }
-                    Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = Indigo)
-                }
-            }
-        }
-        if (admin && analytics != null && selectedTab == "Overview") {
-            item {
-                SectionTitle("Needs attention", "School-wide issues requiring action")
-            }
-            item {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        MetricCard("Unassigned", analytics.attention.unassigned, Color(0xFFE58B2A), Modifier.weight(1f)) { onOpenQueue("Unassigned") }
-                        MetricCard("Waiting > 2 days", analytics.attention.waitingOverTwoDays, Color(0xFFB16A2D), Modifier.weight(1f)) { onOpenQueue("Waiting > 2 days") }
-                    }
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        MetricCard("New today", analytics.attention.newToday, Color(0xFF3D71C9), Modifier.weight(1f)) { onOpenQueue("New today") }
-                        MetricCard("Urgent active", analytics.attention.urgent, Color(0xFFD05F50), Modifier.weight(1f)) { onOpenQueue("Urgent") }
-                    }
+                Column(Modifier.padding(top = 12.dp, bottom = 4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(if (admin) "Support workspace" else "My support desk",
+                        style = MaterialTheme.typography.headlineSmall, color = Ink, fontWeight = FontWeight.Bold)
+                    Text(if (admin) "Review requests and assign the next action." else "Raise a request or follow up on your work.",
+                        style = MaterialTheme.typography.bodyMedium, color = Muted)
                 }
             }
             item {
-                SectionTitle("This month", "Principal / Admin support performance")
+                Button(onClick = onCreate, enabled = !busy, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
+                    shape = RoundedCornerShape(14.dp)) {
+                    Icon(Icons.Outlined.Add, contentDescription = null, modifier = Modifier.size(20.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Create new ticket", fontWeight = FontWeight.SemiBold)
+                }
             }
             item {
                 SurfaceCard(Modifier.fillMaxWidth()) {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        AnalyticsValue("Total", analytics.month.total.toString(), Modifier.weight(1f))
-                        AnalyticsValue("Resolved", analytics.month.resolved.toString(), Modifier.weight(1f))
-                        AnalyticsValue("Pending", analytics.month.pending.toString(), Modifier.weight(1f))
-                    }
-                    Spacer(Modifier.height(18.dp))
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        AnalyticsValue("Resolution", formatPercent(analytics.month.resolutionRate), Modifier.weight(1f))
-                            AnalyticsValue("Avg. response", formatResolutionTime(analytics.month.averageResponseHours), Modifier.weight(1f))
-                        AnalyticsValue("Avg. resolution", formatResolutionTime(analytics.month.averageResolutionHours), Modifier.weight(1f))
+                    val unresolved = if (ticketsLoaded) summary[0] + summary[1] else null
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                            Text(if (unresolved == null) "Loading ticket summary…" else if (unresolved == 0) "No unresolved tickets" else "$unresolved unresolved tickets",
+                                color = Ink, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                            Text(if (unresolved == 0) "Your visible queue is clear." else "Open the inbox to review requests.",
+                                color = Muted, style = MaterialTheme.typography.bodySmall)
+                        }
+                        TextButton(onClick = { onOpenQueue("UNRESOLVED") }, enabled = !busy) { Text("Open inbox") }
                     }
                 }
             }
-            if (analytics.byType.isNotEmpty()) {
-                item {
-                    SurfaceCard(Modifier.fillMaxWidth()) {
-                        SectionTitle("Issues by category", "Tickets created this month")
-                        Spacer(Modifier.height(14.dp))
-                        analytics.byType.forEach { category ->
-                            AnalyticsRow(category.type.replace('_', ' ').lowercase().replaceFirstChar { it.uppercase() }, category.count.toString())
-                        }
+            if (admin) item {
+                SurfaceCard(Modifier.fillMaxWidth()) {
+                    SectionTitle("Needs attention", "School-wide queues")
+                    Spacer(Modifier.height(8.dp))
+                    val attention = analytics?.attention
+                    if (analyticsLoading) LinearProgressIndicator(Modifier.fillMaxWidth())
+                    if (attention != null && attention.urgent == 0 && attention.unassigned == 0 && attention.waitingOverTwoDays == 0) {
+                        Text("No urgent, unassigned or long-waiting tickets.", color = SchoolGreen,
+                            style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(vertical = 8.dp))
+                    } else {
+                        HomeActionRow("Urgent tickets", attention?.urgent, SchoolRed, !busy) { onOpenQueue("URGENT") }
+                        HorizontalDivider(color = Line)
+                        HomeActionRow("Unassigned tickets", attention?.unassigned, SchoolGold, !busy) { onOpenQueue("UNASSIGNED") }
+                        HorizontalDivider(color = Line)
+                        HomeActionRow("Waiting over 2 days", attention?.waitingOverTwoDays, SchoolGold, !busy) { onOpenQueue("WAITING_OVERDUE") }
                     }
-                }
-                if (analytics.dailyTrend.isNotEmpty()) {
-                    item {
-                        SurfaceCard(Modifier.fillMaxWidth()) {
-                            SectionTitle("14-day trend", "Created versus resolved tickets")
-                            Spacer(Modifier.height(14.dp))
-                            val trendMax = analytics.dailyTrend.maxOf { maxOf(it.created, it.resolved) }.coerceAtLeast(1)
-                            analytics.dailyTrend.takeLast(7).forEach { day ->
-                                Row(Modifier.fillMaxWidth().padding(vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
-                                    Text(day.date.takeLast(5), modifier = Modifier.width(48.dp), style = MaterialTheme.typography.labelSmall, color = Muted)
-                                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                                        LinearProgressIndicator(
-                                            progress = { day.created.toFloat() / trendMax },
-                                            modifier = Modifier.fillMaxWidth().height(5.dp).clip(CircleShape),
-                                            color = Indigo,
-                                            trackColor = Indigo.copy(alpha = 0.10f),
-                                        )
-                                        LinearProgressIndicator(
-                                            progress = { day.resolved.toFloat() / trendMax },
-                                            modifier = Modifier.fillMaxWidth().height(5.dp).clip(CircleShape),
-                                            color = SchoolGreen,
-                                            trackColor = SchoolGreen.copy(alpha = 0.10f),
-                                        )
-                                    }
-                                    Spacer(Modifier.width(8.dp))
-                                    Text("${day.created}/${day.resolved}", style = MaterialTheme.typography.labelSmall, color = Ink)
-                                }
-                            }
-                            Spacer(Modifier.height(6.dp))
-                            Text("Created / resolved", style = MaterialTheme.typography.bodySmall, color = Muted)
-                        }
+                    if (attention == null && !analyticsLoading) {
+                        Text(analyticsError ?: "School-wide counts are not available. Pull down to refresh.",
+                            color = Muted, style = MaterialTheme.typography.bodySmall)
                     }
                 }
             }
-            if (analytics.staffWorkload.isNotEmpty()) {
-                item {
-                    SurfaceCard(Modifier.fillMaxWidth()) {
-                        SectionTitle("Staff workload", "Currently active assigned tickets")
-                        Spacer(Modifier.height(14.dp))
-                        analytics.staffWorkload.forEach { person ->
-                            AnalyticsRow(person.name, person.active.toString() + " active")
+            item {
+                PersonalWorkPanel(personalWork, workLoading, workError, busy, onWorkRefresh, onOpenQueue, onTicket)
+            }
+            if (admin || canManageAdmins) item {
+                SurfaceCard(Modifier.fillMaxWidth()) {
+                    SectionTitle("Tools", null)
+                    if (admin) {
+                        TextButton(onClick = {
+                            val url = BuildConfig.API_BASE_URL.trimEnd('/') + "/$school/parent-query/qr"
+                            context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
+                        }, enabled = !busy) {
+                            Icon(Icons.Outlined.QrCode2, contentDescription = null, modifier = Modifier.size(20.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("Parent query QR")
                         }
+                    }
+                    if (canManageAdmins) {
+                        TextButton(onClick = onManageAdmins, enabled = !busy) { Text("Manage administrators") }
                     }
                 }
             }
         }
 
-        }
         if (selectedTab == "Analytics") {
             item {
                 SupportPageHeading("Support performance", "School-wide trends, workload and resolution performance.", "ANALYTICS")
@@ -405,6 +310,21 @@ internal fun TicketDashboard(school: String, tickets: List<TicketSummary>, summa
                     }
                 }
             } else {
+                item {
+                    SurfaceCard(Modifier.fillMaxWidth()) {
+                        SectionTitle("All-time ticket summary", "Visible school tickets")
+                        Spacer(Modifier.height(12.dp))
+                        Row(Modifier.fillMaxWidth()) {
+                            AnalyticsValue("Open", if (ticketsLoaded) summary[0].toString() else "—", Modifier.weight(1f))
+                            AnalyticsValue("In progress", if (ticketsLoaded) summary[1].toString() else "—", Modifier.weight(1f))
+                        }
+                        Spacer(Modifier.height(12.dp))
+                        Row(Modifier.fillMaxWidth()) {
+                            AnalyticsValue("Urgent", if (ticketsLoaded) summary[2].toString() else "—", Modifier.weight(1f))
+                            AnalyticsValue("Resolved", if (ticketsLoaded) summary[3].toString() else "—", Modifier.weight(1f))
+                        }
+                    }
+                }
                 item {
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         MetricCard("Total this month", analytics.month.total, Indigo, Modifier.weight(1f))
@@ -450,6 +370,38 @@ internal fun TicketDashboard(school: String, tickets: List<TicketSummary>, summa
                                 AnalyticsRow(category.type.replace('_', ' ').lowercase().replaceFirstChar { it.uppercase() },
                                     category.count.toString())
                             }
+                        }
+                    }
+                }
+                if (analytics.dailyTrend.isNotEmpty()) {
+                    item {
+                        SurfaceCard(Modifier.fillMaxWidth()) {
+                            SectionTitle("7-day trend", "Created versus resolved tickets")
+                            Spacer(Modifier.height(14.dp))
+                            val trendMax = analytics.dailyTrend.maxOf { maxOf(it.created, it.resolved) }.coerceAtLeast(1)
+                            analytics.dailyTrend.takeLast(7).forEach { day ->
+                                Row(Modifier.fillMaxWidth().padding(vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    Text(day.date.takeLast(5), modifier = Modifier.width(48.dp), style = MaterialTheme.typography.labelSmall, color = Muted)
+                                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                                        LinearProgressIndicator(
+                                            progress = { day.created.toFloat() / trendMax },
+                                            modifier = Modifier.fillMaxWidth().height(5.dp).clip(CircleShape),
+                                            color = Indigo,
+                                            trackColor = Indigo.copy(alpha = 0.10f),
+                                        )
+                                        LinearProgressIndicator(
+                                            progress = { day.resolved.toFloat() / trendMax },
+                                            modifier = Modifier.fillMaxWidth().height(5.dp).clip(CircleShape),
+                                            color = SchoolGreen,
+                                            trackColor = SchoolGreen.copy(alpha = 0.10f),
+                                        )
+                                    }
+                                    Spacer(Modifier.width(8.dp))
+                                    Text("${day.created}/${day.resolved}", style = MaterialTheme.typography.labelSmall, color = Ink)
+                                }
+                            }
+                            Spacer(Modifier.height(6.dp))
+                            Text("Created / resolved", style = MaterialTheme.typography.bodySmall, color = Muted)
                         }
                     }
                 }
@@ -719,6 +671,19 @@ private fun InboxFilterDropdown(
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun HomeActionRow(label: String, count: Int?, tint: Color, enabled: Boolean, onClick: () -> Unit) {
+    Surface(onClick = onClick, enabled = enabled, color = MaterialTheme.colorScheme.surface) {
+        Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).padding(vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically) {
+            Text(label, Modifier.weight(1f), color = Ink, style = MaterialTheme.typography.bodyMedium)
+            Text(count?.toString() ?: "—", color = tint, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.width(8.dp))
+            Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = Muted)
         }
     }
 }
