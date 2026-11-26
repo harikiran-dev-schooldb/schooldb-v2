@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 
 import { sendAnnouncementPush } from "./push";
+import { appointmentKey } from "@/features/admissions/reminder-policy";
 
 const MAX_PUSH_ATTEMPTS = 3;
 const STALE_JOB_MS = 10 * 60 * 1000;
@@ -66,6 +67,17 @@ export async function processPushDeliveryJob(jobId: string) {
   if (!job) return null;
 
   try {
+    if(job.announcement.sourceType==="ADMISSION_REMINDER"||job.announcement.sourceType==="ADMISSION_STAFF_REMINDER") {
+      const enabled=await prisma.schoolAdmissionSetting.findUnique({where:{schoolId:job.schoolId},select:{admissionRemindersEnabled:true}});
+      if(!enabled?.admissionRemindersEnabled||job.announcement.archived||(job.announcement.expiresAt&&job.announcement.expiresAt<=now)){
+        await prisma.pushDeliveryJob.update({where:{id:job.id},data:{status:"COMPLETED",completedAt:now,lastError:"Admission reminder expired or disabled."}});return null;
+      }
+    }
+    if(job.announcement.sourceType==="ADMISSION_STAFF_REMINDER"&&job.announcement.sourceId) {
+      const a=await prisma.admissionApplication.findFirst({where:{id:job.announcement.sourceId,schoolId:job.schoolId,academicYear:{admissionsEnabled:true},status:{in:["SUBMITTED","UNDER_REVIEW","WAITLISTED"]}},select:{id:true,entranceAt:true,entranceStage:true,entranceMemberId:true,interviewAt:true,interviewStage:true,interviewMemberId:true}});
+      const valid=a&&((a.entranceStage==="SCHEDULED"&&a.entranceAt&&a.entranceMemberId&&a.entranceAt>now&&appointmentKey(job.schoolId,a.id,"entrance",a.entranceMemberId,a.entranceAt)===job.announcement.dedupeKey)||(a.interviewStage==="SCHEDULED"&&a.interviewAt&&a.interviewMemberId&&a.interviewAt>now&&appointmentKey(job.schoolId,a.id,"interview",a.interviewMemberId,a.interviewAt)===job.announcement.dedupeKey));
+      if(!valid){await prisma.$transaction([prisma.announcement.update({where:{id:job.announcementId},data:{archived:true}}),prisma.pushDeliveryJob.update({where:{id:job.id},data:{status:"COMPLETED",completedAt:now,lastError:"Appointment cancelled, changed or expired."}})]);return null;}
+    }
     const delivery = await sendAnnouncementPush(job.announcement);
     if (delivery.skipped) {
       throw new Error("Push provider delivery did not complete.");

@@ -11,6 +11,7 @@ export async function notificationContext(schoolSlug: string) {
 
   if (!isSelfServiceRole(membership.role)) {
     const audience: Prisma.AnnouncementWhereInput[] = [{ targetType: "SCHOOL" }];
+    if(["SUPER_ADMIN","SCHOOL_ADMIN","RECEPTIONIST","TEACHER"].includes(membership.role))audience.push({targetType:"ADMISSION_STAFF",targetId:membership.id,sourceType:"ADMISSION_STAFF_REMINDER"});
 
     if (["SUPER_ADMIN", "SCHOOL_ADMIN"].includes(membership.role)) {
       audience.push({ targetType: "ADMIN" });

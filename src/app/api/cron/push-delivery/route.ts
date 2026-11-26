@@ -1,3 +1,4 @@
+import { queueStaffAdmissionReminders } from "@/features/admissions/staff-reminders.service";
 import { queueAdmissionReminders } from "@/features/admissions/reminders.service";
 import { processPendingPushDeliveries } from "@/features/notifications/push-queue";
 
@@ -13,6 +14,8 @@ export async function GET(request: Request) {
 
   let admissions: {schoolsWithReminders:number}|{error:string};
   try { admissions=await queueAdmissionReminders(); } catch(error) { console.error("Admission reminder generation failed",error); admissions={error:"Reminder generation failed."}; }
+  let staff: {staffRemindersQueued:number}|{error:string};
+  try { staff=await queueStaffAdmissionReminders(); } catch(error) { console.error("Admission staff reminders failed",error); staff={error:"Staff reminder generation failed."}; }
   const result = await processPendingPushDeliveries();
-  return Response.json({ ok: true, ...result, admissions });
+  return Response.json({ ok: true, ...result, admissions, staff });
 }

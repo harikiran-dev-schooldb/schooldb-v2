@@ -15,6 +15,7 @@ import { PageContainer, PageHeader } from "@/components/common/layout";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { AppointmentWhatsappDraft } from "@/features/admissions/AppointmentWhatsappDraft";
 import { DocumentVerification } from "@/features/admissions/AdmissionLifecycleControls";
 import { documentsReady, usableFeePlan } from "@/features/admissions/lifecycle-policy";
 import { AdmissionReviewActions } from "@/features/admissions/AdmissionReviewActions";
@@ -99,6 +100,7 @@ export default async function AdmissionsPage({
         skip: (page - 1) * pageSize,
         take: pageSize,
         include: {
+          school: {select:{name:true}},
           academicYear: { select: { name: true } },
           applyingClass: {
             select: {
@@ -344,6 +346,7 @@ export default async function AdmissionsPage({
                 <StageEditor key={item.id+":entrance:"+item.updatedAt.toISOString()} id={item.id} stage="ENTRANCE" status={item.entranceStage} at={item.entranceAt?.toISOString() ?? null} memberId={item.entranceMemberId} members={members} admin={admin}/>
                 <StageEditor key={item.id+":interview:"+item.updatedAt.toISOString()} id={item.id} stage="INTERVIEW" status={item.interviewStage} at={item.interviewAt?.toISOString() ?? null} memberId={item.interviewMemberId} members={members} admin={admin}/>
               </div>}
+              {canManageAdmissions && ["SUBMITTED","UNDER_REVIEW","WAITLISTED"].includes(item.status)&&<AppointmentWhatsappDraft consent={item.whatsappOptIn} phone={item.fatherPhone||item.motherPhone||item.guardianPhone} schoolName={item.school.name} applicationNo={item.applicationNo} entranceAt={item.entranceStage==="SCHEDULED"?item.entranceAt?.toISOString()??null:null} interviewAt={item.interviewStage==="SCHEDULED"?item.interviewAt?.toISOString()??null:null}/>}
               {canManageAdmissions && item.status !== "CONVERTED" && <div className="mb-3"><ContactTaskForm target="APPLICATION" id={item.id} members={members}/></div>}
               {canManageAdmissions && (
                 <AdmissionReviewActions

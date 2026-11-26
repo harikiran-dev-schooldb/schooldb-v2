@@ -73,6 +73,11 @@ export async function recordPushDeliveryReport(input: PushDeliveryReportInput) {
 }
 
 async function audienceUserIds(announcement: PushAnnouncement) {
+  if(announcement.targetType==="ADMISSION_STAFF") {
+    if(announcement.sourceType!=="ADMISSION_STAFF_REMINDER"||!announcement.targetId)return [];
+    const member=await prisma.membership.findFirst({where:{id:announcement.targetId,schoolId:announcement.schoolId,isActive:true,role:{in:["SUPER_ADMIN","SCHOOL_ADMIN","RECEPTIONIST","TEACHER"]}},select:{userId:true}});
+    return member?[member.userId]:[];
+  }
   if (announcement.targetType === "ADMIN") {
     const memberships = await prisma.membership.findMany({
       where: {
