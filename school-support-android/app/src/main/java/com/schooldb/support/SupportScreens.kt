@@ -1181,6 +1181,7 @@ internal fun TicketDetails(ticket: TicketDetail, admin: Boolean, busy: Boolean, 
                 Pill(ticket.status.replace('_', ' '), statusTint(ticket.status))
                 Pill(ticket.priority, priorityTint(ticket.priority))
                 if (ticket.source == "PARENT_QR") Pill("PARENT QUERY", Indigo)
+                if (ticket.parentConfirmedAt != null) Pill("Parent confirmed", SchoolGreen)
             }
         }
         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {

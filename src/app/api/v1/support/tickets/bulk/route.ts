@@ -47,6 +47,7 @@ export async function POST(request: Request) {
           where: { id: ticket.id },
           data: {
             status: nextStatus,
+            parentConfirmedAt: nextStatus && nextStatus !== "RESOLVED" && nextStatus !== "CLOSED" ? null : undefined,
             priority: parsed.data.priority,
             assignedToId: parsed.data.assignedToId,
             resolvedAt: nextStatus

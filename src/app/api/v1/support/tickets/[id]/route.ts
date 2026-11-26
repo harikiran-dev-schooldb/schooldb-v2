@@ -141,6 +141,7 @@ export async function PATCH(request: Request, context: Context) {
           ...input.data,
           labels: input.data.labels ? [...new Set(input.data.labels.map((label) => label.toLowerCase()))] : undefined,
           status: requestedStatus,
+          parentConfirmedAt: requestedStatus && requestedStatus !== "RESOLVED" && requestedStatus !== "CLOSED" ? null : undefined,
           resolvedAt: requestedStatus === "RESOLVED" || requestedStatus === "CLOSED"
             ? current.resolvedAt ?? new Date()
             : requestedStatus ? null : undefined,

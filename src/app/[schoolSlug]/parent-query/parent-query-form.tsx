@@ -11,6 +11,7 @@ type StudentOption = {
   guardianName: string | null;
 };
 type ApiResult<T> = { success: boolean; message: string; data?: T };
+type TrackedTicket = { ticketNo: string; subject: string; status: string; updatedAt: string; parentConfirmedAt: string | null; messages: { body: string; createdAt: string }[] };
 
 const categories = [
   { value: "STUDENT", label: "Student concern" },
@@ -38,6 +39,9 @@ export function ParentQueryForm({ schoolSlug }: { schoolSlug: string }) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [ticketNo, setTicketNo] = useState("");
+  const [mode, setMode] = useState<"create" | "track">("create");
+  const [tracked, setTracked] = useState<TrackedTicket[]>([]);
+  const [tracking, setTracking] = useState(false);
 
   async function sendOtp() {
     setError("");
@@ -82,12 +86,43 @@ export function ParentQueryForm({ schoolSlug }: { schoolSlug: string }) {
       }
       setVerificationToken(result.token);
       setOtp("");
-      await loadStudents(result.token);
+      if (mode === "track") await loadTracking(result.token);
+      else await loadStudents(result.token);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not verify the code. Try again.");
     } finally {
       setVerifyingOtp(false);
     }
+  }
+
+  async function loadTracking(token: string) {
+    setError("");
+    setTracking(true);
+    setTracked([]);
+    try {
+      const response = await fetch(`/api/v1/public/support/${schoolSlug}/tracking`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
+      const result: ApiResult<TrackedTicket[]> = await response.json();
+      if (response.status === 401) { setVerificationToken(""); setOtpSent(false); }
+      if (!response.ok || !result.success) throw new Error(result.message || "Unable to load queries.");
+      setTracked(result.data ?? []);
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "Unable to load queries."); }
+    finally { setTracking(false); }
+  }
+
+  async function confirmResolution(reference: string) {
+    setError("");
+    setTracking(true);
+    try {
+      const response = await fetch(`/api/v1/public/support/${schoolSlug}/tracking`, {
+        method: "POST", headers: { Authorization: `Bearer ${verificationToken}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ ticketNo: reference }),
+      });
+      const result: ApiResult<{ confirmed: boolean }> = await response.json();
+      if (response.status === 401) { setVerificationToken(""); setOtpSent(false); }
+      if (!response.ok || !result.success) throw new Error(result.message || "Could not confirm resolution.");
+      await loadTracking(verificationToken);
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "Could not confirm resolution."); }
+    finally { setTracking(false); }
   }
 
   async function loadStudents(token: string) {
@@ -166,11 +201,15 @@ export function ParentQueryForm({ schoolSlug }: { schoolSlug: string }) {
       <p className="mt-3 text-slate-600">The principal and school administration have received it.</p>
       <p className="mt-5 rounded-xl bg-slate-100 px-4 py-3 font-semibold">Reference: {ticketNo}</p>
       <p className="mt-3 text-sm text-slate-500">Keep this number if you need to follow up with the school.</p>
+      <button type="button" className="mt-5 rounded-xl bg-indigo-700 px-5 py-3 font-bold text-white" onClick={() => { setTicketNo(""); setVerificationToken(""); setOtpSent(false); setMode("track"); }}>Track my queries</button>
     </div>
   );
 
   if (!verificationToken) return (
     <div className="space-y-5">
+      <div className="grid grid-cols-2 gap-2 rounded-xl bg-slate-100 p-1">
+        {(["create", "track"] as const).map((item) => <button key={item} type="button" disabled={sendingOtp || verifyingOtp} aria-pressed={mode === item} onClick={() => { setMode(item); setError(""); }} className={"rounded-lg px-3 py-2 text-sm font-semibold " + (mode === item ? "bg-white text-indigo-700 shadow-sm" : "text-slate-600")}>{item === "create" ? "New query" : "Track queries"}</button>)}
+      </div>
       <div>
         <h2 className="text-lg font-bold">Verify your registered number</h2>
         <p className="mt-1 text-sm leading-6 text-slate-600">
@@ -221,6 +260,27 @@ export function ParentQueryForm({ schoolSlug }: { schoolSlug: string }) {
         </button>
       )}
       <p className="text-center text-xs text-slate-500">For privacy, we do not reveal whether an unverified number is registered.</p>
+    </div>
+  );
+
+  if (mode === "track") return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="text-xl font-bold">My school queries</h2>
+        <button type="button" disabled={tracking} onClick={() => loadTracking(verificationToken)} className="text-sm font-bold text-indigo-700">Refresh</button>
+      </div>
+      <p className="text-sm text-slate-600">Latest 50 queries submitted using this verified number for your currently linked students.</p>
+      {error && <p role="alert" className="rounded-xl bg-red-50 p-3 text-red-700">{error}</p>}
+      {tracking && <p role="status">Loading…</p>}
+      {!tracking && !error && tracked.length === 0 && <p className="rounded-xl bg-slate-50 p-4">No queries found.</p>}
+      {tracked.map((ticket) => <article key={ticket.ticketNo} className="space-y-3 rounded-2xl border border-slate-200 p-4">
+        <p className="text-xs font-semibold text-indigo-700">{ticket.ticketNo}</p>
+        <h3 className="font-bold">{ticket.subject}</h3>
+        <p className="text-sm font-medium text-slate-600">{ticket.status.replaceAll("_", " ")} · Updated {new Date(ticket.updatedAt).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}</p>
+        {ticket.messages.length > 0 && <details className="text-sm"><summary className="cursor-pointer font-semibold">Recent school replies</summary><div className="mt-3 space-y-2">{ticket.messages.map((message, index) => <p key={index} className="whitespace-pre-wrap rounded-xl bg-slate-50 p-3">{message.body}</p>)}</div></details>}
+        {ticket.parentConfirmedAt ? <p className="text-sm font-semibold text-emerald-700">Resolution confirmed</p> : ["RESOLVED", "CLOSED"].includes(ticket.status) && <button disabled={tracking} type="button" onClick={() => confirmResolution(ticket.ticketNo)} className="rounded-lg bg-indigo-700 px-4 py-2 text-sm font-semibold text-white">Confirm issue is resolved</button>}
+      </article>)}
+      <button type="button" disabled={tracking} className="text-sm font-bold text-indigo-700" onClick={() => { setTracked([]); setVerificationToken(""); setOtpSent(false); setMode("create"); setError(""); }}>Exit tracking</button>
     </div>
   );
 

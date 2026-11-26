@@ -2683,6 +2683,7 @@ model SupportTicket {
   createdAt     DateTime                  @default(now())
   updatedAt     DateTime                  @updatedAt
   resolvedAt    DateTime?
+  parentConfirmedAt DateTime?
   school        School                    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   student       Student?                  @relation(fields: [studentId], references: [id], onDelete: SetNull)
   createdBy     User?                     @relation("SupportTicketCreator", fields: [createdById], references: [id], onDelete: SetNull)

@@ -50,6 +50,7 @@ data class TicketDetail(
     val resolutionDueAt: String,
     val parentDelivery: ParentDelivery?,
     val currentUserId: String = "",
+    val parentConfirmedAt: String? = null,
 )
 
 data class TicketMessage(val body: String, val author: String, val isInternal: Boolean, val createdAt: String, val authorId: String = "")
@@ -341,6 +342,7 @@ class SupportRepository {
             responseDueAt = sla?.optString("responseDueAt").orEmpty(),
             resolutionDueAt = sla?.optString("resolutionDueAt").orEmpty(),
             currentUserId = item.optString("currentUserId"),
+            parentConfirmedAt = item.optString("parentConfirmedAt").takeUnless { it.isBlank() || it == "null" },
             parentDelivery = delivery?.let {
                 ParentDelivery(
                     campaignId = it.optString("campaignId"),
