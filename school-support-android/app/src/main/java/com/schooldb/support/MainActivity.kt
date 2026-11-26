@@ -450,6 +450,31 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
             updatesLoading = false
         }
     }
+    var personalWork by remember(school, cacheUserId) { mutableStateOf<PersonalWorkspace?>(null) }
+    var workLoading by remember(school, cacheUserId) { mutableStateOf(false) }
+    var workError by remember(school, cacheUserId) { mutableStateOf<String?>(null) }
+    var workRefresh by remember(school, cacheUserId) { mutableIntStateOf(0) }
+    LaunchedEffect(school, cacheUserId, sessionReady, page, dashboardTab, resumeVersion, pushUpdate, workRefresh) {
+        if (!sessionReady || school.isBlank() || cacheUserId.isBlank() || page != SupportPage.DASHBOARD || dashboardTab != DashboardTab.OVERVIEW) return@LaunchedEffect
+        workLoading = true
+        workError = null
+        try {
+            personalWork = api.workspace(school)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: SupportSessionExpiredException) {
+            handleSessionExpired()
+        } catch (e: Exception) {
+            workError = e.message ?: "Could not load your work."
+        } finally {
+            workLoading = false
+        }
+    }
+    LaunchedEffect(ticketState.ticketsLoaded, ticketState.isAdmin, dashboardTab) {
+        if (ticketState.ticketsLoaded && !ticketState.isAdmin && dashboardTab == DashboardTab.ANALYTICS) {
+            dashboardTab = DashboardTab.OVERVIEW
+        }
+    }
     var refreshedEvent by remember(school) { mutableStateOf(resumeVersion to pushUpdate.second) }
     LaunchedEffect(resumeVersion, pushUpdate, page, busy, ticketState.ticketsLoading) {
         val event = resumeVersion to pushUpdate.second
@@ -629,7 +654,7 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
             contentWindowInsets = WindowInsets(0, 0, 0, 0),
             bottomBar = {
                 if (page == SupportPage.DASHBOARD) {
-                    SupportNavigationDock(dashboardTab.label) { label ->
+                    SupportNavigationDock(dashboardTab.label, ticketState.isAdmin, supportUpdates?.unreadCount ?: 0) { label ->
                         dashboardTab = DashboardTab.entries.first { it.label == label }
                     }
                 }
@@ -938,6 +963,8 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
                     ticketState.analyticsLoading, ticketState.analyticsError, busy, ticketState.ticketsLoading, ticketState.ticketsLoaded,
                     showingCachedData = ticketState.showingCachedData,
                     manualRefreshing = manualRefreshing,
+                    personalWork = personalWork, workLoading = workLoading, workError = workError,
+                    onWorkRefresh = { workRefresh++ },
                     selectedTab = dashboardTab.label,
                     query = ticketState.query,
                     queueFilter = ticketState.filter,
@@ -987,9 +1014,10 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
                             "New today" -> "NEW_TODAY"
                             else -> filter.uppercase().replace(' ', '_')
                         }
-                        ticketViewModel.setFilter(apiFilter)
+                        ticketViewModel.setQuery("")
+                        ticketViewModel.setInboxFilters(apiFilter, "ALL", "ALL", "ALL")
                         dashboardTab = DashboardTab.TICKETS
-                        run { loadTickets(apiFilter, ticketState.query, 1) }
+                        run { loadTickets(apiFilter, "", 1, "ALL", "ALL", "ALL") }
                     },
                     onCreate = { page = SupportPage.CREATE_TICKET },
                     onManageAdmins = { run {
@@ -1003,6 +1031,7 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
                         page = SupportPage.ADMINS
                     } },
                     onRefresh = {
+                        if (dashboardTab == DashboardTab.OVERVIEW) workRefresh++
                         if (!ticketState.ticketsLoading && !busy) run {
                             manualRefreshing = true
                             try {

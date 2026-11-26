@@ -13,6 +13,7 @@ import androidx.compose.material.icons.outlined.Dashboard
 import androidx.compose.material.icons.outlined.ConfirmationNumber
 import androidx.compose.material.icons.outlined.BarChart
 import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.layout.*
@@ -241,7 +242,7 @@ internal fun SupportEmptyState(title: String, message: String, icon: ImageVector
 }
 
 @Composable
-internal fun SupportNavigationDock(selected: String, onSelect: (String) -> Unit) {
+internal fun SupportNavigationDock(selected: String, admin: Boolean, unread: Int, onSelect: (String) -> Unit) {
     Column {
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         NavigationBar(
@@ -252,13 +253,17 @@ internal fun SupportNavigationDock(selected: String, onSelect: (String) -> Unit)
             listOf(
                 "Overview" to Icons.Outlined.Dashboard,
                 "Tickets" to Icons.Outlined.ConfirmationNumber,
-                "Analytics" to Icons.Outlined.BarChart,
+                if (admin) "Analytics" to Icons.Outlined.BarChart else "Updates" to Icons.Outlined.Notifications,
                 "Profile" to Icons.Outlined.Person,
             ).forEach { (tab, icon) ->
                 NavigationBarItem(
                     selected = selected == tab,
                     onClick = { onSelect(tab) },
-                    icon = { Icon(icon, contentDescription = null) },
+                    icon = {
+                        BadgedBox(badge = { if (tab == "Updates" && unread > 0) Badge { Text(if (unread > 99) "99+" else unread.toString()) } }) {
+                            Icon(icon, contentDescription = null)
+                        }
+                    },
                     label = { Text(if (tab == "Overview") "Home" else tab, maxLines = 1) },
                     alwaysShowLabel = true,
                     colors = NavigationBarItemDefaults.colors(

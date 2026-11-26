@@ -28,6 +28,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.outlined.AttachFile
 import androidx.compose.material.icons.outlined.BarChart
 import androidx.compose.material.icons.outlined.ChevronRight
@@ -145,6 +146,7 @@ internal fun TicketDashboard(school: String, tickets: List<TicketSummary>, summa
     admin: Boolean, canManageAdmins: Boolean, staff: List<StaffOption>, analytics: SupportAnalytics?, analyticsLoading: Boolean,
     analyticsError: String?, busy: Boolean, ticketsLoading: Boolean, ticketsLoaded: Boolean,
     showingCachedData: Boolean, manualRefreshing: Boolean,
+    personalWork: PersonalWorkspace?, workLoading: Boolean, workError: String?, onWorkRefresh: () -> Unit,
     selectedTab: String, query: String, queueFilter: String, priorityFilter: String,
     typeFilter: String, sourceFilter: String, page: Int, total: Int, totalPages: Int,
     onQueryChange: (String) -> Unit, onSearch: () -> Unit, onPage: (Int) -> Unit,
@@ -165,6 +167,10 @@ internal fun TicketDashboard(school: String, tickets: List<TicketSummary>, summa
     var showAdvancedFilters by remember { mutableStateOf(false) }
     val hasAdvancedFilters = priorityFilter != "ALL" || typeFilter != "ALL" || sourceFilter != "ALL"
     val selectedTicketIds = remember { mutableStateListOf<String>() }
+    LaunchedEffect(queueFilter, priorityFilter, typeFilter, sourceFilter, query, page, selectedTab) {
+        selectedTicketIds.clear()
+        selectionMode = false
+    }
     LaunchedEffect(requestedFilter) {
         requestedFilter?.let {
             onFilterConsumed()
@@ -207,7 +213,8 @@ internal fun TicketDashboard(school: String, tickets: List<TicketSummary>, summa
         if (selectedTab == "Overview") {
 
             item {
-            SupportPageHeading("Support overview", "Manage requests, follow-ups and resolutions.", "WORKSPACE")
+            SupportPageHeading(if (admin) "Support command centre" else "My support desk",
+                if (admin) "See your own work and school-wide priorities." else "Find your requests, assignments and next actions.", "WORKSPACE")
         }
         item {
             Surface(shape = RoundedCornerShape(22.dp), shadowElevation = 0.dp,
@@ -231,9 +238,9 @@ internal fun TicketDashboard(school: String, tickets: List<TicketSummary>, summa
                         Spacer(Modifier.width(6.dp))
                         Text("New ticket", fontWeight = FontWeight.SemiBold)
                     }
-                    TextButton(onClick = { onOpenQueue("Active") }, enabled = !busy,
+                    TextButton(onClick = { onOpenQueue("Unresolved") }, enabled = !busy,
                         colors = ButtonDefaults.textButtonColors(contentColor = Color.White)) {
-                        Text("View active tickets")
+                        Text("View all unresolved tickets")
                         Icon(Icons.Outlined.ChevronRight, contentDescription = null, modifier = Modifier.size(18.dp))
                     }
                     if (admin) {
@@ -251,6 +258,9 @@ internal fun TicketDashboard(school: String, tickets: List<TicketSummary>, summa
             }
         }
         }
+        if (selectedTab == "Overview") item {
+            PersonalWorkPanel(personalWork, workLoading, workError, busy, onWorkRefresh, onOpenQueue, onTicket)
+        }
         if (!ticketsLoaded) item(contentType = "dashboard-loading") {
             LoadingTicketCard()
         }
@@ -258,7 +268,7 @@ internal fun TicketDashboard(school: String, tickets: List<TicketSummary>, summa
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     MetricCard("Open", summary[0], Indigo, Modifier.weight(1f)) { onOpenQueue("Open") }
-                    MetricCard("In progress", summary[1], Color(0xFF3D71C9), Modifier.weight(1f))
+                    MetricCard("In progress", summary[1], Color(0xFF3D71C9), Modifier.weight(1f)) { onOpenQueue("Active") }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     MetricCard("Urgent", summary[2], Color(0xFFD05F50), Modifier.weight(1f)) { onOpenQueue("Urgent") }
@@ -500,12 +510,12 @@ internal fun TicketDashboard(school: String, tickets: List<TicketSummary>, summa
                         unfocusedBorderColor = Line,
                     ),
                 )
-                Text(if (ticketsLoaded) "$total tickets" else "Tickets are loading…",
+                Text(if (ticketsLoading) "Updating results…" else if (ticketsLoaded) "$total tickets" else "Tickets are loading…",
                     style = MaterialTheme.typography.bodySmall, color = Muted)
                 Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf("ALL" to "All", "OPEN" to "Open", "ACTIVE" to "Active", "WAITING" to "Waiting",
-                        "URGENT" to "Urgent", "MY" to "Mine", "RESOLVED" to "Resolved").forEach { (value, label) ->
+                    listOf("ALL" to "All", "MY_ACTIVE" to "Assigned to me", "MY_RAISED" to "My requests", "UNRESOLVED" to "Unresolved", "OPEN" to "Open", "ACTIVE" to "In progress", "WAITING" to "Waiting",
+                        "URGENT" to "Urgent", "MY_OVERDUE" to "My overdue", "RESOLVED" to "Resolved").forEach { (value, label) ->
                         FilterChip(selected = queueFilter == value,
                             onClick = { onFiltersChange(value, priorityFilter, typeFilter, sourceFilter) },
                             label = { Text(label) }, enabled = !busy && !ticketsLoading)
@@ -547,7 +557,8 @@ internal fun TicketDashboard(school: String, tickets: List<TicketSummary>, summa
                         label = "Queue / saved view",
                         value = queueFilter,
                         options = listOf(
-                            "ALL" to "All tickets", "OPEN" to "Open", "ACTIVE" to "Active",
+                            "ALL" to "All tickets", "UNRESOLVED" to "Unresolved", "OPEN" to "Open", "ACTIVE" to "In progress",
+                            "MY_ACTIVE" to "Assigned to me (unresolved)", "MY_RAISED" to "My unresolved requests",
                             "WAITING" to "Waiting", "WAITING_OVERDUE" to "Waiting > 2 days",
                             "URGENT" to "Urgent", "UNASSIGNED" to "Unassigned",
                             "NEW_TODAY" to "New today", "MY" to "My tickets",
@@ -1114,11 +1125,21 @@ internal fun TicketDetails(ticket: TicketDetail, admin: Boolean, busy: Boolean, 
     var labelsText by remember(ticket.id, ticket.labels) { mutableStateOf(ticket.labels.joinToString(", ")) }
     var detailTab by remember(ticket.id) { mutableStateOf("Conversation") }
     var templatesOpen by remember(ticket.id) { mutableStateOf(false) }
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    val conversationScroll = rememberScrollState()
+    val detailsScroll = rememberScrollState()
+    val activityScroll = rememberScrollState()
+    var initialConversation by remember(ticket.id) { mutableStateOf(true) }
+    LaunchedEffect(ticket.id, detailTab, ticket.messages.size, conversationScroll.maxValue) {
+        if (detailTab == "Conversation" && conversationScroll.maxValue != Int.MAX_VALUE && initialConversation) {
+            conversationScroll.scrollTo(conversationScroll.maxValue)
+            initialConversation = false
+        }
+    }
+    Column(Modifier.fillMaxSize().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Spacer(Modifier.height(2.dp))
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            SupportPageHeading(ticket.subject, "Track progress and keep your team informed.", ticket.ticketNo)
+            Text(ticket.ticketNo, style = MaterialTheme.typography.labelSmall, color = Indigo)
+            Text(ticket.subject, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = Ink, maxLines = 2, overflow = TextOverflow.Ellipsis)
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Pill(ticket.status.replace('_', ' '), statusTint(ticket.status))
                 Pill(ticket.priority, priorityTint(ticket.priority))
@@ -1130,6 +1151,12 @@ internal fun TicketDetails(ticket: TicketDetail, admin: Boolean, busy: Boolean, 
                 FilterChip(selected = detailTab == tab, onClick = { detailTab = tab }, label = { Text(tab) })
             }
         }
+        val contentScroll = when (detailTab) {
+            "Conversation" -> conversationScroll
+            "Activity" -> activityScroll
+            else -> detailsScroll
+        }
+        Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(contentScroll), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         if (detailTab == "Conversation") {
             SurfaceCard(Modifier.fillMaxWidth()) {
                 SectionTitle("Original request", ticket.type.replace('_', ' ').lowercase().replaceFirstChar { it.uppercase() })
@@ -1156,57 +1183,6 @@ internal fun TicketDetails(ticket: TicketDetail, admin: Boolean, busy: Boolean, 
                     }
                 }
             }
-            SurfaceCard(Modifier.fillMaxWidth()) {
-                SectionTitle("Reply", if (ticket.status == "CLOSED") "This ticket is closed." else "Write a message or choose a template.")
-            if (ticket.status != "CLOSED") {
-                Spacer(Modifier.height(8.dp))
-                TextButton(onClick = { templatesOpen = true }, enabled = !busy) { Text("Quick replies") }
-                SupportField(
-                    reply,
-                    onReplyChange,
-                    if (ticket.source == "PARENT_QR") "Write a message" else "Write a reply",
-                    minLines = 3,
-                )
-                if (ticket.source == "PARENT_QR" && admin) {
-                    Spacer(Modifier.height(12.dp))
-                    Text(
-                        "MESSAGE VISIBILITY",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = Muted,
-                        fontWeight = FontWeight.Bold,
-                    )
-                    Spacer(Modifier.height(6.dp))
-                    OptionMenu(
-                        replyVisibility,
-                        listOf("INTERNAL_ONLY", "SHOW_TO_PARENT"),
-                        "Message visibility",
-                    ) { replyVisibility = it }
-                    Spacer(Modifier.height(6.dp))
-                    Text(
-                        if (replyVisibility == "INTERNAL_ONLY")
-                            "This note stays inside School Support and is not sent to the parent."
-                        else
-                            "This reply will be sent to the parent through the parent support channel.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Muted,
-                    )
-                }
-                Spacer(Modifier.height(10.dp))
-                PrimaryAction(
-                    if (ticket.source == "PARENT_QR")
-                        if (replyVisibility == "INTERNAL_ONLY") "Save internal note" else "Send to parent"
-                    else "Send reply",
-                    !busy && reply.isNotBlank(),
-                    onClick = {
-                        onReply(
-                            reply.trim(),
-                            ticket.source == "PARENT_QR" && admin && replyVisibility == "INTERNAL_ONLY",
-                        )
-                    },
-                )
-            }
-        }
-
         } else if (detailTab == "Activity") {
             SectionTitle("Activity history", "Status, assignment and other recorded changes · newest first")
             if (ticket.activities.isEmpty()) SupportEmptyState("No activity recorded", "Changes will appear here.")
@@ -1406,7 +1382,43 @@ internal fun TicketDetails(ticket: TicketDetail, admin: Boolean, busy: Boolean, 
             ) { onDuplicate(it.takeUnless { value -> value == "NONE" }) }
         }
         }
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(10.dp))
+        }
+        if (detailTab == "Conversation" && ticket.status != "CLOSED") {
+            Surface(color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(16.dp),
+                border = BorderStroke(1.dp, Line)) {
+                Column(Modifier.fillMaxWidth().padding(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    if (ticket.source == "PARENT_QR" && admin) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            FilterChip(selected = replyVisibility == "INTERNAL_ONLY", onClick = { replyVisibility = "INTERNAL_ONLY" },
+                                label = { Text("Staff only") }, enabled = !busy)
+                            FilterChip(selected = replyVisibility == "SHOW_TO_PARENT", onClick = { replyVisibility = "SHOW_TO_PARENT" },
+                                label = { Text("Send to parent") }, enabled = !busy)
+                        }
+                        Text(if (replyVisibility == "INTERNAL_ONLY") "Private note — not sent to parent." else "Parent will receive this reply.",
+                            color = if (replyVisibility == "INTERNAL_ONLY") Color(0xFF92400E) else SchoolGreen,
+                            style = MaterialTheme.typography.bodySmall)
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        OutlinedTextField(reply, onReplyChange, modifier = Modifier.weight(1f), enabled = !busy,
+                            placeholder = { Text(if (replyVisibility == "INTERNAL_ONLY" && admin && ticket.source == "PARENT_QR") "Write a note" else "Write a reply") },
+                            minLines = 1, maxLines = 3, shape = RoundedCornerShape(14.dp))
+                        FilledIconButton(onClick = {
+                            onReply(reply.trim(), ticket.source == "PARENT_QR" && admin && replyVisibility == "INTERNAL_ONLY")
+                        }, enabled = !busy && reply.isNotBlank()) {
+                            Icon(Icons.AutoMirrored.Outlined.Send, contentDescription = "Send message")
+                        }
+                    }
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        TextButton(onClick = { templatesOpen = true }, enabled = !busy) { Text("Quick replies") }
+                        TextButton(onClick = { detailTab = "Details" }, enabled = !busy) { Text("Attachments & actions") }
+                    }
+                }
+            }
+        } else if (detailTab == "Conversation") {
+            Text("This ticket is closed.", color = Muted, style = MaterialTheme.typography.bodySmall)
+        }
+        Spacer(Modifier.height(4.dp))
     }
     if (templatesOpen) {
         AlertDialog(
