@@ -616,7 +616,7 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
             topBar = {
                 if (page in listOf(SupportPage.DASHBOARD, SupportPage.CREATE_TICKET, SupportPage.TICKET_DETAIL, SupportPage.ADMINS, SupportPage.ADMIN_FORM)) {
                     SupportHeaderSurface {
-                        Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp),
+                        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
                             horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                             Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                                 if (page == SupportPage.DASHBOARD) SchoolIdentityMark(identity, Modifier.size(42.dp), loading = !identityCacheLoaded)
@@ -629,7 +629,12 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
                                     Text((identity?.name ?: school).uppercase(), maxLines = 1, overflow = TextOverflow.Ellipsis,
                                         style = MaterialTheme.typography.labelSmall, color = Indigo, fontWeight = FontWeight.ExtraBold)
                                     Text(when (page) {
-                                        SupportPage.DASHBOARD -> if (dashboardTab == DashboardTab.PROFILE) "My Profile" else "Support Desk"
+                                        SupportPage.DASHBOARD -> when (dashboardTab) {
+                                            DashboardTab.OVERVIEW -> "Support Desk"
+                                            DashboardTab.TICKETS -> "Ticket inbox"
+                                            DashboardTab.ANALYTICS -> "Analytics"
+                                            DashboardTab.PROFILE -> "My Profile"
+                                        }
                                         SupportPage.CREATE_TICKET -> "New ticket"
                                         SupportPage.TICKET_DETAIL -> "Ticket details"
                                         SupportPage.ADMINS -> "Administrators"
