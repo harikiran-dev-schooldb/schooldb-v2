@@ -662,7 +662,7 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
             topBar = {
                 if (page in listOf(SupportPage.DASHBOARD, SupportPage.CREATE_TICKET, SupportPage.TICKET_DETAIL, SupportPage.ADMINS, SupportPage.ADMIN_FORM)) {
                     SupportHeaderSurface {
-                        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
                             horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                             Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                                 if (page == SupportPage.DASHBOARD) SchoolIdentityMark(identity, Modifier.size(42.dp), loading = !identityCacheLoaded)
@@ -672,8 +672,8 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
                                     Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Back", tint = Indigo)
                                 }
                                 Column {
-                                    Text((identity?.name ?: school).uppercase(), maxLines = 1, overflow = TextOverflow.Ellipsis,
-                                        style = MaterialTheme.typography.labelSmall, color = Indigo, fontWeight = FontWeight.ExtraBold)
+                                    Text(identity?.name ?: school, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                                        style = MaterialTheme.typography.labelMedium, color = Muted, fontWeight = FontWeight.Medium)
                                     Text(when (page) {
                                         SupportPage.DASHBOARD -> when (dashboardTab) {
                                             DashboardTab.OVERVIEW -> "Support Desk"
@@ -687,7 +687,7 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
                                         SupportPage.ADMINS -> "Administrators"
                                         else -> if (adminState.selected == null) "Add administrator" else "Edit administrator"
                                     },
-                                        fontSize = 18.sp, lineHeight = 23.sp, color = Ink, fontWeight = FontWeight.ExtraBold)
+                                        fontSize = 19.sp, lineHeight = 24.sp, color = Ink, fontWeight = FontWeight.Bold)
                                 }
                             }
                             if (page == SupportPage.DASHBOARD) SupportHeaderAction(

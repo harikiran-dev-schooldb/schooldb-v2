@@ -1,6 +1,11 @@
 package com.schooldb.support
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.material.icons.outlined.AssignmentInd
+import androidx.compose.material.icons.outlined.AccessTime
+import androidx.compose.material.icons.outlined.ConfirmationNumber
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -32,11 +37,11 @@ internal fun PersonalWorkPanel(work: PersonalWorkspace?, loading: Boolean, error
             TextButton(onClick = onRefresh, enabled = !loading && !busy) { Text("Retry") }
         }
         Spacer(Modifier.height(8.dp))
-        WorkQueueRow("Assigned to me", work?.assigned, Indigo, !busy) { onQueue("MY_ACTIVE") }
+        WorkQueueRow("Assigned to me", work?.assigned, Indigo, Icons.Outlined.AssignmentInd, !busy) { onQueue("MY_ACTIVE") }
         HorizontalDivider(color = Line)
-        WorkQueueRow("Overdue resolution", work?.overdue, SchoolRed, !busy) { onQueue("MY_OVERDUE") }
+        WorkQueueRow("Overdue resolution", work?.overdue, SchoolRed, Icons.Outlined.AccessTime, !busy) { onQueue("MY_OVERDUE") }
         HorizontalDivider(color = Line)
-        WorkQueueRow("Requests I raised", work?.raised, SchoolGreen, !busy) { onQueue("MY_RAISED") }
+        WorkQueueRow("Requests I raised", work?.raised, SchoolGreen, Icons.Outlined.ConfirmationNumber, !busy) { onQueue("MY_RAISED") }
         if (work != null && work.tickets.isNotEmpty()) {
             Spacer(Modifier.height(12.dp))
             Text("Priority assignments", fontWeight = FontWeight.Bold, color = Ink)
@@ -62,9 +67,13 @@ internal fun PersonalWorkPanel(work: PersonalWorkspace?, loading: Boolean, error
 }
 
 @Composable
-private fun WorkQueueRow(label: String, count: Int?, color: Color, enabled: Boolean, onClick: () -> Unit) {
+private fun WorkQueueRow(label: String, count: Int?, color: Color, icon: ImageVector, enabled: Boolean, onClick: () -> Unit) {
     Surface(onClick = onClick, enabled = enabled, color = MaterialTheme.colorScheme.surface) {
         Row(Modifier.fillMaxWidth().heightIn(min = 50.dp).padding(horizontal = 4.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(34.dp).background(color.copy(alpha = .09f), RoundedCornerShape(10.dp)), contentAlignment = Alignment.Center) {
+                Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(18.dp))
+            }
+            Spacer(Modifier.width(10.dp))
             Text(label, Modifier.weight(1f), color = Ink, style = MaterialTheme.typography.bodyMedium)
             Text(count?.toString() ?: "—", color = color, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
             Spacer(Modifier.width(8.dp))
