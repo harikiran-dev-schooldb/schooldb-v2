@@ -1,3 +1,4 @@
+import { writeAuditLog } from "@/lib/audit";
 import { apiHandler } from "@/lib/api";
 import { requireRole } from "@/lib/auth";
 import { ApiError } from "@/lib/errors";
@@ -14,7 +15,8 @@ type Props = { params: Promise<{ id: string }> };
 
 export async function POST(request: Request, { params }: Props) {
   return apiHandler(async () => {
-    await requireRole(["SUPER_ADMIN"]);
+    const actor = await requireRole(["SUPER_ADMIN"]);
+    if (actor.role !== "SUPER_ADMIN") throw new ApiError(403, "Super administrator required.");
     const { id } = await params;
     const form = await request.formData();
     const file = form.get("file");
@@ -40,7 +42,10 @@ export async function POST(request: Request, { params }: Props) {
 
     const logo = await saveSchoolLogo(file);
     try {
-      await prisma.school.update({ where: { id: school.id }, data: { logo } });
+      await prisma.$transaction(async (tx) => {
+        await tx.school.update({ where: { id: school.id }, data: { logo } });
+        await writeAuditLog(tx, { actor: { ...actor, schoolId: school.id }, module: "SYSTEM", action: "UPDATE", entityType: "SchoolConfiguration", entityId: school.id, summary: "Updated school logo" });
+      });
     } catch (error) {
       await deleteSchoolLogo(logo).catch(() => undefined);
       throw error;
@@ -56,7 +61,8 @@ export async function POST(request: Request, { params }: Props) {
 
 export async function DELETE(_request: Request, { params }: Props) {
   return apiHandler(async () => {
-    await requireRole(["SUPER_ADMIN"]);
+    const actor = await requireRole(["SUPER_ADMIN"]);
+    if (actor.role !== "SUPER_ADMIN") throw new ApiError(403, "Super administrator required.");
     const { id } = await params;
     const school = await prisma.school.findUnique({
       where: { id },
@@ -64,9 +70,9 @@ export async function DELETE(_request: Request, { params }: Props) {
     });
     if (!school) throw new ApiError(404, "School not found.");
 
-    await prisma.school.update({
-      where: { id: school.id },
-      data: { logo: null },
+    await prisma.$transaction(async (tx) => {
+      await tx.school.update({ where: { id: school.id }, data: { logo: null } });
+      await writeAuditLog(tx, { actor: { ...actor, schoolId: school.id }, module: "SYSTEM", action: "UPDATE", entityType: "SchoolConfiguration", entityId: school.id, summary: "Removed school logo" });
     });
     await deleteSchoolLogo(school.logo).catch(() => undefined);
 

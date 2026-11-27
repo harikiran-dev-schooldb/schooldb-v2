@@ -2,6 +2,8 @@ import { apiHandler } from "@/lib/api";
 import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ApiResponse } from "@/lib/response";
+import { ApiError } from "@/lib/errors";
+import { isSchoolSlug } from "@/lib/tenant-context";
 import { publicSchoolLogoUrl } from "@/lib/school-branding";
 
 function normalizeSlug(value: string) {
@@ -15,7 +17,8 @@ function normalizeSlug(value: string) {
 
 export async function GET() {
   return apiHandler(async () => {
-    await requireRole(["SUPER_ADMIN"]);
+    const actor = await requireRole(["SUPER_ADMIN"]);
+    if (actor.role !== "SUPER_ADMIN") throw new ApiError(403, "Super administrator required.");
 
     const schools = await prisma.school.findMany({
       orderBy: { createdAt: "asc" },
@@ -41,6 +44,7 @@ export async function GET() {
 export async function POST(request: Request) {
   return apiHandler(async () => {
     const membership = await requireRole(["SUPER_ADMIN"]);
+    if (membership.role !== "SUPER_ADMIN") throw new ApiError(403, "Super administrator required.");
     const body = await request.json();
 
     const name = typeof body.name === "string" ? body.name.trim() : "";
@@ -49,7 +53,8 @@ export async function POST(request: Request) {
     );
 
     if (!name) throw new Error("School name is required.");
-    if (!slug) throw new Error("A valid school URL is required.");
+    if (!isSchoolSlug(slug) || slug.length > 80) throw new ApiError(400, "A valid, non-reserved school URL is required.");
+    if (name.length > 200) throw new ApiError(400, "School name is too long.");
 
     const existing = await prisma.school.findUnique({
       where: { slug },
@@ -65,10 +70,10 @@ export async function POST(request: Request) {
     });
 
     try {
-      const playReviewUser = await prisma.user.findFirst({
-        where: { phone: "9999999999" },
-        select: { id: true },
-      });
+      const reviewSlug = process.env.PLAY_REVIEW_SCHOOL_SLUG?.trim();
+      const playReviewUser = reviewSlug === slug && /^(?:demo|testing)(?:-|$)/.test(slug)
+        ? await prisma.user.findFirst({ where: { phone: "9999999999" }, select: { id: true } })
+        : null;
 
       await prisma.$transaction([
         prisma.membership.create({

@@ -1,3 +1,4 @@
+import { writeAuditLog } from "@/lib/audit";
 import { apiHandler } from "@/lib/api";
 import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -40,7 +41,8 @@ export async function PATCH(request: Request) {
     const allowedRoutes=routeAccessRestricted?normalizeAllowedRoutes(body.allowedRoutes):[];
     const defaultLandingRoute=validLandingRoute({routeAccessRestricted,allowedRoutes},body.defaultLandingRoute);
     if(body.defaultLandingRoute&&!defaultLandingRoute)throw new ApiError(400,"Choose an enabled landing page.");
-    const school = await prisma.school.update({
+    const school = await prisma.$transaction(async (tx) => {
+      const updated = await tx.school.update({
       where: { id: schoolId },
       data: {
         routeAccessRestricted,
@@ -57,6 +59,9 @@ export async function PATCH(request: Request) {
         defaultLandingRoute: true,
         moduleAccessRestricted: true,
       },
+      });
+      await writeAuditLog(tx, { actor: { ...actor, schoolId: updated.id }, module: "SYSTEM", action: "UPDATE", entityType: "SchoolConfiguration", entityId: updated.id, summary: "Updated school modules and route access", metadata: { routeAccessRestricted, allowedRoutes, defaultLandingRoute, moduleAccessRestricted: updated.moduleAccessRestricted } });
+      return updated;
     });
 
     return ApiResponse.success(
