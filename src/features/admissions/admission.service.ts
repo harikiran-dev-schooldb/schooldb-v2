@@ -33,7 +33,7 @@ export async function admissionPublicOptions(schoolSlug: string) {
       name: true,
       logo: true,
       academicYears: {
-        where: { active: true },
+        where: { active: true, admissionsEnabled: true },
         orderBy: { startDate: "desc" },
         take: 1,
         select: { id: true, name: true, admissionAgePolicy: true },
@@ -66,14 +66,14 @@ export async function submitAdmission(schoolSlug: string, input: PublicAdmission
   if (!school) throw new ApiError(404, "School not found.");
 
   const [academicYear, applyingClass, preferredSection] = await Promise.all([
-    prisma.academicYear.findFirst({ where: { id: input.academicYearId, schoolId: school.id, active: true }, select: { id: true, admissionAgePolicy: true } }),
+    prisma.academicYear.findFirst({ where: { id: input.academicYearId, schoolId: school.id, active: true, admissionsEnabled: true }, select: { id: true, admissionAgePolicy: true } }),
     prisma.class.findFirst({ where: { id: input.applyingClassId, schoolId: school.id, active: true }, select: { id: true } }),
     input.preferredSectionId
       ? prisma.section.findFirst({ where: { id: input.preferredSectionId, classId: input.applyingClassId, active: true }, select: { id: true } })
       : Promise.resolve(null),
   ]);
   if (!academicYear || !applyingClass || (input.preferredSectionId && !preferredSection)) {
-    throw new ApiError(400, "Choose a valid academic year, class, and section.");
+    throw new ApiError(400, "Admissions are closed or the selected year, class, or section is unavailable.");
   }
 
   const agePolicy = readAdmissionAgePolicy(academicYear.admissionAgePolicy);
@@ -110,8 +110,9 @@ export async function submitAdmission(schoolSlug: string, input: PublicAdmission
     if (existingStudent) throw new ApiError(409, "This Aadhaar number already belongs to an enrolled student.");
   }
 
-  const { website: _website, ...data } = input;
+  const { website: _website, applicationConsent: _applicationConsent, ...data } = input;
   void _website;
+  void _applicationConsent;
   const application = await prisma.admissionApplication.create({
     data: {
       ...data,

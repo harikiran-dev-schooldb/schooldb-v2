@@ -39,7 +39,8 @@ export const publicAdmissionSchema = z
     pincode: optionalText(10),
     medicalConditions: optionalText(1000),
     transportRequired: z.boolean().default(false),
-    whatsappOptIn: z.literal(true, { error: "Consent is required to submit the application." }),
+    applicationConsent: z.literal(true, { error: "Application consent is required to submit." }),
+    whatsappOptIn: z.boolean().default(false),
     website: z.string().max(0).optional(),
   })
   .superRefine((input, context) => {

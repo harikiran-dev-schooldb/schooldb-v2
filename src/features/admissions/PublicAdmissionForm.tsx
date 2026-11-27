@@ -46,6 +46,7 @@ export function PublicAdmissionForm({
   const [sectionId, setSectionId] = useState("");
   const [gender, setGender] = useState("MALE");
   const [transportRequired, setTransportRequired] = useState(false);
+  const [applicationConsent, setApplicationConsent] = useState(false);
   const [whatsappOptIn, setWhatsappOptIn] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -82,6 +83,7 @@ export function PublicAdmissionForm({
           preferredSectionId: sectionId,
           gender,
           transportRequired,
+          applicationConsent,
           whatsappOptIn,
         }),
       });
@@ -317,14 +319,24 @@ export function PublicAdmissionForm({
         tabIndex={-1}
         autoComplete="off"
       />
-      <label className="flex items-start gap-3 rounded-2xl border border-indigo-100 bg-indigo-50/60 p-4 text-sm leading-6 text-slate-600">
+      <label className="flex items-start gap-3 rounded-2xl border border-indigo-200 bg-indigo-50/60 p-4 text-sm leading-6 text-slate-700">
+        <Checkbox
+          checked={applicationConsent}
+          onCheckedChange={(value) => setApplicationConsent(value === true)}
+        />
+        <span>
+          I confirm these details are accurate and consent to the school storing
+          and reviewing them for this admission application. <strong>Required</strong>
+        </span>
+      </label>
+      <label className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-600">
         <Checkbox
           checked={whatsappOptIn}
           onCheckedChange={(value) => setWhatsappOptIn(value === true)}
         />
         <span>
-          I agree that the school may contact me on WhatsApp regarding this
-          application and admission updates.
+          Send me optional application updates on WhatsApp. I can submit this
+          application without choosing WhatsApp updates.
         </span>
       </label>
       {error && (
@@ -337,7 +349,7 @@ export function PublicAdmissionForm({
       )}
       <Button
         type="submit"
-        disabled={submitting || !academicYear || !classId || !whatsappOptIn}
+        disabled={submitting || !academicYear || !classId || !applicationConsent}
         className="h-12 w-full rounded-xl bg-indigo-600 text-base font-bold hover:bg-indigo-700"
       >
         {submitting ? (

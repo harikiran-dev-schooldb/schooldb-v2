@@ -28,6 +28,7 @@ const validApplication = {
   pincode: "530001",
   medicalConditions: "",
   transportRequired: false,
+  applicationConsent: true,
   whatsappOptIn: true,
   website: "",
 };
@@ -40,10 +41,11 @@ test("requires consent and a parent or guardian contact", () => {
   assert.equal(
     publicAdmissionSchema.safeParse({
       ...validApplication,
-      whatsappOptIn: false,
+      applicationConsent: false,
     }).success,
     false,
   );
+  assert.equal(publicAdmissionSchema.safeParse({ ...validApplication, whatsappOptIn: false }).success, true);
   assert.equal(
     publicAdmissionSchema.safeParse({
       ...validApplication,

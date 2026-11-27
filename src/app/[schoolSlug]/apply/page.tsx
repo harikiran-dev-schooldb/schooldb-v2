@@ -51,7 +51,7 @@ export default async function OnlineAdmissionPage({
         </header>
         <p className="mt-4 text-center text-sm"><Link className="font-bold text-indigo-700 underline" href={`/${schoolSlug}/apply/enquire`}>Send a parent enquiry instead</Link></p>
         <section className="mt-6 rounded-[2rem] border border-white bg-white/95 p-5 shadow-xl shadow-slate-900/5 backdrop-blur sm:p-8">
-          <PublicAdmissionForm schoolSlug={schoolSlug} school={school} />
+          {school.academicYears.length ? <PublicAdmissionForm schoolSlug={schoolSlug} school={school} /> : <div className="py-10 text-center"><div className="mx-auto grid size-14 place-items-center rounded-2xl bg-slate-100 text-slate-500"><GraduationCap className="size-7" /></div><h2 className="mt-5 text-xl font-black text-slate-950">Online applications are currently closed</h2><p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-600">The school has not opened applications for its active academic year. You can still send an enquiry and ask the admissions team about upcoming intake.</p><Link href={`/${schoolSlug}/apply/enquire`} className="mt-5 inline-flex rounded-xl bg-indigo-600 px-5 py-3 text-sm font-bold text-white shadow-sm hover:bg-indigo-700">Send an admission enquiry</Link></div>}
         </section>
         <p className="py-7 text-center text-xs text-slate-400">
           Powered by SchoolDB · Secure online admissions
