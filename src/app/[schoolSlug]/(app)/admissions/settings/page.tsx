@@ -2,7 +2,7 @@ import { CalendarRange, CircleGauge, Globe2, ShieldCheck } from "lucide-react";
 import { PageContainer, PageHeader } from "@/components/common/layout";
 import { AdmissionHero, AdmissionMetric } from "@/features/admissions/AdmissionSurface";
 import { AdmissionAgeSettings } from "@/features/admissions/AdmissionAgeSettings";
-import { AdmissionReminderSetting } from "@/features/admissions/AdmissionLifecycleControls";
+import { AdmissionEventAlertSetting, AdmissionReminderSetting } from "@/features/admissions/AdmissionLifecycleControls";
 import { AdmissionNumberSettings } from "@/features/admissions/AdmissionNumberSettings";
 import { PublicEnquirySetting } from "@/features/admissions/AdmissionPlanningEditor";
 import { AdmissionYearSettings } from "@/features/admissions/AdmissionYearSettings";
@@ -38,6 +38,7 @@ export default async function Page({ params }: { params: Promise<{ schoolSlug: s
     <AdmissionAgeSettings key={options.years.map((year) => year.id).join(":")} {...options} />
     <AdmissionNumberSettings initial={{ automaticNumbering: setting?.automaticNumbering ?? false, admissionPrefix: setting?.admissionPrefix ?? "", nextNumber: setting?.nextNumber ?? 1, numberPadding: setting?.numberPadding ?? 4 }} />
     <PublicEnquirySetting years={options.years} />
+    <AdmissionEventAlertSetting enabled={setting?.admissionEventAlertsEnabled ?? false} />
     <AdmissionReminderSetting enabled={setting?.admissionRemindersEnabled ?? false} />
   </PageContainer>;
 }

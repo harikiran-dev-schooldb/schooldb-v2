@@ -61,7 +61,7 @@ model AcademicPeriod {
 }
 
 model School {
-  administrationProfile       Json?
+  administrationProfile       SchoolAdministrationProfile?
   id                          String                       @id @default(cuid())
   name                        String
   slug                        String                       @unique
@@ -1084,6 +1084,7 @@ model SchoolAdmissionSetting {
   schoolId                  String   @unique
   automaticNumbering        Boolean  @default(false)
   admissionRemindersEnabled Boolean  @default(false)
+  admissionEventAlertsEnabled Boolean @default(false)
   admissionPrefix           String   @default("")
   nextNumber                Int      @default(1)
   numberPadding             Int      @default(4)
@@ -2871,4 +2872,10 @@ model AdmissionContactTask {
   @@index([schoolId, completedAt, dueAt])
   @@index([applicationId, dueAt])
   @@index([enquiryId, dueAt])
+}
+
+model SchoolAdministrationProfile {
+  schoolId String @id
+  profile Json
+  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 }

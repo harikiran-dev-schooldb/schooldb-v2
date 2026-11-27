@@ -1,3 +1,4 @@
+import { notifyAdmissionEvent } from "@/features/admissions/event-alerts";
 import { apiHandler } from "@/lib/api";
 import { requireRole } from "@/lib/auth";
 import { hasModuleAccess } from "@/lib/staff-permissions";
@@ -25,6 +26,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       if (changed.count !== 1) throw new ApiError(409, "Application changed. Refresh and retry.");
       await writeAuditLog(tx, { actor, module: "ADMISSIONS", action: "UPDATE", entityType: "ADMISSION_APPLICATION", entityId: id, summary: "Updated " + input.stage.toLowerCase() + " stage to " + input.status, metadata: input });
     });
+    await notifyAdmissionEvent(actor.schoolId,input.stage,id,input.status+":"+(input.scheduledAt??"none"));
     return ApiResponse.success(null, "Stage saved.");
   });
 }

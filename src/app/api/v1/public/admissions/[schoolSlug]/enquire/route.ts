@@ -1,3 +1,4 @@
+import { notifyAdmissionEvent } from "@/features/admissions/event-alerts";
 import { z } from "zod";
 import { apiHandler } from "@/lib/api";
 import { ApiError } from "@/lib/errors";
@@ -14,14 +15,16 @@ export async function POST(request:Request,{params}:{params:Promise<{schoolSlug:
   if(!limit.allowed)throw new ApiError(429,"Too many attempts. Try again later.");
   const input=schema.parse(await request.json());
   if(input.dob>new Date().toISOString().slice(0,10))throw new ApiError(400,"Birth date cannot be in the future.");
-  await prisma.$transaction(async tx=>{
+  const created=await prisma.$transaction(async tx=>{
    const school=await tx.school.findUnique({where:{slug},select:{id:true}});
    if(!school)throw new ApiError(404,"School not found.");
    const [year,cls]=await Promise.all([tx.academicYear.findFirst({where:{id:input.yearId,schoolId:school.id,admissionsEnabled:true,admissionPublicEnquiriesEnabled:true},select:{id:true}}),tx.class.findFirst({where:{id:input.classId,schoolId:school.id,active:true},select:{id:true}})]);
    if(!year||!cls)throw new ApiError(400,"Public enquiries are not available for this selection.");
    const duplicate=await tx.admissionEnquiry.findFirst({where:{schoolId:school.id,academicYearId:year.id,mobile:input.mobile,studentName:{equals:input.studentName,mode:"insensitive"},state:{in:["PENDING","OPEN","LINKED"]}}});
-   if(!duplicate)await tx.admissionEnquiry.create({data:{schoolId:school.id,academicYearId:year.id,classId:cls.id,studentName:input.studentName,parentName:input.parentName,mobile:input.mobile,dob:new Date(input.dob+"T00:00:00Z"),source:"PARENT_PORTAL",state:"PENDING",consentAt:new Date()}});
+   if(duplicate)return null;
+   return tx.admissionEnquiry.create({data:{schoolId:school.id,academicYearId:year.id,classId:cls.id,studentName:input.studentName,parentName:input.parentName,mobile:input.mobile,dob:new Date(input.dob+"T00:00:00Z"),source:"PARENT_PORTAL",state:"PENDING",consentAt:new Date()},select:{id:true,schoolId:true}});
   },{isolationLevel:"Serializable"});
+  if(created)await notifyAdmissionEvent(created.schoolId,"ENQUIRY",created.id);
   return ApiResponse.success(null,"Enquiry received for school review. This is not an admission confirmation.",201);
  });
 }

@@ -1,3 +1,4 @@
+import { notifyAdmissionEvent } from "@/features/admissions/event-alerts";
 import { apiHandler } from "@/lib/api";
 import { requireRole } from "@/lib/auth";
 import { hasModuleAccess } from "@/lib/staff-permissions";
@@ -28,6 +29,7 @@ export async function POST(request: Request) {
       await writeAuditLog(tx, { actor, module: "ADMISSIONS", action: "CREATE", entityType: "ADMISSION_ENQUIRY", entityId: record.id, summary: "Recorded an admission enquiry." });
       return record;
     }, { isolationLevel: "Serializable" });
+    await notifyAdmissionEvent(actor.schoolId,"ENQUIRY",result.id);
     return ApiResponse.success(result, "Enquiry recorded.", 201);
   });
 }

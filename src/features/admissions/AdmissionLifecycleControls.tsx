@@ -44,3 +44,8 @@ export function AdmissionReminderSetting({enabled}:{enabled:boolean}){
  const {busy,save}=useSave();
  return <section className="premium-card space-y-3 rounded-3xl p-5"><h2 className="font-bold">Daily administrator reminders</h2><p className="text-sm text-muted-foreground">A daily summary of upcoming and overdue admission follow-ups, examinations and interviews is sent through the existing SchoolDB notification queue. No parent messages or personal student information are included. Delivery requires configured push providers and the scheduled cron.</p><Badge variant={enabled?"success":"outline"} className="dark:text-foreground">{enabled?"Enabled":"Disabled"}</Badge><div><Button variant="outline" disabled={busy} onClick={()=>void save("/api/v1/admissions/reminders","PATCH",{enabled:!enabled})}>{enabled?"Disable reminders":"Enable daily reminders"}</Button></div></section>;
 }
+
+export function AdmissionEventAlertSetting({enabled}:{enabled:boolean}){
+ const {busy,save}=useSave();
+ return <section className="premium-card space-y-3 rounded-3xl p-5"><h2 className="font-bold">Admissions event alerts</h2><p className="text-sm text-muted-foreground">Notify school administrators when an enquiry or application arrives, a decision changes, an entrance or interview stage changes, or a student is admitted. Alerts contain no student names or contact information. Device push requires a configured provider and permission.</p><Badge variant={enabled?"success":"outline"}>{enabled?"Enabled":"Disabled"}</Badge><div><Button variant="outline" disabled={busy} onClick={()=>void save("/api/v1/admissions/reminders","PATCH",{eventAlertsEnabled:!enabled})}>{enabled?"Disable event alerts":"Enable event alerts"}</Button></div></section>;
+}
