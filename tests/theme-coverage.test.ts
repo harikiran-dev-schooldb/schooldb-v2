@@ -73,3 +73,17 @@ test("shared workspace chrome retains dark contrast", () => {
   assert.match(sidebar, /dark:text-slate-300/);
   assert.match(sidebar, /dark:text-slate-400/);
 });
+
+test("mobile workspace chrome provides adaptive navigation and safe PWA status", () => {
+  const shell = read("src/components/layout/AppShell.tsx");
+  const dock = read("src/components/layout/MobileNavigationDock.tsx");
+  const pwa = read("src/components/pwa/PwaRegistration.tsx");
+
+  assert.match(shell, /MobileNavigationDock/);
+  assert.match(shell, /calc\(6rem\+env\(safe-area-inset-bottom\)\)/);
+  assert.match(dock, /Mobile workspace navigation/);
+  assert.match(dock, /isRouteAllowed/);
+  assert.match(dock, /Open all workspace navigation/);
+  assert.match(pwa, /You&apos;re offline/);
+  assert.match(pwa, /Reconnect before saving changes/);
+});

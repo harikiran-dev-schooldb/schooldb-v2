@@ -45,13 +45,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 
-private val OfflineIndigo = Color(0xFF4F46E5)
-private val OfflineViolet = Color(0xFF7C3AED)
-private val OfflineInk = Color(0xFF0F172A)
-private val OfflineMuted = Color(0xFF64748B)
-private val OfflineMist = Color(0xFFF5F7FC)
-private val OfflineIce = Color(0xFFEEF2FF)
-
 @Composable
 fun ConnectionStateScreen(
     message: String,
@@ -63,6 +56,7 @@ fun ConnectionStateScreen(
         message.contains("connection", ignoreCase = true) ||
         message.contains("network", ignoreCase = true)
     val destination = destinationLabel.trim().ifEmpty { "SchoolDB" }
+    val colors = MaterialTheme.colorScheme
     val displayMessage = message.trim().takeUnless {
         it.isBlank() ||
             it.equals("unknown", ignoreCase = true) ||
@@ -103,7 +97,7 @@ fun ConnectionStateScreen(
             .fillMaxSize()
             .background(
                 Brush.verticalGradient(
-                    listOf(OfflineIce.copy(alpha = 0.75f), OfflineMist, Color.White),
+                    listOf(colors.primaryContainer.copy(alpha = 0.72f), colors.background, colors.surface),
                 ),
             )
             .padding(horizontal = 20.dp, vertical = 24.dp),
@@ -112,8 +106,8 @@ fun ConnectionStateScreen(
         Surface(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(32.dp),
-            color = Color.White.copy(alpha = 0.96f),
-            border = BorderStroke(1.dp, OfflineIndigo.copy(alpha = 0.12f)),
+            color = colors.surface.copy(alpha = 0.97f),
+            border = BorderStroke(1.dp, colors.primary.copy(alpha = 0.14f)),
             shadowElevation = 12.dp,
         ) {
             Column(
@@ -128,19 +122,19 @@ fun ConnectionStateScreen(
                     Surface(
                         modifier = Modifier.size(40.dp),
                         shape = RoundedCornerShape(13.dp),
-                        color = OfflineIndigo,
+                        color = colors.primary,
                         shadowElevation = 5.dp,
                     ) {
                         Box(contentAlignment = Alignment.Center) {
-                            Text("S", color = Color.White, fontWeight = FontWeight.Bold)
+                            Text("S", color = colors.onPrimary, fontWeight = FontWeight.Bold)
                         }
                     }
                     Column {
-                        Text("SchoolDB", color = OfflineInk, fontWeight = FontWeight.Bold)
+                        Text("SchoolDB", color = colors.onSurface, fontWeight = FontWeight.Bold)
                         Text(
                             if (offline) "Offline workspace" else "Connection problem",
                             style = MaterialTheme.typography.bodySmall,
-                            color = OfflineMuted,
+                            color = colors.onSurfaceVariant,
                         )
                     }
                 }
@@ -151,22 +145,22 @@ fun ConnectionStateScreen(
                     Canvas(modifier = Modifier.fillMaxSize().alpha(0.9f)) {
                         val center = this.center
                         drawCircle(
-                            color = OfflineIndigo.copy(alpha = 0.08f),
+                            color = colors.primary.copy(alpha = 0.08f),
                             radius = size.minDimension * 0.47f * pulse,
                         )
                         drawCircle(
-                            color = OfflineIndigo.copy(alpha = 0.2f),
+                            color = colors.primary.copy(alpha = 0.2f),
                             radius = size.minDimension * 0.38f,
                             style = Stroke(width = 1.dp.toPx()),
                         )
                         drawCircle(
-                            color = OfflineViolet.copy(alpha = 0.18f),
+                            color = colors.secondary.copy(alpha = 0.18f),
                             radius = size.minDimension * 0.29f,
                             style = Stroke(width = 1.dp.toPx()),
                         )
                         rotate(orbit, pivot = center) {
                             drawCircle(
-                                color = OfflineIndigo,
+                                color = colors.primary,
                                 radius = 4.dp.toPx(),
                                 center = androidx.compose.ui.geometry.Offset(
                                     center.x - size.minDimension * 0.38f,
@@ -189,27 +183,27 @@ fun ConnectionStateScreen(
                             translationY = floatOffset.dp.toPx()
                         },
                         shape = RoundedCornerShape(30.dp),
-                        color = Color.White,
-                        border = BorderStroke(1.dp, OfflineIndigo.copy(alpha = 0.1f)),
+                        color = colors.surface,
+                        border = BorderStroke(1.dp, colors.primary.copy(alpha = 0.1f)),
                         shadowElevation = 10.dp,
                     ) {
                         Box(contentAlignment = Alignment.Center) {
                             Icon(
                                 imageVector = Icons.Default.CloudOff,
                                 contentDescription = null,
-                                tint = OfflineIndigo,
+                                tint = colors.primary,
                                 modifier = Modifier.size(50.dp),
                             )
                             Surface(
                                 modifier = Modifier.align(Alignment.BottomEnd).padding(5.dp).size(36.dp),
                                 shape = RoundedCornerShape(12.dp),
-                                color = OfflineViolet,
+                                color = colors.secondary,
                             ) {
                                 Box(contentAlignment = Alignment.Center) {
                                     Icon(
                                         imageVector = Icons.Default.WifiOff,
                                         contentDescription = null,
-                                        tint = Color.White,
+                                        tint = colors.onSecondary,
                                         modifier = Modifier.size(19.dp),
                                     )
                                 }
@@ -220,8 +214,8 @@ fun ConnectionStateScreen(
 
                 Surface(
                     shape = CircleShape,
-                    color = Color(0xFFFFF7ED),
-                    border = BorderStroke(1.dp, Color(0xFFFED7AA)),
+                    color = colors.tertiaryContainer,
+                    border = BorderStroke(1.dp, colors.tertiary.copy(alpha = 0.22f)),
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
@@ -236,7 +230,7 @@ fun ConnectionStateScreen(
                                 "${destination.replaceFirstChar(Char::uppercase)} is unavailable"
                             },
                             style = MaterialTheme.typography.labelMedium,
-                            color = Color(0xFF92400E),
+                            color = colors.onTertiaryContainer,
                         )
                     }
                 }
@@ -246,14 +240,14 @@ fun ConnectionStateScreen(
                     if (offline) "You are offline." else "Couldn’t load $destination.",
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold,
-                    color = OfflineInk,
+                    color = colors.onSurface,
                     textAlign = TextAlign.Center,
                 )
                 Spacer(Modifier.height(8.dp))
                 Text(
                     displayMessage,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = OfflineMuted,
+                    color = colors.onSurfaceVariant,
                     textAlign = TextAlign.Center,
                 )
                 Spacer(Modifier.height(22.dp))
@@ -261,7 +255,7 @@ fun ConnectionStateScreen(
                     onClick = onRetry,
                     modifier = Modifier.fillMaxWidth().height(50.dp),
                     shape = RoundedCornerShape(15.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = OfflineIndigo),
+                    colors = ButtonDefaults.buttonColors(containerColor = colors.primary),
                 ) {
                     Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.size(8.dp))
@@ -272,7 +266,7 @@ fun ConnectionStateScreen(
                     Text(
                         "Saved school information remains on this device.",
                         style = MaterialTheme.typography.bodySmall,
-                        color = OfflineMuted,
+                        color = colors.onSurfaceVariant,
                         textAlign = TextAlign.Center,
                     )
                 }

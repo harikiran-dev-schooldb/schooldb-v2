@@ -1,7 +1,7 @@
 "use client";
 
 import { useAuth } from "@clerk/nextjs";
-import { BellRing, Download, RefreshCw, Share, X } from "lucide-react";
+import { BellRing, Download, RefreshCw, Share, WifiOff, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -43,6 +43,18 @@ export function PwaRegistration() {
   const [pushDialogOpen, setPushDialogOpen] = useState(false);
   const [pushBusy, setPushBusy] = useState(false);
   const [pushState, setPushState] = useState<BrowserPushState>("available");
+  const [online, setOnline] = useState(true);
+
+  useEffect(() => {
+    const updateConnection = () => setOnline(navigator.onLine);
+    updateConnection();
+    window.addEventListener("online", updateConnection);
+    window.addEventListener("offline", updateConnection);
+    return () => {
+      window.removeEventListener("online", updateConnection);
+      window.removeEventListener("offline", updateConnection);
+    };
+  }, []);
 
   useEffect(() => {
     // Offline mode was retired. Remove snapshots, queued writes, and caches
@@ -217,8 +229,24 @@ export function PwaRegistration() {
 
   return (
     <>
-      {(installPrompt || showAppleInstructions || updateReady) && (
-        <aside className="fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-50 mx-auto flex max-w-md items-center gap-3 rounded-2xl border border-border/70 bg-card/95 p-3 shadow-2xl backdrop-blur-xl">
+      {!online && (
+        <aside
+          role="status"
+          aria-live="polite"
+          className="fixed inset-x-3 bottom-[calc(5.75rem+env(safe-area-inset-bottom))] z-50 mx-auto flex max-w-md items-center gap-3 rounded-2xl border border-amber-300/60 bg-amber-50/95 p-3 text-amber-950 shadow-2xl backdrop-blur-xl dark:border-amber-400/25 dark:bg-amber-950/90 dark:text-amber-50 xl:bottom-4"
+        >
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-amber-500/15">
+            <WifiOff className="size-5" aria-hidden="true" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold">You&apos;re offline</p>
+            <p className="text-xs leading-5 opacity-80">Viewing the current screen is safe. Reconnect before saving changes.</p>
+          </div>
+        </aside>
+      )}
+
+      {online && (installPrompt || showAppleInstructions || updateReady) && (
+        <aside className="fixed inset-x-3 bottom-[calc(5.75rem+env(safe-area-inset-bottom))] z-50 mx-auto flex max-w-md items-center gap-3 rounded-2xl border border-border/70 bg-card/95 p-3 shadow-2xl backdrop-blur-xl xl:bottom-4">
           <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
             {updateReady ? <RefreshCw className="size-5" /> : showAppleInstructions ? <Share className="size-5" /> : <Download className="size-5" />}
           </span>
