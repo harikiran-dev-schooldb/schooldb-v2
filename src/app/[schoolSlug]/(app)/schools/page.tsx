@@ -9,6 +9,7 @@ import {
   Loader2,
   ListChecks,
   Plus,
+  Settings2,
   Trash2,
   X,
 } from "lucide-react";
@@ -25,11 +26,6 @@ type SchoolItem = {
   slug: string;
   logo: string | null;
   createdAt: string;
-  _count: {
-    students: number;
-    teachers: number;
-    memberships: number;
-  };
 };
 
 export default function SchoolsPage() {
@@ -271,12 +267,6 @@ export default function SchoolsPage() {
                   </div>
                 </div>
 
-                <div className="mt-6 grid grid-cols-3 gap-2">
-                  <Metric label="Students" value={item._count.students} />
-                  <Metric label="Teachers" value={item._count.teachers} />
-                  <Metric label="Users" value={item._count.memberships} />
-                </div>
-
                 <div className="mt-5 flex gap-2">
                   <label className="flex h-10 flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl border border-border bg-background px-3 text-sm font-semibold transition hover:bg-muted/50 has-[:disabled]:pointer-events-none has-[:disabled]:opacity-50">
                     {logoActionId === item.id ? (
@@ -326,26 +316,25 @@ export default function SchoolsPage() {
                   PNG, JPG, or WebP · square image recommended · maximum 5 MB
                 </p>
 
-                <Button asChild variant="outline" className="mt-6 w-full rounded-xl">
-                  <Link href={`/${item.slug}/dashboard`}>
-                    <Building2 className="size-4" />
-                    Open School
-                  </Link>
-                </Button>
+                <div className="mt-6 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  <Button asChild variant="outline" className="w-full rounded-xl">
+                    <Link href={`/${schoolSlug}/schools/route-access?schoolId=${encodeURIComponent(item.id)}`} aria-label={`Settings for ${item.name}`}>
+                      <Settings2 className="size-4" />
+                      Settings
+                    </Link>
+                  </Button>
+                  <Button asChild className="w-full rounded-xl">
+                    <Link href={`/${item.slug}/dashboard`}>
+                      <Building2 className="size-4" />
+                      Open School
+                    </Link>
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           ))}
         </div>
       )}
-    </div>
-  );
-}
-
-function Metric({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="rounded-xl bg-muted/40 p-3 text-center">
-      <p className="text-base font-bold">{value}</p>
-      <p className="mt-1 text-[10px] text-muted-foreground">{label}</p>
     </div>
   );
 }

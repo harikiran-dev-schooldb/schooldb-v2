@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Loader2, Route, Save, ShieldCheck } from "lucide-react";
+import Link from "next/link";
+import { ArrowLeft, Loader2, Route, Save, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/common/PageHeader";
@@ -87,7 +88,7 @@ const ACADEMIC_ONLY_ROUTES = CORE_SCHOOL_ROUTES.filter(
   (route) => !route.startsWith("fees/") && !["expenses", "reports", "management-analytics"].includes(route),
 );
 
-export function SchoolRouteAccessManager() {
+export function SchoolRouteAccessManager({ targetSchoolId, schoolSlug }: { targetSchoolId?: string; schoolSlug: string }) {
   const [schools, setSchools] = useState<SchoolRouteAccess[]>([]);
   const [selectedSchoolId, setSelectedSchoolId] = useState("");
   const [draft, setDraft] = useState<RouteAccessConfig>({
@@ -116,7 +117,9 @@ export function SchoolRouteAccessManager() {
         }
         const loadedSchools = payload.data.schools as SchoolRouteAccess[];
         setSchools(loadedSchools);
-        const firstSchool = loadedSchools[0];
+        const firstSchool = targetSchoolId === undefined
+          ? loadedSchools[0]
+          : loadedSchools.find((school) => school.id === targetSchoolId);
         setSelectedSchoolId(firstSchool?.id ?? "");
         if (firstSchool) {
           setDraft({
@@ -134,10 +137,10 @@ export function SchoolRouteAccessManager() {
           );
         }
       })
-      .finally(() => setLoading(false));
+      .finally(() => { if (!controller.signal.aborted) setLoading(false); });
 
     return () => controller.abort();
-  }, []);
+  }, [targetSchoolId]);
 
   function toggleRestricted(checked: boolean) {
     setDraft((current) => ({
@@ -208,12 +211,24 @@ export function SchoolRouteAccessManager() {
     );
   }
 
+  if (!selectedSchool) {
+    return (
+      <div className="space-y-4 p-4 sm:p-6">
+        <PageHeader eyebrow="Super Admin" title="School settings unavailable" description="No school could be selected. Return to Schools and try again." />
+        <Button asChild variant="outline"><Link href={`/${schoolSlug}/schools`}><ArrowLeft className="size-4" /> Back to Schools</Link></Button>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 p-4 pb-12 sm:p-6">
+      <Button asChild variant="outline" size="sm" className="rounded-xl">
+        <Link href={`/${schoolSlug}/schools`}><ArrowLeft className="size-4" /> Back to Schools</Link>
+      </Button>
       <PageHeader
         eyebrow="Super Admin"
-        title="School Route Access"
-        description="Choose exactly which SchoolDB areas appear for each school. User role permissions still apply."
+        title={targetSchoolId === undefined ? "School Route Access" : "School Settings"}
+        description={targetSchoolId === undefined ? "Choose exactly which SchoolDB areas appear for each school. User role permissions still apply." : `Manage modules, route access and the default landing page for ${selectedSchool.name}.`}
       />
 
       <Card className="premium-card rounded-3xl border-0">
@@ -223,8 +238,15 @@ export function SchoolRouteAccessManager() {
               <label htmlFor="route-access-school" className="text-xs font-semibold">
                 School
               </label>
+              {targetSchoolId !== undefined ? (
+                <div id="route-access-school" className="rounded-xl border border-border bg-muted/30 px-3 py-2.5">
+                  <p className="text-sm font-semibold">{selectedSchool.name}</p>
+                  <p className="text-xs text-muted-foreground">/{selectedSchool.slug}</p>
+                </div>
+              ) : (
               <select
                 id="route-access-school"
+                disabled={saving}
                 value={selectedSchoolId}
                 onChange={(event) => {
                   const nextSchool = schools.find(
@@ -248,11 +270,12 @@ export function SchoolRouteAccessManager() {
                   </option>
                 ))}
               </select>
+              )}
             </div>
 
             <Button onClick={() => void save()} disabled={!selectedSchool || saving}>
               {saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
-              {saving ? "Saving..." : "Save route access"}
+              {saving ? "Saving..." : targetSchoolId === undefined ? "Save route access" : "Save settings"}
             </Button>
           </div>
 
@@ -300,7 +323,7 @@ export function SchoolRouteAccessManager() {
         </CardContent>
       </Card>
 
-      {draft.routeAccessRestricted&&<Card className="premium-card rounded-3xl border-0"><CardContent className="space-y-4 p-5"><div><h2 className="text-lg font-bold">School subscription modules</h2><p className="text-sm text-muted-foreground">Select multiple modules. Changes apply only after Save route access. Module selection enables strict operational API filtering; individual staff permissions still apply.</p></div><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{SCHOOL_MODULES.map(module=>{const selected=module.routes.every(route=>draft.allowedRoutes.includes(route));const partial=!selected&&module.routes.some(route=>draft.allowedRoutes.includes(route));return <label key={module.key} className={"flex cursor-pointer items-start gap-3 rounded-2xl border p-4 "+(selected?"border-primary bg-primary/5":"border-border")}><Checkbox checked={selected?true:partial?"indeterminate":false} onCheckedChange={value=>setDraft(current=>({...current,moduleAccessRestricted:true,allowedRoutes:toggleSchoolModule(current.allowedRoutes,module.key,value===true)}))}/><span className="min-w-0"><span className="block text-sm font-semibold">{module.label}</span><span className="block text-xs text-muted-foreground">{module.description}</span></span></label>})}</div><p className="text-xs text-muted-foreground">Advanced routes remain below. Some wider ERP modules require additional endpoint verification; unclassified operational APIs are blocked in strict mode.</p></CardContent></Card>}
+      {draft.routeAccessRestricted&&<Card className="premium-card rounded-3xl border-0"><CardContent className="space-y-4 p-5"><div><h2 className="text-lg font-bold">School subscription modules</h2><p className="text-sm text-muted-foreground">Select multiple modules. Changes apply only after saving. Module selection enables strict operational API filtering; individual staff permissions still apply.</p></div><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{SCHOOL_MODULES.map(module=>{const selected=module.routes.every(route=>draft.allowedRoutes.includes(route));const partial=!selected&&module.routes.some(route=>draft.allowedRoutes.includes(route));return <label key={module.key} className={"flex cursor-pointer items-start gap-3 rounded-2xl border p-4 "+(selected?"border-primary bg-primary/5":"border-border")}><Checkbox checked={selected?true:partial?"indeterminate":false} onCheckedChange={value=>setDraft(current=>({...current,moduleAccessRestricted:true,allowedRoutes:toggleSchoolModule(current.allowedRoutes,module.key,value===true)}))}/><span className="min-w-0"><span className="block text-sm font-semibold">{module.label}</span><span className="block text-xs text-muted-foreground">{module.description}</span></span></label>})}</div><p className="text-xs text-muted-foreground">Advanced routes remain below. Some wider ERP modules require additional endpoint verification; unclassified operational APIs are blocked in strict mode.</p></CardContent></Card>}
       {!draft.routeAccessRestricted ? (
         <div className="flex min-h-40 items-center justify-center rounded-3xl border border-dashed bg-muted/20 p-8 text-center">
           <div>
