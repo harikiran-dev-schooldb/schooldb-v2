@@ -50,6 +50,8 @@ data class TicketDetail(
     val resolutionDueAt: String,
     val parentDelivery: ParentDelivery?,
     val currentUserId: String = "",
+    val parentConfirmedAt: String? = null,
+    val followUpAt: String? = null,
 )
 
 data class TicketMessage(val body: String, val author: String, val isInternal: Boolean, val createdAt: String, val authorId: String = "")
@@ -59,7 +61,7 @@ data class WorkTicket(val id: String, val ticketNo: String, val subject: String,
 data class PersonalWorkspace(val assigned: Int, val overdue: Int, val raised: Int, val tickets: List<WorkTicket>)
 data class TicketActivity(val action: String, val detail: String, val actor: String, val createdAt: String)
 data class ParentDelivery(val campaignId: String, val status: String, val error: String?, val updatedAt: String)
-data class StaffOption(val id: String, val name: String, val role: String)
+data class StaffOption(val id: String, val name: String, val role: String, val activeTickets: Int? = null)
 data class AdminAccount(val id: String, val userId: String, val fullName: String,
     val phone: String, val role: String, val designation: String, val isActive: Boolean)
 data class AdminAccounts(val accounts: List<AdminAccount>, val actorUserId: String)
@@ -341,6 +343,8 @@ class SupportRepository {
             responseDueAt = sla?.optString("responseDueAt").orEmpty(),
             resolutionDueAt = sla?.optString("resolutionDueAt").orEmpty(),
             currentUserId = item.optString("currentUserId"),
+            parentConfirmedAt = item.optString("parentConfirmedAt").takeUnless { it.isBlank() || it == "null" },
+            followUpAt = item.optString("followUpAt").takeUnless { it.isBlank() || it == "null" },
             parentDelivery = delivery?.let {
                 ParentDelivery(
                     campaignId = it.optString("campaignId"),
@@ -431,7 +435,7 @@ class SupportRepository {
         )
     }
 
-    suspend fun reply(school: String, id: String, body: String, isInternal: Boolean = false) =
+    suspend fun reply(school: String, id: String, body: String, isInternal: Boolean = false, clientRequestId: String? = null) =
         withContext(Dispatchers.IO) {
             request(
                 "POST",
@@ -439,12 +443,21 @@ class SupportRepository {
                 school,
                 JSONObject()
                     .put("body", body)
-                    .put("isInternal", isInternal),
+                    .put("isInternal", isInternal)
+                    .apply { if (clientRequestId != null) put("clientRequestId", clientRequestId) },
             )
         }
 
     suspend fun updateStatus(school: String, id: String, status: TicketStatus) = withContext(Dispatchers.IO) {
         request("POST", "api/v1/support/tickets/$id", school, JSONObject().put("status", status.name))
+    }
+
+    suspend fun aiDraft(school: String, id: String): String = withContext(Dispatchers.IO) {
+        request("POST", "api/v1/support/tickets/$id/draft", school, JSONObject()).getJSONObject("data").getString("draft")
+    }
+
+    suspend fun scheduleFollowUp(school: String, id: String, due: String?) = withContext(Dispatchers.IO) {
+        request("POST", "api/v1/support/tickets/$id", school, JSONObject().put("followUpAt", due ?: JSONObject.NULL))
     }
 
     suspend fun updatePriority(school: String, id: String, priority: TicketPriority) = withContext(Dispatchers.IO) {
@@ -537,7 +550,7 @@ class SupportRepository {
         val items = request("GET", "api/v1/support/staff", school).getJSONArray("data")
         (0 until items.length()).map { index ->
             val item = items.getJSONObject(index)
-            StaffOption(item.getString("id"), item.getString("name"), item.getString("role"))
+            StaffOption(item.getString("id"), item.getString("name"), item.getString("role"), item.optInt("activeTickets", -1).takeIf { it >= 0 })
         }
     }
 

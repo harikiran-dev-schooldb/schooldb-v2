@@ -509,20 +509,26 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
         lastOverdueReminderCount = overdue
     }
 
-    LaunchedEffect(sessionReady, school, cacheUserId, resumeVersion) {
+    var outboxRetry by remember(school, cacheUserId) { mutableIntStateOf(0) }
+    var outboxCount by remember(school, cacheUserId) { mutableIntStateOf(0) }
+    LaunchedEffect(sessionReady, school, cacheUserId, resumeVersion, outboxRetry) {
         if (!sessionReady || school.isBlank() || cacheUserId.isBlank()) return@LaunchedEffect
-        replyOutbox.pending()
-            .filter { it.school == school && it.userId == cacheUserId }
-            .forEach { pending ->
+        val queued = replyOutbox.pending().filter { it.school == school && it.userId == cacheUserId }
+        outboxCount = queued.size
+        queued.forEach { pending ->
             try {
-                api.reply(school, pending.ticketId, pending.body, pending.isInternal)
+                api.reply(school, pending.ticketId, pending.body, pending.isInternal, pending.key.substringAfterLast(':'))
                 replyOutbox.remove(pending.key)
+                outboxCount = (outboxCount - 1).coerceAtLeast(0)
                 if (ticketState.detail?.id == pending.ticketId) ticketViewModel.loadDetail(school, pending.ticketId)
                 notice = "Saved reply sent."
             } catch (_: SupportNetworkException) {
                 return@LaunchedEffect
-            } catch (_: Exception) {
-                replyOutbox.remove(pending.key)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (e: Exception) {
+                error = "A saved reply could not be sent. It has been retained for retry: " + (e.message ?: "Unknown error")
+                return@LaunchedEffect
             }
         }
     }
@@ -710,6 +716,14 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
                         .putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName))
                 }, modifier = Modifier.fillMaxWidth()) {
                     Text("Ticket alerts are off · Enable notifications")
+                }
+            }
+            if (sessionReady && school.isNotBlank() && outboxCount > 0 && page in listOf(SupportPage.DASHBOARD, SupportPage.TICKET_DETAIL)) {
+                Surface(color = Color(0xFFFFF4DB), modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp), shape = RoundedCornerShape(12.dp)) {
+                    Row(Modifier.padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text("$outboxCount saved replies awaiting sync", modifier = Modifier.weight(1f), color = Ink, style = MaterialTheme.typography.bodySmall)
+                        TextButton(onClick = { outboxRetry++ }, enabled = !busy) { Text("Retry") }
+                    }
                 }
             }
             if (notice.isNotBlank()) Surface(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
@@ -1084,13 +1098,15 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
                         replyOutbox.setDraft(cacheUserId, school, ticket.id, it)
                     },
                     onReply = { body, isInternal -> run {
+                        val requestId = java.util.UUID.randomUUID().toString()
                         try {
-                            api.reply(school, ticket.id, body, isInternal)
+                            api.reply(school, ticket.id, body, isInternal, requestId)
                             replyDrafts.remove(ticket.id)
                             replyOutbox.setDraft(cacheUserId, school, ticket.id, "")
                             refreshTicketAfterMutation(ticket.id)
                         } catch (network: SupportNetworkException) {
-                            replyOutbox.enqueue(cacheUserId, school, ticket.id, body, isInternal)
+                            replyOutbox.enqueue(cacheUserId, school, ticket.id, body, isInternal, requestId)
+                            outboxCount = replyOutbox.pending().count { it.school == school && it.userId == cacheUserId }
                             replyDrafts.remove(ticket.id)
                             notice = "No connection. Reply saved and will send automatically."
                         }
@@ -1098,6 +1114,8 @@ private fun SupportApp(notificationTicketId: String?, notificationSchool: String
                     onStatus = { status -> run { api.updateStatus(school, ticket.id, status); refreshTicketAfterMutation(ticket.id) } },
                     onPriority = { priority -> run { api.updatePriority(school, ticket.id, priority); refreshTicketAfterMutation(ticket.id) } },
                     onAssign = { userId -> run { api.assign(school, ticket.id, userId); refreshTicketAfterMutation(ticket.id) } },
+                    onScheduleFollowUp = { due -> run { api.scheduleFollowUp(school, ticket.id, due); refreshTicketAfterMutation(ticket.id) } },
+                    onAiDraft = { api.aiDraft(school, ticket.id) },
                     onLabels = { labels -> run { api.updateLabels(school, ticket.id, labels); refreshTicketAfterMutation(ticket.id) } },
                     onDuplicate = { duplicateOfId -> run { api.linkDuplicate(school, ticket.id, duplicateOfId); refreshTicketAfterMutation(ticket.id) } },
                     onRetryDelivery = { run { api.retryParentDelivery(school, ticket.id); refreshTicketAfterMutation(ticket.id) } },

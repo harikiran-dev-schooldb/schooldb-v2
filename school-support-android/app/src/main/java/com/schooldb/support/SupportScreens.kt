@@ -168,6 +168,32 @@ internal fun TicketDashboard(school: String, tickets: List<TicketSummary>, summa
     val context = LocalContext.current
     val overviewScroll = rememberLazyListState()
     val ticketsScroll = rememberLazyListState()
+    val exportScope = rememberCoroutineScope()
+    var reportMessage by remember(school) { mutableStateOf<String?>(null) }
+    var reportSaving by remember(school) { mutableStateOf(false) }
+    var pendingReport by remember(school) { mutableStateOf<String?>(null) }
+    val reportDocument = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/csv")) { uri ->
+        val csv = pendingReport
+        pendingReport = null
+        if (uri != null && csv != null && admin) {
+            exportScope.launch {
+                reportSaving = true
+                try {
+                    withContext(Dispatchers.IO) {
+                        val stream = context.contentResolver.openOutputStream(uri) ?: error("Could not open file")
+                        stream.bufferedWriter(Charsets.UTF_8).use { it.write(csv) }
+                    }
+                    reportMessage = "Monthly CSV saved."
+                } catch (e: kotlinx.coroutines.CancellationException) {
+                    throw e
+                } catch (_: Exception) {
+                    reportMessage = "Could not save the monthly report. Try again."
+                } finally {
+                    reportSaving = false
+                }
+            }
+        }
+    }
     val analyticsScroll = rememberLazyListState()
     val keyboard = LocalSoftwareKeyboardController.current
     var selectionMode by remember { mutableStateOf(false) }
@@ -348,6 +374,36 @@ internal fun TicketDashboard(school: String, tickets: List<TicketSummary>, summa
                             AnalyticsValue("Resolved", if (ticketsLoaded) summary[3].toString() else "—", Modifier.weight(1f))
                         }
                     }
+                }
+                item {
+                    OutlinedButton(onClick = {
+                        val report = buildString {
+                            appendLine("SchoolDB monthly support summary")
+                            appendLine("School: " + school)
+                            appendLine("Month to date")
+                            appendLine("Created: " + analytics.month.total)
+                            appendLine("Resolved from this month's requests: " + analytics.month.resolved)
+                            appendLine("Pending from this month's requests: " + analytics.month.pending)
+                            appendLine("Resolution rate: " + formatPercent(analytics.month.resolutionRate))
+                            appendLine("Average response: " + formatResolutionTime(analytics.month.averageResponseHours))
+                            appendLine("Average resolution: " + formatResolutionTime(analytics.month.averageResolutionHours))
+                            appendLine("Categories")
+                            analytics.byType.forEach { category -> appendLine(category.type + ": " + category.count) }
+                        }
+                        val share = Intent(Intent.ACTION_SEND).apply {
+                            type = "text/plain"
+                            putExtra(Intent.EXTRA_TEXT, report)
+                        }
+                        context.startActivity(Intent.createChooser(share, "Share monthly summary"))
+                    }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) { Text("Share monthly summary") }
+                    OutlinedButton(onClick = {
+                        pendingReport = supportMonthlyCsv(school, analytics)
+                        reportMessage = null
+                        reportDocument.launch("schooldb-support-monthly.csv")
+                    }, enabled = !reportSaving && pendingReport == null, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) {
+                        Text(if (reportSaving) "Saving CSV…" else "Download monthly CSV")
+                    }
+                    reportMessage?.let { Text(it, color = Muted, style = MaterialTheme.typography.bodySmall) }
                 }
                 item {
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -1118,6 +1174,8 @@ internal fun TicketDetails(ticket: TicketDetail, admin: Boolean, busy: Boolean, 
     reply: String, onReplyChange: (String) -> Unit,
     onReply: (String, Boolean) -> Unit, onStatus: (TicketStatus) -> Unit,
     onPriority: (TicketPriority) -> Unit, onAssign: (String?) -> Unit,
+    onScheduleFollowUp: (String?) -> Unit,
+    onAiDraft: suspend () -> String,
     onLabels: (List<String>) -> Unit, onDuplicate: (String?) -> Unit,
     onRetryDelivery: () -> Unit,
     onOpenAttachment: (TicketAttachment) -> Unit,
@@ -1128,6 +1186,16 @@ internal fun TicketDetails(ticket: TicketDetail, admin: Boolean, busy: Boolean, 
     var labelsText by remember(ticket.id, ticket.labels) { mutableStateOf(ticket.labels.joinToString(", ")) }
     var detailTab by remember(ticket.id) { mutableStateOf("Conversation") }
     var templatesOpen by remember(ticket.id) { mutableStateOf(false) }
+    val draftScope = rememberCoroutineScope()
+    var aiDraftLoading by remember(ticket.id) { mutableStateOf(false) }
+    var aiDraft by remember(ticket.id) { mutableStateOf<String?>(null) }
+    var aiDraftError by remember(ticket.id) { mutableStateOf<String?>(null) }
+    var summaryOpen by remember(ticket.id) { mutableStateOf(false) }
+    var assignmentOpen by remember(ticket.id) { mutableStateOf(false) }
+    var followUpError by remember(ticket.id) { mutableStateOf(false) }
+    var assignmentCandidate by remember(ticket.id) { mutableStateOf<StaffOption?>(null) }
+    val rankedStaff = remember(ticket.type, staff) { rankStaff(ticket.type, staff) }
+    val guided = guidedAction(ticketStatusOrDefault(ticket.status), ticket.assignedToName != null)
     val conversationScroll = rememberScrollState()
     val detailsScroll = rememberScrollState()
     val activityScroll = rememberScrollState()
@@ -1154,11 +1222,20 @@ internal fun TicketDetails(ticket: TicketDetail, admin: Boolean, busy: Boolean, 
                 Pill(ticket.status.replace('_', ' '), statusTint(ticket.status))
                 Pill(ticket.priority, priorityTint(ticket.priority))
                 if (ticket.source == "PARENT_QR") Pill("PARENT QUERY", Indigo)
+                if (ticket.parentConfirmedAt != null) Pill("Parent confirmed", SchoolGreen)
             }
         }
         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             listOf("Conversation", "Activity", "Details").forEach { tab ->
                 FilterChip(selected = detailTab == tab, onClick = { detailTab = tab }, label = { Text(tab) })
+            }
+        }
+        if (admin) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Next: " + guided.description, style = MaterialTheme.typography.bodySmall, color = Muted, modifier = Modifier.weight(1f))
+                FilledTonalButton(onClick = {
+                    if (guided.assign) assignmentOpen = true else pendingStatus = guided.nextStatus
+                }, enabled = !busy, shape = RoundedCornerShape(12.dp)) { Text(guided.title) }
             }
         }
         val contentScroll = when (detailTab) {
@@ -1168,7 +1245,7 @@ internal fun TicketDetails(ticket: TicketDetail, admin: Boolean, busy: Boolean, 
         }
         Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(contentScroll), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         if (detailTab == "Conversation") {
-            SurfaceCard(Modifier.fillMaxWidth()) {
+             SurfaceCard(Modifier.fillMaxWidth()) {
                 SectionTitle("Original request", ticket.type.replace('_', ' ').lowercase().replaceFirstChar { it.uppercase() })
                 Spacer(Modifier.height(8.dp))
                 Text(ticket.description, color = Ink, style = MaterialTheme.typography.bodyMedium)
@@ -1332,6 +1409,37 @@ internal fun TicketDetails(ticket: TicketDetail, admin: Boolean, busy: Boolean, 
                 AttachmentPicker(enabled = !busy, label = "Add attachment", onAttachment = onAddAttachment)
             }
         }
+        if (ticket.status !in listOf("RESOLVED", "CLOSED")) SurfaceCard(Modifier.fillMaxWidth()) {
+            SectionTitle("Follow-up", if (admin) "Schedule a school reminder or add to your calendar." else "Add a private calendar reminder on this device.")
+            if (ticket.followUpAt != null) {
+                Text("Scheduled: " + formatSupportTimestamp(ticket.followUpAt), color = Indigo, style = MaterialTheme.typography.bodyMedium)
+            }
+            if (admin) {
+                TextButton(onClick = {
+                    val zone = java.time.ZoneId.of("Asia/Kolkata")
+                    val tomorrow = java.time.LocalDate.now(zone).plusDays(1)
+                    android.app.DatePickerDialog(context, { _, year, month, day ->
+                        val due = java.time.LocalDate.of(year, month + 1, day).atStartOfDay(zone).toInstant().toString()
+                        onScheduleFollowUp(due)
+                    }, tomorrow.year, tomorrow.monthValue - 1, tomorrow.dayOfMonth).apply {
+                        datePicker.minDate = tomorrow.atStartOfDay(zone).toInstant().toEpochMilli()
+                    }.show()
+                }, enabled = !busy) { Text(if (ticket.followUpAt == null) "Schedule school reminder" else "Reschedule school reminder") }
+                if (ticket.followUpAt != null) TextButton(onClick = { onScheduleFollowUp(null) }, enabled = !busy) { Text("Clear scheduled reminder") }
+                Text("Reminders are processed by the daily server job, not at an exact alarm time.", color = Muted, style = MaterialTheme.typography.bodySmall)
+            }
+            TextButton(onClick = {
+                val start = System.currentTimeMillis() + 24 * 60 * 60 * 1000L
+                val intent = Intent(Intent.ACTION_INSERT, android.provider.CalendarContract.Events.CONTENT_URI).apply {
+                    putExtra(android.provider.CalendarContract.Events.TITLE, "SchoolDB support follow-up")
+                    putExtra(android.provider.CalendarContract.EXTRA_EVENT_BEGIN_TIME, start)
+                    putExtra(android.provider.CalendarContract.EXTRA_EVENT_END_TIME, start + 15 * 60 * 1000L)
+                }
+                try { context.startActivity(intent); followUpError = false }
+                catch (_: android.content.ActivityNotFoundException) { followUpError = true }
+            }, enabled = !busy) { Text("Add to calendar") }
+            if (followUpError) Text("No calendar app is available.", color = MaterialTheme.colorScheme.error)
+        }
         if (admin) SurfaceCard(Modifier.fillMaxWidth()) {
             SectionTitle("Manage ticket", "Keep ownership and progress clear")
             Spacer(Modifier.height(16.dp))
@@ -1351,6 +1459,11 @@ internal fun TicketDetails(ticket: TicketDetail, admin: Boolean, busy: Boolean, 
             Spacer(Modifier.height(12.dp))
             Text("ASSIGNED TO", style = MaterialTheme.typography.labelSmall, color = Muted, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(6.dp))
+            if (rankedStaff.isNotEmpty()) {
+                val suggested = rankedStaff.first()
+                Text("Suggested: " + suggested.name + (suggested.activeTickets?.let { " · $it active" } ?: ""), color = Indigo, style = MaterialTheme.typography.bodySmall)
+                TextButton(onClick = { assignmentCandidate = suggested }, enabled = !busy) { Text("Review suggestion") }
+            }
             var staffMenu by remember { mutableStateOf(false) }
             Box {
                 OutlinedButton(onClick = { staffMenu = true }, enabled = !busy,
@@ -1360,9 +1473,9 @@ internal fun TicketDetails(ticket: TicketDetail, admin: Boolean, busy: Boolean, 
                 }
                 DropdownMenu(expanded = staffMenu, onDismissRequest = { staffMenu = false }) {
                     DropdownMenuItem(text = { Text("Unassigned") }, onClick = { staffMenu = false; onAssign(null) })
-                    staff.forEach { person ->
-                        DropdownMenuItem(text = { Text(person.name + " · " + person.role) },
-                            onClick = { staffMenu = false; onAssign(person.id) })
+                    rankedStaff.forEach { person ->
+                        DropdownMenuItem(text = { Text(person.name + " · " + person.role + (person.activeTickets?.let { " · $it active" } ?: "")) },
+                            onClick = { staffMenu = false; assignmentCandidate = person })
                     }
                 }
             }
@@ -1420,7 +1533,7 @@ internal fun TicketDetails(ticket: TicketDetail, admin: Boolean, busy: Boolean, 
                         }
                     }
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                        TextButton(onClick = { templatesOpen = true }, enabled = !busy) { Text("Quick replies") }
+                        TextButton(onClick = { templatesOpen = true }, enabled = !busy) { Text("Reply tools") }
                         TextButton(onClick = { detailTab = "Details" }, enabled = !busy) { Text("Attachments & actions") }
                     }
                 }
@@ -1430,12 +1543,49 @@ internal fun TicketDetails(ticket: TicketDetail, admin: Boolean, busy: Boolean, 
         }
         Spacer(Modifier.height(4.dp))
     }
+    if (assignmentOpen) {
+        AlertDialog(onDismissRequest = { assignmentOpen = false }, title = { Text("Choose ticket owner") }, text = {
+            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("Suggestions use role and active ticket workload. Review before assigning.", color = Muted, style = MaterialTheme.typography.bodySmall)
+                if (rankedStaff.isEmpty()) Text("Staff options are not available. Return to the inbox and refresh.")
+                rankedStaff.forEach { person ->
+                    OutlinedButton(onClick = { assignmentOpen = false; assignmentCandidate = person }, modifier = Modifier.fillMaxWidth()) {
+                        Text(person.name + (person.activeTickets?.let { " · $it active" } ?: ""))
+                    }
+                }
+            }
+        }, confirmButton = { TextButton(onClick = { assignmentOpen = false }) { Text("Cancel") } })
+    }
+    assignmentCandidate?.let { person ->
+        AlertDialog(onDismissRequest = { assignmentCandidate = null }, title = { Text("Assign ticket?") },
+            text = { Text("Assign " + ticket.ticketNo + " to " + person.name + "?") },
+            confirmButton = { Button(onClick = { assignmentCandidate = null; onAssign(person.id) }, enabled = !busy) { Text("Assign") } },
+            dismissButton = { TextButton(onClick = { assignmentCandidate = null }) { Text("Cancel") } })
+    }
     if (templatesOpen) {
         AlertDialog(
             onDismissRequest = { templatesOpen = false },
-            title = { Text("Quick replies") },
+            title = { Text("Reply tools") },
             text = {
                 Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("AI drafts use only the ticket category and status, never conversation text. Review before sending.", style = MaterialTheme.typography.bodySmall, color = Muted)
+                    OutlinedButton(onClick = {
+                        aiDraftLoading = true; aiDraftError = null; aiDraft = null
+                        draftScope.launch {
+                            try { aiDraft = onAiDraft() }
+                            catch (e: kotlinx.coroutines.CancellationException) { throw e }
+                            catch (e: Exception) { aiDraftError = e.message ?: "Draft unavailable." }
+                            finally { aiDraftLoading = false }
+                        }
+                    }, enabled = !aiDraftLoading && !busy, modifier = Modifier.fillMaxWidth()) { Text(if (aiDraftLoading) "Generating draft…" else "Generate AI draft") }
+                    aiDraftError?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+                    aiDraft?.let { draft ->
+                        Text(draft, style = MaterialTheme.typography.bodyMedium)
+                        Button(onClick = { onReplyChange(if (reply.isBlank()) draft else reply.trimEnd() + "\n\n" + draft); templatesOpen = false }, modifier = Modifier.fillMaxWidth()) { Text("Use editable draft") }
+                    }
+                    TextButton(onClick = { templatesOpen = false; summaryOpen = true }) { Text("Conversation overview") }
+                    HorizontalDivider(color = Line)
+                    Text("Quick reply templates", fontWeight = FontWeight.SemiBold)
                     listOf(
                         "Acknowledgement" to "Thank you for bringing this to our attention. We will review your request.",
                         "Investigating" to "We are looking into this issue and will share an update when available.",
@@ -1453,6 +1603,20 @@ internal fun TicketDetails(ticket: TicketDetail, admin: Boolean, busy: Boolean, 
             confirmButton = { TextButton(onClick = { templatesOpen = false }) { Text("Cancel") } },
         )
     }
+    if (summaryOpen) AlertDialog(onDismissRequest = { summaryOpen = false }, title = { Text("Conversation overview") }, text = {
+        Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Status: " + ticket.status.replace('_', ' '))
+            Text("Assigned to: " + (ticket.assignedToName ?: "Unassigned"))
+            Text("Replies: " + ticket.messages.count { !it.isInternal })
+            if (admin) Text("Internal notes: " + ticket.messages.count { it.isInternal })
+            ticket.messages.filter { !it.isInternal }.maxByOrNull { it.createdAt }?.let { last ->
+                Text("Latest parent-visible reply", fontWeight = FontWeight.Bold)
+                Text(last.body, maxLines = 8, overflow = TextOverflow.Ellipsis)
+                Text(formatSupportTimestamp(last.createdAt), style = MaterialTheme.typography.bodySmall, color = Muted)
+            }
+            Text("Next: " + guided.description, style = MaterialTheme.typography.bodySmall)
+        }
+    }, confirmButton = { TextButton(onClick = { summaryOpen = false }) { Text("Done") } })
     pendingStatus?.let { nextStatus ->
         AlertDialog(
             onDismissRequest = { pendingStatus = null },
