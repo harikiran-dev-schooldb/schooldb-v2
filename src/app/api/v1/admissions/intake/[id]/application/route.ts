@@ -1,3 +1,4 @@
+import { notifyAdmissionEvent } from "@/features/admissions/event-alerts";
 import { randomBytes } from "node:crypto";
 import { z } from "zod";
 import { apiHandler } from "@/lib/api";
@@ -47,6 +48,7 @@ export async function POST(request:Request,{params}:{params:Promise<{id:string}>
    await writeAuditLog(tx,{actor,module:"ADMISSIONS",action:"CREATE",entityType:"ADMISSION_APPLICATION",entityId:application.id,summary:ageUndertaking?"Created application with parent age undertaking.":"Created application from enquiry.",metadata:{enquiryId:id,...(ageUndertaking?{ageUndertaking}:{})}});
    return application;
   },{isolationLevel:"Serializable"});
+  await notifyAdmissionEvent(actor.schoolId,"APPLICATION",result.id);
   return ApiResponse.success(result,"Application "+result.applicationNo+" created.",201);
  });
 }

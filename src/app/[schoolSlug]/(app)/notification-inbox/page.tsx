@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { isRouteAllowed } from "@/lib/route-access";
 import { Bell, CheckCheck } from "lucide-react";
 
 import { PageContainer, PageHeader } from "@/components/common/layout";
@@ -58,7 +60,7 @@ export default async function NotificationInboxPage({
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="flex flex-wrap items-center gap-2">
                     {!read && <Badge>New</Badge>}
-                    <Badge variant="outline">{item.category}</Badge>
+                    <Badge variant="outline">{item.sourceType==="ADMISSION_EVENT"||item.sourceType==="ADMISSION_REMINDER"?"Admissions":item.category}</Badge>
                     {item.priority !== "NORMAL" && (
                       <Badge
                         variant={item.priority === "URGENT" ? "destructive" : "warning"}
@@ -79,6 +81,7 @@ export default async function NotificationInboxPage({
                   <span className="text-xs text-muted-foreground">
                     {item.targetLabel}
                   </span>
+                  {(item.sourceType==="ADMISSION_EVENT"||item.sourceType==="ADMISSION_REMINDER")&&["SUPER_ADMIN","SCHOOL_ADMIN"].includes(membership.role)&&isRouteAllowed(membership.school,"admissions")&&<Button asChild size="sm" variant="outline"><Link href={`/${schoolSlug}/admissions/dashboard`}>Open Admissions</Link></Button>}
                   <form action={markAnnouncement.bind(null, schoolSlug, item.id, !read)}>
                     <Button size="sm" variant="outline" className="rounded-xl">
                       <CheckCheck className="size-4" />

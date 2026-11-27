@@ -1,3 +1,4 @@
+import { notifyAdmissionEvent } from "@/features/admissions/event-alerts";
 import { randomBytes } from "node:crypto";
 
 import type { AdmissionApplicationStatus, Prisma } from "@/generated/prisma/client";
@@ -123,6 +124,7 @@ export async function submitAdmission(schoolSlug: string, input: PublicAdmission
     },
     select: { id: true, applicationNo: true, studentName: true, status: true, submittedAt: true },
   });
+  await notifyAdmissionEvent(school.id,"APPLICATION",application.id);
   await queueAdmissionWhatsappUpdate({ schoolId: school.id, applicationId: application.id, applicationNo: application.applicationNo, studentName: application.studentName, phone: input.fatherPhone || input.motherPhone || input.guardianPhone, status: application.status, schoolName: school.name });
   return application;
 }
@@ -164,9 +166,10 @@ export async function changeAdmissionStatus(input: {
       reviewedAt: new Date(),
       history: { create: { fromStatus: current.status, toStatus: input.status, note: input.note, changedBy: input.changedBy } },
     },
-    select: { id: true, applicationNo: true, studentName: true, status: true },
+    select: { id: true, applicationNo: true, studentName: true, status: true, updatedAt:true },
   });
   },{isolationLevel:"Serializable"});
+  if (application.status !== "DRAFT") await notifyAdmissionEvent(input.schoolId,application.status,application.id,application.updatedAt.toISOString());
   const details = await prisma.admissionApplication.findUnique({ where: { id: application.id }, select: { fatherPhone: true, motherPhone: true, guardianPhone: true, whatsappOptIn: true, school: { select: { name: true } } } });
   if (details?.whatsappOptIn) await queueAdmissionWhatsappUpdate({ schoolId: input.schoolId, applicationId: application.id, applicationNo: application.applicationNo, studentName: application.studentName, phone: details.fatherPhone || details.motherPhone || details.guardianPhone, status: application.status, schoolName: details.school.name });
   return application;
@@ -282,6 +285,7 @@ export async function convertAdmission(input: {
     return student;
   },{isolationLevel:"Serializable"});
 
+  await notifyAdmissionEvent(input.schoolId,"CONVERTED",application.id);
   const loginAccess = await safelyProvisionStudentLogin(result.id, input.schoolId);
   if (application.whatsappOptIn) {
     await queueAdmissionWhatsappUpdate({
