@@ -26,13 +26,6 @@ export async function GET() {
         logo: true,
         createdAt: true,
         updatedAt: true,
-        _count: {
-          select: {
-            students: true,
-            teachers: true,
-            memberships: true,
-          },
-        },
       },
     });
 
