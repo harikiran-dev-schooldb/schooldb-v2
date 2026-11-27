@@ -4,7 +4,10 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import {
+  ArrowUpRight,
   Building2,
+  Search,
+  Globe2,
   ImageUp,
   Loader2,
   ListChecks,
@@ -32,6 +35,8 @@ export default function SchoolsPage() {
   const { schoolSlug } = useParams<{ schoolSlug: string }>();
   const router = useRouter();
   const [schools, setSchools] = useState<SchoolItem[]>([]);
+  const [search, setSearch] = useState("");
+  const filteredSchools = schools.filter(item => (item.name+" "+item.slug).toLowerCase().includes(search.trim().toLowerCase()));
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [logoActionId, setLogoActionId] = useState<string | null>(null);
@@ -160,12 +165,12 @@ export default function SchoolsPage() {
   }
 
   return (
-    <div className="space-y-6 p-4 pb-12 sm:p-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <div className="mx-auto max-w-[1500px] space-y-6 p-4 pb-12 sm:p-6">
+      <div className="premium-hero relative flex flex-col gap-4 overflow-hidden rounded-3xl border border-primary/15 p-5 sm:flex-row sm:items-end sm:justify-between sm:p-7">
         <PageHeader
           eyebrow="Super Admin"
           title="Schools"
-          description="Create and manage SchoolDB school workspaces."
+          description="Manage school identities, access and individual workspace configuration."
         />
         <div className="flex flex-wrap gap-3">
           <Button asChild variant="outline" className="rounded-xl">
@@ -245,29 +250,29 @@ export default function SchoolsPage() {
         </Card>
       )}
 
+      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center"><div><h2 className="text-lg font-bold tracking-tight">School directory</h2><p className="text-xs text-muted-foreground">{loading?"Loading workspaces…":filteredSchools.length+" of "+schools.length+" schools"}</p></div><div className="relative w-full sm:max-w-xs"><Search className="absolute left-3 top-3.5 size-4 text-muted-foreground"/><input aria-label="Search schools" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search school name or URL" className="h-11 w-full rounded-xl border bg-background pl-9 pr-3 text-sm shadow-sm outline-none focus:border-primary"/></div></div>
       {loading ? (
-        <div className="flex min-h-52 items-center justify-center">
-          <Loader2 className="size-6 animate-spin text-primary" />
-        </div>
+        <div aria-busy="true" aria-label="Loading schools" className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">{[1,2,3].map(i=><div key={i} className="h-64 animate-pulse rounded-3xl bg-muted"/>)}</div>
       ) : (
         <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-          {schools.map((item) => (
-            <Card key={item.id} className="premium-card overflow-hidden rounded-2xl border-0">
-              <CardContent className="p-6">
-                <div className="flex items-start gap-4">
+          {!filteredSchools.length&&<div className="col-span-full rounded-3xl border border-dashed p-10 text-center"><Building2 className="mx-auto mb-3 size-8 text-muted-foreground"/><p className="font-semibold">{search?"No matching schools":"No schools available"}</p><p className="mt-1 text-sm text-muted-foreground">{search?"Try another school name or URL.":"Use Add School to create a workspace."}</p></div>}
+          {filteredSchools.map((item) => (
+            <Card key={item.id} className="premium-card group overflow-hidden rounded-3xl border border-border/70 transition hover:border-primary/30 hover:shadow-lg">
+              <CardContent className="p-0">
+                <div className="flex items-start gap-4 border-b border-border/50 bg-gradient-to-br from-primary/[0.06] to-transparent p-5">
                   <SchoolLogo
                     src={item.logo}
                     schoolName={item.name}
-                    sizes="56px"
-                    className="size-14 rounded-2xl"
+                    sizes="64px"
+                    className="size-16 rounded-2xl shadow-sm"
                   />
                   <div className="min-w-0 flex-1">
-                    <h2 className="truncate text-base font-bold">{item.name}</h2>
-                    <p className="mt-1 text-xs text-muted-foreground">/{item.slug}</p>
+                    <h2 className="break-words text-base font-bold tracking-tight">{item.name}</h2>
+                    <p className="mt-2 inline-flex max-w-full items-center gap-1.5 rounded-full border bg-background/80 px-2.5 py-1 text-xs text-muted-foreground"><Globe2 className="size-3.5 shrink-0"/><span className="truncate">/{item.slug}</span></p>
                   </div>
                 </div>
 
-                <div className="mt-5 flex gap-2">
+                <div className="p-5"><div className="mb-3 flex items-center justify-between"><p className="text-xs font-semibold text-muted-foreground">School branding</p><span className="text-xs text-muted-foreground">{item.logo?"Logo uploaded":"No logo"}</span></div><div className="flex gap-2">
                   <label className="flex h-10 flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl border border-border bg-background px-3 text-sm font-semibold transition hover:bg-muted/50 has-[:disabled]:pointer-events-none has-[:disabled]:opacity-50">
                     {logoActionId === item.id ? (
                       <Loader2 className="size-4 animate-spin" />
@@ -316,7 +321,7 @@ export default function SchoolsPage() {
                   PNG, JPG, or WebP · square image recommended · maximum 5 MB
                 </p>
 
-                <div className="mt-6 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                </div><div className="grid grid-cols-1 gap-2 border-t bg-muted/15 p-4 sm:grid-cols-2">
                   <Button asChild variant="outline" className="w-full rounded-xl">
                     <Link href={`/${schoolSlug}/schools/route-access?schoolId=${encodeURIComponent(item.id)}`} aria-label={`Settings for ${item.name}`}>
                       <Settings2 className="size-4" />
@@ -324,9 +329,8 @@ export default function SchoolsPage() {
                     </Link>
                   </Button>
                   <Button asChild className="w-full rounded-xl">
-                    <Link href={`/${item.slug}/dashboard`}>
-                      <Building2 className="size-4" />
-                      Open School
+                    <Link href={`/${item.slug}`}>
+                      Open School <ArrowUpRight className="size-4" />
                     </Link>
                   </Button>
                 </div>

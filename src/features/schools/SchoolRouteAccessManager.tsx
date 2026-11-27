@@ -9,6 +9,7 @@ import { PageHeader } from "@/components/common/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { navigation } from "@/lib/navigation";
 import {
@@ -88,7 +89,7 @@ const ACADEMIC_ONLY_ROUTES = CORE_SCHOOL_ROUTES.filter(
   (route) => !route.startsWith("fees/") && !["expenses", "reports", "management-analytics"].includes(route),
 );
 
-export function SchoolRouteAccessManager({ targetSchoolId, schoolSlug }: { targetSchoolId?: string; schoolSlug: string }) {
+export function SchoolRouteAccessManager({ targetSchoolId, schoolSlug, embedded = false }: { targetSchoolId?: string; schoolSlug: string; embedded?: boolean }) {
   const [schools, setSchools] = useState<SchoolRouteAccess[]>([]);
   const [selectedSchoolId, setSelectedSchoolId] = useState("");
   const [draft, setDraft] = useState<RouteAccessConfig>({
@@ -221,17 +222,17 @@ export function SchoolRouteAccessManager({ targetSchoolId, schoolSlug }: { targe
   }
 
   return (
-    <div className="space-y-6 p-4 pb-12 sm:p-6">
-      <Button asChild variant="outline" size="sm" className="rounded-xl">
+    <div className={embedded ? "min-w-0 space-y-4" : "space-y-6 p-4 pb-12 sm:p-6"}>
+      {!embedded && <><Button asChild variant="outline" size="sm" className="rounded-xl">
         <Link href={`/${schoolSlug}/schools`}><ArrowLeft className="size-4" /> Back to Schools</Link>
       </Button>
       <PageHeader
         eyebrow="Super Admin"
         title={targetSchoolId === undefined ? "School Route Access" : "School Settings"}
         description={targetSchoolId === undefined ? "Choose exactly which SchoolDB areas appear for each school. User role permissions still apply." : `Manage modules, route access and the default landing page for ${selectedSchool.name}.`}
-      />
+      /></>}
 
-      <Card className="premium-card rounded-3xl border-0">
+      <Card className="premium-card rounded-3xl border border-border/70">
         <CardContent className="space-y-5 p-5 sm:p-6">
           <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
             <div className="space-y-2">
@@ -298,7 +299,7 @@ export function SchoolRouteAccessManager({ targetSchoolId, schoolSlug }: { targe
             />
           </div>
 
-          <div className="space-y-2"><label htmlFor="landing-route" className="text-xs font-semibold">Default landing page</label><select id="landing-route" value={draft.defaultLandingRoute&&isRouteAllowed(draft,draft.defaultLandingRoute)?draft.defaultLandingRoute:""} onChange={event=>setDraft(current=>({...current,defaultLandingRoute:event.target.value||null}))} className="h-11 w-full rounded-xl border bg-background px-3 text-sm"><option value="">Automatic (first permitted workspace)</option>{["admissions/dashboard",...ALL_ROUTES.filter(r=>!r.startsWith("bulk-operations/"))].filter(r=>isRouteAllowed(draft,r)).map(r=><option key={r} value={r}>{r==="admissions/dashboard"?"Admissions dashboard":r}</option>)}</select><p className="text-xs text-muted-foreground">A user without permission for this page is sent to another permitted page.</p></div>
+          <div className="space-y-2"><label htmlFor="landing-route" className="text-xs font-semibold">Default landing page</label><Select disabled={saving} value={draft.defaultLandingRoute&&isRouteAllowed(draft,draft.defaultLandingRoute)?draft.defaultLandingRoute:"__automatic__"} onValueChange={value=>setDraft(current=>({...current,defaultLandingRoute:value==="__automatic__"?null:value}))}><SelectTrigger id="landing-route" className="h-11 w-full rounded-xl"><SelectValue/></SelectTrigger><SelectContent><SelectItem value="__automatic__">Automatic (first permitted workspace)</SelectItem>{["admissions/dashboard",...ALL_ROUTES.filter(r=>!r.startsWith("bulk-operations/"))].filter(r=>isRouteAllowed(draft,r)).map(r=><SelectItem key={r} value={r}>{r==="admissions/dashboard"?"Admissions dashboard":r.replaceAll("/"," / ").replaceAll("-"," ")}</SelectItem>)}</SelectContent></Select><p className="text-xs text-muted-foreground">A user without permission for this page is sent to another permitted page.</p></div>
           {draft.routeAccessRestricted && (
             <div className="flex flex-wrap gap-2">
               <Button type="button" variant="outline" size="sm" onClick={() => setDraft({routeAccessRestricted:true,allowedRoutes:[...ADMISSIONS_ONLY_ROUTES],defaultLandingRoute:"admissions/dashboard",moduleAccessRestricted:true})}>Admissions only</Button>
@@ -323,7 +324,7 @@ export function SchoolRouteAccessManager({ targetSchoolId, schoolSlug }: { targe
         </CardContent>
       </Card>
 
-      {draft.routeAccessRestricted&&<Card className="premium-card rounded-3xl border-0"><CardContent className="space-y-4 p-5"><div><h2 className="text-lg font-bold">School subscription modules</h2><p className="text-sm text-muted-foreground">Select multiple modules. Changes apply only after saving. Module selection enables strict operational API filtering; individual staff permissions still apply.</p></div><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{SCHOOL_MODULES.map(module=>{const selected=module.routes.every(route=>draft.allowedRoutes.includes(route));const partial=!selected&&module.routes.some(route=>draft.allowedRoutes.includes(route));return <label key={module.key} className={"flex cursor-pointer items-start gap-3 rounded-2xl border p-4 "+(selected?"border-primary bg-primary/5":"border-border")}><Checkbox checked={selected?true:partial?"indeterminate":false} onCheckedChange={value=>setDraft(current=>({...current,moduleAccessRestricted:true,allowedRoutes:toggleSchoolModule(current.allowedRoutes,module.key,value===true)}))}/><span className="min-w-0"><span className="block text-sm font-semibold">{module.label}</span><span className="block text-xs text-muted-foreground">{module.description}</span></span></label>})}</div><p className="text-xs text-muted-foreground">Advanced routes remain below. Some wider ERP modules require additional endpoint verification; unclassified operational APIs are blocked in strict mode.</p></CardContent></Card>}
+      {draft.routeAccessRestricted&&<Card className="premium-card rounded-3xl border-0"><CardContent className="space-y-4 p-5"><div><h2 className="text-lg font-bold">School subscription modules</h2><p className="text-sm text-muted-foreground">Select multiple modules. Changes apply only after saving. Module selection enables strict operational API filtering; individual staff permissions still apply.</p></div><div className="grid gap-3 sm:grid-cols-2">{SCHOOL_MODULES.map(module=>{const selected=module.routes.every(route=>draft.allowedRoutes.includes(route));const partial=!selected&&module.routes.some(route=>draft.allowedRoutes.includes(route));return <label key={module.key} className={"flex cursor-pointer items-start gap-3 rounded-2xl border p-4 "+(selected?"border-primary bg-primary/5":"border-border")}><Checkbox checked={selected?true:partial?"indeterminate":false} onCheckedChange={value=>setDraft(current=>({...current,moduleAccessRestricted:true,allowedRoutes:toggleSchoolModule(current.allowedRoutes,module.key,value===true)}))}/><span className="min-w-0"><span className="block text-sm font-semibold">{module.label}</span><span className="block text-xs text-muted-foreground">{module.description}</span></span></label>})}</div><p className="text-xs text-muted-foreground">Advanced routes remain below. Some wider ERP modules require additional endpoint verification; unclassified operational APIs are blocked in strict mode.</p></CardContent></Card>}
       {!draft.routeAccessRestricted ? (
         <div className="flex min-h-40 items-center justify-center rounded-3xl border border-dashed bg-muted/20 p-8 text-center">
           <div>
@@ -335,7 +336,7 @@ export function SchoolRouteAccessManager({ targetSchoolId, schoolSlug }: { targe
           </div>
         </div>
       ) : (
-        <div className="grid gap-5 lg:grid-cols-2 2xl:grid-cols-3">
+        <div className="grid gap-5 lg:grid-cols-2">
           {ROUTE_GROUPS.map((group) => (
             <Card key={group.title} className="premium-card rounded-2xl border-0">
               <CardContent className="p-5">
