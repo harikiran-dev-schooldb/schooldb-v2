@@ -2,6 +2,12 @@ name: Android Release Artifacts
 
 on:
   workflow_dispatch:
+    inputs:
+      publish_internal:
+        description: Upload both signed AABs to Google Play Internal Testing
+        required: true
+        default: false
+        type: boolean
   push:
     tags:
       - "v*"
@@ -35,6 +41,7 @@ jobs:
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
           ANDROID_GOOGLE_SERVICES_BASE64: ${{ secrets.ANDROID_GOOGLE_SERVICES_BASE64 }}
           SUPPORT_ANDROID_GOOGLE_SERVICES_BASE64: ${{ secrets.SUPPORT_ANDROID_GOOGLE_SERVICES_BASE64 }}
+          GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
         run: |
           test -n "$NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY"
           test -n "$ANDROID_KEYSTORE_BASE64"
@@ -43,6 +50,9 @@ jobs:
           test -n "$ANDROID_KEY_PASSWORD"
           test -n "$ANDROID_GOOGLE_SERVICES_BASE64"
           test -n "$SUPPORT_ANDROID_GOOGLE_SERVICES_BASE64"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.publish_internal }}" = "true" ]; then
+            test -n "$GOOGLE_PLAY_SERVICE_ACCOUNT_JSON"
+          fi
 
       - name: Configure signing and Firebase
         env:
@@ -83,3 +93,27 @@ jobs:
             android/app/build/outputs/bundle/release/*.aab
             school-support-android/app/build/outputs/apk/release/*.apk
             school-support-android/app/build/outputs/bundle/release/*.aab
+
+      - name: Upload SchoolDB to Google Play Internal Testing
+        if: github.event_name == 'workflow_dispatch' && inputs.publish_internal
+        uses: r0adkll/upload-google-play@935ef9c68bb393a8e6116b1575626a7f5be3a7fb # v1.1.3
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: com.schooldb.mobile
+          releaseFiles: android/app/build/outputs/bundle/release/*.aab
+          track: internal
+          status: completed
+          whatsNewDirectory: distribution/google-play/schooldb/whatsnew
+          mappingFile: android/app/build/outputs/mapping/release/mapping.txt
+
+      - name: Upload School Support to Google Play Internal Testing
+        if: github.event_name == 'workflow_dispatch' && inputs.publish_internal
+        uses: r0adkll/upload-google-play@935ef9c68bb393a8e6116b1575626a7f5be3a7fb # v1.1.3
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: com.schooldb.support
+          releaseFiles: school-support-android/app/build/outputs/bundle/release/*.aab
+          track: internal
+          status: completed
+          whatsNewDirectory: distribution/google-play/school-support/whatsnew
+          mappingFile: school-support-android/app/build/outputs/mapping/release/mapping.txt
