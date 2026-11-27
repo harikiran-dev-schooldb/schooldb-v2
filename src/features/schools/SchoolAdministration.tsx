@@ -28,7 +28,25 @@ export function SchoolAdministration({schoolId,schoolSlug}:{schoolId:string;scho
   const endpoint="/api/v1/schools/"+encodeURIComponent(schoolId)+"/administration";
   const apply=useCallback((next:Snapshot)=>{setData(next);setProfile({...PROFILE_DEFAULTS,...next.school.administrationProfile});setName(next.school.name);setAlerts(next.admissionSettings??{admissionRemindersEnabled:false,admissionEventAlertsEnabled:false});},[]);
   const load=useCallback(async(signal?:AbortSignal)=>{try{const res=await fetch(endpoint,{cache:"no-store",signal});const json=await res.json();if(!res.ok||!json.success)throw new Error(json.message??"Unable to load school settings.");if(!signal?.aborted){setError("");apply(json.data);}}catch(e){if(!signal?.aborted)setError(e instanceof Error?e.message:"Unable to load settings.");}finally{if(!signal?.aborted)setLoading(false);}},[endpoint,apply]);
-  useEffect(()=>{const c=new AbortController();void load(c.signal);return()=>c.abort();},[load]);
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch(endpoint, { cache: "no-store", signal: controller.signal })
+      .then(async (response) => {
+        const json = await response.json();
+        if (!response.ok || !json.success) throw new Error(json.message ?? "Unable to load school settings.");
+        if (!controller.signal.aborted) {
+          setError("");
+          apply(json.data);
+        }
+      })
+      .catch((error: unknown) => {
+        if (!controller.signal.aborted) setError(error instanceof Error ? error.message : "Unable to load settings.");
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
+    return () => controller.abort();
+  }, [endpoint, apply]);
   const dirty=!!data&&(name!==data.school.name||JSON.stringify(profile)!==JSON.stringify({...PROFILE_DEFAULTS,...data.school.administrationProfile}));
   async function save(){if(!data)return;setBusy(true);setError("");try{const res=await fetch(endpoint,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({name,profile,updatedAt:data.school.updatedAt})});const json=await res.json();if(!res.ok||!json.success)throw new Error(json.message??"Unable to save.");apply(json.data);toast.success("School settings saved.");}catch(e){setError(e instanceof Error?e.message:"Unable to save settings.");}finally{setBusy(false);}}
   async function saveAlerts(){setBusy(true);try{const res=await fetch(endpoint,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(alerts)});const json=await res.json();if(!res.ok||!json.success)throw new Error(json.message??"Unable to save.");apply(json.data);toast.success("Admissions alerts saved.");}catch(e){toast.error(e instanceof Error?e.message:"Unable to save alerts.");}finally{setBusy(false);}}
