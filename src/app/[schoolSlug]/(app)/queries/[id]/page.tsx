@@ -5,6 +5,7 @@ import { isMemberRouteAllowed } from "@/lib/navigation-access";
 import { requireMembership } from "@/lib/auth";
 import { formatSchoolDateTime } from "@/lib/date-time";
 import { prisma } from "@/lib/prisma";
+import { QueryConversation } from "./conversation";
 import { QueryActions } from "./query-actions";
 import { hasModuleAccess } from "@/lib/staff-permissions";
 
@@ -76,9 +77,10 @@ export default async function QueryDetailPage({
       schoolId: membership.schoolId,
       ticketId: ticket.id,
       userId: membership.userId,
+      readAt: ticket.updatedAt,
     },
     update: {
-      readAt: new Date(),
+      readAt: ticket.updatedAt,
     },
   });
 
@@ -118,41 +120,14 @@ export default async function QueryDetailPage({
             <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-slate-700">{ticket.description}</p>
           </section>
 
-          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
-            <h2 className="font-bold text-slate-950">Conversation</h2>
-            <p className="mt-1 text-xs text-slate-500">
-              Parent-visible replies and staff-only internal notes are shown here.
-            </p>
-            <div className="mt-5 space-y-4">
-              {ticket.messages.length === 0 && <p className="text-sm text-slate-500">No replies yet.</p>}
-              {ticket.messages.map((message) => {
-                const author = [message.author.firstName, message.author.lastName].filter(Boolean).join(" ") || "School user";
-                const fromAdmin = message.author.memberships.some((item) => ["SUPER_ADMIN", "SCHOOL_ADMIN"].includes(item.role));
-                return (
-                  <div key={message.id} className={`rounded-xl p-4 ${fromAdmin ? "bg-indigo-50" : "bg-slate-50"}`}>
-                    <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-semibold text-slate-800">{author}</span>
-                        {ticket.source === "PARENT_QR" && (
-                          <span
-                            className={
-                              message.isInternal
-                                ? "rounded-full bg-amber-100 px-2 py-0.5 font-bold text-amber-800"
-                                : "rounded-full bg-emerald-100 px-2 py-0.5 font-bold text-emerald-800"
-                            }
-                          >
-                            {message.isInternal ? "INTERNAL ONLY" : "SHOWN TO PARENT"}
-                          </span>
-                        )}
-                      </div>
-                      <span>{formatSchoolDateTime(message.createdAt)}</span>
-                    </div>
-                    <p className="mt-2 whitespace-pre-wrap text-sm text-slate-700">{message.body}</p>
-                  </div>
-                );
-              })}
-            </div>
-          </section>
+          <QueryConversation isParentQuery={ticket.source === "PARENT_QR"} messages={ticket.messages.map(message => ({
+            id: message.id,
+            author: [message.author.firstName, message.author.lastName].filter(Boolean).join(" ") || "School user",
+            body: message.body,
+            timestamp: formatSchoolDateTime(message.createdAt),
+            mine: message.author.id === membership.userId,
+            isInternal: message.isInternal,
+          }))} />
         </div>
 
         <div className="space-y-6">
