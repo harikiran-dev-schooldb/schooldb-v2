@@ -5,7 +5,7 @@ import { Bell, CheckCheck, Inbox, MailOpen, MessageCircle, ChevronDown } from "l
 import { PageContainer, PageHeader } from "@/components/common/layout";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { markAnnouncement } from "@/features/notifications/actions";
+import { markAnnouncement, markSupportConversationRead } from "@/features/notifications/actions";
 import { notificationContext } from "@/features/notifications/service";
 import { prisma } from "@/lib/prisma";
 import { formatDate } from "@/lib/self-service-format";
@@ -164,6 +164,10 @@ export default async function NotificationInboxPage({
                   <ChevronDown className="size-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" />
                 </summary>
                 <div className="space-y-3 border-t border-border/60 bg-muted/30 p-3 sm:p-5">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    {unread > 0 && <form action={markSupportConversationRead.bind(null, schoolSlug, key.slice(7))}><Button size="sm" variant="outline"><CheckCheck className="size-4" /> Mark conversation read</Button></form>}
+                    {ticket && isRouteAllowed(membership.school, "queries") && <Button asChild size="sm" variant="outline"><Link href={`/${schoolSlug}/queries/${encodeURIComponent(ticket.id)}`}>Open ticket</Link></Button>}
+                  </div>
                   {unreadOnly && <Link className="block text-xs font-semibold text-primary underline" href={`/${schoolSlug}/notification-inbox?announcementId=${encodeURIComponent(latest.id)}`}>View full conversation</Link>}
                   {cards}
                 </div>

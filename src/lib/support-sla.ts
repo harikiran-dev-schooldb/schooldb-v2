@@ -7,7 +7,7 @@ const RESPONSE_HOURS: Record<SupportTicketPriority, number> = {
   URGENT: 4,
 };
 
-const RESOLUTION_HOURS: Record<SupportTicketPriority, number> = {
+export const RESOLUTION_HOURS: Record<SupportTicketPriority, number> = {
   LOW: 120,
   NORMAL: 72,
   HIGH: 48,

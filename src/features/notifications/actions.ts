@@ -189,3 +189,17 @@ export async function markAnnouncement(
   }
   revalidatePath(`/${schoolSlug}`, "layout");
 }
+
+export async function markSupportConversationRead(schoolSlug: string, ticketId: string) {
+  const { membership, where } = await notificationContext(schoolSlug);
+  const items = await prisma.announcement.findMany({
+    where: { ...where, sourceType: "SUPPORT_TICKET", sourceId: ticketId,
+      reads: { none: { userId: membership.userId } } },
+    select: { id: true },
+  });
+  if (items.length) await prisma.announcementRead.createMany({
+    data: items.map(({ id }) => ({ announcementId: id, userId: membership.userId })),
+    skipDuplicates: true,
+  });
+  revalidatePath(`/${schoolSlug}`, "layout");
+}

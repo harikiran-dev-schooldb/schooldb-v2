@@ -67,7 +67,7 @@ android {
         minSdk = 26
         targetSdk = 37
         versionCode = versionCodeOverride ?: trackedVersionCode
-        versionName = "3.0.1"
+        versionName = "3.1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "CLERK_PUBLISHABLE_KEY", "\"$clerkKey\"")
         buildConfigField("boolean", "FIREBASE_CONFIGURED", firebaseConfig.exists().toString())

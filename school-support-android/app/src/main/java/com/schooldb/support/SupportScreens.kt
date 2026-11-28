@@ -1185,6 +1185,7 @@ internal fun TicketDetails(ticket: TicketDetail, admin: Boolean, busy: Boolean, 
     var pendingStatus by remember(ticket.id) { mutableStateOf<TicketStatus?>(null) }
     var labelsText by remember(ticket.id, ticket.labels) { mutableStateOf(ticket.labels.joinToString(", ")) }
     var detailTab by remember(ticket.id) { mutableStateOf("Conversation") }
+    var messageSearch by remember(ticket.id) { mutableStateOf("") }
     var templatesOpen by remember(ticket.id) { mutableStateOf(false) }
     val draftScope = rememberCoroutineScope()
     var aiDraftLoading by remember(ticket.id) { mutableStateOf(false) }
@@ -1201,8 +1202,8 @@ internal fun TicketDetails(ticket: TicketDetail, admin: Boolean, busy: Boolean, 
     val activityScroll = rememberScrollState()
     var lastSeenMessageCount by remember(ticket.id) { mutableStateOf(-1) }
     var lastConversationHeight by remember(ticket.id) { mutableStateOf(0) }
-    LaunchedEffect(ticket.id, detailTab, ticket.messages.size, conversationScroll.maxValue) {
-        if (detailTab == "Conversation" && conversationScroll.maxValue != Int.MAX_VALUE) {
+    LaunchedEffect(ticket.id, detailTab, ticket.messages.size, conversationScroll.maxValue, messageSearch) {
+        if (detailTab == "Conversation" && messageSearch.isBlank() && conversationScroll.maxValue != Int.MAX_VALUE) {
             val newMessages = ticket.messages.size > lastSeenMessageCount
             val lastIsMine = ticket.messages.lastOrNull()?.let { it.authorId.isNotBlank() && it.authorId == ticket.currentUserId } == true
             val nearBottom = conversationScroll.value >= (lastConversationHeight - 120).coerceAtLeast(0)
@@ -1250,8 +1251,21 @@ internal fun TicketDetails(ticket: TicketDetail, admin: Boolean, busy: Boolean, 
                 Spacer(Modifier.height(8.dp))
                 Text(ticket.description, color = Ink, style = MaterialTheme.typography.bodyMedium)
             }
+            OutlinedTextField(
+                value = messageSearch,
+                onValueChange = { messageSearch = it.take(100) },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                label = { Text("Search messages") },
+                trailingIcon = { if (messageSearch.isNotBlank()) TextButton(onClick = { messageSearch = "" }) { Text("Clear") } },
+                shape = RoundedCornerShape(14.dp),
+            )
+            val visibleMessages = ticket.messages.filter { message ->
+                messageSearch.isBlank() || message.body.contains(messageSearch.trim(), ignoreCase = true) || message.author.contains(messageSearch.trim(), ignoreCase = true)
+            }
             if (ticket.messages.isEmpty()) SupportEmptyState("No replies yet", "Use the reply box to start the conversation.")
-            ticket.messages.sortedBy { it.createdAt }.forEach { message ->
+            else if (visibleMessages.isEmpty()) SupportEmptyState("No matching messages", "Try another word or sender name.")
+            visibleMessages.sortedBy { it.createdAt }.forEach { message ->
                 val mine = message.authorId.isNotBlank() && message.authorId == ticket.currentUserId
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = if (mine) Arrangement.End else Arrangement.Start) {
                     Surface(
