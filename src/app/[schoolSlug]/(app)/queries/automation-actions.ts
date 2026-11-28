@@ -21,7 +21,7 @@ export async function saveSupportAutomation(schoolSlug: string, form: FormData) 
     escalationGraceHours: Number(form.get("escalationGraceHours") ?? 0),
     escalationRecipientId: String(form.get("escalationRecipientId") ?? "").trim() || null,
   });
-  const ids = [...new Set([...Object.values(config.assignments), ...(config.escalationRecipientId ? [config.escalationRecipientId] : [])])];
+  const ids = [...new Set([...Object.values(config.assignments).filter((id): id is string => typeof id === "string"), ...(config.escalationRecipientId ? [config.escalationRecipientId] : [])])];
   const staff = await prisma.membership.findMany({
     where: { schoolId: member.schoolId, userId: { in: ids }, isActive: true, role: { notIn: ["PARENT", "STUDENT"] } },
     select: { userId: true, role: true, customPermissionsEnabled: true, permissions: true },
