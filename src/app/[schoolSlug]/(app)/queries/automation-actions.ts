@@ -27,6 +27,7 @@ export async function saveSupportAutomation(schoolSlug: string, form: FormData) 
     select: { userId: true, role: true, customPermissionsEnabled: true, permissions: true },
   });
   if (staff.filter(person => hasModuleAccess(person, "SUPPORT", "VIEW")).length !== ids.length) throw new Error("Select active staff with Support access.");
+  if (config.escalationRecipientId && !staff.some(person => person.userId === config.escalationRecipientId && hasModuleAccess(person, "SUPPORT", "MANAGE"))) throw new Error("Escalation recipient must have Support management access.");
   await prisma.school.update({ where: { id: member.schoolId }, data: { supportAutomation: config } });
   revalidatePath(`/${schoolSlug}/queries`);
 }
