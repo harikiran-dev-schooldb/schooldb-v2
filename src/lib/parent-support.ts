@@ -5,6 +5,7 @@ import { normalizeIndianMobile } from "@/features/auth/otp";
 import { prisma } from "@/lib/prisma";
 import { isRouteAllowed,usesStrictModuleAccess } from "@/lib/route-access";
 import { ApiError } from "@/lib/errors";
+import { supportAutoAssignee } from "@/lib/support-automation";
 import { sendSupportPush, supportAdminUserIds } from "@/lib/support-push";
 import { queueParentQueryWhatsappUpdate } from "@/features/whatsapp/service";
 
@@ -150,7 +151,9 @@ export async function submitParentSupport(input: {
         STUDENT: enrollment.student.fullName || "Student",
       }[input.complaintBy];
 
-  const ticket = await prisma.supportTicket.create({
+  const ticket = await prisma.$transaction(async (tx) => {
+    const assignedToId = await supportAutoAssignee(tx, school.id, input.category);
+    return tx.supportTicket.create({
     data: {
       schoolId: school.id,
       ticketNo: `TCK-${randomUUID().slice(0, 12).toUpperCase()}`,
@@ -162,14 +165,17 @@ export async function submitParentSupport(input: {
       parentName: complaintByName,
       parentPhone: input.parentPhone || null,
       complaintBy: input.complaintBy,
+      assignedToId,
+      status: assignedToId ? "ASSIGNED" : "OPEN",
     },
-    select: { id: true, ticketNo: true },
+    select: { id: true, ticketNo: true, assignedToId: true },
+    });
   });
 
   try {
     await sendSupportPush({
       schoolId: school.id,
-      userIds: await supportAdminUserIds(school.id),
+      userIds: [...await supportAdminUserIds(school.id), ...(ticket.assignedToId ? [ticket.assignedToId] : [])],
       title: "New parent query",
       body: `${ticket.ticketNo} · ${input.subject}`,
       ticketId: ticket.id,
