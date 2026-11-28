@@ -25,7 +25,7 @@ export async function GET(request: Request) {
       prisma.announcement.findMany({
         where,
         orderBy: [{ publishedAt: "desc" }, { id: "desc" }],
-        take: 8,
+        take: 50,
         select: {
           id: true,
           title: true,
@@ -33,6 +33,8 @@ export async function GET(request: Request) {
           category: true,
           priority: true,
           targetLabel: true,
+          sourceType: true,
+          sourceId: true,
           publishedAt: true,
           reads: {
             where: { userId: membership.userId },

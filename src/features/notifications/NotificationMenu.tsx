@@ -28,6 +28,8 @@ type NotificationItem = {
   category: string;
   priority: string;
   targetLabel: string;
+  sourceType?: string | null;
+  sourceId?: string | null;
   publishedAt: string;
   read: boolean;
 };
@@ -155,7 +157,16 @@ export function NotificationMenu({
       });
       void updateAppBadge(Math.max(0, feed.unreadCount - 1));
     }
-    router.push(notificationsHref);
+    router.push(item.sourceType === "SUPPORT_TICKET" && item.sourceId ? `${notificationsHref}?announcementId=${encodeURIComponent(item.id)}` : notificationsHref);
+  }
+
+  const groups = new Map<string, NotificationItem[]>();
+  for (const item of feed.items) {
+    const key = item.sourceType === "SUPPORT_TICKET" && item.sourceId
+      ? `ticket:${item.sourceId}` : `announcement:${item.id}`;
+    const group = groups.get(key);
+    if (group) group.push(item);
+    else groups.set(key, [item]);
   }
 
   return (
@@ -201,7 +212,10 @@ export function NotificationMenu({
             No notifications yet.
           </div>
         ) : (
-          feed.items.slice(0, 5).map((item) => (
+          [...groups.values()].slice(0, 5).map((entries) => {
+            const item = entries[0];
+            const unread = entries.filter(entry => !entry.read).length;
+            return (
             <DropdownMenuItem
               key={item.id}
               className="cursor-pointer items-start gap-3 rounded-xl px-3 py-3"
@@ -209,7 +223,7 @@ export function NotificationMenu({
             >
               <span
                 className={`mt-1.5 size-2 shrink-0 rounded-full ${
-                  item.read ? "bg-muted-foreground/25" : "bg-primary"
+                  unread === 0 ? "bg-muted-foreground/25" : "bg-primary"
                 }`}
               />
               <span className="min-w-0 flex-1">
@@ -218,15 +232,17 @@ export function NotificationMenu({
                     {item.title}
                   </span>
                   <span className="shrink-0 text-[11px] text-muted-foreground">
-                    {notificationDate(item.publishedAt)}
+                    {unread > 1 ? `${unread} unread · ` : ""}{notificationDate(item.publishedAt)}
                   </span>
                 </span>
                 <span className="mt-1 line-clamp-2 text-xs leading-5 text-muted-foreground">
                   {item.body}
                 </span>
+                {entries.length > 1 && <span className="mt-1 block text-[11px] font-medium text-primary">{entries.length} ticket updates</span>}
               </span>
             </DropdownMenuItem>
-          ))
+            );
+          })
         )}
         <DropdownMenuSeparator />
         <div>
