@@ -138,6 +138,7 @@ model School {
   whatsappRecipients          WhatsappRecipient[]
   houses                      House[]
   studentHouses               StudentHouse[]
+  supportAutomation           Json?
   supportTickets              SupportTicket[]
   supportTicketMessages       SupportTicketMessage[]
   supportTicketActivities     SupportTicketActivity[]
@@ -2688,6 +2689,7 @@ model SupportTicket {
   parentConfirmedAt  DateTime?
   followUpAt         DateTime?
   followUpNotifiedAt DateTime?
+  slaEscalatedAt     DateTime?
   school             School                    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   student            Student?                  @relation(fields: [studentId], references: [id], onDelete: SetNull)
   createdBy          User?                     @relation("SupportTicketCreator", fields: [createdById], references: [id], onDelete: SetNull)
@@ -2705,6 +2707,7 @@ model SupportTicket {
   @@index([schoolId, source, createdAt(sort: Desc)])
   @@index([schoolId, assignedToId])
   @@index([followUpAt, followUpNotifiedAt])
+  @@index([schoolId, slaEscalatedAt, status, createdAt])
   @@index([schoolId, duplicateOfId])
   @@index([schoolId, studentId])
 }
