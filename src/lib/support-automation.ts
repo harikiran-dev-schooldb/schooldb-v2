@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { SupportTicketType } from "@/generated/prisma/enums";
+import { SupportTicketType } from "../generated/prisma/enums.ts";
 import type { Prisma } from "@/generated/prisma/client";
-import { hasModuleAccess } from "@/lib/staff-permissions";
+import { hasModuleAccess } from "./staff-permissions.ts";
 
 export const supportAutomationSchema = z.object({
   assignments: z.partialRecord(z.enum(SupportTicketType), z.string().trim().min(1).max(120)).default({}),
