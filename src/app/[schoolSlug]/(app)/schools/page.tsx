@@ -13,6 +13,7 @@ import {
   ListChecks,
   Plus,
   Settings2,
+  ShieldCheck,
   Trash2,
   X,
 } from "lucide-react";
@@ -185,6 +186,10 @@ export default function SchoolsPage() {
           </Button>
         </div>
       </div>
+
+      <section aria-label="School portfolio summary" className="grid gap-3 sm:grid-cols-3">
+        {[{label:"School workspaces",value:schools.length,detail:"Managed in this portfolio",icon:Building2},{label:"Branded schools",value:schools.filter(item=>Boolean(item.logo)).length,detail:"Logo and visual identity ready",icon:ImageUp},{label:"Central controls",value:"Protected",detail:"Routes and access managed",icon:ShieldCheck}].map(({label,value,detail,icon:Icon})=><div key={label} className="premium-card flex min-w-0 items-center gap-3 rounded-2xl border border-border/60 p-4 shadow-sm"><span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-primary/10 text-primary ring-1 ring-inset ring-primary/10"><Icon className="size-5"/></span><span className="min-w-0"><span className="block text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">{label}</span><span className="mt-0.5 block truncate text-lg font-black tracking-tight">{loading?"—":value}</span><span className="block truncate text-[11px] text-muted-foreground">{detail}</span></span></div>)}
+      </section>
 
       {error && (
         <div className="rounded-2xl border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive">

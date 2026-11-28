@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Loader2, Route, Save, ShieldCheck } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Eye, Layers3, Loader2, Route, Save, ShieldCheck, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/common/PageHeader";
@@ -103,6 +103,9 @@ export function SchoolRouteAccessManager({ targetSchoolId, schoolSlug, embedded 
     () => schools.find((school) => school.id === selectedSchoolId) ?? null,
     [schools, selectedSchoolId],
   );
+  const enabledModuleCount = SCHOOL_MODULES.filter((module) =>
+    module.routes.every((route) => draft.allowedRoutes.includes(route)),
+  ).length;
 
   useEffect(() => {
     const controller = new AbortController();
@@ -234,6 +237,9 @@ export function SchoolRouteAccessManager({ targetSchoolId, schoolSlug, embedded 
 
       <Card className="premium-card rounded-3xl border border-border/70">
         <CardContent className="space-y-5 p-5 sm:p-6">
+          <div className="grid gap-3 sm:grid-cols-3">
+            {[{label:"Access mode",value:draft.routeAccessRestricted?"Curated":"Full access",detail:draft.routeAccessRestricted?"Selected routes only":"Every workspace available",icon:ShieldCheck},{label:"Routes enabled",value:draft.routeAccessRestricted?`${draft.allowedRoutes.length} / ${ALL_ROUTES.length}`:"All",detail:"Navigation destinations",icon:Route},{label:"Modules enabled",value:draft.routeAccessRestricted?`${enabledModuleCount} / ${SCHOOL_MODULES.length}`:"All",detail:"School capabilities",icon:Layers3}].map(({label,value,detail,icon:Icon})=><div key={label} className="flex min-w-0 items-center gap-3 rounded-2xl border border-border/60 bg-muted/20 p-3.5"><span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary"><Icon className="size-4.5"/></span><span className="min-w-0"><span className="block text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">{label}</span><span className="block truncate text-base font-black">{value}</span><span className="block truncate text-[11px] text-muted-foreground">{detail}</span></span></div>)}
+          </div>
           <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
             <div className="space-y-2">
               <label htmlFor="route-access-school" className="text-xs font-semibold">
@@ -274,15 +280,15 @@ export function SchoolRouteAccessManager({ targetSchoolId, schoolSlug, embedded 
               )}
             </div>
 
-            <Button onClick={() => void save()} disabled={!selectedSchool || saving}>
+            <Button className="rounded-xl" onClick={() => void save()} disabled={!selectedSchool || saving}>
               {saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
               {saving ? "Saving..." : targetSchoolId === undefined ? "Save route access" : "Save settings"}
             </Button>
           </div>
 
-          <div className="flex flex-col gap-4 rounded-2xl border border-indigo-100 bg-indigo-50/50 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-4 rounded-2xl border border-primary/15 bg-primary/[0.045] p-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-start gap-3">
-              <div className="mt-0.5 rounded-xl bg-indigo-100 p-2 text-indigo-700">
+              <div className="mt-0.5 rounded-xl bg-primary/10 p-2 text-primary">
                 <ShieldCheck className="size-4" />
               </div>
               <div>
@@ -301,7 +307,7 @@ export function SchoolRouteAccessManager({ targetSchoolId, schoolSlug, embedded 
 
           <div className="space-y-2"><label htmlFor="landing-route" className="text-xs font-semibold">Default landing page</label><Select disabled={saving} value={draft.defaultLandingRoute&&isRouteAllowed(draft,draft.defaultLandingRoute)?draft.defaultLandingRoute:"__automatic__"} onValueChange={value=>setDraft(current=>({...current,defaultLandingRoute:value==="__automatic__"?null:value}))}><SelectTrigger id="landing-route" className="h-11 w-full rounded-xl"><SelectValue/></SelectTrigger><SelectContent><SelectItem value="__automatic__">Automatic (first permitted workspace)</SelectItem>{["admissions/dashboard",...ALL_ROUTES.filter(r=>!r.startsWith("bulk-operations/"))].filter(r=>isRouteAllowed(draft,r)).map(r=><SelectItem key={r} value={r}>{r==="admissions/dashboard"?"Admissions dashboard":r.replaceAll("/"," / ").replaceAll("-"," ")}</SelectItem>)}</SelectContent></Select><p className="text-xs text-muted-foreground">A user without permission for this page is sent to another permitted page.</p></div>
           {draft.routeAccessRestricted && (
-            <div className="flex flex-wrap gap-2">
+            <div className="rounded-2xl border border-border/60 bg-muted/15 p-4"><div className="mb-3 flex items-center gap-2"><Sparkles className="size-4 text-primary"/><p className="text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">Quick presets</p></div><div className="flex flex-wrap gap-2">
               <Button type="button" variant="outline" size="sm" onClick={() => setDraft({routeAccessRestricted:true,allowedRoutes:[...ADMISSIONS_ONLY_ROUTES],defaultLandingRoute:"admissions/dashboard",moduleAccessRestricted:true})}>Admissions only</Button>
               <Button type="button" variant="outline" size="sm" onClick={()=>setDraft({routeAccessRestricted:true,moduleAccessRestricted:true,allowedRoutes:[...ADMISSIONS_SUPPORT_DEMO_ROUTES],defaultLandingRoute:"admissions/dashboard"})}>Admissions + Support demo</Button>
               <Button type="button" variant="outline" size="sm" onClick={() => setDraft((current) => ({ ...current, moduleAccessRestricted:false, defaultLandingRoute:null, allowedRoutes: ACADEMIC_ONLY_ROUTES }))}>
@@ -316,15 +322,15 @@ export function SchoolRouteAccessManager({ targetSchoolId, schoolSlug, embedded 
               <Button type="button" variant="outline" size="sm" onClick={() => setDraft((current) => ({ ...current, moduleAccessRestricted:false, defaultLandingRoute:null, allowedRoutes: [] }))}>
                 Clear all
               </Button>
-              <span className="self-center text-xs text-muted-foreground">
+              <span className="self-center rounded-full bg-background px-3 py-1.5 text-xs font-semibold text-muted-foreground ring-1 ring-inset ring-border">
                 {draft.allowedRoutes.length} of {ALL_ROUTES.length} routes selected
               </span>
-            </div>
+            </div></div>
           )}
         </CardContent>
       </Card>
 
-      {draft.routeAccessRestricted&&<Card className="premium-card rounded-3xl border-0"><CardContent className="space-y-4 p-5"><div><h2 className="text-lg font-bold">School subscription modules</h2><p className="text-sm text-muted-foreground">Select multiple modules. Changes apply only after saving. Module selection enables strict operational API filtering; individual staff permissions still apply.</p></div><div className="grid gap-3 sm:grid-cols-2">{SCHOOL_MODULES.map(module=>{const selected=module.routes.every(route=>draft.allowedRoutes.includes(route));const partial=!selected&&module.routes.some(route=>draft.allowedRoutes.includes(route));return <label key={module.key} className={"flex cursor-pointer items-start gap-3 rounded-2xl border p-4 "+(selected?"border-primary bg-primary/5":"border-border")}><Checkbox checked={selected?true:partial?"indeterminate":false} onCheckedChange={value=>setDraft(current=>({...current,moduleAccessRestricted:true,allowedRoutes:toggleSchoolModule(current.allowedRoutes,module.key,value===true)}))}/><span className="min-w-0"><span className="block text-sm font-semibold">{module.label}</span><span className="block text-xs text-muted-foreground">{module.description}</span></span></label>})}</div><p className="text-xs text-muted-foreground">Advanced routes remain below. Some wider ERP modules require additional endpoint verification; unclassified operational APIs are blocked in strict mode.</p></CardContent></Card>}
+      {draft.routeAccessRestricted&&<Card className="premium-card overflow-hidden rounded-3xl border border-border/70"><CardContent className="p-0"><div className="flex flex-wrap items-start justify-between gap-3 border-b border-border/60 bg-gradient-to-r from-primary/[0.05] to-transparent p-5 sm:p-6"><div><p className="section-label">Workspace capabilities</p><h2 className="mt-1 text-lg font-black tracking-tight">School subscription modules</h2><p className="mt-1 max-w-3xl text-sm text-muted-foreground">Choose the operational areas this school can use. Staff permissions continue to apply inside every enabled module.</p></div><span className="rounded-full border bg-background/80 px-3 py-1.5 text-xs font-bold">{enabledModuleCount} enabled</span></div><div className="grid gap-3 p-5 sm:grid-cols-2 sm:p-6">{SCHOOL_MODULES.map(module=>{const selected=module.routes.every(route=>draft.allowedRoutes.includes(route));const partial=!selected&&module.routes.some(route=>draft.allowedRoutes.includes(route));return <label key={module.key} className={"group flex cursor-pointer items-start gap-3 rounded-2xl border p-4 transition hover:-translate-y-0.5 hover:shadow-sm "+(selected?"border-primary/35 bg-primary/[0.06] ring-1 ring-inset ring-primary/10":"border-border/70 bg-background hover:border-primary/25")}><span className={"grid size-9 shrink-0 place-items-center rounded-xl "+(selected?"bg-primary text-primary-foreground":"bg-muted text-muted-foreground")}><Checkbox className={selected?"border-primary-foreground/70 data-[state=checked]:bg-transparent data-[state=checked]:text-primary-foreground":""} checked={selected?true:partial?"indeterminate":false} onCheckedChange={value=>setDraft(current=>({...current,moduleAccessRestricted:true,allowedRoutes:toggleSchoolModule(current.allowedRoutes,module.key,value===true)}))}/></span><span className="min-w-0 flex-1"><span className="flex items-center justify-between gap-2"><span className="block text-sm font-bold">{module.label}</span>{selected&&<CheckCircle2 className="size-4 shrink-0 text-primary"/>}</span><span className="mt-1 block text-xs leading-5 text-muted-foreground">{module.description}</span><span className="mt-2 block text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{module.routes.length} routes</span></span></label>})}</div><p className="border-t border-border/60 px-5 py-4 text-xs leading-5 text-muted-foreground sm:px-6">Advanced routes remain below. Unclassified operational APIs are blocked when strict module filtering is enabled.</p></CardContent></Card>}
       {!draft.routeAccessRestricted ? (
         <div className="flex min-h-40 items-center justify-center rounded-3xl border border-dashed bg-muted/20 p-8 text-center">
           <div>
@@ -338,11 +344,11 @@ export function SchoolRouteAccessManager({ targetSchoolId, schoolSlug, embedded 
       ) : (
         <div className="grid gap-5 lg:grid-cols-2">
           {ROUTE_GROUPS.map((group) => (
-            <Card key={group.title} className="premium-card rounded-2xl border-0">
+            <Card key={group.title} className="premium-card overflow-hidden rounded-3xl border border-border/70">
               <CardContent className="p-5">
                 <div className="mb-4 flex items-center justify-between gap-3">
                   <h2 className="font-bold">{group.title}</h2>
-                  <span className="text-[11px] text-muted-foreground">
+                  <span className="rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-bold text-primary">
                     {group.routes.filter((route) => draft.allowedRoutes.includes(route.href)).length}/{group.routes.length}
                   </span>
                 </div>
@@ -352,13 +358,14 @@ export function SchoolRouteAccessManager({ targetSchoolId, schoolSlug, embedded 
                     return (
                       <label
                         key={route.href}
-                        className="flex cursor-pointer items-center gap-3 rounded-xl border border-border/70 px-3 py-2.5 transition hover:bg-muted/40"
+                        className={"flex cursor-pointer items-center gap-3 rounded-xl border px-3 py-2.5 transition "+(checked?"border-primary/20 bg-primary/[0.04]":"border-border/70 hover:bg-muted/40")}
                       >
                         <Checkbox
                           checked={checked}
                           onCheckedChange={(value) => toggleRoute(route.href, value === true)}
                         />
-                        <span className="min-w-0 flex-1 text-sm font-medium">{route.title}</span>
+                        <span className="min-w-0 flex-1 text-sm font-semibold">{route.title}</span>
+                        {checked&&<Eye className="size-3.5 shrink-0 text-primary"/>}
                         <span className="hidden truncate font-mono text-[9px] text-muted-foreground sm:block">
                           /{route.href}
                         </span>

@@ -38,7 +38,9 @@ export default async function Page({ params }: { params: Promise<{ schoolSlug: s
     <AdmissionAgeSettings key={options.years.map((year) => year.id).join(":")} {...options} />
     <AdmissionNumberSettings initial={{ automaticNumbering: setting?.automaticNumbering ?? false, admissionPrefix: setting?.admissionPrefix ?? "", nextNumber: setting?.nextNumber ?? 1, numberPadding: setting?.numberPadding ?? 4 }} />
     <PublicEnquirySetting years={options.years} />
-    <AdmissionEventAlertSetting enabled={setting?.admissionEventAlertsEnabled ?? false} />
-    <AdmissionReminderSetting enabled={setting?.admissionRemindersEnabled ?? false} />
+    <section aria-label="Admissions automations" className="grid items-stretch gap-4 lg:grid-cols-2">
+      <AdmissionEventAlertSetting enabled={setting?.admissionEventAlertsEnabled ?? false} />
+      <AdmissionReminderSetting enabled={setting?.admissionRemindersEnabled ?? false} />
+    </section>
   </PageContainer>;
 }
