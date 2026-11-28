@@ -8,6 +8,7 @@ import { prisma } from "@/lib/prisma";
 import { ApiResponse } from "@/lib/response";
 import { supportActor, ticketVisibility } from "@/lib/support-tickets";
 import { sendSupportPush, supportAdminUserIds } from "@/lib/support-push";
+import { supportAutoAssignee } from "@/lib/support-automation";
 import { supportSla } from "@/lib/support-sla";
 import { personalSupportFilters, unresolvedSupport } from "@/lib/support-workspace";
 
@@ -134,6 +135,7 @@ export async function POST(request: Request) {
       if (!student) throw new ApiError(400, "Active student not found in this school.");
     }
     const ticket = await prisma.$transaction(async (tx) => {
+      const assignedToId = await supportAutoAssignee(tx, actor.schoolId, input.data.type);
       const created = await tx.supportTicket.create({
         data: {
           schoolId: actor.schoolId,
@@ -145,6 +147,8 @@ export async function POST(request: Request) {
           studentId: input.data.studentId || null,
           diagnostics: input.data.diagnostics,
           createdById: actor.userId,
+          assignedToId,
+          status: assignedToId ? "ASSIGNED" : "OPEN",
         },
       });
       await tx.supportTicketActivity.create({
@@ -153,6 +157,7 @@ export async function POST(request: Request) {
           action: "CREATED", detail: "Ticket created",
         },
       });
+      if (assignedToId) await tx.supportTicketActivity.create({ data: { schoolId: actor.schoolId, ticketId: created.id, actorId: actor.userId, action: "AUTO_ASSIGNED", detail: "Assigned automatically by school routing rule" } });
       return created;
     });
 
@@ -160,7 +165,7 @@ export async function POST(request: Request) {
       const adminIds = await supportAdminUserIds(actor.schoolId);
       await sendSupportPush({
         schoolId: actor.schoolId,
-        userIds: adminIds,
+        userIds: [...adminIds, ...(ticket.assignedToId ? [ticket.assignedToId] : [])],
         excludeUserId: actor.userId,
         title: input.data.priority === "URGENT" ? "Urgent support ticket" : "New support ticket",
         body: `${ticket.ticketNo} · ${ticket.subject}`,
