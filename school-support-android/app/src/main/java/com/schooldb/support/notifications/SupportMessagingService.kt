@@ -11,6 +11,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.content.edit
 import androidx.core.net.toUri
 import androidx.core.app.NotificationCompat
+import androidx.core.app.Person
 import com.clerk.api.Clerk
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
@@ -75,23 +76,31 @@ class SupportMessagingService : FirebaseMessagingService() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
 
+        // Keep one expandable conversation per ticket, not one bulk school group.
+        val notificationTag = "$school:$ticketId"
+        val previous = manager.activeNotifications.firstOrNull { it.tag == notificationTag && it.id == 0 }
+        val previousStyle = previous?.notification?.let {
+            NotificationCompat.MessagingStyle.extractMessagingStyleFromNotification(it)
+        }
+        val support = Person.Builder().setName("School Support").build()
+        val style = NotificationCompat.MessagingStyle(support)
+            .setConversationTitle(ticketNo)
+            .setGroupConversation(true)
+        previousStyle?.messages?.takeLast(9)?.forEach { style.addMessage(it) }
+        style.addMessage(body, System.currentTimeMillis(), Person.Builder().setName(title).build())
+
         val channelId = if (urgent) URGENT_CHANNEL_ID else CHANNEL_ID
         val notification = NotificationCompat.Builder(this, channelId)
             .setSmallIcon(com.schooldb.support.R.drawable.ic_support_notification)
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
             .setCategory(NotificationCompat.CATEGORY_MESSAGE)
-            .setGroup("support-$school")
-            .setGroupAlertBehavior(NotificationCompat.GROUP_ALERT_CHILDREN)
             .setContentTitle(title)
             .setContentText(body)
             .setSubText(ticketNo)
-            .setStyle(NotificationCompat.BigTextStyle()
-                .setBigContentTitle(title)
-                .bigText(body)
-                .setSummaryText(ticketNo))
+            .setStyle(style)
             .setColor(android.graphics.Color.rgb(79, 70, 229))
             .setAutoCancel(true)
-            .setOnlyAlertOnce(true)
+            .setOnlyAlertOnce(false)
             .setShowWhen(true)
             .setContentIntent(pendingIntent)
             .addAction(0, "Open ticket", pendingIntent)
@@ -101,7 +110,7 @@ class SupportMessagingService : FirebaseMessagingService() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
             ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
         ) {
-            manager.notify("$school:$ticketId", 0, notification)
+            manager.notify(notificationTag, 0, notification)
         }
     }
 
