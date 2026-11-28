@@ -20,6 +20,10 @@ import type { Prisma } from "@/generated/prisma/client";
 import { requireMembership } from "@/lib/auth";
 import { formatSchoolDate } from "@/lib/date-time";
 import { prisma } from "@/lib/prisma";
+import { SupportTicketType } from "@/generated/prisma/enums";
+import { parseSupportAutomation } from "@/lib/support-automation";
+import { hasModuleAccess } from "@/lib/staff-permissions";
+import { saveSupportAutomation } from "./automation-actions";
 
 type Params = Promise<{ schoolSlug: string }>;
 type Query = Promise<{ status?: string; q?: string; page?: string; priority?: string; source?: string; unread?: string }>;
@@ -57,6 +61,13 @@ export default async function QueriesPage({ params, searchParams }: { params: Pa
   const membership = await requireMembership(schoolSlug);
   if (!isMemberRouteAllowed(membership, "queries")) notFound();
 
+  const canConfigure = ["SUPER_ADMIN", "SCHOOL_ADMIN"].includes(membership.role);
+  const [settings, members] = canConfigure ? await Promise.all([
+    prisma.school.findUnique({ where: { id: membership.schoolId }, select: { supportAutomation: true } }),
+    prisma.membership.findMany({ where: { schoolId: membership.schoolId, isActive: true, role: { notIn: ["PARENT", "STUDENT"] } }, select: { userId: true, role: true, customPermissionsEnabled: true, permissions: true, user: { select: { firstName: true, lastName: true, email: true } } } }),
+  ]) : [null, []] as const;
+  const config = parseSupportAutomation(settings?.supportAutomation);
+  const eligibleStaff = members.filter(person => hasModuleAccess(person, "SUPPORT", "VIEW"));
   const query = await searchParams;
   const status = filters.some((item) => item.value === query.status) ? query.status! : "ALL";
   const q = query.q?.trim().slice(0, 100) || "";
@@ -139,6 +150,29 @@ export default async function QueriesPage({ params, searchParams }: { params: Pa
           ) : undefined
         }
       />
+
+      {canConfigure && <details className="rounded-2xl border bg-card p-5 shadow-sm">
+        <summary className="cursor-pointer font-semibold">Support automation settings</summary>
+        <form action={saveSupportAutomation.bind(null, schoolSlug)} className="mt-4 space-y-4">
+          <p className="text-sm text-muted-foreground">Set a default staff member for new tickets by category. Existing tickets are not reassigned.</p>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {Object.values(SupportTicketType).map(type => <label key={type} className="grid gap-1 text-sm font-medium">
+              {type.replaceAll("_", " ")}
+              <select name={type} defaultValue={config.assignments[type] ?? ""} className="h-11 rounded-xl border bg-background px-3">
+                <option value="">Manual assignment</option>
+                {eligibleStaff.map(person => <option key={person.userId} value={person.userId}>{[person.user.firstName, person.user.lastName].filter(Boolean).join(" ") || person.user.email} · {person.role}</option>)}
+              </select>
+            </label>)}
+          </div>
+          <label className="flex items-center gap-2 text-sm font-semibold"><input type="checkbox" name="escalationEnabled" defaultChecked={config.escalationEnabled} /> Notify when resolution SLA is overdue</label>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="grid gap-1 text-sm">Extra grace period (hours)<input type="number" min={0} max={168} name="escalationGraceHours" defaultValue={config.escalationGraceHours} className="h-11 rounded-xl border bg-background px-3" /></label>
+            <label className="grid gap-1 text-sm">Additional escalation recipient<select name="escalationRecipientId" defaultValue={config.escalationRecipientId ?? ""} className="h-11 rounded-xl border bg-background px-3"><option value="">School administrators only</option>{eligibleStaff.map(person => <option key={person.userId} value={person.userId}>{[person.user.firstName, person.user.lastName].filter(Boolean).join(" ") || person.user.email}</option>)}</select></label>
+          </div>
+          <p className="text-xs text-muted-foreground">Escalation is opt-in, uses existing priority SLA targets, and sends one alert per ticket. Existing overdue tickets become eligible when enabled.</p>
+          <Button type="submit">Save automation settings</Button>
+        </form>
+      </details>}
 
       <section className="relative overflow-hidden rounded-3xl border border-indigo-100 bg-gradient-to-br from-white via-indigo-50/60 to-violet-50/60 p-5 shadow-[0_16px_45px_rgba(15,23,42,0.06)] sm:p-6">
         <div className="pointer-events-none absolute -right-20 -top-24 size-72 rounded-full bg-violet-400/10 blur-3xl" />
