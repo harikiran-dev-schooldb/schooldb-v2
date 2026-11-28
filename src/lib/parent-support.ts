@@ -192,8 +192,8 @@ export async function submitParentSupport(input: {
       ticketNo: ticket.ticketNo,
       phone: input.parentPhone,
       parentName: complaintByName,
-      status: "OPEN",
+      status: ticket.assignedToId ? "ASSIGNED" : "OPEN",
       eventKey: "created",
   }).catch((error) => console.error("Parent query WhatsApp failed", error));
-  return ticket;
+  return { id: ticket.id, ticketNo: ticket.ticketNo };
 }
