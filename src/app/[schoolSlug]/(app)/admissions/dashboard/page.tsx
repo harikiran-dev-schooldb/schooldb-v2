@@ -1,4 +1,4 @@
-import { Calculator, CalendarCheck2, ChartNoAxesCombined, ClipboardCheck, FileText, Inbox, IndianRupee, Settings2, Target, UserRoundCheck, UsersRound } from "lucide-react";
+import { CalendarCheck2, ChartNoAxesCombined, ClipboardCheck, FileText, Inbox, IndianRupee, Settings2, Target, UserRoundCheck, UsersRound } from "lucide-react";
 import { PageContainer, PageHeader } from "@/components/common/layout";
 import { AdmissionAction, AdmissionHero, AdmissionMetric } from "@/features/admissions/AdmissionSurface";
 import { AdmissionSelect } from "@/features/admissions/AdmissionWorkspaceUI";
@@ -12,7 +12,6 @@ const actions = [
   { title: "Smart Pipeline", route: "admissions/pipeline", icon: ChartNoAxesCombined, description: "Move applications through every stage." },
   { title: "Enquiries", route: "admissions/intake", icon: Inbox, description: "Capture interest and parent conversations." },
   { title: "Applications", route: "admissions", icon: FileText, description: "Review, approve and enroll applicants." },
-  { title: "Age Calculator", route: "admissions/age-calculator", icon: Calculator, description: "Check exact age and eligible classes." },
   { title: "Fee Structure", route: "admissions/fees", icon: IndianRupee, description: "Publish clear class-wise admission quotes." },
   { title: "Entrance & Interviews", route: "admissions/reviews", icon: ClipboardCheck, description: "Record entrance and interview decisions." },
   { title: "Parent Follow-ups", route: "admissions/follow-ups", icon: UsersRound, description: "Keep every parent contact accountable." },

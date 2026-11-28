@@ -117,7 +117,6 @@ export const navigation: NavigationItem[] = [
       { title: "Smart Pipeline", href: "admissions/pipeline" },
       { title: "Applications", href: "admissions", exact: true },
       { title: "Enquiries", href: "admissions/intake" },
-      { title: "Age Calculator", href: "admissions/age-calculator" },
       { title: "Fee Structure", href: "admissions/fees" },
       { title: "Entrance & Interviews", href: "admissions/reviews" },
       { title: "Parent Follow-ups", href: "admissions/follow-ups" },

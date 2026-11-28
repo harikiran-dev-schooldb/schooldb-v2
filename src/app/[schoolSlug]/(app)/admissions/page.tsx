@@ -160,7 +160,7 @@ export default async function AdmissionsPage({
           </Button>
         }
       />
-      <div className="flex flex-wrap gap-2"><Button asChild variant="outline"><Link href={`/${schoolSlug}/admissions/intake`}>Enquiries &amp; follow-ups</Link></Button><Button asChild variant="outline"><Link href={`/${schoolSlug}/admissions/age-calculator`}>Age Calculator</Link></Button><Button asChild variant="outline"><Link href={`/${schoolSlug}/admissions/fees`}>Fee Structure</Link></Button></div>
+      <div className="flex flex-wrap gap-2"><Button asChild variant="outline"><Link href={`/${schoolSlug}/admissions/intake`}>Enquiries &amp; follow-ups</Link></Button><Button asChild variant="outline"><Link href={`/${schoolSlug}/admissions/fees`}>Fee Structure</Link></Button></div>
       <section className="premium-hero p-6 md:p-8">
         <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
           <div>
