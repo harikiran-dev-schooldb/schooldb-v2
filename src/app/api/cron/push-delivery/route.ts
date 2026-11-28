@@ -1,3 +1,4 @@
+import { sendOverdueSupportEscalations } from "@/lib/support-escalations";
 import { sendDueSupportFollowUps } from "@/lib/support-follow-ups";
 import { queueAdmissionReminders } from "@/features/admissions/reminders.service";
 import { processPendingPushDeliveries } from "@/features/notifications/push-queue";
@@ -16,6 +17,8 @@ export async function GET(request: Request) {
   try { admissions=await queueAdmissionReminders(); } catch(error) { console.error("Admission reminder generation failed",error); admissions={error:"Reminder generation failed."}; }
   let support: {remindersDispatched:number}|{error:string};
   try { support = await sendDueSupportFollowUps(); } catch (error) { console.error("Support reminders failed", error); support = { error: "Reminder dispatch failed." }; }
+  let escalations: {escalationsDispatched:number}|{error:string};
+  try { escalations = await sendOverdueSupportEscalations(); } catch (error) { console.error("Support escalation failed", error); escalations = { error: "Escalation dispatch failed." }; }
   const result = await processPendingPushDeliveries();
-  return Response.json({ ok: true, ...result, admissions, support });
+  return Response.json({ ok: true, ...result, admissions, support, escalations });
 }
